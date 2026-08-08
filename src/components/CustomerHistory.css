@@ -575,7 +575,7 @@
 }
 
 .crm-customer-table {
-  min-width: 1630px;
+  min-width: 1660px;
 }
 
 .crm-customer-table th,
@@ -585,15 +585,16 @@
   vertical-align: middle;
 }
 
-.crm-customer-table th:nth-child(1) { width: 245px; }
-.crm-customer-table th:nth-child(2) { width: 125px; }
-.crm-customer-table th:nth-child(3) { width: 120px; }
-.crm-customer-table th:nth-child(4) { width: 140px; }
-.crm-customer-table th:nth-child(5) { width: 135px; }
-.crm-customer-table th:nth-child(6) { width: 185px; }
-.crm-customer-table th:nth-child(7) { width: 165px; }
-.crm-customer-table th:nth-child(8) { width: 155px; }
-.crm-customer-table th:nth-child(9) { width: 220px; }
+.crm-customer-table th:nth-child(1) { width: 230px; }
+.crm-customer-table th:nth-child(2) { width: 110px; }
+.crm-customer-table th:nth-child(3) { width: 130px; }
+.crm-customer-table th:nth-child(4) { width: 130px; }
+.crm-customer-table th:nth-child(5) { width: 130px; }
+.crm-customer-table th:nth-child(6) { width: 210px; }
+.crm-customer-table th:nth-child(7) { width: 150px; }
+.crm-customer-table th:nth-child(8) { width: 145px; }
+.crm-customer-table th:nth-child(9) { width: 195px; }
+.crm-customer-table th:nth-child(10) { width: 230px; }
 
 .crm-tax-code {
   color: #172554;
@@ -611,9 +612,7 @@
 
 .crm-customer-identity,
 .crm-customer-segment,
-.crm-business-result,
-.crm-debt-cell,
-.crm-care-cell {
+.crm-business-result {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -652,34 +651,33 @@
 }
 
 .crm-customer-identity strong,
-.crm-business-result strong,
-.crm-debt-cell strong,
-.crm-care-cell strong {
+.crm-business-result strong {
   color: #172554;
   font-size: 12px;
 }
 
 .crm-customer-identity > span,
 .crm-customer-segment small,
-.crm-business-result span,
-.crm-debt-cell span,
-.crm-care-cell span {
+.crm-business-result span {
   color: #64748b;
   font-size: 11.5px;
-}
-
-.crm-debt-cell strong.has-debt,
-.crm-care-cell.is-overdue strong {
-  color: #b91c1c;
-}
-
-.crm-care-cell.is-overdue span {
-  color: #dc2626;
 }
 
 .crm-text-muted {
   color: #94a3b8;
   font-weight: 500;
+}
+
+.crm-contact-value {
+  display: block;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
+.crm-email-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .crm-material-summary {

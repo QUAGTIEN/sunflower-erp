@@ -2218,25 +2218,24 @@ export const Crm: React.FC<CrmProps> = ({
 
                 <div className="table-container crm-customer-table-wrap">
                   <table className="crm-customer-table">
-                    <thead><tr><th>{t('Khách hàng')}</th><th>{t('Mã số thuế')}</th><th>{t('Phân loại')}</th><th>{t('Sale phụ trách')}</th><th>{t('Kết quả kinh doanh')}</th><th>{t('NVL gốc')}</th><th>{t('Công nợ / hạn mức')}</th><th>{t('Chăm sóc gần nhất')}</th><th>{t('Thao tác')}</th></tr></thead>
+                    <thead><tr><th>{t('Khách hàng')}</th><th>{t('Mã KH')}</th><th>{t('Phân loại')}</th><th>{t('Mã số thuế')}</th><th>{t('SĐT')}</th><th>{t('Mail')}</th><th>{t('Sale phụ trách')}</th><th>{t('Kết quả kinh doanh')}</th><th>{t('NVL gốc')}</th><th>{t('Thao tác')}</th></tr></thead>
                     <tbody>
                       {filteredCustomers.map(customer => {
                         const customerOrders = getCustomerOrders(customer.id);
                         const customerMaterials = customerMaterialsById[customer.id] || [];
                         const isMaterialsExpanded = expandedMaterialsCustomerId === customer.id;
                         const orderValue = getCustomerOrderValue(customer.id);
-                        const outstandingDebt = getCustomerOutstandingDebt(customer.id);
-                        const daysSinceLastOrder = getDaysSinceLastOrder(customer);
-                        const needsCare = daysSinceLastOrder === null || daysSinceLastOrder > careThresholdDays;
                         const isNew = isNewCustomer(customer);
-                        const lastOrder = customerOrders[0];
                         const saleName = users.find(user => user.uid === customer.assignedSaleId)?.displayName || t('Chưa phân công');
                         return (
                           <React.Fragment key={customer.id}>
                             <tr onClick={() => openCustomerDetail(customer)}>
-                              <td><div className="crm-customer-identity"><div><strong>{customer.companyName}</strong><span className="customer-code-badge">{customer.customerCode || customer.id}</span>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div><span>{customer.contactPerson || t('Chưa có người liên hệ')}{customer.phone ? ` · ${customer.phone}` : ''}</span></div></td>
-                              <td><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>
+                              <td><div className="crm-customer-identity"><div><strong>{customer.companyName}</strong>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div><span>{customer.contactPerson || t('Chưa có người liên hệ')}</span></div></td>
+                              <td><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>
                               <td><div className="crm-customer-segment"><span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span><small>{customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}</small></div></td>
+                              <td><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>
+                              <td><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>
+                              <td><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>
                               <td><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>
                               <td><div className="crm-business-result"><strong>{customerOrders.length} {t('đơn')}</strong><span>{orderValue.toLocaleString('vi-VN')} đ</span></div></td>
                               <td onClick={(event) => event.stopPropagation()}>
@@ -2256,8 +2255,6 @@ export const Crm: React.FC<CrmProps> = ({
                                   <span className="crm-material-empty">{t('Chưa có dữ liệu')}</span>
                                 )}
                               </td>
-                              <td><div className="crm-debt-cell"><strong className={outstandingDebt > 0 ? 'has-debt' : ''}>{outstandingDebt.toLocaleString('vi-VN')} đ</strong><span>{t('Hạn mức')} {Number(customer.debtLimit || 0).toLocaleString('vi-VN')} đ</span></div></td>
-                              <td><div className={`crm-care-cell ${needsCare ? 'is-overdue' : ''}`}><strong>{daysSinceLastOrder === null ? t('Chưa có đơn') : daysSinceLastOrder === 0 ? t('Hôm nay') : `${daysSinceLastOrder} ${t('ngày trước')}`}</strong><span>{lastOrder ? formatDate(lastOrder.orderDate || lastOrder.createdAt, 'vi-VN', '') : t('Cần tạo đơn đầu tiên')}</span></div></td>
                               <td><div className="crm-row-actions" onClick={(event) => event.stopPropagation()}>
                                 {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" className="btn btn-sm btn-primary" onClick={() => onPreparedOrderCreated?.(customer.id)}><ClipboardPlus size={13} /> {t('Tạo PO')}</button>}
                                 <button type="button" className="btn btn-sm btn-outline" onClick={() => openCustomerDetail(customer)}>{t('Chi tiết')}</button>
@@ -2278,7 +2275,7 @@ export const Crm: React.FC<CrmProps> = ({
                             </tr>
                             {isMaterialsExpanded && (
                               <tr className="crm-material-history-row" onClick={(event) => event.stopPropagation()}>
-                                <td colSpan={9}>
+                                <td colSpan={10}>
                                   <div className="crm-material-history-panel">
                                     <div className="crm-material-history-heading">
                                       <span><Layers3 size={15} /> {t('Nguyên vật liệu đã sử dụng')}</span>
@@ -2309,7 +2306,7 @@ export const Crm: React.FC<CrmProps> = ({
                           </React.Fragment>
                         );
                       })}
-                      {filteredCustomers.length === 0 && <tr><td colSpan={9} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
+                      {filteredCustomers.length === 0 && <tr><td colSpan={10} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
                     </tbody>
                   </table>
                 </div>
