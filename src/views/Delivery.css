@@ -94,7 +94,7 @@
 .delivery-subheading {
   color: #0f2f78;
   font-size: 15px;
-  font-weight: 750;
+  font-weight: 650;
   margin: 0;
 }
 
@@ -108,7 +108,7 @@
   border: 1px solid #cbd5e1;
   border-radius: 999px;
   color: #334155;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
   padding: 5px 10px;
   white-space: nowrap;
@@ -136,7 +136,7 @@
 
 .delivery-alert span {
   color: #64748b;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .delivery-alert-danger { border-left-color: #dc2626; }
@@ -179,7 +179,7 @@
 
 .delivery-route-card span {
   color: #64748b;
-  font-size: 11.5px;
+  font-size: 12.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -212,7 +212,7 @@
 
 .delivery-fleet-summary span {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .delivery-fleet-summary strong {
@@ -233,7 +233,7 @@
   border-radius: 999px;
   color: #334155;
   display: inline-block;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1;
   padding: 5px 8px;
@@ -300,14 +300,14 @@
   border: 1px solid #cbd5e1;
   border-radius: 50%;
   display: inline-flex;
-  font-size: 10px;
+  font-size: 11.5px;
   height: 22px;
   justify-content: center;
   width: 22px;
 }
 
 .delivery-trip-progress b {
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .delivery-trip-progress > div.done {
@@ -339,7 +339,7 @@
 
 .delivery-detail-grid span {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .delivery-detail-grid strong {
@@ -362,7 +362,7 @@
 .delivery-audit {
   border-top: 1px solid #e2e8f0;
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 14px;
   padding-top: 10px;
 }
@@ -383,7 +383,7 @@
 
 .delivery-load-summary span {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .delivery-load-summary strong {

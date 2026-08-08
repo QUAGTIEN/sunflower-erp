@@ -115,7 +115,7 @@
   background: transparent;
   color: #64748b;
   font: inherit;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -129,7 +129,7 @@
   border-radius: 999px;
   background: #e2e8f0;
   color: #475569;
-  font-size: 9px;
+  font-size: 11.5px;
 }
 
 .customer-order-history-tabs button.is-active {
@@ -173,8 +173,8 @@
   background: transparent;
   color: #1d4ed8;
   font: inherit;
-  font-size: 10.5px;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 650;
   text-align: left;
   cursor: pointer;
 }
@@ -226,7 +226,7 @@
 .customer-sample-spec strong {
   overflow: hidden;
   color: #172554;
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -235,7 +235,7 @@
 .customer-sample-spec span {
   overflow: hidden;
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -244,7 +244,7 @@
   padding: 24px !important;
   color: #94a3b8;
   text-align: center;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .crm-summary-grid {
@@ -283,13 +283,13 @@
 .crm-customer-contact-line,
 .crm-table-secondary {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 450;
 }
 
 .crm-summary-card small {
   color: #94a3b8;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .crm-care-threshold {
@@ -297,7 +297,7 @@
   align-items: center;
   gap: 4px;
   color: #9a3412;
-  font-size: 9.5px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 
@@ -311,7 +311,7 @@
   color: #9a3412;
   text-align: center;
   font: inherit;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
   appearance: textfield;
   -moz-appearance: textfield;
@@ -375,7 +375,7 @@
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -405,8 +405,8 @@
   border-radius: 999px;
   color: #334155;
   background: #e2e8f0;
-  font-size: 10px;
-  font-weight: 750;
+  font-size: 11.5px;
+  font-weight: 650;
 }
 
 .crm-list-tab.is-active .crm-list-tab__count {
@@ -444,7 +444,7 @@
 .crm-list-toolbar select {
   width: 100%;
   height: 36px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .crm-list-search input {
@@ -461,7 +461,7 @@
   flex: 0 1 150px;
   min-width: 130px;
   color: #334155;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .crm-multi-filter:last-of-type {
@@ -581,7 +581,7 @@
 .crm-customer-table th,
 .crm-customer-table td {
   padding: 11px 10px;
-  font-size: 10.5px;
+  font-size: 12px;
   vertical-align: middle;
 }
 
@@ -636,8 +636,8 @@
   border-radius: 999px;
   background: #fff7f7;
   color: #b42318;
-  font-size: 8.5px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 700;
   letter-spacing: 0.05em;
   line-height: 1;
 }
@@ -656,7 +656,7 @@
 .crm-debt-cell strong,
 .crm-care-cell strong {
   color: #172554;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .crm-customer-identity > span,
@@ -665,7 +665,7 @@
 .crm-debt-cell span,
 .crm-care-cell span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .crm-debt-cell strong.has-debt,
@@ -710,7 +710,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -718,7 +718,7 @@
   grid-column: 1;
   overflow: hidden;
   color: #64748b;
-  font-size: 9px;
+  font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -736,7 +736,7 @@
 
 .crm-material-empty {
   color: #94a3b8;
-  font-size: 9.5px;
+  font-size: 11.5px;
   font-style: italic;
 }
 
@@ -775,13 +775,13 @@
   align-items: center;
   gap: 6px;
   color: #1e3a8a;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .crm-material-history-heading > small {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
   line-height: 1.5;
 }
 
@@ -813,7 +813,7 @@
 .crm-material-history-item strong {
   overflow: hidden;
   color: #172554;
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -821,7 +821,7 @@
 .crm-material-history-item span {
   overflow: hidden;
   color: #64748b;
-  font-size: 9px;
+  font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -895,7 +895,7 @@
 
 .crm-analytics-header span {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .crm-analytics-header > div:last-child {
@@ -908,14 +908,14 @@
   width: auto;
   min-width: 105px;
   height: 34px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .crm-empty-state {
   padding: 28px !important;
   color: #94a3b8;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .crm-customer-contact-line {
@@ -962,13 +962,13 @@
 .customer-contact-item span {
   overflow: hidden;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
 }
 
 .customer-contact-item .customer-contact-item__role {
   color: #1e40af;
-  font-size: 9.5px;
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -1003,7 +1003,7 @@
 
 .customer-contact-editor__header span {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .customer-contact-editor__header .btn {
@@ -1023,7 +1023,7 @@
 .customer-contact-editor__row input,
 .customer-contact-editor__row select {
   min-width: 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .product-commercial-fields {
@@ -1170,8 +1170,8 @@
   border-radius: 999px;
   background: #e2e8f0;
   color: #334155;
-  font-size: 10.5px;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .sales-list-tab.is-active .sales-list-tab__count {
@@ -1212,7 +1212,7 @@
 
 .waiting-customer-intro span {
   color: #64748b;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.45;
 }
 
@@ -1223,7 +1223,7 @@
   border-radius: 999px;
   background: #ffffff;
   color: #1e40af;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1256,7 +1256,7 @@
   border-radius: 999px;
   background: #ffffff;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -1291,7 +1291,7 @@
 .waiting-customer-secondary {
   margin-top: 3px;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 400;
 }
 
@@ -1330,7 +1330,7 @@
 
 .repeat-order-banner span {
   color: var(--color-text-muted);
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .repeat-order-button {
@@ -1381,7 +1381,7 @@
 .approved-library__count span {
   grid-column: 1 / -1;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .approved-library__search {
@@ -1453,7 +1453,7 @@
   border-radius: 999px;
   color: var(--color-success);
   background: #fff;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1464,7 +1464,7 @@
 .approved-template-card__customer {
   margin-bottom: 4px;
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -1477,7 +1477,7 @@
 .approved-template-card__code {
   margin-bottom: 12px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .approved-template-card dl {
@@ -1493,13 +1493,13 @@
 
 .approved-template-card dt {
   color: var(--color-text-muted);
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .approved-template-card dd {
   margin: 2px 0 0;
   overflow: hidden;
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1510,7 +1510,7 @@
   padding-top: 10px;
   border-top: 1px dashed var(--color-border-light);
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .approved-template-card__links {
@@ -1526,7 +1526,7 @@
   align-items: center;
   gap: 5px;
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 12px;
   text-decoration: none;
 }
 
@@ -1704,7 +1704,7 @@
   border-radius: 999px;
   background: #e8eefc;
   color: #1e3a8a;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .po-attachment-content {
@@ -1760,14 +1760,14 @@
   margin: 0;
   color: #172554;
   font-size: 15px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .po-items-card-header span {
   display: block;
   margin-top: 3px;
   color: #64748b;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .po-items-card-header .btn {
@@ -1856,7 +1856,7 @@
   width: auto;
   min-width: 34px;
   padding: 0 6px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .po-row-actions {
@@ -1986,7 +1986,7 @@
 .po-discount-editor .po-discount-hint {
   grid-column: 1 / -1;
   color: #64748b;
-  font-size: 10px;
+  font-size: 11.5px;
   text-align: right;
 }
 
@@ -1994,7 +1994,7 @@
 .po-discount-value {
   min-width: 0;
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.35;
 }
 
@@ -2053,7 +2053,7 @@
 .po-layout-thumbnails .po-empty-value {
   color: #64748b;
   font-family: var(--font-sans);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-style: normal;
   font-weight: 400;
   white-space: nowrap;
@@ -2070,7 +2070,7 @@
   border-radius: 999px;
   background: #eff6ff;
   color: #1e40af;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -2079,7 +2079,7 @@
   display: block;
   margin-top: 5px;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -2129,7 +2129,7 @@
 
 .po-layout-thumbnails span {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
 }
 
@@ -2152,7 +2152,7 @@
 
 .po-commercial-summary span {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .po-commercial-summary strong {
@@ -2176,7 +2176,7 @@
   display: block;
   margin-bottom: 5px;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -2198,7 +2198,7 @@
   padding: 0 10px;
   border-left: 1px solid #dbe3ef;
   color: #64748b;
-  font-size: 11.5px;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 
@@ -2239,7 +2239,7 @@
 
 .po-total-summary-card > div > span:first-child {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -2248,7 +2248,7 @@
 .po-total-summary-card > div > span:last-child {
   color: #172554;
   font-size: 14px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .po-assignment-header:hover {

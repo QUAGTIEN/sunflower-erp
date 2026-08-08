@@ -47,7 +47,7 @@
 
 .lead-summary-card span {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .lead-toolbar {
@@ -65,7 +65,7 @@
 .lead-toolbar input {
   min-width: 0;
   height: 36px;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .lead-search {
@@ -115,7 +115,7 @@
 .lead-table td > span {
   margin-top: 3px;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-row-actions {
@@ -133,8 +133,8 @@
   border-radius: 999px;
   color: #475569;
   background: #f8fafc;
-  font-size: 10px;
-  font-weight: 750;
+  font-size: 11.5px;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -179,7 +179,7 @@
   padding: 28px !important;
   color: #94a3b8;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   font-style: italic;
 }
 
@@ -210,7 +210,7 @@
 .lead-detail-header p {
   margin: 4px 0 0;
   color: #64748b;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .lead-detail-actions {
@@ -243,14 +243,14 @@
   border-bottom: 1px solid #e2e8f0;
   color: #1e3a8a;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .lead-info-grid {
   display: grid;
   grid-template-columns: 120px minmax(0, 1fr);
   gap: 7px 10px;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .lead-info-grid > span {
@@ -272,13 +272,13 @@
 
 .lead-note-block strong {
   color: #1e3a8a;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .lead-note-block p {
   margin: 3px 0 0;
   color: #475569;
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.4;
   white-space: pre-wrap;
 }
@@ -301,7 +301,7 @@
   gap: 5px;
   margin-bottom: 7px;
   color: #334155;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-file {
@@ -313,7 +313,7 @@
   border-radius: 6px;
   color: #1e40af;
   background: #fff;
-  font-size: 11px;
+  font-size: 12px;
   text-decoration: none;
 }
 
@@ -334,8 +334,8 @@
 
 .lead-form-page__header > div > span {
   color: #2563eb;
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 700;
   letter-spacing: .08em;
 }
 
@@ -391,7 +391,7 @@
 .lead-form-card__heading p {
   margin: 3px 0 0;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-form-card--profile-structure {
@@ -424,7 +424,7 @@
   align-items: flex-start;
   gap: 5px;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -471,17 +471,17 @@
 
 .lead-file-dropzone strong {
   color: #334155;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .lead-file-dropzone span {
   color: #64748b;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-file-dropzone input {
   width: 190px;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-form-page__footer {
@@ -502,7 +502,7 @@
 
 .lead-form-page__footer > span {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-form-page__footer > div {
@@ -526,7 +526,7 @@
   border-radius: 5px;
   color: #475569;
   background: #f8fafc;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-upload-list button {
@@ -645,7 +645,7 @@
 
 .lead-candidate-heading span {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .lead-candidate-queues {
@@ -668,7 +668,7 @@
   border-radius: 6px;
   color: #475569;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
   cursor: pointer;
 }
@@ -690,7 +690,7 @@
   border-radius: 999px;
   color: #334155;
   background: #e8eef7;
-  font-size: 9.5px;
+  font-size: 11.5px;
   text-align: center;
 }
 
@@ -726,7 +726,7 @@
 .lead-candidate-toolbar select {
   height: 36px;
   min-width: 0;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .lead-candidate-toolbar select {
@@ -747,7 +747,7 @@
   border-radius: 6px;
   color: #475569;
   background: #fff;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
   cursor: pointer;
 }
@@ -769,7 +769,7 @@
   border-radius: 6px;
   color: #475569;
   background: #f1f5f9;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
   cursor: pointer;
 }
@@ -812,6 +812,7 @@
   border: 1px solid transparent;
   border-radius: 8px;
   color: #fff;
+  line-height: 1.2;
   text-align: left;
   cursor: pointer;
   box-shadow: 0 3px 8px rgb(15 23 42 / 12%);
@@ -847,12 +848,12 @@
 }
 
 .lead-candidate-task-toggle strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .lead-candidate-task-toggle small {
   margin-top: 2px;
-  font-size: 8.5px;
+  font-size: 11.5px;
   opacity: .86;
 }
 
@@ -865,7 +866,7 @@
   border-radius: 999px;
   color: #1d4ed8 !important;
   background: #eff6ff;
-  font-size: 9.5px !important;
+  font-size: 11.5px !important;
   font-weight: 700;
 }
 
@@ -904,7 +905,7 @@
 .lead-candidate-table td > a {
   margin-top: 4px;
   color: #64748b;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-candidate-company-cell {
@@ -950,7 +951,7 @@
 
 .lead-candidate-company-button strong {
   color: #172554;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .lead-candidate-company-button:hover strong {
@@ -962,7 +963,7 @@
 .lead-candidate-table td > span,
 .lead-candidate-table td > strong + span {
   color: #64748b;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-candidate-copy {
@@ -974,7 +975,7 @@
   border: 0;
   color: #475569;
   background: transparent;
-  font-size: 10px;
+  font-size: 11.5px;
   cursor: pointer;
 }
 
@@ -988,7 +989,7 @@
   margin: 0;
   overflow: hidden;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.45;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -1001,8 +1002,8 @@
   padding: 5px 9px;
   border: 1px solid #cbd5e1;
   border-radius: 999px;
-  font-size: 9.5px !important;
-  font-weight: 750;
+  font-size: 11.5px !important;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -1065,7 +1066,7 @@
   display: block;
   margin-top: 5px;
   color: #1d4ed8;
-  font-size: 9px;
+  font-size: 11.5px;
   font-weight: 650;
 }
 
@@ -1121,7 +1122,7 @@
   border-radius: 5px;
   color: #334155;
   background: transparent;
-  font-size: 10.5px;
+  font-size: 12px;
   text-align: left;
   cursor: pointer;
 }
@@ -1141,7 +1142,7 @@
   border-top: 1px solid #e2e8f0;
   color: #64748b;
   background: #fff;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-candidate-pagination label,
@@ -1154,7 +1155,7 @@
 .lead-candidate-pagination select {
   height: 30px;
   padding: 4px 26px 4px 8px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-candidate-pagination button {
@@ -1190,7 +1191,7 @@
 
 .lead-candidate-schedule-modal .modal-header span {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -1210,7 +1211,7 @@
 .lead-candidate-extra-fields summary {
   padding: 13px 0 5px;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1228,7 +1229,7 @@
   border-radius: 7px;
   color: #92400e;
   background: #fffbeb;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .lead-candidate-warning.is-error {
@@ -1259,7 +1260,7 @@
 
 .lead-candidate-schedule-form label > span {
   color: #334155;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1270,7 +1271,7 @@
   border-radius: 7px;
   color: #1e40af;
   background: #eff6ff;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-candidate-drawer-backdrop {
@@ -1313,8 +1314,8 @@
 
 .lead-candidate-drawer__header span {
   color: #2563eb;
-  font-size: 9.5px;
-  font-weight: 800;
+  font-size: 11.5px;
+  font-weight: 700;
   letter-spacing: .08em;
 }
 
@@ -1327,7 +1328,7 @@
 .lead-candidate-drawer__header p {
   margin: 0;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-candidate-drawer__actions {
@@ -1357,14 +1358,14 @@
 .lead-candidate-drawer__body h3 {
   margin: 0 0 12px;
   color: #1e3a8a;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .lead-candidate-drawer__info {
   display: grid;
   grid-template-columns: 105px minmax(0, 1fr);
   gap: 9px 10px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-candidate-drawer__info span {
@@ -1386,7 +1387,7 @@
   gap: 5px;
   margin-top: 12px;
   color: #1d4ed8;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
   text-decoration: none;
 }
@@ -1394,7 +1395,7 @@
 .lead-candidate-drawer__note {
   margin: 0;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.55;
   white-space: pre-wrap;
 }
@@ -1405,7 +1406,7 @@
   border: 0;
   color: #b91c1c;
   background: transparent;
-  font-size: 10px;
+  font-size: 11.5px;
   cursor: pointer;
 }
 
@@ -1424,12 +1425,12 @@
 
 .lead-profile-custom-section__heading strong {
   color: #1e3a8a;
-  font-size: 11.5px;
+  font-size: 12.5px;
 }
 
 .lead-profile-custom-section__heading span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .lead-profile-custom-fields {
@@ -1456,7 +1457,7 @@
   border-radius: 6px;
   color: #475569;
   background: #fff;
-  font-size: 10px;
+  font-size: 11.5px;
   cursor: pointer;
 }
 
@@ -1480,13 +1481,13 @@
   gap: 5px;
   margin-top: 9px;
   color: #b91c1c;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-profile-empty {
   padding: 28px 12px;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -1512,7 +1513,7 @@
   align-items: center;
   gap: 5px;
   color: #475569;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1523,13 +1524,13 @@
   border-radius: 999px;
   color: #1d4ed8;
   background: #eff6ff;
-  font-size: 10.5px;
+  font-size: 12px;
   cursor: pointer;
 }
 
 .lead-saved-views__list em {
   color: #94a3b8;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-save-view-form {
@@ -1562,7 +1563,7 @@
   color: #fff;
   background: #2563eb;
   place-items: center;
-  font-size: 9px;
+  font-size: 11.5px;
 }
 
 .lead-quick-filters {
@@ -1586,7 +1587,7 @@
   border-radius: 6px;
   color: #334155;
   background: #fff;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   list-style: none;
@@ -1618,7 +1619,7 @@
   color: #fff;
   background: #2563eb;
   place-items: center;
-  font-size: 9px;
+  font-size: 11.5px;
 }
 
 .lead-filter-menu__content {
@@ -1648,7 +1649,7 @@
   border-radius: 5px;
   color: #334155;
   background: transparent;
-  font-size: 10.5px;
+  font-size: 12px;
   text-align: left;
   cursor: pointer;
 }
@@ -1673,7 +1674,7 @@
   position: relative;
   padding-left: 25px;
   color: #475569;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-filter-menu__content button.lead-filter-area-option::before {
@@ -1718,7 +1719,7 @@
 
 .lead-advanced-panel__header > div > span {
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-advanced-panel__header label {
@@ -1726,7 +1727,7 @@
   align-items: center;
   gap: 7px;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-advanced-panel select,
@@ -1753,7 +1754,7 @@
 .lead-dynamic-input > span,
 .lead-config-editor > label > span {
   color: #64748b;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 
@@ -1774,7 +1775,7 @@
   display: block;
   margin-bottom: 7px;
   color: #334155;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-advanced-fields > div > div {
@@ -1792,7 +1793,7 @@
   border-radius: 999px;
   color: #475569;
   background: #fff;
-  font-size: 9.5px;
+  font-size: 11.5px;
   cursor: pointer;
 }
 
@@ -1822,7 +1823,7 @@
 
 .lead-custom-value-filters strong {
   color: #334155;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-filter-result {
@@ -1830,7 +1831,7 @@
   padding-top: 9px;
   border-top: 1px solid #dbeafe;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-filter-result strong {
@@ -1842,7 +1843,7 @@
   padding: 9px 12px;
   border-bottom: 1px solid #e2e8f0;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-table--classified {
@@ -1870,7 +1871,7 @@
   border-radius: 999px;
   color: var(--lead-tag-color);
   background: color-mix(in srgb, var(--lead-tag-color) 8%, white);
-  font-size: 9px;
+  font-size: 11.5px;
   font-weight: 650;
   line-height: 1.2;
 }
@@ -1883,20 +1884,20 @@
   color: #475569;
   background: #e2e8f0;
   place-items: center;
-  font-size: 9px;
+  font-size: 11.5px;
   font-weight: 700;
 }
 
 .lead-tag-empty {
   color: #94a3b8;
-  font-size: 9.5px;
+  font-size: 11.5px;
   font-style: italic;
 }
 
 .lead-panel__hint {
   margin: -3px 0 12px;
   color: #64748b;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-table-result {
@@ -1919,7 +1920,7 @@
 
 .lead-compact-filter-row > span {
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 650;
 }
 
@@ -1932,7 +1933,7 @@
   border-radius: 6px;
   color: #334155;
   background: #fff;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-compact-filter-menu {
@@ -1991,7 +1992,7 @@
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   color: #475569;
-  font-size: 10.5px;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -2013,7 +2014,7 @@
   border-radius: 4px;
   color: transparent;
   content: '✓';
-  font-size: 10px;
+  font-size: 11.5px;
   line-height: 13px;
   text-align: center;
   transform: translateY(-50%);
@@ -2063,7 +2064,7 @@
   border-radius: 6px;
   color: #334155;
   background: #fff;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-sales-workspace {
@@ -2096,7 +2097,7 @@
 
 .lead-sales-workspace__header span {
   color: #64748b;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-sales-workspace__selectors {
@@ -2110,7 +2111,7 @@
   flex-direction: column;
   gap: 3px;
   color: #64748b;
-  font-size: 9px;
+  font-size: 11.5px;
   font-weight: 700;
 }
 
@@ -2139,7 +2140,7 @@
 
 .lead-sales-metrics span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .lead-sales-metrics strong {
@@ -2158,7 +2159,7 @@
   padding: 10px;
   border-bottom: 1px solid #e2e8f0;
   text-align: left;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-sales-table th {
@@ -2174,7 +2175,7 @@
 
 .lead-sales-table td:nth-child(2) span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .lead-sale-relation {
@@ -2183,7 +2184,7 @@
   border-radius: 999px;
   color: #1d4ed8;
   background: #eff6ff;
-  font-size: 9.5px;
+  font-size: 11.5px;
   font-weight: 700;
 }
 
@@ -2200,7 +2201,7 @@
 
 .lead-config-modal .modal-header span {
   color: #64748b;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 400;
 }
 
@@ -2217,7 +2218,7 @@
   border-bottom: 2px solid transparent;
   color: #64748b;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -2254,7 +2255,7 @@
 
 .lead-profile-structure-editor .lead-config-list__header > div > span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
   font-weight: 400;
 }
 
@@ -2314,12 +2315,12 @@
 }
 
 .lead-config-item strong {
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-config-item span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .lead-config-editor h3 {
@@ -2346,7 +2347,7 @@
   border-radius: 7px;
   color: #1e40af;
   background: #eff6ff;
-  font-size: 9.5px;
+  font-size: 11.5px;
   line-height: 1.4;
 }
 
@@ -2381,7 +2382,7 @@
   align-items: center;
   gap: 7px;
   color: #475569;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .lead-option-colors input {
@@ -2410,12 +2411,12 @@
 
 .lead-province-area-editor > div strong {
   color: #1e3a8a;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-province-area-editor > div span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
   line-height: 1.4;
 }
 
@@ -2433,7 +2434,7 @@
   gap: 8px;
   padding: 8px 9px;
   color: #334155;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -2443,7 +2444,7 @@
   border-radius: 999px;
   color: #475569;
   background: #eef2f7;
-  font-size: 8.5px;
+  font-size: 11.5px;
 }
 
 .lead-province-area-editor details > label {
@@ -2454,12 +2455,12 @@
 
 .lead-province-area-editor details > label > span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .lead-province-area-editor textarea {
   min-height: 82px;
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-config-checks label {
@@ -2467,7 +2468,7 @@
   align-items: center;
   gap: 6px;
   color: #475569;
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .lead-config-editor__actions {
@@ -2504,7 +2505,7 @@
 }
 
 .lead-config-placeholder span {
-  font-size: 10.5px;
+  font-size: 12px;
 }
 
 .lead-saved-view-admin > div:not(.lead-config-placeholder) {
@@ -2524,7 +2525,7 @@
 
 .lead-saved-view-admin span {
   color: #64748b;
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 @media (max-width: 1350px) {

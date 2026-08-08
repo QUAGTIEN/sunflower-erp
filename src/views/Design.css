@@ -175,7 +175,7 @@
   margin-top: 5px;
   padding: 2px 7px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 11.5px;
   font-weight: 700;
   letter-spacing: .02em;
   text-transform: uppercase;
@@ -199,7 +199,7 @@
   padding: 5px 9px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -244,7 +244,7 @@
   display: block;
   margin-bottom: 4px;
   color: #637088;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: .04em;
 }
@@ -335,7 +335,7 @@
 .design-brief-grid dt {
   margin-bottom: 4px;
   color: #7b879a;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
 }
