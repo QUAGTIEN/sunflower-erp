@@ -581,8 +581,18 @@
 .crm-customer-table th,
 .crm-customer-table td {
   padding: 11px 10px;
-  font-size: 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
   vertical-align: middle;
+}
+
+.crm-customer-table th {
+  font-weight: 600;
+}
+
+.crm-customer-table td {
+  color: #1e293b;
+  font-weight: 450;
 }
 
 .crm-customer-table th:nth-child(1) { width: 230px; }
@@ -598,7 +608,7 @@
 
 .crm-tax-code {
   color: #172554;
-  font-weight: 650;
+  font-weight: 550;
   font-variant-numeric: tabular-nums;
 }
 
@@ -653,14 +663,16 @@
 .crm-customer-identity strong,
 .crm-business-result strong {
   color: #172554;
-  font-size: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
 .crm-customer-identity > span,
 .crm-customer-segment small,
 .crm-business-result span {
   color: #64748b;
-  font-size: 11.5px;
+  font-size: 12px;
+  font-weight: 450;
 }
 
 .crm-text-muted {
@@ -670,14 +682,27 @@
 
 .crm-contact-value {
   display: block;
-  color: #334155;
-  font-variant-numeric: tabular-nums;
+  color: #1e293b;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: normal;
+  letter-spacing: -0.005em;
+  line-height: 1.35;
 }
 
 .crm-email-value {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.crm-customer-table .crm-text-muted {
+  font-size: 12px;
+  font-weight: 450;
+}
+
+.crm-customer-table .customer-code-badge {
+  font-weight: 600;
 }
 
 .crm-material-summary {
