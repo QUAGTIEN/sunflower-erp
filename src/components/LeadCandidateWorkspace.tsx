@@ -10,8 +10,10 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  History,
   Mail,
   MapPin,
+  MessageSquareText,
   Pencil,
   Phone,
   Plus,
@@ -27,9 +29,13 @@ import {
   findCandidateDuplicate,
   LEAD_CANDIDATE_SCHEMA_VERSION,
   type CandidateDuplicate,
+  type LeadCandidateActivityType,
+  type LeadCandidateContactLog,
+  type LeadCandidateContactOutcome,
+  type LeadCandidateContactResult,
+  type LeadCandidatePotentialLevel,
   type LeadCandidateRecord,
-  type LeadCandidateTaskStatus,
-  type LeadCandidateWorkStatus
+  type LeadCandidateTaskStatus
 } from '../domain/leadCandidateModels';
 import { normalizeTaxCode } from '../domain/taxCodeUniqueness';
 import {
@@ -70,15 +76,46 @@ interface ScheduleFormState {
   note: string;
 }
 
+interface ActivityFormState {
+  activityType: LeadCandidateActivityType;
+  note: string;
+}
+
 const CANDIDATE_SOURCES = ['Google Maps', 'Facebook', 'Mạng xã hội', 'Website', 'Khách hàng giới thiệu', 'Khác'];
 type CandidateWorkspaceView = 'tasks' | 'all';
-type CandidateWorkStatusFilter = 'all' | LeadCandidateWorkStatus;
+type CandidateContactResultFilter = 'all' | LeadCandidateContactResult;
+type CandidatePotentialFilter = 'all' | LeadCandidatePotentialLevel;
 type CandidateSort = 'priority' | 'updated_desc' | 'company_asc' | 'next_contact_asc';
 
-const WORK_STATUS_LABELS: Record<LeadCandidateWorkStatus, string> = {
-  not_contacted: 'Chưa tiếp cận',
-  pending: 'Đang chờ xử lý',
-  completed: 'Đã xử lý'
+const CONTACT_RESULT_LABELS: Record<LeadCandidateContactResult, string> = {
+  not_contacted: 'Chưa liên hệ',
+  connected: 'Đã kết nối',
+  unreachable: 'Chưa kết nối',
+  callback: 'Hẹn liên hệ lại'
+};
+
+const POTENTIAL_LEVEL_LABELS: Record<LeadCandidatePotentialLevel, string> = {
+  unrated: 'Chưa đánh giá',
+  not_fit: 'Không phù hợp',
+  low: 'Tiềm năng thấp',
+  potential: 'Có tiềm năng',
+  promising: 'Khả quan',
+  high: 'Tiềm năng cao'
+};
+
+const ACTIVITY_TYPE_LABELS: Record<LeadCandidateActivityType, string> = {
+  call: 'Đã gọi điện',
+  message: 'Đã nhắn tin',
+  email: 'Đã gửi email',
+  meeting: 'Đã gặp trực tiếp',
+  note: 'Ghi chú công việc'
+};
+
+const CONTACT_RESULT_OUTCOMES: Record<LeadCandidateContactResult, LeadCandidateContactOutcome> = {
+  not_contacted: 'not_contacted',
+  connected: 'connected',
+  unreachable: 'no_answer',
+  callback: 'call_back'
 };
 
 const toDateTimeLocal = (value: string) => {
@@ -109,10 +146,25 @@ const formatShortDateTime = (value: string, fallback = 'Chưa có') => {
 };
 
 const isVisibleTask = (candidate: LeadCandidateRecord) => (
-  Boolean(candidate.nextContactAt)
-  && candidate.taskStatus !== 'dismissed'
+  !candidate.workQueueHidden
   && candidate.status !== 'converted'
+  && candidate.status !== 'disqualified'
 );
+
+const createLogId = () => `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const latestCandidateLog = (candidate: LeadCandidateRecord) => candidate.contactLogs
+  .slice()
+  .sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime())[0];
+
+const describeCandidateLog = (log: LeadCandidateContactLog) => {
+  if (log.description) return log.description;
+  if (log.eventType === 'potential_level' && log.potentialLevel) return `Đánh giá: ${POTENTIAL_LEVEL_LABELS[log.potentialLevel]}`;
+  if (log.eventType === 'activity' && log.activityType) return ACTIVITY_TYPE_LABELS[log.activityType];
+  if (log.eventType === 'schedule') return 'Đặt lịch liên hệ tiếp theo';
+  if (log.contactResult) return `Kết quả: ${CONTACT_RESULT_LABELS[log.contactResult]}`;
+  return 'Cập nhật thông tin liên hệ';
+};
 
 const createEmptyCandidateForm = (
   currentUser: UserProfile,
@@ -190,7 +242,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [saleFilter, setSaleFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [provinceFilter, setProvinceFilter] = useState('all');
-  const [workStatusFilter, setWorkStatusFilter] = useState<CandidateWorkStatusFilter>('all');
+  const [contactResultFilter, setContactResultFilter] = useState<CandidateContactResultFilter>('all');
+  const [potentialFilter, setPotentialFilter] = useState<CandidatePotentialFilter>('all');
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [candidateSort, setCandidateSort] = useState<CandidateSort>('priority');
   const [pageSize, setPageSize] = useState(25);
@@ -203,36 +256,54 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [scheduleForm, setScheduleForm] = useState<ScheduleFormState>({ nextContactAt: tomorrowAtNine(), note: '' });
   const [scheduleError, setScheduleError] = useState('');
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleContactResult, setScheduleContactResult] = useState<LeadCandidateContactResult | ''>('');
+  const [activityCandidateId, setActivityCandidateId] = useState('');
+  const [activityForm, setActivityForm] = useState<ActivityFormState>({ activityType: 'call', note: '' });
+  const [activityError, setActivityError] = useState('');
+  const [savingActivity, setSavingActivity] = useState(false);
   const [selectedCandidateId, setSelectedCandidateId] = useState('');
   const [actionError, setActionError] = useState('');
   const [taskActionCandidateId, setTaskActionCandidateId] = useState('');
+  const [fieldActionCandidateId, setFieldActionCandidateId] = useState('');
   const [referenceTime] = useState(() => Date.now());
 
   const accessibleCandidates = useMemo(() => candidates.filter(candidate => (
-    !candidate.archived && (currentUser.role === 'admin' || candidate.assignedSaleId === currentUser.uid)
-  )), [candidates, currentUser.role, currentUser.uid]);
+    !candidate.archived
+  )), [candidates]);
+
+  const taskCandidates = useMemo(() => accessibleCandidates.filter(candidate => (
+    isVisibleTask(candidate)
+    && (currentUser.role === 'admin' || candidate.assignedSaleId === currentUser.uid)
+  )), [accessibleCandidates, currentUser.role, currentUser.uid]);
 
   const workspaceCounts = useMemo(() => ({
-    tasks: accessibleCandidates.filter(isVisibleTask).length,
+    tasks: taskCandidates.length,
     all: accessibleCandidates.length
-  }), [accessibleCandidates]);
+  }), [accessibleCandidates.length, taskCandidates.length]);
 
   const provinceOptions = useMemo(() => Array.from(new Set(
     accessibleCandidates.map(candidate => candidate.province.trim()).filter(Boolean)
   )).sort((left, right) => left.localeCompare(right, 'vi-VN')), [accessibleCandidates]);
 
-  const filteredCandidates = useMemo(() => accessibleCandidates.filter(candidate => {
-    const matchesWorkspace = workspaceView === 'all' || isVisibleTask(candidate);
-    if (workspaceView === 'tasks') return matchesWorkspace;
+  const filteredCandidates = useMemo(() => {
+    const sourceCandidates = workspaceView === 'tasks' ? taskCandidates : accessibleCandidates;
+    return sourceCandidates.filter(candidate => {
     const matchesSale = saleFilter === 'all' || candidate.assignedSaleId === saleFilter;
     const matchesSource = sourceFilter === 'all' || candidate.source === sourceFilter;
     const matchesProvince = provinceFilter === 'all' || candidate.province === provinceFilter;
-    const matchesWorkStatus = workStatusFilter === 'all' || candidate.workStatus === workStatusFilter;
-    return matchesWorkspace && matchesSale && matchesSource && matchesProvince && matchesWorkStatus && (!pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm);
+    const matchesContactResult = contactResultFilter === 'all' || candidate.contactResult === contactResultFilter;
+    const matchesPotential = potentialFilter === 'all' || candidate.potentialLevel === potentialFilter;
+    return matchesSale && matchesSource && matchesProvince && matchesContactResult && matchesPotential && (!pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm);
   }).sort((left, right) => {
     if (workspaceView === 'tasks') {
-      if (left.taskStatus !== right.taskStatus) return left.taskStatus === 'pending' ? -1 : 1;
-      return new Date(left.nextContactAt).getTime() - new Date(right.nextContactAt).getTime();
+      if (candidateSort === 'company_asc') return left.companyName.localeCompare(right.companyName, 'vi-VN');
+      if (candidateSort === 'updated_desc') {
+        return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
+      }
+      const leftSchedule = left.nextContactAt ? new Date(left.nextContactAt).getTime() : Number.MAX_SAFE_INTEGER;
+      const rightSchedule = right.nextContactAt ? new Date(right.nextContactAt).getTime() : Number.MAX_SAFE_INTEGER;
+      if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
+      return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
     }
     if (candidateSort === 'company_asc') return left.companyName.localeCompare(right.companyName, 'vi-VN');
     if (candidateSort === 'next_contact_asc') {
@@ -248,14 +319,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     const rightSchedule = right.nextContactAt ? new Date(right.nextContactAt).getTime() : Number.MAX_SAFE_INTEGER;
     if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
     return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
-  }), [accessibleCandidates, candidateSort, pinnedOnly, provinceFilter, saleFilter, searchTerm, sourceFilter, workStatusFilter, workspaceView]);
+    });
+  }, [accessibleCandidates, candidateSort, contactResultFilter, pinnedOnly, potentialFilter, provinceFilter, saleFilter, searchTerm, sourceFilter, taskCandidates, workspaceView]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const displayedCandidates = workspaceView === 'all'
-    ? filteredCandidates.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize)
-    : filteredCandidates;
-  const activeFilterCount = [provinceFilter, sourceFilter, workStatusFilter, saleFilter]
+  const displayedCandidates = filteredCandidates.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+  const activeFilterCount = [provinceFilter, sourceFilter, contactResultFilter, potentialFilter, saleFilter]
     .filter(value => value !== 'all').length + (pinnedOnly ? 1 : 0);
 
   const editingCandidate = editingCandidateId
@@ -263,6 +333,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     : null;
   const scheduleCandidate = scheduleCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === scheduleCandidateId) || null
+    : null;
+  const activityCandidate = activityCandidateId
+    ? accessibleCandidates.find(candidate => candidate.id === activityCandidateId) || null
     : null;
   const selectedCandidate = selectedCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === selectedCandidateId) || null
@@ -279,6 +352,32 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     editingCandidateId
   ), [candidates, customers, editingCandidateId, form.companyName, form.phone, form.taxCode, leads]);
   const hasBlockingDuplicate = duplicate?.reason === 'taxCode';
+
+  const canManageCandidate = (candidate: LeadCandidateRecord) => (
+    currentUser.role === 'admin' || candidate.assignedSaleId === currentUser.uid
+  );
+
+  const buildCandidateLog = (
+    candidate: LeadCandidateRecord,
+    details: Partial<LeadCandidateContactLog> & Pick<LeadCandidateContactLog, 'eventType' | 'description'>
+  ): LeadCandidateContactLog => ({
+    id: createLogId(),
+    occurredAt: new Date().toISOString(),
+    outcome: details.outcome || candidate.lastContactOutcome || 'connected',
+    eventType: details.eventType,
+    activityType: details.activityType || '',
+    contactResult: details.contactResult || '',
+    potentialLevel: details.potentialLevel || '',
+    description: details.description,
+    note: details.note || '',
+    nextContactAt: details.nextContactAt || '',
+    createdById: currentUser.uid,
+    createdByName: currentUser.displayName
+  });
+
+  const prependCandidateLog = (candidate: LeadCandidateRecord, log: LeadCandidateContactLog) => (
+    [log, ...candidate.contactLogs].slice(0, 50)
+  );
 
   const updateForm = <K extends keyof CandidateFormState>(field: K, value: CandidateFormState[K]) => {
     setSaveError('');
@@ -346,6 +445,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       const normalizedTaxCode = normalizeTaxCode(form.taxCode);
       const nextContactAt = form.nextContactAt ? new Date(form.nextContactAt).toISOString() : '';
       const scheduleChanged = !editingCandidate || editingCandidate.nextContactAt !== nextContactAt;
+      const scheduleLog = editingCandidate && scheduleChanged && nextContactAt
+        ? buildCandidateLog(editingCandidate, {
+          eventType: 'schedule',
+          description: `Đặt lịch liên hệ: ${formatShortDateTime(nextContactAt)}`,
+          note: form.note.trim(),
+          nextContactAt
+        })
+        : null;
       const payload = {
         schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
         companyName: form.companyName.trim(),
@@ -366,14 +473,16 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         nextContactAt,
         ...(scheduleChanged ? {
           queuedNextContactAt: '',
-          taskStatus: (nextContactAt ? 'pending' : 'dismissed') as LeadCandidateTaskStatus,
-          workStatus: (nextContactAt
+          taskStatus: 'pending' as LeadCandidateTaskStatus,
+          workStatus: nextContactAt
             ? 'pending'
-            : editingCandidate?.workStatus === 'completed' ? 'completed' : 'not_contacted') as LeadCandidateWorkStatus,
+            : editingCandidate?.contactResult === 'not_contacted' ? 'not_contacted' : 'completed',
           taskCompletedAt: '',
           taskCompletedById: '',
           taskCompletedByName: '',
-          taskDismissedAt: nextContactAt ? '' : now
+          taskDismissedAt: '',
+          workQueueHidden: false,
+          ...(scheduleLog && editingCandidate ? { contactLogs: prependCandidateLog(editingCandidate, scheduleLog) } : {})
         } : {}),
         updatedBy: currentUser.displayName
       };
@@ -392,6 +501,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         lastContactOutcome: '',
         lastContactNote: '',
         contactLogs: [],
+        contactResult: 'not_contacted' as LeadCandidateContactResult,
+        potentialLevel: 'unrated' as LeadCandidatePotentialLevel,
+        workQueueHidden: false,
         pinned: false,
         archived: false,
         archivedAt: '',
@@ -429,12 +541,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     }
   };
 
-  const openScheduleForm = (candidate: LeadCandidateRecord) => {
+  const openScheduleForm = (candidate: LeadCandidateRecord, contactResult: LeadCandidateContactResult | '' = '') => {
+    if (!canManageCandidate(candidate)) return;
     setScheduleCandidateId(candidate.id);
     setScheduleForm({
       nextContactAt: toDateTimeLocal(candidate.nextContactAt) || tomorrowAtNine(),
-      note: candidate.note
+      note: ''
     });
+    setScheduleContactResult(contactResult);
     setScheduleError('');
   };
 
@@ -445,19 +559,39 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setSavingSchedule(true);
     setScheduleError('');
     try {
+      const contactResult = scheduleContactResult || scheduleCandidate.contactResult;
+      const log = buildCandidateLog(scheduleCandidate, {
+        eventType: 'schedule',
+        outcome: CONTACT_RESULT_OUTCOMES[contactResult],
+        contactResult: scheduleContactResult || '',
+        description: scheduleContactResult === 'callback'
+          ? `Kết quả: ${CONTACT_RESULT_LABELS.callback} · ${formatShortDateTime(nextContactAt)}`
+          : `Đặt lịch liên hệ: ${formatShortDateTime(nextContactAt)}`,
+        note: scheduleForm.note.trim(),
+        nextContactAt
+      });
       await dbService.updateDocument('lead_candidates', scheduleCandidate.id, {
         nextContactAt,
         queuedNextContactAt: '',
         taskStatus: 'pending',
         workStatus: 'pending',
+        workQueueHidden: false,
         taskCompletedAt: '',
         taskCompletedById: '',
         taskCompletedByName: '',
         taskDismissedAt: '',
-        note: scheduleForm.note.trim(),
+        ...(scheduleContactResult ? {
+          contactResult: scheduleContactResult,
+          lastContactAt: log.occurredAt,
+          lastContactOutcome: CONTACT_RESULT_OUTCOMES[scheduleContactResult],
+          lastContactNote: scheduleForm.note.trim(),
+          contactAttempts: scheduleCandidate.contactAttempts + 1
+        } : {}),
+        contactLogs: prependCandidateLog(scheduleCandidate, log),
         updatedBy: currentUser.displayName
       });
       setScheduleCandidateId('');
+      setScheduleContactResult('');
     } catch (error) {
       const code = typeof error === 'object' && error !== null && 'code' in error
         ? String(error.code)
@@ -471,6 +605,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   };
 
   const togglePinned = async (candidate: LeadCandidateRecord) => {
+    if (!canManageCandidate(candidate)) return;
     setActionError('');
     try {
       await dbService.updateDocument('lead_candidates', candidate.id, {
@@ -482,38 +617,110 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     }
   };
 
-  const toggleScheduledTask = async (candidate: LeadCandidateRecord) => {
-    const isCompleted = candidate.taskStatus === 'completed';
-    const updatedAt = new Date().toISOString();
+  const updateContactResult = async (candidate: LeadCandidateRecord, contactResult: LeadCandidateContactResult) => {
+    if (!canManageCandidate(candidate) || candidate.contactResult === contactResult) return;
+    if (contactResult === 'callback') {
+      openScheduleForm(candidate, contactResult);
+      return;
+    }
     setActionError('');
-    setTaskActionCandidateId(candidate.id);
+    setFieldActionCandidateId(`${candidate.id}:contact`);
     try {
+      const log = buildCandidateLog(candidate, {
+        eventType: 'contact_result',
+        outcome: CONTACT_RESULT_OUTCOMES[contactResult],
+        contactResult,
+        description: `Kết quả: ${CONTACT_RESULT_LABELS[contactResult]}`
+      });
       await dbService.updateDocument('lead_candidates', candidate.id, {
-        taskStatus: isCompleted ? 'pending' : 'completed',
-        workStatus: isCompleted ? 'pending' : 'completed',
-        taskCompletedAt: isCompleted ? '' : updatedAt,
-        taskCompletedById: isCompleted ? '' : currentUser.uid,
-        taskCompletedByName: isCompleted ? '' : currentUser.displayName,
+        contactResult,
+        lastContactAt: contactResult === 'not_contacted' ? candidate.lastContactAt : log.occurredAt,
+        lastContactOutcome: CONTACT_RESULT_OUTCOMES[contactResult],
+        contactAttempts: contactResult === 'not_contacted' ? candidate.contactAttempts : candidate.contactAttempts + 1,
+        workStatus: contactResult === 'not_contacted' ? 'not_contacted' : 'completed',
+        contactLogs: prependCandidateLog(candidate, log),
         updatedBy: currentUser.displayName
       });
     } catch {
-      setActionError('Không thể đổi trạng thái công việc. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      setActionError('Không thể cập nhật kết quả liên hệ. Vui lòng kiểm tra quyền Firebase và thử lại.');
     } finally {
-      setTaskActionCandidateId('');
+      setFieldActionCandidateId('');
+    }
+  };
+
+  const updatePotentialLevel = async (candidate: LeadCandidateRecord, potentialLevel: LeadCandidatePotentialLevel) => {
+    if (!canManageCandidate(candidate) || candidate.potentialLevel === potentialLevel) return;
+    setActionError('');
+    setFieldActionCandidateId(`${candidate.id}:potential`);
+    try {
+      const log = buildCandidateLog(candidate, {
+        eventType: 'potential_level',
+        potentialLevel,
+        description: `Đánh giá: ${POTENTIAL_LEVEL_LABELS[potentialLevel]}`
+      });
+      await dbService.updateDocument('lead_candidates', candidate.id, {
+        potentialLevel,
+        contactLogs: prependCandidateLog(candidate, log),
+        updatedBy: currentUser.displayName
+      });
+    } catch {
+      setActionError('Không thể cập nhật mức độ tiềm năng. Vui lòng kiểm tra quyền Firebase và thử lại.');
+    } finally {
+      setFieldActionCandidateId('');
+    }
+  };
+
+  const openActivityForm = (candidate: LeadCandidateRecord) => {
+    if (!canManageCandidate(candidate)) return;
+    setActivityCandidateId(candidate.id);
+    setActivityForm({ activityType: 'call', note: '' });
+    setActivityError('');
+  };
+
+  const handleSaveActivity = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!activityCandidate) return;
+    setSavingActivity(true);
+    setActivityError('');
+    try {
+      const log = buildCandidateLog(activityCandidate, {
+        eventType: 'activity',
+        activityType: activityForm.activityType,
+        description: ACTIVITY_TYPE_LABELS[activityForm.activityType],
+        note: activityForm.note.trim()
+      });
+      await dbService.updateDocument('lead_candidates', activityCandidate.id, {
+        lastContactAt: activityForm.activityType === 'note' ? activityCandidate.lastContactAt : log.occurredAt,
+        lastContactNote: activityForm.note.trim() || activityCandidate.lastContactNote,
+        contactAttempts: activityForm.activityType === 'call'
+          ? activityCandidate.contactAttempts + 1
+          : activityCandidate.contactAttempts,
+        contactLogs: prependCandidateLog(activityCandidate, log),
+        updatedBy: currentUser.displayName
+      });
+      setActivityCandidateId('');
+    } catch {
+      setActivityError('Không thể ghi nhận hoạt động. Vui lòng kiểm tra quyền Firebase và thử lại.');
+    } finally {
+      setSavingActivity(false);
     }
   };
 
   const dismissScheduledTask = async (candidate: LeadCandidateRecord) => {
     const dismissedAt = new Date().toISOString();
+    const log = buildCandidateLog(candidate, {
+      eventType: 'activity',
+      activityType: 'note',
+      description: 'Tắt khỏi Công việc cần xử lý'
+    });
     setActionError('');
     setTaskActionCandidateId(candidate.id);
     try {
       await dbService.updateDocument('lead_candidates', candidate.id, {
-        nextContactAt: '',
-        queuedNextContactAt: '',
+        workQueueHidden: true,
         taskStatus: 'dismissed',
-        workStatus: candidate.taskStatus === 'completed' ? 'completed' : 'not_contacted',
         taskDismissedAt: dismissedAt,
+        contactLogs: prependCandidateLog(candidate, log),
         updatedBy: currentUser.displayName
       });
     } catch {
@@ -541,6 +748,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         nextContactAt: '',
         queuedNextContactAt: '',
         taskStatus: 'dismissed',
+        workQueueHidden: true,
         taskDismissedAt: archivedAt,
         updatedBy: currentUser.displayName
       });
@@ -554,11 +762,64 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setSearchTerm('');
     setProvinceFilter('all');
     setSourceFilter('all');
-    setWorkStatusFilter('all');
+    setContactResultFilter('all');
+    setPotentialFilter('all');
     setSaleFilter('all');
     setPinnedOnly(false);
     setCurrentPage(1);
   };
+
+  const renderContactResult = (candidate: LeadCandidateRecord) => {
+    const canManage = canManageCandidate(candidate);
+    return (
+      <select
+        className={`lead-candidate-inline-select lead-candidate-contact-result is-${candidate.contactResult}`}
+        value={candidate.contactResult}
+        disabled={!canManage || fieldActionCandidateId === `${candidate.id}:contact`}
+        onChange={event => updateContactResult(candidate, event.target.value as LeadCandidateContactResult)}
+        aria-label={`Kết quả liên hệ ${candidate.companyName}`}
+      >
+        {(Object.entries(CONTACT_RESULT_LABELS) as Array<[LeadCandidateContactResult, string]>).map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </select>
+    );
+  };
+
+  const renderPotentialLevel = (candidate: LeadCandidateRecord) => {
+    const canManage = canManageCandidate(candidate);
+    return (
+      <select
+        className={`lead-candidate-inline-select lead-candidate-potential is-${candidate.potentialLevel}`}
+        value={candidate.potentialLevel}
+        disabled={!canManage || fieldActionCandidateId === `${candidate.id}:potential`}
+        onChange={event => updatePotentialLevel(candidate, event.target.value as LeadCandidatePotentialLevel)}
+        aria-label={`Mức độ tiềm năng ${candidate.companyName}`}
+      >
+        {(Object.entries(POTENTIAL_LEVEL_LABELS) as Array<[LeadCandidatePotentialLevel, string]>).map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </select>
+    );
+  };
+
+  const renderLatestActivity = (candidate: LeadCandidateRecord) => {
+    const latestLog = latestCandidateLog(candidate);
+    if (!latestLog) return <span className="lead-candidate-muted">Chưa có hoạt động</span>;
+    return (
+      <div className="lead-candidate-latest-activity">
+        <strong>{describeCandidateLog(latestLog)}</strong>
+        <span>{latestLog.createdByName || 'Không rõ người thực hiện'} · {formatShortDateTime(latestLog.occurredAt)}</span>
+      </div>
+    );
+  };
+
+  const renderHistoryButton = (candidate: LeadCandidateRecord) => (
+    <button type="button" className="lead-candidate-history-button" onClick={() => setSelectedCandidateId(candidate.id)}>
+      <History size={13} />
+      <span>{candidate.contactLogs.length}</span>
+    </button>
+  );
 
   if (showForm) {
     return (
@@ -659,6 +920,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             onClick={() => {
               setWorkspaceView(value);
               setSelectedCandidateId('');
+              setCurrentPage(1);
+              if (value === 'tasks' && currentUser.role !== 'admin') setSaleFilter('all');
             }}
           >
             {value === 'tasks' && <CalendarClock size={15} />}
@@ -668,8 +931,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         ))}
       </nav>
 
-      {workspaceView === 'all' && (
-        <section className="lead-candidate-toolbar">
+      <section className="lead-candidate-toolbar">
           <label className="lead-candidate-search">
             <Search size={15} />
             <input
@@ -686,11 +948,15 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <option value="all">Tất cả nguồn</option>
             {CANDIDATE_SOURCES.map(source => <option key={source} value={source}>{source}</option>)}
           </select>
-          <select value={workStatusFilter} onChange={event => { setWorkStatusFilter(event.target.value as CandidateWorkStatusFilter); setCurrentPage(1); }} aria-label="Lọc trạng thái xử lý">
-            <option value="all">Tất cả trạng thái</option>
-            {(Object.entries(WORK_STATUS_LABELS) as Array<[LeadCandidateWorkStatus, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          <select value={contactResultFilter} onChange={event => { setContactResultFilter(event.target.value as CandidateContactResultFilter); setCurrentPage(1); }} aria-label="Lọc kết quả liên hệ">
+            <option value="all">Tất cả kết quả</option>
+            {(Object.entries(CONTACT_RESULT_LABELS) as Array<[LeadCandidateContactResult, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
-          {currentUser.role === 'admin' && (
+          <select value={potentialFilter} onChange={event => { setPotentialFilter(event.target.value as CandidatePotentialFilter); setCurrentPage(1); }} aria-label="Lọc mức độ tiềm năng">
+            <option value="all">Tất cả tiềm năng</option>
+            {(Object.entries(POTENTIAL_LEVEL_LABELS) as Array<[LeadCandidatePotentialLevel, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+          {(workspaceView === 'all' || currentUser.role === 'admin') && (
             <select value={saleFilter} onChange={event => { setSaleFilter(event.target.value); setCurrentPage(1); }} aria-label="Lọc theo Sale">
               <option value="all">Tất cả phụ trách</option>
               {candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
@@ -707,6 +973,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           </select>
           {(activeFilterCount > 0 || searchTerm) && <button type="button" className="lead-candidate-clear-filter" onClick={clearDataFilters}><X size={13} /> Xóa lọc ({activeFilterCount})</button>}
         </section>
+
+      {workspaceView === 'tasks' && currentUser.role === 'admin' && (
+        <section className="lead-candidate-supervision" aria-label="Tổng hợp giám sát Sale">
+          <div><span>Tổng công việc</span><strong>{filteredCandidates.length}</strong></div>
+          <div><span>Chưa liên hệ</span><strong>{filteredCandidates.filter(candidate => candidate.contactResult === 'not_contacted').length}</strong></div>
+          <div className="is-overdue"><span>Quá lịch hẹn</span><strong>{filteredCandidates.filter(candidate => candidate.nextContactAt && new Date(candidate.nextContactAt).getTime() < referenceTime).length}</strong></div>
+          <div className="is-positive"><span>Khả quan / cao</span><strong>{filteredCandidates.filter(candidate => candidate.potentialLevel === 'promising' || candidate.potentialLevel === 'high').length}</strong></div>
+        </section>
       )}
 
       {actionError && (
@@ -720,49 +994,46 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       <section className="lead-table-card">
         <div className="lead-table-result">
           {workspaceView === 'tasks' ? <>
-            <span><strong>{filteredCandidates.filter(candidate => candidate.taskStatus === 'pending').length}</strong> chưa xử lý · <strong>{filteredCandidates.filter(candidate => candidate.taskStatus === 'completed').length}</strong> đã xử lý</span>
-            <span>Có thể đổi qua lại đỏ/xanh; đặt lịch mới sẽ tự chuyển về đỏ.</span>
+            <span><strong>{filteredCandidates.length}</strong> công việc thuộc Sale đang phụ trách</span>
+            <span>{currentUser.role === 'admin' ? 'Chế độ giám sát: lọc theo Sale để theo dõi tiến độ.' : 'Cập nhật kết quả, đánh giá và lịch hẹn trực tiếp trên bảng.'}</span>
           </> : <>
             <span>Hiển thị <strong>{filteredCandidates.length}</strong> / {accessibleCandidates.length} dữ liệu</span>
-            <span>{activeFilterCount > 0 ? `${activeFilterCount} bộ lọc đang áp dụng` : 'Bảng dữ liệu nhanh dành cho thông tin Sale thu thập được.'}</span>
+            <span>{activeFilterCount > 0 ? `${activeFilterCount} bộ lọc đang áp dụng` : 'Kho dữ liệu chung do toàn bộ Sale trong công ty thu thập.'}</span>
           </>}
         </div>
         <div className="table-container">
           {workspaceView === 'tasks' ? (
             <table className="lead-candidate-table lead-candidate-task-table">
-              <thead><tr><th>Trạng thái</th><th>Doanh nghiệp</th><th>Tỉnh/thành</th><th>Thông tin</th><th>Ghi chú</th><th>Lịch hẹn</th><th>Thao tác</th></tr></thead>
+              <thead><tr><th>Kết quả liên hệ</th><th>Doanh nghiệp</th><th>Tỉnh/thành</th><th>Liên hệ</th>{currentUser.role === 'admin' && <th>Sale phụ trách</th>}<th>Mức độ tiềm năng</th><th>Lịch hẹn</th><th>Hoạt động gần nhất</th><th>Lịch sử</th><th>Thao tác</th></tr></thead>
               <tbody>
                 {displayedCandidates.map(candidate => {
-                  const scheduledTime = new Date(candidate.nextContactAt).getTime();
+                  const scheduledTime = candidate.nextContactAt ? new Date(candidate.nextContactAt).getTime() : Number.NaN;
                   const endOfToday = new Date(referenceTime);
                   endOfToday.setHours(23, 59, 59, 999);
-                  const isOverdue = scheduledTime < referenceTime;
-                  const isToday = scheduledTime <= endOfToday.getTime();
-                  const isCompleted = candidate.taskStatus === 'completed';
+                  const isOverdue = Number.isFinite(scheduledTime) && scheduledTime < referenceTime;
+                  const isToday = Number.isFinite(scheduledTime) && scheduledTime <= endOfToday.getTime();
                   const isBusy = taskActionCandidateId === candidate.id;
+                  const isActive = candidate.status === 'new' || candidate.status === 'retry';
                   return (
-                    <tr key={candidate.id} className={`${isOverdue && !isCompleted ? 'is-overdue' : ''} ${isCompleted ? 'is-task-completed' : ''}`}>
-                      <td>
-                        <button
-                          type="button"
-                          className={`lead-candidate-task-toggle ${isCompleted ? 'is-completed' : 'is-pending'}`}
-                          onClick={() => toggleScheduledTask(candidate)}
-                          disabled={isBusy}
-                        >
-                          {isCompleted ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                          <span><strong>{isCompleted ? 'Đã xử lý' : 'Chưa xử lý'}</strong><small>{isCompleted ? 'Bấm để chuyển lại' : 'Bấm để hoàn thành'}</small></span>
-                        </button>
-                      </td>
+                    <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
+                      <td>{renderContactResult(candidate)}</td>
                       <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)}><strong>{candidate.companyName}</strong><span>{candidate.taxCode ? `MST ${candidate.taxCode}` : candidate.source || 'Chưa rõ nguồn'}</span></button></td>
                       <td><strong>{candidate.province || 'Chưa cập nhật'}</strong><span>{candidate.source || 'Chưa rõ nguồn'}</span></td>
                       <td><strong>{candidate.contactPerson || 'Chưa rõ người liên hệ'}</strong>{candidate.phone ? <button type="button" className="lead-candidate-copy" onClick={() => copyPhone(candidate.phone)} title="Sao chép số điện thoại">{candidate.phone}<Copy size={11} /></button> : <span>{candidate.email || candidate.sourceUrl || 'Chưa có thông tin liên hệ'}</span>}{candidate.phone && candidate.email && <span>{candidate.email}</span>}</td>
-                      <td><p className="lead-candidate-note-cell">{candidate.note || 'Chưa có ghi chú'}</p></td>
-                      <td><strong className={isOverdue && !isCompleted ? 'lead-date-overdue' : ''}>{formatShortDateTime(candidate.nextContactAt)}</strong><span className={`lead-candidate-task-status ${isOverdue && !isCompleted ? 'is-overdue' : ''}`}>{isCompleted ? `Đã xử lý ${formatShortDateTime(candidate.taskCompletedAt)}` : isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : 'Sắp tới'}</span></td>
+                      {currentUser.role === 'admin' && <td><strong>{candidate.assignedSaleName || 'Chưa phân công'}</strong><span>{candidate.discoveredByName ? `Tìm bởi ${candidate.discoveredByName}` : '—'}</span></td>}
+                      <td>{renderPotentialLevel(candidate)}</td>
+                      <td>{candidate.nextContactAt ? <><strong className={isOverdue ? 'lead-date-overdue' : ''}>{formatShortDateTime(candidate.nextContactAt)}</strong><span className={`lead-candidate-task-status ${isOverdue ? 'is-overdue' : ''}`}>{isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : 'Sắp tới'}</span></> : <span className="lead-candidate-muted">Chưa đặt lịch</span>}</td>
+                      <td>{renderLatestActivity(candidate)}</td>
+                      <td>{renderHistoryButton(candidate)}</td>
                       <td>
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
+                            { label: 'Ghi nhận hoạt động', icon: <MessageSquareText size={14} />, onSelect: () => openActivityForm(candidate) },
                             { label: 'Hẹn tiếp', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) },
+                            { label: 'Xem hồ sơ & lịch sử', icon: <Eye size={14} />, onSelect: () => setSelectedCandidateId(candidate.id) },
+                            { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
+                            ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : []),
                             { label: 'Tắt công việc', icon: <X size={14} />, onSelect: () => dismissScheduledTask(candidate), disabled: isBusy, danger: true }
                           ]}
                         />
@@ -770,7 +1041,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={7} className="lead-empty">Chưa có công việc được hẹn lịch. Khi đặt lịch, dữ liệu sẽ tự xuất hiện tại đây.</td></tr>}
+                {filteredCandidates.length === 0 && <tr><td colSpan={currentUser.role === 'admin' ? 10 : 9} className="lead-empty">Không có công việc phù hợp. Công việc chỉ biến mất khi được chọn “Tắt công việc”.</td></tr>}
               </tbody>
             </table>
           ) : (
@@ -780,8 +1051,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   <th>Doanh nghiệp</th>
                   <th>Tỉnh/thành</th>
                   <th>Thông tin liên hệ</th>
-                  <th>Ghi chú</th>
-                  <th>Trạng thái</th>
+                  <th>Sale phụ trách</th>
+                  <th>Kết quả liên hệ</th>
+                  <th>Mức độ tiềm năng</th>
+                  <th>Lịch tiếp theo</th>
+                  <th>Hoạt động gần nhất</th>
+                  <th>Lịch sử</th>
                   <th>Thao tác</th>
                 </tr>
               </thead>
@@ -792,43 +1067,50 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     <tr key={candidate.id}>
                       <td>
                         <div className="lead-candidate-company-cell">
-                          <button
+                          {canManageCandidate(candidate) && <button
                             type="button"
                             className={`lead-candidate-pin ${candidate.pinned ? 'is-active' : ''}`}
                             title={candidate.pinned ? 'Bỏ ghim' : 'Ghim ưu tiên'}
                             onClick={() => togglePinned(candidate)}
-                          ><Star size={14} fill={candidate.pinned ? 'currentColor' : 'none'} /></button>
+                          ><Star size={14} fill={candidate.pinned ? 'currentColor' : 'none'} /></button>}
                           <button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)}>
                             <strong>{candidate.companyName}</strong>
-                            <span>{candidate.source || 'Chưa rõ nguồn'}{currentUser.role === 'admin' && candidate.assignedSaleName ? ` · ${candidate.assignedSaleName}` : ''}{candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}</span>
+                            <span>{candidate.source || 'Chưa rõ nguồn'}{candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}</span>
                           </button>
                         </div>
                       </td>
                       <td><strong>{candidate.province || 'Chưa cập nhật'}</strong><span>{candidate.address || '—'}</span></td>
                       <td><strong>{candidate.contactPerson || 'Chưa rõ người liên hệ'}</strong>{candidate.phone ? <button type="button" className="lead-candidate-copy" onClick={() => copyPhone(candidate.phone)} title="Sao chép số điện thoại">{candidate.phone}<Copy size={11} /></button> : <span>{candidate.email || candidate.sourceUrl || 'Chưa có thông tin liên hệ'}</span>}{candidate.phone && candidate.email && <span>{candidate.email}</span>}</td>
-                      <td><p className="lead-candidate-note-cell">{candidate.note || 'Chưa có ghi chú'}</p></td>
-                      <td><span className={`lead-candidate-work-status lead-candidate-work-status--${candidate.workStatus}`}>{WORK_STATUS_LABELS[candidate.workStatus]}</span>{candidate.nextContactAt && candidate.taskStatus !== 'dismissed' && <small className="lead-candidate-next-queued">Hẹn: {formatShortDateTime(candidate.nextContactAt)}</small>}</td>
+                      <td><strong>{candidate.assignedSaleName || 'Chưa phân công'}</strong><span>{candidate.discoveredByName ? `Tìm bởi ${candidate.discoveredByName}` : '—'}</span></td>
+                      <td>{renderContactResult(candidate)}</td>
+                      <td>{renderPotentialLevel(candidate)}</td>
+                      <td>{candidate.nextContactAt ? <><strong>{formatShortDateTime(candidate.nextContactAt)}</strong><span>{new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}</span></> : <span className="lead-candidate-muted">Chưa đặt lịch</span>}</td>
+                      <td>{renderLatestActivity(candidate)}</td>
+                      <td>{renderHistoryButton(candidate)}</td>
                       <td>
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
-                            ...(isActive ? [{ label: 'Hẹn lịch', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) }] : []),
                             { label: 'Xem hồ sơ', icon: <Eye size={14} />, onSelect: () => setSelectedCandidateId(candidate.id) },
-                            { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
-                            ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : []),
-                            { label: 'Xóa khỏi danh sách', icon: <Trash2 size={14} />, onSelect: () => archiveCandidate(candidate), danger: true }
+                            ...(canManageCandidate(candidate) ? [
+                              { label: 'Ghi nhận hoạt động', icon: <MessageSquareText size={14} />, onSelect: () => openActivityForm(candidate) },
+                              ...(isActive ? [{ label: 'Hẹn lịch', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) }] : []),
+                              { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
+                              ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : [])
+                            ] : []),
+                            ...(currentUser.role === 'admin' ? [{ label: 'Xóa khỏi danh sách', icon: <Trash2 size={14} />, onSelect: () => archiveCandidate(candidate), danger: true }] : [])
                           ]}
                         />
                       </td>
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={6} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
+                {filteredCandidates.length === 0 && <tr><td colSpan={10} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
               </tbody>
             </table>
           )}
         </div>
-        {workspaceView === 'all' && filteredCandidates.length > 0 && (
+        {filteredCandidates.length > 0 && (
           <footer className="lead-candidate-pagination">
             <label>Hiển thị <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setCurrentPage(1); }}><option value={25}>25 dòng</option><option value={50}>50 dòng</option><option value={100}>100 dòng</option></select></label>
             <span>{(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, filteredCandidates.length)} trong {filteredCandidates.length}</span>
@@ -847,9 +1129,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </div>
 
             <div className="lead-candidate-drawer__actions">
-              {(selectedCandidate.status === 'new' || selectedCandidate.status === 'retry') && <button type="button" className="btn btn-primary" onClick={() => openScheduleForm(selectedCandidate)}><CalendarClock size={14} /> Hẹn lịch xử lý</button>}
-              {(selectedCandidate.status === 'new' || selectedCandidate.status === 'retry') && <button type="button" className="btn btn-outline" onClick={() => onStartConversion(selectedCandidate)}><CheckCircle2 size={14} /> Chuyển Lead</button>}
-              <button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => openEditForm(selectedCandidate)} title="Chỉnh sửa"><Pencil size={14} /></button>
+              {canManageCandidate(selectedCandidate) && (selectedCandidate.status === 'new' || selectedCandidate.status === 'retry') && <button type="button" className="btn btn-primary" onClick={() => openScheduleForm(selectedCandidate)}><CalendarClock size={14} /> Hẹn lịch xử lý</button>}
+              {canManageCandidate(selectedCandidate) && <button type="button" className="btn btn-outline" onClick={() => openActivityForm(selectedCandidate)}><MessageSquareText size={14} /> Ghi hoạt động</button>}
+              {canManageCandidate(selectedCandidate) && (selectedCandidate.status === 'new' || selectedCandidate.status === 'retry') && <button type="button" className="btn btn-outline" onClick={() => onStartConversion(selectedCandidate)}><CheckCircle2 size={14} /> Chuyển Lead</button>}
+              {canManageCandidate(selectedCandidate) && <button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => openEditForm(selectedCandidate)} title="Chỉnh sửa"><Pencil size={14} /></button>}
             </div>
 
             <div className="lead-candidate-drawer__body">
@@ -860,6 +1143,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   <span><Mail size={13} /> Email</span><strong>{selectedCandidate.email || '—'}</strong>
                   <span><MapPin size={13} /> Địa chỉ</span><strong>{selectedCandidate.address || '—'}</strong>
                   <span><Building2 size={13} /> Mã số thuế</span><strong>{selectedCandidate.taxCode || '—'}</strong>
+                  <span><UserRoundSearch size={13} /> Sale phụ trách</span><strong>{selectedCandidate.assignedSaleName || 'Chưa phân công'}</strong>
+                  <span><CheckCircle2 size={13} /> Kết quả liên hệ</span><strong>{CONTACT_RESULT_LABELS[selectedCandidate.contactResult]}</strong>
+                  <span><Star size={13} /> Tiềm năng</span><strong>{POTENTIAL_LEVEL_LABELS[selectedCandidate.potentialLevel]}</strong>
                 </div>
                 {(selectedCandidate.sourceUrl || selectedCandidate.website) && <a className="lead-candidate-source-link" href={selectedCandidate.sourceUrl || selectedCandidate.website} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Mở nguồn dữ liệu</a>}
               </section>
@@ -869,7 +1155,28 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <p className="lead-candidate-drawer__note">{selectedCandidate.note || 'Chưa có ghi chú.'}</p>
               </section>
 
-              <button type="button" className="lead-candidate-disqualify" onClick={() => archiveCandidate(selectedCandidate)}>Xóa khỏi danh sách dữ liệu</button>
+              <section>
+                <h3>Lịch sử hoạt động ({selectedCandidate.contactLogs.length})</h3>
+                {selectedCandidate.contactLogs.length > 0 ? (
+                  <ol className="lead-candidate-history-list">
+                    {selectedCandidate.contactLogs
+                      .slice()
+                      .sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime())
+                      .map(log => (
+                        <li key={log.id || `${log.occurredAt}-${log.description}`}>
+                          <span className="lead-candidate-history-list__dot" />
+                          <div>
+                            <strong>{describeCandidateLog(log)}</strong>
+                            <span>{log.createdByName || 'Không rõ người thực hiện'} · {formatShortDateTime(log.occurredAt)}</span>
+                            {log.note && <p>{log.note}</p>}
+                          </div>
+                        </li>
+                      ))}
+                  </ol>
+                ) : <p className="lead-candidate-drawer__note">Chưa có hoạt động nào được ghi nhận.</p>}
+              </section>
+
+              {currentUser.role === 'admin' && <button type="button" className="lead-candidate-disqualify" onClick={() => archiveCandidate(selectedCandidate)}>Xóa khỏi danh sách dữ liệu</button>}
             </div>
           </aside>
         </>
@@ -880,17 +1187,43 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           <form className="modal-content lead-candidate-schedule-modal" onSubmit={handleSaveSchedule}>
             <div className="modal-header">
               <div><strong>ĐẶT LỊCH LÀM VIỆC TIẾP THEO</strong><span>{scheduleCandidate.companyName}</span></div>
-              <button type="button" className="btn btn-sm btn-outline" onClick={() => setScheduleCandidateId('')}><X size={14} /> Đóng</button>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => { setScheduleCandidateId(''); setScheduleContactResult(''); }}><X size={14} /> Đóng</button>
             </div>
             <div className="modal-body lead-candidate-schedule-form">
               <label><span>Ngày giờ xử lý *</span><input required autoFocus type="datetime-local" value={scheduleForm.nextContactAt} onChange={event => setScheduleForm(previous => ({ ...previous, nextContactAt: event.target.value }))} /></label>
               <label><span>Ghi chú</span><textarea rows={5} value={scheduleForm.note} onChange={event => setScheduleForm(previous => ({ ...previous, note: event.target.value }))} placeholder="Thông tin Sale cần lưu ý khi xử lý công việc..." /></label>
-              <p>Đặt lịch mới sẽ tự chuyển trạng thái công việc về <strong>Chưa xử lý</strong>.</p>
+              <p>{scheduleContactResult === 'callback' ? <>Lưu lịch sẽ cập nhật kết quả thành <strong>Hẹn liên hệ lại</strong> và ghi vào lịch sử.</> : <>Công việc sẽ được đưa trở lại danh sách xử lý nếu trước đó đã tắt.</>}</p>
               {scheduleError && <div className="lead-candidate-warning is-error"><AlertCircle size={14} /><span>{scheduleError}</span></div>}
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-outline" onClick={() => setScheduleCandidateId('')}>Hủy</button>
+              <button type="button" className="btn btn-outline" onClick={() => { setScheduleCandidateId(''); setScheduleContactResult(''); }}>Hủy</button>
               <button type="submit" className="btn btn-primary" disabled={savingSchedule}><Check size={14} /> {savingSchedule ? 'Đang lưu...' : 'Lưu lịch hẹn'}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {activityCandidate && (
+        <div className="modal-overlay">
+          <form className="modal-content lead-candidate-schedule-modal" onSubmit={handleSaveActivity}>
+            <div className="modal-header">
+              <div><strong>GHI NHẬN HOẠT ĐỘNG</strong><span>{activityCandidate.companyName}</span></div>
+              <button type="button" className="btn btn-sm btn-outline" onClick={() => setActivityCandidateId('')}><X size={14} /> Đóng</button>
+            </div>
+            <div className="modal-body lead-candidate-schedule-form">
+              <label>
+                <span>Hoạt động *</span>
+                <select autoFocus value={activityForm.activityType} onChange={event => setActivityForm(previous => ({ ...previous, activityType: event.target.value as LeadCandidateActivityType }))}>
+                  {(Object.entries(ACTIVITY_TYPE_LABELS) as Array<[LeadCandidateActivityType, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>
+              <label><span>Ghi chú</span><textarea rows={5} value={activityForm.note} onChange={event => setActivityForm(previous => ({ ...previous, note: event.target.value }))} placeholder="Nội dung trao đổi hoặc kết quả cần lưu lại..." /></label>
+              <p>Hệ thống tự ghi người thực hiện và thời gian hiện tại vào lịch sử khách hàng.</p>
+              {activityError && <div className="lead-candidate-warning is-error"><AlertCircle size={14} /><span>{activityError}</span></div>}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setActivityCandidateId('')}>Hủy</button>
+              <button type="submit" className="btn btn-primary" disabled={savingActivity}><Check size={14} /> {savingActivity ? 'Đang lưu...' : 'Lưu hoạt động'}</button>
             </div>
           </form>
         </div>

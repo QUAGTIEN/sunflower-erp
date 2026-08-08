@@ -1,12 +1,17 @@
 import type { CustomerRecord, LeadRecord } from './crmModels';
 import { normalizeTaxCode } from './taxCodeUniqueness';
 
-export const LEAD_CANDIDATE_SCHEMA_VERSION = 4;
+export const LEAD_CANDIDATE_SCHEMA_VERSION = 5;
 
 export type LeadCandidateStatus = 'new' | 'retry' | 'disqualified' | 'converted';
 export type LeadCandidateTaskStatus = 'pending' | 'completed' | 'dismissed';
 export type LeadCandidateWorkStatus = 'not_contacted' | 'pending' | 'completed';
+export type LeadCandidateContactResult = 'not_contacted' | 'connected' | 'unreachable' | 'callback';
+export type LeadCandidatePotentialLevel = 'unrated' | 'not_fit' | 'low' | 'potential' | 'promising' | 'high';
+export type LeadCandidateActivityType = 'call' | 'message' | 'email' | 'meeting' | 'note';
+export type LeadCandidateLogEventType = 'contact_result' | 'potential_level' | 'schedule' | 'activity';
 export type LeadCandidateContactOutcome =
+  | 'not_contacted'
   | 'connected'
   | 'no_answer'
   | 'busy'
@@ -20,6 +25,11 @@ export interface LeadCandidateContactLog {
   id: string;
   occurredAt: string;
   outcome: LeadCandidateContactOutcome;
+  eventType: LeadCandidateLogEventType;
+  activityType: LeadCandidateActivityType | '';
+  contactResult: LeadCandidateContactResult | '';
+  potentialLevel: LeadCandidatePotentialLevel | '';
+  description: string;
   note: string;
   nextContactAt: string;
   createdById: string;
@@ -50,6 +60,8 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   lastContactOutcome: LeadCandidateContactOutcome | '';
   lastContactNote: string;
   contactLogs: LeadCandidateContactLog[];
+  contactResult: LeadCandidateContactResult;
+  potentialLevel: LeadCandidatePotentialLevel;
   nextContactAt: string;
   queuedNextContactAt: string;
   taskStatus: LeadCandidateTaskStatus;
@@ -57,6 +69,7 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   taskCompletedById: string;
   taskCompletedByName: string;
   taskDismissedAt: string;
+  workQueueHidden: boolean;
   workStatus: LeadCandidateWorkStatus;
   pinned: boolean;
   archived: boolean;
@@ -121,6 +134,7 @@ const normalizeWorkStatus = (
 const normalizeContactOutcome = (value: unknown): LeadCandidateContactOutcome | '' => {
   const outcomes: LeadCandidateContactOutcome[] = [
     'connected',
+    'not_contacted',
     'no_answer',
     'busy',
     'wrong_number',
@@ -134,14 +148,62 @@ const normalizeContactOutcome = (value: unknown): LeadCandidateContactOutcome | 
     : '';
 };
 
+const normalizeContactResult = (
+  value: unknown,
+  legacyOutcome: LeadCandidateContactOutcome | ''
+): LeadCandidateContactResult => {
+  const results: LeadCandidateContactResult[] = ['not_contacted', 'connected', 'unreachable', 'callback'];
+  if (results.includes(value as LeadCandidateContactResult)) return value as LeadCandidateContactResult;
+  if (legacyOutcome === 'call_back') return 'callback';
+  if (legacyOutcome === 'connected' || legacyOutcome === 'potential' || legacyOutcome === 'task_completed') return 'connected';
+  if (legacyOutcome === 'no_answer' || legacyOutcome === 'busy' || legacyOutcome === 'wrong_number' || legacyOutcome === 'not_interested') return 'unreachable';
+  return 'not_contacted';
+};
+
+const normalizePotentialLevel = (
+  value: unknown,
+  legacyOutcome: LeadCandidateContactOutcome | ''
+): LeadCandidatePotentialLevel => {
+  const levels: LeadCandidatePotentialLevel[] = ['unrated', 'not_fit', 'low', 'potential', 'promising', 'high'];
+  if (levels.includes(value as LeadCandidatePotentialLevel)) return value as LeadCandidatePotentialLevel;
+  if (legacyOutcome === 'potential') return 'potential';
+  if (legacyOutcome === 'not_interested') return 'not_fit';
+  return 'unrated';
+};
+
+const normalizeActivityType = (value: unknown): LeadCandidateActivityType | '' => {
+  const types: LeadCandidateActivityType[] = ['call', 'message', 'email', 'meeting', 'note'];
+  return types.includes(value as LeadCandidateActivityType) ? value as LeadCandidateActivityType : '';
+};
+
+const normalizeLogEventType = (value: unknown): LeadCandidateLogEventType => {
+  const types: LeadCandidateLogEventType[] = ['contact_result', 'potential_level', 'schedule', 'activity'];
+  return types.includes(value as LeadCandidateLogEventType) ? value as LeadCandidateLogEventType : 'contact_result';
+};
+
 const normalizeContactLogs = (value: unknown): LeadCandidateContactLog[] => (
   Array.isArray(value)
     ? value.slice(0, 50).map(item => {
       const log = asRecord(item);
+      const outcome = normalizeContactOutcome(log.outcome) || 'connected';
+      const legacyPotentialLevel = outcome === 'potential'
+        ? 'potential'
+        : outcome === 'not_interested' ? 'not_fit' : '';
       return {
         id: asText(log.id),
         occurredAt: asText(log.occurredAt),
-        outcome: normalizeContactOutcome(log.outcome) || 'connected',
+        outcome,
+        eventType: asText(log.eventType)
+          ? normalizeLogEventType(log.eventType)
+          : legacyPotentialLevel ? 'potential_level' : 'contact_result',
+        activityType: normalizeActivityType(log.activityType),
+        contactResult: asText(log.contactResult)
+          ? normalizeContactResult(log.contactResult, outcome)
+          : normalizeContactResult('', outcome),
+        potentialLevel: asText(log.potentialLevel)
+          ? normalizePotentialLevel(log.potentialLevel, outcome)
+          : legacyPotentialLevel,
+        description: asText(log.description),
         note: asText(log.note),
         nextContactAt: asText(log.nextContactAt),
         createdById: asText(log.createdById),
@@ -157,6 +219,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
   const taskStatus = normalizeTaskStatus(source.taskStatus, nextContactAt);
   const contactLogs = normalizeContactLogs(source.contactLogs);
   const lastContactAt = asText(source.lastContactAt);
+  const lastContactOutcome = normalizeContactOutcome(source.lastContactOutcome);
   return {
     ...source,
     id: asText(source.id),
@@ -179,9 +242,11 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     discoveredByName: asText(source.discoveredByName ?? source.createdByName),
     contactAttempts: asNonNegativeInteger(source.contactAttempts),
     lastContactAt,
-    lastContactOutcome: normalizeContactOutcome(source.lastContactOutcome),
+    lastContactOutcome,
     lastContactNote: asText(source.lastContactNote),
     contactLogs,
+    contactResult: normalizeContactResult(source.contactResult, lastContactOutcome),
+    potentialLevel: normalizePotentialLevel(source.potentialLevel, lastContactOutcome),
     nextContactAt,
     queuedNextContactAt: asText(source.queuedNextContactAt),
     taskStatus,
@@ -189,6 +254,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     taskCompletedById: asText(source.taskCompletedById),
     taskCompletedByName: asText(source.taskCompletedByName),
     taskDismissedAt: asText(source.taskDismissedAt),
+    workQueueHidden: source.workQueueHidden === true,
     workStatus: normalizeWorkStatus(source.workStatus, taskStatus, nextContactAt, contactLogs, lastContactAt),
     pinned: source.pinned === true,
     archived: source.archived === true,

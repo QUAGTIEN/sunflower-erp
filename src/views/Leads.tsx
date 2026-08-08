@@ -297,9 +297,7 @@ export const Leads: React.FC<LeadsProps> = ({
     return lead.assignedSaleId === currentUser.uid;
   }), [currentUser.role, currentUser.uid, leads]);
 
-  const accessibleCandidates = useMemo(() => candidates.filter(candidate => (
-    currentUser.role === 'admin' || candidate.assignedSaleId === currentUser.uid
-  )), [candidates, currentUser.role, currentUser.uid]);
+  const accessibleCandidates = useMemo(() => candidates.filter(candidate => !candidate.archived), [candidates]);
 
   const quickFilterOptionsByField = useMemo(() => {
     const provinceValuesWithData = new Set(
@@ -691,6 +689,20 @@ export const Leads: React.FC<LeadsProps> = ({
 
     if (convertingCandidateId && savedLeadId) {
       const candidate = candidates.find(item => item.id === convertingCandidateId);
+      const conversionLog = {
+        id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        occurredAt: now,
+        outcome: 'task_completed' as const,
+        eventType: 'activity' as const,
+        activityType: 'note' as const,
+        contactResult: '' as const,
+        potentialLevel: '' as const,
+        description: `Chuyển thành Lead ${savedLeadId}`,
+        note: '',
+        nextContactAt: '',
+        createdById: currentUser.uid,
+        createdByName: currentUser.displayName
+      };
       await dbService.updateDocument('lead_candidates', convertingCandidateId, {
         status: 'converted',
         convertedLeadId: savedLeadId,
@@ -701,7 +713,9 @@ export const Leads: React.FC<LeadsProps> = ({
         queuedNextContactAt: '',
         taskStatus: 'dismissed',
         workStatus: 'completed',
+        workQueueHidden: true,
         taskDismissedAt: now,
+        contactLogs: [conversionLog, ...(candidate?.contactLogs || [])].slice(0, 50),
         updatedBy: currentUser.displayName
       });
     }
