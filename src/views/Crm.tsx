@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { HorizontalBarChart } from '../components/VisualCharts';
 import { CustomerOnboardingItems } from '../components/CustomerOnboardingItems';
 import { PageBackButton } from '../components/PageBackButton';
+import { RowActionMenu } from '../components/RowActionMenu';
 import { createCustomerOnboardingItem } from '../domain/customerOnboardingItem';
 import { getPOBadgeClass, getPOQueueLabel } from '../domain/poWorkflow';
 import { sortNewestFirst } from '../domain/recordOrdering';
@@ -2201,23 +2202,25 @@ export const Crm: React.FC<CrmProps> = ({
                                   <span className="crm-material-empty">{t('Chưa có dữ liệu')}</span>
                                 )}
                               </td>
-                              <td><div className="crm-row-actions" onClick={(event) => event.stopPropagation()}>
-                                {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" className="btn btn-sm btn-primary" onClick={() => onPreparedOrderCreated?.(customer.id)}><ClipboardPlus size={13} /> {t('Tạo PO')}</button>}
-                                <button type="button" className="btn btn-sm btn-outline" onClick={() => openCustomerDetail(customer)}>{t('Chi tiết')}</button>
-                                {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => openEditModal(customer)} title={t('Sửa')}><Pencil size={14} /></button>}
-                                {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline btn-symbol-sm crm-row-delete"
-                                    onClick={() => handleDeleteCustomer(customer.id)}
-                                    disabled={currentUser.role !== 'admin' && customer.deleteRequested}
-                                    title={currentUser.role !== 'admin' && customer.deleteRequested ? 'Đã gửi yêu cầu xóa' : 'Xóa khách hàng'}
-                                    aria-label={currentUser.role !== 'admin' && customer.deleteRequested ? `Đã gửi yêu cầu xóa ${customer.companyName}` : `Xóa khách hàng ${customer.companyName}`}
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                )}
-                              </div></td>
+                              <td>
+                                <RowActionMenu
+                                  label={`${t('Thao tác')} ${customer.companyName}`}
+                                  actions={[
+                                    ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [{ label: t('Tạo PO'), icon: <ClipboardPlus size={14} />, onSelect: () => onPreparedOrderCreated?.(customer.id) }] : []),
+                                    { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => openCustomerDetail(customer) },
+                                    ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [
+                                      { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditModal(customer) },
+                                      {
+                                        label: currentUser.role !== 'admin' && customer.deleteRequested ? 'Đã gửi yêu cầu xóa' : 'Xóa khách hàng',
+                                        icon: <Trash2 size={14} />,
+                                        onSelect: () => handleDeleteCustomer(customer.id),
+                                        disabled: currentUser.role !== 'admin' && customer.deleteRequested,
+                                        danger: true
+                                      }
+                                    ] : [])
+                                  ]}
+                                />
+                              </td>
                             </tr>
                             {isMaterialsExpanded && (
                               <tr className="crm-material-history-row" onClick={(event) => event.stopPropagation()}>

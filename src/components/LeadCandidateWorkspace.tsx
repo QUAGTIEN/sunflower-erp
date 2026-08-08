@@ -12,7 +12,6 @@ import {
   Eye,
   Mail,
   MapPin,
-  MoreHorizontal,
   Pencil,
   Phone,
   Plus,
@@ -39,6 +38,7 @@ import {
   type UserProfile
 } from '../services/firebaseService';
 import { PageBackButton } from './PageBackButton';
+import { RowActionMenu } from './RowActionMenu';
 
 interface LeadCandidateWorkspaceProps {
   candidates: LeadCandidateRecord[];
@@ -759,10 +759,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       <td><p className="lead-candidate-note-cell">{candidate.note || 'Chưa có ghi chú'}</p></td>
                       <td><strong className={isOverdue && !isCompleted ? 'lead-date-overdue' : ''}>{formatShortDateTime(candidate.nextContactAt)}</strong><span className={`lead-candidate-task-status ${isOverdue && !isCompleted ? 'is-overdue' : ''}`}>{isCompleted ? `Đã xử lý ${formatShortDateTime(candidate.taskCompletedAt)}` : isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : 'Sắp tới'}</span></td>
                       <td>
-                        <div className="lead-candidate-task-actions">
-                          <button type="button" className="btn btn-sm btn-outline" onClick={() => openScheduleForm(candidate)}><CalendarClock size={13} /> Hẹn tiếp</button>
-                          <button type="button" className="btn btn-sm lead-candidate-task-dismiss btn-symbol-sm" onClick={() => dismissScheduledTask(candidate)} disabled={isBusy} title="Tắt công việc" aria-label="Tắt công việc"><X size={14} /></button>
-                        </div>
+                        <RowActionMenu
+                          label={`Thao tác ${candidate.companyName}`}
+                          actions={[
+                            { label: 'Hẹn tiếp', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) },
+                            { label: 'Tắt công việc', icon: <X size={14} />, onSelect: () => dismissScheduledTask(candidate), disabled: isBusy, danger: true }
+                          ]}
+                        />
                       </td>
                     </tr>
                   );
@@ -806,18 +809,16 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       <td><p className="lead-candidate-note-cell">{candidate.note || 'Chưa có ghi chú'}</p></td>
                       <td><span className={`lead-candidate-work-status lead-candidate-work-status--${candidate.workStatus}`}>{WORK_STATUS_LABELS[candidate.workStatus]}</span>{candidate.nextContactAt && candidate.taskStatus !== 'dismissed' && <small className="lead-candidate-next-queued">Hẹn: {formatShortDateTime(candidate.nextContactAt)}</small>}</td>
                       <td>
-                        <div className="lead-candidate-actions">
-                          {isActive && <button type="button" className="btn btn-sm btn-primary" onClick={() => openScheduleForm(candidate)}><CalendarClock size={13} /> Hẹn lịch</button>}
-                          <button type="button" className="btn btn-sm btn-outline btn-symbol-sm lead-candidate-delete-button" onClick={() => archiveCandidate(candidate)} title="Xóa khỏi danh sách" aria-label={`Xóa ${candidate.companyName}`}><Trash2 size={13} /></button>
-                          <details className="lead-candidate-row-menu">
-                            <summary title="Thao tác khác"><MoreHorizontal size={16} /></summary>
-                            <div>
-                              <button type="button" onClick={() => setSelectedCandidateId(candidate.id)}><Eye size={13} /> Xem hồ sơ</button>
-                              <button type="button" onClick={() => openEditForm(candidate)}><Pencil size={13} /> Chỉnh sửa</button>
-                              {isActive && <button type="button" onClick={() => onStartConversion(candidate)}><CheckCircle2 size={13} /> Chuyển thành Lead</button>}
-                            </div>
-                          </details>
-                        </div>
+                        <RowActionMenu
+                          label={`Thao tác ${candidate.companyName}`}
+                          actions={[
+                            ...(isActive ? [{ label: 'Hẹn lịch', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) }] : []),
+                            { label: 'Xem hồ sơ', icon: <Eye size={14} />, onSelect: () => setSelectedCandidateId(candidate.id) },
+                            { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
+                            ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : []),
+                            { label: 'Xóa khỏi danh sách', icon: <Trash2 size={14} />, onSelect: () => archiveCandidate(candidate), danger: true }
+                          ]}
+                        />
                       </td>
                     </tr>
                   );

@@ -488,7 +488,7 @@
 }
 
 .crm-customer-table {
-  min-width: 1660px;
+  min-width: 1500px;
 }
 
 .crm-customer-table th,
@@ -517,7 +517,7 @@
 .crm-customer-table th:nth-child(7) { width: 150px; }
 .crm-customer-table th:nth-child(8) { width: 145px; }
 .crm-customer-table th:nth-child(9) { width: 195px; }
-.crm-customer-table th:nth-child(10) { width: 230px; }
+.crm-customer-table th:nth-child(10) { width: 72px; }
 
 .crm-tax-code {
   color: #172554;
@@ -762,13 +762,6 @@
   white-space: nowrap;
 }
 
-.crm-row-actions {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-
 .crm-detail-actions {
   display: inline-flex;
   align-items: center;
@@ -791,17 +784,6 @@
 .crm-detail-delete {
   color: #b91c1c;
   border-color: #fecaca;
-}
-
-.crm-row-delete {
-  color: #b91c1c;
-  border-color: #fecaca;
-}
-
-.crm-row-delete:disabled {
-  color: #94a3b8;
-  border-color: #e2e8f0;
-  background: #f8fafc;
 }
 
 .crm-analytics-panel {

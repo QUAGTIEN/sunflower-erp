@@ -13,6 +13,7 @@ import {
   slugifyLeadFilterId
 } from '../domain/leadFilterConfig';
 import type { UserProfile } from '../services/firebaseService';
+import { RowActionMenu } from './RowActionMenu';
 
 const FIELD_TYPE_LABELS: Record<LeadCustomFieldType, string> = {
   multi_select: 'Chọn nhiều',
@@ -522,7 +523,12 @@ export const LeadSalesWorkspace: React.FC<{
                 <td>{getProgressLabel(lead)}</td>
                 <td>{getNeedLabel(lead)}</td>
                 <td><strong>{Number(lead.potentialValue || 0).toLocaleString('vi-VN')} đ</strong></td>
-                <td><button type="button" className="btn btn-sm btn-outline" onClick={() => onOpenLead(lead.id)}>Chi tiết</button></td>
+                <td>
+                  <RowActionMenu
+                    label={`Thao tác ${lead.companyName}`}
+                    actions={[{ label: 'Chi tiết', icon: <Eye size={14} />, onSelect: () => onOpenLead(lead.id) }]}
+                  />
+                </td>
               </tr>
             ))}
             {saleLeads.length === 0 && <tr><td colSpan={7} className="lead-empty">Sale này chưa có khách hàng tiềm năng trong kỳ đã chọn.</td></tr>}

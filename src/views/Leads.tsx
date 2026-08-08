@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Database,
+  Eye,
   FileText,
   Filter,
   List,
@@ -69,6 +70,7 @@ import {
   mergeLeadProfileFieldDefinitions
 } from '../domain/leadProfileConfig';
 import { PageBackButton } from '../components/PageBackButton';
+import { RowActionMenu } from '../components/RowActionMenu';
 import './Leads.css';
 
 interface LeadsProps {
@@ -1247,7 +1249,15 @@ export const Leads: React.FC<LeadsProps> = ({
                       <td><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>
                       <td>{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>
                       <td><span className={isOverdue(lead) ? 'lead-date-overdue' : ''}>{formatDateTime(lead.nextFollowUpAt)}</span></td>
-                      <td><div className="lead-row-actions" onClick={event => event.stopPropagation()}><button type="button" className="btn btn-sm btn-outline" onClick={() => setSelectedLeadId(lead.id)}>{t('Chi tiết')}</button><button type="button" className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => openEditForm(lead)} title={t('Sửa')}><Pencil size={13} /></button></div></td>
+                      <td>
+                        <RowActionMenu
+                          label={`${t('Thao tác')} ${lead.companyName}`}
+                          actions={[
+                            { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => setSelectedLeadId(lead.id) },
+                            { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) }
+                          ]}
+                        />
+                      </td>
                     </tr>
                   ))}
                   {filteredLeads.length === 0 && <tr><td colSpan={7} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
