@@ -107,20 +107,20 @@ service cloud.firestore {
         && data.allowedPages is list;
     }
 
-    // User profiles must use the Firebase Authentication UID as document ID.
-    // Only an administrator (or the trusted server using Firebase Admin SDK)
-    // may grant roles, pages or account status.
+    // Profile administration is server-only. Firebase Admin SDK bypasses these
+    // client rules after the API has verified the caller's ID token and role.
+    // The single exception lets the first real administrator create their own
+    // canonical users/{authUid} profile during initial bootstrap.
     match /users/{userId} {
       allow read: if isActive();
-      allow create: if isAdmin()
+      allow create: if isBootstrapAdmin()
+        && userId == request.auth.uid
         && userId == request.resource.data.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'admin'
+        && request.resource.data.active == true
         && isValidUserProfile(request.resource.data);
-      allow update: if isAdmin()
-        && userId == resource.data.uid
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.email == resource.data.email
-        && isValidUserProfile(request.resource.data);
-      allow delete: if isAdmin() && userId != request.auth.uid;
+      allow update, delete: if false;
     }
 
     // CRM and lead management.

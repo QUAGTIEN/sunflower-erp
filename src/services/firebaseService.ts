@@ -731,15 +731,22 @@ const getOrCreateFirebaseUserProfile = async (firebaseUser: FirebaseUser): Promi
   if (!database) return null;
 
   const normalizedEmail = firebaseUser.email.toLowerCase();
-  const usersSnapshot = await getDocs(collection(database, 'users'));
-  const existingProfile = usersSnapshot.docs
-    .map(userDocument => ({ id: userDocument.id, ...userDocument.data() }) as UserProfile & { id: string })
-    .find(profile => profile.email.toLowerCase() === normalizedEmail);
+  const canonicalProfileSnapshot = await getDoc(doc(database, 'users', firebaseUser.uid));
+  if (canonicalProfileSnapshot.exists()) {
+    const profile = canonicalProfileSnapshot.data() as UserProfile;
+    return profile.email?.toLowerCase() === normalizedEmail ? profile : null;
+  }
 
-  if (existingProfile) return existingProfile;
   if (normalizedEmail !== FIREBASE_BOOTSTRAP_ADMIN_EMAIL) return null;
 
-  const adminTemplate = DEFAULT_USERS.find(user => user.role === 'admin');
+  // The first real Auth administrator may still have an older Firestore-only
+  // profile such as users/u-admin. Copy only its harmless presentation fields
+  // into the canonical users/{firebaseAuthUid} document.
+  const usersSnapshot = await getDocs(collection(database, 'users'));
+  const legacyAdmin = usersSnapshot.docs
+    .map(userDocument => userDocument.data() as UserProfile)
+    .find(profile => profile.email?.toLowerCase() === normalizedEmail && profile.role === 'admin');
+  const adminTemplate = legacyAdmin ?? DEFAULT_USERS.find(user => user.role === 'admin');
   if (!adminTemplate) return null;
 
   const adminProfile: UserProfile = {
@@ -1070,6 +1077,9 @@ export const authService = {
         if (code === 'auth/configuration-not-found' || code === 'auth/operation-not-allowed') {
           throw new Error('Firebase Authentication chưa được bật chế độ Email/Password.');
         }
+        if (code === 'auth/user-disabled') {
+          throw new Error('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.');
+        }
         if (code === 'auth/profile-not-found') {
           throw error;
         }
@@ -1185,6 +1195,13 @@ export const authService = {
 
   getCurrentUser(): UserProfile | null {
     return currentUser;
+  },
+
+  async getIdToken(forceRefresh = false): Promise<string> {
+    if (!isFirebaseRuntimeEnabled || !realAuth?.currentUser) {
+      throw new Error('Phiên đăng nhập Firebase không tồn tại. Vui lòng đăng nhập lại.');
+    }
+    return realAuth.currentUser.getIdToken(forceRefresh);
   }
 };
 export { isFirebaseConfigured, isFirebaseRuntimeEnabled };

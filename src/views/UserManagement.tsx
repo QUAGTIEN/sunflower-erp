@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { dbService, UserProfile } from '../services/firebaseService';
+import { type UserProfile } from '../services/firebaseService';
+import { adminUserService } from '../services/adminUserService';
 import { useLanguage } from '../context/LanguageContext';
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import { formatDateTime } from '../domain/dateFormatting';
@@ -23,8 +24,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   // Form fields
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
+  const [temporaryPassword, setTemporaryPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'sale' | 'designer' | 'purchaser' | 'producer' | 'accountant'>('sale');
   const [active, setActive] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Map roles to Vietnamese text
   const getRoleLabel = (r: string) => {
@@ -39,19 +42,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     }
   };
 
-  // Map roles to default passwords for user reference
-  const getDefaultPassword = (r: string) => {
-    switch (r) {
-      case 'admin': return 'admin123';
-      case 'sale': return 'sale123';
-      case 'designer': return 'design123';
-      case 'purchaser': return 'purchase123';
-      case 'producer': return 'produce123';
-      case 'accountant': return 'account123';
-      default: return '123456';
-    }
-  };
-
   const [allowedPages, setAllowedPages] = useState<string[]>([]);
 
   const ALL_PAGES = [
@@ -62,6 +52,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     { id: 'sales', label: t('Tiếp Nhận Đơn PO') },
     { id: 'design', label: t('Quản Lý Thiết Kế') },
     { id: 'purchase', label: t('Mua Hàng NCC') },
+    { id: 'suppliers', label: t('Danh Sách Nhà Cung Cấp') },
     { id: 'inventory', label: t('Quản Lý Kho') },
     { id: 'production', label: t('Lệnh Sản Xuất') },
     { id: 'delivery', label: t('Phiếu Giao Hàng') },
@@ -73,13 +64,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   const getDefaultPagesForRole = (r: string): string[] => {
     switch (r) {
       case 'admin':
-        return ['dashboard', 'chat', 'crm', 'leads', 'sales', 'design', 'purchase', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
+        return ['dashboard', 'chat', 'crm', 'leads', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
       case 'sale':
         return ['dashboard', 'chat', 'crm', 'leads', 'sales'];
       case 'designer':
         return ['dashboard', 'chat', 'design'];
       case 'purchaser':
-        return ['dashboard', 'chat', 'purchase', 'inventory'];
+        return ['dashboard', 'chat', 'purchase', 'suppliers', 'inventory'];
       case 'producer':
         return ['dashboard', 'chat', 'production'];
       case 'accountant':
@@ -92,6 +83,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   const openAddModal = () => {
     setDisplayName('');
     setEmail('');
+    setTemporaryPassword('');
     setRole('sale');
     setActive(true);
     setAllowedPages(getDefaultPagesForRole('sale'));
@@ -109,7 +101,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!displayName || !email) return;
+    if (!displayName || !email || temporaryPassword.length < 8) return;
 
     const emailTrim = email.trim().toLowerCase();
     
@@ -120,21 +112,23 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
       return;
     }
 
-    const uid = `u-${Math.random().toString(36).substr(2, 9)}`;
-    const newUser: UserProfile = {
-      uid,
-      displayName: displayName.trim(),
-      email: emailTrim,
-      role,
-      active,
-      allowedPages,
-      createdAt: new Date().toISOString().split('T')[0],
-      createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-    };
-
-    await dbService.addDocument('users', newUser);
-    setShowAddModal(false);
-    onRefresh();
+    setIsSubmitting(true);
+    try {
+      await adminUserService.create({
+        displayName: displayName.trim(),
+        email: emailTrim,
+        password: temporaryPassword,
+        role,
+        active,
+        allowedPages
+      });
+      setShowAddModal(false);
+      onRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : t('Không thể tạo tài khoản.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEditUser = async (e: React.FormEvent) => {
@@ -153,18 +147,23 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
       return;
     }
 
-    await dbService.updateDocument('users', selectedUser.uid, {
-      displayName: displayName.trim(),
-      role,
-      active,
-      allowedPages,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
-
-    setShowEditModal(false);
-    setSelectedUser(null);
-    onRefresh();
+    setIsSubmitting(true);
+    try {
+      await adminUserService.update({
+        uid: selectedUser.uid,
+        displayName: displayName.trim(),
+        role,
+        active,
+        allowedPages
+      });
+      setShowEditModal(false);
+      setSelectedUser(null);
+      onRefresh();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : t('Không thể cập nhật tài khoản.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleToggleStatus = async (user: UserProfile) => {
@@ -174,12 +173,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     }
 
     if (window.confirm(t(`Bạn có chắc chắn muốn thay đổi trạng thái tài khoản ${user.displayName}?`))) {
-      await dbService.updateDocument('users', user.uid, {
-        active: !user.active,
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: new Date().toISOString()
-      });
-      onRefresh();
+      setIsSubmitting(true);
+      try {
+        await adminUserService.setActive(user.uid, !user.active);
+        onRefresh();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : t('Không thể thay đổi trạng thái tài khoản.'));
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -190,8 +192,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     }
 
     if (window.confirm(t('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản người dùng này?'))) {
-      await dbService.deleteDocument('users', userToDelete.uid);
-      onRefresh();
+      setIsSubmitting(true);
+      try {
+        await adminUserService.delete(userToDelete.uid);
+        onRefresh();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : t('Không thể xóa tài khoản.'));
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -250,7 +259,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 <th>{t('Địa Chỉ Email')}</th>
                 <th>{t('Vai Trò Phòng Ban')}</th>
                 <th>{t('Trạng Thái')}</th>
-                <th>{t('Mật Khẩu Đăng Nhập')}</th>
                 <th>{t('Ngày Khởi Tạo')}</th>
                 <th>{t('Thao Tác')}</th>
               </tr>
@@ -274,9 +282,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                         <span style={{ color: 'var(--color-danger)', fontWeight: 'bold', fontSize: '13px' }}>{t('Bị vô hiệu hóa')}</span>
                       )}
                     </td>
-                    <td>
-                      <code>{getDefaultPassword(u.role)}</code>
-                    </td>
                     <td>{u.createdAt || 'N/A'}</td>
                     <td>
                       <div className="btn-group">
@@ -288,10 +293,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                             <button 
                               className={`btn btn-sm ${u.active ? 'btn-danger' : 'btn-outline'}`}
                               onClick={() => handleToggleStatus(u)}
+                              disabled={isSubmitting}
                             >
                               {u.active ? t('Khóa Tài Khoản') : t('Kích Hoạt')}
                             </button>
-                            <button className="btn btn-sm btn-danger btn-symbol-sm" onClick={() => handleDeleteUser(u)} title={t('Xóa')}>
+                            <button className="btn btn-sm btn-danger btn-symbol-sm" onClick={() => handleDeleteUser(u)} title={t('Xóa')} disabled={isSubmitting}>
                               <Trash2 size={14} />
                             </button>
                           </>
@@ -303,7 +309,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
               })}
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '24px' }}>{t('Không tìm thấy tài khoản người dùng nào.')}</td>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '24px' }}>{t('Không tìm thấy tài khoản người dùng nào.')}</td>
                 </tr>
               )}
             </tbody>
@@ -341,13 +347,28 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                     required 
                   />
                 </div>
+                <div className="form-group">
+                  <label>{t('Mật Khẩu Tạm Thời *')}</label>
+                  <input
+                    type="password"
+                    placeholder={t('Tối thiểu 8 ký tự')}
+                    value={temporaryPassword}
+                    onChange={e => setTemporaryPassword(e.target.value)}
+                    minLength={8}
+                    autoComplete="new-password"
+                    required
+                  />
+                  <small style={{ color: 'var(--color-text-muted)' }}>
+                    {t('Mật khẩu chỉ dùng để tạo tài khoản Firebase Authentication và không được lưu trong Firestore.')}
+                  </small>
+                </div>
                 <div className="form-grid">
                   <div className="form-group">
                     <label>{t('Vai Trò Phòng Ban *')}</label>
                     <select 
                       value={role} 
                       onChange={e => {
-                        const newRole = e.target.value as any;
+                        const newRole = e.target.value as UserProfile['role'];
                         setRole(newRole);
                         setAllowedPages(getDefaultPagesForRole(newRole));
                       }}
@@ -395,19 +416,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 </div>
 
                 <div style={{ backgroundColor: 'var(--color-bg-light)', padding: '12px', borderRadius: '4px', border: '1px solid var(--color-border)', marginTop: '8px' }}>
-                  <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{t('Thông tin đăng nhập mặc định:')}</span>
-                  <div style={{ marginTop: '6px', fontSize: '12px', display: 'grid', gridTemplateColumns: '150px 1fr', gap: '4px' }}>
-                    <span style={{ color: 'var(--color-text-muted)' }}>{t('Mật khẩu mặc định')}:</span>
-                    <strong><code>{getDefaultPassword(role)}</code></strong>
-                    
-                    <span style={{ color: 'var(--color-text-muted)' }}>{t('Quy định đổi vai:')}</span>
-                    <span>{t('Hệ thống ERP hỗ trợ chuyển đổi nhanh vai trò trên thanh Header để tiện kiểm thử.')}</span>
+                  <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{t('Tài khoản thật trên Firebase:')}</span>
+                  <div style={{ marginTop: '6px', fontSize: '12px' }}>
+                    {t('Khi lưu, hệ thống sẽ đồng thời tạo người dùng trong Firebase Authentication và hồ sơ phân quyền trong Firestore.')}
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAddModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Lưu Tài Khoản')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowAddModal(false)} disabled={isSubmitting}>{t('Hủy')}</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? t('Đang tạo...') : t('Lưu Tài Khoản')}
+                </button>
               </div>
             </form>
           </div>
@@ -443,7 +462,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                     <select 
                       value={role} 
                       onChange={e => {
-                        const newRole = e.target.value as any;
+                        const newRole = e.target.value as UserProfile['role'];
                         setRole(newRole);
                         setAllowedPages(getDefaultPagesForRole(newRole));
                       }}
@@ -495,7 +514,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 <div style={{ backgroundColor: 'var(--color-bg-light)', padding: '12px', borderRadius: '4px', border: '1px solid var(--color-border)', marginTop: '8px' }}>
                   <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{t('Thông tin bảo mật:')}</span>
                   <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                    {t('Nếu đổi vai trò phòng ban của nhân sự, mật khẩu đăng nhập của họ cũng sẽ tự động chuyển thành mật khẩu tương ứng với vai trò mới (ví dụ:')} <code>{getDefaultPassword(role)}</code> {t('để phù hợp với cơ chế xác thực gọn nhẹ.')}
+                    {t('Thay đổi vai trò, quyền truy cập hoặc trạng thái sẽ được đồng bộ qua API quản trị. Mật khẩu Firebase của nhân sự không bị thay đổi tại màn hình này.')}
                   </div>
                 </div>
 
@@ -508,8 +527,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Lưu Thay Đổi')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)} disabled={isSubmitting}>{t('Hủy')}</button>
+                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? t('Đang lưu...') : t('Lưu Thay Đổi')}
+                </button>
               </div>
             </form>
           </div>
