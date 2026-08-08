@@ -247,98 +247,11 @@
   font-size: 12px;
 }
 
-.crm-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.crm-summary-card {
-  display: flex;
-  min-height: 76px;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid #dbe3ef;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #1e3a8a;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
-
-.crm-summary-card > div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.crm-summary-card strong {
-  color: #172554;
-  font-size: 20px;
-  line-height: 1;
-}
-
-.crm-summary-card span,
 .crm-customer-contact-line,
 .crm-table-secondary {
   color: #64748b;
   font-size: 12px;
   font-weight: 450;
-}
-
-.crm-summary-card small {
-  color: #94a3b8;
-  font-size: 11.5px;
-}
-
-.crm-care-threshold {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #9a3412;
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.crm-care-threshold input {
-  width: 46px;
-  height: 24px;
-  padding: 2px 5px;
-  border: 1px solid #fdba74;
-  border-radius: 5px;
-  background: #fff;
-  color: #9a3412;
-  text-align: center;
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 700;
-  appearance: textfield;
-  -moz-appearance: textfield;
-}
-
-.crm-care-threshold input::-webkit-inner-spin-button,
-.crm-care-threshold input::-webkit-outer-spin-button {
-  margin: 0;
-  -webkit-appearance: none;
-}
-
-.crm-care-threshold input:focus {
-  outline: none;
-  border-color: #ea580c;
-  box-shadow: 0 0 0 2px rgb(234 88 12 / 12%);
-}
-
-.crm-summary-card.is-warning {
-  border-color: #fed7aa;
-  color: #c2410c;
-  background: #fffaf5;
-}
-
-.crm-summary-card.is-danger {
-  border-color: #fecaca;
-  color: #b91c1c;
-  background: #fffafa;
 }
 
 .crm-add-customer {
@@ -1061,10 +974,6 @@
 }
 
 @media (max-width: 1180px) {
-  .crm-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .crm-view--detail .customer-details-grid {
     grid-template-columns: 1fr;
   }
@@ -1095,7 +1004,6 @@
     grid-template-columns: 1fr;
   }
 
-  .crm-summary-grid,
   .customer-contact-list,
   .product-commercial-fields {
     grid-template-columns: 1fr;

@@ -53,11 +53,9 @@ import {
   Building2,
   CircleDollarSign,
   ClipboardPlus,
-  Clock3,
   Search,
   ShoppingBag,
   Users,
-  WalletCards,
   ChevronDown,
   Layers3
 } from 'lucide-react';
@@ -88,8 +86,6 @@ interface CrmFilterOption {
   label: string;
 }
 
-const CRM_CARE_THRESHOLD_STORAGE_KEY = 'sunflower.crm.care-threshold-days';
-const DEFAULT_CRM_CARE_THRESHOLD_DAYS = 30;
 const UNASSIGNED_FILTER_VALUE = '__unassigned__';
 
 const normalizeFilterValue = (value: unknown) => String(value || '')
@@ -267,12 +263,6 @@ export const Crm: React.FC<CrmProps> = ({
   const [timeFilters, setTimeFilters] = useState<CrmTimeFilter[]>([]);
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
   const [productFilters, setProductFilters] = useState<string[]>([]);
-  const [careThresholdDays, setCareThresholdDays] = useState(() => {
-    const savedValue = Number(window.localStorage.getItem(CRM_CARE_THRESHOLD_STORAGE_KEY));
-    return Number.isFinite(savedValue) && savedValue >= 1 && savedValue <= 365
-      ? Math.round(savedValue)
-      : DEFAULT_CRM_CARE_THRESHOLD_DAYS;
-  });
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'samples'>('po');
   const [expandedMaterialsCustomerId, setExpandedMaterialsCustomerId] = useState('');
@@ -297,10 +287,6 @@ export const Crm: React.FC<CrmProps> = ({
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [selectedEditRequest, setSelectedEditRequest] = useState<any | null>(null);
   const [windDirectionFiles, setWindDirectionFiles] = useState<any[]>([]);
-
-  useEffect(() => {
-    window.localStorage.setItem(CRM_CARE_THRESHOLD_STORAGE_KEY, String(careThresholdDays));
-  }, [careThresholdDays]);
 
   useEffect(() => {
     const unsubClass = dbService.subscribeCollection('product_classifications', setProductClassifications);
@@ -1652,13 +1638,6 @@ export const Crm: React.FC<CrmProps> = ({
     .filter(invoice => invoice.deleted !== true && invoice.type === 'receivable' && invoice.customerId === customerId)
     .reduce((total, invoice) => total + Math.max(0, Number(invoice.amount || 0) - Number(invoice.paidAmount || 0)), 0);
 
-  const getDaysSinceLastOrder = (customer: CustomerRecord): number | null => {
-    const latestOrder = getCustomerOrders(customer.id)[0];
-    const lastOrderDate = parseValidDate(latestOrder?.orderDate || latestOrder?.createdAt || customer.lastOrderAt);
-    if (!lastOrderDate) return null;
-    return Math.max(0, Math.floor((today.getTime() - lastOrderDate.getTime()) / 86_400_000));
-  };
-
   const isNewCustomer = (customer: CustomerRecord): boolean => {
     const createdDate = parseValidDate(customer.createdAt || customer.convertedAt);
     if (!createdDate) return false;
@@ -1666,18 +1645,8 @@ export const Crm: React.FC<CrmProps> = ({
     return ageInMilliseconds >= 0 && ageInMilliseconds < 7 * 86_400_000;
   };
 
-  const needsCareCustomers = accessibleCustomers.filter(customer => {
-    const daysSinceLastOrder = getDaysSinceLastOrder(customer);
-    return daysSinceLastOrder === null || daysSinceLastOrder > careThresholdDays;
-  });
   const customersWithDebt = accessibleCustomers.filter(customer => getCustomerOutstandingDebt(customer.id) > 0);
   const currentYear = String(today.getFullYear());
-  const totalOrderValue = pos
-    .filter(order => order.deleted !== true && accessibleCustomerIds.has(order.customerId))
-    .reduce((total, order) => total + Number(order.netAmount || order.totalAmount || 0), 0);
-  const totalOutstandingDebt = invoices
-    .filter(invoice => invoice.deleted !== true && invoice.type === 'receivable' && accessibleCustomerIds.has(invoice.customerId))
-    .reduce((total, invoice) => total + Math.max(0, Number(invoice.amount || 0) - Number(invoice.paidAmount || 0)), 0);
 
   const leadById = new Map(leads.map(lead => [lead.id, lead] as const));
   const provinceByCustomerId = new Map<string, string>(accessibleCustomers.map(customer => {
@@ -2141,29 +2110,6 @@ export const Crm: React.FC<CrmProps> = ({
       )}
 
         <>
-          <div className="crm-summary-grid">
-            <div className="crm-summary-card">
-              <Building2 size={19} />
-              <div><strong>{accessibleCustomers.length}</strong><span>{t('Tổng số khách hàng')}</span><small>{t('Mỗi doanh nghiệp được tính là một khách hàng')}</small></div>
-            </div>
-            <div className={`crm-summary-card ${needsCareCustomers.length > 0 ? 'is-warning' : ''}`}>
-              <Clock3 size={19} />
-              <div>
-                <strong>{needsCareCustomers.length}</strong>
-                <span>{t('Cần chăm sóc')}</span>
-                <label className="crm-care-threshold">Quá <input type="number" min="1" max="365" value={careThresholdDays} onChange={event => setCareThresholdDays(Math.min(365, Math.max(1, Number(event.target.value) || 1)))} aria-label="Số ngày cần chăm sóc" /> ngày chưa đặt</label>
-              </div>
-            </div>
-            <div className="crm-summary-card">
-              <ShoppingBag size={19} />
-              <div><strong>{totalOrderValue.toLocaleString('vi-VN')} đ</strong><span>{t('Tổng giá trị PO')}</span><small>{t('Theo toàn bộ đơn hàng đã tạo')}</small></div>
-            </div>
-            <div className={`crm-summary-card ${totalOutstandingDebt > 0 ? 'is-danger' : ''}`}>
-              <WalletCards size={19} />
-              <div><strong>{totalOutstandingDebt.toLocaleString('vi-VN')} đ</strong><span>{t('Công nợ phải thu')}</span><small>{customersWithDebt.length} {t('khách hàng còn nợ')}</small></div>
-            </div>
-          </div>
-
           <div className="card crm-command-center">
             <div className="crm-list-tabs" role="tablist" aria-label={t('Chọn nhóm khách hàng')}>
               <button type="button" className={`crm-list-tab ${filterType === 'all' ? 'is-active' : ''}`} onClick={() => setFilterType('all')} role="tab" aria-selected={filterType === 'all'}>

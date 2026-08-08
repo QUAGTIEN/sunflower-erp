@@ -953,12 +953,12 @@ tr:hover td {
   background: #8f3fa3;
 }
 
-.dashboard-metric-card--receivable {
-  background: #f97316;
+.dashboard-metric-card--customers {
+  background: #2563eb;
 }
 
-.dashboard-metric-card--payable {
-  background: #38a4d5;
+.dashboard-metric-card--employees {
+  background: #0891b2;
 }
 
 .dashboard-metric-card--active {

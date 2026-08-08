@@ -510,6 +510,7 @@ function App() {
         return (
           <Dashboard 
             user={user}
+            users={users}
             pos={pos}
             designRequests={designRequests}
             customers={customers}

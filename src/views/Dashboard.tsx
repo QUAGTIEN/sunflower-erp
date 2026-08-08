@@ -26,6 +26,7 @@ import { PageBackButton } from '../components/PageBackButton';
 
 interface DashboardProps {
   user: UserProfile;
+  users: UserProfile[];
   pos: any[];
   designRequests: DesignRequest[];
   customers: any[];
@@ -40,6 +41,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({
   user,
+  users,
   pos,
   designRequests,
   customers,
@@ -121,6 +123,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Calculations helper
   const activePOs = filteredPOs.filter(po => !isPOCompleted(po));
+  const customerIdsWithOrders = new Set(activePOsList.map(po => po.customerId).filter(Boolean));
+  const collaboratingCustomers = activeCustomersList.filter(customer => customerIdsWithOrders.has(customer.id));
+  const activeEmployees = (users || []).filter(employee => employee.active !== false);
   
   // CSKH: Customers with lastOrderAt older than 30 days
   const today = new Date();
@@ -649,25 +654,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {user.role === 'admin' && (
         <>
           <div className="metrics-grid">
+            <div className="metric-card dashboard-metric-card dashboard-metric-card--customers">
+              <span className="metric-title">{t('KHÁCH HÀNG ĐANG HỢP TÁC')}</span>
+              <span className="metric-value">{collaboratingCustomers.length} {t('khách hàng')}</span>
+              <span className="metric-sub">{t('Khách hàng CRM đã phát sinh ít nhất một PO')}</span>
+            </div>
             <div className="metric-card dashboard-metric-card dashboard-metric-card--revenue">
-              <span className="metric-title">{t('DOANH THU ĐÃ THU')}</span>
+              <span className="metric-title">{t('DOANH THU')}</span>
               <span className="metric-value">{totalRevenue.toLocaleString()} đ</span>
-              <span className="metric-sub">{t('Từ các hóa đơn đã thanh toán')}</span>
+              <span className="metric-sub">{t('Hóa đơn đã thanh toán trong kỳ đang chọn')}</span>
             </div>
-            <div className="metric-card dashboard-metric-card dashboard-metric-card--receivable">
-              <span className="metric-title">{t('CÔNG NỢ PHẢI THU (AR)')}</span>
-              <span className="metric-value">{arDebt.toLocaleString()} đ</span>
-              <span className="metric-sub">{t('Khách hàng chưa thanh toán hết')}</span>
-            </div>
-            <div className="metric-card dashboard-metric-card dashboard-metric-card--payable">
-              <span className="metric-title">{t('CÔNG NỢ PHẢI TRẢ (AP)')}</span>
-              <span className="metric-value">{apDebt.toLocaleString()} đ</span>
-              <span className="metric-sub">{t('Phải trả nhà cung cấp vật tư')}</span>
+            <div className="metric-card dashboard-metric-card dashboard-metric-card--employees">
+              <span className="metric-title">{t('NHÂN VIÊN')}</span>
+              <span className="metric-value">{activeEmployees.length} {t('người')}</span>
+              <span className="metric-sub">{t('Tài khoản nhân viên đang hoạt động')}</span>
             </div>
             <div className="metric-card dashboard-metric-card dashboard-metric-card--active">
               <span className="metric-title">{t('ĐƠN ĐANG XỬ LÝ')}</span>
               <span className="metric-value">{activePOs.length} {t('đơn')}</span>
-              <span className="metric-sub">{t('Tổng số PO chưa hoàn thành')}</span>
+              <span className="metric-sub">{t('PO chưa hoàn thành trong kỳ đang chọn')}</span>
             </div>
           </div>
 
