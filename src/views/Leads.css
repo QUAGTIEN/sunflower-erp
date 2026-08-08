@@ -772,8 +772,69 @@
   background: #fef2f2;
 }
 
+.lead-candidate-batch-bar {
+  display: flex;
+  min-height: 54px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 9px 12px;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.lead-candidate-batch-bar > div,
+.lead-candidate-batch-bar label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.lead-candidate-batch-bar > div:first-child {
+  color: #1e3a8a;
+}
+
+.lead-candidate-batch-bar strong {
+  font-size: 12.5px;
+}
+
+.lead-candidate-batch-bar > div:first-child button {
+  padding: 0;
+  border: 0;
+  color: #475569;
+  background: transparent;
+  font-size: 11.5px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.lead-candidate-batch-bar label span,
+.lead-candidate-batch-bar > div:last-of-type > span {
+  color: #475569;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.lead-candidate-batch-bar select {
+  width: 190px;
+  height: 34px;
+  font-size: 12px;
+}
+
+.lead-candidate-batch-bar > p {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: #b91c1c;
+  font-size: 11.5px;
+}
+
 .lead-candidate-table {
-  min-width: 1740px;
+  min-width: 1780px;
 }
 
 .lead-candidate-task-table {
@@ -817,6 +878,32 @@
 
 .lead-candidate-table tbody tr.is-overdue {
   background: #fffafa;
+}
+
+.lead-candidate-table tbody tr.is-selected,
+.lead-candidate-table tbody tr.is-selected:hover {
+  background: #eff6ff;
+}
+
+.lead-candidate-select-column {
+  width: 42px;
+  min-width: 42px;
+  max-width: 42px;
+  padding-right: 8px !important;
+  padding-left: 8px !important;
+  text-align: center;
+}
+
+.lead-candidate-select-column input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #1e3a8a;
+  cursor: pointer;
+}
+
+.lead-candidate-select-column input:disabled {
+  cursor: default;
 }
 
 .lead-candidate-inline-select {
@@ -2612,6 +2699,19 @@
   .lead-candidate-toolbar select {
     width: 100%;
     flex-basis: 100%;
+  }
+
+  .lead-candidate-batch-bar,
+  .lead-candidate-batch-bar > div:last-of-type,
+  .lead-candidate-batch-bar label {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lead-candidate-batch-bar > div,
+  .lead-candidate-batch-bar select,
+  .lead-candidate-batch-bar .btn {
+    width: 100%;
   }
 
   .lead-candidate-drawer {

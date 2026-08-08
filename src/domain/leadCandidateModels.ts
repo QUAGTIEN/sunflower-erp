@@ -1,7 +1,7 @@
 import type { CustomerRecord, LeadRecord } from './crmModels';
 import { normalizeTaxCode } from './taxCodeUniqueness';
 
-export const LEAD_CANDIDATE_SCHEMA_VERSION = 6;
+export const LEAD_CANDIDATE_SCHEMA_VERSION = 7;
 
 export type LeadCandidateStatus = 'new' | 'retry' | 'disqualified' | 'converted';
 export type LeadCandidateTaskStatus = 'pending' | 'completed' | 'dismissed';
@@ -255,7 +255,9 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     taskCompletedById: asText(source.taskCompletedById),
     taskCompletedByName: asText(source.taskCompletedByName),
     taskDismissedAt: asText(source.taskDismissedAt),
-    workQueueHidden: source.workQueueHidden === true,
+    workQueueHidden: typeof source.workQueueHidden === 'boolean'
+      ? source.workQueueHidden
+      : !nextContactAt,
     workStatus: normalizeWorkStatus(source.workStatus, taskStatus, nextContactAt, contactLogs, lastContactAt),
     pinned: source.pinned === true,
     archived: source.archived === true,

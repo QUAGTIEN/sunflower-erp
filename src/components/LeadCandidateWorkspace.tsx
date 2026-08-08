@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Eye,
   History,
+  ListPlus,
   Mail,
   MapPin,
   Pencil,
@@ -257,6 +258,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [actionError, setActionError] = useState('');
   const [taskActionCandidateId, setTaskActionCandidateId] = useState('');
   const [fieldActionCandidateId, setFieldActionCandidateId] = useState('');
+  const [selectedQueueCandidateIds, setSelectedQueueCandidateIds] = useState<string[]>([]);
+  const [batchAssigneeId, setBatchAssigneeId] = useState('');
+  const [batchQueueError, setBatchQueueError] = useState('');
+  const [savingBatchQueue, setSavingBatchQueue] = useState(false);
   const [referenceTime] = useState(() => Date.now());
 
   const accessibleCandidates = useMemo(() => candidates.filter(candidate => (
@@ -368,6 +373,80 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     [log, ...candidate.contactLogs].slice(0, 50)
   );
 
+  const selectedQueueCandidateSet = new Set(selectedQueueCandidateIds);
+  const queueEligibleDisplayedCandidates = workspaceView === 'all'
+    ? displayedCandidates.filter(candidate => (
+      candidate.workQueueHidden
+      && (candidate.status === 'new' || candidate.status === 'retry')
+      && canManageCandidate(candidate)
+    ))
+    : [];
+  const allDisplayedQueueCandidatesSelected = queueEligibleDisplayedCandidates.length > 0
+    && queueEligibleDisplayedCandidates.every(candidate => selectedQueueCandidateSet.has(candidate.id));
+
+  const toggleQueueCandidateSelection = (candidateId: string) => {
+    setBatchQueueError('');
+    setSelectedQueueCandidateIds(previous => previous.includes(candidateId)
+      ? previous.filter(id => id !== candidateId)
+      : [...previous, candidateId]);
+  };
+
+  const toggleDisplayedQueueCandidates = () => {
+    setBatchQueueError('');
+    const displayedIds = queueEligibleDisplayedCandidates.map(candidate => candidate.id);
+    setSelectedQueueCandidateIds(previous => {
+      if (allDisplayedQueueCandidatesSelected) {
+        return previous.filter(id => !displayedIds.includes(id));
+      }
+      return Array.from(new Set([...previous, ...displayedIds]));
+    });
+  };
+
+  const addSelectedCandidatesToWorkQueue = async () => {
+    const assigneeId = currentUser.role === 'admin' ? batchAssigneeId : currentUser.uid;
+    const assignee = candidateOwners.find(user => user.uid === assigneeId);
+    if (!assigneeId || !assignee) {
+      setBatchQueueError('Vui lòng chọn Sale phụ trách trước khi chuyển công việc.');
+      return;
+    }
+
+    const candidatesToQueue = accessibleCandidates.filter(candidate => (
+      selectedQueueCandidateSet.has(candidate.id)
+      && candidate.workQueueHidden
+      && (candidate.status === 'new' || candidate.status === 'retry')
+      && canManageCandidate(candidate)
+    ));
+    if (candidatesToQueue.length === 0) return;
+
+    setSavingBatchQueue(true);
+    setBatchQueueError('');
+    try {
+      await Promise.all(candidatesToQueue.map(candidate => {
+        const log = buildCandidateLog(candidate, {
+          eventType: 'activity',
+          activityType: 'note',
+          description: `Đưa vào Công việc cần xử lý · Phụ trách: ${assignee.displayName}`
+        });
+        return dbService.updateDocument('lead_candidates', candidate.id, {
+          schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
+          assignedSaleId: assignee.uid,
+          assignedSaleName: assignee.displayName,
+          workQueueHidden: false,
+          taskStatus: 'pending',
+          taskDismissedAt: '',
+          contactLogs: prependCandidateLog(candidate, log),
+          updatedBy: currentUser.displayName
+        });
+      }));
+      setSelectedQueueCandidateIds([]);
+      if (currentUser.role === 'admin') setBatchAssigneeId('');
+    } catch {
+      setBatchQueueError('Không thể chuyển một số dữ liệu sang Công việc cần xử lý. Vui lòng kiểm tra quyền Firebase và thử lại.');
+    } finally {
+      setSavingBatchQueue(false);
+    }
+  };
+
   const updateForm = <K extends keyof CandidateFormState>(field: K, value: CandidateFormState[K]) => {
     setSaveError('');
     setForm(previous => ({ ...previous, [field]: value }));
@@ -470,7 +549,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           taskCompletedById: '',
           taskCompletedByName: '',
           taskDismissedAt: '',
-          workQueueHidden: false,
+          workQueueHidden: nextContactAt ? false : (editingCandidate?.workQueueHidden ?? true),
           ...(scheduleLog && editingCandidate ? { contactLogs: prependCandidateLog(editingCandidate, scheduleLog) } : {})
         } : {}),
         updatedBy: currentUser.displayName
@@ -492,7 +571,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         contactLogs: [],
         contactResult: 'not_contacted' as LeadCandidateContactResult,
         potentialLevel: 'unrated' as LeadCandidatePotentialLevel,
-        workQueueHidden: false,
+        workQueueHidden: !nextContactAt,
         pinned: false,
         archived: false,
         archivedAt: '',
@@ -874,6 +953,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             onClick={() => {
               setWorkspaceView(value);
               setSelectedCandidateId('');
+              setSelectedQueueCandidateIds([]);
+              setBatchQueueError('');
               setCurrentPage(1);
               if (value === 'tasks' && currentUser.role !== 'admin') setSaleFilter('all');
             }}
@@ -927,6 +1008,31 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           </select>
           {(activeFilterCount > 0 || searchTerm) && <button type="button" className="lead-candidate-clear-filter" onClick={clearDataFilters}><X size={13} /> Xóa lọc ({activeFilterCount})</button>}
         </section>
+
+      {workspaceView === 'all' && selectedQueueCandidateIds.length > 0 && (
+        <section className="lead-candidate-batch-bar" aria-label="Chuyển dữ liệu sang công việc cần xử lý">
+          <div>
+            <ListPlus size={17} />
+            <strong>Đã chọn {selectedQueueCandidateIds.length} khách hàng</strong>
+            <button type="button" onClick={() => { setSelectedQueueCandidateIds([]); setBatchQueueError(''); }}>Bỏ chọn</button>
+          </div>
+          <div>
+            {currentUser.role === 'admin' ? (
+              <label>
+                <span>Giao cho</span>
+                <select value={batchAssigneeId} onChange={event => { setBatchAssigneeId(event.target.value); setBatchQueueError(''); }}>
+                  <option value="">Chọn Sale phụ trách</option>
+                  {saleUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
+                </select>
+              </label>
+            ) : <span>Chuyển vào công việc của bạn</span>}
+            <button type="button" className="btn btn-primary" onClick={addSelectedCandidatesToWorkQueue} disabled={savingBatchQueue || (currentUser.role === 'admin' && !batchAssigneeId)}>
+              <ListPlus size={14} /> {savingBatchQueue ? 'Đang chuyển...' : 'Đưa vào Công việc cần xử lý'}
+            </button>
+          </div>
+          {batchQueueError && <p><AlertCircle size={13} /> {batchQueueError}</p>}
+        </section>
+      )}
 
       {actionError && (
         <div className="lead-candidate-warning is-error">
@@ -992,6 +1098,15 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <table className="lead-candidate-table">
               <thead>
                 <tr>
+                  <th className="lead-candidate-select-column">
+                    <input
+                      type="checkbox"
+                      checked={allDisplayedQueueCandidatesSelected}
+                      disabled={queueEligibleDisplayedCandidates.length === 0}
+                      onChange={toggleDisplayedQueueCandidates}
+                      aria-label="Chọn dữ liệu có thể đưa vào công việc trên trang này"
+                    />
+                  </th>
                   <th>Doanh nghiệp</th>
                   <th>Tỉnh/thành</th>
                   <th>Thông tin liên hệ</th>
@@ -1007,8 +1122,27 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               <tbody>
                 {displayedCandidates.map(candidate => {
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
+                  const canAddToQueue = candidate.workQueueHidden && isActive && canManageCandidate(candidate);
+                  const isAlreadyInQueue = !candidate.workQueueHidden && isActive;
+                  const isSelectedForQueue = selectedQueueCandidateSet.has(candidate.id);
                   return (
-                    <tr key={candidate.id}>
+                    <tr key={candidate.id} className={isSelectedForQueue ? 'is-selected' : ''}>
+                      <td className="lead-candidate-select-column">
+                        <input
+                          type="checkbox"
+                          checked={isAlreadyInQueue || isSelectedForQueue}
+                          disabled={!canAddToQueue}
+                          onChange={() => toggleQueueCandidateSelection(candidate.id)}
+                          title={isAlreadyInQueue
+                            ? 'Đã có trong Công việc cần xử lý'
+                            : !isActive
+                              ? 'Dữ liệu đã kết thúc hoặc đã chuyển đổi'
+                              : canAddToQueue ? 'Chọn để đưa vào Công việc cần xử lý' : 'Bạn không phải Sale phụ trách dữ liệu này'}
+                          aria-label={isAlreadyInQueue
+                            ? `${candidate.companyName} đã có trong Công việc cần xử lý`
+                            : `Chọn ${candidate.companyName}`}
+                        />
+                      </td>
                       <td>
                         <div className="lead-candidate-company-cell">
                           {canManageCandidate(candidate) && <button
@@ -1048,7 +1182,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={10} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
+                {filteredCandidates.length === 0 && <tr><td colSpan={11} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
               </tbody>
             </table>
           )}
