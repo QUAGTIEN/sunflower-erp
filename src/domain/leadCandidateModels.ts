@@ -1,12 +1,12 @@
 import type { CustomerRecord, LeadRecord } from './crmModels';
 import { normalizeTaxCode } from './taxCodeUniqueness';
 
-export const LEAD_CANDIDATE_SCHEMA_VERSION = 5;
+export const LEAD_CANDIDATE_SCHEMA_VERSION = 6;
 
 export type LeadCandidateStatus = 'new' | 'retry' | 'disqualified' | 'converted';
 export type LeadCandidateTaskStatus = 'pending' | 'completed' | 'dismissed';
 export type LeadCandidateWorkStatus = 'not_contacted' | 'pending' | 'completed';
-export type LeadCandidateContactResult = 'not_contacted' | 'connected' | 'unreachable' | 'callback';
+export type LeadCandidateContactResult = 'not_contacted' | 'working' | 'called' | 'messaged' | 'callback';
 export type LeadCandidatePotentialLevel = 'unrated' | 'not_fit' | 'low' | 'potential' | 'promising' | 'high';
 export type LeadCandidateActivityType = 'call' | 'message' | 'email' | 'meeting' | 'note';
 export type LeadCandidateLogEventType = 'contact_result' | 'potential_level' | 'schedule' | 'activity';
@@ -152,11 +152,12 @@ const normalizeContactResult = (
   value: unknown,
   legacyOutcome: LeadCandidateContactOutcome | ''
 ): LeadCandidateContactResult => {
-  const results: LeadCandidateContactResult[] = ['not_contacted', 'connected', 'unreachable', 'callback'];
+  const results: LeadCandidateContactResult[] = ['not_contacted', 'working', 'called', 'messaged', 'callback'];
   if (results.includes(value as LeadCandidateContactResult)) return value as LeadCandidateContactResult;
+  if (value === 'connected' || value === 'unreachable') return 'called';
   if (legacyOutcome === 'call_back') return 'callback';
-  if (legacyOutcome === 'connected' || legacyOutcome === 'potential' || legacyOutcome === 'task_completed') return 'connected';
-  if (legacyOutcome === 'no_answer' || legacyOutcome === 'busy' || legacyOutcome === 'wrong_number' || legacyOutcome === 'not_interested') return 'unreachable';
+  if (legacyOutcome === 'connected' || legacyOutcome === 'potential' || legacyOutcome === 'task_completed') return 'called';
+  if (legacyOutcome === 'no_answer' || legacyOutcome === 'busy' || legacyOutcome === 'wrong_number' || legacyOutcome === 'not_interested') return 'called';
   return 'not_contacted';
 };
 

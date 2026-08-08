@@ -772,53 +772,6 @@
   background: #fef2f2;
 }
 
-.lead-candidate-supervision {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
-  gap: 8px;
-}
-
-.lead-candidate-supervision > div {
-  display: flex;
-  min-height: 54px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 12px;
-  border: 1px solid #dbe3ef;
-  border-radius: 7px;
-  background: #fff;
-}
-
-.lead-candidate-supervision span {
-  color: #64748b;
-  font-size: 11.5px;
-  font-weight: 650;
-}
-
-.lead-candidate-supervision strong {
-  color: #172554;
-  font-size: 17px;
-}
-
-.lead-candidate-supervision .is-overdue {
-  border-color: #fecaca;
-  background: #fffafa;
-}
-
-.lead-candidate-supervision .is-overdue strong {
-  color: #b91c1c;
-}
-
-.lead-candidate-supervision .is-positive {
-  border-color: #bbf7d0;
-  background: #f7fef9;
-}
-
-.lead-candidate-supervision .is-positive strong {
-  color: #166534;
-}
-
 .lead-candidate-table {
   min-width: 1740px;
 }
@@ -888,7 +841,6 @@
   background-color: #f8fafc;
 }
 
-.lead-candidate-contact-result.is-connected,
 .lead-candidate-potential.is-promising,
 .lead-candidate-potential.is-high {
   border-color: #86efac;
@@ -896,7 +848,24 @@
   background-color: #f0fdf4;
 }
 
-.lead-candidate-contact-result.is-unreachable,
+.lead-candidate-contact-result.is-working {
+  border-color: #fde68a;
+  color: #92400e;
+  background-color: #fffbeb;
+}
+
+.lead-candidate-contact-result.is-called {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background-color: #eff6ff;
+}
+
+.lead-candidate-contact-result.is-messaged {
+  border-color: #a5f3fc;
+  color: #0e7490;
+  background-color: #ecfeff;
+}
+
 .lead-candidate-potential.is-not_fit {
   border-color: #fecaca;
   color: #b91c1c;
@@ -2557,10 +2526,6 @@
     flex: 1;
   }
 
-  .lead-candidate-supervision {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
-  }
-
   .lead-profile-multi-field {
     grid-column: auto;
   }
@@ -2647,10 +2612,6 @@
   .lead-candidate-toolbar select {
     width: 100%;
     flex-basis: 100%;
-  }
-
-  .lead-candidate-supervision {
-    grid-template-columns: 1fr;
   }
 
   .lead-candidate-drawer {
