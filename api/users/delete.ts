@@ -5,7 +5,7 @@ import {
   readJsonBody,
   requireAdmin,
   validateDeleteUserBody
-} from '../../server/adminUsers';
+} from '../../server/adminUsers.js';
 
 export async function POST(request: Request): Promise<Response> {
   try {

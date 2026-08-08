@@ -5,7 +5,7 @@ import {
   requireAdmin,
   updateManagedUser,
   validateUpdateUserBody
-} from '../../server/adminUsers';
+} from '../../server/adminUsers.js';
 
 export async function POST(request: Request): Promise<Response> {
   try {

@@ -1,6 +1,6 @@
 import type { DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import type { DocumentData, DocumentSnapshot } from 'firebase-admin/firestore';
-import { getFirebaseAdminServices } from './firebaseAdmin';
+import { getFirebaseAdminServices } from './firebaseAdmin.js';
 
 export const USER_ROLES = [
   'admin',
