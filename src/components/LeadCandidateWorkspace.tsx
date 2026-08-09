@@ -374,15 +374,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   );
 
   const selectedQueueCandidateSet = new Set(selectedQueueCandidateIds);
-  const queueEligibleDisplayedCandidates = workspaceView === 'all'
+  const queueSelectableDisplayedCandidates = workspaceView === 'all'
     ? displayedCandidates.filter(candidate => (
-      candidate.workQueueHidden
-      && (candidate.status === 'new' || candidate.status === 'retry')
+      (candidate.status === 'new' || candidate.status === 'retry')
       && canManageCandidate(candidate)
     ))
     : [];
-  const allDisplayedQueueCandidatesSelected = queueEligibleDisplayedCandidates.length > 0
-    && queueEligibleDisplayedCandidates.every(candidate => selectedQueueCandidateSet.has(candidate.id));
+  const allDisplayedQueueCandidatesSelected = queueSelectableDisplayedCandidates.length > 0
+    && queueSelectableDisplayedCandidates.every(candidate => selectedQueueCandidateSet.has(candidate.id));
 
   const toggleQueueCandidateSelection = (candidateId: string) => {
     setBatchQueueError('');
@@ -393,7 +392,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   const toggleDisplayedQueueCandidates = () => {
     setBatchQueueError('');
-    const displayedIds = queueEligibleDisplayedCandidates.map(candidate => candidate.id);
+    const displayedIds = queueSelectableDisplayedCandidates.map(candidate => candidate.id);
     setSelectedQueueCandidateIds(previous => {
       if (allDisplayedQueueCandidatesSelected) {
         return previous.filter(id => !displayedIds.includes(id));
@@ -412,7 +411,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
     const candidatesToQueue = accessibleCandidates.filter(candidate => (
       selectedQueueCandidateSet.has(candidate.id)
-      && candidate.workQueueHidden
       && (candidate.status === 'new' || candidate.status === 'retry')
       && canManageCandidate(candidate)
     ));
@@ -422,6 +420,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setBatchQueueError('');
     try {
       await Promise.all(candidatesToQueue.map(candidate => {
+        if (!candidate.workQueueHidden && candidate.assignedSaleId === assignee.uid) {
+          return Promise.resolve(true);
+        }
         const log = buildCandidateLog(candidate, {
           eventType: 'activity',
           activityType: 'note',
@@ -1102,7 +1103,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     <input
                       type="checkbox"
                       checked={allDisplayedQueueCandidatesSelected}
-                      disabled={queueEligibleDisplayedCandidates.length === 0}
+                      disabled={queueSelectableDisplayedCandidates.length === 0}
                       onChange={toggleDisplayedQueueCandidates}
                       aria-label="Chọn dữ liệu có thể đưa vào công việc trên trang này"
                     />
@@ -1122,7 +1123,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               <tbody>
                 {displayedCandidates.map(candidate => {
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
-                  const canAddToQueue = candidate.workQueueHidden && isActive && canManageCandidate(candidate);
+                  const canSelectForQueue = isActive && canManageCandidate(candidate);
                   const isAlreadyInQueue = !candidate.workQueueHidden && isActive;
                   const isSelectedForQueue = selectedQueueCandidateSet.has(candidate.id);
                   return (
@@ -1130,17 +1131,15 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       <td className="lead-candidate-select-column">
                         <input
                           type="checkbox"
-                          checked={isAlreadyInQueue || isSelectedForQueue}
-                          disabled={!canAddToQueue}
+                          checked={isSelectedForQueue}
+                          disabled={!canSelectForQueue}
                           onChange={() => toggleQueueCandidateSelection(candidate.id)}
                           title={isAlreadyInQueue
-                            ? 'Đã có trong Công việc cần xử lý'
+                            ? 'Đã có trong Công việc cần xử lý; có thể chọn để giao lại'
                             : !isActive
                               ? 'Dữ liệu đã kết thúc hoặc đã chuyển đổi'
-                              : canAddToQueue ? 'Chọn để đưa vào Công việc cần xử lý' : 'Bạn không phải Sale phụ trách dữ liệu này'}
-                          aria-label={isAlreadyInQueue
-                            ? `${candidate.companyName} đã có trong Công việc cần xử lý`
-                            : `Chọn ${candidate.companyName}`}
+                              : canSelectForQueue ? 'Chọn để đưa vào Công việc cần xử lý' : 'Bạn không phải Sale phụ trách dữ liệu này'}
+                          aria-label={`Chọn ${candidate.companyName}${isAlreadyInQueue ? ' (đã có trong Công việc cần xử lý)' : ''}`}
                         />
                       </td>
                       <td>
