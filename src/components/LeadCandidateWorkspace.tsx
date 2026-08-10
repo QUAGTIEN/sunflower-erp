@@ -435,32 +435,67 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     });
   };
 
-  const addSelectedCandidatesToWorkQueue = async () => {
-    const assigneeId = currentUser.role === 'admin' ? batchAssigneeId : currentUser.uid;
-    const assignee = candidateOwners.find(user => user.uid === assigneeId);
-    if (!assigneeId || !assignee) {
-      setBatchQueueError('Vui lòng chọn Sale phụ trách trước khi chuyển công việc.');
-      return;
-    }
+  const getSelectedCandidates = () => accessibleCandidates.filter(candidate => (
+    selectedQueueCandidateSet.has(candidate.id)
+    && (candidate.status === 'new' || candidate.status === 'retry')
+    && canManageCandidate(candidate)
+  ));
 
-    const candidatesToQueue = accessibleCandidates.filter(candidate => (
-      selectedQueueCandidateSet.has(candidate.id)
-      && (candidate.status === 'new' || candidate.status === 'retry')
-      && canManageCandidate(candidate)
-    ));
+  const addSelectedCandidatesToWorkQueue = async () => {
+    const candidatesToQueue = getSelectedCandidates();
     if (candidatesToQueue.length === 0) return;
 
     setSavingBatchQueue(true);
     setBatchQueueError('');
     try {
       await Promise.all(candidatesToQueue.map(candidate => {
+        if (!candidate.workQueueHidden) {
+          return Promise.resolve(true);
+        }
+        const log = buildCandidateLog(candidate, {
+          eventType: 'activity',
+          activityType: 'note',
+          description: 'Đưa vào Công việc cần xử lý'
+        });
+        return dbService.updateDocument('lead_candidates', candidate.id, {
+          schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
+          workQueueHidden: false,
+          taskStatus: 'pending',
+          taskDismissedAt: '',
+          contactLogs: prependCandidateLog(candidate, log),
+          updatedBy: currentUser.displayName
+        });
+      }));
+      setSelectedQueueCandidateIds([]);
+      setWorkspaceView('tasks');
+    } catch {
+      setBatchQueueError('Không thể chuyển một số dữ liệu sang Công việc cần xử lý. Vui lòng kiểm tra quyền Firebase và thử lại.');
+    } finally {
+      setSavingBatchQueue(false);
+    }
+  };
+
+  const assignSelectedCandidatesToSale = async () => {
+    const assignee = saleUsers.find(user => user.uid === batchAssigneeId);
+    if (!assignee) {
+      setBatchQueueError('Vui lòng chọn Sale nhận bàn giao.');
+      return;
+    }
+
+    const candidatesToAssign = getSelectedCandidates();
+    if (candidatesToAssign.length === 0) return;
+
+    setSavingBatchQueue(true);
+    setBatchQueueError('');
+    try {
+      await Promise.all(candidatesToAssign.map(candidate => {
         if (!candidate.workQueueHidden && candidate.assignedSaleId === assignee.uid) {
           return Promise.resolve(true);
         }
         const log = buildCandidateLog(candidate, {
           eventType: 'activity',
           activityType: 'note',
-          description: `Đưa vào Công việc cần xử lý · Phụ trách: ${assignee.displayName}`
+          description: `Bàn giao cho Sale · Phụ trách: ${assignee.displayName}`
         });
         return dbService.updateDocument('lead_candidates', candidate.id, {
           schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
@@ -474,9 +509,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         });
       }));
       setSelectedQueueCandidateIds([]);
-      if (currentUser.role === 'admin') setBatchAssigneeId('');
+      setBatchAssigneeId('');
+      setWorkspaceView('tasks');
     } catch {
-      setBatchQueueError('Không thể chuyển một số dữ liệu sang Công việc cần xử lý. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      setBatchQueueError('Không thể bàn giao một số dữ liệu cho Sale. Vui lòng kiểm tra quyền Firebase và thử lại.');
     } finally {
       setSavingBatchQueue(false);
     }
@@ -1085,19 +1121,24 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <strong>Đã chọn {selectedQueueCandidateIds.length} khách hàng</strong>
             <button type="button" onClick={() => { setSelectedQueueCandidateIds([]); setBatchQueueError(''); }}>Bỏ chọn</button>
           </div>
-          <div>
-            {currentUser.role === 'admin' ? (
+          <div className="lead-candidate-batch-actions">
+            <button type="button" className="btn btn-primary" onClick={addSelectedCandidatesToWorkQueue} disabled={savingBatchQueue}>
+              <ListPlus size={14} /> {savingBatchQueue ? 'Đang xử lý...' : 'Đưa vào Công việc cần xử lý'}
+            </button>
+            {currentUser.role === 'admin' && (
+              <div className="lead-candidate-batch-assignment">
               <label>
-                <span>Giao cho</span>
+                <span>Bàn giao cho Sale</span>
                 <select value={batchAssigneeId} onChange={event => { setBatchAssigneeId(event.target.value); setBatchQueueError(''); }}>
-                  <option value="">Chọn Sale phụ trách</option>
+                  <option value="">Chọn Sale nhận việc</option>
                   {saleUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
                 </select>
               </label>
-            ) : <span>Chuyển vào công việc của bạn</span>}
-            <button type="button" className="btn btn-primary" onClick={addSelectedCandidatesToWorkQueue} disabled={savingBatchQueue || (currentUser.role === 'admin' && !batchAssigneeId)}>
-              <ListPlus size={14} /> {savingBatchQueue ? 'Đang chuyển...' : 'Đưa vào Công việc cần xử lý'}
-            </button>
+              <button type="button" className="btn lead-candidate-assign-button" onClick={assignSelectedCandidatesToSale} disabled={savingBatchQueue || !batchAssigneeId}>
+                <UserRoundSearch size={14} /> Bàn giao
+              </button>
+              </div>
+            )}
           </div>
           {batchQueueError && <p><AlertCircle size={13} /> {batchQueueError}</p>}
         </section>
