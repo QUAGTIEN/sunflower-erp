@@ -177,6 +177,7 @@ export const LeadFilterAdminModal: React.FC<{
   });
   const [optionLines, setOptionLines] = useState('');
   const [provinceAreaLines, setProvinceAreaLines] = useState<Record<string, string>>({});
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -225,6 +226,7 @@ export const LeadFilterAdminModal: React.FC<{
     });
     setOptionLines('');
     setProvinceAreaLines({});
+    setSelectedProvinceId('');
   };
 
   const startEdit = (definition: LeadFilterDefinition) => {
@@ -242,6 +244,11 @@ export const LeadFilterAdminModal: React.FC<{
       province.id,
       (province.children || []).filter(child => child.active).map(child => child.label).join('\n')
     ])));
+    setSelectedProvinceId(definition.id === LEAD_FILTER_IDS.province
+      ? definition.options.find(province => province.active && (province.children || []).some(child => child.active))?.id
+        || definition.options.find(province => province.active)?.id
+        || ''
+      : '');
   };
 
   const updateOptionLines = (value: string) => {
@@ -325,6 +332,15 @@ export const LeadFilterAdminModal: React.FC<{
     if (saved && editingId === definition.id) setEditingId('');
   };
 
+  const activeProvinceOptions = draft.id === LEAD_FILTER_IDS.province
+    ? draft.options.filter(optionItem => optionItem.active)
+    : [];
+  const selectedProvince = activeProvinceOptions.find(province => province.id === selectedProvinceId)
+    || activeProvinceOptions[0];
+  const configuredProvinceCount = activeProvinceOptions.filter(province => (
+    (province.children || []).some(child => child.active)
+  )).length;
+
   return (
     <div className="modal-overlay">
       <div className="modal-content lead-config-modal">
@@ -362,24 +378,36 @@ export const LeadFilterAdminModal: React.FC<{
                     <label><span>Tên bộ lọc *</span><input value={draft.name} onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))} /></label>
                     <label><span>Cách lựa chọn</span><select value={draft.type} onChange={event => setDraft(previous => ({ ...previous, type: event.target.value as LeadCustomFieldType }))}><option value="single_select">Chọn một</option><option value="multi_select">Chọn nhiều</option></select></label>
                       <>
-                        <label><span>Các lựa chọn (mỗi dòng một lựa chọn)</span><textarea rows={8} value={optionLines} onChange={event => updateOptionLines(event.target.value)} /></label>
+                        <label><span>Các lựa chọn (mỗi dòng một lựa chọn)</span><textarea rows={draft.id === LEAD_FILTER_IDS.province ? 6 : 8} value={optionLines} onChange={event => updateOptionLines(event.target.value)} /></label>
                         {draft.id === LEAD_FILTER_IDS.province && (
                           <div className="lead-province-area-editor">
-                            <div><strong>Vùng/KCN bên trong từng tỉnh</strong><span>Mở một tỉnh và nhập mỗi vùng trên một dòng. Có thể để trống nếu chưa cần phân chia.</span></div>
-                            {draft.options.filter(item => item.active).map(province => (
-                              <details key={province.id}>
-                                <summary><span>{province.label}</span><small>{(province.children || []).filter(child => child.active).length} vùng</small></summary>
+                            <div className="lead-province-area-editor__heading">
+                              <div><strong>Phân chia vùng/KCN theo tỉnh</strong><span>Chọn một tỉnh rồi nhập các vùng cần sử dụng. Có thể bỏ qua nếu không cần phân chia chi tiết.</span></div>
+                              <small>{configuredProvinceCount}/{activeProvinceOptions.length} tỉnh đã cấu hình</small>
+                            </div>
+                            <label className="lead-province-area-editor__picker">
+                              <span>Tỉnh/thành cần cấu hình</span>
+                              <select value={selectedProvince?.id || ''} onChange={event => setSelectedProvinceId(event.target.value)}>
+                                {activeProvinceOptions.map(province => {
+                                  const areaCount = (province.children || []).filter(child => child.active).length;
+                                  return <option key={province.id} value={province.id}>{province.label}{areaCount > 0 ? ` · ${areaCount} vùng/KCN` : ''}</option>;
+                                })}
+                              </select>
+                            </label>
+                            {selectedProvince && (
+                              <div className="lead-province-area-editor__workspace">
+                                <div><strong>{selectedProvince.label}</strong><span>{(selectedProvince.children || []).filter(child => child.active).length} vùng/KCN</span></div>
                                 <label>
-                                  <span>Các vùng/KCN thuộc {province.label}</span>
+                                  <span>Mỗi dòng là một vùng, khu vực hoặc khu công nghiệp</span>
                                   <textarea
-                                    rows={4}
-                                    value={provinceAreaLines[province.id] ?? (province.children || []).filter(child => child.active).map(child => child.label).join('\n')}
-                                    onChange={event => updateProvinceAreaLines(province.id, event.target.value)}
+                                    rows={5}
+                                    value={provinceAreaLines[selectedProvince.id] ?? (selectedProvince.children || []).filter(child => child.active).map(child => child.label).join('\n')}
+                                    onChange={event => updateProvinceAreaLines(selectedProvince.id, event.target.value)}
                                     placeholder={`Ví dụ:\nKCN A\nKCN B\nKhu vực C`}
                                   />
                                 </label>
-                              </details>
-                            ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </>
