@@ -239,11 +239,13 @@ export const mergeLeadFilterDefinitions = (stored: LeadFilterDefinition[] = []):
       ...defaultField,
       ...savedField,
       id: defaultField.id,
+      showInQuickFilter: true,
       options: Array.isArray(savedField.options) ? savedField.options : defaultField.options
     };
   });
   const customDefinitions = stored.filter(field => !defaultIds.has(field.id)).map(field => ({
     ...field,
+    showInQuickFilter: true,
     options: Array.isArray(field.options) ? field.options : []
   }));
 

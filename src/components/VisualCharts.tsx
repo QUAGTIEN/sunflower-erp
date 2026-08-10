@@ -1,4 +1,5 @@
 import React from 'react';
+import './VisualCharts.css';
 
 // ----------------------------------------------------
 // 1. VERTICAL BAR CHART (Biểu đồ Cột dọc)
@@ -214,24 +215,18 @@ export const HorizontalBarChart: React.FC<HorizontalBarChartProps> = ({ data, va
   const maxVal = Math.max(...data.map(d => d.value), 1);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', padding: '10px 0' }}>
+    <div className="horizontal-bar-chart">
       {data.map((item, idx) => {
         const percentWidth = (item.value / maxVal) * 100;
         return (
-          <div key={idx} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 80px', alignItems: 'center', gap: '12px', fontSize: '13px' }}>
+          <div key={idx} className="horizontal-bar-chart__row">
             <span 
-              style={{ 
-                fontWeight: 600, 
-                color: 'var(--color-text-main)', 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis', 
-                whiteSpace: 'nowrap' 
-              }}
+              className="horizontal-bar-chart__label"
               title={item.label}
             >
               {item.label}
             </span>
-            <div style={{ width: '100%', height: '18px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+            <div className="horizontal-bar-chart__track">
               <div 
                 style={{ 
                   width: `${percentWidth}%`, 
@@ -242,7 +237,7 @@ export const HorizontalBarChart: React.FC<HorizontalBarChartProps> = ({ data, va
                 }} 
               />
             </div>
-            <span style={{ fontWeight: 700, color: 'var(--color-primary)', textAlign: 'right' }}>
+            <span className="horizontal-bar-chart__value">
               {item.value.toLocaleString()}{valueSuffix}
             </span>
           </div>

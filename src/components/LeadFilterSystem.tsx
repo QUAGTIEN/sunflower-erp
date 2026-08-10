@@ -279,7 +279,8 @@ export const LeadFilterAdminModal: React.FC<{
     const saved = await persistDefinition({
       ...draft,
       name: draft.name.trim(),
-      group: draft.group || 'Phân loại khách hàng tiềm năng'
+      group: draft.group || 'Phân loại khách hàng tiềm năng',
+      showInQuickFilter: true
     });
     if (saved) setEditingId('');
   };
@@ -328,7 +329,7 @@ export const LeadFilterAdminModal: React.FC<{
     <div className="modal-overlay">
       <div className="modal-content lead-config-modal">
         <div className="modal-header">
-          <div><strong>CẤU HÌNH BỘ LỌC LEAD</strong><span>Admin có thể tạo thêm, sắp xếp và ngừng sử dụng bộ lọc mà không làm mất dữ liệu cũ.</span></div>
+          <div><strong>CẤU HÌNH BỘ LỌC LEAD</strong><span>Admin có thể tạo, chỉnh sửa và ngừng sử dụng bộ lọc mà không làm mất dữ liệu cũ.</span></div>
           <button type="button" className="btn btn-sm btn-outline" onClick={onClose}><X size={15} /> Đóng</button>
         </div>
         <div className="modal-body">
@@ -339,7 +340,7 @@ export const LeadFilterAdminModal: React.FC<{
                   <button type="button" className="btn btn-sm btn-primary" onClick={startCreate}><Plus size={13} /> Thêm bộ lọc</button>
                 </div>
                 {definitions.map(definition => (
-                  <div key={definition.id} className={`lead-config-item ${!definition.active ? 'is-inactive' : ''}`}>
+                  <div key={definition.id} className={`lead-config-item ${!definition.active ? 'is-inactive' : ''} ${editingId === definition.id ? 'is-editing' : ''}`}>
                     <div>
                       <strong>{definition.name}</strong>
                       <span>{definition.id === LEAD_FILTER_IDS.province
@@ -360,12 +361,8 @@ export const LeadFilterAdminModal: React.FC<{
                     <h3>{definitions.some(item => item.id === editingId) ? 'Chỉnh sửa bộ lọc' : 'Tạo bộ lọc mới'}</h3>
                     <label><span>Tên bộ lọc *</span><input value={draft.name} onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))} /></label>
                     <label><span>Cách lựa chọn</span><select value={draft.type} onChange={event => setDraft(previous => ({ ...previous, type: event.target.value as LeadCustomFieldType }))}><option value="single_select">Chọn một</option><option value="multi_select">Chọn nhiều</option></select></label>
-                    <label><span>Thứ tự hiển thị</span><input type="number" value={draft.order} onChange={event => setDraft(previous => ({ ...previous, order: Number(event.target.value) }))} /></label>
                       <>
                         <label><span>Các lựa chọn (mỗi dòng một lựa chọn)</span><textarea rows={8} value={optionLines} onChange={event => updateOptionLines(event.target.value)} /></label>
-                        <div className="lead-option-colors">
-                          {draft.options.filter(item => item.active).map(item => <label key={item.id}><input type="color" value={item.color} onChange={event => setDraft(previous => ({ ...previous, options: previous.options.map(optionItem => optionItem.id === item.id ? { ...optionItem, color: event.target.value } : optionItem) }))} /><span>{item.label}</span></label>)}
-                        </div>
                         {draft.id === LEAD_FILTER_IDS.province && (
                           <div className="lead-province-area-editor">
                             <div><strong>Vùng/KCN bên trong từng tỉnh</strong><span>Mở một tỉnh và nhập mỗi vùng trên một dòng. Có thể để trống nếu chưa cần phân chia.</span></div>
@@ -386,12 +383,7 @@ export const LeadFilterAdminModal: React.FC<{
                           </div>
                         )}
                       </>
-                    <div className="lead-config-checks">
-                      <label><input type="checkbox" checked={draft.saleEditable} onChange={event => setDraft(previous => ({ ...previous, saleEditable: event.target.checked }))} /> Sale được chỉnh sửa</label>
-                      <label><input type="checkbox" checked={draft.showInQuickFilter} onChange={event => setDraft(previous => ({ ...previous, showInQuickFilter: event.target.checked }))} /> Hiển thị trên thanh lọc nhanh</label>
-                      <label><input type="checkbox" checked={draft.reportable} onChange={event => setDraft(previous => ({ ...previous, reportable: event.target.checked }))} /> Dùng trong báo cáo</label>
-                      <label><input type="checkbox" checked={draft.active} onChange={event => setDraft(previous => ({ ...previous, active: event.target.checked }))} /> Đang sử dụng</label>
-                    </div>
+                    <label className="lead-config-permission"><input type="checkbox" checked={draft.saleEditable} onChange={event => setDraft(previous => ({ ...previous, saleEditable: event.target.checked }))} /><span><strong>Cho phép Sale cập nhật</strong><small>Tắt tùy chọn này nếu tiêu chí chỉ do Admin quản lý.</small></span></label>
                     <div className="lead-config-editor__actions">
                       <button type="button" className="btn btn-outline" onClick={() => setEditingId('')}>Hủy</button>
                       <button type="button" className="btn btn-primary" disabled={saving} onClick={saveDraft}><Save size={14} /> {saving ? 'Đang lưu...' : 'Lưu bộ lọc'}</button>
@@ -399,7 +391,7 @@ export const LeadFilterAdminModal: React.FC<{
                     {saveError && <p className="lead-config-error" role="alert">{saveError}</p>}
                   </>
                 ) : (
-                  <div className="lead-config-placeholder"><Settings2 size={34} /><strong>Chọn một bộ lọc để chỉnh sửa</strong><span>Có thể đổi tên, lựa chọn, màu sắc và thứ tự hiển thị.</span></div>
+                  <div className="lead-config-placeholder"><Settings2 size={34} /><strong>Chọn một bộ lọc để chỉnh sửa</strong><span>Có thể đổi tên, kiểu lựa chọn và danh sách giá trị sử dụng.</span></div>
                 )}
               </div>
             </div>

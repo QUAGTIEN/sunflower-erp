@@ -2474,33 +2474,6 @@
   background: #fff;
 }
 
-.lead-option-colors {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  max-height: 130px;
-  margin-bottom: 10px;
-  padding: 8px;
-  overflow-y: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 7px;
-  background: #fff;
-}
-
-.lead-option-colors label {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #475569;
-  font-size: 11.5px;
-}
-
-.lead-option-colors input {
-  width: 28px;
-  height: 24px;
-  padding: 1px;
-}
-
 .lead-province-area-editor {
   display: grid;
   gap: 6px;
@@ -2579,6 +2552,38 @@
   gap: 6px;
   color: #475569;
   font-size: 11.5px;
+}
+
+.lead-config-permission {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.lead-config-permission > input {
+  margin-top: 2px;
+}
+
+.lead-config-permission > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.lead-config-permission strong {
+  color: #334155;
+  font-size: 11.5px;
+}
+
+.lead-config-permission small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
 }
 
 .lead-config-editor__actions {

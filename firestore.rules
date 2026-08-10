@@ -153,6 +153,11 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /customer_filter_definitions/{documentId} {
+      allow read: if isActive();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /lead_profile_field_definitions/{documentId} {
       allow read: if isActive();
       allow create, update, delete: if isAdmin();

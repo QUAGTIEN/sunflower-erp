@@ -3,6 +3,7 @@ import { dbService } from '../services/firebaseService';
 import { useLanguage } from '../context/LanguageContext';
 import { HorizontalBarChart } from '../components/VisualCharts';
 import { CustomerOnboardingItems } from '../components/CustomerOnboardingItems';
+import { CustomerFilterAdminModal } from '../components/CustomerFilterAdminModal';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -38,6 +39,11 @@ import {
   type PODiscountType
 } from '../domain/poFinancials';
 import { VIETNAM_PROVINCES_2026 } from '../domain/leadFilterConfig';
+import {
+  CUSTOMER_FILTER_IDS,
+  mergeCustomerFilterDefinitions,
+  type CustomerFilterDefinition
+} from '../domain/customerFilterConfig';
 import '../components/CustomerHistory.css';
 import { 
   Plus, 
@@ -59,7 +65,8 @@ import {
   ShoppingBag,
   Users,
   ChevronDown,
-  Layers3
+  Layers3,
+  Settings2
 } from 'lucide-react';
 
 const CUSTOMER_FILE_FOLDERS = [
@@ -213,6 +220,8 @@ export const Crm: React.FC<CrmProps> = ({
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
   const [productFilters, setProductFilters] = useState<string[]>([]);
   const [showListFilters, setShowListFilters] = useState(false);
+  const [showCustomerFilterConfig, setShowCustomerFilterConfig] = useState(false);
+  const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'samples'>('po');
   const [expandedMaterialsCustomerId, setExpandedMaterialsCustomerId] = useState('');
@@ -248,6 +257,22 @@ export const Crm: React.FC<CrmProps> = ({
       unsubReqs();
     };
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = dbService.subscribeCollection('customer_filter_definitions', data => {
+      setStoredCustomerFilterDefinitions(data as CustomerFilterDefinition[]);
+    });
+    return unsubscribe;
+  }, []);
+
+  const customerFilterDefinitions = useMemo(
+    () => mergeCustomerFilterDefinitions(storedCustomerFilterDefinitions),
+    [storedCustomerFilterDefinitions]
+  );
+  const customerFilterById = useMemo(
+    () => new Map(customerFilterDefinitions.map(definition => [definition.id, definition])),
+    [customerFilterDefinitions]
+  );
 
   const handleWindDirectionFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1650,7 +1675,16 @@ export const Crm: React.FC<CrmProps> = ({
     { value: 'this_year', label: `Có PO trong năm ${currentYear}` },
     { value: 'no_orders', label: 'Chưa có PO' }
   ];
-  const activeFilterCount = saleFilters.length + rankFilters.length + timeFilters.length + provinceFilters.length + productFilters.length;
+  const saleFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.sale)!;
+  const rankFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.rank)!;
+  const provinceFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.province)!;
+  const poTimeFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.poTime)!;
+  const productFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.product)!;
+  const activeFilterCount = (saleFilterDefinition.active ? saleFilters.length : 0)
+    + (rankFilterDefinition.active ? rankFilters.length : 0)
+    + (poTimeFilterDefinition.active ? timeFilters.length : 0)
+    + (provinceFilterDefinition.active ? provinceFilters.length : 0)
+    + (productFilterDefinition.active ? productFilters.length : 0);
   const resetCrmListFilters = () => {
     setSearchTerm('');
     setSaleFilters([]);
@@ -1659,32 +1693,44 @@ export const Crm: React.FC<CrmProps> = ({
     setProvinceFilters([]);
     setProductFilters([]);
   };
+  const handleSaveCustomerFilterDefinition = async (definition: CustomerFilterDefinition) => {
+    const savedDefinition = {
+      ...definition,
+      updatedBy: currentUser.displayName,
+      updatedAt: new Date().toISOString()
+    };
+    await dbService.addDocument('customer_filter_definitions', savedDefinition);
+    setStoredCustomerFilterDefinitions(previous => [
+      ...previous.filter(item => item.id !== definition.id),
+      savedDefinition
+    ]);
+  };
   const crmFilterChips = [
-    ...saleFilters.map(value => ({
+    ...(saleFilterDefinition.active ? saleFilters.map(value => ({
       id: `sale-${value}`,
-      label: `Sale: ${saleFilterOptions.find(option => option.value === value)?.label || value}`,
+      label: `${saleFilterDefinition.name}: ${saleFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setSaleFilters(previous => previous.filter(item => item !== value))
-    })),
-    ...rankFilters.map(value => ({
+    })) : []),
+    ...(rankFilterDefinition.active ? rankFilters.map(value => ({
       id: `rank-${value}`,
-      label: rankFilterOptions.find(option => option.value === value)?.label || value,
+      label: `${rankFilterDefinition.name}: ${rankFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setRankFilters(previous => previous.filter(item => item !== value))
-    })),
-    ...timeFilters.map(value => ({
+    })) : []),
+    ...(poTimeFilterDefinition.active ? timeFilters.map(value => ({
       id: `time-${value}`,
-      label: timeFilterOptions.find(option => option.value === value)?.label || value,
+      label: `${poTimeFilterDefinition.name}: ${timeFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setTimeFilters(previous => previous.filter(item => item !== value))
-    })),
-    ...provinceFilters.map(value => ({
+    })) : []),
+    ...(provinceFilterDefinition.active ? provinceFilters.map(value => ({
       id: `province-${value}`,
-      label: provinceFilterOptions.find(option => option.value === value)?.label || value,
+      label: `${provinceFilterDefinition.name}: ${provinceFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setProvinceFilters(previous => previous.filter(item => item !== value))
-    })),
-    ...productFilters.map(value => ({
+    })) : []),
+    ...(productFilterDefinition.active ? productFilters.map(value => ({
       id: `product-${value}`,
-      label: productFilterOptions.find(option => option.value === value)?.label || value,
+      label: `${productFilterDefinition.name}: ${productFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setProductFilters(previous => previous.filter(item => item !== value))
-    }))
+    })) : [])
   ];
 
   const normalizedSearch = searchTerm.trim().toLocaleLowerCase('vi-VN');
@@ -1704,19 +1750,19 @@ export const Crm: React.FC<CrmProps> = ({
         ...material.specifications
       ])
     ].some(value => String(value || '').toLocaleLowerCase('vi-VN').includes(normalizedSearch));
-    const matchesSale = saleFilters.length === 0 || saleFilters.some(value => (
+    const matchesSale = !saleFilterDefinition.active || saleFilters.length === 0 || saleFilters.some(value => (
       value === UNASSIGNED_FILTER_VALUE ? !customer.assignedSaleId : customer.assignedSaleId === value
     ));
-    const matchesRank = rankFilters.length === 0 || rankFilters.some(value => (
+    const matchesRank = !rankFilterDefinition.active || rankFilters.length === 0 || rankFilters.some(value => (
       value === UNASSIGNED_FILTER_VALUE ? !customer.customerRank : customer.customerRank === value
     ));
     const customerProvince = provinceByCustomerId.get(customer.id) || '';
-    const matchesProvince = provinceFilters.length === 0 || provinceFilters.some(value => (
+    const matchesProvince = !provinceFilterDefinition.active || provinceFilters.length === 0 || provinceFilters.some(value => (
       value === UNASSIGNED_FILTER_VALUE ? !customerProvince : customerProvince === value
     ));
     const customerProductKeys = productKeysByCustomerId.get(customer.id) || new Set<string>();
-    const matchesProduct = productFilters.length === 0 || productFilters.some(value => customerProductKeys.has(value));
-    const matchesTime = timeFilters.length === 0 || timeFilters.some(value => {
+    const matchesProduct = !productFilterDefinition.active || productFilters.length === 0 || productFilters.some(value => customerProductKeys.has(value));
+    const matchesTime = !poTimeFilterDefinition.active || timeFilters.length === 0 || timeFilters.some(value => {
       if (value === 'no_orders') return customerOrders.length === 0;
       return customerOrders.some(order => {
         const orderDate = parseValidDate(order.orderDate || order.createdAt);
@@ -2145,22 +2191,37 @@ export const Crm: React.FC<CrmProps> = ({
                   activeCount={activeFilterCount}
                   onClose={() => setShowListFilters(false)}
                   onReset={resetCrmListFilters}
+                  headerAction={currentUser.role === 'admin' ? (
+                    <button type="button" className="btn btn-outline" onClick={() => { setShowListFilters(false); setShowCustomerFilterConfig(true); }}>
+                      <Settings2 size={14} /> Quản lý tiêu chí lọc
+                    </button>
+                  ) : undefined}
                 >
-                  <DataFilterSection title="Sale phụ trách" description="Có thể chọn đồng thời nhiều Sale." selectedCount={saleFilters.length}>
-                    <DataFilterCheckboxGroup options={saleFilterOptions} selectedValues={saleFilters} onChange={setSaleFilters} searchable />
-                  </DataFilterSection>
-                  <DataFilterSection title="Hạng khách hàng" description="Kết hợp nhiều hạng trong cùng một danh sách." selectedCount={rankFilters.length}>
-                    <DataFilterCheckboxGroup options={rankFilterOptions} selectedValues={rankFilters} onChange={setRankFilters} />
-                  </DataFilterSection>
-                  <DataFilterSection title="Tỉnh/thành" description="Tỉnh/thành được lấy từ hồ sơ Lead hoặc địa chỉ khách hàng." selectedCount={provinceFilters.length}>
-                    <DataFilterCheckboxGroup options={provinceFilterOptions} selectedValues={provinceFilters} onChange={setProvinceFilters} searchable />
-                  </DataFilterSection>
-                  <DataFilterSection title="Thời gian phát sinh PO" description="Theo dõi khách đã mua gần đây hoặc chưa phát sinh PO." selectedCount={timeFilters.length}>
-                    <DataFilterCheckboxGroup options={timeFilterOptions} selectedValues={timeFilters} onChange={values => setTimeFilters(values as CrmTimeFilter[])} />
-                  </DataFilterSection>
-                  <DataFilterSection title="Sản phẩm đã mua" description="Có thể chọn đồng thời nhiều mã hoặc tên sản phẩm." selectedCount={productFilters.length}>
-                    <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={setProductFilters} searchable />
-                  </DataFilterSection>
+                  {saleFilterDefinition.active && (
+                    <DataFilterSection title={saleFilterDefinition.name} description={saleFilterDefinition.description} selectedCount={saleFilters.length}>
+                      <DataFilterCheckboxGroup options={saleFilterOptions} selectedValues={saleFilters} onChange={setSaleFilters} searchable />
+                    </DataFilterSection>
+                  )}
+                  {rankFilterDefinition.active && (
+                    <DataFilterSection title={rankFilterDefinition.name} description={rankFilterDefinition.description} selectedCount={rankFilters.length}>
+                      <DataFilterCheckboxGroup options={rankFilterOptions} selectedValues={rankFilters} onChange={setRankFilters} />
+                    </DataFilterSection>
+                  )}
+                  {provinceFilterDefinition.active && (
+                    <DataFilterSection title={provinceFilterDefinition.name} description={provinceFilterDefinition.description} selectedCount={provinceFilters.length}>
+                      <DataFilterCheckboxGroup options={provinceFilterOptions} selectedValues={provinceFilters} onChange={setProvinceFilters} searchable />
+                    </DataFilterSection>
+                  )}
+                  {poTimeFilterDefinition.active && (
+                    <DataFilterSection title={poTimeFilterDefinition.name} description={poTimeFilterDefinition.description} selectedCount={timeFilters.length}>
+                      <DataFilterCheckboxGroup options={timeFilterOptions} selectedValues={timeFilters} onChange={values => setTimeFilters(values as CrmTimeFilter[])} />
+                    </DataFilterSection>
+                  )}
+                  {productFilterDefinition.active && (
+                    <DataFilterSection title={productFilterDefinition.name} description={productFilterDefinition.description} selectedCount={productFilters.length}>
+                      <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={setProductFilters} searchable />
+                    </DataFilterSection>
+                  )}
                 </DataFilterPanel>
 
                 <div className="table-container crm-customer-table-wrap">
@@ -3756,6 +3817,14 @@ export const Crm: React.FC<CrmProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {showCustomerFilterConfig && currentUser.role === 'admin' && (
+        <CustomerFilterAdminModal
+          definitions={customerFilterDefinitions}
+          onClose={() => setShowCustomerFilterConfig(false)}
+          onSaveDefinition={handleSaveCustomerFilterDefinition}
+        />
       )}
     </div>
   );
