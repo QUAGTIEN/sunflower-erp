@@ -42,10 +42,13 @@ import {
 import {
   findLeadFilterOption,
   findLeadFilterOptionId,
+  findLeadFilterOptionPathInOptions,
   findLeadFilterParentOption,
+  flattenLeadFilterOptions,
   getLeadFilterValues,
   LEAD_FILTER_IDS,
   mergeLeadFilterDefinitions,
+  compactLeadFilterDefinitionForStorage,
 } from '../domain/leadFilterConfig';
 import {
   dbService,
@@ -164,12 +167,8 @@ const updateLeadFilterValues = (
   let nextFieldValues: string[];
 
   if (field.id === LEAD_FILTER_IDS.province) {
-    const province = field.options.find(option => (
-      option.id === value || (option.children || []).some(child => child.id === value)
-    ));
-    nextFieldValues = value && province
-      ? value === province.id ? [province.id] : [province.id, value]
-      : [];
+    const selectedPath = value ? findLeadFilterOptionPathInOptions(field.options, value) : [];
+    nextFieldValues = selectedPath.map(option => option.id);
   } else if (field.type === 'multi_select') {
     nextFieldValues = checked
       ? Array.from(new Set([...previousFieldValues, value]))
@@ -294,13 +293,14 @@ export const Leads: React.FC<LeadsProps> = ({
       const activeOptions = field.options.filter(option => option.active);
       if (field.id !== LEAD_FILTER_IDS.province) return [field.id, activeOptions];
 
-      return [field.id, activeOptions.flatMap(province => {
-        const activeAreasWithData = (province.children || []).filter(area => (
-          area.active && provinceValuesWithData.has(area.id)
-        ));
-        const provinceHasData = provinceValuesWithData.has(province.id) || activeAreasWithData.length > 0;
-        return provinceHasData ? [{ ...province, children: activeAreasWithData }] : [];
-      })];
+      const pruneOptionsWithData = (options: typeof activeOptions): typeof activeOptions => options.flatMap(option => {
+        const activeChildren = (option.children || []).filter(child => child.active);
+        const childrenWithData = pruneOptionsWithData(activeChildren);
+        return provinceValuesWithData.has(option.id) || childrenWithData.length > 0
+          ? [{ ...option, children: childrenWithData }]
+          : [];
+      });
+      return [field.id, pruneOptionsWithData(activeOptions)];
     }));
   }, [accessibleLeads, filterDefinitions]);
 
@@ -758,8 +758,9 @@ export const Leads: React.FC<LeadsProps> = ({
   };
 
   const handleSaveFilterDefinition = async (definition: LeadFilterDefinition) => {
+    const storedDefinition = compactLeadFilterDefinitionForStorage(definition);
     await dbService.addDocument('lead_filter_definitions', {
-      ...definition,
+      ...storedDefinition,
       updatedBy: currentUser.displayName,
       updatedAt: new Date().toISOString()
     });
@@ -1192,16 +1193,19 @@ export const Leads: React.FC<LeadsProps> = ({
             ) : undefined}
           >
             {filterDefinitions.filter(field => field.active && field.showInQuickFilter).map(field => {
-              const options = (quickFilterOptionsByField[field.id] || []).flatMap(option => [
-                { value: option.id, label: option.label },
-                ...(field.id === LEAD_FILTER_IDS.province ? (option.children || []).filter(area => area.active).map(area => ({
-                  value: area.id,
-                  label: area.label,
-                  description: option.label
-                })) : [])
-              ]);
+              const fieldOptions = quickFilterOptionsByField[field.id] || [];
+              const options = field.id === LEAD_FILTER_IDS.province
+                ? fieldOptions.flatMap(province => flattenLeadFilterOptions([province]).map(option => {
+                  const path = findLeadFilterOptionPathInOptions([province], option.id);
+                  return {
+                    value: option.id,
+                    label: option.label,
+                    description: path.slice(0, -1).map(parent => parent.label).join(' · ')
+                  };
+                }))
+                : fieldOptions.map(option => ({ value: option.id, label: option.label }));
               return (
-                <DataFilterSection key={field.id} title={field.name} selectedCount={(dynamicFilters[field.id] || []).length} description={field.id === LEAD_FILTER_IDS.province ? 'Có thể chọn nhiều tỉnh hoặc khu vực/KCN trực thuộc.' : 'Có thể chọn đồng thời nhiều giá trị.'}>
+                <DataFilterSection key={field.id} title={field.name} selectedCount={(dynamicFilters[field.id] || []).length} description={field.id === LEAD_FILTER_IDS.province ? 'Lọc theo tỉnh/thành, phường/xã hoặc vùng/KCN trực thuộc.' : 'Có thể chọn đồng thời nhiều giá trị.'}>
                   <DataFilterCheckboxGroup
                     options={options}
                     selectedValues={dynamicFilters[field.id] || []}

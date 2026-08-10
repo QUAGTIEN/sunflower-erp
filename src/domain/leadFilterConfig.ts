@@ -1,4 +1,5 @@
 import type { LeadFilterDefinition, LeadFilterOption, LeadRecord, LeadStage } from './crmModels';
+import { VIETNAM_ADMINISTRATIVE_UNITS } from '../data/vietnamAdministrativeUnits';
 
 const OPTION_COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626', '#4f46e5', '#64748b'];
 
@@ -20,14 +21,19 @@ export function slugifyLeadFilterId(value: string) {
     .replace(/^_+|_+$/g, '');
 }
 
-export const VIETNAM_PROVINCES_2026 = [
-  'An Giang', 'Bắc Ninh', 'Cà Mau', 'Cao Bằng', 'Cần Thơ', 'Đà Nẵng', 'Đắk Lắk',
-  'Điện Biên', 'Đồng Nai', 'Đồng Tháp', 'Gia Lai', 'Hà Nội', 'Hà Tĩnh', 'Hải Phòng',
-  'Huế', 'Hưng Yên', 'Khánh Hòa', 'Lai Châu', 'Lâm Đồng', 'Lạng Sơn', 'Lào Cai',
-  'Nghệ An', 'Ninh Bình', 'Phú Thọ', 'Quảng Ngãi', 'Quảng Ninh', 'Quảng Trị',
-  'Sơn La', 'Tây Ninh', 'Thái Nguyên', 'Thanh Hóa', 'TP. Hồ Chí Minh', 'Tuyên Quang',
-  'Vĩnh Long'
-];
+export const VIETNAM_PROVINCES_2026 = VIETNAM_ADMINISTRATIVE_UNITS.map(province => province.label);
+
+const SYSTEM_PROVINCE_OPTIONS: LeadFilterOption[] = VIETNAM_ADMINISTRATIVE_UNITS.map((province, provinceIndex) => ({
+  ...option(province.id, province.label, provinceIndex),
+  kind: 'province',
+  system: true,
+  children: province.wards.map((ward, wardIndex) => ({
+    ...option(ward.id, ward.label, wardIndex),
+    kind: 'ward',
+    system: true,
+    children: []
+  }))
+}));
 
 export const LEAD_FILTER_IDS = {
   companySize: 'company_size',
@@ -64,7 +70,7 @@ export const DEFAULT_LEAD_FILTER_DEFINITIONS: LeadFilterDefinition[] = [
     reportable: true,
     saleEditable: true,
     order: 40,
-    options: VIETNAM_PROVINCES_2026.map((label, index) => option(slugifyLeadFilterId(label), label, index))
+    options: SYSTEM_PROVINCE_OPTIONS
   },
   {
     id: LEAD_FILTER_IDS.productNeed,
@@ -130,15 +136,41 @@ export const DEFAULT_LEAD_FILTER_DEFINITIONS: LeadFilterDefinition[] = [
   }
 ];
 
+export const findLeadFilterOptionPathInOptions = (
+  options: LeadFilterOption[],
+  optionId: string,
+  parentPath: LeadFilterOption[] = []
+): LeadFilterOption[] => {
+  for (const currentOption of options) {
+    const currentPath = [...parentPath, currentOption];
+    if (currentOption.id === optionId) return currentPath;
+    const childPath = findLeadFilterOptionPathInOptions(currentOption.children || [], optionId, currentPath);
+    if (childPath.length > 0) return childPath;
+  }
+  return [];
+};
+
+export const flattenLeadFilterOptions = (options: LeadFilterOption[]): LeadFilterOption[] => (
+  options.flatMap(currentOption => [currentOption, ...flattenLeadFilterOptions(currentOption.children || [])])
+);
+
+export const findLeadFilterOptionPath = (
+  definitions: LeadFilterDefinition[],
+  fieldId: string,
+  optionId: string
+): LeadFilterOption[] => {
+  const field = definitions.find(definition => definition.id === fieldId);
+  if (!field || !optionId) return [];
+  return findLeadFilterOptionPathInOptions(field.options, optionId) || [];
+};
+
 export const findLeadFilterOption = (
   definitions: LeadFilterDefinition[],
   fieldId: string,
   optionId: string
 ) => {
-  const field = definitions.find(definition => definition.id === fieldId);
-  if (!field) return undefined;
-  return field.options.find(item => item.id === optionId)
-    || field.options.flatMap(item => item.children || []).find(item => item.id === optionId);
+  const path = findLeadFilterOptionPath(definitions, fieldId, optionId);
+  return path.at(-1);
 };
 
 export const findLeadFilterParentOption = (
@@ -146,11 +178,7 @@ export const findLeadFilterParentOption = (
   fieldId: string,
   optionId: string
 ) => {
-  const field = definitions.find(definition => definition.id === fieldId);
-  if (!field) return undefined;
-  return field.options.find(item => (
-    item.id === optionId || (item.children || []).some(child => child.id === optionId)
-  ));
+  return findLeadFilterOptionPath(definitions, fieldId, optionId)[0];
 };
 
 export const findLeadFilterOptionId = (
@@ -161,7 +189,7 @@ export const findLeadFilterOptionId = (
   if (!labelOrId) return '';
   const normalizedValue = slugifyLeadFilterId(labelOrId);
   const field = definitions.find(definition => definition.id === fieldId);
-  const options = field?.options.flatMap(item => [item, ...(item.children || [])]) || [];
+  const options = flattenLeadFilterOptions(field?.options || []);
   return options.find(item => (
     item.id === labelOrId
     || slugifyLeadFilterId(item.id) === normalizedValue
@@ -206,12 +234,14 @@ export const getLeadFilterValues = (
     || (lead.companySize ? [lead.companySize] : []);
   const rawProvinceValues = existingValues[LEAD_FILTER_IDS.province]
     || [findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)].filter(Boolean);
-  const provinceDefinition = definitions.find(definition => definition.id === LEAD_FILTER_IDS.province);
-  const provinceFromArea = provinceDefinition?.options.find(item => (
-    (item.children || []).some(child => rawProvinceValues.includes(child.id))
+  const deepestProvinceValue = [...rawProvinceValues].reverse().find(value => (
+    findLeadFilterOptionPath(definitions, LEAD_FILTER_IDS.province, value).length > 0
   ));
-  const provinceValues = provinceFromArea && !rawProvinceValues.includes(provinceFromArea.id)
-    ? [provinceFromArea.id, ...rawProvinceValues]
+  const resolvedProvincePath = deepestProvinceValue
+    ? findLeadFilterOptionPath(definitions, LEAD_FILTER_IDS.province, deepestProvinceValue)
+    : [];
+  const provinceValues = resolvedProvincePath.length > 0
+    ? resolvedProvincePath.map(item => item.id)
     : rawProvinceValues;
   const productNeedValues = existingValues[LEAD_FILTER_IDS.productNeed]
     || existingValues.product_interest
@@ -240,7 +270,9 @@ export const mergeLeadFilterDefinitions = (stored: LeadFilterDefinition[] = []):
       ...savedField,
       id: defaultField.id,
       showInQuickFilter: true,
-      options: Array.isArray(savedField.options) ? savedField.options : defaultField.options
+      options: defaultField.id === LEAD_FILTER_IDS.province
+        ? mergeProvinceFilterOptions(Array.isArray(savedField.options) ? savedField.options : [])
+        : Array.isArray(savedField.options) ? savedField.options : defaultField.options
     };
   });
   const customDefinitions = stored.filter(field => !defaultIds.has(field.id)).map(field => ({
@@ -250,4 +282,87 @@ export const mergeLeadFilterDefinitions = (stored: LeadFilterDefinition[] = []):
   }));
 
   return [...defaultDefinitions, ...customDefinitions].sort((a, b) => a.order - b.order);
+};
+
+const mergeProvinceFilterOptions = (storedOptions: LeadFilterOption[]): LeadFilterOption[] => {
+  const matchedStoredProvinceIds = new Set<string>();
+  const mergedSystemProvinces = SYSTEM_PROVINCE_OPTIONS.map(systemProvince => {
+    const storedProvince = storedOptions.find(candidate => (
+      candidate.id === systemProvince.id
+      || slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemProvince.label)
+    ));
+    if (!storedProvince) return systemProvince;
+    matchedStoredProvinceIds.add(storedProvince.id);
+
+    const storedChildren = storedProvince.children || [];
+    const matchedStoredWardIds = new Set<string>();
+    const mergedSystemWards = (systemProvince.children || []).map(systemWard => {
+      const storedWard = storedChildren.find(candidate => (
+        candidate.kind === 'ward'
+        && (candidate.id === systemWard.id
+          || slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemWard.label))
+      ));
+      if (!storedWard) return systemWard;
+      matchedStoredWardIds.add(storedWard.id);
+      return {
+        ...systemWard,
+        ...storedWard,
+        id: systemWard.id,
+        label: systemWard.label,
+        kind: 'ward' as const,
+        system: true,
+        active: true,
+        children: (storedWard.children || []).map(region => ({
+          ...region,
+          kind: 'region' as const,
+          system: false
+        }))
+      };
+    });
+
+    const unmatchedStoredWards = storedChildren
+      .filter(child => child.kind === 'ward' && !matchedStoredWardIds.has(child.id))
+      .map(ward => ({ ...ward, kind: 'ward' as const }));
+    const legacyRegions = storedChildren
+      .filter(child => child.kind !== 'ward')
+      .map(region => ({ ...region, kind: 'region' as const, system: false }));
+    const legacyWard = legacyRegions.length > 0 ? [{
+      ...option(`${systemProvince.id}__legacy_ward`, 'Chưa xác định phường/xã'),
+      kind: 'ward' as const,
+      system: false,
+      children: legacyRegions
+    }] : [];
+
+    return {
+      ...systemProvince,
+      ...storedProvince,
+      id: systemProvince.id,
+      label: systemProvince.label,
+      kind: 'province' as const,
+      system: true,
+      active: true,
+      children: [...legacyWard, ...unmatchedStoredWards, ...mergedSystemWards]
+    };
+  });
+
+  const unmatchedStoredProvinces = storedOptions
+    .filter(province => !matchedStoredProvinceIds.has(province.id))
+    .map(province => ({ ...province, active: false }));
+  return [...mergedSystemProvinces, ...unmatchedStoredProvinces];
+};
+
+export const compactLeadFilterDefinitionForStorage = (
+  definition: LeadFilterDefinition
+): LeadFilterDefinition => {
+  if (definition.id !== LEAD_FILTER_IDS.province) return definition;
+  const configuredOptions = definition.options.flatMap(province => {
+    const configuredWards = (province.children || []).flatMap(ward => {
+      const regions = (ward.children || []).filter(region => region.kind === 'region');
+      if (regions.length === 0) return [];
+      return [{ ...ward, children: regions }];
+    });
+    if (configuredWards.length === 0) return [];
+    return [{ ...province, children: configuredWards }];
+  });
+  return { ...definition, options: configuredOptions };
 };

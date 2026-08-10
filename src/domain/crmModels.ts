@@ -15,6 +15,8 @@ export interface LeadFilterOption {
   label: string;
   color: string;
   active: boolean;
+  kind?: 'province' | 'ward' | 'region';
+  system?: boolean;
   children?: LeadFilterOption[];
 }
 

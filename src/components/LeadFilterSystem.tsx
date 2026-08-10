@@ -63,27 +63,37 @@ export const LeadDynamicFields: React.FC<{
         const activeOptions = field.options.filter(item => item.active);
 
         if (field.id === LEAD_FILTER_IDS.province) {
-          const selectedProvince = activeOptions.find(option => (
-            fieldValues.includes(option.id)
-            || (option.children || []).some(child => fieldValues.includes(child.id))
-          ));
-          const activeAreas = (selectedProvince?.children || []).filter(area => area.active);
-          const selectedAreaId = activeAreas.find(area => fieldValues.includes(area.id))?.id || '';
+          const selectedProvince = activeOptions.find(option => fieldValues.includes(option.id));
+          const activeWards = (selectedProvince?.children || []).filter(ward => ward.active);
+          const selectedWard = activeWards.find(ward => fieldValues.includes(ward.id));
+          const activeRegions = (selectedWard?.children || []).filter(region => region.active);
+          const selectedRegion = activeRegions.find(region => fieldValues.includes(region.id));
 
           return (
             <div key={field.id} className="lead-compact-filter-row lead-compact-filter-row--province">
               <span>{field.name}</span>
               <div className="lead-province-selects">
-                <select value={selectedProvince?.id || ''} disabled={disabled} onChange={event => onChange(field, event.target.value)}>
-                  <option value="">Chưa chọn tỉnh/thành</option>
-                  {activeOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
-                </select>
-                {selectedProvince && activeAreas.length > 0 && (
-                  <select value={selectedAreaId} disabled={disabled} onChange={event => onChange(field, event.target.value || selectedProvince.id)}>
-                    <option value="">Toàn bộ {selectedProvince.label}</option>
-                    {activeAreas.map(area => <option key={area.id} value={area.id}>{area.label}</option>)}
+                <label>
+                  <span>Tỉnh/Thành phố</span>
+                  <select value={selectedProvince?.id || ''} disabled={disabled} onChange={event => onChange(field, event.target.value)}>
+                    <option value="">Chọn tỉnh/thành phố</option>
+                    {activeOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
                   </select>
-                )}
+                </label>
+                <label>
+                  <span>Phường/Xã</span>
+                  <select value={selectedWard?.id || ''} disabled={disabled || !selectedProvince} onChange={event => onChange(field, event.target.value || selectedProvince?.id || '')}>
+                    <option value="">{selectedProvince ? 'Chọn phường/xã' : 'Chọn tỉnh/thành phố trước'}</option>
+                    {activeWards.map(ward => <option key={ward.id} value={ward.id}>{ward.label}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Vùng/KCN</span>
+                  <select value={selectedRegion?.id || ''} disabled={disabled || !selectedWard || activeRegions.length === 0} onChange={event => onChange(field, event.target.value || selectedWard?.id || '')}>
+                    <option value="">{!selectedWard ? 'Chọn phường/xã trước' : activeRegions.length > 0 ? 'Chọn vùng/KCN' : 'Chưa có vùng/KCN'}</option>
+                    {activeRegions.map(region => <option key={region.id} value={region.id}>{region.label}</option>)}
+                  </select>
+                </label>
               </div>
             </div>
           );
@@ -176,8 +186,9 @@ export const LeadFilterAdminModal: React.FC<{
     order: 10
   });
   const [optionLines, setOptionLines] = useState('');
-  const [provinceAreaLines, setProvinceAreaLines] = useState<Record<string, string>>({});
+  const [wardRegionLines, setWardRegionLines] = useState<Record<string, string>>({});
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedWardId, setSelectedWardId] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -225,8 +236,9 @@ export const LeadFilterAdminModal: React.FC<{
       order: Math.max(0, ...definitions.map(item => item.order || 0)) + 10
     });
     setOptionLines('');
-    setProvinceAreaLines({});
+    setWardRegionLines({});
     setSelectedProvinceId('');
+    setSelectedWardId('');
   };
 
   const startEdit = (definition: LeadFilterDefinition) => {
@@ -240,15 +252,22 @@ export const LeadFilterAdminModal: React.FC<{
       }))
     });
     setOptionLines(definition.options.filter(item => item.active).map(item => item.label).join('\n'));
-    setProvinceAreaLines(Object.fromEntries(definition.options.map(province => [
-      province.id,
-      (province.children || []).filter(child => child.active).map(child => child.label).join('\n')
-    ])));
-    setSelectedProvinceId(definition.id === LEAD_FILTER_IDS.province
-      ? definition.options.find(province => province.active && (province.children || []).some(child => child.active))?.id
-        || definition.options.find(province => province.active)?.id
-        || ''
-      : '');
+    setWardRegionLines(Object.fromEntries(definition.options.flatMap(province => (
+      (province.children || []).map(ward => [
+        ward.id,
+        (ward.children || []).filter(region => region.active).map(region => region.label).join('\n')
+      ])
+    ))));
+    const initialProvince = definition.id === LEAD_FILTER_IDS.province
+      ? definition.options.find(province => province.active && (province.children || []).some(ward => (
+        ward.active && (ward.children || []).some(region => region.active)
+      ))) || definition.options.find(province => province.active)
+      : undefined;
+    const initialWard = (initialProvince?.children || []).find(ward => (
+      ward.active && (ward.children || []).some(region => region.active)
+    )) || (initialProvince?.children || []).find(ward => ward.active);
+    setSelectedProvinceId(initialProvince?.id || '');
+    setSelectedWardId(initialWard?.id || '');
   };
 
   const updateOptionLines = (value: string) => {
@@ -282,47 +301,56 @@ export const LeadFilterAdminModal: React.FC<{
   const saveDraft = async () => {
     if (!draft.name.trim()) return;
     const optionLabels = optionLines.split('\n').map(line => line.trim()).filter(Boolean);
-    if (optionLabels.length === 0) return;
+    if (draft.id !== LEAD_FILTER_IDS.province && optionLabels.length === 0) return;
     const saved = await persistDefinition({
       ...draft,
       name: draft.name.trim(),
       group: draft.group || 'Phân loại khách hàng tiềm năng',
+      type: draft.id === LEAD_FILTER_IDS.province ? 'single_select' : draft.type,
       showInQuickFilter: true
     });
     if (saved) setEditingId('');
   };
 
-  const updateProvinceAreaLines = (provinceId: string, value: string) => {
-    setProvinceAreaLines(previous => ({ ...previous, [provinceId]: value }));
+  const updateWardRegionLines = (provinceId: string, wardId: string, value: string) => {
+    setWardRegionLines(previous => ({ ...previous, [wardId]: value }));
     const labels = value.split('\n').map(line => line.trim()).filter(Boolean);
     setDraft(previous => ({
       ...previous,
       options: previous.options.map(province => {
         if (province.id !== provinceId) return province;
-        const previousChildren = province.children || [];
-        const previousByLabel = new Map(previousChildren.map(item => [item.label.toLocaleLowerCase('vi-VN'), item]));
-        const previousActiveChildren = previousChildren.filter(item => item.active);
-        const usedIds = new Set<string>();
-        const activeChildren = labels.map((label, index) => {
-          const sameLabel = previousByLabel.get(label.toLocaleLowerCase('vi-VN'));
-          const samePosition = previousActiveChildren[index];
-          const existing = sameLabel && !usedIds.has(sameLabel.id)
-            ? sameLabel
-            : samePosition && !usedIds.has(samePosition.id) ? samePosition : null;
-          const child = existing || {
-            id: `${province.id}__${slugifyLeadFilterId(label) || 'area'}_${Date.now().toString(36)}_${index + 1}`,
-            label,
-            color: province.color,
-            active: true
-          };
-          usedIds.add(child.id);
-          return { ...child, label, color: province.color, active: true };
-        });
-        const activeIds = new Set(activeChildren.map(item => item.id));
-        const archivedChildren = previousChildren
-          .filter(item => !activeIds.has(item.id))
-          .map(item => ({ ...item, active: false }));
-        return { ...province, children: [...activeChildren, ...archivedChildren] };
+        return {
+          ...province,
+          children: (province.children || []).map(ward => {
+            if (ward.id !== wardId) return ward;
+            const previousRegions = ward.children || [];
+            const previousByLabel = new Map(previousRegions.map(item => [item.label.toLocaleLowerCase('vi-VN'), item]));
+            const previousActiveRegions = previousRegions.filter(item => item.active);
+            const usedIds = new Set<string>();
+            const activeRegions = labels.map((label, index) => {
+              const sameLabel = previousByLabel.get(label.toLocaleLowerCase('vi-VN'));
+              const samePosition = previousActiveRegions[index];
+              const existing = sameLabel && !usedIds.has(sameLabel.id)
+                ? sameLabel
+                : samePosition && !usedIds.has(samePosition.id) ? samePosition : null;
+              const region = existing || {
+                id: `${ward.id}__region_${slugifyLeadFilterId(label) || 'kcn'}_${Date.now().toString(36)}_${index + 1}`,
+                label,
+                color: ward.color,
+                active: true,
+                kind: 'region' as const,
+                system: false
+              };
+              usedIds.add(region.id);
+              return { ...region, label, color: ward.color, active: true, kind: 'region' as const, system: false };
+            });
+            const activeIds = new Set(activeRegions.map(item => item.id));
+            const archivedRegions = previousRegions
+              .filter(item => !activeIds.has(item.id))
+              .map(item => ({ ...item, active: false }));
+            return { ...ward, children: [...activeRegions, ...archivedRegions] };
+          })
+        };
       })
     }));
   };
@@ -337,9 +365,19 @@ export const LeadFilterAdminModal: React.FC<{
     : [];
   const selectedProvince = activeProvinceOptions.find(province => province.id === selectedProvinceId)
     || activeProvinceOptions[0];
+  const activeWardOptions = (selectedProvince?.children || []).filter(ward => ward.active);
+  const selectedWard = activeWardOptions.find(ward => ward.id === selectedWardId)
+    || activeWardOptions[0];
   const configuredProvinceCount = activeProvinceOptions.filter(province => (
-    (province.children || []).some(child => child.active)
+    (province.children || []).some(ward => (
+      ward.active && (ward.children || []).some(region => region.active)
+    ))
   )).length;
+  const configuredRegionCount = activeProvinceOptions.reduce((provinceTotal, province) => (
+    provinceTotal + (province.children || []).reduce((wardTotal, ward) => (
+      wardTotal + (ward.children || []).filter(region => region.active).length
+    ), 0)
+  ), 0);
 
   return (
     <div className="modal-overlay">
@@ -360,7 +398,7 @@ export const LeadFilterAdminModal: React.FC<{
                     <div>
                       <strong>{definition.name}</strong>
                       <span>{definition.id === LEAD_FILTER_IDS.province
-                        ? `${definition.options.filter(item => item.active).length} tỉnh/thành · ${definition.options.flatMap(item => item.children || []).filter(item => item.active).length} vùng`
+                        ? `${definition.options.filter(item => item.active).length} tỉnh/thành · ${definition.options.flatMap(item => item.children || []).filter(item => item.active).length.toLocaleString('vi-VN')} phường/xã · ${definition.options.flatMap(item => item.children || []).flatMap(item => item.children || []).filter(item => item.active).length} KCN`
                         : `${FIELD_TYPE_LABELS[definition.type]} · ${definition.options.filter(item => item.active).length} lựa chọn`}</span>
                     </div>
                     <div>
@@ -376,38 +414,55 @@ export const LeadFilterAdminModal: React.FC<{
                   <>
                     <h3>{definitions.some(item => item.id === editingId) ? 'Chỉnh sửa bộ lọc' : 'Tạo bộ lọc mới'}</h3>
                     <label><span>Tên bộ lọc *</span><input value={draft.name} onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))} /></label>
-                    <label><span>Cách lựa chọn</span><select value={draft.type} onChange={event => setDraft(previous => ({ ...previous, type: event.target.value as LeadCustomFieldType }))}><option value="single_select">Chọn một</option><option value="multi_select">Chọn nhiều</option></select></label>
+                    {draft.id !== LEAD_FILTER_IDS.province && <label><span>Cách lựa chọn</span><select value={draft.type} onChange={event => setDraft(previous => ({ ...previous, type: event.target.value as LeadCustomFieldType }))}><option value="single_select">Chọn một</option><option value="multi_select">Chọn nhiều</option></select></label>}
                       <>
-                        <label><span>Các lựa chọn (mỗi dòng một lựa chọn)</span><textarea rows={draft.id === LEAD_FILTER_IDS.province ? 6 : 8} value={optionLines} onChange={event => updateOptionLines(event.target.value)} /></label>
+                        {draft.id !== LEAD_FILTER_IDS.province && <label><span>Các lựa chọn (mỗi dòng một lựa chọn)</span><textarea rows={8} value={optionLines} onChange={event => updateOptionLines(event.target.value)} /></label>}
                         {draft.id === LEAD_FILTER_IDS.province && (
                           <div className="lead-province-area-editor">
                             <div className="lead-province-area-editor__heading">
-                              <div><strong>Phân chia vùng/KCN theo tỉnh</strong><span>Chọn một tỉnh rồi nhập các vùng cần sử dụng. Có thể bỏ qua nếu không cần phân chia chi tiết.</span></div>
-                              <small>{configuredProvinceCount}/{activeProvinceOptions.length} tỉnh đã cấu hình</small>
+                              <div><strong>Danh mục Vùng/KCN</strong><span>Tỉnh/thành và phường/xã là danh mục hệ thống cố định. Chọn địa bàn rồi bổ sung các Vùng/KCN cần sử dụng.</span></div>
+                              <small>{configuredRegionCount} Vùng/KCN</small>
                             </div>
-                            <label className="lead-province-area-editor__picker">
-                              <span>Tỉnh/thành cần cấu hình</span>
-                              <select value={selectedProvince?.id || ''} onChange={event => setSelectedProvinceId(event.target.value)}>
+                            <div className="lead-province-area-editor__selectors">
+                              <label className="lead-province-area-editor__picker">
+                                <span>Tỉnh/Thành phố</span>
+                                <select value={selectedProvince?.id || ''} onChange={event => {
+                                  const provinceId = event.target.value;
+                                  const province = activeProvinceOptions.find(optionItem => optionItem.id === provinceId);
+                                  setSelectedProvinceId(provinceId);
+                                  setSelectedWardId((province?.children || []).find(ward => ward.active)?.id || '');
+                                }}>
                                 {activeProvinceOptions.map(province => {
-                                  const areaCount = (province.children || []).filter(child => child.active).length;
-                                  return <option key={province.id} value={province.id}>{province.label}{areaCount > 0 ? ` · ${areaCount} vùng/KCN` : ''}</option>;
+                                  const regionCount = (province.children || []).flatMap(ward => ward.children || []).filter(region => region.active).length;
+                                  return <option key={province.id} value={province.id}>{province.label}{regionCount > 0 ? ` · ${regionCount} KCN` : ''}</option>;
                                 })}
-                              </select>
-                            </label>
-                            {selectedProvince && (
+                                </select>
+                              </label>
+                              <label className="lead-province-area-editor__picker">
+                                <span>Phường/Xã</span>
+                                <select value={selectedWard?.id || ''} onChange={event => setSelectedWardId(event.target.value)}>
+                                  {activeWardOptions.map(ward => {
+                                    const regionCount = (ward.children || []).filter(region => region.active).length;
+                                    return <option key={ward.id} value={ward.id}>{ward.label}{regionCount > 0 ? ` · ${regionCount} KCN` : ''}</option>;
+                                  })}
+                                </select>
+                              </label>
+                            </div>
+                            {selectedProvince && selectedWard && (
                               <div className="lead-province-area-editor__workspace">
-                                <div><strong>{selectedProvince.label}</strong><span>{(selectedProvince.children || []).filter(child => child.active).length} vùng/KCN</span></div>
+                                <div><strong>{selectedWard.label}</strong><span>{(selectedWard.children || []).filter(region => region.active).length} Vùng/KCN</span></div>
                                 <label>
-                                  <span>Mỗi dòng là một vùng, khu vực hoặc khu công nghiệp</span>
+                                  <span>Vùng/KCN thuộc {selectedWard.label}, {selectedProvince.label} (mỗi dòng một mục)</span>
                                   <textarea
                                     rows={5}
-                                    value={provinceAreaLines[selectedProvince.id] ?? (selectedProvince.children || []).filter(child => child.active).map(child => child.label).join('\n')}
-                                    onChange={event => updateProvinceAreaLines(selectedProvince.id, event.target.value)}
+                                    value={wardRegionLines[selectedWard.id] ?? (selectedWard.children || []).filter(region => region.active).map(region => region.label).join('\n')}
+                                    onChange={event => updateWardRegionLines(selectedProvince.id, selectedWard.id, event.target.value)}
                                     placeholder={`Ví dụ:\nKCN A\nKCN B\nKhu vực C`}
                                   />
                                 </label>
                               </div>
                             )}
+                            <div className="lead-province-area-editor__summary">Đã cấu hình KCN tại <strong>{configuredProvinceCount}/{activeProvinceOptions.length}</strong> tỉnh/thành.</div>
                           </div>
                         )}
                       </>

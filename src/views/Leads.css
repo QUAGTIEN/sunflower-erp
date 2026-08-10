@@ -2162,8 +2162,20 @@
 
 .lead-province-selects {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lead-province-selects label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.lead-province-selects label > span {
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 650;
 }
 
 .lead-province-selects select {
@@ -2525,6 +2537,12 @@
   gap: 5px;
 }
 
+.lead-province-area-editor__selectors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .lead-province-area-editor__picker > span,
 .lead-province-area-editor__workspace label > span {
   color: #475569;
@@ -2579,6 +2597,16 @@
   min-height: 104px;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.lead-province-area-editor__summary {
+  padding-top: 2px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.lead-province-area-editor__summary strong {
+  color: #1e40af;
 }
 
 .lead-config-checks label {
@@ -2778,6 +2806,10 @@
   }
 
   .lead-province-selects {
+    grid-template-columns: 1fr;
+  }
+
+  .lead-province-area-editor__selectors {
     grid-template-columns: 1fr;
   }
 
