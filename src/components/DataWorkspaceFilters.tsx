@@ -1,0 +1,156 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Check, Filter, RotateCcw, Search, X } from 'lucide-react';
+import './DataWorkspaceFilters.css';
+
+export type DataFilterOption = {
+  value: string;
+  label: string;
+  description?: string;
+};
+
+export type DataFilterChip = {
+  id: string;
+  label: string;
+  onRemove: () => void;
+};
+
+export const DataFilterButton: React.FC<{
+  activeCount: number;
+  open: boolean;
+  onClick: () => void;
+}> = ({ activeCount, open, onClick }) => (
+  <button
+    type="button"
+    className={`data-filter-button ${open || activeCount > 0 ? 'is-active' : ''}`}
+    aria-expanded={open}
+    onClick={onClick}
+  >
+    <Filter size={15} />
+    <span>Bộ lọc</span>
+    {activeCount > 0 && <strong>{activeCount}</strong>}
+  </button>
+);
+
+export const DataFilterChipBar: React.FC<{
+  chips: DataFilterChip[];
+  onClear: () => void;
+}> = ({ chips, onClear }) => {
+  if (chips.length === 0) return null;
+  return (
+    <div className="data-filter-chips" aria-label="Điều kiện lọc đang áp dụng">
+      <span>Đang lọc:</span>
+      {chips.map(chip => (
+        <button key={chip.id} type="button" onClick={chip.onRemove} title={`Bỏ lọc ${chip.label}`}>
+          {chip.label}<X size={12} />
+        </button>
+      ))}
+      <button type="button" className="data-filter-chips__clear" onClick={onClear}>Xóa tất cả</button>
+    </div>
+  );
+};
+
+export const DataFilterPanel: React.FC<{
+  open: boolean;
+  title: string;
+  description?: string;
+  activeCount: number;
+  onClose: () => void;
+  onReset: () => void;
+  headerAction?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ open, title, description, activeCount, onClose, onReset, headerAction, children }) => {
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [onClose, open]);
+
+  if (!open) return null;
+  return (
+    <>
+      <button type="button" className="data-filter-panel__backdrop" aria-label="Đóng bộ lọc" onClick={onClose} />
+      <aside className="data-filter-panel" aria-label={title}>
+        <header>
+          <div>
+            <span>BỘ LỌC</span>
+            <h2>{title}</h2>
+            {description && <p>{description}</p>}
+          </div>
+          <button type="button" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
+        </header>
+        {headerAction && <div className="data-filter-panel__admin-action">{headerAction}</div>}
+        <div className="data-filter-panel__body">{children}</div>
+        <footer>
+          <button type="button" className="btn btn-outline" onClick={onReset} disabled={activeCount === 0}>
+            <RotateCcw size={14} /> Đặt lại
+          </button>
+          <button type="button" className="btn btn-primary" onClick={onClose}>
+            <Check size={14} /> Áp dụng {activeCount > 0 ? `(${activeCount})` : ''}
+          </button>
+        </footer>
+      </aside>
+    </>
+  );
+};
+
+export const DataFilterSection: React.FC<{
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}> = ({ title, description, children }) => (
+  <section className="data-filter-section">
+    <div className="data-filter-section__heading">
+      <strong>{title}</strong>
+      {description && <span>{description}</span>}
+    </div>
+    <div className="data-filter-section__content">{children}</div>
+  </section>
+);
+
+export const DataFilterCheckboxGroup: React.FC<{
+  options: DataFilterOption[];
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+  searchable?: boolean;
+  emptyText?: string;
+}> = ({ options, selectedValues, onChange, searchable = false, emptyText = 'Chưa có dữ liệu' }) => {
+  const [query, setQuery] = useState('');
+  const visibleOptions = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
+    if (!normalizedQuery) return options;
+    return options.filter(option => `${option.label} ${option.description || ''}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery));
+  }, [options, query]);
+
+  return (
+    <div className="data-filter-checklist">
+      {searchable && options.length > 6 && (
+        <label className="data-filter-checklist__search">
+          <Search size={14} />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm trong danh sách..." />
+        </label>
+      )}
+      <div className="data-filter-checklist__options">
+        {visibleOptions.map(option => {
+          const selected = selectedValues.includes(option.value);
+          return (
+            <label key={option.value} className={selected ? 'is-selected' : ''}>
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={event => onChange(event.target.checked
+                  ? [...selectedValues, option.value]
+                  : selectedValues.filter(value => value !== option.value))}
+              />
+              <span><strong>{option.label}</strong>{option.description && <small>{option.description}</small>}</span>
+            </label>
+          );
+        })}
+        {visibleOptions.length === 0 && <span className="data-filter-checklist__empty">{emptyText}</span>}
+      </div>
+      {selectedValues.length > 0 && <button type="button" className="data-filter-checklist__clear" onClick={() => onChange([])}>Bỏ chọn nhóm này</button>}
+    </div>
+  );
+};

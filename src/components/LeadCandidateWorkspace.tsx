@@ -45,6 +45,12 @@ import {
 } from '../services/firebaseService';
 import { PageBackButton } from './PageBackButton';
 import { RowActionMenu } from './RowActionMenu';
+import {
+  DataFilterButton,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from './DataWorkspaceFilters';
 
 interface LeadCandidateWorkspaceProps {
   candidates: LeadCandidateRecord[];
@@ -243,6 +249,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [potentialFilter, setPotentialFilter] = useState<CandidatePotentialFilter>('all');
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [candidateSort, setCandidateSort] = useState<CandidateSort>('priority');
+  const [showDataFilters, setShowDataFilters] = useState(false);
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
@@ -324,6 +331,26 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const displayedCandidates = filteredCandidates.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
   const activeFilterCount = [provinceFilter, sourceFilter, contactResultFilter, potentialFilter, saleFilter]
     .filter(value => value !== 'all').length + (pinnedOnly ? 1 : 0);
+  const candidateFilterChips = [
+    ...(provinceFilter !== 'all' ? [{ id: 'province', label: provinceFilter, onRemove: () => setProvinceFilter('all') }] : []),
+    ...(sourceFilter !== 'all' ? [{ id: 'source', label: sourceFilter, onRemove: () => setSourceFilter('all') }] : []),
+    ...(contactResultFilter !== 'all' ? [{
+      id: 'contact-result',
+      label: CONTACT_STATUS_LABELS[contactResultFilter],
+      onRemove: () => setContactResultFilter('all')
+    }] : []),
+    ...(potentialFilter !== 'all' ? [{
+      id: 'potential',
+      label: POTENTIAL_LEVEL_LABELS[potentialFilter],
+      onRemove: () => setPotentialFilter('all')
+    }] : []),
+    ...(saleFilter !== 'all' ? [{
+      id: 'sale',
+      label: `Sale: ${candidateOwners.find(user => user.uid === saleFilter)?.displayName || saleFilter}`,
+      onRemove: () => setSaleFilter('all')
+    }] : []),
+    ...(pinnedOnly ? [{ id: 'pinned', label: 'Đã ghim', onRemove: () => setPinnedOnly(false) }] : [])
+  ];
 
   const editingCandidate = editingCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === editingCandidateId) || null
@@ -976,39 +1003,70 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               placeholder="Tìm doanh nghiệp, MST, điện thoại, người liên hệ..."
             />
           </label>
-          <select value={provinceFilter} onChange={event => { setProvinceFilter(event.target.value); setCurrentPage(1); }} aria-label="Lọc tỉnh thành">
-            <option value="all">Tất cả tỉnh/thành</option>
-            {provinceOptions.map(province => <option key={province} value={province}>{province}</option>)}
-          </select>
-          <select value={sourceFilter} onChange={event => { setSourceFilter(event.target.value); setCurrentPage(1); }} aria-label="Lọc nguồn dữ liệu">
-            <option value="all">Tất cả nguồn</option>
-            {CANDIDATE_SOURCES.map(source => <option key={source} value={source}>{source}</option>)}
-          </select>
-          <select value={contactResultFilter} onChange={event => { setContactResultFilter(event.target.value as CandidateContactResultFilter); setCurrentPage(1); }} aria-label="Lọc trạng thái">
-            <option value="all">Tất cả trạng thái</option>
-            {(Object.entries(CONTACT_STATUS_LABELS) as Array<[LeadCandidateContactResult, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-          <select value={potentialFilter} onChange={event => { setPotentialFilter(event.target.value as CandidatePotentialFilter); setCurrentPage(1); }} aria-label="Lọc mức độ tiềm năng">
-            <option value="all">Tất cả tiềm năng</option>
-            {(Object.entries(POTENTIAL_LEVEL_LABELS) as Array<[LeadCandidatePotentialLevel, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-          {(workspaceView === 'all' || currentUser.role === 'admin') && (
-            <select value={saleFilter} onChange={event => { setSaleFilter(event.target.value); setCurrentPage(1); }} aria-label="Lọc theo Sale">
-              <option value="all">Tất cả phụ trách</option>
-              {candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
-            </select>
-          )}
-          <button type="button" className={`lead-candidate-pinned-filter ${pinnedOnly ? 'is-active' : ''}`} onClick={() => { setPinnedOnly(previous => !previous); setCurrentPage(1); }}>
-            <Star size={14} fill={pinnedOnly ? 'currentColor' : 'none'} /> Đã ghim
-          </button>
           <select value={candidateSort} onChange={event => { setCandidateSort(event.target.value as CandidateSort); setCurrentPage(1); }} aria-label="Sắp xếp dữ liệu">
             <option value="priority">Ưu tiên làm việc</option>
             <option value="updated_desc">Mới cập nhật</option>
             <option value="company_asc">Tên doanh nghiệp A–Z</option>
             <option value="next_contact_asc">Lịch gọi gần nhất</option>
           </select>
-          {(activeFilterCount > 0 || searchTerm) && <button type="button" className="lead-candidate-clear-filter" onClick={clearDataFilters}><X size={13} /> Xóa lọc ({activeFilterCount})</button>}
+          <DataFilterButton activeCount={activeFilterCount} open={showDataFilters} onClick={() => setShowDataFilters(true)} />
+          {(activeFilterCount > 0 || searchTerm) && <button type="button" className="lead-candidate-clear-filter" onClick={clearDataFilters}><X size={13} /> Đặt lại</button>}
         </section>
+
+      <DataFilterChipBar chips={candidateFilterChips} onClear={clearDataFilters} />
+
+      <DataFilterPanel
+        open={showDataFilters}
+        title={workspaceView === 'tasks' ? 'Lọc công việc cần xử lý' : 'Lọc dữ liệu khách hàng'}
+        description={workspaceView === 'tasks'
+          ? 'Tập trung vào đúng nhóm công việc, lịch hẹn và Sale cần giám sát.'
+          : 'Kết hợp khu vực, nguồn, trạng thái và người phụ trách.'}
+        activeCount={activeFilterCount}
+        onClose={() => setShowDataFilters(false)}
+        onReset={clearDataFilters}
+      >
+        <DataFilterSection title="Khu vực và nguồn dữ liệu">
+          <label>Tỉnh/thành
+            <select value={provinceFilter} onChange={event => { setProvinceFilter(event.target.value); setCurrentPage(1); }}>
+              <option value="all">Tất cả tỉnh/thành</option>
+              {provinceOptions.map(province => <option key={province} value={province}>{province}</option>)}
+            </select>
+          </label>
+          <label>Nguồn tìm kiếm
+            <select value={sourceFilter} onChange={event => { setSourceFilter(event.target.value); setCurrentPage(1); }}>
+              <option value="all">Tất cả nguồn</option>
+              {CANDIDATE_SOURCES.map(source => <option key={source} value={source}>{source}</option>)}
+            </select>
+          </label>
+        </DataFilterSection>
+        <DataFilterSection title="Tiến độ tiếp cận" description="Trạng thái liên hệ và đánh giá tiềm năng là hai tiêu chí độc lập.">
+          <label>Trạng thái
+            <select value={contactResultFilter} onChange={event => { setContactResultFilter(event.target.value as CandidateContactResultFilter); setCurrentPage(1); }}>
+              <option value="all">Tất cả trạng thái</option>
+              {(Object.entries(CONTACT_STATUS_LABELS) as Array<[LeadCandidateContactResult, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+          <label>Mức độ tiềm năng
+            <select value={potentialFilter} onChange={event => { setPotentialFilter(event.target.value as CandidatePotentialFilter); setCurrentPage(1); }}>
+              <option value="all">Tất cả tiềm năng</option>
+              {(Object.entries(POTENTIAL_LEVEL_LABELS) as Array<[LeadCandidatePotentialLevel, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+        </DataFilterSection>
+        <DataFilterSection title="Phân công và ưu tiên">
+          {(workspaceView === 'all' || currentUser.role === 'admin') && (
+            <label>Sale phụ trách
+              <select value={saleFilter} onChange={event => { setSaleFilter(event.target.value); setCurrentPage(1); }}>
+                <option value="all">Tất cả phụ trách</option>
+                {candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
+              </select>
+            </label>
+          )}
+          <button type="button" className={`lead-candidate-pinned-filter ${pinnedOnly ? 'is-active' : ''}`} onClick={() => { setPinnedOnly(previous => !previous); setCurrentPage(1); }}>
+            <Star size={14} fill={pinnedOnly ? 'currentColor' : 'none'} /> Chỉ hiển thị dữ liệu đã ghim
+          </button>
+        </DataFilterSection>
+      </DataFilterPanel>
 
       {workspaceView === 'all' && selectedQueueCandidateIds.length > 0 && (
         <section className="lead-candidate-batch-bar" aria-label="Chuyển dữ liệu sang công việc cần xử lý">

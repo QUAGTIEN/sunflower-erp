@@ -3,11 +3,9 @@ import {
   AlertCircle,
   Building2,
   CalendarClock,
-  CheckCircle2,
   Database,
   Eye,
   FileText,
-  Filter,
   List,
   Paperclip,
   Pencil,
@@ -15,7 +13,6 @@ import {
   Search,
   Settings2,
   Tags,
-  TrendingUp,
   UserCheck,
   Users,
   X
@@ -71,6 +68,13 @@ import {
 } from '../domain/leadProfileConfig';
 import { PageBackButton } from '../components/PageBackButton';
 import { RowActionMenu } from '../components/RowActionMenu';
+import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '../components/DataWorkspaceFilters';
 import './Leads.css';
 
 interface LeadsProps {
@@ -216,7 +220,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
   const [profileDefinitions, setProfileDefinitions] = useState<LeadProfileFieldDefinition[]>([]);
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, string[]>>({});
-  const [openFilterId, setOpenFilterId] = useState('');
+  const [showLeadFilters, setShowLeadFilters] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [editingLeadId, setEditingLeadId] = useState('');
@@ -233,24 +237,6 @@ export const Leads: React.FC<LeadsProps> = ({
       setLeads(sortNewestFirst(data as LeadRecord[], lead => [lead.createdAt, lead.updatedAt]));
     });
     return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      const target = event.target;
-      if (target instanceof Element && !target.closest('[data-lead-filter-popover]')) {
-        setOpenFilterId('');
-      }
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpenFilterId('');
-    };
-    document.addEventListener('pointerdown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
   }, []);
 
   useEffect(() => {
@@ -318,6 +304,21 @@ export const Leads: React.FC<LeadsProps> = ({
     }));
   }, [accessibleLeads, filterDefinitions]);
 
+  const leadActiveFilterCount = Object.values(dynamicFilters)
+    .reduce((total, values) => total + values.length, 0);
+  const leadFilterChips = Object.entries(dynamicFilters).flatMap(([fieldId, values]) => {
+    const field = filterDefinitions.find(definition => definition.id === fieldId);
+    if (!field) return [];
+    return values.map(value => ({
+      id: `${fieldId}-${value}`,
+      label: `${field.name}: ${findLeadFilterOption(filterDefinitions, fieldId, value)?.label || value}`,
+      onRemove: () => setDynamicFilters(previous => ({
+        ...previous,
+        [fieldId]: (previous[fieldId] || []).filter(item => item !== value)
+      }))
+    }));
+  });
+
   const isOverdue = (lead: LeadRecord) => {
     if (!lead.nextFollowUpAt || ['won', 'lost', 'converted'].includes(lead.stage)) return false;
     const timestamp = new Date(lead.nextFollowUpAt).getTime();
@@ -369,12 +370,6 @@ export const Leads: React.FC<LeadsProps> = ({
     users,
     customProfileDefinitions
   ]);
-
-  const pursuedLeadCount = accessibleLeads.filter(lead => {
-    const markerValues = Object.values(getLeadFilterValues(lead, filterDefinitions)).flat();
-    return ['quoted', 'negotiating'].includes(lead.stage)
-      || ['preparing_quote', 'quote_sent', 'negotiating', 'price_negotiation', 'waiting_feedback'].some(marker => markerValues.includes(marker));
-  }).length;
 
   const selectedLead = selectedLeadId
     ? leads.find(lead => lead.id === selectedLeadId) || null
@@ -778,20 +773,6 @@ export const Leads: React.FC<LeadsProps> = ({
     });
   };
 
-  const handleDynamicFilterToggle = (field: LeadFilterDefinition, optionId: string, checked: boolean) => {
-    setDynamicFilters(previous => {
-      const fieldValues = previous[field.id] || [];
-      return {
-        ...previous,
-        [field.id]: checked
-          ? field.type === 'single_select' ? [optionId] : Array.from(new Set([...fieldValues, optionId]))
-          : fieldValues.filter(item => item !== optionId)
-      };
-    });
-    if (field.type === 'single_select') setOpenFilterId('');
-  };
-
-
   const findDuplicateCustomer = (lead: LeadRecord) => {
     const companyName = lead.companyName.trim().toLowerCase();
     const phone = lead.phone.replace(/\s/g, '');
@@ -1157,7 +1138,6 @@ export const Leads: React.FC<LeadsProps> = ({
           <p className="page-subtitle">{t('Quản lý cơ hội bán hàng, lịch chăm sóc và chuyển đổi Lead thành khách hàng chính thức.')}</p>
         </div>
         <div className="lead-page-actions">
-          {workspaceTab === 'list' && currentUser.role === 'admin' && <button type="button" className="btn btn-outline" onClick={() => setShowFilterConfig(true)}><Settings2 size={16} /> {t('Cấu hình bộ lọc')}</button>}
           {workspaceTab === 'list' && <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm Lead')}</button>}
         </div>
       </div>
@@ -1167,15 +1147,6 @@ export const Leads: React.FC<LeadsProps> = ({
         {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}><Users size={16} /> Khách hàng của Sale</button>}
         <button type="button" role="tab" aria-selected={workspaceTab === 'data'} className={workspaceTab === 'data' ? 'is-active' : ''} onClick={() => setWorkspaceTab('data')}><Database size={16} /> Dữ liệu khách hàng <span>{accessibleCandidates.filter(candidate => candidate.status === 'new' || candidate.status === 'retry').length}</span></button>
       </div>
-
-      {workspaceTab === 'list' && (
-        <div className="lead-summary-grid">
-          <div className="lead-summary-card"><Users size={18} /><div><strong>{accessibleLeads.length}</strong><span>Tổng Lead</span></div></div>
-          <div className="lead-summary-card"><TrendingUp size={18} /><div><strong>{pursuedLeadCount}</strong><span>Đang theo đuổi</span></div></div>
-          <div className="lead-summary-card"><CalendarClock size={18} /><div><strong>{accessibleLeads.filter(isOverdue).length}</strong><span>Quá hạn chăm sóc</span></div></div>
-          <div className="lead-summary-card"><CheckCircle2 size={18} /><div><strong>{accessibleLeads.filter(lead => lead.stage === 'converted').length}</strong><span>Đã chuyển đổi</span></div></div>
-        </div>
-      )}
 
       {workspaceTab === 'performance' && currentUser.role === 'admin' ? (
         <LeadSalesWorkspace
@@ -1195,59 +1166,55 @@ export const Leads: React.FC<LeadsProps> = ({
           onStartConversion={openCreateFormFromCandidate}
         />
       ) : (
-        <>
+        <div className="lead-data-workspace">
           <section className="lead-toolbar">
             <div className="lead-search">
               <Search size={16} />
               <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
             </div>
-            {filterDefinitions.filter(field => field.active && field.showInQuickFilter).map(field => (
-              <div key={field.id} className="lead-filter-menu lead-filter-menu--toolbar" data-lead-filter-popover>
-                <button type="button" className="lead-filter-menu__trigger" aria-expanded={openFilterId === field.id} onClick={() => setOpenFilterId(current => current === field.id ? '' : field.id)}>{field.name}{(dynamicFilters[field.id] || []).length > 0 && <span>{dynamicFilters[field.id].length}</span>}</button>
-                {openFilterId === field.id && <div className="lead-filter-menu__content">
-                  <button
-                    type="button"
-                    className={(dynamicFilters[field.id] || []).length === 0 ? 'is-selected' : ''}
-                    onClick={() => setDynamicFilters(previous => ({ ...previous, [field.id]: [] }))}
-                  >
-                    Tất cả {field.name.toLocaleLowerCase('vi-VN')}
-                  </button>
-                  {(quickFilterOptionsByField[field.id] || []).map(option => {
-                    const selected = (dynamicFilters[field.id] || []).includes(option.id);
-                    return (
-                      <React.Fragment key={option.id}>
-                        <button
-                          type="button"
-                          className={selected ? 'is-selected' : ''}
-                          onClick={() => handleDynamicFilterToggle(field, option.id, !selected)}
-                        >
-                          <i style={{ backgroundColor: option.color }} />
-                          <span>{option.label}</span>
-                          {selected && <CheckCircle2 size={14} />}
-                        </button>
-                        {field.id === LEAD_FILTER_IDS.province && (option.children || []).filter(area => area.active).map(area => {
-                          const areaSelected = (dynamicFilters[field.id] || []).includes(area.id);
-                          return (
-                            <button
-                              type="button"
-                              key={area.id}
-                              className={`lead-filter-area-option ${areaSelected ? 'is-selected' : ''}`}
-                              onClick={() => handleDynamicFilterToggle(field, area.id, !areaSelected)}
-                            >
-                              <i style={{ backgroundColor: option.color }} />
-                              <span>{area.label}</span>
-                              {areaSelected && <CheckCircle2 size={14} />}
-                            </button>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>}
-              </div>
-            ))}
-            <button type="button" className="btn btn-outline btn-symbol" onClick={clearFilters} title={t('Xóa bộ lọc')}><Filter size={15} /></button>
+            <DataFilterButton activeCount={leadActiveFilterCount} open={showLeadFilters} onClick={() => setShowLeadFilters(true)} />
+            {(searchTerm || leadActiveFilterCount > 0) && <button type="button" className="btn btn-outline lead-toolbar-reset" onClick={clearFilters}><X size={14} /> Đặt lại</button>}
           </section>
+
+          <DataFilterChipBar chips={leadFilterChips} onClear={clearFilters} />
+
+          <DataFilterPanel
+            open={showLeadFilters}
+            title="Lọc danh sách Lead"
+            description="Chọn nhiều tiêu chí để thu hẹp danh sách khách hàng tiềm năng."
+            activeCount={leadActiveFilterCount}
+            onClose={() => setShowLeadFilters(false)}
+            onReset={clearFilters}
+            headerAction={currentUser.role === 'admin' ? (
+              <button type="button" className="btn btn-outline" onClick={() => { setShowLeadFilters(false); setShowFilterConfig(true); }}>
+                <Settings2 size={14} /> Quản lý tiêu chí lọc
+              </button>
+            ) : undefined}
+          >
+            {filterDefinitions.filter(field => field.active && field.showInQuickFilter).map(field => {
+              const options = (quickFilterOptionsByField[field.id] || []).flatMap(option => [
+                { value: option.id, label: option.label },
+                ...(field.id === LEAD_FILTER_IDS.province ? (option.children || []).filter(area => area.active).map(area => ({
+                  value: area.id,
+                  label: area.label,
+                  description: option.label
+                })) : [])
+              ]);
+              return (
+                <DataFilterSection key={field.id} title={field.name} description={field.id === LEAD_FILTER_IDS.province ? 'Có thể chọn tỉnh hoặc khu vực/KCN trực thuộc.' : undefined}>
+                  <DataFilterCheckboxGroup
+                    options={options}
+                    selectedValues={dynamicFilters[field.id] || []}
+                    onChange={values => setDynamicFilters(previous => ({
+                      ...previous,
+                      [field.id]: field.type === 'single_select' ? values.slice(-1) : values
+                    }))}
+                    searchable={options.length > 8}
+                  />
+                </DataFilterSection>
+              );
+            })}
+          </DataFilterPanel>
 
           <section className="lead-table-card">
             <div className="lead-table-result">Hiển thị <strong>{filteredLeads.length}</strong> / {accessibleLeads.length} Lead</div>
@@ -1279,7 +1246,7 @@ export const Leads: React.FC<LeadsProps> = ({
               </table>
             </div>
           </section>
-        </>
+        </div>
       )}
 
       {showFilterConfig && currentUser.role === 'admin' && (

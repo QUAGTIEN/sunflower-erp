@@ -1,8 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { dbService } from '../services/firebaseService';
 import { useLanguage } from '../context/LanguageContext';
 import { HorizontalBarChart } from '../components/VisualCharts';
 import { CustomerOnboardingItems } from '../components/CustomerOnboardingItems';
+import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '../components/DataWorkspaceFilters';
 import { PageBackButton } from '../components/PageBackButton';
 import { RowActionMenu } from '../components/RowActionMenu';
 import { createCustomerOnboardingItem } from '../domain/customerOnboardingItem';
@@ -37,16 +44,10 @@ import {
   Trash2, 
   Pencil, 
   X, 
-  UserCheck, 
-  MessageSquare, 
-  Paperclip, 
   Folder, 
   FileText, 
   Download, 
   Upload,
-  Phone,
-  Mail,
-  User,
   Eye,
   AlertCircle,
   Copy,
@@ -117,59 +118,6 @@ const createCopyableProfile = (title: string, rows: Array<[string, unknown]>) =>
   title,
   ...rows.map(([label, value]) => `${label}\t${String(value || '—')}`)
 ].join('\n');
-
-const CrmMultiSelectFilter: React.FC<{
-  label: string;
-  options: CrmFilterOption[];
-  selectedValues: string[];
-  onChange: (values: string[]) => void;
-}> = ({ label, options, selectedValues, onChange }) => {
-  const detailsRef = useRef<HTMLDetailsElement>(null);
-
-  useEffect(() => {
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      const details = detailsRef.current;
-      if (details?.open && event.target instanceof Node && !details.contains(event.target)) {
-        details.removeAttribute('open');
-      }
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') detailsRef.current?.removeAttribute('open');
-    };
-
-    document.addEventListener('pointerdown', closeOnOutsideClick);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, []);
-
-  return (
-    <details ref={detailsRef} className="crm-multi-filter">
-      <summary>
-        <span>{selectedValues.length > 0 ? `${label} (${selectedValues.length})` : label}</span>
-        <ChevronDown size={13} />
-      </summary>
-      <div className="crm-multi-filter__menu">
-        {options.map(option => (
-          <label key={option.value} className={selectedValues.includes(option.value) ? 'is-selected' : ''}>
-            <input
-              type="checkbox"
-              checked={selectedValues.includes(option.value)}
-              onChange={event => onChange(event.target.checked
-                ? [...selectedValues, option.value]
-                : selectedValues.filter(value => value !== option.value))}
-            />
-            <span>{option.label}</span>
-          </label>
-        ))}
-        {options.length === 0 && <span className="crm-multi-filter__empty">Chưa có dữ liệu</span>}
-        {selectedValues.length > 0 && <button type="button" onClick={() => onChange([])}>Bỏ chọn</button>}
-      </div>
-    </details>
-  );
-};
 
 const createNextCustomerCode = (customers: CustomerRecord[]) => {
   const usedCodes = new Set(customers.map(customer => customer.customerCode).filter(Boolean));
@@ -264,6 +212,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [timeFilters, setTimeFilters] = useState<CrmTimeFilter[]>([]);
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
   const [productFilters, setProductFilters] = useState<string[]>([]);
+  const [showListFilters, setShowListFilters] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'samples'>('po');
   const [expandedMaterialsCustomerId, setExpandedMaterialsCustomerId] = useState('');
@@ -1702,6 +1651,41 @@ export const Crm: React.FC<CrmProps> = ({
     { value: 'no_orders', label: 'Chưa có PO' }
   ];
   const activeFilterCount = saleFilters.length + rankFilters.length + timeFilters.length + provinceFilters.length + productFilters.length;
+  const resetCrmListFilters = () => {
+    setSearchTerm('');
+    setSaleFilters([]);
+    setRankFilters([]);
+    setTimeFilters([]);
+    setProvinceFilters([]);
+    setProductFilters([]);
+  };
+  const crmFilterChips = [
+    ...saleFilters.map(value => ({
+      id: `sale-${value}`,
+      label: `Sale: ${saleFilterOptions.find(option => option.value === value)?.label || value}`,
+      onRemove: () => setSaleFilters(previous => previous.filter(item => item !== value))
+    })),
+    ...rankFilters.map(value => ({
+      id: `rank-${value}`,
+      label: rankFilterOptions.find(option => option.value === value)?.label || value,
+      onRemove: () => setRankFilters(previous => previous.filter(item => item !== value))
+    })),
+    ...timeFilters.map(value => ({
+      id: `time-${value}`,
+      label: timeFilterOptions.find(option => option.value === value)?.label || value,
+      onRemove: () => setTimeFilters(previous => previous.filter(item => item !== value))
+    })),
+    ...provinceFilters.map(value => ({
+      id: `province-${value}`,
+      label: provinceFilterOptions.find(option => option.value === value)?.label || value,
+      onRemove: () => setProvinceFilters(previous => previous.filter(item => item !== value))
+    })),
+    ...productFilters.map(value => ({
+      id: `product-${value}`,
+      label: productFilterOptions.find(option => option.value === value)?.label || value,
+      onRemove: () => setProductFilters(previous => previous.filter(item => item !== value))
+    }))
+  ];
 
   const normalizedSearch = searchTerm.trim().toLocaleLowerCase('vi-VN');
   const filteredCustomers = sortNewestFirst(accessibleCustomers.filter(customer => {
@@ -2111,7 +2095,7 @@ export const Crm: React.FC<CrmProps> = ({
       )}
 
         <>
-          <div className="card crm-command-center">
+          <div className="crm-command-center crm-data-workspace">
             <div className="crm-list-tabs" role="tablist" aria-label={t('Chọn nhóm khách hàng')}>
               <button type="button" className={`crm-list-tab ${filterType === 'all' ? 'is-active' : ''}`} onClick={() => setFilterType('all')} role="tab" aria-selected={filterType === 'all'}>
                 <Building2 size={15} /><span>{t('Tất cả')}</span><span className="crm-list-tab__count">{accessibleCustomers.length}</span>
@@ -2146,22 +2130,36 @@ export const Crm: React.FC<CrmProps> = ({
               <>
                 <div className="crm-list-toolbar">
                   <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></div>
-                  <CrmMultiSelectFilter label="Sale" options={saleFilterOptions} selectedValues={saleFilters} onChange={setSaleFilters} />
-                  <CrmMultiSelectFilter label="Hạng" options={rankFilterOptions} selectedValues={rankFilters} onChange={setRankFilters} />
-                  <CrmMultiSelectFilter label="Thời gian" options={timeFilterOptions} selectedValues={timeFilters} onChange={values => setTimeFilters(values as CrmTimeFilter[])} />
-                  <CrmMultiSelectFilter label="Tỉnh/thành" options={provinceFilterOptions} selectedValues={provinceFilters} onChange={setProvinceFilters} />
-                  <CrmMultiSelectFilter label="Sản phẩm" options={productFilterOptions} selectedValues={productFilters} onChange={setProductFilters} />
+                  <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
                   {(searchTerm || activeFilterCount > 0) && (
-                    <button type="button" className="btn btn-outline crm-reset-filters" onClick={() => {
-                      setSearchTerm('');
-                      setSaleFilters([]);
-                      setRankFilters([]);
-                      setTimeFilters([]);
-                      setProvinceFilters([]);
-                      setProductFilters([]);
-                    }}><X size={14} /> {t('Đặt lại')} {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}</button>
+                    <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
                   )}
                 </div>
+
+                <DataFilterChipBar chips={crmFilterChips} onClear={resetCrmListFilters} />
+
+                <DataFilterPanel
+                  open={showListFilters}
+                  title="Lọc danh sách khách hàng"
+                  description="Kết hợp nhiều tiêu chí để tạo đúng danh sách cần theo dõi."
+                  activeCount={activeFilterCount}
+                  onClose={() => setShowListFilters(false)}
+                  onReset={resetCrmListFilters}
+                >
+                  <DataFilterSection title="Phân công và phân loại" description="Lọc theo Sale phụ trách và hạng khách hàng.">
+                    <div className="data-filter-subgroup"><strong>Sale phụ trách</strong><DataFilterCheckboxGroup options={saleFilterOptions} selectedValues={saleFilters} onChange={setSaleFilters} /></div>
+                    <div className="data-filter-subgroup"><strong>Hạng khách hàng</strong><DataFilterCheckboxGroup options={rankFilterOptions} selectedValues={rankFilters} onChange={setRankFilters} /></div>
+                  </DataFilterSection>
+                  <DataFilterSection title="Khu vực" description="Tỉnh/thành được lấy từ hồ sơ Lead hoặc địa chỉ khách hàng.">
+                    <DataFilterCheckboxGroup options={provinceFilterOptions} selectedValues={provinceFilters} onChange={setProvinceFilters} searchable />
+                  </DataFilterSection>
+                  <DataFilterSection title="Đơn hàng và thời gian" description="Theo dõi khách đã mua gần đây hoặc chưa phát sinh PO.">
+                    <DataFilterCheckboxGroup options={timeFilterOptions} selectedValues={timeFilters} onChange={values => setTimeFilters(values as CrmTimeFilter[])} />
+                  </DataFilterSection>
+                  <DataFilterSection title="Sản phẩm đã mua" description="Có thể chọn đồng thời nhiều mã hoặc tên sản phẩm.">
+                    <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={setProductFilters} searchable />
+                  </DataFilterSection>
+                </DataFilterPanel>
 
                 <div className="table-container crm-customer-table-wrap">
                   <table className="crm-customer-table">
