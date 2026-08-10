@@ -604,6 +604,9 @@
 }
 
 .lead-data-workspace {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid #dbe3ef;
   border-radius: 7px;
@@ -611,13 +614,18 @@
 }
 
 .lead-data-workspace > .data-filter-chips {
-  padding-right: 10px;
-  padding-left: 10px;
+  padding-right: 14px;
+  padding-left: 14px;
 }
 
 .lead-data-workspace > .lead-table-card {
-  border: 0;
-  border-radius: 0;
+  width: calc(100% - 24px);
+  max-width: calc(100% - 24px);
+  min-width: 0;
+  margin: 0 12px 12px;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   box-shadow: none;
 }
 
@@ -629,6 +637,9 @@
 /* Raw customer data: businesses found by Sale but not contacted yet. */
 .lead-candidate-workspace {
   display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   flex-direction: column;
   gap: 0;
   overflow: hidden;
@@ -648,7 +659,7 @@
 .lead-candidate-heading {
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 0;
   border-bottom: 1px solid #e2e8f0;
   border-radius: 0;
@@ -680,7 +691,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 0 10px;
+  padding: 0 14px;
   border: 0;
   border-bottom: 1px solid #e2e8f0;
   border-radius: 0;
@@ -733,7 +744,7 @@
   flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
-  padding: 10px;
+  padding: 12px 14px;
   border: 0;
   border-bottom: 1px solid #e5eaf2;
   border-radius: 0;
@@ -873,14 +884,18 @@
 }
 
 .lead-candidate-workspace > .data-filter-chips {
-  padding-right: 10px;
-  padding-left: 10px;
+  padding-right: 14px;
+  padding-left: 14px;
 }
 
 .lead-candidate-workspace > .lead-table-card {
-  border: 0;
-  border-top: 1px solid #e2e8f0;
-  border-radius: 0;
+  width: calc(100% - 24px);
+  max-width: calc(100% - 24px);
+  min-width: 0;
+  margin: 0 12px 12px;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   box-shadow: none;
 }
 
@@ -2707,6 +2722,21 @@
 }
 
 @media (max-width: 680px) {
+  .lead-data-workspace > .data-filter-chips,
+  .lead-candidate-workspace > .data-filter-chips,
+  .lead-candidate-toolbar,
+  .lead-candidate-queues {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .lead-data-workspace > .lead-table-card,
+  .lead-candidate-workspace > .lead-table-card {
+    width: calc(100% - 12px);
+    max-width: calc(100% - 12px);
+    margin: 0 6px 6px;
+  }
+
   .lead-province-selects {
     grid-template-columns: 1fr;
   }

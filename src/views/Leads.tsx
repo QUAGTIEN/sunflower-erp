@@ -1201,13 +1201,13 @@ export const Leads: React.FC<LeadsProps> = ({
                 })) : [])
               ]);
               return (
-                <DataFilterSection key={field.id} title={field.name} description={field.id === LEAD_FILTER_IDS.province ? 'Có thể chọn tỉnh hoặc khu vực/KCN trực thuộc.' : undefined}>
+                <DataFilterSection key={field.id} title={field.name} selectedCount={(dynamicFilters[field.id] || []).length} description={field.id === LEAD_FILTER_IDS.province ? 'Có thể chọn nhiều tỉnh hoặc khu vực/KCN trực thuộc.' : 'Có thể chọn đồng thời nhiều giá trị.'}>
                   <DataFilterCheckboxGroup
                     options={options}
                     selectedValues={dynamicFilters[field.id] || []}
                     onChange={values => setDynamicFilters(previous => ({
                       ...previous,
-                      [field.id]: field.type === 'single_select' ? values.slice(-1) : values
+                      [field.id]: values
                     }))}
                     searchable={options.length > 8}
                   />

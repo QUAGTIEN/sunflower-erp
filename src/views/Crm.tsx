@@ -2146,17 +2146,19 @@ export const Crm: React.FC<CrmProps> = ({
                   onClose={() => setShowListFilters(false)}
                   onReset={resetCrmListFilters}
                 >
-                  <DataFilterSection title="Phân công và phân loại" description="Lọc theo Sale phụ trách và hạng khách hàng.">
-                    <div className="data-filter-subgroup"><strong>Sale phụ trách</strong><DataFilterCheckboxGroup options={saleFilterOptions} selectedValues={saleFilters} onChange={setSaleFilters} /></div>
-                    <div className="data-filter-subgroup"><strong>Hạng khách hàng</strong><DataFilterCheckboxGroup options={rankFilterOptions} selectedValues={rankFilters} onChange={setRankFilters} /></div>
+                  <DataFilterSection title="Sale phụ trách" description="Có thể chọn đồng thời nhiều Sale." selectedCount={saleFilters.length}>
+                    <DataFilterCheckboxGroup options={saleFilterOptions} selectedValues={saleFilters} onChange={setSaleFilters} searchable />
                   </DataFilterSection>
-                  <DataFilterSection title="Khu vực" description="Tỉnh/thành được lấy từ hồ sơ Lead hoặc địa chỉ khách hàng.">
+                  <DataFilterSection title="Hạng khách hàng" description="Kết hợp nhiều hạng trong cùng một danh sách." selectedCount={rankFilters.length}>
+                    <DataFilterCheckboxGroup options={rankFilterOptions} selectedValues={rankFilters} onChange={setRankFilters} />
+                  </DataFilterSection>
+                  <DataFilterSection title="Tỉnh/thành" description="Tỉnh/thành được lấy từ hồ sơ Lead hoặc địa chỉ khách hàng." selectedCount={provinceFilters.length}>
                     <DataFilterCheckboxGroup options={provinceFilterOptions} selectedValues={provinceFilters} onChange={setProvinceFilters} searchable />
                   </DataFilterSection>
-                  <DataFilterSection title="Đơn hàng và thời gian" description="Theo dõi khách đã mua gần đây hoặc chưa phát sinh PO.">
+                  <DataFilterSection title="Thời gian phát sinh PO" description="Theo dõi khách đã mua gần đây hoặc chưa phát sinh PO." selectedCount={timeFilters.length}>
                     <DataFilterCheckboxGroup options={timeFilterOptions} selectedValues={timeFilters} onChange={values => setTimeFilters(values as CrmTimeFilter[])} />
                   </DataFilterSection>
-                  <DataFilterSection title="Sản phẩm đã mua" description="Có thể chọn đồng thời nhiều mã hoặc tên sản phẩm.">
+                  <DataFilterSection title="Sản phẩm đã mua" description="Có thể chọn đồng thời nhiều mã hoặc tên sản phẩm." selectedCount={productFilters.length}>
                     <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={setProductFilters} searchable />
                   </DataFilterSection>
                 </DataFilterPanel>

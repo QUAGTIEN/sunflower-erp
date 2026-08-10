@@ -99,11 +99,15 @@ export const DataFilterPanel: React.FC<{
 export const DataFilterSection: React.FC<{
   title: string;
   description?: string;
+  selectedCount?: number;
   children: React.ReactNode;
-}> = ({ title, description, children }) => (
+}> = ({ title, description, selectedCount = 0, children }) => (
   <section className="data-filter-section">
     <div className="data-filter-section__heading">
-      <strong>{title}</strong>
+      <div>
+        <strong>{title}</strong>
+        {selectedCount > 0 && <span className="data-filter-section__count">{selectedCount} đã chọn</span>}
+      </div>
       {description && <span>{description}</span>}
     </div>
     <div className="data-filter-section__content">{children}</div>
@@ -141,7 +145,7 @@ export const DataFilterCheckboxGroup: React.FC<{
                 type="checkbox"
                 checked={selected}
                 onChange={event => onChange(event.target.checked
-                  ? [...selectedValues, option.value]
+                  ? Array.from(new Set([...selectedValues, option.value]))
                   : selectedValues.filter(value => value !== option.value))}
               />
               <span><strong>{option.label}</strong>{option.description && <small>{option.description}</small>}</span>

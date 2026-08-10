@@ -47,6 +47,7 @@ import { PageBackButton } from './PageBackButton';
 import { RowActionMenu } from './RowActionMenu';
 import {
   DataFilterButton,
+  DataFilterCheckboxGroup,
   DataFilterChipBar,
   DataFilterPanel,
   DataFilterSection
@@ -84,8 +85,6 @@ interface ScheduleFormState {
 
 const CANDIDATE_SOURCES = ['Google Maps', 'Facebook', 'Mạng xã hội', 'Website', 'Khách hàng giới thiệu', 'Khác'];
 type CandidateWorkspaceView = 'tasks' | 'all';
-type CandidateContactResultFilter = 'all' | LeadCandidateContactResult;
-type CandidatePotentialFilter = 'all' | LeadCandidatePotentialLevel;
 type CandidateSort = 'priority' | 'updated_desc' | 'company_asc' | 'next_contact_asc';
 
 const CONTACT_STATUS_LABELS: Record<LeadCandidateContactResult, string> = {
@@ -242,11 +241,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     : saleUsers.some(user => user.uid === currentUser.uid) ? saleUsers : [currentUser, ...saleUsers];
   const [searchTerm, setSearchTerm] = useState('');
   const [workspaceView, setWorkspaceView] = useState<CandidateWorkspaceView>('tasks');
-  const [saleFilter, setSaleFilter] = useState('all');
-  const [sourceFilter, setSourceFilter] = useState('all');
-  const [provinceFilter, setProvinceFilter] = useState('all');
-  const [contactResultFilter, setContactResultFilter] = useState<CandidateContactResultFilter>('all');
-  const [potentialFilter, setPotentialFilter] = useState<CandidatePotentialFilter>('all');
+  const [saleFilters, setSaleFilters] = useState<string[]>([]);
+  const [sourceFilters, setSourceFilters] = useState<string[]>([]);
+  const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
+  const [contactResultFilters, setContactResultFilters] = useState<LeadCandidateContactResult[]>([]);
+  const [potentialFilters, setPotentialFilters] = useState<LeadCandidatePotentialLevel[]>([]);
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [candidateSort, setCandidateSort] = useState<CandidateSort>('priority');
   const [showDataFilters, setShowDataFilters] = useState(false);
@@ -292,11 +291,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const filteredCandidates = useMemo(() => {
     const sourceCandidates = workspaceView === 'tasks' ? taskCandidates : accessibleCandidates;
     return sourceCandidates.filter(candidate => {
-    const matchesSale = saleFilter === 'all' || candidate.assignedSaleId === saleFilter;
-    const matchesSource = sourceFilter === 'all' || candidate.source === sourceFilter;
-    const matchesProvince = provinceFilter === 'all' || candidate.province === provinceFilter;
-    const matchesContactResult = contactResultFilter === 'all' || candidate.contactResult === contactResultFilter;
-    const matchesPotential = potentialFilter === 'all' || candidate.potentialLevel === potentialFilter;
+    const matchesSale = saleFilters.length === 0 || saleFilters.includes(candidate.assignedSaleId);
+    const matchesSource = sourceFilters.length === 0 || sourceFilters.includes(candidate.source);
+    const matchesProvince = provinceFilters.length === 0 || provinceFilters.includes(candidate.province);
+    const matchesContactResult = contactResultFilters.length === 0 || contactResultFilters.includes(candidate.contactResult);
+    const matchesPotential = potentialFilters.length === 0 || potentialFilters.includes(candidate.potentialLevel);
     return matchesSale && matchesSource && matchesProvince && matchesContactResult && matchesPotential && (!pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm);
   }).sort((left, right) => {
     if (workspaceView === 'tasks') {
@@ -324,31 +323,39 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
     return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
     });
-  }, [accessibleCandidates, candidateSort, contactResultFilter, pinnedOnly, potentialFilter, provinceFilter, saleFilter, searchTerm, sourceFilter, taskCandidates, workspaceView]);
+  }, [accessibleCandidates, candidateSort, contactResultFilters, pinnedOnly, potentialFilters, provinceFilters, saleFilters, searchTerm, sourceFilters, taskCandidates, workspaceView]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const displayedCandidates = filteredCandidates.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
-  const activeFilterCount = [provinceFilter, sourceFilter, contactResultFilter, potentialFilter, saleFilter]
-    .filter(value => value !== 'all').length + (pinnedOnly ? 1 : 0);
+  const activeFilterCount = provinceFilters.length + sourceFilters.length + contactResultFilters.length
+    + potentialFilters.length + saleFilters.length + (pinnedOnly ? 1 : 0);
   const candidateFilterChips = [
-    ...(provinceFilter !== 'all' ? [{ id: 'province', label: provinceFilter, onRemove: () => setProvinceFilter('all') }] : []),
-    ...(sourceFilter !== 'all' ? [{ id: 'source', label: sourceFilter, onRemove: () => setSourceFilter('all') }] : []),
-    ...(contactResultFilter !== 'all' ? [{
-      id: 'contact-result',
-      label: CONTACT_STATUS_LABELS[contactResultFilter],
-      onRemove: () => setContactResultFilter('all')
-    }] : []),
-    ...(potentialFilter !== 'all' ? [{
-      id: 'potential',
-      label: POTENTIAL_LEVEL_LABELS[potentialFilter],
-      onRemove: () => setPotentialFilter('all')
-    }] : []),
-    ...(saleFilter !== 'all' ? [{
-      id: 'sale',
-      label: `Sale: ${candidateOwners.find(user => user.uid === saleFilter)?.displayName || saleFilter}`,
-      onRemove: () => setSaleFilter('all')
-    }] : []),
+    ...provinceFilters.map(value => ({
+      id: `province-${value}`,
+      label: `Tỉnh/thành: ${value}`,
+      onRemove: () => setProvinceFilters(previous => previous.filter(item => item !== value))
+    })),
+    ...sourceFilters.map(value => ({
+      id: `source-${value}`,
+      label: `Nguồn: ${value}`,
+      onRemove: () => setSourceFilters(previous => previous.filter(item => item !== value))
+    })),
+    ...contactResultFilters.map(value => ({
+      id: `contact-result-${value}`,
+      label: `Trạng thái: ${CONTACT_STATUS_LABELS[value]}`,
+      onRemove: () => setContactResultFilters(previous => previous.filter(item => item !== value))
+    })),
+    ...potentialFilters.map(value => ({
+      id: `potential-${value}`,
+      label: `Tiềm năng: ${POTENTIAL_LEVEL_LABELS[value]}`,
+      onRemove: () => setPotentialFilters(previous => previous.filter(item => item !== value))
+    })),
+    ...saleFilters.map(value => ({
+      id: `sale-${value}`,
+      label: `Sale: ${candidateOwners.find(user => user.uid === value)?.displayName || value}`,
+      onRemove: () => setSaleFilters(previous => previous.filter(item => item !== value))
+    })),
     ...(pinnedOnly ? [{ id: 'pinned', label: 'Đã ghim', onRemove: () => setPinnedOnly(false) }] : [])
   ];
 
@@ -821,11 +828,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   const clearDataFilters = () => {
     setSearchTerm('');
-    setProvinceFilter('all');
-    setSourceFilter('all');
-    setContactResultFilter('all');
-    setPotentialFilter('all');
-    setSaleFilter('all');
+    setProvinceFilters([]);
+    setSourceFilters([]);
+    setContactResultFilters([]);
+    setPotentialFilters([]);
+    setSaleFilters([]);
     setPinnedOnly(false);
     setCurrentPage(1);
   };
@@ -984,7 +991,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               setSelectedQueueCandidateIds([]);
               setBatchQueueError('');
               setCurrentPage(1);
-              if (value === 'tasks' && currentUser.role !== 'admin') setSaleFilter('all');
+              if (value === 'tasks' && currentUser.role !== 'admin') setSaleFilters([]);
             }}
           >
             {value === 'tasks' && <CalendarClock size={15} />}
@@ -1025,43 +1032,46 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         onClose={() => setShowDataFilters(false)}
         onReset={clearDataFilters}
       >
-        <DataFilterSection title="Khu vực và nguồn dữ liệu">
-          <label>Tỉnh/thành
-            <select value={provinceFilter} onChange={event => { setProvinceFilter(event.target.value); setCurrentPage(1); }}>
-              <option value="all">Tất cả tỉnh/thành</option>
-              {provinceOptions.map(province => <option key={province} value={province}>{province}</option>)}
-            </select>
-          </label>
-          <label>Nguồn tìm kiếm
-            <select value={sourceFilter} onChange={event => { setSourceFilter(event.target.value); setCurrentPage(1); }}>
-              <option value="all">Tất cả nguồn</option>
-              {CANDIDATE_SOURCES.map(source => <option key={source} value={source}>{source}</option>)}
-            </select>
-          </label>
+        <DataFilterSection title="Tỉnh/thành" description="Có thể chọn đồng thời nhiều tỉnh/thành." selectedCount={provinceFilters.length}>
+          <DataFilterCheckboxGroup
+            options={provinceOptions.map(province => ({ value: province, label: province }))}
+            selectedValues={provinceFilters}
+            onChange={values => { setProvinceFilters(values); setCurrentPage(1); }}
+            searchable
+          />
         </DataFilterSection>
-        <DataFilterSection title="Tiến độ tiếp cận" description="Trạng thái liên hệ và đánh giá tiềm năng là hai tiêu chí độc lập.">
-          <label>Trạng thái
-            <select value={contactResultFilter} onChange={event => { setContactResultFilter(event.target.value as CandidateContactResultFilter); setCurrentPage(1); }}>
-              <option value="all">Tất cả trạng thái</option>
-              {(Object.entries(CONTACT_STATUS_LABELS) as Array<[LeadCandidateContactResult, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
-          <label>Mức độ tiềm năng
-            <select value={potentialFilter} onChange={event => { setPotentialFilter(event.target.value as CandidatePotentialFilter); setCurrentPage(1); }}>
-              <option value="all">Tất cả tiềm năng</option>
-              {(Object.entries(POTENTIAL_LEVEL_LABELS) as Array<[LeadCandidatePotentialLevel, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
+        <DataFilterSection title="Nguồn tìm kiếm" description="Kết hợp nhiều nguồn dữ liệu trong một lần lọc." selectedCount={sourceFilters.length}>
+          <DataFilterCheckboxGroup
+            options={CANDIDATE_SOURCES.map(source => ({ value: source, label: source }))}
+            selectedValues={sourceFilters}
+            onChange={values => { setSourceFilters(values); setCurrentPage(1); }}
+          />
         </DataFilterSection>
-        <DataFilterSection title="Phân công và ưu tiên">
-          {(workspaceView === 'all' || currentUser.role === 'admin') && (
-            <label>Sale phụ trách
-              <select value={saleFilter} onChange={event => { setSaleFilter(event.target.value); setCurrentPage(1); }}>
-                <option value="all">Tất cả phụ trách</option>
-                {candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
-              </select>
-            </label>
-          )}
+        <DataFilterSection title="Trạng thái liên hệ" description="Có thể theo dõi nhiều trạng thái cùng lúc." selectedCount={contactResultFilters.length}>
+          <DataFilterCheckboxGroup
+            options={(Object.entries(CONTACT_STATUS_LABELS) as Array<[LeadCandidateContactResult, string]>).map(([value, label]) => ({ value, label }))}
+            selectedValues={contactResultFilters}
+            onChange={values => { setContactResultFilters(values as LeadCandidateContactResult[]); setCurrentPage(1); }}
+          />
+        </DataFilterSection>
+        <DataFilterSection title="Mức độ tiềm năng" selectedCount={potentialFilters.length}>
+          <DataFilterCheckboxGroup
+            options={(Object.entries(POTENTIAL_LEVEL_LABELS) as Array<[LeadCandidatePotentialLevel, string]>).map(([value, label]) => ({ value, label }))}
+            selectedValues={potentialFilters}
+            onChange={values => { setPotentialFilters(values as LeadCandidatePotentialLevel[]); setCurrentPage(1); }}
+          />
+        </DataFilterSection>
+        {(workspaceView === 'all' || currentUser.role === 'admin') && (
+          <DataFilterSection title="Sale phụ trách" description="Admin có thể chọn nhiều Sale để đối chiếu dữ liệu." selectedCount={saleFilters.length}>
+            <DataFilterCheckboxGroup
+              options={candidateOwners.map(user => ({ value: user.uid, label: user.displayName }))}
+              selectedValues={saleFilters}
+              onChange={values => { setSaleFilters(values); setCurrentPage(1); }}
+              searchable
+            />
+          </DataFilterSection>
+        )}
+        <DataFilterSection title="Mức độ ưu tiên" selectedCount={pinnedOnly ? 1 : 0}>
           <button type="button" className={`lead-candidate-pinned-filter ${pinnedOnly ? 'is-active' : ''}`} onClick={() => { setPinnedOnly(previous => !previous); setCurrentPage(1); }}>
             <Star size={14} fill={pinnedOnly ? 'currentColor' : 'none'} /> Chỉ hiển thị dữ liệu đã ghim
           </button>
