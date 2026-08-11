@@ -504,6 +504,7 @@ function App() {
             onPreparedOrderCreated={handlePreparedOrderCreated}
             initialLead={leadOnboarding}
             onLeadOnboardingClosed={() => setLeadOnboarding(null)}
+            onNavigateToSystemConfiguration={() => setActivePage('system_configuration')}
           />
         );
       case 'leads':
@@ -514,6 +515,7 @@ function App() {
             users={users}
             currentUser={user}
             onNavigateToCrm={() => setActivePage('crm')}
+            onNavigateToSystemConfiguration={() => setActivePage('system_configuration')}
             onConvertLead={handleLeadConversionRequest}
           />
         );

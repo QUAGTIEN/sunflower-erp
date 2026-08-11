@@ -48,8 +48,12 @@ import {
   getLeadFilterValues,
   LEAD_FILTER_IDS,
   mergeLeadFilterDefinitions,
-  compactLeadFilterDefinitionForStorage,
 } from '../domain/leadFilterConfig';
+import {
+  getSystemFilterDefinition,
+  isSystemFilterEnabled
+} from '../domain/systemFilterConfig';
+import { useSystemFilterConfiguration } from '../hooks/useSystemFilterConfiguration';
 import {
   dbService,
   isDocumentAlreadyExistsError,
@@ -57,7 +61,6 @@ import {
 } from '../services/firebaseService';
 import {
   LeadDynamicFields,
-  LeadFilterAdminModal,
   LeadSalesWorkspace
 } from '../components/LeadFilterSystem';
 import { LeadCandidateWorkspace } from '../components/LeadCandidateWorkspace';
@@ -85,6 +88,7 @@ interface LeadsProps {
   users: UserProfile[];
   currentUser: UserProfile;
   onNavigateToCrm: () => void;
+  onNavigateToSystemConfiguration: () => void;
   onConvertLead: (lead: LeadRecord) => void;
 }
 
@@ -206,6 +210,7 @@ export const Leads: React.FC<LeadsProps> = ({
   users,
   currentUser,
   onNavigateToCrm,
+  onNavigateToSystemConfiguration,
   onConvertLead
 }) => {
   const { t } = useLanguage();
@@ -214,7 +219,6 @@ export const Leads: React.FC<LeadsProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [workspaceTab, setWorkspaceTab] = useState<'list' | 'performance' | 'data'>('list');
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
-  const [showFilterConfig, setShowFilterConfig] = useState(false);
   const [isEditingProfileStructure, setIsEditingProfileStructure] = useState(false);
   const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
   const [profileDefinitions, setProfileDefinitions] = useState<LeadProfileFieldDefinition[]>([]);
@@ -266,6 +270,15 @@ export const Leads: React.FC<LeadsProps> = ({
     () => mergeLeadFilterDefinitions(storedFilterDefinitions),
     [storedFilterDefinitions]
   );
+  const systemFilterDefinitions = useSystemFilterConfiguration(filterDefinitions);
+  const visibleFilterDefinitions = useMemo(
+    () => filterDefinitions.filter(field => (
+      field.active
+      && field.showInQuickFilter
+      && isSystemFilterEnabled(systemFilterDefinitions, field.id, 'lead_list')
+    )),
+    [filterDefinitions, systemFilterDefinitions]
+  );
 
   const resolvedProfileDefinitions = useMemo(
     () => mergeLeadProfileFieldDefinitions(profileDefinitions),
@@ -304,14 +317,21 @@ export const Leads: React.FC<LeadsProps> = ({
     }));
   }, [accessibleLeads, filterDefinitions]);
 
-  const leadActiveFilterCount = Object.values(dynamicFilters)
-    .reduce((total, values) => total + values.length, 0);
+  const visibleFilterIds = useMemo(
+    () => new Set(visibleFilterDefinitions.map(field => field.id)),
+    [visibleFilterDefinitions]
+  );
+  const leadActiveFilterCount = Object.entries(dynamicFilters)
+    .filter(([fieldId]) => visibleFilterIds.has(fieldId))
+    .reduce((total, [, values]) => total + values.length, 0);
   const leadFilterChips = Object.entries(dynamicFilters).flatMap(([fieldId, values]) => {
+    if (!visibleFilterIds.has(fieldId)) return [];
     const field = filterDefinitions.find(definition => definition.id === fieldId);
     if (!field) return [];
+    const configuredField = getSystemFilterDefinition(systemFilterDefinitions, fieldId);
     return values.map(value => ({
       id: `${fieldId}-${value}`,
-      label: `${field.name}: ${findLeadFilterOption(filterDefinitions, fieldId, value)?.label || value}`,
+      label: `${configuredField?.name || field.name}: ${findLeadFilterOption(filterDefinitions, fieldId, value)?.label || value}`,
       onRemove: () => setDynamicFilters(previous => ({
         ...previous,
         [fieldId]: (previous[fieldId] || []).filter(item => item !== value)
@@ -354,7 +374,7 @@ export const Leads: React.FC<LeadsProps> = ({
         })
       ]);
       const matchesClassifications = Object.entries(dynamicFilters)
-        .filter(([, selectedValues]) => selectedValues.length > 0)
+        .filter(([fieldId, selectedValues]) => visibleFilterIds.has(fieldId) && selectedValues.length > 0)
         .every(([fieldId, selectedValues]) => {
           const currentValues = leadFilterValues[fieldId] || [];
           return selectedValues.some(value => currentValues.includes(value));
@@ -368,7 +388,8 @@ export const Leads: React.FC<LeadsProps> = ({
     filterDefinitions,
     searchTerm,
     users,
-    customProfileDefinitions
+    customProfileDefinitions,
+    visibleFilterIds
   ]);
 
   const selectedLead = selectedLeadId
@@ -754,15 +775,6 @@ export const Leads: React.FC<LeadsProps> = ({
         createdByName: currentUser.displayName
       }, ...(lead.activities || [])],
       updatedBy: currentUser.displayName
-    });
-  };
-
-  const handleSaveFilterDefinition = async (definition: LeadFilterDefinition) => {
-    const storedDefinition = compactLeadFilterDefinitionForStorage(definition);
-    await dbService.addDocument('lead_filter_definitions', {
-      ...storedDefinition,
-      updatedBy: currentUser.displayName,
-      updatedAt: new Date().toISOString()
     });
   };
 
@@ -1185,13 +1197,14 @@ export const Leads: React.FC<LeadsProps> = ({
             onClose={() => setShowLeadFilters(false)}
             onReset={clearFilters}
             headerAction={currentUser.role === 'admin' ? (
-              <button type="button" className="btn btn-outline" onClick={() => { setShowLeadFilters(false); setShowFilterConfig(true); }}>
-                <Settings2 size={14} /> Quản lý tiêu chí lọc
+              <button type="button" className="btn btn-outline" onClick={() => { setShowLeadFilters(false); onNavigateToSystemConfiguration(); }}>
+                <Settings2 size={14} /> Mở cấu hình hệ thống
               </button>
             ) : undefined}
           >
-            {filterDefinitions.filter(field => field.active && field.showInQuickFilter).map(field => {
+            {visibleFilterDefinitions.map(field => {
               const fieldOptions = quickFilterOptionsByField[field.id] || [];
+              const configuredField = getSystemFilterDefinition(systemFilterDefinitions, field.id);
               const options = field.id === LEAD_FILTER_IDS.province
                 ? fieldOptions.flatMap(province => flattenLeadFilterOptions([province]).map(option => {
                   const path = findLeadFilterOptionPathInOptions([province], option.id);
@@ -1203,7 +1216,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 }))
                 : fieldOptions.map(option => ({ value: option.id, label: option.label }));
               return (
-                <DataFilterSection key={field.id} title={field.name} selectedCount={(dynamicFilters[field.id] || []).length} description={field.id === LEAD_FILTER_IDS.province ? 'Lọc theo tỉnh/thành, phường/xã hoặc vùng/KCN trực thuộc.' : 'Có thể chọn đồng thời nhiều giá trị.'}>
+                <DataFilterSection key={field.id} title={configuredField?.name || field.name} selectedCount={(dynamicFilters[field.id] || []).length} description={configuredField?.description || (field.id === LEAD_FILTER_IDS.province ? 'Lọc theo tỉnh/thành, phường/xã hoặc vùng/KCN trực thuộc.' : 'Có thể chọn đồng thời nhiều giá trị.')}>
                   <DataFilterCheckboxGroup
                     options={options}
                     selectedValues={dynamicFilters[field.id] || []}
@@ -1251,13 +1264,6 @@ export const Leads: React.FC<LeadsProps> = ({
         </div>
       )}
 
-      {showFilterConfig && currentUser.role === 'admin' && (
-        <LeadFilterAdminModal
-          definitions={filterDefinitions}
-          onClose={() => setShowFilterConfig(false)}
-          onSaveDefinition={handleSaveFilterDefinition}
-        />
-      )}
     </div>
   );
 };
