@@ -1169,46 +1169,34 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   return (
     <div className="lead-candidate-workspace">
-      <div className="lead-candidate-heading">
-        <div>
-          <UserRoundSearch size={20} />
-          <div>
-            <strong>Bàn làm việc Sale</strong>
-            <span>Kho dữ liệu doanh nghiệp và các công việc đã đến lịch xử lý.</span>
-          </div>
-        </div>
-        {workspaceView === 'all' && <button type="button" className="btn btn-primary" onClick={openCreateForm}>
-          <Plus size={15} /> Thêm dữ liệu khách hàng
-        </button>}
-      </div>
+      <div className="lead-candidate-commandbar">
+        <nav className="lead-candidate-queues" aria-label="Không gian làm việc Sale">
+          {([
+            ['tasks', 'Công việc cần xử lý'],
+            ['all', 'Tất cả dữ liệu']
+          ] as Array<[CandidateWorkspaceView, string]>).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={workspaceView === value ? 'is-active' : ''}
+              onClick={() => {
+                setWorkspaceView(value);
+                setSelectedCandidateId('');
+                setSelectedQueueCandidateIds([]);
+                setBatchQueueError('');
+                setCurrentPage(1);
+                if (value === 'tasks') setCandidateSort('priority');
+                if (value === 'tasks' && currentUser.role !== 'admin') setSaleFilters([]);
+              }}
+            >
+              {value === 'tasks' && <CalendarClock size={15} />}
+              {value === 'all' && <UserRoundSearch size={15} />}
+              <span>{label}</span><strong>{workspaceCounts[value]}</strong>
+            </button>
+          ))}
+        </nav>
 
-      <nav className="lead-candidate-queues" aria-label="Không gian làm việc Sale">
-        {([
-          ['tasks', 'Công việc cần xử lý'],
-          ['all', 'Tất cả dữ liệu']
-        ] as Array<[CandidateWorkspaceView, string]>).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            className={workspaceView === value ? 'is-active' : ''}
-            onClick={() => {
-              setWorkspaceView(value);
-              setSelectedCandidateId('');
-              setSelectedQueueCandidateIds([]);
-              setBatchQueueError('');
-              setCurrentPage(1);
-              if (value === 'tasks') setCandidateSort('priority');
-              if (value === 'tasks' && currentUser.role !== 'admin') setSaleFilters([]);
-            }}
-          >
-            {value === 'tasks' && <CalendarClock size={15} />}
-            {value === 'all' && <UserRoundSearch size={15} />}
-            <span>{label}</span><strong>{workspaceCounts[value]}</strong>
-          </button>
-        ))}
-      </nav>
-
-      <section className="lead-candidate-toolbar">
+        <section className="lead-candidate-toolbar">
           <label className="lead-candidate-search">
             <Search size={15} />
             <input
@@ -1227,8 +1215,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           <button type="button" className="lead-candidate-column-button" onClick={() => setShowColumnCustomizer(true)}>
             <Columns3 size={15} /> Tùy chỉnh cột
           </button>
+          {workspaceView === 'all' && <button type="button" className="btn btn-primary lead-candidate-add-button" onClick={openCreateForm}>
+            <Plus size={15} /> Thêm dữ liệu
+          </button>}
           {(activeFilterCount > 0 || searchTerm) && <button type="button" className="lead-candidate-clear-filter" onClick={clearDataFilters}><X size={13} /> Đặt lại</button>}
         </section>
+      </div>
 
       <DataFilterChipBar chips={candidateFilterChips} onClear={clearDataFilters} />
 

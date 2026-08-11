@@ -1133,21 +1133,19 @@ export const Leads: React.FC<LeadsProps> = ({
 
   return (
     <div className="leads-page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('KHÁCH HÀNG TIỀM NĂNG (LEAD)')}</h1>
-          <p className="page-subtitle">{t('Quản lý cơ hội bán hàng, lịch chăm sóc và chuyển đổi Lead thành khách hàng chính thức.')}</p>
+      <header className="lead-page-commandbar">
+        <div className="lead-page-commandbar__title">
+          <h1>{t('KHÁCH HÀNG TIỀM NĂNG (LEAD)')}</h1>
+        </div>
+        <div className="lead-workspace-tabs" role="tablist" aria-label="Không gian quản lý Lead">
+          <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => setWorkspaceTab('list')}><List size={16} /> Danh sách Lead <span>{accessibleLeads.length}</span></button>
+          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}><Users size={16} /> Khách hàng của Sale</button>}
+          <button type="button" role="tab" aria-selected={workspaceTab === 'data'} className={workspaceTab === 'data' ? 'is-active' : ''} onClick={() => setWorkspaceTab('data')}><Database size={16} /> Dữ liệu khách hàng <span>{accessibleCandidates.filter(candidate => candidate.status === 'new' || candidate.status === 'retry').length}</span></button>
         </div>
         <div className="lead-page-actions">
           {workspaceTab === 'list' && <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm Lead')}</button>}
         </div>
-      </div>
-
-      <div className="lead-workspace-tabs" role="tablist" aria-label="Không gian quản lý Lead">
-        <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => setWorkspaceTab('list')}><List size={16} /> Danh sách Lead <span>{accessibleLeads.length}</span></button>
-        {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}><Users size={16} /> Khách hàng của Sale</button>}
-        <button type="button" role="tab" aria-selected={workspaceTab === 'data'} className={workspaceTab === 'data' ? 'is-active' : ''} onClick={() => setWorkspaceTab('data')}><Database size={16} /> Dữ liệu khách hàng <span>{accessibleCandidates.filter(candidate => candidate.status === 'new' || candidate.status === 'retry').length}</span></button>
-      </div>
+      </header>
 
       {workspaceTab === 'performance' && currentUser.role === 'admin' ? (
         <LeadSalesWorkspace

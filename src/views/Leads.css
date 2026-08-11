@@ -7,7 +7,27 @@
 }
 
 .leads-page {
-  gap: 12px;
+  gap: 8px;
+}
+
+.lead-page-commandbar {
+  display: grid;
+  min-height: 52px;
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 0 12px 0 16px;
+  border: 1px solid #dbe3ef;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.lead-page-commandbar__title h1 {
+  margin: 0;
+  color: #172554;
+  font-size: 16px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .leads-page .page-header .btn,
@@ -562,18 +582,23 @@
 .lead-workspace-tabs {
   gap: 2px;
   margin: 0;
-  padding: 0 10px;
+  padding: 0;
+  overflow-x: auto;
   border: 0;
-  border-bottom: 1px solid #dbe3ef;
   border-radius: 0;
-  background: #fff;
+  background: transparent;
+  scrollbar-width: none;
+}
+
+.lead-workspace-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .lead-workspace-tabs button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 43px;
+  min-height: 50px;
   padding: 8px 11px;
   border: 0;
   border-radius: 0;
@@ -648,62 +673,40 @@
   background: #fff;
 }
 
-.lead-candidate-heading,
-.lead-candidate-heading > div,
 .lead-candidate-warning,
 .lead-candidate-table td > a {
   display: flex;
   align-items: center;
 }
 
-.lead-candidate-heading {
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 16px;
-  border: 0;
-  border-bottom: 1px solid #e2e8f0;
-  border-radius: 0;
-  background: #fff;
-}
-
-.lead-candidate-heading > div {
-  gap: 10px;
-  color: #1e3a8a;
-}
-
-.lead-candidate-heading > div > div {
+.lead-candidate-commandbar {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.lead-candidate-heading strong {
-  color: #172554;
-  font-size: 14px;
-}
-
-.lead-candidate-heading span {
-  color: #64748b;
-  font-size: 12px;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #cbd5e1;
+  background: #fff;
 }
 
 .lead-candidate-queues {
   display: flex;
+  min-width: max-content;
+  flex: 0 0 auto;
   align-items: center;
   gap: 2px;
-  padding: 0 14px;
+  padding: 0;
   border: 0;
-  border-bottom: 1px solid #e2e8f0;
   border-radius: 0;
-  background: #fff;
+  background: transparent;
 }
 
 .lead-candidate-queues button {
   display: inline-flex;
-  min-height: 42px;
+  min-height: 38px;
   align-items: center;
   gap: 7px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 0;
   border-radius: 0;
   color: #475569;
@@ -741,14 +744,15 @@
 
 .lead-candidate-toolbar {
   display: flex;
+  min-width: 0;
+  flex: 1;
   flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 0;
   border: 0;
-  border-bottom: 1px solid #e5eaf2;
   border-radius: 0;
-  background: #fff;
+  background: transparent;
 }
 
 .lead-candidate-search {
@@ -914,10 +918,10 @@
 .lead-candidate-workspace > .lead-table-card {
   display: flex;
   width: calc(100% - 24px);
-  height: clamp(380px, calc(100dvh - 350px), 720px);
+  height: clamp(420px, calc(100dvh - 220px), 840px);
   max-width: calc(100% - 24px);
   min-width: 0;
-  min-height: 380px;
+  min-height: 420px;
   flex-direction: column;
   margin: 0 12px 12px;
   overflow: hidden;
@@ -999,7 +1003,13 @@
 .lead-candidate-table.is-compact thead th {
   height: 38px;
   padding: 7px 10px;
+  border-right: 1px solid #dbe3ef;
+  border-bottom: 1px solid #b8c7db;
   white-space: nowrap;
+}
+
+.lead-candidate-table.is-compact thead th:last-child {
+  border-right: 0;
 }
 
 .lead-candidate-table.is-compact tbody tr {
@@ -1011,8 +1021,32 @@
   max-width: 240px;
   padding: 5px 10px;
   overflow: hidden;
+  border-right: 1px solid #eef2f7;
+  border-bottom: 1px solid #cbd5e1;
+  background: #fff;
   vertical-align: middle;
   white-space: nowrap;
+}
+
+.lead-candidate-table.is-compact tbody td:last-child {
+  border-right: 0;
+}
+
+.lead-candidate-table.is-compact tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.lead-candidate-table.is-compact tbody tr:hover td {
+  background: #eef4ff;
+}
+
+.lead-candidate-table.is-compact tbody tr.is-overdue td {
+  background: #fff7f7;
+}
+
+.lead-candidate-table.is-compact tbody tr.is-selected td,
+.lead-candidate-table.is-compact tbody tr.is-selected:hover td {
+  background: #eaf2ff;
 }
 
 .lead-candidate-table.is-compact .lead-candidate-inline-select {
@@ -1237,6 +1271,12 @@
   border-color: #93c5fd;
   color: #1d4ed8;
   background: #eff6ff;
+}
+
+.lead-candidate-add-button {
+  min-height: 36px;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .lead-candidate-pagination label,
@@ -2770,6 +2810,30 @@
 }
 
 @media (max-width: 980px) {
+  .lead-page-commandbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0 12px;
+    padding-top: 10px;
+  }
+
+  .lead-page-commandbar .lead-workspace-tabs {
+    grid-column: 1 / -1;
+    order: 3;
+    border-top: 1px solid #e2e8f0;
+  }
+
+  .lead-candidate-commandbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+  }
+
+  .lead-candidate-queues {
+    padding: 0 8px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
   .lead-summary-grid,
   .lead-detail-layout,
   .lead-form-page__content,
@@ -2792,6 +2856,7 @@
 
   .lead-candidate-toolbar {
     flex-wrap: wrap;
+    padding: 7px 8px;
   }
 
   .lead-candidate-search {
@@ -2879,17 +2944,11 @@
   }
 
   .lead-page-actions,
-  .lead-candidate-heading,
-  .lead-workspace-tabs,
   .lead-save-view-form,
   .lead-form-page__footer,
   .lead-form-page__header {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .lead-candidate-heading .btn {
-    width: 100%;
   }
 
   .lead-candidate-queues {
@@ -2908,6 +2967,11 @@
   .lead-candidate-toolbar select {
     width: 100%;
     flex-basis: 100%;
+  }
+
+  .lead-candidate-workspace > .lead-table-card {
+    height: 60dvh;
+    min-height: 340px;
   }
 
   .lead-candidate-batch-bar,
@@ -2950,9 +3014,14 @@
     width: 100%;
   }
 
-  .lead-workspace-tabs button,
   .lead-save-view-form input {
     width: 100%;
+  }
+
+  .lead-workspace-tabs button {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .lead-check-grid,
