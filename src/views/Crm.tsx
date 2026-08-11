@@ -64,6 +64,8 @@ import {
   Search,
   ShoppingBag,
   Users,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown,
   Layers3,
   Settings2
@@ -220,6 +222,8 @@ export const Crm: React.FC<CrmProps> = ({
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
   const [productFilters, setProductFilters] = useState<string[]>([]);
   const [showListFilters, setShowListFilters] = useState(false);
+  const [customerPageSize, setCustomerPageSize] = useState(25);
+  const [customerPage, setCustomerPage] = useState(1);
   const [showCustomerFilterConfig, setShowCustomerFilterConfig] = useState(false);
   const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
@@ -1692,6 +1696,7 @@ export const Crm: React.FC<CrmProps> = ({
     setTimeFilters([]);
     setProvinceFilters([]);
     setProductFilters([]);
+    setCustomerPage(1);
   };
   const handleSaveCustomerFilterDefinition = async (definition: CustomerFilterDefinition) => {
     const savedDefinition = {
@@ -1777,6 +1782,12 @@ export const Crm: React.FC<CrmProps> = ({
     if (filterType === 'has_debt') return getCustomerOutstandingDebt(customer.id) > 0;
     return true;
   }), customer => [customer.createdAt, customer.updatedAt, customer.customerCode]);
+  const customerTotalPages = Math.max(1, Math.ceil(filteredCustomers.length / customerPageSize));
+  const safeCustomerPage = Math.min(customerPage, customerTotalPages);
+  const displayedCustomers = filteredCustomers.slice(
+    (safeCustomerPage - 1) * customerPageSize,
+    safeCustomerPage * customerPageSize
+  );
   const selectedCustomerSamples = selectedCustomer
     ? customerSamplesById[selectedCustomer.id] || []
     : [];
@@ -2078,7 +2089,7 @@ export const Crm: React.FC<CrmProps> = ({
   );
 
   return (
-    <div className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('QUẢN LÝ KHÁCH HÀNG (CRM)')}</h1>
@@ -2142,16 +2153,25 @@ export const Crm: React.FC<CrmProps> = ({
 
         <>
           <div className="crm-command-center crm-data-workspace">
-            <div className="crm-list-tabs" role="tablist" aria-label={t('Chọn nhóm khách hàng')}>
-              <button type="button" className={`crm-list-tab ${filterType === 'all' ? 'is-active' : ''}`} onClick={() => setFilterType('all')} role="tab" aria-selected={filterType === 'all'}>
-                <Building2 size={15} /><span>{t('Tất cả')}</span><span className="crm-list-tab__count">{accessibleCustomers.length}</span>
-              </button>
-              <button type="button" className={`crm-list-tab ${filterType === 'has_debt' ? 'is-active' : ''}`} onClick={() => setFilterType('has_debt')} role="tab" aria-selected={filterType === 'has_debt'}>
-                <CircleDollarSign size={15} /><span>{t('Có công nợ')}</span><span className="crm-list-tab__count">{customersWithDebt.length}</span>
-              </button>
-              <button type="button" className={`crm-list-tab ${filterType === 'analytics' ? 'is-active' : ''}`} onClick={() => setFilterType('analytics')} role="tab" aria-selected={filterType === 'analytics'}>
-                <BarChart3 size={15} /><span>{t('Phân tích')}</span>
-              </button>
+            <div className="crm-list-commandbar">
+              <div className="crm-list-tabs" role="tablist" aria-label={t('Chọn nhóm khách hàng')}>
+                <button type="button" className={`crm-list-tab ${filterType === 'all' ? 'is-active' : ''}`} onClick={() => { setFilterType('all'); setCustomerPage(1); }} role="tab" aria-selected={filterType === 'all'}>
+                  <Building2 size={15} /><span>{t('Tất cả')}</span><span className="crm-list-tab__count">{accessibleCustomers.length}</span>
+                </button>
+                <button type="button" className={`crm-list-tab ${filterType === 'has_debt' ? 'is-active' : ''}`} onClick={() => { setFilterType('has_debt'); setCustomerPage(1); }} role="tab" aria-selected={filterType === 'has_debt'}>
+                  <CircleDollarSign size={15} /><span>{t('Có công nợ')}</span><span className="crm-list-tab__count">{customersWithDebt.length}</span>
+                </button>
+                <button type="button" className={`crm-list-tab ${filterType === 'analytics' ? 'is-active' : ''}`} onClick={() => { setFilterType('analytics'); setCustomerPage(1); }} role="tab" aria-selected={filterType === 'analytics'}>
+                  <BarChart3 size={15} /><span>{t('Phân tích')}</span>
+                </button>
+              </div>
+              {filterType !== 'analytics' && <div className="crm-list-toolbar">
+                <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
+                <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
+                {(searchTerm || activeFilterCount > 0) && (
+                  <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
+                )}
+              </div>}
             </div>
 
             {filterType === 'analytics' ? (
@@ -2174,14 +2194,6 @@ export const Crm: React.FC<CrmProps> = ({
               </div>
             ) : (
               <>
-                <div className="crm-list-toolbar">
-                  <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /></div>
-                  <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
-                  {(searchTerm || activeFilterCount > 0) && (
-                    <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
-                  )}
-                </div>
-
                 <DataFilterChipBar chips={crmFilterChips} onClear={resetCrmListFilters} />
 
                 <DataFilterPanel
@@ -2199,36 +2211,37 @@ export const Crm: React.FC<CrmProps> = ({
                 >
                   {saleFilterDefinition.active && (
                     <DataFilterSection title={saleFilterDefinition.name} description={saleFilterDefinition.description} selectedCount={saleFilters.length}>
-                      <DataFilterCheckboxGroup options={saleFilterOptions} selectedValues={saleFilters} onChange={setSaleFilters} searchable />
+                      <DataFilterCheckboxGroup options={saleFilterOptions} selectedValues={saleFilters} onChange={values => { setSaleFilters(values); setCustomerPage(1); }} searchable />
                     </DataFilterSection>
                   )}
                   {rankFilterDefinition.active && (
                     <DataFilterSection title={rankFilterDefinition.name} description={rankFilterDefinition.description} selectedCount={rankFilters.length}>
-                      <DataFilterCheckboxGroup options={rankFilterOptions} selectedValues={rankFilters} onChange={setRankFilters} />
+                      <DataFilterCheckboxGroup options={rankFilterOptions} selectedValues={rankFilters} onChange={values => { setRankFilters(values); setCustomerPage(1); }} />
                     </DataFilterSection>
                   )}
                   {provinceFilterDefinition.active && (
                     <DataFilterSection title={provinceFilterDefinition.name} description={provinceFilterDefinition.description} selectedCount={provinceFilters.length}>
-                      <DataFilterCheckboxGroup options={provinceFilterOptions} selectedValues={provinceFilters} onChange={setProvinceFilters} searchable />
+                      <DataFilterCheckboxGroup options={provinceFilterOptions} selectedValues={provinceFilters} onChange={values => { setProvinceFilters(values); setCustomerPage(1); }} searchable />
                     </DataFilterSection>
                   )}
                   {poTimeFilterDefinition.active && (
                     <DataFilterSection title={poTimeFilterDefinition.name} description={poTimeFilterDefinition.description} selectedCount={timeFilters.length}>
-                      <DataFilterCheckboxGroup options={timeFilterOptions} selectedValues={timeFilters} onChange={values => setTimeFilters(values as CrmTimeFilter[])} />
+                      <DataFilterCheckboxGroup options={timeFilterOptions} selectedValues={timeFilters} onChange={values => { setTimeFilters(values as CrmTimeFilter[]); setCustomerPage(1); }} />
                     </DataFilterSection>
                   )}
                   {productFilterDefinition.active && (
                     <DataFilterSection title={productFilterDefinition.name} description={productFilterDefinition.description} selectedCount={productFilters.length}>
-                      <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={setProductFilters} searchable />
+                      <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={values => { setProductFilters(values); setCustomerPage(1); }} searchable />
                     </DataFilterSection>
                   )}
                 </DataFilterPanel>
 
-                <div className="table-container crm-customer-table-wrap">
-                  <table className="crm-customer-table">
+                <div className="crm-customer-grid">
+                  <div className="table-container crm-customer-table-wrap">
+                  <table className="crm-customer-table is-compact">
                     <thead><tr><th>{t('Khách hàng')}</th><th>{t('Mã KH')}</th><th>{t('Phân loại')}</th><th>{t('Mã số thuế')}</th><th>{t('SĐT')}</th><th>{t('Mail')}</th><th>{t('Sale phụ trách')}</th><th>{t('Kết quả kinh doanh')}</th><th>{t('NVL gốc')}</th><th>{t('Thao tác')}</th></tr></thead>
                     <tbody>
-                      {filteredCustomers.map(customer => {
+                      {displayedCustomers.map(customer => {
                         const customerOrders = getCustomerOrders(customer.id);
                         const customerMaterials = customerMaterialsById[customer.id] || [];
                         const isMaterialsExpanded = expandedMaterialsCustomerId === customer.id;
@@ -2238,14 +2251,14 @@ export const Crm: React.FC<CrmProps> = ({
                         return (
                           <React.Fragment key={customer.id}>
                             <tr onClick={() => openCustomerDetail(customer)}>
-                              <td><div className="crm-customer-identity"><div><strong>{customer.companyName}</strong>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div><span>{customer.contactPerson || t('Chưa có người liên hệ')}</span></div></td>
+                              <td><div className="crm-customer-identity" title={`${customer.companyName} · ${customer.contactPerson || t('Chưa có người liên hệ')}`}><strong>{customer.companyName}</strong>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div></td>
                               <td><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>
-                              <td><div className="crm-customer-segment"><span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span><small>{customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}</small></div></td>
+                              <td><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>
                               <td><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>
                               <td><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>
                               <td><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>
                               <td><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>
-                              <td><div className="crm-business-result"><strong>{customerOrders.length} {t('đơn')}</strong><span>{orderValue.toLocaleString('vi-VN')} đ</span></div></td>
+                              <td><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')} · {orderValue.toLocaleString('vi-VN')} đ</strong></div></td>
                               <td onClick={(event) => event.stopPropagation()}>
                                 {customerMaterials.length > 0 ? (
                                   <button
@@ -2255,8 +2268,7 @@ export const Crm: React.FC<CrmProps> = ({
                                     aria-expanded={isMaterialsExpanded}
                                     title={t('Xem nguyên vật liệu từng sử dụng')}
                                   >
-                                    <span><Layers3 size={13} /> {customerMaterials.length} {t('NVL')}</span>
-                                    <small>{customerMaterials[0].materialName}</small>
+                                    <span><Layers3 size={13} /> {customerMaterials.length} {t('NVL')} · {customerMaterials[0].materialName}</span>
                                     <ChevronDown size={13} />
                                   </button>
                                 ) : (
@@ -2319,6 +2331,12 @@ export const Crm: React.FC<CrmProps> = ({
                       {filteredCustomers.length === 0 && <tr><td colSpan={10} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
                     </tbody>
                   </table>
+                  </div>
+                  {filteredCustomers.length > 0 && <footer className="crm-customer-pagination">
+                    <label>{t('Hiển thị')} <select value={customerPageSize} onChange={event => { setCustomerPageSize(Number(event.target.value)); setCustomerPage(1); }}><option value={25}>25 {t('dòng')}</option><option value={50}>50 {t('dòng')}</option><option value={100}>100 {t('dòng')}</option></select></label>
+                    <span>{(safeCustomerPage - 1) * customerPageSize + 1}–{Math.min(safeCustomerPage * customerPageSize, filteredCustomers.length)} / {filteredCustomers.length}</span>
+                    <div><button type="button" onClick={() => setCustomerPage(page => Math.max(1, page - 1))} disabled={safeCustomerPage === 1} aria-label={t('Trang trước')}><ChevronLeft size={15} /></button><strong>{safeCustomerPage} / {customerTotalPages}</strong><button type="button" onClick={() => setCustomerPage(page => Math.min(customerTotalPages, page + 1))} disabled={safeCustomerPage === customerTotalPages} aria-label={t('Trang sau')}><ChevronRight size={15} /></button></div>
+                  </footer>}
                 </div>
               </>
             )}
