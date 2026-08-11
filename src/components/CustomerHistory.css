@@ -484,10 +484,10 @@
 .crm-customer-grid {
   display: flex;
   width: calc(100% - 24px);
-  height: clamp(420px, calc(100dvh - 250px), 820px);
+  height: auto;
   max-width: calc(100% - 24px);
   min-width: 0;
-  min-height: 420px;
+  min-height: 0;
   flex-direction: column;
   margin: 0 12px 12px;
   overflow: hidden;
@@ -498,8 +498,12 @@
 
 .crm-data-workspace .crm-customer-table-wrap {
   min-height: 0;
-  flex: 1;
+  max-height: max(240px, calc(100dvh - 300px));
+  flex: 0 1 auto;
   overflow: auto;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .crm-customer-identity,
@@ -1101,10 +1105,14 @@
 
   .crm-customer-grid {
     width: calc(100% - 12px);
-    height: 60dvh;
+    height: auto;
     max-width: calc(100% - 12px);
-    min-height: 340px;
+    min-height: 0;
     margin: 0 6px 6px;
+  }
+
+  .crm-data-workspace .crm-customer-table-wrap {
+    max-height: 60dvh;
   }
 
   .customer-detail-header {
