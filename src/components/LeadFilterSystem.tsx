@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Eye, EyeOff, Pencil, Plus, Save, Search, Settings2, UserRoundSearch, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, Eye, EyeOff, Pencil, Plus, Save, Search, Settings2, UserRoundSearch, X } from 'lucide-react';
 import type {
   LeadCustomFieldType,
   LeadFilterDefinition,
@@ -32,6 +32,104 @@ const normalizeLocationSearch = (value: string) => value
   .toLocaleLowerCase('vi-VN')
   .replace(/đ/g, 'd')
   .trim();
+
+type SearchableLocationOption = {
+  id: string;
+  label: string;
+  meta?: string;
+};
+
+const SearchableLocationSelect: React.FC<{
+  value: string;
+  options: SearchableLocationOption[];
+  ariaLabel: string;
+  searchPlaceholder: string;
+  emptyMessage: string;
+  onChange: (value: string) => void;
+}> = ({ value, options, ariaLabel, searchPlaceholder, emptyMessage, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selectedOption = options.find(option => option.id === value);
+  const normalizedSearch = normalizeLocationSearch(searchTerm);
+  const visibleOptions = normalizedSearch
+    ? options.filter(option => normalizeLocationSearch(option.label).includes(normalizedSearch))
+    : options;
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) {
+        setOpen(false);
+        setSearchTerm('');
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        setSearchTerm('');
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className={`lead-location-combobox ${open ? 'is-open' : ''}`} ref={rootRef}>
+      <button
+        type="button"
+        className="lead-location-combobox__trigger"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen(previous => !previous)}
+      >
+        <span>{selectedOption?.label || 'Chọn địa bàn'}{selectedOption?.meta ? ` · ${selectedOption.meta}` : ''}</span>
+        <ChevronDown size={15} />
+      </button>
+      {open && (
+        <div className="lead-location-combobox__dropdown">
+          <div className="lead-location-combobox__search">
+            <Search size={14} />
+            <input
+              autoFocus
+              type="search"
+              value={searchTerm}
+              onChange={event => setSearchTerm(event.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+            />
+          </div>
+          <div className="lead-location-combobox__options" role="listbox" aria-label={ariaLabel}>
+            {visibleOptions.map(option => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={option.id === value}
+                className={option.id === value ? 'is-selected' : ''}
+                key={option.id}
+                onClick={() => {
+                  onChange(option.id);
+                  setOpen(false);
+                  setSearchTerm('');
+                }}
+              >
+                <span>{option.label}</span>
+                <small>{option.meta}</small>
+                {option.id === value && <Check size={14} />}
+              </button>
+            ))}
+            {visibleOptions.length === 0 && <p>{emptyMessage}</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const LeadDynamicFields: React.FC<{
   lead?: LeadRecord;
@@ -196,8 +294,6 @@ export const LeadFilterAdminModal: React.FC<{
   const [wardRegionLines, setWardRegionLines] = useState<Record<string, string>>({});
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [selectedWardId, setSelectedWardId] = useState('');
-  const [provinceSearch, setProvinceSearch] = useState('');
-  const [wardSearch, setWardSearch] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -248,8 +344,6 @@ export const LeadFilterAdminModal: React.FC<{
     setWardRegionLines({});
     setSelectedProvinceId('');
     setSelectedWardId('');
-    setProvinceSearch('');
-    setWardSearch('');
   };
 
   const startEdit = (definition: LeadFilterDefinition) => {
@@ -279,8 +373,6 @@ export const LeadFilterAdminModal: React.FC<{
     )) || (initialProvince?.children || []).find(ward => ward.active);
     setSelectedProvinceId(initialProvince?.id || '');
     setSelectedWardId(initialWard?.id || '');
-    setProvinceSearch('');
-    setWardSearch('');
   };
 
   const updateOptionLines = (value: string) => {
@@ -381,14 +473,6 @@ export const LeadFilterAdminModal: React.FC<{
   const activeWardOptions = (selectedProvince?.children || []).filter(ward => ward.active);
   const selectedWard = activeWardOptions.find(ward => ward.id === selectedWardId)
     || activeWardOptions[0];
-  const normalizedProvinceSearch = normalizeLocationSearch(provinceSearch);
-  const provinceSearchResults = normalizedProvinceSearch
-    ? activeProvinceOptions.filter(province => normalizeLocationSearch(province.label).includes(normalizedProvinceSearch))
-    : [];
-  const normalizedWardSearch = normalizeLocationSearch(wardSearch);
-  const wardSearchResults = normalizedWardSearch
-    ? activeWardOptions.filter(ward => normalizeLocationSearch(ward.label).includes(normalizedWardSearch))
-    : [];
   const configuredProvinceCount = activeProvinceOptions.filter(province => (
     (province.children || []).some(ward => (
       ward.active && (ward.children || []).some(region => region.active)
@@ -447,86 +531,38 @@ export const LeadFilterAdminModal: React.FC<{
                             <div className="lead-province-area-editor__selectors">
                               <div className="lead-province-area-editor__picker">
                                 <span>Tỉnh/Thành phố</span>
-                                <div className="lead-province-area-editor__search">
-                                  <Search size={14} />
-                                  <input
-                                    type="search"
-                                    value={provinceSearch}
-                                    onChange={event => setProvinceSearch(event.target.value)}
-                                    placeholder="Tìm nhanh tỉnh/thành..."
-                                    aria-label="Tìm tỉnh hoặc thành phố"
-                                  />
-                                  {provinceSearch && (
-                                    <div className="lead-province-area-editor__search-results">
-                                      {provinceSearchResults.slice(0, 8).map(province => {
-                                        const regionCount = (province.children || []).flatMap(ward => ward.children || []).filter(region => region.active).length;
-                                        return (
-                                          <button type="button" key={province.id} onClick={() => {
-                                            setSelectedProvinceId(province.id);
-                                            setSelectedWardId((province.children || []).find(ward => ward.active)?.id || '');
-                                            setProvinceSearch('');
-                                            setWardSearch('');
-                                          }}>
-                                            <span>{province.label}</span>
-                                            <small>{regionCount} KCN</small>
-                                          </button>
-                                        );
-                                      })}
-                                      {provinceSearchResults.length === 0 && <p>Không tìm thấy tỉnh/thành phù hợp.</p>}
-                                      {provinceSearchResults.length > 8 && <p>Còn {provinceSearchResults.length - 8} kết quả. Nhập thêm ký tự để thu hẹp.</p>}
-                                    </div>
-                                  )}
-                                </div>
-                                <select aria-label="Chọn tỉnh hoặc thành phố" value={selectedProvince?.id || ''} onChange={event => {
-                                  const provinceId = event.target.value;
-                                  const province = activeProvinceOptions.find(optionItem => optionItem.id === provinceId);
-                                  setSelectedProvinceId(provinceId);
-                                  setSelectedWardId((province?.children || []).find(ward => ward.active)?.id || '');
-                                  setProvinceSearch('');
-                                  setWardSearch('');
-                                }}>
-                                {activeProvinceOptions.map(province => {
-                                  const regionCount = (province.children || []).flatMap(ward => ward.children || []).filter(region => region.active).length;
-                                  return <option key={province.id} value={province.id}>{province.label}{regionCount > 0 ? ` · ${regionCount} KCN` : ''}</option>;
-                                })}
-                                </select>
+                                <SearchableLocationSelect
+                                  value={selectedProvince?.id || ''}
+                                  ariaLabel="Chọn tỉnh hoặc thành phố"
+                                  searchPlaceholder="Tìm nhanh tỉnh/thành..."
+                                  emptyMessage="Không tìm thấy tỉnh/thành phù hợp."
+                                  options={activeProvinceOptions.map(province => ({
+                                    id: province.id,
+                                    label: province.label,
+                                    meta: `${(province.children || []).flatMap(ward => ward.children || []).filter(region => region.active).length} KCN`
+                                  }))}
+                                  onChange={provinceId => {
+                                    const province = activeProvinceOptions.find(optionItem => optionItem.id === provinceId);
+                                    setSelectedProvinceId(provinceId);
+                                    setSelectedWardId((province?.children || []).find(ward => ward.active)?.id || '');
+                                  }}
+                                />
                               </div>
                               <div className="lead-province-area-editor__picker">
                                 <span>Phường/Xã</span>
-                                <div className="lead-province-area-editor__search">
-                                  <Search size={14} />
-                                  <input
-                                    type="search"
-                                    value={wardSearch}
-                                    onChange={event => setWardSearch(event.target.value)}
-                                    placeholder="Tìm nhanh phường/xã..."
-                                    aria-label="Tìm phường hoặc xã"
-                                  />
-                                  {wardSearch && (
-                                    <div className="lead-province-area-editor__search-results">
-                                      {wardSearchResults.slice(0, 8).map(ward => {
-                                        const regionCount = (ward.children || []).filter(region => region.active).length;
-                                        return (
-                                          <button type="button" key={ward.id} onClick={() => {
-                                            setSelectedWardId(ward.id);
-                                            setWardSearch('');
-                                          }}>
-                                            <span>{ward.label}</span>
-                                            <small>{regionCount} KCN</small>
-                                          </button>
-                                        );
-                                      })}
-                                      {wardSearchResults.length === 0 && <p>Không tìm thấy phường/xã phù hợp.</p>}
-                                      {wardSearchResults.length > 8 && <p>Còn {wardSearchResults.length - 8} kết quả. Nhập thêm ký tự để thu hẹp.</p>}
-                                    </div>
-                                  )}
-                                </div>
-                                <select aria-label="Chọn phường hoặc xã" value={selectedWard?.id || ''} onChange={event => { setSelectedWardId(event.target.value); setWardSearch(''); }}>
-                                  {activeWardOptions.map(ward => {
-                                    const regionCount = (ward.children || []).filter(region => region.active).length;
-                                    return <option key={ward.id} value={ward.id}>{ward.label}{regionCount > 0 ? ` · ${regionCount} KCN` : ''}</option>;
-                                  })}
-                                </select>
+                                <SearchableLocationSelect
+                                  key={selectedProvince?.id || 'no-province'}
+                                  value={selectedWard?.id || ''}
+                                  ariaLabel="Chọn phường hoặc xã"
+                                  searchPlaceholder="Tìm nhanh phường/xã..."
+                                  emptyMessage="Không tìm thấy phường/xã phù hợp."
+                                  options={activeWardOptions.map(ward => ({
+                                    id: ward.id,
+                                    label: ward.label,
+                                    meta: `${(ward.children || []).filter(region => region.active).length} KCN`
+                                  }))}
+                                  onChange={setSelectedWardId}
+                                />
                               </div>
                             </div>
                             {selectedProvince && selectedWard && (
