@@ -923,7 +923,7 @@
 }
 
 .lead-candidate-table {
-  min-width: 1780px;
+  min-width: 1940px;
 }
 
 .lead-candidate-task-table {
@@ -1000,6 +1000,42 @@
   border-color: #fcd34d;
   color: #92400e !important;
   background: #fef3c7;
+}
+
+.lead-candidate-processing-state {
+  display: inline-flex !important;
+  width: max-content;
+  max-width: 180px;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #475569 !important;
+  background: #f8fafc;
+  font-size: 11px !important;
+  font-weight: 750;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.lead-candidate-processing-state.is-processing {
+  border-color: #86efac;
+  color: #166534 !important;
+  background: #f0fdf4;
+}
+
+.lead-candidate-processing-state.is-waiting {
+  border-color: #fde68a;
+  color: #92400e !important;
+  background: #fffbeb;
+}
+
+.lead-candidate-processing-priority {
+  display: block !important;
+  margin-top: 5px !important;
+  color: #92400e !important;
+  font-size: 10.5px !important;
+  font-weight: 700;
 }
 
 .lead-candidate-table tbody tr.is-selected,

@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { authService, dbService, isFirebaseRuntimeEnabled, UserProfile } from './services/firebaseService';
 import { Dashboard } from './views/Dashboard';
 import { Crm } from './views/Crm';
@@ -27,7 +27,9 @@ import {
   type UserNotificationRecord
 } from './domain/notificationModels';
 import {
+  markAllNotificationsRead,
   markModuleNotificationsRead,
+  markNotificationRead,
   synchronizeWorkflowNotifications
 } from './services/notificationService';
 import { 
@@ -47,7 +49,9 @@ import {
   UserCog, 
   LogOut,
   Menu,
-  Target
+  Target,
+  Bell,
+  CheckCheck
 } from 'lucide-react';
 
 const logo = '/sunflower-logo-horizontal-transparent.png';
@@ -64,6 +68,43 @@ const PAGE_NOTIFICATION_MODULES: Partial<Record<string, NotificationModule>> = {
   delivery: 'delivery',
   accounting: 'accounting'
 };
+
+const NOTIFICATION_MODULE_LABELS: Record<NotificationModule, string> = {
+  dashboard: 'Tổng quan',
+  crm: 'Khách hàng',
+  leads: 'Khách hàng tiềm năng',
+  sales: 'Đơn hàng Sale',
+  design: 'Thiết kế',
+  purchase: 'Mua hàng',
+  inventory: 'Kho nguyên vật tư',
+  production: 'Sản xuất',
+  delivery: 'Giao hàng',
+  accounting: 'Kế toán',
+  system: 'Hệ thống'
+};
+
+const formatNotificationTime = (value: string): string => {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return 'Vừa xong';
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60_000));
+  if (elapsedMinutes < 1) return 'Vừa xong';
+  if (elapsedMinutes < 60) return `${elapsedMinutes} phút trước`;
+  if (elapsedMinutes < 1_440) return `${Math.floor(elapsedMinutes / 60)} giờ trước`;
+  return new Date(value).toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const getInitials = (value: string): string => value
+  .trim()
+  .split(/\s+/)
+  .slice(-2)
+  .map(part => part[0] || '')
+  .join('')
+  .toUpperCase() || 'SF';
 
 function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -123,6 +164,9 @@ function App() {
   const [designRequests, setDesignRequests] = useState<DesignRequest[]>([]);
   const [notifications, setNotifications] = useState<UserNotificationRecord[]>([]);
   const [notificationsLoadedForUserId, setNotificationsLoadedForUserId] = useState('');
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const notificationCenterRef = useRef<HTMLDivElement>(null);
+  const lastNotificationPageReadRef = useRef('');
 
   // Navigation state links
   const [selectedPoId, setSelectedPoId] = useState<string>('');
@@ -308,6 +352,9 @@ function App() {
     if (!user) return;
     const module = PAGE_NOTIFICATION_MODULES[activePage];
     if (!module) return;
+    const pageReadKey = `${user.uid}:${activePage}`;
+    if (lastNotificationPageReadRef.current === pageReadKey) return;
+    lastNotificationPageReadRef.current = pageReadKey;
     const hasUnread = notifications.some(notification => (
       notification.module === module
       && isUnreadNotificationForUser(notification, user.uid)
@@ -317,6 +364,24 @@ function App() {
       console.error(`Unable to mark ${module} notifications as read:`, error);
     });
   }, [activePage, notifications, user]);
+
+  useEffect(() => {
+    if (!isNotificationPanelOpen) return;
+    const closeWhenOutside = (event: MouseEvent) => {
+      if (!notificationCenterRef.current?.contains(event.target as Node)) {
+        setIsNotificationPanelOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsNotificationPanelOpen(false);
+    };
+    document.addEventListener('mousedown', closeWhenOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeWhenOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isNotificationPanelOpen]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -386,6 +451,29 @@ function App() {
       notification.module === module
       && isUnreadNotificationForUser(notification, user.uid)
     )).length;
+  };
+
+  const allUserNotifications = user
+    ? notifications.filter(notification => notification.recipientId === user.uid)
+    : [];
+  const userNotifications = allUserNotifications.slice(0, 20);
+  const unreadNotificationTotal = allUserNotifications.filter(notification => notification.readAt === null).length;
+
+  const openNotification = (notification: UserNotificationRecord) => {
+    if (!user) return;
+    setIsNotificationPanelOpen(false);
+    void markNotificationRead(notification, user.uid).catch(error => {
+      console.error('Unable to mark notification as read:', error);
+    });
+    const targetPage = notification.module === 'system' ? 'dashboard' : notification.module;
+    if (isPageAllowed(targetPage)) setActivePage(targetPage);
+  };
+
+  const readAllNotifications = () => {
+    if (!user || unreadNotificationTotal === 0) return;
+    void markAllNotificationsRead(allUserNotifications, user.uid).catch(error => {
+      console.error('Unable to mark all notifications as read:', error);
+    });
   };
 
   const refreshData = () => {
@@ -949,7 +1037,7 @@ function App() {
           <span className="header-title">{t('SUNFLOWER LABEL MANUFACTURING ERP')}</span>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="header-actions">
           {/* Globe Language Toggle */}
           <button 
             className="lang-toggle-btn" 
@@ -963,6 +1051,63 @@ function App() {
             </svg>
             <span>{language === 'vi' ? 'EN' : 'VI'}</span>
           </button>
+
+          <div className="header-notification-center" ref={notificationCenterRef}>
+            <button
+              type="button"
+              className={`header-notification-button ${isNotificationPanelOpen ? 'is-active' : ''}`}
+              onClick={() => setIsNotificationPanelOpen(open => !open)}
+              aria-label={`Thông báo${unreadNotificationTotal > 0 ? `, ${unreadNotificationTotal} chưa đọc` : ''}`}
+              aria-expanded={isNotificationPanelOpen}
+              title="Thông báo"
+            >
+              <Bell size={19} aria-hidden="true" />
+              {unreadNotificationTotal > 0 && (
+                <span>{unreadNotificationTotal > 99 ? '99+' : unreadNotificationTotal}</span>
+              )}
+            </button>
+
+            {isNotificationPanelOpen && (
+              <section className="header-notification-panel" aria-label="Thông báo mới nhất">
+                <header>
+                  <div>
+                    <strong>Thông báo</strong>
+                    <span>{unreadNotificationTotal > 0 ? `${unreadNotificationTotal} thông báo chưa đọc` : 'Bạn đã xem tất cả thông báo'}</span>
+                  </div>
+                  <button type="button" onClick={readAllNotifications} disabled={unreadNotificationTotal === 0} title="Đánh dấu tất cả đã đọc">
+                    <CheckCheck size={17} /> <span>Đã đọc tất cả</span>
+                  </button>
+                </header>
+                <div className="header-notification-list">
+                  {userNotifications.map(notification => {
+                    const actorName = users.find(candidate => candidate.uid === notification.createdById)?.displayName || 'Sunflower ERP';
+                    return (
+                      <button
+                        type="button"
+                        key={notification.id}
+                        className={notification.readAt === null ? 'is-unread' : ''}
+                        onClick={() => openNotification(notification)}
+                      >
+                        <span className="header-notification-avatar">{getInitials(actorName)}</span>
+                        <span className="header-notification-content">
+                          <span><strong>{notification.title || 'Thông báo mới'}</strong>{notification.readAt === null && <i aria-label="Chưa đọc" />}</span>
+                          <span>{notification.message || notification.entityCode}</span>
+                          <small>{formatNotificationTime(notification.createdAt)} · {NOTIFICATION_MODULE_LABELS[notification.module]}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {userNotifications.length === 0 && (
+                    <div className="header-notification-empty">
+                      <Bell size={24} />
+                      <strong>Chưa có thông báo</strong>
+                      <span>Các công việc mới và thay đổi quan trọng sẽ xuất hiện tại đây.</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
 
           {!isFirebaseRuntimeEnabled && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

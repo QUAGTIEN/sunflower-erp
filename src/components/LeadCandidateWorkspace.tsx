@@ -40,6 +40,10 @@ import {
 } from '../domain/leadCandidateModels';
 import { normalizeTaxCode } from '../domain/taxCodeUniqueness';
 import {
+  getNotificationDocumentId,
+  NOTIFICATION_SCHEMA_VERSION
+} from '../domain/notificationModels';
+import {
   dbService,
   isDocumentAlreadyExistsError,
   type UserProfile
@@ -417,7 +421,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   );
 
   const buildTaskAssignment = (
-    candidate?: LeadCandidateRecord | null
+    candidate?: LeadCandidateRecord | null,
+    assignedAt = new Date().toISOString()
   ): Pick<LeadCandidateRecord, 'taskSource' | 'taskAssignedAt' | 'taskAssignedById' | 'taskAssignedByName'> => {
     if (currentUser.role !== 'admin' && candidate?.taskSource === 'admin_assigned') {
       return {
@@ -429,10 +434,34 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     }
     return {
       taskSource: currentUser.role === 'admin' ? 'admin_assigned' : 'sale_created',
-      taskAssignedAt: new Date().toISOString(),
+      taskAssignedAt: assignedAt,
       taskAssignedById: currentUser.uid,
       taskAssignedByName: currentUser.displayName
     };
+  };
+
+  const createAdminAssignmentNotification = (
+    candidate: LeadCandidateRecord,
+    assignee: UserProfile,
+    assignedAt: string
+  ) => {
+    const eventKey = `candidate-admin-assignment:${candidate.id}:${assignedAt}`;
+    return dbService.addDocument('notifications', {
+      id: getNotificationDocumentId(assignee.uid, eventKey),
+      schemaVersion: NOTIFICATION_SCHEMA_VERSION,
+      recipientId: assignee.uid,
+      module: 'leads',
+      eventType: 'candidate_admin_assignment',
+      eventKey,
+      entityId: candidate.id,
+      entityCode: candidate.companyName,
+      title: 'Công việc ưu tiên mới',
+      message: `${currentUser.displayName} đã giao khách hàng ${candidate.companyName} cho bạn xử lý.`,
+      createdAt: assignedAt,
+      createdById: currentUser.uid,
+      source: 'manual',
+      readAt: null
+    });
   };
 
   const selectedQueueCandidateSet = new Set(selectedQueueCandidateIds);
@@ -472,6 +501,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const addSelectedCandidatesToWorkQueue = async () => {
     const candidatesToQueue = getSelectedCandidates();
     if (candidatesToQueue.length === 0) return;
+    const assignedAt = new Date().toISOString();
 
     setSavingBatchQueue(true);
     setBatchQueueError('');
@@ -490,7 +520,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         });
         return dbService.updateDocument('lead_candidates', candidate.id, {
           schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
-          ...buildTaskAssignment(candidate),
+          ...buildTaskAssignment(candidate, assignedAt),
           workQueueHidden: false,
           taskStatus: 'pending',
           taskDismissedAt: '',
@@ -498,6 +528,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           updatedBy: currentUser.displayName
         });
       }));
+      if (currentUser.role === 'admin') {
+        const notificationOperations = candidatesToQueue.flatMap(candidate => {
+          const assignee = saleUsers.find(user => user.uid === candidate.assignedSaleId);
+          return assignee ? [createAdminAssignmentNotification(candidate, assignee, assignedAt)] : [];
+        });
+        await Promise.all(notificationOperations);
+      }
       setSelectedQueueCandidateIds([]);
       setWorkspaceView('tasks');
     } catch {
@@ -516,6 +553,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
     const candidatesToAssign = getSelectedCandidates();
     if (candidatesToAssign.length === 0) return;
+    const assignedAt = new Date().toISOString();
 
     setSavingBatchQueue(true);
     setBatchQueueError('');
@@ -537,7 +575,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
           assignedSaleId: assignee.uid,
           assignedSaleName: assignee.displayName,
-          ...buildTaskAssignment(candidate),
+          ...buildTaskAssignment(candidate, assignedAt),
           workQueueHidden: false,
           taskStatus: 'pending',
           taskDismissedAt: '',
@@ -545,6 +583,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           updatedBy: currentUser.displayName
         });
       }));
+      await Promise.all(candidatesToAssign.map(candidate => (
+        createAdminAssignmentNotification(candidate, assignee, assignedAt)
+      )));
       setSelectedQueueCandidateIds([]);
       setBatchAssigneeId('');
       setWorkspaceView('tasks');
@@ -1279,6 +1320,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   <th>Tỉnh/thành</th>
                   <th>Thông tin liên hệ</th>
                   <th>Sale phụ trách</th>
+                  <th>Sale đang xử lý</th>
                   <th>Trạng thái</th>
                   <th>Mức độ tiềm năng</th>
                   <th>Lịch tiếp theo</th>
@@ -1326,6 +1368,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       <td><strong>{candidate.province || 'Chưa cập nhật'}</strong><span>{candidate.address || '—'}</span></td>
                       <td><strong>{candidate.contactPerson || 'Chưa rõ người liên hệ'}</strong>{candidate.phone ? <button type="button" className="lead-candidate-copy" onClick={() => copyPhone(candidate.phone)} title="Sao chép số điện thoại">{candidate.phone}<Copy size={11} /></button> : <span>{candidate.email || candidate.sourceUrl || 'Chưa có thông tin liên hệ'}</span>}{candidate.phone && candidate.email && <span>{candidate.email}</span>}</td>
                       <td><strong>{candidate.assignedSaleName || 'Chưa phân công'}</strong><span>{candidate.discoveredByName ? `Tìm bởi ${candidate.discoveredByName}` : '—'}</span></td>
+                      <td>
+                        {isAlreadyInQueue ? (
+                          <span className={`lead-candidate-processing-state ${candidate.assignedSaleId ? 'is-processing' : 'is-waiting'}`}>
+                            {candidate.assignedSaleName ? `${candidate.assignedSaleName} đang xử lý` : 'Đang chờ phân công'}
+                          </span>
+                        ) : <span className="lead-candidate-muted">Chưa đưa vào xử lý</span>}
+                        {isAlreadyInQueue && candidate.taskSource === 'admin_assigned' && <span className="lead-candidate-processing-priority">Ưu tiên Admin giao</span>}
+                      </td>
                       <td>{renderContactResult(candidate)}</td>
                       <td>{renderPotentialLevel(candidate)}</td>
                       <td>{candidate.nextContactAt ? <><strong>{formatShortDateTime(candidate.nextContactAt)}</strong><span>{new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}</span></> : <span className="lead-candidate-muted">Chưa đặt lịch</span>}</td>
@@ -1348,7 +1398,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={11} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
+                {filteredCandidates.length === 0 && <tr><td colSpan={12} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
               </tbody>
             </table>
           )}

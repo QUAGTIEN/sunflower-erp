@@ -390,3 +390,30 @@ export const markModuleNotificationsRead = async (
     })
   )));
 };
+
+export const markNotificationRead = async (
+  notification: UserNotificationRecord,
+  recipientId: string
+): Promise<void> => {
+  if (notification.recipientId !== recipientId || notification.readAt !== null) return;
+  await dbService.updateDocument('notifications', notification.id, {
+    readAt: new Date().toISOString(),
+    readById: recipientId
+  });
+};
+
+export const markAllNotificationsRead = async (
+  notifications: UserNotificationRecord[],
+  recipientId: string
+): Promise<void> => {
+  const readAt = new Date().toISOString();
+  const unread = notifications.filter(notification => (
+    notification.recipientId === recipientId && notification.readAt === null
+  ));
+  await Promise.all(unread.map(notification => (
+    dbService.updateDocument('notifications', notification.id, {
+      readAt,
+      readById: recipientId
+    })
+  )));
+};
