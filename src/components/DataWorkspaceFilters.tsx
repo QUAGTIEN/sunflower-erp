@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Filter, RotateCcw, Search, X } from 'lucide-react';
+import { Check, ChevronDown, Filter, RotateCcw, Search, X } from 'lucide-react';
 import './DataWorkspaceFilters.css';
 
 export type DataFilterOption = {
@@ -23,10 +23,11 @@ export const DataFilterButton: React.FC<{
     type="button"
     className={`data-filter-button ${open || activeCount > 0 ? 'is-active' : ''}`}
     aria-expanded={open}
+    aria-label={activeCount > 0 ? `Bộ lọc, ${activeCount} điều kiện đang áp dụng` : 'Bộ lọc'}
+    title={activeCount > 0 ? `Bộ lọc (${activeCount})` : 'Bộ lọc'}
     onClick={onClick}
   >
     <Filter size={15} />
-    <span>Bộ lọc</span>
     {activeCount > 0 && <strong>{activeCount}</strong>}
   </button>
 );
@@ -101,18 +102,27 @@ export const DataFilterSection: React.FC<{
   description?: string;
   selectedCount?: number;
   children: React.ReactNode;
-}> = ({ title, description, selectedCount = 0, children }) => (
-  <section className="data-filter-section">
-    <div className="data-filter-section__heading">
-      <div>
-        <strong>{title}</strong>
-        {selectedCount > 0 && <span className="data-filter-section__count">{selectedCount} đã chọn</span>}
-      </div>
-      {description && <span>{description}</span>}
-    </div>
-    <div className="data-filter-section__content">{children}</div>
-  </section>
-);
+  defaultExpanded?: boolean;
+}> = ({ title, description, selectedCount = 0, children, defaultExpanded }) => {
+  const [expanded, setExpanded] = useState(defaultExpanded ?? selectedCount > 0);
+  return (
+    <section className={`data-filter-section ${expanded ? 'is-expanded' : 'is-collapsed'}`}>
+      <button type="button" className="data-filter-section__heading" aria-expanded={expanded} onClick={() => setExpanded(previous => !previous)}>
+        <span>
+          <strong>{title}</strong>
+          {selectedCount > 0 && <span className="data-filter-section__count">{selectedCount} đã chọn</span>}
+        </span>
+        <ChevronDown size={15} />
+      </button>
+      {expanded && (
+        <div className="data-filter-section__expanded-content">
+          {description && <p>{description}</p>}
+          <div className="data-filter-section__content">{children}</div>
+        </div>
+      )}
+    </section>
+  );
+};
 
 export const DataFilterCheckboxGroup: React.FC<{
   options: DataFilterOption[];

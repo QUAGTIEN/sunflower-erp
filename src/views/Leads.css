@@ -1242,11 +1242,14 @@
 
 .lead-candidate-column-button {
   display: inline-flex;
-  min-height: 36px;
-  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  flex: 0 0 34px;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 7px 10px;
+  padding: 0;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   color: #334155;

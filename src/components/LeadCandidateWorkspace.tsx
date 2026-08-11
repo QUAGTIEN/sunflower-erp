@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Columns3,
   ExternalLink,
   Eye,
   History,
@@ -18,6 +17,7 @@ import {
   Phone,
   Plus,
   Search,
+  Settings2,
   Star,
   Trash2,
   UserRoundSearch,
@@ -1236,8 +1236,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <option value="next_contact_asc">Lịch gọi gần nhất</option>
           </select>
           <DataFilterButton activeCount={activeFilterCount} open={showDataFilters} onClick={() => setShowDataFilters(true)} />
-          <button type="button" className="lead-candidate-column-button" onClick={() => setShowColumnCustomizer(true)}>
-            <Columns3 size={15} /> Tùy chỉnh cột
+          <button type="button" className="lead-candidate-column-button" aria-label="Tùy chỉnh cột" title="Tùy chỉnh cột" onClick={() => setShowColumnCustomizer(true)}>
+            <Settings2 size={16} />
           </button>
           {workspaceView === 'all' && <button type="button" className="btn btn-primary lead-candidate-add-button" onClick={openCreateForm}>
             <Plus size={15} /> Thêm dữ liệu

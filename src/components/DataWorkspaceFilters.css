@@ -1,9 +1,13 @@
 .data-filter-button {
+  position: relative;
   display: inline-flex;
-  min-height: 36px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  flex: 0 0 34px;
   align-items: center;
-  gap: 7px;
-  padding: 7px 11px;
+  justify-content: center;
+  padding: 0;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   color: #334155;
@@ -23,16 +27,21 @@
 }
 
 .data-filter-button strong {
+  position: absolute;
+  top: -6px;
+  right: -6px;
   display: inline-flex;
-  min-width: 19px;
-  height: 19px;
+  min-width: 17px;
+  height: 17px;
   align-items: center;
   justify-content: center;
-  padding: 0 5px;
+  padding: 0 4px;
+  border: 2px solid #fff;
   border-radius: 999px;
   color: #fff;
   background: #3157c8;
-  font-size: 11px;
+  font-size: 9px;
+  line-height: 1;
 }
 
 .data-filter-chips {
@@ -176,7 +185,7 @@
 }
 
 .data-filter-section {
-  padding: 17px 0;
+  padding: 0;
   border-bottom: 1px solid #e9edf4;
 }
 
@@ -186,17 +195,41 @@
 
 .data-filter-section__heading {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 10px;
-}
-
-.data-filter-section__heading > div {
-  display: flex;
+  width: 100%;
   min-width: 0;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  padding: 13px 0;
+  border: 0;
+  color: #1e293b;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.data-filter-section__heading:hover {
+  color: #1e3a8a;
+}
+
+.data-filter-section__heading > span {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
+}
+
+.data-filter-section__heading > svg {
+  flex: 0 0 auto;
+  color: #64748b;
+  transition: transform .15s ease;
+}
+
+.data-filter-section.is-expanded .data-filter-section__heading > svg {
+  transform: rotate(180deg);
 }
 
 .data-filter-section__heading strong {
@@ -214,15 +247,18 @@
   font-weight: 650;
 }
 
-.data-filter-section__heading span {
+.data-filter-section__expanded-content > p {
+  margin: -5px 0 10px;
   color: #7c8ba1;
   font-size: 11px;
+  line-height: 1.4;
 }
 
 .data-filter-section__content {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-bottom: 15px;
 }
 
 .data-filter-section__content > label:not(.data-filter-checklist__search) {
@@ -351,10 +387,6 @@
 }
 
 @media (max-width: 680px) {
-  .data-filter-button span {
-    display: none;
-  }
-
   .data-filter-panel {
     width: 100vw;
   }
