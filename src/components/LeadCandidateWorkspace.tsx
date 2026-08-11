@@ -1005,13 +1005,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     );
   };
 
-  const renderHistoryButton = (candidate: LeadCandidateRecord) => (
-    <button type="button" className="lead-candidate-history-button" onClick={() => setSelectedCandidateId(candidate.id)}>
-      <History size={13} />
-      <span>{candidate.contactLogs.length}</span>
-    </button>
-  );
-
   if (showForm) {
     return (
       <div className="lead-form-page lead-candidate-form-page">
@@ -1255,7 +1248,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         <div className="table-container">
           {workspaceView === 'tasks' ? (
             <table className="lead-candidate-table lead-candidate-task-table">
-              <thead><tr><th>Trạng thái</th><th>Doanh nghiệp</th><th>Tỉnh/thành</th><th>Liên hệ</th>{currentUser.role === 'admin' && <th>Sale phụ trách</th>}<th>Mức độ tiềm năng</th><th>Lịch hẹn</th><th>Cập nhật gần nhất</th><th>Lịch sử</th><th>Thao tác</th></tr></thead>
+              <thead><tr><th>Trạng thái</th><th>Doanh nghiệp</th><th>Tỉnh/thành</th><th>Liên hệ</th>{currentUser.role === 'admin' && <th>Sale phụ trách</th>}<th>Mức độ tiềm năng</th><th>Lịch hẹn</th><th>Cập nhật gần nhất</th><th>Thao tác</th></tr></thead>
               <tbody>
                 {displayedCandidates.map(candidate => {
                   const scheduledTime = candidate.nextContactAt ? new Date(candidate.nextContactAt).getTime() : Number.NaN;
@@ -1275,13 +1268,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       <td>{renderPotentialLevel(candidate)}</td>
                       <td>{candidate.nextContactAt ? <><strong className={isOverdue ? 'lead-date-overdue' : ''}>{formatShortDateTime(candidate.nextContactAt)}</strong><span className={`lead-candidate-task-status ${isOverdue ? 'is-overdue' : ''}`}>{isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : 'Sắp tới'}</span></> : <span className="lead-candidate-muted">Chưa đặt lịch</span>}</td>
                       <td>{renderLatestActivity(candidate)}</td>
-                      <td>{renderHistoryButton(candidate)}</td>
                       <td>
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
                             { label: 'Hẹn tiếp', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) },
-                            { label: 'Xem hồ sơ & lịch sử', icon: <Eye size={14} />, onSelect: () => setSelectedCandidateId(candidate.id) },
+                            { label: 'Lịch sử', icon: <History size={14} />, onSelect: () => setSelectedCandidateId(candidate.id) },
                             { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
                             ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : []),
                             { label: 'Tắt công việc', icon: <X size={14} />, onSelect: () => dismissScheduledTask(candidate), disabled: isBusy, danger: true }
@@ -1291,7 +1283,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={currentUser.role === 'admin' ? 10 : 9} className="lead-empty">Không có công việc phù hợp. Công việc chỉ biến mất khi được chọn “Tắt công việc”.</td></tr>}
+                {filteredCandidates.length === 0 && <tr><td colSpan={currentUser.role === 'admin' ? 9 : 8} className="lead-empty">Không có công việc phù hợp. Công việc chỉ biến mất khi được chọn “Tắt công việc”.</td></tr>}
               </tbody>
             </table>
           ) : (
@@ -1316,7 +1308,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   <th>Mức độ tiềm năng</th>
                   <th>Lịch tiếp theo</th>
                   <th>Cập nhật gần nhất</th>
-                  <th>Lịch sử</th>
                   <th>Thao tác</th>
                 </tr>
               </thead>
@@ -1368,12 +1359,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       <td>{renderPotentialLevel(candidate)}</td>
                       <td>{candidate.nextContactAt ? <><strong>{formatShortDateTime(candidate.nextContactAt)}</strong><span>{new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}</span></> : <span className="lead-candidate-muted">Chưa đặt lịch</span>}</td>
                       <td>{renderLatestActivity(candidate)}</td>
-                      <td>{renderHistoryButton(candidate)}</td>
                       <td>
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
                             { label: 'Xem hồ sơ', icon: <Eye size={14} />, onSelect: () => setSelectedCandidateId(candidate.id) },
+                            { label: 'Lịch sử', icon: <History size={14} />, onSelect: () => setSelectedCandidateId(candidate.id) },
                             ...(canManageCandidate(candidate) ? [
                               ...(isActive ? [{ label: 'Hẹn lịch', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) }] : []),
                               { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
@@ -1386,7 +1377,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={12} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
+                {filteredCandidates.length === 0 && <tr><td colSpan={11} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
               </tbody>
             </table>
           )}
