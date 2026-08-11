@@ -214,6 +214,17 @@
   cursor: pointer;
 }
 
+.system-filter-status > input {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  padding: 0;
+}
+
+.system-filter-status > span {
+  white-space: nowrap;
+}
+
 .system-filter-basic-fields {
   display: grid;
   grid-template-columns: minmax(180px, 0.7fr) minmax(260px, 1.3fr);
@@ -604,9 +615,10 @@
 .system-scope-picker__menu {
   position: absolute;
   z-index: 35;
-  top: calc(100% + 5px);
   right: 0;
-  width: 285px;
+  bottom: calc(100% + 5px);
+  top: auto;
+  width: 300px;
   padding: 7px;
   border: 1px solid #cbd5e1;
   border-radius: 7px;
@@ -642,12 +654,16 @@
 }
 
 .system-scope-picker__menu label > input {
-  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
   margin-top: 2px;
+  padding: 0;
 }
 
 .system-scope-picker__menu label > span {
   display: grid;
+  flex: 1;
   min-width: 0;
   gap: 2px;
 }
