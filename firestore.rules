@@ -140,11 +140,32 @@ service cloud.firestore {
       allow read: if isActive() && canUseCrm();
       allow create: if canUseCrm()
         && (isAdmin()
-          || request.resource.data.assignedSaleId == request.auth.uid);
+          || (request.resource.data.assignedSaleId == request.auth.uid
+            && (!('taskSource' in request.resource.data)
+              || request.resource.data.taskSource != 'admin_assigned')
+            && (!('taskAssignedById' in request.resource.data)
+              || request.resource.data.taskAssignedById == ''
+              || request.resource.data.taskAssignedById == request.auth.uid)));
       allow update: if isAdmin()
         || (canUseCrm()
           && resource.data.assignedSaleId == request.auth.uid
-          && request.resource.data.assignedSaleId == resource.data.assignedSaleId);
+          && request.resource.data.assignedSaleId == resource.data.assignedSaleId
+          && (!('taskSource' in resource.data)
+            || resource.data.taskSource != 'admin_assigned'
+            || !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+              'taskSource',
+              'taskAssignedAt',
+              'taskAssignedById',
+              'taskAssignedByName'
+            ]))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny([
+              'taskSource',
+              'taskAssignedAt',
+              'taskAssignedById',
+              'taskAssignedByName'
+            ])
+            || (request.resource.data.taskSource == 'sale_created'
+              && request.resource.data.taskAssignedById == request.auth.uid)));
       allow delete: if isAdmin();
     }
 

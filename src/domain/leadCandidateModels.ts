@@ -1,10 +1,11 @@
 import type { CustomerRecord, LeadRecord } from './crmModels';
 import { normalizeTaxCode } from './taxCodeUniqueness';
 
-export const LEAD_CANDIDATE_SCHEMA_VERSION = 7;
+export const LEAD_CANDIDATE_SCHEMA_VERSION = 8;
 
 export type LeadCandidateStatus = 'new' | 'retry' | 'disqualified' | 'converted';
 export type LeadCandidateTaskStatus = 'pending' | 'completed' | 'dismissed';
+export type LeadCandidateTaskSource = 'admin_assigned' | 'sale_created' | '';
 export type LeadCandidateWorkStatus = 'not_contacted' | 'pending' | 'completed';
 export type LeadCandidateContactResult = 'not_contacted' | 'working' | 'called' | 'messaged' | 'callback';
 export type LeadCandidatePotentialLevel = 'unrated' | 'not_fit' | 'low' | 'potential' | 'promising' | 'high';
@@ -69,6 +70,10 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   taskCompletedById: string;
   taskCompletedByName: string;
   taskDismissedAt: string;
+  taskSource: LeadCandidateTaskSource;
+  taskAssignedAt: string;
+  taskAssignedById: string;
+  taskAssignedByName: string;
   workQueueHidden: boolean;
   workStatus: LeadCandidateWorkStatus;
   pinned: boolean;
@@ -114,6 +119,21 @@ const normalizeTaskStatus = (value: unknown, nextContactAt: string): LeadCandida
   const statuses: LeadCandidateTaskStatus[] = ['pending', 'completed', 'dismissed'];
   if (statuses.includes(value as LeadCandidateTaskStatus)) return value as LeadCandidateTaskStatus;
   return nextContactAt ? 'pending' : 'dismissed';
+};
+
+const normalizeTaskSource = (
+  value: unknown,
+  nextContactAt: string,
+  contactLogs: LeadCandidateContactLog[]
+): LeadCandidateTaskSource => {
+  const sources: Exclude<LeadCandidateTaskSource, ''>[] = ['admin_assigned', 'sale_created'];
+  if (sources.includes(value as Exclude<LeadCandidateTaskSource, ''>)) {
+    return value as LeadCandidateTaskSource;
+  }
+  if (contactLogs.some(log => log.description.startsWith('Bàn giao cho Sale'))) {
+    return 'admin_assigned';
+  }
+  return nextContactAt ? 'sale_created' : '';
 };
 
 const normalizeWorkStatus = (
@@ -219,6 +239,10 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
   const nextContactAt = asText(source.nextContactAt);
   const taskStatus = normalizeTaskStatus(source.taskStatus, nextContactAt);
   const contactLogs = normalizeContactLogs(source.contactLogs);
+  const taskSource = normalizeTaskSource(source.taskSource, nextContactAt, contactLogs);
+  const legacyTaskLog = taskSource === 'admin_assigned'
+    ? contactLogs.find(log => log.description.startsWith('Bàn giao cho Sale'))
+    : contactLogs.find(log => log.eventType === 'schedule');
   const lastContactAt = asText(source.lastContactAt);
   const lastContactOutcome = normalizeContactOutcome(source.lastContactOutcome);
   return {
@@ -255,6 +279,10 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     taskCompletedById: asText(source.taskCompletedById),
     taskCompletedByName: asText(source.taskCompletedByName),
     taskDismissedAt: asText(source.taskDismissedAt),
+    taskSource,
+    taskAssignedAt: asText(source.taskAssignedAt) || legacyTaskLog?.occurredAt || '',
+    taskAssignedById: asText(source.taskAssignedById) || legacyTaskLog?.createdById || '',
+    taskAssignedByName: asText(source.taskAssignedByName) || legacyTaskLog?.createdByName || '',
     workQueueHidden: typeof source.workQueueHidden === 'boolean'
       ? source.workQueueHidden
       : !nextContactAt,

@@ -35,6 +35,7 @@ import {
   type LeadCandidateContactResult,
   type LeadCandidatePotentialLevel,
   type LeadCandidateRecord,
+  type LeadCandidateTaskSource,
   type LeadCandidateTaskStatus
 } from '../domain/leadCandidateModels';
 import { normalizeTaxCode } from '../domain/taxCodeUniqueness';
@@ -303,6 +304,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       if (candidateSort === 'updated_desc') {
         return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
       }
+      if (candidateSort === 'priority') {
+        const leftAdminPriority = left.taskSource === 'admin_assigned';
+        const rightAdminPriority = right.taskSource === 'admin_assigned';
+        if (leftAdminPriority !== rightAdminPriority) return leftAdminPriority ? -1 : 1;
+      }
       const leftSchedule = left.nextContactAt ? new Date(left.nextContactAt).getTime() : Number.MAX_SAFE_INTEGER;
       const rightSchedule = right.nextContactAt ? new Date(right.nextContactAt).getTime() : Number.MAX_SAFE_INTEGER;
       if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
@@ -330,6 +336,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const displayedCandidates = filteredCandidates.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
   const activeFilterCount = provinceFilters.length + sourceFilters.length + contactResultFilters.length
     + potentialFilters.length + saleFilters.length + (pinnedOnly ? 1 : 0);
+  const adminAssignedTaskCount = workspaceView === 'tasks'
+    ? filteredCandidates.filter(candidate => candidate.taskSource === 'admin_assigned').length
+    : 0;
   const candidateFilterChips = [
     ...provinceFilters.map(value => ({
       id: `province-${value}`,
@@ -407,6 +416,25 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     [log, ...candidate.contactLogs].slice(0, 50)
   );
 
+  const buildTaskAssignment = (
+    candidate?: LeadCandidateRecord | null
+  ): Pick<LeadCandidateRecord, 'taskSource' | 'taskAssignedAt' | 'taskAssignedById' | 'taskAssignedByName'> => {
+    if (currentUser.role !== 'admin' && candidate?.taskSource === 'admin_assigned') {
+      return {
+        taskSource: candidate.taskSource,
+        taskAssignedAt: candidate.taskAssignedAt,
+        taskAssignedById: candidate.taskAssignedById,
+        taskAssignedByName: candidate.taskAssignedByName
+      };
+    }
+    return {
+      taskSource: currentUser.role === 'admin' ? 'admin_assigned' : 'sale_created',
+      taskAssignedAt: new Date().toISOString(),
+      taskAssignedById: currentUser.uid,
+      taskAssignedByName: currentUser.displayName
+    };
+  };
+
   const selectedQueueCandidateSet = new Set(selectedQueueCandidateIds);
   const queueSelectableDisplayedCandidates = workspaceView === 'all'
     ? displayedCandidates.filter(candidate => (
@@ -449,7 +477,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setBatchQueueError('');
     try {
       await Promise.all(candidatesToQueue.map(candidate => {
-        if (!candidate.workQueueHidden) {
+        const targetTaskSource: LeadCandidateTaskSource = currentUser.role === 'admin'
+          ? 'admin_assigned'
+          : 'sale_created';
+        if (!candidate.workQueueHidden && candidate.taskSource === targetTaskSource) {
           return Promise.resolve(true);
         }
         const log = buildCandidateLog(candidate, {
@@ -459,6 +490,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         });
         return dbService.updateDocument('lead_candidates', candidate.id, {
           schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
+          ...buildTaskAssignment(candidate),
           workQueueHidden: false,
           taskStatus: 'pending',
           taskDismissedAt: '',
@@ -489,7 +521,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setBatchQueueError('');
     try {
       await Promise.all(candidatesToAssign.map(candidate => {
-        if (!candidate.workQueueHidden && candidate.assignedSaleId === assignee.uid) {
+        if (
+          !candidate.workQueueHidden
+          && candidate.assignedSaleId === assignee.uid
+          && candidate.taskSource === 'admin_assigned'
+        ) {
           return Promise.resolve(true);
         }
         const log = buildCandidateLog(candidate, {
@@ -501,6 +537,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
           assignedSaleId: assignee.uid,
           assignedSaleName: assignee.displayName,
+          ...buildTaskAssignment(candidate),
           workQueueHidden: false,
           taskStatus: 'pending',
           taskDismissedAt: '',
@@ -584,6 +621,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       const normalizedTaxCode = normalizeTaxCode(form.taxCode);
       const nextContactAt = form.nextContactAt ? new Date(form.nextContactAt).toISOString() : '';
       const scheduleChanged = !editingCandidate || editingCandidate.nextContactAt !== nextContactAt;
+      const taskAssignment = nextContactAt ? buildTaskAssignment(editingCandidate) : null;
       const scheduleLog = editingCandidate && scheduleChanged && nextContactAt
         ? buildCandidateLog(editingCandidate, {
           eventType: 'schedule',
@@ -620,6 +658,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           taskCompletedById: '',
           taskCompletedByName: '',
           taskDismissedAt: '',
+          ...(taskAssignment || {}),
           workQueueHidden: nextContactAt ? false : (editingCandidate?.workQueueHidden ?? true),
           ...(scheduleLog && editingCandidate ? { contactLogs: prependCandidateLog(editingCandidate, scheduleLog) } : {})
         } : {}),
@@ -643,6 +682,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         contactResult: 'not_contacted' as LeadCandidateContactResult,
         potentialLevel: 'unrated' as LeadCandidatePotentialLevel,
         workQueueHidden: !nextContactAt,
+        taskSource: nextContactAt
+          ? taskAssignment?.taskSource || 'sale_created'
+          : '' as LeadCandidateTaskSource,
+        taskAssignedAt: taskAssignment?.taskAssignedAt || '',
+        taskAssignedById: taskAssignment?.taskAssignedById || '',
+        taskAssignedByName: taskAssignment?.taskAssignedByName || '',
         pinned: false,
         archived: false,
         archivedAt: '',
@@ -711,6 +756,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       });
       await dbService.updateDocument('lead_candidates', scheduleCandidate.id, {
         nextContactAt,
+        ...buildTaskAssignment(scheduleCandidate),
         queuedNextContactAt: '',
         taskStatus: 'pending',
         workStatus: 'pending',
@@ -1027,6 +1073,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               setSelectedQueueCandidateIds([]);
               setBatchQueueError('');
               setCurrentPage(1);
+              if (value === 'tasks') setCandidateSort('priority');
               if (value === 'tasks' && currentUser.role !== 'admin') setSaleFilters([]);
             }}
           >
@@ -1156,7 +1203,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         <div className="lead-table-result">
           {workspaceView === 'tasks' ? <>
             <span><strong>{filteredCandidates.length}</strong> công việc thuộc Sale đang phụ trách</span>
-            <span>{currentUser.role === 'admin' ? 'Lọc theo Sale để theo dõi tiến độ làm việc.' : 'Cập nhật trạng thái, đánh giá và lịch hẹn trực tiếp trên bảng.'}</span>
+            <span>{adminAssignedTaskCount > 0
+              ? `${adminAssignedTaskCount} công việc Admin giao đang được xếp ưu tiên.`
+              : currentUser.role === 'admin' ? 'Lọc theo Sale để theo dõi tiến độ làm việc.' : 'Cập nhật trạng thái, đánh giá và lịch hẹn trực tiếp trên bảng.'}</span>
           </> : <>
             <span>Hiển thị <strong>{filteredCandidates.length}</strong> / {accessibleCandidates.length} dữ liệu</span>
             <span>{activeFilterCount > 0 ? `${activeFilterCount} bộ lọc đang áp dụng` : 'Kho dữ liệu chung do toàn bộ Sale trong công ty thu thập.'}</span>
@@ -1175,10 +1224,19 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isToday = Number.isFinite(scheduledTime) && scheduledTime <= endOfToday.getTime();
                   const isBusy = taskActionCandidateId === candidate.id;
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
+                  const isAdminAssigned = candidate.taskSource === 'admin_assigned';
                   return (
-                    <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
+                    <tr key={candidate.id} className={`${isOverdue ? 'is-overdue' : ''} ${isAdminAssigned ? 'is-admin-assigned' : ''}`.trim()}>
                       <td>{renderContactResult(candidate)}</td>
-                      <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)}><strong>{candidate.companyName}</strong><span>{candidate.taxCode ? `MST ${candidate.taxCode}` : candidate.source || 'Chưa rõ nguồn'}</span></button></td>
+                      <td>
+                        <span
+                          className={`lead-candidate-task-source ${isAdminAssigned ? 'is-admin' : 'is-sale'}`}
+                          title={isAdminAssigned && candidate.taskAssignedByName ? `Giao bởi ${candidate.taskAssignedByName}` : undefined}
+                        >{isAdminAssigned
+                          ? 'Ưu tiên · Admin giao'
+                          : candidate.taskSource === 'sale_created' ? 'Sale tự nhắc' : 'Công việc cần xử lý'}</span>
+                        <button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)}><strong>{candidate.companyName}</strong><span>{candidate.taxCode ? `MST ${candidate.taxCode}` : candidate.source || 'Chưa rõ nguồn'}</span></button>
+                      </td>
                       <td><strong>{candidate.province || 'Chưa cập nhật'}</strong><span>{candidate.source || 'Chưa rõ nguồn'}</span></td>
                       <td><strong>{candidate.contactPerson || 'Chưa rõ người liên hệ'}</strong>{candidate.phone ? <button type="button" className="lead-candidate-copy" onClick={() => copyPhone(candidate.phone)} title="Sao chép số điện thoại">{candidate.phone}<Copy size={11} /></button> : <span>{candidate.email || candidate.sourceUrl || 'Chưa có thông tin liên hệ'}</span>}{candidate.phone && candidate.email && <span>{candidate.email}</span>}</td>
                       {currentUser.role === 'admin' && <td><strong>{candidate.assignedSaleName || 'Chưa phân công'}</strong><span>{candidate.discoveredByName ? `Tìm bởi ${candidate.discoveredByName}` : '—'}</span></td>}
