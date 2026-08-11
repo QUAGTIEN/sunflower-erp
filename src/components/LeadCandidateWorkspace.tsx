@@ -1265,19 +1265,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isToday = Number.isFinite(scheduledTime) && scheduledTime <= endOfToday.getTime();
                   const isBusy = taskActionCandidateId === candidate.id;
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
-                  const isAdminAssigned = candidate.taskSource === 'admin_assigned';
                   return (
-                    <tr key={candidate.id} className={`${isOverdue ? 'is-overdue' : ''} ${isAdminAssigned ? 'is-admin-assigned' : ''}`.trim()}>
+                    <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
                       <td>{renderContactResult(candidate)}</td>
-                      <td>
-                        <span
-                          className={`lead-candidate-task-source ${isAdminAssigned ? 'is-admin' : 'is-sale'}`}
-                          title={isAdminAssigned && candidate.taskAssignedByName ? `Giao bởi ${candidate.taskAssignedByName}` : undefined}
-                        >{isAdminAssigned
-                          ? 'Ưu tiên · Admin giao'
-                          : candidate.taskSource === 'sale_created' ? 'Sale tự nhắc' : 'Công việc cần xử lý'}</span>
-                        <button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)}><strong>{candidate.companyName}</strong><span>{candidate.taxCode ? `MST ${candidate.taxCode}` : candidate.source || 'Chưa rõ nguồn'}</span></button>
-                      </td>
+                      <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)}><strong>{candidate.companyName}</strong><span>{candidate.taxCode ? `MST ${candidate.taxCode}` : candidate.source || 'Chưa rõ nguồn'}</span></button></td>
                       <td><strong>{candidate.province || 'Chưa cập nhật'}</strong><span>{candidate.source || 'Chưa rõ nguồn'}</span></td>
                       <td><strong>{candidate.contactPerson || 'Chưa rõ người liên hệ'}</strong>{candidate.phone ? <button type="button" className="lead-candidate-copy" onClick={() => copyPhone(candidate.phone)} title="Sao chép số điện thoại">{candidate.phone}<Copy size={11} /></button> : <span>{candidate.email || candidate.sourceUrl || 'Chưa có thông tin liên hệ'}</span>}{candidate.phone && candidate.email && <span>{candidate.email}</span>}</td>
                       {currentUser.role === 'admin' && <td><strong>{candidate.assignedSaleName || 'Chưa phân công'}</strong><span>{candidate.discoveredByName ? `Tìm bởi ${candidate.discoveredByName}` : '—'}</span></td>}
@@ -1369,12 +1360,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       <td><strong>{candidate.contactPerson || 'Chưa rõ người liên hệ'}</strong>{candidate.phone ? <button type="button" className="lead-candidate-copy" onClick={() => copyPhone(candidate.phone)} title="Sao chép số điện thoại">{candidate.phone}<Copy size={11} /></button> : <span>{candidate.email || candidate.sourceUrl || 'Chưa có thông tin liên hệ'}</span>}{candidate.phone && candidate.email && <span>{candidate.email}</span>}</td>
                       <td><strong>{candidate.assignedSaleName || 'Chưa phân công'}</strong><span>{candidate.discoveredByName ? `Tìm bởi ${candidate.discoveredByName}` : '—'}</span></td>
                       <td>
-                        {isAlreadyInQueue ? (
-                          <span className={`lead-candidate-processing-state ${candidate.assignedSaleId ? 'is-processing' : 'is-waiting'}`}>
-                            {candidate.assignedSaleName ? `${candidate.assignedSaleName} đang xử lý` : 'Đang chờ phân công'}
-                          </span>
-                        ) : <span className="lead-candidate-muted">Chưa đưa vào xử lý</span>}
-                        {isAlreadyInQueue && candidate.taskSource === 'admin_assigned' && <span className="lead-candidate-processing-priority">Ưu tiên Admin giao</span>}
+                        {isAlreadyInQueue
+                          ? <strong>{candidate.assignedSaleName || 'Chờ phân công'}</strong>
+                          : <span className="lead-candidate-muted">—</span>}
                       </td>
                       <td>{renderContactResult(candidate)}</td>
                       <td>{renderPotentialLevel(candidate)}</td>
