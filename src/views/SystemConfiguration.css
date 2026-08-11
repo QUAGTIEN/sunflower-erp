@@ -1,0 +1,461 @@
+.system-config-view {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.system-config-header {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.system-config-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.system-config-admin-badge {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  color: #3730a3;
+  background: #eef2ff;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.system-config-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.system-config-summary article {
+  display: flex;
+  min-width: 0;
+  min-height: 76px;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  color: #1e3a8a;
+  background: #fff;
+}
+
+.system-config-summary article > svg {
+  width: 36px;
+  height: 36px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.system-config-summary article > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.system-config-summary strong {
+  color: #172554;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.system-config-summary span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-config-workspace {
+  display: grid;
+  min-height: 560px;
+  grid-template-columns: 245px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.system-config-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border-right: 1px solid #dbe3ef;
+  background: #f8fafc;
+}
+
+.system-config-nav button {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px;
+  border: 0;
+  border-radius: 7px;
+  color: #475569;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.system-config-nav button:hover {
+  color: #1e3a8a;
+  background: #eef2ff;
+}
+
+.system-config-nav button.is-active {
+  color: #1e3a8a;
+  background: #e8eefc;
+  box-shadow: inset 3px 0 #3157c8;
+}
+
+.system-config-nav button > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.system-config-nav button > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.system-config-nav strong {
+  font-size: 12px;
+}
+
+.system-config-nav small {
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 450;
+  line-height: 1.35;
+}
+
+.system-config-content {
+  min-width: 0;
+  padding: 16px;
+}
+
+.system-config-section-heading {
+  display: flex;
+  min-height: 50px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.system-config-section-heading h2 {
+  margin: 0;
+  color: #172554;
+  font-size: 15px;
+}
+
+.system-config-section-heading p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 11.5px;
+}
+
+.system-config-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.system-config-catalog-card {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 11px;
+  padding: 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.system-config-catalog-card__icon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.system-config-catalog-card__icon.is-system {
+  color: #0f766e;
+  background: #ccfbf1;
+}
+
+.system-config-catalog-card__body {
+  min-width: 0;
+}
+
+.system-config-catalog-card__body > div:first-child {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.system-config-catalog-card h3 {
+  margin: 0;
+  color: #172554;
+  font-size: 13px;
+}
+
+.system-config-catalog-card p {
+  min-height: 36px;
+  margin: 7px 0 11px;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.system-config-catalog-card dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.system-config-catalog-card dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 6px;
+  border-top: 1px solid #eef2f7;
+  font-size: 11px;
+}
+
+.system-config-catalog-card dt {
+  color: #64748b;
+}
+
+.system-config-catalog-card dd {
+  overflow: hidden;
+  margin: 0;
+  color: #334155;
+  font-weight: 650;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-config-catalog-card > .btn {
+  grid-column: 1 / -1;
+  justify-self: flex-end;
+}
+
+.system-config-source-tag {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.system-config-source-tag.is-manual {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.system-config-source-tag.is-system {
+  color: #0f766e;
+  background: #ccfbf1;
+}
+
+.system-config-guidance {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  color: #1e40af;
+  background: #eff6ff;
+}
+
+.system-config-guidance > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.system-config-guidance > div {
+  display: grid;
+  gap: 2px;
+}
+
+.system-config-guidance strong {
+  font-size: 11.5px;
+}
+
+.system-config-guidance span {
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.system-config-source-list {
+  display: grid;
+  gap: 7px;
+}
+
+.system-config-source-list article {
+  display: grid;
+  min-height: 56px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-bottom: 1px solid #dbe3ef;
+}
+
+.system-config-source-list article > svg {
+  color: #1d4ed8;
+}
+
+.system-config-source-list article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.system-config-source-list strong {
+  color: #172554;
+  font-size: 12px;
+}
+
+.system-config-source-list article > div span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.system-config-scope-table {
+  overflow-x: auto;
+  border: 1px solid #dbe3ef;
+  border-radius: 7px;
+}
+
+.system-config-scope-table table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.system-config-scope-table th,
+.system-config-scope-table td {
+  height: 42px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #dbe3ef;
+  font-size: 11.5px;
+  text-align: left;
+}
+
+.system-config-scope-table th {
+  color: #1e3a8a;
+  background: #eff6ff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.system-config-scope-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.system-config-scope-table td:first-child {
+  color: #172554;
+  font-weight: 650;
+}
+
+.system-config-scope-table td span {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 650;
+}
+
+.system-config-scope-table .is-enabled {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.system-config-scope-table .is-disabled {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+@media (max-width: 1100px) {
+  .system-config-summary,
+  .system-config-catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .system-config-workspace {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .system-config-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .system-config-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .system-config-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid #dbe3ef;
+  }
+
+  .system-config-nav button {
+    min-width: 190px;
+  }
+}
+
+@media (max-width: 560px) {
+  .system-config-summary,
+  .system-config-catalog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .system-config-content {
+    padding: 10px;
+  }
+
+  .system-config-catalog-card__body > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

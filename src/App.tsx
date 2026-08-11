@@ -16,6 +16,7 @@ import { UserManagement } from './views/UserManagement';
 import { ChatPage } from './views/ChatPage';
 import { useLanguage } from './context/LanguageContext';
 import { RecycleBin } from './views/RecycleBin';
+import { SystemConfiguration } from './views/SystemConfiguration';
 import { DesignRequest } from './domain/designWorkflow';
 import { sortNewestFirst } from './domain/recordOrdering';
 import { normalizePORecords } from './domain/poCompatibility';
@@ -51,7 +52,8 @@ import {
   Menu,
   Target,
   Bell,
-  CheckCheck
+  CheckCheck,
+  SlidersHorizontal
 } from 'lucide-react';
 
 const logo = '/sunflower-logo-horizontal-transparent.png';
@@ -136,6 +138,7 @@ function App() {
 
   const isPageAllowed = (pageId: string): boolean => {
     if (!user) return false;
+    if (pageId === 'system_configuration') return user.role === 'admin';
     const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
     if (pageId === 'leads') {
       return allowed.includes('leads') || allowed.includes('crm');
@@ -588,6 +591,9 @@ function App() {
       case 'recycle_bin':
         if (!isPageAllowed('recycle_bin')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
         return <RecycleBin currentUser={user} onRefresh={refreshData} />;
+      case 'system_configuration':
+        if (!isPageAllowed('system_configuration')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        return <SystemConfiguration currentUser={user} />;
       case 'users':
         if (!isPageAllowed('users')) {
           setTimeout(() => setActivePage('dashboard'), 0);
@@ -971,6 +977,19 @@ function App() {
               <div className="sidebar-item-content sidebar-item-content-danger">
                 <Trash2 size={16} />
                 <span className="sidebar-item-label">{t('Thùng Rác')}</span>
+              </div>
+            </button>
+          )}
+
+          {isPageAllowed('system_configuration') && (
+            <button
+              className={`sidebar-item ${activePage === 'system_configuration' ? 'active' : ''}`}
+              onClick={() => { setActivePage('system_configuration'); setIsSidebarOpen(false); }}
+              title={t('Cấu Hình Hệ Thống')}
+            >
+              <div className="sidebar-item-content">
+                <SlidersHorizontal size={16} />
+                <span className="sidebar-item-label">{t('Cấu Hình Hệ Thống')}</span>
               </div>
             </button>
           )}
