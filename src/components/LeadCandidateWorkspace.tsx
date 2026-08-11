@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Copy,
+  Columns3,
   ExternalLink,
   Eye,
   History,
@@ -50,6 +50,7 @@ import {
 } from '../services/firebaseService';
 import { PageBackButton } from './PageBackButton';
 import { RowActionMenu } from './RowActionMenu';
+import { TableColumnCustomizer, type TableColumnOption } from './TableColumnCustomizer';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -91,6 +92,68 @@ interface ScheduleFormState {
 const CANDIDATE_SOURCES = ['Google Maps', 'Facebook', 'Mạng xã hội', 'Website', 'Khách hàng giới thiệu', 'Khác'];
 type CandidateWorkspaceView = 'tasks' | 'all';
 type CandidateSort = 'priority' | 'updated_desc' | 'company_asc' | 'next_contact_asc';
+type CandidateColumnId = 'select' | 'status' | 'company' | 'province' | 'contact' | 'assignee' | 'processing'
+  | 'potential' | 'schedule' | 'latest' | 'actions';
+
+interface CandidateColumnOption extends TableColumnOption {
+  id: CandidateColumnId;
+  adminOnly?: boolean;
+}
+
+const TASK_COLUMN_OPTIONS: CandidateColumnOption[] = [
+  { id: 'status', label: 'Trạng thái' },
+  { id: 'company', label: 'Doanh nghiệp', required: true },
+  { id: 'province', label: 'Tỉnh/thành' },
+  { id: 'contact', label: 'Liên hệ' },
+  { id: 'assignee', label: 'Sale phụ trách', adminOnly: true },
+  { id: 'potential', label: 'Mức độ tiềm năng' },
+  { id: 'schedule', label: 'Lịch hẹn' },
+  { id: 'latest', label: 'Cập nhật gần nhất' },
+  { id: 'actions', label: 'Thao tác', required: true }
+];
+
+const ALL_COLUMN_OPTIONS: CandidateColumnOption[] = [
+  { id: 'select', label: 'Chọn dữ liệu', required: true },
+  { id: 'company', label: 'Doanh nghiệp', required: true },
+  { id: 'province', label: 'Tỉnh/thành' },
+  { id: 'contact', label: 'Thông tin liên hệ' },
+  { id: 'assignee', label: 'Sale phụ trách' },
+  { id: 'processing', label: 'Sale đang xử lý' },
+  { id: 'status', label: 'Trạng thái' },
+  { id: 'potential', label: 'Mức độ tiềm năng' },
+  { id: 'schedule', label: 'Lịch tiếp theo' },
+  { id: 'latest', label: 'Cập nhật gần nhất' },
+  { id: 'actions', label: 'Thao tác', required: true }
+];
+
+const getAvailableColumns = (view: CandidateWorkspaceView, isAdmin: boolean) => (
+  (view === 'tasks' ? TASK_COLUMN_OPTIONS : ALL_COLUMN_OPTIONS)
+    .filter(column => !column.adminOnly || isAdmin)
+);
+
+const getDefaultVisibleColumns = (isAdmin: boolean): Record<CandidateWorkspaceView, CandidateColumnId[]> => ({
+  tasks: getAvailableColumns('tasks', isAdmin).map(column => column.id),
+  all: getAvailableColumns('all', isAdmin).map(column => column.id)
+});
+
+const loadVisibleColumns = (userId: string, isAdmin: boolean) => {
+  const defaults = getDefaultVisibleColumns(isAdmin);
+  try {
+    const stored = window.localStorage.getItem(`sunflower:lead-candidate-columns:${userId}`);
+    if (!stored) return defaults;
+    const parsed = JSON.parse(stored) as Partial<Record<CandidateWorkspaceView, string[]>>;
+    return (['tasks', 'all'] as CandidateWorkspaceView[]).reduce<Record<CandidateWorkspaceView, CandidateColumnId[]>>((result, view) => {
+      const available = getAvailableColumns(view, isAdmin);
+      const availableIds = new Set(available.map(column => column.id));
+      const requiredIds = available.filter(column => column.required).map(column => column.id);
+      const storedIds = Array.isArray(parsed[view]) ? parsed[view].filter((id): id is CandidateColumnId => availableIds.has(id as CandidateColumnId)) : [];
+      result[view] = Array.from(new Set([...requiredIds, ...(storedIds.length > 0 ? storedIds : defaults[view])]));
+      return result;
+    }, { tasks: [], all: [] });
+  } catch {
+    return defaults;
+  }
+};
 
 const CONTACT_STATUS_LABELS: Record<LeadCandidateContactResult, string> = {
   not_contacted: 'Chưa liên hệ',
@@ -254,6 +317,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [candidateSort, setCandidateSort] = useState<CandidateSort>('priority');
   const [showDataFilters, setShowDataFilters] = useState(false);
+  const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
+  const [visibleColumnsByView, setVisibleColumnsByView] = useState(() => loadVisibleColumns(currentUser.uid, currentUser.role === 'admin'));
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
@@ -274,6 +339,27 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [batchQueueError, setBatchQueueError] = useState('');
   const [savingBatchQueue, setSavingBatchQueue] = useState(false);
   const [referenceTime] = useState(() => Date.now());
+
+  const availableColumnOptions = getAvailableColumns(workspaceView, currentUser.role === 'admin');
+  const visibleColumnSet = new Set(visibleColumnsByView[workspaceView]);
+  const visibleColumnCount = availableColumnOptions.filter(column => visibleColumnSet.has(column.id)).length;
+
+  const saveVisibleColumns = (selectedIds: string[]) => {
+    const availableIds = new Set(availableColumnOptions.map(column => column.id));
+    const requiredIds = availableColumnOptions.filter(column => column.required).map(column => column.id);
+    const nextIds = Array.from(new Set([
+      ...requiredIds,
+      ...selectedIds.filter((id): id is CandidateColumnId => availableIds.has(id as CandidateColumnId))
+    ]));
+    const nextPreferences = { ...visibleColumnsByView, [workspaceView]: nextIds };
+    setVisibleColumnsByView(nextPreferences);
+    try {
+      window.localStorage.setItem(`sunflower:lead-candidate-columns:${currentUser.uid}`, JSON.stringify(nextPreferences));
+    } catch {
+      // The table still works with the in-memory preference when browser storage is unavailable.
+    }
+    setShowColumnCustomizer(false);
+  };
 
   const accessibleCandidates = useMemo(() => candidates.filter(candidate => (
     !candidate.archived
@@ -921,11 +1007,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     }
   };
 
-  const copyPhone = (phone: string) => {
-    if (!phone) return;
-    void navigator.clipboard?.writeText(phone).catch(() => undefined);
-  };
-
   const archiveCandidate = async (candidate: LeadCandidateRecord) => {
     if (!window.confirm(`Xóa “${candidate.companyName}” khỏi danh sách dữ liệu? Thông tin cũ vẫn được lưu an toàn.`)) return;
     const archivedAt = new Date().toISOString();
@@ -994,14 +1075,23 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     );
   };
 
-  const renderLatestActivity = (candidate: LeadCandidateRecord) => {
+  const renderCompactValue = (value: string, title = value, className = '') => (
+    <span className={`lead-candidate-compact-value ${className}`.trim()} title={title}>{value}</span>
+  );
+
+  const getContactSummary = (candidate: LeadCandidateRecord) => {
+    const primaryContact = candidate.contactPerson || 'Chưa rõ người liên hệ';
+    const contactChannel = candidate.phone || candidate.email || 'Chưa có thông tin liên hệ';
+    return `${primaryContact} · ${contactChannel}`;
+  };
+
+  const renderCompactLatestActivity = (candidate: LeadCandidateRecord) => {
     const latestLog = latestCandidateLog(candidate);
-    if (!latestLog) return <span className="lead-candidate-muted">Chưa có hoạt động</span>;
-    return (
-      <div className="lead-candidate-latest-activity">
-        <strong>{describeCandidateLog(latestLog)}</strong>
-        <span>{latestLog.createdByName || 'Không rõ người thực hiện'} · {formatShortDateTime(latestLog.occurredAt)}</span>
-      </div>
+    if (!latestLog) return renderCompactValue('Chưa có hoạt động', 'Chưa có hoạt động', 'is-muted');
+    const description = describeCandidateLog(latestLog);
+    return renderCompactValue(
+      description,
+      `${description} · ${latestLog.createdByName || 'Không rõ người thực hiện'} · ${formatShortDateTime(latestLog.occurredAt)}`
     );
   };
 
@@ -1134,6 +1224,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <option value="next_contact_asc">Lịch gọi gần nhất</option>
           </select>
           <DataFilterButton activeCount={activeFilterCount} open={showDataFilters} onClick={() => setShowDataFilters(true)} />
+          <button type="button" className="lead-candidate-column-button" onClick={() => setShowColumnCustomizer(true)}>
+            <Columns3 size={15} /> Tùy chỉnh cột
+          </button>
           {(activeFilterCount > 0 || searchTerm) && <button type="button" className="lead-candidate-clear-filter" onClick={clearDataFilters}><X size={13} /> Đặt lại</button>}
         </section>
 
@@ -1195,6 +1288,16 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         </DataFilterSection>
       </DataFilterPanel>
 
+      {showColumnCustomizer && (
+        <TableColumnCustomizer
+          open
+          columns={availableColumnOptions}
+          selectedIds={visibleColumnsByView[workspaceView]}
+          onClose={() => setShowColumnCustomizer(false)}
+          onSave={saveVisibleColumns}
+        />
+      )}
+
       {workspaceView === 'all' && selectedQueueCandidateIds.length > 0 && (
         <section className="lead-candidate-batch-bar" aria-label="Chuyển dữ liệu sang công việc cần xử lý">
           <div>
@@ -1247,8 +1350,18 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         </div>
         <div className="table-container">
           {workspaceView === 'tasks' ? (
-            <table className="lead-candidate-table lead-candidate-task-table">
-              <thead><tr><th>Trạng thái</th><th>Doanh nghiệp</th><th>Tỉnh/thành</th><th>Liên hệ</th>{currentUser.role === 'admin' && <th>Sale phụ trách</th>}<th>Mức độ tiềm năng</th><th>Lịch hẹn</th><th>Cập nhật gần nhất</th><th>Thao tác</th></tr></thead>
+            <table className="lead-candidate-table lead-candidate-task-table is-compact">
+              <thead><tr>
+                {visibleColumnSet.has('status') && <th>Trạng thái</th>}
+                {visibleColumnSet.has('company') && <th>Doanh nghiệp</th>}
+                {visibleColumnSet.has('province') && <th>Tỉnh/thành</th>}
+                {visibleColumnSet.has('contact') && <th>Liên hệ</th>}
+                {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <th>Sale phụ trách</th>}
+                {visibleColumnSet.has('potential') && <th>Mức độ tiềm năng</th>}
+                {visibleColumnSet.has('schedule') && <th>Lịch hẹn</th>}
+                {visibleColumnSet.has('latest') && <th>Cập nhật gần nhất</th>}
+                {visibleColumnSet.has('actions') && <th className="lead-candidate-actions-column">Thao tác</th>}
+              </tr></thead>
               <tbody>
                 {displayedCandidates.map(candidate => {
                   const scheduledTime = candidate.nextContactAt ? new Date(candidate.nextContactAt).getTime() : Number.NaN;
@@ -1260,15 +1373,17 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
                   return (
                     <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
-                      <td>{renderContactResult(candidate)}</td>
-                      <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)}><strong>{candidate.companyName}</strong><span>{candidate.taxCode ? `MST ${candidate.taxCode}` : candidate.source || 'Chưa rõ nguồn'}</span></button></td>
-                      <td><strong>{candidate.province || 'Chưa cập nhật'}</strong><span>{candidate.source || 'Chưa rõ nguồn'}</span></td>
-                      <td><strong>{candidate.contactPerson || 'Chưa rõ người liên hệ'}</strong>{candidate.phone ? <button type="button" className="lead-candidate-copy" onClick={() => copyPhone(candidate.phone)} title="Sao chép số điện thoại">{candidate.phone}<Copy size={11} /></button> : <span>{candidate.email || candidate.sourceUrl || 'Chưa có thông tin liên hệ'}</span>}{candidate.phone && candidate.email && <span>{candidate.email}</span>}</td>
-                      {currentUser.role === 'admin' && <td><strong>{candidate.assignedSaleName || 'Chưa phân công'}</strong><span>{candidate.discoveredByName ? `Tìm bởi ${candidate.discoveredByName}` : '—'}</span></td>}
-                      <td>{renderPotentialLevel(candidate)}</td>
-                      <td>{candidate.nextContactAt ? <><strong className={isOverdue ? 'lead-date-overdue' : ''}>{formatShortDateTime(candidate.nextContactAt)}</strong><span className={`lead-candidate-task-status ${isOverdue ? 'is-overdue' : ''}`}>{isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : 'Sắp tới'}</span></> : <span className="lead-candidate-muted">Chưa đặt lịch</span>}</td>
-                      <td>{renderLatestActivity(candidate)}</td>
-                      <td>
+                      {visibleColumnSet.has('status') && <td>{renderContactResult(candidate)}</td>}
+                      {visibleColumnSet.has('company') && <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong>{candidate.companyName}</strong></button></td>}
+                      {visibleColumnSet.has('province') && <td>{renderCompactValue(candidate.province || 'Chưa cập nhật', `${candidate.province || 'Chưa cập nhật'} · ${candidate.source || 'Chưa rõ nguồn'}`)}</td>}
+                      {visibleColumnSet.has('contact') && <td>{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
+                      {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <td>{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
+                      {visibleColumnSet.has('potential') && <td>{renderPotentialLevel(candidate)}</td>}
+                      {visibleColumnSet.has('schedule') && <td>{candidate.nextContactAt
+                        ? renderCompactValue(formatShortDateTime(candidate.nextContactAt), `${formatShortDateTime(candidate.nextContactAt)} · ${isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : 'Sắp tới'}`, isOverdue ? 'lead-date-overdue' : '')
+                        : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
+                      {visibleColumnSet.has('latest') && <td>{renderCompactLatestActivity(candidate)}</td>}
+                      {visibleColumnSet.has('actions') && <td className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
@@ -1279,18 +1394,18 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                             { label: 'Tắt công việc', icon: <X size={14} />, onSelect: () => dismissScheduledTask(candidate), disabled: isBusy, danger: true }
                           ]}
                         />
-                      </td>
+                      </td>}
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={currentUser.role === 'admin' ? 9 : 8} className="lead-empty">Không có công việc phù hợp. Công việc chỉ biến mất khi được chọn “Tắt công việc”.</td></tr>}
+                {filteredCandidates.length === 0 && <tr><td colSpan={visibleColumnCount} className="lead-empty">Không có công việc phù hợp. Công việc chỉ biến mất khi được chọn “Tắt công việc”.</td></tr>}
               </tbody>
             </table>
           ) : (
-            <table className="lead-candidate-table">
+            <table className="lead-candidate-table is-compact">
               <thead>
                 <tr>
-                  <th className="lead-candidate-select-column">
+                  {visibleColumnSet.has('select') && <th className="lead-candidate-select-column">
                     <input
                       type="checkbox"
                       checked={allDisplayedQueueCandidatesSelected}
@@ -1298,17 +1413,17 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       onChange={toggleDisplayedQueueCandidates}
                       aria-label="Chọn dữ liệu có thể đưa vào công việc trên trang này"
                     />
-                  </th>
-                  <th>Doanh nghiệp</th>
-                  <th>Tỉnh/thành</th>
-                  <th>Thông tin liên hệ</th>
-                  <th>Sale phụ trách</th>
-                  <th>Sale đang xử lý</th>
-                  <th>Trạng thái</th>
-                  <th>Mức độ tiềm năng</th>
-                  <th>Lịch tiếp theo</th>
-                  <th>Cập nhật gần nhất</th>
-                  <th>Thao tác</th>
+                  </th>}
+                  {visibleColumnSet.has('company') && <th>Doanh nghiệp</th>}
+                  {visibleColumnSet.has('province') && <th>Tỉnh/thành</th>}
+                  {visibleColumnSet.has('contact') && <th>Thông tin liên hệ</th>}
+                  {visibleColumnSet.has('assignee') && <th>Sale phụ trách</th>}
+                  {visibleColumnSet.has('processing') && <th>Sale đang xử lý</th>}
+                  {visibleColumnSet.has('status') && <th>Trạng thái</th>}
+                  {visibleColumnSet.has('potential') && <th>Mức độ tiềm năng</th>}
+                  {visibleColumnSet.has('schedule') && <th>Lịch tiếp theo</th>}
+                  {visibleColumnSet.has('latest') && <th>Cập nhật gần nhất</th>}
+                  {visibleColumnSet.has('actions') && <th className="lead-candidate-actions-column">Thao tác</th>}
                 </tr>
               </thead>
               <tbody>
@@ -1319,7 +1434,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isSelectedForQueue = selectedQueueCandidateSet.has(candidate.id);
                   return (
                     <tr key={candidate.id} className={isSelectedForQueue ? 'is-selected' : ''}>
-                      <td className="lead-candidate-select-column">
+                      {visibleColumnSet.has('select') && <td className="lead-candidate-select-column">
                         <input
                           type="checkbox"
                           checked={isSelectedForQueue}
@@ -1332,8 +1447,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                               : canSelectForQueue ? 'Chọn để đưa vào Công việc cần xử lý' : 'Bạn không phải Sale phụ trách dữ liệu này'}
                           aria-label={`Chọn ${candidate.companyName}${isAlreadyInQueue ? ' (đã có trong Công việc cần xử lý)' : ''}`}
                         />
-                      </td>
-                      <td>
+                      </td>}
+                      {visibleColumnSet.has('company') && <td>
                         <div className="lead-candidate-company-cell">
                           {canManageCandidate(candidate) && <button
                             type="button"
@@ -1341,25 +1456,26 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                             title={candidate.pinned ? 'Bỏ ghim' : 'Ghim ưu tiên'}
                             onClick={() => togglePinned(candidate)}
                           ><Star size={14} fill={candidate.pinned ? 'currentColor' : 'none'} /></button>}
-                          <button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)}>
+                          <button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName} · ${candidate.source || 'Chưa rõ nguồn'}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}>
                             <strong>{candidate.companyName}</strong>
-                            <span>{candidate.source || 'Chưa rõ nguồn'}{candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}</span>
                           </button>
                         </div>
-                      </td>
-                      <td><strong>{candidate.province || 'Chưa cập nhật'}</strong><span>{candidate.address || '—'}</span></td>
-                      <td><strong>{candidate.contactPerson || 'Chưa rõ người liên hệ'}</strong>{candidate.phone ? <button type="button" className="lead-candidate-copy" onClick={() => copyPhone(candidate.phone)} title="Sao chép số điện thoại">{candidate.phone}<Copy size={11} /></button> : <span>{candidate.email || candidate.sourceUrl || 'Chưa có thông tin liên hệ'}</span>}{candidate.phone && candidate.email && <span>{candidate.email}</span>}</td>
-                      <td><strong>{candidate.assignedSaleName || 'Chưa phân công'}</strong><span>{candidate.discoveredByName ? `Tìm bởi ${candidate.discoveredByName}` : '—'}</span></td>
-                      <td>
+                      </td>}
+                      {visibleColumnSet.has('province') && <td>{renderCompactValue(candidate.province || 'Chưa cập nhật', [candidate.province, candidate.address].filter(Boolean).join(' · ') || 'Chưa cập nhật')}</td>}
+                      {visibleColumnSet.has('contact') && <td>{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
+                      {visibleColumnSet.has('assignee') && <td>{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
+                      {visibleColumnSet.has('processing') && <td>
                         {isAlreadyInQueue
-                          ? <strong>{candidate.assignedSaleName || 'Chờ phân công'}</strong>
-                          : <span className="lead-candidate-muted">—</span>}
-                      </td>
-                      <td>{renderContactResult(candidate)}</td>
-                      <td>{renderPotentialLevel(candidate)}</td>
-                      <td>{candidate.nextContactAt ? <><strong>{formatShortDateTime(candidate.nextContactAt)}</strong><span>{new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}</span></> : <span className="lead-candidate-muted">Chưa đặt lịch</span>}</td>
-                      <td>{renderLatestActivity(candidate)}</td>
-                      <td>
+                          ? renderCompactValue(candidate.assignedSaleName || 'Chờ phân công')
+                          : renderCompactValue('—', 'Chưa đưa vào xử lý', 'is-muted')}
+                      </td>}
+                      {visibleColumnSet.has('status') && <td>{renderContactResult(candidate)}</td>}
+                      {visibleColumnSet.has('potential') && <td>{renderPotentialLevel(candidate)}</td>}
+                      {visibleColumnSet.has('schedule') && <td>{candidate.nextContactAt
+                        ? renderCompactValue(formatShortDateTime(candidate.nextContactAt), `${formatShortDateTime(candidate.nextContactAt)} · ${new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}`, new Date(candidate.nextContactAt).getTime() < referenceTime ? 'lead-date-overdue' : '')
+                        : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
+                      {visibleColumnSet.has('latest') && <td>{renderCompactLatestActivity(candidate)}</td>}
+                      {visibleColumnSet.has('actions') && <td className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
@@ -1373,11 +1489,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                             ...(currentUser.role === 'admin' ? [{ label: 'Xóa khỏi danh sách', icon: <Trash2 size={14} />, onSelect: () => archiveCandidate(candidate), danger: true }] : [])
                           ]}
                         />
-                      </td>
+                      </td>}
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={11} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
+                {filteredCandidates.length === 0 && <tr><td colSpan={visibleColumnCount} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
               </tbody>
             </table>
           )}
