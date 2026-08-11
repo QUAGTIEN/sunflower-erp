@@ -144,9 +144,11 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
   const [selectedWardId, setSelectedWardId] = useState('');
   const [newOptionName, setNewOptionName] = useState('');
   const [newRegionName, setNewRegionName] = useState('');
+  const [showScopeMenu, setShowScopeMenu] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
+  const scopeMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const unsubscribeLead = dbService.subscribeCollection('lead_filter_definitions', data => {
@@ -164,6 +166,24 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
       unsubscribeSystem();
     };
   }, []);
+
+  useEffect(() => {
+    if (!showScopeMenu) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !scopeMenuRef.current?.contains(event.target)) {
+        setShowScopeMenu(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowScopeMenu(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [showScopeMenu]);
 
   const leadDefinitions = useMemo(
     () => mergeLeadFilterDefinitions(storedLeadDefinitions),
@@ -222,6 +242,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     setSelectedWardId(initialWard?.id || '');
     setNewOptionName('');
     setNewRegionName('');
+    setShowScopeMenu(false);
     setSaveError('');
     setSaveSuccess('');
   };
@@ -261,6 +282,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     setSelectedWardId('');
     setNewOptionName('');
     setNewRegionName('');
+    setShowScopeMenu(false);
     setSaveError('');
     setSaveSuccess('');
   };
@@ -462,7 +484,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
         <div className="system-filter-catalog__body">
           <aside className="system-filter-list" aria-label="Danh sách tiêu chí bộ lọc">
             <div className="system-filter-list__count"><strong>{systemDefinitions.length} tiêu chí</strong><span>{systemDefinitions.filter(item => item.active).length} đang sử dụng</span></div>
-            {systemDefinitions.map(definition => {
+            {systemDefinitions.map((definition, index) => {
               const matchingLead = leadDefinitions.find(item => item.id === definition.id);
               const childCount = matchingLead
                 ? definition.id === LEAD_FILTER_IDS.province
@@ -471,6 +493,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
                 : null;
               return (
                 <button type="button" key={definition.id} className={`${selectedDefinitionId === definition.id ? 'is-selected' : ''} ${!definition.active ? 'is-inactive' : ''}`} onClick={() => selectDefinition(definition)}>
+                  <span className="system-filter-list__number">{index + 1}</span>
                   <div><strong>{definition.name}</strong><span>{childCount === null ? 'Danh sách tự động từ hệ thống' : definition.id === LEAD_FILTER_IDS.province ? `${childCount} Vùng/KCN` : `${childCount} mục con`}</span></div>
                   <ChevronDown size={15} />
                 </button>
@@ -551,11 +574,20 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
 
                 <section className="system-filter-scope-section">
                   <div><h4>Nơi hiển thị</h4><p>Chọn các màn hình sẽ có tiêu chí này trong nút Bộ lọc.</p></div>
-                  <div className="system-filter-scope-grid">
-                    {(Object.entries(SYSTEM_FILTER_SCOPE_LABELS) as Array<[SystemFilterScope, string]>).map(([scope, label]) => {
-                      const supported = systemDraft.availableScopes.includes(scope);
-                      return <label key={scope} className={!supported ? 'is-disabled' : ''}><input type="checkbox" disabled={!supported} checked={systemDraft.scopes.includes(scope)} onChange={event => updateScope(scope, event.target.checked)} /><span>{label}</span></label>;
-                    })}
+                  <div className={`system-scope-picker ${showScopeMenu ? 'is-open' : ''}`} ref={scopeMenuRef}>
+                    <button type="button" className="system-scope-picker__trigger" aria-haspopup="true" aria-expanded={showScopeMenu} onClick={() => setShowScopeMenu(previous => !previous)}>
+                      <span>{systemDraft.scopes.length > 0 ? `${systemDraft.scopes.length} nơi đã chọn` : 'Chọn nơi hiển thị'}</span>
+                      <ChevronDown size={15} />
+                    </button>
+                    {showScopeMenu && (
+                      <div className="system-scope-picker__menu">
+                        <strong>Hiển thị trong nút Bộ lọc tại</strong>
+                        {(Object.entries(SYSTEM_FILTER_SCOPE_LABELS) as Array<[SystemFilterScope, string]>).map(([scope, label]) => {
+                          const supported = systemDraft.availableScopes.includes(scope);
+                          return <label key={scope} className={!supported ? 'is-disabled' : ''}><input type="checkbox" disabled={!supported} checked={systemDraft.scopes.includes(scope)} onChange={event => updateScope(scope, event.target.checked)} /><span><b>{label}</b>{!supported && <small>Tiêu chí không hỗ trợ màn hình này</small>}</span></label>;
+                        })}
+                      </div>
+                    )}
                   </div>
                 </section>
 
