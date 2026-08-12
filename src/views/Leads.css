@@ -639,25 +639,40 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid #dbe3ef;
-  border-radius: 7px;
-  background: #fff;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .lead-data-workspace > .data-filter-chips {
-  padding-right: 14px;
-  padding-left: 14px;
+  margin-bottom: 8px;
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .lead-data-workspace > .lead-table-card {
-  width: calc(100% - 24px);
-  max-width: calc(100% - 24px);
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
-  margin: 0 12px 12px;
-  overflow-x: auto;
+  margin: 0;
+  overflow: hidden;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.lead-data-workspace > .lead-toolbar {
+  margin-bottom: 8px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.lead-data-workspace > .lead-table-card > .table-container {
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -674,10 +689,10 @@
   min-width: 0;
   flex-direction: column;
   gap: 0;
-  overflow: hidden;
-  border: 1px solid #dbe3ef;
-  border-radius: 7px;
-  background: #fff;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .lead-candidate-warning,
@@ -691,8 +706,10 @@
   min-width: 0;
   align-items: center;
   gap: 8px;
+  margin-bottom: 8px;
   padding: 6px 8px;
-  border-bottom: 1px solid #cbd5e1;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
   background: #fff;
 }
 
@@ -839,7 +856,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px 16px;
-  margin: 8px 10px;
+  margin: 0 0 8px;
   padding: 9px 12px;
   border: 1px solid #93c5fd;
   border-radius: 8px;
@@ -918,22 +935,23 @@
 }
 
 .lead-candidate-workspace > .data-filter-chips {
-  padding-right: 14px;
-  padding-left: 14px;
+  margin-bottom: 8px;
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .lead-candidate-workspace > .lead-table-card {
   display: flex;
-  width: calc(100% - 24px);
+  width: 100%;
   height: auto;
-  max-width: calc(100% - 24px);
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  margin: 0 12px 12px;
+  margin: 0;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: none;
 }
 
@@ -3080,9 +3098,9 @@
 
   .lead-data-workspace > .lead-table-card,
   .lead-candidate-workspace > .lead-table-card {
-    width: calc(100% - 12px);
-    max-width: calc(100% - 12px);
-    margin: 0 6px 6px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
   }
 
   .lead-province-selects {

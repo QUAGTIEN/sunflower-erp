@@ -268,17 +268,17 @@
 
 .crm-command-center {
   min-width: 0;
-  padding: 0 3px 3px;
+  padding: 0;
 }
 
 .crm-data-workspace {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid #dbe3ef;
-  border-radius: 7px;
-  background: #fff;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .crm-list-tabs {
@@ -297,8 +297,10 @@
   min-width: 0;
   align-items: center;
   gap: 8px;
+  margin-bottom: 8px;
   padding: 6px 8px;
-  border-bottom: 1px solid #cbd5e1;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
   background: #fff;
 }
 
@@ -477,22 +479,23 @@
 }
 
 .crm-data-workspace .data-filter-chips {
-  padding-right: 14px;
-  padding-left: 14px;
+  margin-bottom: 8px;
+  padding-right: 0;
+  padding-left: 0;
 }
 
 .crm-customer-grid {
   display: flex;
-  width: calc(100% - 24px);
+  width: 100%;
   height: auto;
-  max-width: calc(100% - 24px);
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  margin: 0 12px 12px;
+  margin: 0;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: none;
 }
 
@@ -1104,11 +1107,11 @@
   }
 
   .crm-customer-grid {
-    width: calc(100% - 12px);
+    width: 100%;
     height: auto;
-    max-width: calc(100% - 12px);
+    max-width: 100%;
     min-height: 0;
-    margin: 0 6px 6px;
+    margin: 0;
   }
 
   .crm-data-workspace .crm-customer-table-wrap {
