@@ -249,12 +249,40 @@
   place-items: center;
   min-height: 560px;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 45%, #fff 0%, #f8fbff 56%, #eff6ff 100%);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.36)),
+    radial-gradient(circle at 50% 45%, #ffffff 0%, #f5f9ff 54%, #eaf2ff 100%);
 }
 
 .commercial-map-canvas svg {
-  width: min(100%, 435px);
-  max-height: 555px;
+  width: min(100%, 520px);
+  max-height: 580px;
+  overflow: visible;
+}
+
+.commercial-map-country {
+  stroke: #7ea4dc;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.4;
+}
+
+.commercial-map-silhouette {
+  vector-effect: non-scaling-stroke;
+}
+
+.commercial-map-archipelago {
+  fill: #dbeafe;
+  stroke: #91afe0;
+  stroke-width: 1;
+}
+
+.commercial-map-archipelago text {
+  fill: #7890b5;
+  stroke: none;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: .02em;
 }
 
 .commercial-map-point {

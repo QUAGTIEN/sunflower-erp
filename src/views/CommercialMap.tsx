@@ -13,6 +13,11 @@ import {
 import type { CustomerRecord, LeadRecord } from '../domain/crmModels';
 import type { LeadCandidateRecord } from '../domain/leadCandidateModels';
 import type { CompatiblePORecord } from '../domain/poCompatibility';
+import {
+  projectVietnamCoordinate,
+  VIETNAM_MAP_PATHS,
+  VIETNAM_MAP_VIEW_BOX
+} from '../data/vietnamMapGeometry';
 import type { UserProfile } from '../services/firebaseService';
 import { dbService } from '../services/firebaseService';
 import {
@@ -199,7 +204,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
             {selectedProvinceId && <button type="button" className="btn btn-sm btn-outline" onClick={() => setSelectedProvinceId('')}>Xem toàn quốc</button>}
           </div>
           <div className="commercial-map-canvas">
-            <svg viewBox="0 0 420 830" role="img" aria-label="Bản đồ thương mại Việt Nam theo tỉnh thành">
+            <svg viewBox={VIETNAM_MAP_VIEW_BOX} role="img" aria-label="Bản đồ thương mại Việt Nam theo tỉnh thành">
               <defs>
                 <linearGradient id="commercial-map-land" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0%" stopColor="#eff6ff" />
@@ -209,17 +214,25 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                   <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#0f2f74" floodOpacity="0.15" />
                 </filter>
               </defs>
-              <path
-                className="commercial-map-silhouette"
-                d="M82 30 C130 7 224 12 300 36 C348 52 370 88 355 128 C344 158 319 183 286 199 C245 219 228 250 222 292 C216 337 231 379 264 417 C295 453 321 490 329 532 C338 576 325 613 300 649 C279 678 269 706 251 737 C235 766 215 797 181 814 C158 803 144 784 145 755 C146 722 173 696 198 675 C223 655 239 632 242 603 C246 565 227 538 211 510 C191 475 190 444 205 412 C219 382 215 352 199 325 C179 292 169 263 174 228 C179 194 163 174 127 158 C92 143 66 119 57 87 C49 61 58 43 82 30 Z"
-                fill="url(#commercial-map-land)"
-                stroke="#9db7df"
-                strokeWidth="2"
-                filter="url(#commercial-map-shadow)"
-              />
-              <path d="M345 386 l22 -9 l-7 24 z M362 414 l17 -6 l-5 20 z" fill="#dbeafe" stroke="#9db7df" />
+              <g className="commercial-map-country" filter="url(#commercial-map-shadow)">
+                {VIETNAM_MAP_PATHS.map((path, index) => (
+                  <path
+                    key={index}
+                    className="commercial-map-silhouette"
+                    d={path}
+                    fill="url(#commercial-map-land)"
+                  />
+                ))}
+              </g>
+              <g className="commercial-map-archipelago" aria-hidden="true">
+                <path d="M341 315 l8 -3 l-2 9 z M352 337 l6 -2 l-1 7 z M335 355 l5 -2 l-1 6 z" />
+                <text x="326" y="302">Hoàng Sa</text>
+                <path d="M320 493 l6 -2 l-1 7 z M338 517 l7 -2 l-2 8 z M315 542 l5 -2 l-1 6 z" />
+                <text x="299" y="480">Trường Sa</text>
+              </g>
               {COMMERCIAL_MAP_POINTS.map(point => {
                 const summary = summaryByProvince.get(point.provinceId);
+                const coordinate = projectVietnamCoordinate(point.longitude, point.latitude);
                 const count = summary?.total || 0;
                 const intensity = count > 0 ? 0.35 + (count / maximumProvinceTotal) * 0.65 : 0.12;
                 const selected = selectedProvinceId === point.provinceId;
@@ -235,9 +248,9 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                       if (event.key === 'Enter' || event.key === ' ') setSelectedProvinceId(point.provinceId);
                     }}
                   >
-                    <circle cx={point.x} cy={point.y} r={radius + (selected ? 5 : 0)} fill={activeLayerDefinition.color} opacity={selected ? 0.18 : 0.08} />
-                    <circle cx={point.x} cy={point.y} r={radius} fill={activeLayerDefinition.color} opacity={intensity} stroke="#fff" strokeWidth={selected ? 3 : 1.5} />
-                    {count > 0 && <text x={point.x} y={point.y + 3.5} textAnchor="middle">{count}</text>}
+                    <circle cx={coordinate.x} cy={coordinate.y} r={radius + (selected ? 5 : 0)} fill={activeLayerDefinition.color} opacity={selected ? 0.18 : 0.08} />
+                    <circle cx={coordinate.x} cy={coordinate.y} r={radius} fill={activeLayerDefinition.color} opacity={intensity} stroke="#fff" strokeWidth={selected ? 3 : 1.5} />
+                    {count > 0 && <text x={coordinate.x} y={coordinate.y + 3.5} textAnchor="middle">{count}</text>}
                     <title>{summary ? `${summary.provinceName}: ${count} doanh nghiệp` : 'Chưa có dữ liệu'}</title>
                   </g>
                 );
