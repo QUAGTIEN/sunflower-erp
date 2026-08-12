@@ -55,6 +55,7 @@ import {
   isDocumentAlreadyExistsError,
   type UserProfile
 } from '../services/firebaseService';
+import { auditService } from '../services/auditService';
 import { PageBackButton } from './PageBackButton';
 import { RowActionMenu } from './RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from './TableColumnCustomizer';
@@ -647,6 +648,15 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       }
       setSelectedQueueCandidateIds([]);
       setWorkspaceView('tasks');
+      candidatesToQueue.forEach(candidate => auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'lead_candidates',
+        action: 'candidate_added_to_work_queue',
+        summary: `Đưa ${candidate.companyName} vào Công việc cần xử lý`,
+        targetType: 'lead_candidate',
+        targetId: candidate.id,
+        targetLabel: candidate.companyName
+      }));
     } catch {
       setBatchQueueError('Không thể chuyển một số dữ liệu sang Công việc cần xử lý. Vui lòng kiểm tra quyền Firebase và thử lại.');
     } finally {
@@ -699,6 +709,16 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       setSelectedQueueCandidateIds([]);
       setBatchAssigneeId('');
       setWorkspaceView('tasks');
+      candidatesToAssign.forEach(candidate => auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'lead_candidates',
+        action: 'candidate_assigned_to_sale',
+        summary: `Bàn giao ${candidate.companyName} cho ${assignee.displayName}`,
+        targetType: 'lead_candidate',
+        targetId: candidate.id,
+        targetLabel: candidate.companyName,
+        changes: [{ field: 'assignedSale', label: 'Sale phụ trách', before: candidate.assignedSaleName || 'Chưa phân công', after: assignee.displayName }]
+      }));
     } catch {
       setBatchQueueError('Không thể bàn giao một số dữ liệu cho Sale. Vui lòng kiểm tra quyền Firebase và thử lại.');
     } finally {
@@ -818,6 +838,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
       if (editingCandidateId) {
         await dbService.updateDocument('lead_candidates', editingCandidateId, payload);
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'lead_candidates', action: 'candidate_updated',
+          summary: `Cập nhật dữ liệu khách hàng ${form.companyName.trim()}`,
+          targetType: 'lead_candidate', targetId: editingCandidateId, targetLabel: form.companyName.trim()
+        });
         setShowForm(false);
         return;
       }
@@ -859,6 +884,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       } else {
         await dbService.addDocument('lead_candidates', createPayload);
       }
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: 'lead_candidates', action: 'candidate_created',
+        summary: `Tạo dữ liệu khách hàng ${form.companyName.trim()}`,
+        targetType: 'lead_candidate', targetLabel: form.companyName.trim()
+      });
       setShowForm(false);
     } catch (error) {
       const errorCode = typeof error === 'object' && error !== null && 'code' in error
@@ -928,6 +958,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       });
       setScheduleCandidateId('');
       setScheduleContactResult('');
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: 'lead_candidates', action: 'follow_up_scheduled',
+        summary: `Đặt lịch liên hệ ${scheduleCandidate.companyName}`,
+        targetType: 'lead_candidate', targetId: scheduleCandidate.id, targetLabel: scheduleCandidate.companyName,
+        changes: [{ field: 'nextContactAt', label: 'Lịch hẹn', after: nextContactAt }]
+      });
     } catch (error) {
       const code = typeof error === 'object' && error !== null && 'code' in error
         ? String(error.code)
@@ -947,6 +983,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       await dbService.updateDocument('lead_candidates', candidate.id, {
         pinned: !candidate.pinned,
         updatedBy: currentUser.displayName
+      });
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: 'lead_candidates', action: 'candidate_pin_toggled',
+        summary: `${candidate.pinned ? 'Bỏ ghim' : 'Ghim'} dữ liệu khách hàng ${candidate.companyName}`,
+        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
       });
     } catch {
       setActionError('Không thể cập nhật dữ liệu. Vui lòng kiểm tra quyền Firebase và thử lại.');
@@ -978,6 +1019,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         contactLogs: prependCandidateLog(candidate, log),
         updatedBy: currentUser.displayName
       });
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: 'lead_candidates', action: 'contact_status_updated',
+        summary: `Cập nhật trạng thái liên hệ ${candidate.companyName}`,
+        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName,
+        changes: [{ field: 'contactResult', label: 'Trạng thái liên hệ', before: CONTACT_STATUS_LABELS[candidate.contactResult], after: CONTACT_STATUS_LABELS[contactResult] }]
+      });
     } catch {
       setActionError('Không thể cập nhật trạng thái liên hệ. Vui lòng kiểm tra quyền Firebase và thử lại.');
     } finally {
@@ -999,6 +1046,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         potentialLevel,
         contactLogs: prependCandidateLog(candidate, log),
         updatedBy: currentUser.displayName
+      });
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: 'lead_candidates', action: 'potential_updated',
+        summary: `Đánh giá tiềm năng ${candidate.companyName}`,
+        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName,
+        changes: [{ field: 'potentialLevel', label: 'Mức độ tiềm năng', before: POTENTIAL_LEVEL_LABELS[candidate.potentialLevel], after: POTENTIAL_LEVEL_LABELS[potentialLevel] }]
       });
     } catch {
       setActionError('Không thể cập nhật mức độ tiềm năng. Vui lòng kiểm tra quyền Firebase và thử lại.');

@@ -1,5 +1,6 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { authService, dbService, isFirebaseRuntimeEnabled, UserProfile } from './services/firebaseService';
+import { auditService } from './services/auditService';
 import { Dashboard } from './views/Dashboard';
 import { Crm } from './views/Crm';
 import { Leads } from './views/Leads';
@@ -69,6 +70,25 @@ const PAGE_NOTIFICATION_MODULES: Partial<Record<string, NotificationModule>> = {
   production: 'production',
   delivery: 'delivery',
   accounting: 'accounting'
+};
+
+const AUDIT_PAGE_LABELS: Record<string, string> = {
+  dashboard: 'Tổng quan',
+  chat: 'Kênh trao đổi',
+  crm: 'Khách hàng CRM',
+  leads: 'Khách hàng tiềm năng',
+  sales: 'Tiếp nhận đơn PO',
+  design: 'Yêu cầu thiết kế',
+  design_library: 'Kho mẫu thiết kế',
+  purchase: 'Mua hàng',
+  suppliers: 'Nhà cung cấp',
+  inventory: 'Kho nguyên vật tư',
+  production: 'Lệnh sản xuất',
+  delivery: 'Kế hoạch giao hàng',
+  accounting: 'Kế toán',
+  users: 'Quản lý tài khoản',
+  recycle_bin: 'Thùng rác',
+  system_configuration: 'Cấu hình hệ thống'
 };
 
 const NOTIFICATION_MODULE_LABELS: Record<NotificationModule, string> = {
@@ -225,6 +245,25 @@ function App() {
     });
     return () => unsubAuth();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    auditService.recordNavigation(user, activePage, AUDIT_PAGE_LABELS[activePage] || activePage);
+  }, [activePage, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const heartbeat = window.setInterval(() => {
+      auditService.updatePresenceSafely(user, 'online', activePage);
+    }, 90_000);
+    const markOffline = () => auditService.updatePresenceSafely(user, 'offline', activePage);
+    window.addEventListener('beforeunload', markOffline);
+    return () => {
+      window.clearInterval(heartbeat);
+      window.removeEventListener('beforeunload', markOffline);
+      auditService.updatePresenceSafely(user, 'offline', activePage);
+    };
+  }, [activePage, user]);
 
   // Set up real-time database subscriptions
   useEffect(() => {
@@ -390,7 +429,14 @@ function App() {
     e.preventDefault();
     setErrorMsg('');
     try {
-      await authService.login(username, password);
+      const signedInUser = await authService.login(username, password);
+      auditService.recordSafely(signedInUser, {
+        category: 'session',
+        module: 'authentication',
+        action: 'signed_in',
+        summary: 'Đăng nhập vào Sunflower ERP'
+      });
+      auditService.updatePresenceSafely(signedInUser, 'online', 'dashboard');
       if (rememberMe) {
         localStorage.setItem('erp_remembered_username', username);
         localStorage.setItem('erp_remember_me', 'true');
@@ -404,6 +450,15 @@ function App() {
   };
 
   const handleLogout = async () => {
+    if (user) {
+      auditService.recordSafely(user, {
+        category: 'session',
+        module: 'authentication',
+        action: 'signed_out',
+        summary: 'Đăng xuất khỏi Sunflower ERP'
+      });
+      auditService.updatePresenceSafely(user, 'offline', activePage);
+    }
     await authService.logout();
     setActivePage('dashboard');
   };

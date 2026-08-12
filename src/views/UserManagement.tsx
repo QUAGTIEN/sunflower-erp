@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { type UserProfile } from '../services/firebaseService';
+import React, { useMemo, useState } from 'react';
+import { dbService, type UserProfile } from '../services/firebaseService';
 import { adminUserService } from '../services/adminUserService';
 import { useLanguage } from '../context/LanguageContext';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Activity, Clock3, History, Plus, Search, Trash2, Pencil, X } from 'lucide-react';
 import { formatDateTime } from '../domain/dateFormatting';
+import { auditService, type AuditEvent, type UserPresence } from '../services/auditService';
+import './UserManagement.css';
 
 interface UserManagementProps {
   users: UserProfile[];
@@ -28,6 +30,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   const [role, setRole] = useState<'admin' | 'sale' | 'designer' | 'purchaser' | 'producer' | 'accountant'>('sale');
   const [active, setActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activityUser, setActivityUser] = useState<UserProfile | null>(null);
+  const [activityEvents, setActivityEvents] = useState<AuditEvent[]>([]);
+  const [activityPresence, setActivityPresence] = useState<UserPresence | null>(null);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+  const [activityError, setActivityError] = useState('');
+  const [activityQuery, setActivityQuery] = useState('');
+  const [activityPeriod, setActivityPeriod] = useState<'today' | '7d' | '30d' | 'all' | 'custom'>('7d');
+  const [activityFrom, setActivityFrom] = useState('');
+  const [activityTo, setActivityTo] = useState('');
 
   // Map roles to Vietnamese text
   const getRoleLabel = (r: string) => {
@@ -122,6 +133,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
         active,
         allowedPages
       });
+      auditService.recordSafely(currentUser, {
+        category: 'administration',
+        module: 'account',
+        action: 'account_created',
+        summary: `Tạo tài khoản ${displayName.trim()}`,
+        targetType: 'user',
+        targetLabel: displayName.trim()
+      });
       setShowAddModal(false);
       onRefresh();
     } catch (error) {
@@ -156,6 +175,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
         active,
         allowedPages
       });
+      auditService.recordSafely(currentUser, {
+        category: 'administration',
+        module: 'account',
+        action: 'account_updated',
+        summary: `Cập nhật tài khoản ${selectedUser.displayName}`,
+        targetType: 'user',
+        targetId: selectedUser.uid,
+        targetLabel: selectedUser.displayName
+      });
       setShowEditModal(false);
       setSelectedUser(null);
       onRefresh();
@@ -176,6 +204,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
       setIsSubmitting(true);
       try {
         await adminUserService.setActive(user.uid, !user.active);
+        auditService.recordSafely(currentUser, {
+          category: 'administration',
+          module: 'account',
+          action: user.active ? 'account_locked' : 'account_activated',
+          summary: `${user.active ? 'Khóa' : 'Kích hoạt'} tài khoản ${user.displayName}`,
+          targetType: 'user',
+          targetId: user.uid,
+          targetLabel: user.displayName
+        });
         onRefresh();
       } catch (error) {
         alert(error instanceof Error ? error.message : t('Không thể thay đổi trạng thái tài khoản.'));
@@ -195,6 +232,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
       setIsSubmitting(true);
       try {
         await adminUserService.delete(userToDelete.uid);
+        auditService.recordSafely(currentUser, {
+          category: 'administration',
+          module: 'account',
+          action: 'account_deleted',
+          summary: `Xóa tài khoản ${userToDelete.displayName}`,
+          targetType: 'user',
+          targetId: userToDelete.uid,
+          targetLabel: userToDelete.displayName
+        });
         onRefresh();
       } catch (error) {
         alert(error instanceof Error ? error.message : t('Không thể xóa tài khoản.'));
@@ -211,6 +257,62 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const openActivityHistory = async (account: UserProfile) => {
+    setActivityUser(account);
+    setActivityEvents([]);
+    setActivityPresence(null);
+    setActivityQuery('');
+    setActivityPeriod('7d');
+    setActivityFrom('');
+    setActivityTo('');
+    setActivityError('');
+    setIsLoadingActivity(true);
+    try {
+      const [events, presence] = await Promise.all([
+        auditService.getUserEvents(account.uid),
+        dbService.getDocument('user_presence', account.uid) as Promise<UserPresence | null>
+      ]);
+      setActivityEvents(events);
+      setActivityPresence(presence);
+    } catch (error) {
+      setActivityError(error instanceof Error ? error.message : 'Không thể tải lịch sử hoạt động.');
+    } finally {
+      setIsLoadingActivity(false);
+    }
+  };
+
+  const visibleActivityEvents = useMemo(() => {
+    const now = new Date();
+    const startByPeriod: Record<string, Date | undefined> = {
+      today: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+      '7d': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+      '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+      all: undefined,
+      custom: activityFrom ? new Date(`${activityFrom}T00:00:00`) : undefined
+    };
+    const start = startByPeriod[activityPeriod];
+    const end = activityPeriod === 'custom' && activityTo
+      ? new Date(`${activityTo}T23:59:59.999`)
+      : undefined;
+    const keyword = activityQuery.trim().toLocaleLowerCase('vi-VN');
+    return activityEvents.filter(event => {
+      const occurredAt = new Date(event.occurredAt);
+      if (start && occurredAt < start) return false;
+      if (end && occurredAt > end) return false;
+      if (!keyword) return true;
+      return [event.summary, event.action, event.module, event.targetLabel, ...(event.changes || []).map(change => `${change.label} ${change.before || ''} ${change.after || ''}`)]
+        .join(' ')
+        .toLocaleLowerCase('vi-VN')
+        .includes(keyword);
+    });
+  }, [activityEvents, activityFrom, activityPeriod, activityQuery, activityTo]);
+
+  const groupedActivityEvents = useMemo(() => visibleActivityEvents.reduce<Record<string, AuditEvent[]>>((groups, event) => {
+    const key = new Date(event.occurredAt).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    (groups[key] ||= []).push(event);
+    return groups;
+  }, {}), [visibleActivityEvents]);
 
   return (
     <div className="users-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -285,6 +387,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                     <td>{u.createdAt || 'N/A'}</td>
                     <td>
                       <div className="btn-group">
+                        <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => void openActivityHistory(u)} title="Lịch sử hoạt động">
+                          <History size={14} />
+                        </button>
                         <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => openEditModal(u)} title={t('Sửa')}>
                           <Pencil size={14} />
                         </button>
@@ -533,6 +638,57 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {activityUser && (
+        <div className="modal-overlay">
+          <div className="modal-content user-activity-modal">
+            <div className="modal-header">
+              <div>
+                <div className="user-activity-modal__title"><Activity size={19} /> Giám sát hoạt động</div>
+                <div className="user-activity-modal__subtitle">{activityUser.displayName} · {activityUser.email}</div>
+              </div>
+              <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => setActivityUser(null)} title="Đóng"><X size={16} /></button>
+            </div>
+            <div className="modal-body user-activity-modal__body">
+              <section className="user-activity-summary">
+                <div>
+                  <span className={`user-activity-status user-activity-status--${activityPresence?.status === 'online' ? 'online' : 'offline'}`}>
+                    {activityPresence?.status === 'online' ? 'Đang hoạt động' : 'Không trực tuyến'}
+                  </span>
+                  <p>{activityPresence?.lastSeenAt ? `Hoạt động gần nhất: ${formatDateTime(activityPresence.lastSeenAt, 'vi-VN', 'Chưa có dữ liệu')}` : 'Chưa ghi nhận phiên hoạt động.'}</p>
+                </div>
+                <div><strong>{visibleActivityEvents.length}</strong><span> hoạt động phù hợp</span></div>
+              </section>
+
+              <section className="user-activity-filters">
+                <div className="user-activity-search"><Search size={16} /><input value={activityQuery} onChange={event => setActivityQuery(event.target.value)} placeholder="Tìm thao tác, khách hàng, Lead..." /></div>
+                <select value={activityPeriod} onChange={event => setActivityPeriod(event.target.value as typeof activityPeriod)}>
+                  <option value="today">Hôm nay</option><option value="7d">7 ngày gần đây</option><option value="30d">30 ngày gần đây</option><option value="all">Tất cả (tối đa 250)</option><option value="custom">Tùy chọn khoảng thời gian</option>
+                </select>
+                {activityPeriod === 'custom' && <><input type="date" value={activityFrom} onChange={event => setActivityFrom(event.target.value)} /><input type="date" value={activityTo} onChange={event => setActivityTo(event.target.value)} /></>}
+              </section>
+
+              {isLoadingActivity ? <div className="user-activity-empty">Đang tải lịch sử hoạt động...</div>
+                : activityError ? <div className="user-activity-empty user-activity-empty--error">{activityError}</div>
+                : Object.keys(groupedActivityEvents).length === 0 ? <div className="user-activity-empty"><Clock3 size={20} /> Chưa có hoạt động phù hợp trong khoảng thời gian này.</div>
+                : <div className="user-activity-timeline">
+                  {Object.entries(groupedActivityEvents).map(([dateLabel, events]) => (
+                    <section key={dateLabel} className="user-activity-day">
+                      <h3>{dateLabel}</h3>
+                      {events.map(event => (
+                        <article key={event.id} className="user-activity-event">
+                          <time>{new Date(event.occurredAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</time>
+                          <div><strong>{event.summary}</strong>{event.targetLabel && <span className="user-activity-event__target">{event.targetLabel}</span>}
+                            {(event.changes || []).map(change => <p key={change.field}>{change.label}: <b>{change.before || '—'}</b> → <b>{change.after || '—'}</b></p>)}</div>
+                        </article>
+                      ))}
+                    </section>
+                  ))}
+                </div>}
+            </div>
           </div>
         </div>
       )}

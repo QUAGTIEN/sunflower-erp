@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService } from '../services/firebaseService';
+import { auditService } from '../services/auditService';
 import { useLanguage } from '../context/LanguageContext';
 import { HorizontalBarChart } from '../components/VisualCharts';
 import { CustomerOnboardingItems } from '../components/CustomerOnboardingItems';
@@ -750,6 +751,16 @@ export const Crm: React.FC<CrmProps> = ({
       buildNewCustomerPayload(pendingOrderDraft, mapPreparedItemsToProducts(normalizedItems))
     );
 
+    auditService.recordSafely(currentUser, {
+      category: 'business',
+      module: 'crm',
+      action: 'customer_created',
+      summary: `Tạo khách hàng ${companyName.trim()}`,
+      targetType: 'customer',
+      targetId: createdCustomer.id,
+      targetLabel: companyName.trim()
+    });
+
     if (onboardingSourceLead) {
       const now = new Date().toISOString();
       const latestLead = await dbService.getDocument('leads', onboardingSourceLead.id) as LeadRecord | null;
@@ -802,6 +813,16 @@ export const Crm: React.FC<CrmProps> = ({
       contacts: buildCustomerContacts(),
       updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
       updatedAt: new Date().toISOString()
+    });
+
+    auditService.recordSafely(currentUser, {
+      category: 'business',
+      module: 'crm',
+      action: 'customer_updated',
+      summary: `Cập nhật khách hàng ${companyName.trim() || selectedCustomer.companyName}`,
+      targetType: 'customer',
+      targetId: selectedCustomer.id,
+      targetLabel: companyName.trim() || selectedCustomer.companyName
     });
 
     setShowEditModal(false);

@@ -16,6 +16,9 @@ import {
   updateDoc, 
   deleteDoc, 
   query, 
+  where,
+  orderBy,
+  limit,
   onSnapshot,
   runTransaction
 } from 'firebase/firestore';
@@ -886,6 +889,39 @@ export const dbService = {
     }
     const list = readLocalCollection(colName);
     return list.find((item: any) => item.id === docId) || null;
+  },
+
+  async getCollectionByField(
+    colName: string,
+    fieldName: string,
+    fieldValue: unknown,
+    options: { orderByField?: string; direction?: 'asc' | 'desc'; maxResults?: number } = {}
+  ): Promise<any[]> {
+    const database = await getFirebaseDatabase(`querying collection ${colName}`);
+    const maxResults = options.maxResults || 250;
+    if (database) {
+      try {
+        const constraints: any[] = [where(fieldName, '==', fieldValue)];
+        if (options.orderByField) {
+          constraints.push(orderBy(options.orderByField, options.direction || 'desc'));
+        }
+        constraints.push(limit(maxResults));
+        const snap = await getDocs(query(collection(database, colName), ...constraints));
+        return normalizeCollectionRecords(colName, snap.docs.map(item => ({ id: item.id, ...item.data() })));
+      } catch (error) {
+        reportFirebaseFailure(`querying collection ${colName}`, error);
+        throw error;
+      }
+    }
+
+    const records = readLocalCollection(colName)
+      .filter((item: any) => item?.[fieldName] === fieldValue);
+    if (options.orderByField) {
+      const direction = options.direction === 'asc' ? 1 : -1;
+      records.sort((left: any, right: any) => String(left?.[options.orderByField!] || '')
+        .localeCompare(String(right?.[options.orderByField!] || '')) * direction);
+    }
+    return records.slice(0, maxResults);
   },
 
   async addDocument(colName: string, docData: any): Promise<any> {

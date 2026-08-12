@@ -303,6 +303,35 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Activity monitoring is append-only. A user can only create entries under
+    // their own authenticated identity; administrators can review the history.
+    // This deliberately excludes passwords, tokens and any data outside ERP.
+    match /audit_events/{eventId} {
+      allow create: if isActive()
+        && request.resource.data.id == eventId
+        && request.resource.data.actorId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'id', 'actorId', 'actorName', 'actorRole', 'sessionId', 'category',
+          'module', 'action', 'summary', 'occurredAt', 'createdAt'
+        ]);
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Presence is a lightweight "last active" indicator rather than employee
+    // surveillance. Each account can update only its own document.
+    match /user_presence/{userId} {
+      allow create, update: if isActive()
+        && userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'userId', 'displayName', 'role', 'status', 'sessionId',
+          'lastSeenAt', 'updatedAt'
+        ]);
+      allow read: if isAdmin() || (isActive() && userId == request.auth.uid);
+      allow delete: if false;
+    }
+
     match /reminders/{documentId} {
       allow read, create, update: if isActive();
       allow delete: if isActive();

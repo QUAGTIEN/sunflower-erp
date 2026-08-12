@@ -59,6 +59,7 @@ import {
   isDocumentAlreadyExistsError,
   type UserProfile
 } from '../services/firebaseService';
+import { auditService } from '../services/auditService';
 import {
   LeadDynamicFields,
   LeadSalesWorkspace
@@ -733,6 +734,27 @@ export const Leads: React.FC<LeadsProps> = ({
         taskDismissedAt: now,
         contactLogs: [conversionLog, ...(candidate?.contactLogs || [])].slice(0, 50),
         updatedBy: currentUser.displayName
+      });
+    }
+
+    auditService.recordSafely(currentUser, {
+      category: 'business',
+      module: 'leads',
+      action: editingLeadId ? 'lead_updated' : 'lead_created',
+      summary: `${editingLeadId ? 'Cập nhật' : 'Tạo'} Lead ${form.companyName.trim()}`,
+      targetType: 'lead',
+      targetId: savedLeadId || '',
+      targetLabel: form.companyName.trim()
+    });
+    if (convertingCandidateId) {
+      auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'lead_candidates',
+        action: 'candidate_converted_to_lead',
+        summary: `Chuyển dữ liệu khách hàng thành Lead ${form.companyName.trim()}`,
+        targetType: 'lead_candidate',
+        targetId: convertingCandidateId,
+        targetLabel: form.companyName.trim()
       });
     }
 
