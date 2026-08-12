@@ -60,6 +60,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     { id: 'chat', label: t('Kênh Trao Đổi') },
     { id: 'crm', label: t('Quản Lý Khách Hàng') },
     { id: 'leads', label: t('Khách Hàng Tiềm Năng') },
+    { id: 'commercial_map', label: t('Bản Đồ Thương Mại') },
     { id: 'sales', label: t('Tiếp Nhận Đơn PO') },
     { id: 'design', label: t('Quản Lý Thiết Kế') },
     { id: 'purchase', label: t('Mua Hàng NCC') },
@@ -75,9 +76,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   const getDefaultPagesForRole = (r: string): string[] => {
     switch (r) {
       case 'admin':
-        return ['dashboard', 'chat', 'crm', 'leads', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
+        return ['dashboard', 'chat', 'crm', 'leads', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
       case 'sale':
-        return ['dashboard', 'chat', 'crm', 'leads', 'sales'];
+        return ['dashboard', 'chat', 'crm', 'leads', 'commercial_map', 'sales'];
       case 'designer':
         return ['dashboard', 'chat', 'design'];
       case 'purchaser':

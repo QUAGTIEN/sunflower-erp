@@ -18,6 +18,7 @@ import { ChatPage } from './views/ChatPage';
 import { useLanguage } from './context/LanguageContext';
 import { RecycleBin } from './views/RecycleBin';
 import { SystemConfiguration } from './views/SystemConfiguration';
+import { CommercialMap } from './views/CommercialMap';
 import { DesignRequest } from './domain/designWorkflow';
 import { sortNewestFirst } from './domain/recordOrdering';
 import { normalizePORecords } from './domain/poCompatibility';
@@ -54,7 +55,8 @@ import {
   Target,
   Bell,
   CheckCheck,
-  SlidersHorizontal
+  SlidersHorizontal,
+  MapPinned
 } from 'lucide-react';
 
 const logo = '/sunflower-logo-horizontal-transparent.png';
@@ -77,6 +79,7 @@ const AUDIT_PAGE_LABELS: Record<string, string> = {
   chat: 'Kênh trao đổi',
   crm: 'Khách hàng CRM',
   leads: 'Khách hàng tiềm năng',
+  commercial_map: 'Bản đồ thương mại',
   sales: 'Tiếp nhận đơn PO',
   design: 'Yêu cầu thiết kế',
   design_library: 'Kho mẫu thiết kế',
@@ -140,9 +143,9 @@ function App() {
   const getDefaultPagesForRole = (role: string): string[] => {
     switch (role) {
       case 'admin':
-        return ['dashboard', 'chat', 'crm', 'leads', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
+        return ['dashboard', 'chat', 'crm', 'leads', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
       case 'sale':
-        return ['dashboard', 'chat', 'crm', 'leads', 'sales'];
+        return ['dashboard', 'chat', 'crm', 'leads', 'commercial_map', 'sales'];
       case 'designer':
         return ['dashboard', 'chat', 'design'];
       case 'purchaser':
@@ -162,6 +165,9 @@ function App() {
     const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
     if (pageId === 'leads') {
       return allowed.includes('leads') || allowed.includes('crm');
+    }
+    if (pageId === 'commercial_map') {
+      return user.role === 'admin' || allowed.includes('commercial_map') || allowed.includes('leads') || allowed.includes('crm');
     }
     if (pageId === 'suppliers') {
       return allowed.includes('suppliers') || allowed.includes('purchase');
@@ -574,6 +580,19 @@ function App() {
             onConvertLead={handleLeadConversionRequest}
           />
         );
+      case 'commercial_map':
+        if (!isPageAllowed('commercial_map')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        return (
+          <CommercialMap
+            customers={customers}
+            leads={leads}
+            orders={pos}
+            users={users}
+            currentUser={user}
+            onNavigateToCrm={() => setActivePage('crm')}
+            onNavigateToLeads={() => setActivePage('leads')}
+          />
+        );
       case 'sales':
         if (!isPageAllowed('sales')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
         return (
@@ -899,6 +918,19 @@ function App() {
                 <span className="sidebar-item-label">{t('Khách Hàng (CRM)')}</span>
               </div>
               {getUnreadNotificationCount('crm') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('crm')}</span>}
+            </button>
+          )}
+
+          {isPageAllowed('commercial_map') && (
+            <button
+              className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
+              onClick={() => { setActivePage('commercial_map'); setIsSidebarOpen(false); }}
+              title={t('Bản Đồ Thương Mại')}
+            >
+              <div className="sidebar-item-content">
+                <MapPinned size={16} />
+                <span className="sidebar-item-label">{t('Bản Đồ Thương Mại')}</span>
+              </div>
             </button>
           )}
 
