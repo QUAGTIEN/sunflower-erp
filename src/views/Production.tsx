@@ -571,10 +571,10 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         <div>
           <h1 className="page-title">
             {productionTab === 'schedule'
-              ? 'LỊCH VÀ TẢI MÁY SẢN XUẤT'
+              ? 'Lịch và tải máy sản xuất'
               : productionTab === 'machines'
-                ? 'DANH MỤC MÁY SẢN XUẤT'
-                : isOperator ? t('PHÒNG MÁY SẢN XUẤT - THỢ B') : t('LỆNH SẢN XUẤT (LSX)')}
+                ? 'Danh mục máy sản xuất'
+                : isOperator ? t('Phòng máy sản xuất') : t('Sản xuất')}
           </h1>
           <p className="page-subtitle">
             {productionTab === 'schedule'

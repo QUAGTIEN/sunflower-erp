@@ -20,6 +20,7 @@ import { useLanguage } from './context/LanguageContext';
 import { RecycleBin } from './views/RecycleBin';
 import { SystemConfiguration } from './views/SystemConfiguration';
 import { CommercialMap } from './views/CommercialMap';
+import './styles/ErpUiStandards.css';
 import { DesignRequest } from './domain/designWorkflow';
 import { sortNewestFirst } from './domain/recordOrdering';
 import { normalizePORecords } from './domain/poCompatibility';

@@ -469,7 +469,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     <div className="system-config-view">
       <div className="page-header system-config-header">
         <div>
-          <h1 className="page-title">CẤU HÌNH HỆ THỐNG</h1>
+          <h1 className="page-title">Cấu hình</h1>
           <p>Quản lý tiêu chí và các mục con dùng chung cho những nút Bộ lọc trong phần mềm.</p>
         </div>
         <span className="system-config-admin-badge"><LockKeyhole size={14} /> Chỉ Giám đốc/Admin</span>

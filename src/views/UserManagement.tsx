@@ -320,7 +320,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     <div className="users-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN')}</h1>
+          <h1 className="page-title">{t('Tài khoản')}</h1>
           <p className="page-subtitle">{t('Xem danh sách nhân sự, phân quyền vai trò phòng ban và quản lý trạng thái hoạt động.')}</p>
         </div>
         <button className="btn btn-primary btn-symbol" onClick={openAddModal} title={t('Thêm Người Dùng Mới')}>

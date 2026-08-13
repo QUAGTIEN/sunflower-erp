@@ -748,7 +748,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('TIẾP NHẬN ĐƠN HÀNG (SALES PO)')}</h1>
+          <h1 className="page-title">{t('Tiếp nhận đơn')}</h1>
           <p className="page-subtitle">{t('Tạo đơn hàng PO mới, theo dõi hàng đợi công việc và quản lý file thiết kế, thông số kỹ thuật.')}</p>
         </div>
         {(currentUser.role === 'admin' || currentUser.role === 'sale') && !selectedPO && (

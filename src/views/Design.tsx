@@ -487,7 +487,7 @@ export const Design: React.FC<DesignProps> = ({
       <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('YÊU CẦU THIẾT KẾ')}</h1>
+          <h1 className="page-title">{t('Thiết kế')}</h1>
           <p className="page-subtitle">{t('Mỗi mặt hàng trong PO là một công việc thiết kế độc lập, chỉ hiển thị thông tin cần thiết cho bộ phận Thiết kế.')}</p>
         </div>
       </div>

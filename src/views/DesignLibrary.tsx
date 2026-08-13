@@ -28,7 +28,7 @@ export const DesignLibrary: React.FC<DesignLibraryProps> = ({ pos, currentUser }
     <div className="design-library-view">
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('KHO THIẾT KẾ & LAYOUT')}</h1>
+          <h1 className="page-title">{t('Kho mẫu')}</h1>
           <p className="page-subtitle">{t('Kho tài sản thiết kế của công ty, lưu mẫu chuẩn theo mã khách hàng, sản phẩm và phiên bản.')}</p>
         </div>
       </div>

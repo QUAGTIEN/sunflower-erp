@@ -442,7 +442,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
     <div className="accounting-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('KẾ TOÁN & CÔNG NỢ - LÃI GỘP')}</h1>
+          <h1 className="page-title">{t('Kế toán')}</h1>
           <p className="page-subtitle">{t('Theo dõi công nợ phải thu (AR) / phải trả (AP), hóa đơn VAT, phân tích lãi gộp của từng PO thực tế.')}</p>
         </div>
       </div>

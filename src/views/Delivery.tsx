@@ -920,7 +920,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
     <div className="delivery-view delivery-control-center">
       <div className="page-header delivery-page-header">
         <div>
-          <h1 className="page-title">TRUNG TÂM ĐIỀU PHỐI GIAO HÀNG</h1>
+          <h1 className="page-title">Giao hàng</h1>
           <p className="page-subtitle">Gom đơn theo tuyến, kiểm soát tải trọng, tránh trùng xe và theo dõi ký nhận đến khi hoàn tất.</p>
         </div>
         {(currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
@@ -1124,10 +1124,10 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                     <tr key={trip.id}>
                       <td><strong>{trip.delCode}</strong></td>
                       <td>{trip.region}</td>
-                      <td><strong>{trip.vehiclePlate || 'Chưa chọn xe'}</strong><br /><small>{trip.driverName || 'Chưa chọn tài xế'}</small></td>
-                      <td>{toDateInputValue(trip.deliveryDate) || 'Chưa có'}<br /><small>{trip.timeWindowStart || '08:00'}–{trip.timeWindowEnd || '17:00'}</small></td>
+                      <td><strong>{trip.vehiclePlate || 'Chưa chọn xe'}</strong> · {trip.driverName || 'Chưa chọn tài xế'}</td>
+                      <td>{toDateInputValue(trip.deliveryDate) || 'Chưa có'} · {trip.timeWindowStart || '08:00'}–{trip.timeWindowEnd || '17:00'}</td>
                       <td>{trip.orders?.length || 0}</td>
-                      <td>{Number(trip.estimatedLoadKg || 0).toLocaleString('vi-VN')} kg<br /><small>{Number(trip.loadFactor || 0)}%</small></td>
+                      <td>{Number(trip.estimatedLoadKg || 0).toLocaleString('vi-VN')} kg · {Number(trip.loadFactor || 0)}%</td>
                       <td>{formatCurrency(trip.estimatedCost)}</td>
                       <td><span className={`delivery-status ${trip.status}`}>{TRIP_STATUS_LABELS[trip.status] || trip.status}</span></td>
                       <td><button type="button" className="btn btn-sm btn-outline" onClick={() => setSelectedTrip(trip)}>Chi tiết</button></td>

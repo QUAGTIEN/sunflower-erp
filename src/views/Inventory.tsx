@@ -260,7 +260,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
     <div className="inventory-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('KHO NGUYÊN VẬT LIỆU & TỒN KHO')}</h1>
+          <h1 className="page-title">{t('Vật liệu')}</h1>
           <p className="page-subtitle">{t('Quản lý số lượng tồn kho khả dụng, lịch sử phiếu xuất kho vật tư và báo cáo Nhập Xuất Tồn.')}</p>
         </div>
         {(currentUser.role === 'admin' || currentUser.role === 'purchaser') && (

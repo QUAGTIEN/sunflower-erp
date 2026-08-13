@@ -378,7 +378,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     <div className="commercial-map-view commercial-map-view--focused">
       <header className="commercial-map-header commercial-map-header--compact">
         <div>
-          <div className="commercial-map-heading"><MapPinned size={21} /><h1>BẢN ĐỒ THƯƠNG MẠI</h1></div>
+          <div className="commercial-map-heading"><MapPinned size={21} /><h1>Bản đồ</h1></div>
           <p>Quan sát độ phủ khách hàng và công việc Sale theo từng địa bàn.</p>
         </div>
         <span className="commercial-map-source"><Database size={14} /> Dữ liệu nội bộ Sunflower</span>

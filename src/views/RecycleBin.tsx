@@ -170,7 +170,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
         <div>
           <h1 className="view-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Trash2 size={24} style={{ color: 'var(--accent-red)' }} />
-            <span>{t('Kho Rác Hệ Thống')}</span>
+            <span>{t('Thùng rác')}</span>
           </h1>
           <p className="view-subtitle">{t('Quản lý các tài liệu đã bị xóa tạm thời (Soft-deleted)')}</p>
         </div>

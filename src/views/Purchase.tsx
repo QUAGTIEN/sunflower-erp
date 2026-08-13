@@ -357,7 +357,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
   return (
     <div className="purchase-page">
       <div className="page-header">
-        <div><h1 className="page-title">{t('MUA HÀNG')}</h1><p className="page-subtitle">{t('Tiếp nhận nhu cầu từ Sale PO, chọn phương án cung ứng, đề xuất nhà cung cấp và theo dõi đơn mua.')}</p></div>
+        <div><h1 className="page-title">{t('Mua hàng')}</h1><p className="page-subtitle">{t('Tiếp nhận nhu cầu từ Sale PO, chọn phương án cung ứng, đề xuất nhà cung cấp và theo dõi đơn mua.')}</p></div>
       </div>
 
       <section className="purchase-panel purchase-list-card">

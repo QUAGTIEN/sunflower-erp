@@ -257,7 +257,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }}
           />
           <div>
-            <h1 className="page-title">{t('CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG')}</h1>
+            <h1 className="page-title">{t('Chi tiết tiến độ đơn hàng')}</h1>
             <p className="page-subtitle">
               {t('Phân nhóm:')} <strong>{categoryLabels[selectedProgressCategory]}</strong> ({categoryPOs.length} {t('đơn hàng')})
             </p>
@@ -360,7 +360,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             <td>{idx + 1}</td>
                                             <td style={{ fontWeight: 'bold' }}>{item.productCode}</td>
                                             <td>{item.productName}</td>
-                                            <td>{item.size || '—'}<br /><small>{item.material || '—'}</small></td>
+                                            <td>{item.size || '—'} · {item.material || '—'}</td>
                                             <td>{item.unit || 'cái'}</td>
                                             <td style={{ textAlign: 'right' }}>{financials.quantity.toLocaleString()}</td>
                                             <td style={{ textAlign: 'right' }}>{financials.unitPrice.toLocaleString()} đ</td>
@@ -580,7 +580,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* HEADER SECTION */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 className="page-title">{t('BẢNG ĐIỀU KHIỂN TỔNG QUAN')}</h1>
+          <h1 className="page-title">{t('Tổng quan')}</h1>
           <p className="page-subtitle">{t('Xin chào,')} {user.displayName} | {t('Vai trò:')} {user.role.toUpperCase()}</p>
         </div>
         

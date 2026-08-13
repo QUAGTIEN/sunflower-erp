@@ -1,0 +1,148 @@
+/* Shared MISA-inspired visual standard for page headings and data grids. */
+:root {
+  --erp-page-title-size: 20px;
+  --erp-page-title-color: #111827;
+  --erp-table-header-bg: #f3f5f8;
+  --erp-table-row-height: 42px;
+  --erp-surface-radius: 2px;
+}
+
+.page-header,
+.customer-data-page__header,
+.commercial-map-header,
+.view-header,
+.system-config-header {
+  min-height: 44px;
+  margin-bottom: 10px;
+}
+
+.page-title,
+.lead-page-commandbar__title h1,
+.customer-data-page__title h1,
+.commercial-map-heading h1,
+.view-title,
+.system-config-header .page-title {
+  margin: 0;
+  color: var(--erp-page-title-color) !important;
+  font-family: var(--font-sans);
+  font-size: var(--erp-page-title-size) !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  letter-spacing: 0 !important;
+  text-transform: none;
+}
+
+.page-subtitle,
+.view-subtitle,
+.customer-data-page__title p,
+.commercial-map-header > div > p,
+.system-config-header > div > p {
+  display: none !important;
+}
+
+.customer-data-page__icon,
+.commercial-map-heading > svg,
+.view-title > svg {
+  display: none;
+}
+
+.table-container,
+.customer-data-table-wrap,
+.customer-onboarding-items__table-wrap,
+.lead-table-card,
+.crm-customer-table-wrap {
+  border-radius: var(--erp-surface-radius) !important;
+  box-shadow: none !important;
+}
+
+.card:has(> .table-container),
+.card:has(.table-container),
+.purchase-panel:has(.table-container),
+.lead-data-workspace,
+.lead-candidate-workspace,
+.crm-command-center {
+  border-radius: var(--erp-surface-radius) !important;
+  box-shadow: none !important;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+table thead tr,
+table thead th {
+  height: 40px;
+}
+
+table tbody tr,
+table tbody td {
+  height: var(--erp-table-row-height);
+}
+
+table th,
+table td {
+  max-width: 360px;
+  padding: 8px 12px !important;
+  overflow: hidden;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  border-right: 0 !important;
+  border-left: 0 !important;
+  border-radius: 0 !important;
+}
+
+table th {
+  background: var(--erp-table-header-bg) !important;
+  color: #172554 !important;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+table td {
+  background: #ffffff;
+  font-size: 13px;
+}
+
+table .design-secondary-text,
+table .waiting-customer-secondary,
+table .crm-table-secondary {
+  display: none !important;
+}
+
+table tbody tr:hover > td {
+  background: #f7f9fc !important;
+}
+
+table input,
+table select,
+table button:not(.row-action-menu__trigger) {
+  min-height: 30px;
+  border-radius: 3px !important;
+}
+
+.row-action-menu__trigger,
+.btn,
+.data-filter-button,
+.lead-candidate-column-button {
+  border-radius: 4px !important;
+}
+
+.lead-table-card,
+.lead-candidate-workspace > .lead-table-card,
+.crm-customer-grid,
+.purchase-list-card,
+.supplier-list-card {
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --erp-page-title-size: 18px;
+  }
+
+  table th,
+  table td {
+    padding: 7px 10px !important;
+  }
+}

@@ -468,7 +468,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
   return (
     <div className="suppliers-page">
       <div className="page-header">
-        <div><h1 className="page-title">{t('DANH SÁCH NHÀ CUNG CẤP')}</h1><p className="page-subtitle">{t('Quản lý hồ sơ, năng lực, lịch sử mua hàng, tài liệu và công nợ của toàn bộ nhà cung cấp.')}</p></div>
+        <div><h1 className="page-title">{t('Nhà cung cấp')}</h1><p className="page-subtitle">{t('Quản lý hồ sơ, năng lực, lịch sử mua hàng, tài liệu và công nợ của toàn bộ nhà cung cấp.')}</p></div>
         <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm NCC')}</button>
       </div>
 
