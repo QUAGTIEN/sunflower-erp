@@ -504,7 +504,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                 {selectedProvince && (
                   <g className="commercial-map-business-markers" aria-label={`${recordMarkers.length} doanh nghiệp trên bản đồ`}>
                     {recordMarkers.map(marker => {
-                      const markerRadius = Math.max(3.2, Math.min(7, viewBox.width / 58));
+                      const markerRadius = Math.max(.55, Math.min(1.35, viewBox.width / 360));
                       const [x, y] = marker.point;
                       return (
                         <g
@@ -528,9 +528,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                           onPointerEnter={() => setHoveredMarker(marker.record)}
                           onPointerLeave={() => setHoveredMarker(null)}
                         >
-                          <circle className="commercial-map-marker-halo" r={markerRadius * 1.8} />
-                          <circle className="commercial-map-marker-dot" r={markerRadius} fill={activeLayerDefinition.color} />
-                          <circle className="commercial-map-marker-core" r={markerRadius * .31} />
+                          <circle className="commercial-map-marker-dot" r={markerRadius} />
                           <title>{marker.record.companyName} · {marker.matchedWardName || 'Vị trí tương đối trong tỉnh'}</title>
                         </g>
                       );

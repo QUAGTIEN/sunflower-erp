@@ -301,7 +301,7 @@
   pointer-events: none;
 }
 
-.commercial-map-interactive-canvas svg {
+.commercial-map-interactive-canvas > svg {
   position: relative;
   z-index: 1;
   width: 100%;
@@ -311,7 +311,7 @@
   user-select: none;
 }
 
-.commercial-map-interactive-canvas svg:active {
+.commercial-map-interactive-canvas > svg:active {
   cursor: grabbing;
 }
 
@@ -351,30 +351,18 @@
   outline: none;
 }
 
-.commercial-map-marker-halo {
-  fill: rgba(255, 255, 255, .78);
-  stroke: rgba(30, 64, 175, .18);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
-}
-
 .commercial-map-marker-dot {
+  fill: #dc2626;
   stroke: #fff;
-  stroke-width: 1.5;
+  stroke-width: .8;
   vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 2px 3px rgba(15, 35, 77, .28));
-  transition: transform 120ms ease, filter 120ms ease;
-}
-
-.commercial-map-marker-core {
-  fill: #fff;
-  pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(127, 29, 29, .28));
+  transition: transform 120ms ease;
 }
 
 .commercial-map-business-marker:hover .commercial-map-marker-dot,
 .commercial-map-business-marker:focus .commercial-map-marker-dot {
-  transform: scale(1.22);
-  filter: drop-shadow(0 3px 5px rgba(15, 35, 77, .42));
+  transform: scale(1.35);
 }
 
 .commercial-map-zoom-controls {
