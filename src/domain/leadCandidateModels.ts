@@ -1,7 +1,7 @@
 import type { CustomerRecord, LeadRecord } from './crmModels';
 import { normalizeTaxCode } from './taxCodeUniqueness';
 
-export const LEAD_CANDIDATE_SCHEMA_VERSION = 8;
+export const LEAD_CANDIDATE_SCHEMA_VERSION = 9;
 
 export type LeadCandidateStatus = 'new' | 'retry' | 'disqualified' | 'converted';
 export type LeadCandidateTaskStatus = 'pending' | 'completed' | 'dismissed';
@@ -47,6 +47,8 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   taxCode: string;
   address: string;
   province: string;
+  ward: string;
+  industrialPark: string;
   website: string;
   source: string;
   sourceUrl: string;
@@ -256,6 +258,8 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     taxCode: normalizeTaxCode(source.taxCode),
     address: asText(source.address),
     province: asText(source.province),
+    ward: asText(source.ward),
+    industrialPark: asText(source.industrialPark),
     website: asText(source.website),
     source: asText(source.source),
     sourceUrl: asText(source.sourceUrl),

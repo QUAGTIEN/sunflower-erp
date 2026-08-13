@@ -57,6 +57,7 @@ import {
 } from '../services/firebaseService';
 import { auditService } from '../services/auditService';
 import { PageBackButton } from './PageBackButton';
+import { BusinessLocationFields } from './BusinessLocationFields';
 import { RowActionMenu } from './RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from './TableColumnCustomizer';
 import {
@@ -84,6 +85,8 @@ interface CandidateFormState {
   taxCode: string;
   address: string;
   province: string;
+  ward: string;
+  industrialPark: string;
   website: string;
   source: string;
   sourceUrl: string;
@@ -255,6 +258,8 @@ const createEmptyCandidateForm = (
   taxCode: '',
   address: '',
   province: '',
+  ward: '',
+  industrialPark: '',
   website: '',
   source: 'Google Maps',
   sourceUrl: '',
@@ -748,6 +753,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       taxCode: candidate.taxCode,
       address: candidate.address,
       province: candidate.province,
+      ward: candidate.ward || '',
+      industrialPark: candidate.industrialPark || '',
       website: candidate.website,
       source: candidate.source || 'Google Maps',
       sourceUrl: candidate.sourceUrl,
@@ -810,6 +817,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         taxCode: normalizedTaxCode,
         address: form.address.trim(),
         province: form.province.trim(),
+        ward: form.ward.trim(),
+        industrialPark: form.industrialPark.trim(),
         website: form.website.trim(),
         source: form.source,
         sourceUrl: form.sourceUrl.trim(),
@@ -1193,14 +1202,19 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               </div>
               <div className="lead-form-grid">
                 <div className="form-group lead-form-grid__wide"><label>Tên doanh nghiệp *</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
-                <div className="form-group"><label>Tỉnh / thành</label><input list="candidate-province-options" value={form.province} onChange={event => updateForm('province', event.target.value)} placeholder="Ví dụ: Bắc Ninh" /></div>
+                <BusinessLocationFields
+                  className="lead-form-grid__wide"
+                  province={form.province}
+                  ward={form.ward}
+                  industrialPark={form.industrialPark}
+                  onChange={location => setForm(previous => ({ ...previous, ...location }))}
+                />
                 <div className="form-group"><label>Người liên hệ</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
                 <div className="form-group"><label>Điện thoại</label><input type="tel" value={form.phone} onChange={event => updateForm('phone', event.target.value)} /></div>
                 <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} /></div>
                 <div className="form-group"><label>Nguồn tìm kiếm</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}>{CANDIDATE_SOURCES.map(source => <option key={source}>{source}</option>)}</select></div>
                 <div className="form-group"><label>Đường dẫn nguồn</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="Link Facebook, Google Maps..." /></div>
                 <div className="form-group lead-form-grid__wide"><label>Ghi chú</label><textarea rows={7} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Nhu cầu sơ bộ, khu vực, thông tin cần lưu ý khi liên hệ..." /></div>
-                <datalist id="candidate-province-options">{provinceOptions.map(province => <option key={province} value={province} />)}</datalist>
               </div>
             </section>
 

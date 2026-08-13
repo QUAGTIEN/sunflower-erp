@@ -4,6 +4,7 @@ import { auditService } from '../services/auditService';
 import { useLanguage } from '../context/LanguageContext';
 import { HorizontalBarChart } from '../components/VisualCharts';
 import { CustomerOnboardingItems } from '../components/CustomerOnboardingItems';
+import { BusinessLocationFields } from '../components/BusinessLocationFields';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -73,6 +74,7 @@ import {
   ChevronRight,
   ChevronDown,
   Layers3,
+  MapPinned,
   Settings2
 } from 'lucide-react';
 
@@ -428,6 +430,9 @@ export const Crm: React.FC<CrmProps> = ({
   const [phone, setPhone] = useState(initialLead?.phone || '');
   const [email, setEmail] = useState(initialLead?.email || '');
   const [address, setAddress] = useState(initialLead?.address || '');
+  const [province, setProvince] = useState(initialLead?.province || '');
+  const [ward, setWard] = useState(initialLead?.ward || '');
+  const [industrialPark, setIndustrialPark] = useState(initialLead?.industrialPark || '');
   const [taxCode, setTaxCode] = useState(initialLead?.taxCode || '');
   const [assignedSaleId, setAssignedSaleId] = useState(initialLead?.assignedSaleId || '');
   const [discountType, setDiscountType] = useState<PODiscountType>('percent');
@@ -572,6 +577,9 @@ export const Crm: React.FC<CrmProps> = ({
     setPhone('');
     setEmail('');
     setAddress('');
+    setProvince('');
+    setWard('');
+    setIndustrialPark('');
     setTaxCode('');
     setAssignedSaleId(currentUser.role === 'sale' ? currentUser.uid : (saleUsers[0]?.uid || ''));
     setDiscountType('percent');
@@ -602,6 +610,9 @@ export const Crm: React.FC<CrmProps> = ({
     setPhone(cust.phone);
     setEmail(cust.email);
     setAddress(cust.address);
+    setProvince(cust.province || '');
+    setWard(cust.ward || '');
+    setIndustrialPark(cust.industrialPark || '');
     setTaxCode(cust.taxCode);
     setAssignedSaleId(cust.assignedSaleId);
     setDiscountType(cust.discountType);
@@ -633,6 +644,9 @@ export const Crm: React.FC<CrmProps> = ({
       phone: phone.trim(),
       email: email.trim(),
       address: address.trim(),
+      province: province.trim(),
+      ward: ward.trim(),
+      industrialPark: industrialPark.trim(),
       taxCode: taxCode.trim(),
       assignedSaleId,
       sourceLeadId: onboardingSourceLead?.id || '',
@@ -799,6 +813,9 @@ export const Crm: React.FC<CrmProps> = ({
       phone,
       email,
       address,
+      province,
+      ward,
+      industrialPark,
       taxCode,
       assignedSaleId,
       discountType,
@@ -1656,6 +1673,8 @@ export const Crm: React.FC<CrmProps> = ({
 
   const leadById = new Map(leads.map(lead => [lead.id, lead] as const));
   const provinceByCustomerId = new Map<string, string>(accessibleCustomers.map(customer => {
+    const customerProvince = customer.province?.trim();
+    if (customerProvince) return [customer.id, customerProvince] as const;
     const linkedProvince = leadById.get(customer.sourceLeadId)?.province?.trim();
     if (linkedProvince) return [customer.id, linkedProvince] as const;
     const normalizedAddress = normalizeFilterValue(customer.address);
@@ -2027,6 +2046,29 @@ export const Crm: React.FC<CrmProps> = ({
 
       <section className="customer-data-section">
         <div className="customer-data-section__heading">
+          <MapPinned size={16} />
+          <span>Địa bàn doanh nghiệp</span>
+        </div>
+        <div className="customer-location-section">
+          <BusinessLocationFields
+            province={province}
+            ward={ward}
+            industrialPark={industrialPark}
+            onChange={location => {
+              setProvince(location.province);
+              setWard(location.ward);
+              setIndustrialPark(location.industrialPark);
+            }}
+          />
+          <label className="form-group customer-location-address">
+            <span>Địa chỉ chi tiết / giao hàng</span>
+            <input value={address} onChange={event => setAddress(event.target.value)} placeholder="Số nhà, đường, lô đất..." />
+          </label>
+        </div>
+      </section>
+
+      <section className="customer-data-section">
+        <div className="customer-data-section__heading">
           <Users size={16} />
           <span>Liên hệ và giao nhận</span>
         </div>
@@ -2049,7 +2091,7 @@ export const Crm: React.FC<CrmProps> = ({
                 <td><input aria-label="SĐT thu mua" value={procurementPhone} onChange={event => setProcurementPhone(event.target.value)} /></td>
                 <td><input aria-label="SĐT nhận hàng hoặc kho" value={warehousePhone} onChange={event => setWarehousePhone(event.target.value)} /></td>
                 <td><input aria-label="Email" type="email" value={email} onChange={event => setEmail(event.target.value)} /></td>
-                <td><input aria-label="Địa chỉ giao hàng" value={address} onChange={event => setAddress(event.target.value)} /></td>
+                <td><span className="customer-location-summary">{[industrialPark, ward, province].filter(Boolean).join(', ') || 'Chọn tại mục Địa bàn doanh nghiệp'}</span></td>
               </tr>
             </tbody>
           </table>
@@ -2910,6 +2952,16 @@ export const Crm: React.FC<CrmProps> = ({
                   <label>{t('Địa Chỉ Giao Hàng')}</label>
                   <input type="text" value={address} onChange={e => setAddress(e.target.value)} />
                 </div>
+                <BusinessLocationFields
+                  province={province}
+                  ward={ward}
+                  industrialPark={industrialPark}
+                  onChange={location => {
+                    setProvince(location.province);
+                    setWard(location.ward);
+                    setIndustrialPark(location.industrialPark);
+                  }}
+                />
                 <div className="form-grid">
                   <div className="form-group">
                     <label>{t('Hình Thức Chiết Khấu')}</label>

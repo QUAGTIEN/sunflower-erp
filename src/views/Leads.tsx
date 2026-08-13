@@ -101,6 +101,8 @@ interface LeadFormState {
   taxCode: string;
   address: string;
   province: string;
+  ward: string;
+  industrialPark: string;
   companySize: LeadCompanySize;
   source: string;
   potentialValue: number;
@@ -195,6 +197,8 @@ const createEmptyForm = (currentUser: UserProfile, saleUsers: UserProfile[]): Le
   taxCode: '',
   address: '',
   province: '',
+  ward: '',
+  industrialPark: '',
   companySize: '',
   source: '',
   potentialValue: 0,
@@ -467,6 +471,8 @@ export const Leads: React.FC<LeadsProps> = ({
       taxCode: lead.taxCode,
       address: lead.address,
       province: lead.province,
+      ward: lead.ward || '',
+      industrialPark: lead.industrialPark || '',
       companySize: lead.companySize,
       source: lead.source,
       potentialValue: lead.potentialValue,
@@ -511,6 +517,8 @@ export const Leads: React.FC<LeadsProps> = ({
       taxCode: candidate.taxCode,
       address: candidate.address,
       province: candidate.province,
+      ward: candidate.ward || '',
+      industrialPark: candidate.industrialPark || '',
       source: leadSource,
       stage: 'contacted',
       assignedSaleId,
@@ -642,6 +650,8 @@ export const Leads: React.FC<LeadsProps> = ({
       taxCode: normalizedTaxCode,
       address: form.address.trim(),
       province: form.province.trim(),
+      ward: form.ward.trim(),
+      industrialPark: form.industrialPark.trim(),
       companySize: form.companySize,
       source: form.source,
       potentialValue: Number(form.potentialValue),

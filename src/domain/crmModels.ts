@@ -1,6 +1,6 @@
 import type { PODiscountType } from './poFinancials';
 
-export const CRM_SCHEMA_VERSION = 1;
+export const CRM_SCHEMA_VERSION = 2;
 
 export type CustomerRank = '' | 'A' | 'B' | 'C' | 'D';
 export type CustomerContactRole = 'primary' | 'procurement' | 'warehouse' | 'accounting' | 'other';
@@ -153,6 +153,9 @@ export interface CustomerRecord extends UnknownRecord {
   phone: string;
   email: string;
   address: string;
+  province: string;
+  ward: string;
+  industrialPark: string;
   taxCode: string;
   procurementPhone: string;
   warehousePhone: string;
@@ -253,6 +256,8 @@ export interface LeadRecord extends UnknownRecord {
   companySize: LeadCompanySize;
   source: string;
   province: string;
+  ward: string;
+  industrialPark: string;
   address: string;
   taxCode: string;
   potentialValue: number;
@@ -508,6 +513,9 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     phone: asText(source.phone),
     email: asText(source.email),
     address: asText(source.address),
+    province: asText(source.province),
+    ward: asText(source.ward),
+    industrialPark: asText(source.industrialPark),
     taxCode: asText(source.taxCode),
     procurementPhone: asText(source.procurementPhone),
     warehousePhone: asText(source.warehousePhone),
@@ -587,6 +595,8 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     companySize: normalizeLeadCompanySize(source.companySize),
     source: asText(source.source),
     province: asText(source.province),
+    ward: asText(source.ward),
+    industrialPark: asText(source.industrialPark),
     address: asText(source.address),
     taxCode: asText(source.taxCode),
     potentialValue: Math.max(0, asNumber(source.potentialValue)),
