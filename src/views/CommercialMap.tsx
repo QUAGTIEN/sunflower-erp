@@ -25,7 +25,8 @@ import {
   normalizeVietnameseText,
   resolveCommercialProvince,
   summarizeCommercialProvinces,
-  type CommercialMapLayer
+  type CommercialMapLayer,
+  type CommercialMapRecord
 } from '../domain/commercialMapModels';
 import './CommercialMap.css';
 
@@ -76,6 +77,12 @@ interface DragState {
   clientX: number;
   clientY: number;
   viewBox: ViewBoxState;
+}
+
+interface CommercialMapMarker {
+  record: CommercialMapRecord;
+  point: Coordinate;
+  matchedWardName: string;
 }
 
 const MAP_SCALE = 50;
@@ -131,6 +138,55 @@ const zoomViewBox = (viewBox: ViewBoxState, factor: number): ViewBoxState => {
 
 const formatNumber = (value: number): string => value.toLocaleString('vi-VN');
 
+const normalizeWardSearch = (value: string): string => normalizeVietnameseText(value)
+  .replace(/\b(phuong|xa|thi tran|dac khu)\b/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const stableHash = (value: string): number => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+const pointInPolygon = ([x, y]: Coordinate, polygon: Coordinate[]): boolean => {
+  let inside = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index, index += 1) {
+    const [currentX, currentY] = polygon[index];
+    const [previousX, previousY] = polygon[previous];
+    const intersects = ((currentY > y) !== (previousY > y))
+      && x < ((previousX - currentX) * (y - currentY)) / ((previousY - currentY) || Number.EPSILON) + currentX;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+};
+
+const markerPointWithinGeometry = (geometry: ProvinceGeometry, seedSource: string): Coordinate => {
+  const projectedPolygons = geometry.polygons.map(polygon => polygon.map(projectCoordinate));
+  const coordinates = projectedPolygons.flat();
+  if (coordinates.length === 0) return projectCoordinate(geometry.center);
+  const xs = coordinates.map(point => point[0]);
+  const ys = coordinates.map(point => point[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  let seed = stableHash(seedSource);
+
+  for (let attempt = 0; attempt < 140; attempt += 1) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const x = minX + (seed / 0xffffffff) * (maxX - minX);
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const y = minY + (seed / 0xffffffff) * (maxY - minY);
+    if (projectedPolygons.some(polygon => pointInPolygon([x, y], polygon))) return [x, y];
+  }
+
+  return projectCoordinate(geometry.center);
+};
+
 export const CommercialMap: React.FC<CommercialMapProps> = ({
   customers,
   leads,
@@ -148,6 +204,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   const [wardData, setWardData] = useState<WardGeometry[]>([]);
   const [selectedWard, setSelectedWard] = useState<WardGeometry | null>(null);
   const [hoveredArea, setHoveredArea] = useState<{ name: string; total: number } | null>(null);
+  const [hoveredMarker, setHoveredMarker] = useState<CommercialMapRecord | null>(null);
   const [locationSearch, setLocationSearch] = useState('');
   const [viewBox, setViewBox] = useState<ViewBoxState>(NATIONAL_VIEW);
   const [loadingMap, setLoadingMap] = useState(true);
@@ -212,9 +269,29 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   const selectedProvinceSummary = selectedProvinceId
     ? summaryByProvince.get(selectedProvinceId)
     : undefined;
-  const selectedRecords = selectedProvinceId
-    ? layerRecords.filter(record => record.provinceId === selectedProvinceId)
-    : [];
+  const selectedRecords = useMemo(
+    () => selectedProvinceId
+      ? layerRecords.filter(record => record.provinceId === selectedProvinceId)
+      : [],
+    [layerRecords, selectedProvinceId]
+  );
+
+  const recordMarkers = useMemo<CommercialMapMarker[]>(() => {
+    if (!selectedProvince) return [];
+    return selectedRecords.map(record => {
+      const normalizedLocation = normalizeWardSearch(`${record.address} ${record.provinceName}`);
+      const matchedWard = wardData.find(ward => {
+        const normalizedWard = normalizeWardSearch(ward.name);
+        return normalizedWard.length > 2 && normalizedLocation.includes(normalizedWard);
+      });
+      const targetGeometry = matchedWard || selectedProvince;
+      return {
+        record,
+        point: markerPointWithinGeometry(targetGeometry, record.key),
+        matchedWardName: matchedWard?.name || ''
+      };
+    });
+  }, [selectedProvince, selectedRecords, wardData]);
 
   const activeSales = useMemo(
     () => users.filter(user => user.role === 'sale' && user.active !== false),
@@ -424,14 +501,52 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                     );
                   })}
                 </g>
+                {selectedProvince && (
+                  <g className="commercial-map-business-markers" aria-label={`${recordMarkers.length} doanh nghiệp trên bản đồ`}>
+                    {recordMarkers.map(marker => {
+                      const markerRadius = Math.max(3.2, Math.min(7, viewBox.width / 58));
+                      const [x, y] = marker.point;
+                      return (
+                        <g
+                          key={marker.record.key}
+                          className="commercial-map-business-marker"
+                          transform={`translate(${x} ${y})`}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={marker.record.companyName}
+                          onClick={event => {
+                            event.stopPropagation();
+                            if (marker.record.type === 'customer') onNavigateToCrm();
+                            else onNavigateToLeads();
+                          }}
+                          onKeyDown={event => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return;
+                            event.preventDefault();
+                            if (marker.record.type === 'customer') onNavigateToCrm();
+                            else onNavigateToLeads();
+                          }}
+                          onPointerEnter={() => setHoveredMarker(marker.record)}
+                          onPointerLeave={() => setHoveredMarker(null)}
+                        >
+                          <circle className="commercial-map-marker-halo" r={markerRadius * 1.8} />
+                          <circle className="commercial-map-marker-dot" r={markerRadius} fill={activeLayerDefinition.color} />
+                          <circle className="commercial-map-marker-core" r={markerRadius * .31} />
+                          <title>{marker.record.companyName} · {marker.matchedWardName || 'Vị trí tương đối trong tỉnh'}</title>
+                        </g>
+                      );
+                    })}
+                  </g>
+                )}
               </svg>
             )}
 
             {loadingWards && <div className="commercial-map-ward-loading"><LoaderCircle className="spin" /> Đang tải xã/phường…</div>}
-            {hoveredArea && (
+            {(hoveredMarker || hoveredArea) && (
               <div className="commercial-map-hover-card">
-                <strong>{hoveredArea.name}</strong>
-                {!selectedProvince && <span>{hoveredArea.total} doanh nghiệp</span>}
+                <strong>{hoveredMarker?.companyName || hoveredArea?.name}</strong>
+                {hoveredMarker
+                  ? <span>{hoveredMarker.assignedSaleName} · {hoveredMarker.statusLabel}</span>
+                  : !selectedProvince && <span>{hoveredArea?.total || 0} doanh nghiệp</span>}
               </div>
             )}
             <div className="commercial-map-zoom-controls">
@@ -441,6 +556,12 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
               {selectedProvince && <button type="button" title="Quay lại toàn quốc" onClick={returnToNational}><RotateCcw size={17} /></button>}
             </div>
             <div className="commercial-map-level-badge">{mapLevelLabel}</div>
+            {selectedProvince && (
+              <div className="commercial-map-marker-count">
+                <Building2 size={13} /> {recordMarkers.length} điểm doanh nghiệp
+                <small>Vị trí theo địa bàn hồ sơ</small>
+              </div>
+            )}
           </div>
         </main>
 
