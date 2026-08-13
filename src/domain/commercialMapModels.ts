@@ -40,49 +40,6 @@ export interface CommercialProvinceSummary {
   orderCount: number;
 }
 
-export interface CommercialMapPoint {
-  provinceId: string;
-  longitude: number;
-  latitude: number;
-}
-
-export const COMMERCIAL_MAP_POINTS: CommercialMapPoint[] = [
-  { provinceId: 'dien_bien', longitude: 103.02, latitude: 21.39 },
-  { provinceId: 'lai_chau', longitude: 103.46, latitude: 22.39 },
-  { provinceId: 'lao_cai', longitude: 104.00, latitude: 22.33 },
-  { provinceId: 'son_la', longitude: 104.00, latitude: 21.32 },
-  { provinceId: 'phu_tho', longitude: 105.20, latitude: 21.31 },
-  { provinceId: 'tuyen_quang', longitude: 105.22, latitude: 22.05 },
-  { provinceId: 'cao_bang', longitude: 106.25, latitude: 22.67 },
-  { provinceId: 'lang_son', longitude: 106.76, latitude: 21.85 },
-  { provinceId: 'thai_nguyen', longitude: 105.85, latitude: 21.60 },
-  { provinceId: 'bac_ninh', longitude: 106.17, latitude: 21.18 },
-  { provinceId: 'ha_noi', longitude: 105.84, latitude: 21.03 },
-  { provinceId: 'quang_ninh', longitude: 107.30, latitude: 21.10 },
-  { provinceId: 'hai_phong', longitude: 106.68, latitude: 20.84 },
-  { provinceId: 'hung_yen', longitude: 106.05, latitude: 20.65 },
-  { provinceId: 'ninh_binh', longitude: 105.97, latitude: 20.25 },
-  { provinceId: 'thanh_hoa', longitude: 105.50, latitude: 19.80 },
-  { provinceId: 'nghe_an', longitude: 104.90, latitude: 19.20 },
-  { provinceId: 'ha_tinh', longitude: 105.90, latitude: 18.33 },
-  { provinceId: 'quang_tri', longitude: 107.00, latitude: 16.75 },
-  { provinceId: 'hue', longitude: 107.58, latitude: 16.47 },
-  { provinceId: 'da_nang', longitude: 108.20, latitude: 16.05 },
-  { provinceId: 'quang_ngai', longitude: 108.80, latitude: 15.10 },
-  { provinceId: 'gia_lai', longitude: 108.00, latitude: 13.80 },
-  { provinceId: 'dak_lak', longitude: 108.05, latitude: 12.67 },
-  { provinceId: 'khanh_hoa', longitude: 109.00, latitude: 12.25 },
-  { provinceId: 'lam_dong', longitude: 108.00, latitude: 11.70 },
-  { provinceId: 'dong_nai', longitude: 107.18, latitude: 11.05 },
-  { provinceId: 'tay_ninh', longitude: 106.10, latitude: 11.30 },
-  { provinceId: 'tp_ho_chi_minh', longitude: 106.70, latitude: 10.78 },
-  { provinceId: 'dong_thap', longitude: 105.64, latitude: 10.55 },
-  { provinceId: 'an_giang', longitude: 105.13, latitude: 10.52 },
-  { provinceId: 'can_tho', longitude: 105.78, latitude: 10.03 },
-  { provinceId: 'vinh_long', longitude: 106.00, latitude: 10.25 },
-  { provinceId: 'ca_mau', longitude: 105.15, latitude: 9.18 }
-];
-
 const LEGACY_PROVINCE_ALIASES: Record<string, string> = {
   'bac giang': 'bac_ninh',
   'bac kan': 'thai_nguyen',
