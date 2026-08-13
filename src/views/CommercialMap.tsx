@@ -110,7 +110,7 @@ const geometryPath = (polygons: PolygonCollection): string => polygons
   }).join(' ') + ' Z')
   .join(' ');
 
-const geometryBounds = (polygons: PolygonCollection, padding = 28): ViewBoxState => {
+const geometryBounds = (polygons: PolygonCollection, padding = 28, minimumSize = 90): ViewBoxState => {
   const coordinates = polygons.flat();
   if (coordinates.length === 0) return NATIONAL_VIEW;
   const projected = coordinates.map(projectCoordinate);
@@ -120,14 +120,14 @@ const geometryBounds = (polygons: PolygonCollection, padding = 28): ViewBoxState
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
-  const width = Math.max(90, maxX - minX + padding * 2);
-  const height = Math.max(90, maxY - minY + padding * 2);
+  const width = Math.max(minimumSize, maxX - minX + padding * 2);
+  const height = Math.max(minimumSize, maxY - minY + padding * 2);
   return { x: minX - padding, y: minY - padding, width, height };
 };
 
 const zoomViewBox = (viewBox: ViewBoxState, factor: number): ViewBoxState => {
-  const width = Math.min(NATIONAL_VIEW.width * 1.2, Math.max(55, viewBox.width * factor));
-  const height = Math.min(NATIONAL_VIEW.height * 1.2, Math.max(55, viewBox.height * factor));
+  const width = Math.min(NATIONAL_VIEW.width * 1.2, Math.max(6, viewBox.width * factor));
+  const height = Math.min(NATIONAL_VIEW.height * 1.2, Math.max(6, viewBox.height * factor));
   return {
     x: viewBox.x + (viewBox.width - width) / 2,
     y: viewBox.y + (viewBox.height - height) / 2,
@@ -330,7 +330,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   const selectWard = (ward: WardGeometry) => {
     setSelectedWard(ward);
     setLocationSearch(ward.name);
-    setViewBox(geometryBounds(ward.polygons, 18));
+    setViewBox(geometryBounds(ward.polygons, 4, 12));
   };
 
   const locationOptions = selectedProvince ? wardData : provinceData;
@@ -344,7 +344,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   };
 
   const resetCurrentView = () => {
-    if (selectedWard) setViewBox(geometryBounds(selectedWard.polygons, 18));
+    if (selectedWard) setViewBox(geometryBounds(selectedWard.polygons, 4, 12));
     else if (selectedProvince) setViewBox(geometryBounds(selectedProvince.polygons, 36));
     else setViewBox(NATIONAL_VIEW);
   };

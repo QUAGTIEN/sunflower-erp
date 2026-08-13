@@ -893,6 +893,19 @@ function App() {
             </button>
           )}
           
+          {isPageAllowed('commercial_map') && (
+            <button
+              className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
+              onClick={() => { setActivePage('commercial_map'); setIsSidebarOpen(false); }}
+              title={t('Bản Đồ Thương Mại')}
+            >
+              <div className="sidebar-item-content">
+                <MapPinned size={16} />
+                <span className="sidebar-item-label">{t('Bản Đồ Thương Mại')}</span>
+              </div>
+            </button>
+          )}
+
           {isPageAllowed('leads') && (
             <button
               className={`sidebar-item ${activePage === 'leads' ? 'active' : ''}`}
@@ -918,19 +931,6 @@ function App() {
                 <span className="sidebar-item-label">{t('Khách Hàng (CRM)')}</span>
               </div>
               {getUnreadNotificationCount('crm') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('crm')}</span>}
-            </button>
-          )}
-
-          {isPageAllowed('commercial_map') && (
-            <button
-              className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
-              onClick={() => { setActivePage('commercial_map'); setIsSidebarOpen(false); }}
-              title={t('Bản Đồ Thương Mại')}
-            >
-              <div className="sidebar-item-content">
-                <MapPinned size={16} />
-                <span className="sidebar-item-label">{t('Bản Đồ Thương Mại')}</span>
-              </div>
             </button>
           )}
 
