@@ -12,8 +12,38 @@
 .commercial-map-header,
 .view-header,
 .system-config-header {
-  min-height: 44px;
-  margin-bottom: 10px;
+  min-height: 32px;
+  margin: 0;
+}
+
+/* Keep the page command area compact after secondary descriptions are hidden. */
+.sales-view,
+.accounting-view,
+.inventory-view,
+.production-view,
+.users-view,
+.chat-page-view,
+.dashboard-view,
+.design-request-view,
+.design-library-view,
+.purchase-page,
+.suppliers-page,
+.customer-data-page,
+.system-config-view,
+.view-container,
+.crm-view,
+.delivery-view {
+  gap: 10px !important;
+}
+
+.page-header > div,
+.customer-data-page__title,
+.commercial-map-header > div,
+.view-header > div,
+.system-config-header > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
 }
 
 .page-title,
