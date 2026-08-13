@@ -900,7 +900,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <LayoutDashboard size={16} />
-                <span className="sidebar-item-label">{t('Tổng Quan Dashboards')}</span>
+                <span className="sidebar-item-label">Tổng quan</span>
               </div>
               {getUnreadNotificationCount('dashboard') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('dashboard')}</span>}
             </button>
@@ -914,7 +914,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <MessageSquare size={16} />
-                <span className="sidebar-item-label">{t('Kênh Thảo Luận')}</span>
+                <span className="sidebar-item-label">Kênh chat</span>
               </div>
               {unreadChannelCount > 0 && <span className="sidebar-badge">{unreadChannelCount}</span>}
             </button>
@@ -928,7 +928,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <MapPinned size={16} />
-                <span className="sidebar-item-label">{t('Bản Đồ Thương Mại')}</span>
+                <span className="sidebar-item-label">Bản đồ</span>
               </div>
             </button>
           )}
@@ -941,7 +941,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <Target size={16} />
-                <span className="sidebar-item-label">{t('Khách Hàng Tiềm Năng')}</span>
+                <span className="sidebar-item-label">Tiềm năng</span>
               </div>
               {getUnreadNotificationCount('leads') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('leads')}</span>}
             </button>
@@ -955,7 +955,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <Archive size={16} />
-                <span className="sidebar-item-label">{t('Dữ Liệu Khách Hàng')}</span>
+                <span className="sidebar-item-label">Dữ liệu</span>
               </div>
             </button>
           )}
@@ -968,7 +968,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <Users size={16} />
-                <span className="sidebar-item-label">{t('Khách Hàng Hợp Tác')}</span>
+                <span className="sidebar-item-label">Đang hợp tác</span>
               </div>
               {getUnreadNotificationCount('crm') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('crm')}</span>}
             </button>
@@ -982,7 +982,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <FileText size={16} />
-                <span className="sidebar-item-label">{t('Tiếp Nhận Đơn (Sale PO)')}</span>
+                <span className="sidebar-item-label">Tiếp nhận đơn</span>
               </div>
               {getUnreadNotificationCount('sales') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('sales')}</span>}
             </button>
@@ -997,7 +997,7 @@ function App() {
               >
                 <div className="sidebar-item-content">
                   <Palette size={16} />
-                  <span className="sidebar-item-label">{t('Yêu Cầu Thiết Kế')}</span>
+                  <span className="sidebar-item-label">Thiết kế</span>
                 </div>
                 {getUnreadNotificationCount('design') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('design')}</span>}
               </button>
@@ -1008,7 +1008,7 @@ function App() {
               >
                 <div className="sidebar-item-content">
                   <FolderOpen size={16} />
-                  <span className="sidebar-item-label">{t('Kho Mẫu Thiết Kế')}</span>
+                  <span className="sidebar-item-label">Kho mẫu</span>
                 </div>
               </button>
             </>
@@ -1022,7 +1022,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <ShoppingBag size={16} />
-                <span className="sidebar-item-label">{t('Mua Hàng')}</span>
+                <span className="sidebar-item-label">Mua hàng</span>
               </div>
               {getUnreadNotificationCount('purchase') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('purchase')}</span>}
             </button>
@@ -1036,7 +1036,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <Building2 size={16} />
-                <span className="sidebar-item-label">{t('Danh Sách Nhà Cung Cấp')}</span>
+                <span className="sidebar-item-label">Nhà cung cấp</span>
               </div>
             </button>
           )}
@@ -1049,7 +1049,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <Archive size={16} />
-                <span className="sidebar-item-label">{t('Kho Nguyên Vật Tư')}</span>
+                <span className="sidebar-item-label">Vật liệu</span>
               </div>
               {getUnreadNotificationCount('inventory') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('inventory')}</span>}
             </button>
@@ -1063,7 +1063,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <Settings size={16} />
-                <span className="sidebar-item-label">{t('Lệnh Sản Xuất (LSX)')}</span>
+                <span className="sidebar-item-label">Sản xuất</span>
               </div>
               {getUnreadNotificationCount('production') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('production')}</span>}
             </button>
@@ -1077,7 +1077,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <Truck size={16} />
-                <span className="sidebar-item-label">{t('Kế Hoạch Giao Hàng')}</span>
+                <span className="sidebar-item-label">Giao hàng</span>
               </div>
               {getUnreadNotificationCount('delivery') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('delivery')}</span>}
             </button>
@@ -1091,7 +1091,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <DollarSign size={16} />
-                <span className="sidebar-item-label">{t('Kế Toán & Lãi Gộp')}</span>
+                <span className="sidebar-item-label">Kế toán</span>
               </div>
               {getUnreadNotificationCount('accounting') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('accounting')}</span>}
             </button>
@@ -1105,7 +1105,7 @@ function App() {
             >
               <div className="sidebar-item-content sidebar-item-content-danger">
                 <Trash2 size={16} />
-                <span className="sidebar-item-label">{t('Thùng Rác')}</span>
+                <span className="sidebar-item-label">Thùng rác</span>
               </div>
             </button>
           )}
@@ -1118,7 +1118,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <SlidersHorizontal size={16} />
-                <span className="sidebar-item-label">{t('Cấu Hình Hệ Thống')}</span>
+                <span className="sidebar-item-label">Cấu hình</span>
               </div>
             </button>
           )}
@@ -1131,7 +1131,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <UserCog size={16} />
-                <span className="sidebar-item-label">{t('Quản Lý Tài Khoản')}</span>
+                <span className="sidebar-item-label">Tài khoản</span>
               </div>
             </button>
           )}
