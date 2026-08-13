@@ -5,6 +5,12 @@
   --erp-table-header-bg: #f3f5f8;
   --erp-table-row-height: 42px;
   --erp-surface-radius: 2px;
+  --erp-control-radius: 5px;
+  --erp-status-radius: 999px;
+  --erp-border-color: #d9e1ec;
+  --erp-row-divider: #e3e8f0;
+  --erp-row-hover: #f5f8fc;
+  --erp-focus-ring: rgb(37 99 235 / 12%);
 }
 
 .page-header,
@@ -81,6 +87,7 @@
 .customer-onboarding-items__table-wrap,
 .lead-table-card,
 .crm-customer-table-wrap {
+  border-color: var(--erp-border-color) !important;
   border-radius: var(--erp-surface-radius) !important;
   box-shadow: none !important;
 }
@@ -91,8 +98,39 @@
 .lead-data-workspace,
 .lead-candidate-workspace,
 .crm-command-center {
+  border-color: var(--erp-border-color) !important;
   border-radius: var(--erp-surface-radius) !important;
   box-shadow: none !important;
+}
+
+/* Data surfaces remain square and quiet; controls retain a small friendly radius. */
+.card {
+  border-color: var(--erp-border-color);
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.app-main input,
+.app-main select,
+.app-main textarea,
+.app-main .btn,
+.app-main button:not(.badge):not([class*="status"]):not([class*="priority"]) {
+  border-radius: var(--erp-control-radius);
+}
+
+.app-main input:focus,
+.app-main select:focus,
+.app-main textarea:focus {
+  border-color: #6687c7;
+  outline: 2px solid var(--erp-focus-ring);
+  outline-offset: 0;
+}
+
+.badge,
+[class*="status-badge"],
+[class*="priority-badge"],
+[class*="work-badge"] {
+  border-radius: var(--erp-status-radius) !important;
 }
 
 table {
@@ -122,6 +160,19 @@ table td {
   border-radius: 0 !important;
 }
 
+table thead tr {
+  border-bottom: 1px solid #cfd8e6;
+}
+
+table tbody tr {
+  border-bottom: 1px solid var(--erp-row-divider);
+  transition: background-color 120ms ease;
+}
+
+table tbody tr:last-child {
+  border-bottom: 0;
+}
+
 table th {
   background: var(--erp-table-header-bg) !important;
   color: #172554 !important;
@@ -141,21 +192,21 @@ table .crm-table-secondary {
 }
 
 table tbody tr:hover > td {
-  background: #f7f9fc !important;
+  background: var(--erp-row-hover) !important;
 }
 
 table input,
 table select,
 table button:not(.row-action-menu__trigger) {
   min-height: 30px;
-  border-radius: 3px !important;
+  border-radius: var(--erp-control-radius) !important;
 }
 
 .row-action-menu__trigger,
 .btn,
 .data-filter-button,
 .lead-candidate-column-button {
-  border-radius: 4px !important;
+  border-radius: var(--erp-control-radius) !important;
 }
 
 .lead-table-card,
