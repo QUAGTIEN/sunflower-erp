@@ -2171,7 +2171,7 @@ export const Crm: React.FC<CrmProps> = ({
     <div className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('QUẢN LÝ KHÁCH HÀNG (CRM)')}</h1>
+          <h1 className="page-title">{t('KHÁCH HÀNG HỢP TÁC')}</h1>
           <p className="page-subtitle">{t('Quản lý danh sách, hồ sơ liên hệ, hạn mức công nợ và cảnh báo chăm sóc khách hàng.')}</p>
         </div>
         {(currentUser.role === 'admin' || currentUser.role === 'sale') && (

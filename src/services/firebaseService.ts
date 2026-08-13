@@ -164,8 +164,8 @@ export interface UserProfile {
 // SEED MOCK DATA FOR LOCAL STORAGE FALLBACK
 // ----------------------------------------------------
 const DEFAULT_USERS: UserProfile[] = [
-  { uid: 'u-admin', email: 'admin@sunflower.com', displayName: 'Giám Đốc Lê Minh', role: 'admin', active: true, createdAt: '2026-05-01', allowedPages: ['dashboard', 'chat', 'crm', 'leads', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'] },
-  { uid: 'u-sale', email: 'sale@sunflower.com', displayName: 'Sale Nguyễn Văn Nam', role: 'sale', active: true, createdAt: '2026-05-01', allowedPages: ['dashboard', 'chat', 'crm', 'leads', 'commercial_map', 'sales'] },
+  { uid: 'u-admin', email: 'admin@sunflower.com', displayName: 'Giám Đốc Lê Minh', role: 'admin', active: true, createdAt: '2026-05-01', allowedPages: ['dashboard', 'chat', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'] },
+  { uid: 'u-sale', email: 'sale@sunflower.com', displayName: 'Sale Nguyễn Văn Nam', role: 'sale', active: true, createdAt: '2026-05-01', allowedPages: ['dashboard', 'chat', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'] },
   { uid: 'u-designer', email: 'designer@sunflower.com', displayName: 'Designer Trần Hà', role: 'designer', active: true, createdAt: '2026-05-01', allowedPages: ['dashboard', 'chat', 'design'] },
   { uid: 'u-purchaser', email: 'purchase@sunflower.com', displayName: 'Mua Hàng Phạm Đức', role: 'purchaser', active: true, createdAt: '2026-05-01', allowedPages: ['dashboard', 'chat', 'purchase', 'suppliers', 'inventory'] },
   { uid: 'u-producer', email: 'produce@sunflower.com', displayName: 'Quản Đốc Vũ Thành', role: 'producer', active: true, createdAt: '2026-05-01', allowedPages: ['dashboard', 'chat', 'production'] },

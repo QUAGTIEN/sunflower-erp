@@ -24,7 +24,7 @@ export interface SystemFilterDefinition {
 export const SYSTEM_FILTER_SCOPE_LABELS: Record<SystemFilterScope, string> = {
   lead_list: 'Danh sách Lead',
   customer_data: 'Dữ liệu khách hàng',
-  crm_customers: 'Khách hàng CRM'
+  crm_customers: 'Khách hàng hợp tác'
 };
 
 const definition = (

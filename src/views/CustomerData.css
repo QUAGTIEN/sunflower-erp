@@ -1,0 +1,59 @@
+.customer-data-page {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.customer-data-page__header {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 4px;
+}
+
+.customer-data-page__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.customer-data-page__icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  flex: 0 0 auto;
+  color: var(--color-primary);
+  border-radius: 9px;
+  background: #eaf1ff;
+}
+
+.customer-data-page__title h1 {
+  margin: 0;
+  color: #123b83;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.customer-data-page__title p {
+  margin: 3px 0 0;
+  color: #60718d;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .customer-data-page__header {
+    min-height: 0;
+    padding: 4px 0;
+  }
+
+  .customer-data-page__title h1 {
+    font-size: 18px;
+  }
+
+  .customer-data-page__title p {
+    line-height: 1.4;
+  }
+}

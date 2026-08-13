@@ -657,7 +657,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="metric-card dashboard-metric-card dashboard-metric-card--customers">
               <span className="metric-title">{t('KHÁCH HÀNG ĐANG HỢP TÁC')}</span>
               <span className="metric-value">{collaboratingCustomers.length} {t('khách hàng')}</span>
-              <span className="metric-sub">{t('Khách hàng CRM đã phát sinh ít nhất một PO')}</span>
+              <span className="metric-sub">{t('Khách hàng hợp tác đã phát sinh ít nhất một PO')}</span>
             </div>
             <div className="metric-card dashboard-metric-card dashboard-metric-card--revenue">
               <span className="metric-title">{t('DOANH THU')}</span>

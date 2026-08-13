@@ -302,7 +302,7 @@ const matchesSearch = (candidate: LeadCandidateRecord, searchTerm: string) => {
 const describeDuplicate = (duplicate: CandidateDuplicate) => {
   const recordLabel = duplicate.recordType === 'candidate'
     ? 'Dữ liệu khách hàng'
-    : duplicate.recordType === 'lead' ? 'Lead' : 'Khách hàng CRM';
+    : duplicate.recordType === 'lead' ? 'Lead' : 'Khách hàng hợp tác';
   const reasonLabel = duplicate.reason === 'taxCode'
     ? 'mã số thuế'
     : duplicate.reason === 'phone' ? 'số điện thoại' : 'tên doanh nghiệp';

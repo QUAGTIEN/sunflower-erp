@@ -29,6 +29,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Sidebar items
     'Tổng Quan Dashboards': 'Dashboard Overview',
     'Khách Hàng (CRM)': 'Customers (CRM)',
+    'Khách Hàng Hợp Tác': 'Cooperating Customers',
+    'Dữ Liệu Khách Hàng': 'Customer Data',
     'Khách Hàng Tiềm Năng': 'Sales Leads',
     'Khách Hàng Tiềm Năng (Lead)': 'Sales Leads',
     'Tiếp Nhận Đơn (Sale PO)': 'Sales Orders (PO)',

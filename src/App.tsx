@@ -4,6 +4,7 @@ import { auditService } from './services/auditService';
 import { Dashboard } from './views/Dashboard';
 import { Crm } from './views/Crm';
 import { Leads } from './views/Leads';
+import { CustomerData } from './views/CustomerData';
 import { Sales } from './views/Sales';
 import { Design } from './views/Design';
 import { DesignLibrary } from './views/DesignLibrary';
@@ -23,6 +24,7 @@ import { DesignRequest } from './domain/designWorkflow';
 import { sortNewestFirst } from './domain/recordOrdering';
 import { normalizePORecords } from './domain/poCompatibility';
 import type { CustomerRecord, LeadRecord } from './domain/crmModels';
+import type { LeadCandidateRecord } from './domain/leadCandidateModels';
 import type { ProcurementRequestRecord } from './domain/purchaseModels';
 import {
   isUnreadNotificationForUser,
@@ -77,8 +79,9 @@ const PAGE_NOTIFICATION_MODULES: Partial<Record<string, NotificationModule>> = {
 const AUDIT_PAGE_LABELS: Record<string, string> = {
   dashboard: 'Tổng quan',
   chat: 'Kênh trao đổi',
-  crm: 'Khách hàng CRM',
+  crm: 'Khách hàng hợp tác',
   leads: 'Khách hàng tiềm năng',
+  customer_data: 'Dữ liệu khách hàng',
   commercial_map: 'Bản đồ thương mại',
   sales: 'Tiếp nhận đơn PO',
   design: 'Yêu cầu thiết kế',
@@ -143,9 +146,9 @@ function App() {
   const getDefaultPagesForRole = (role: string): string[] => {
     switch (role) {
       case 'admin':
-        return ['dashboard', 'chat', 'crm', 'leads', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
+        return ['dashboard', 'chat', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
       case 'sale':
-        return ['dashboard', 'chat', 'crm', 'leads', 'commercial_map', 'sales'];
+        return ['dashboard', 'chat', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'];
       case 'designer':
         return ['dashboard', 'chat', 'design'];
       case 'purchaser':
@@ -165,6 +168,9 @@ function App() {
     const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
     if (pageId === 'leads') {
       return allowed.includes('leads') || allowed.includes('crm');
+    }
+    if (pageId === 'customer_data') {
+      return allowed.includes('customer_data') || allowed.includes('leads') || allowed.includes('crm');
     }
     if (pageId === 'commercial_map') {
       return user.role === 'admin' || allowed.includes('commercial_map') || allowed.includes('leads') || allowed.includes('crm');
@@ -203,6 +209,7 @@ function App() {
   const [repeatSourcePoId, setRepeatSourcePoId] = useState<string>('');
   const [preparedCustomerId, setPreparedCustomerId] = useState<string>('');
   const [leadOnboarding, setLeadOnboarding] = useState<LeadRecord | null>(null);
+  const [candidateLeadConversion, setCandidateLeadConversion] = useState<LeadCandidateRecord | null>(null);
 
   const handleRepeatOrderRequest = (poId: string) => {
     setSelectedPoId('');
@@ -232,6 +239,10 @@ function App() {
     setLeadOnboarding(lead);
     setActivePage('crm');
   };
+
+  const handleCandidateLeadConversionConsumed = useCallback(() => {
+    setCandidateLeadConversion(null);
+  }, []);
 
   // Login form states
   const [username, setUsername] = useState(() => {
@@ -578,6 +589,22 @@ function App() {
             onNavigateToCrm={() => setActivePage('crm')}
             onNavigateToSystemConfiguration={() => setActivePage('system_configuration')}
             onConvertLead={handleLeadConversionRequest}
+            initialCandidate={candidateLeadConversion}
+            onInitialCandidateConsumed={handleCandidateLeadConversionConsumed}
+          />
+        );
+      case 'customer_data':
+        if (!isPageAllowed('customer_data')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        return (
+          <CustomerData
+            customers={customers}
+            leads={leads}
+            users={users}
+            currentUser={user}
+            onStartConversion={candidate => {
+              setCandidateLeadConversion(candidate);
+              setActivePage('leads');
+            }}
           />
         );
       case 'commercial_map':
@@ -920,15 +947,28 @@ function App() {
             </button>
           )}
 
+          {isPageAllowed('customer_data') && (
+            <button
+              className={`sidebar-item ${activePage === 'customer_data' ? 'active' : ''}`}
+              onClick={() => { setActivePage('customer_data'); setIsSidebarOpen(false); }}
+              title={t('Dữ Liệu Khách Hàng')}
+            >
+              <div className="sidebar-item-content">
+                <Archive size={16} />
+                <span className="sidebar-item-label">{t('Dữ Liệu Khách Hàng')}</span>
+              </div>
+            </button>
+          )}
+
           {isPageAllowed('crm') && (
             <button
               className={`sidebar-item ${activePage === 'crm' ? 'active' : ''}`}
               onClick={() => { setActivePage('crm'); setIsSidebarOpen(false); }}
-              title={t('Khách Hàng (CRM)')}
+              title={t('Khách Hàng Hợp Tác')}
             >
               <div className="sidebar-item-content">
                 <Users size={16} />
-                <span className="sidebar-item-label">{t('Khách Hàng (CRM)')}</span>
+                <span className="sidebar-item-label">{t('Khách Hàng Hợp Tác')}</span>
               </div>
               {getUnreadNotificationCount('crm') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('crm')}</span>}
             </button>

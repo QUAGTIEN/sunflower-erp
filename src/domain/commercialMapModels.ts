@@ -165,7 +165,7 @@ export const buildCommercialMapRecords = ({
       phone: customer.phone,
       assignedSaleId: customer.assignedSaleId,
       assignedSaleName: userNames.get(customer.assignedSaleId) || 'Chưa phân công',
-      statusLabel: orderSummary.orderCount > 0 ? 'Đang hợp tác' : 'Khách hàng CRM',
+      statusLabel: orderSummary.orderCount > 0 ? 'Đang hợp tác' : 'Khách hàng hợp tác',
       potentialLabel: customer.customerRank ? `Hạng ${customer.customerRank}` : 'Chưa xếp hạng',
       lastActivityAt: customer.lastOrderAt || customer.updatedAt || customer.createdAt,
       revenue: orderSummary.revenue,

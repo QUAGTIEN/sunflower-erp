@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Building2,
   CalendarClock,
-  Database,
   Eye,
   FileText,
   List,
@@ -64,7 +63,6 @@ import {
   LeadDynamicFields,
   LeadSalesWorkspace
 } from '../components/LeadFilterSystem';
-import { LeadCandidateWorkspace } from '../components/LeadCandidateWorkspace';
 import {
   LeadProfileFieldControl,
   LeadProfileStructureEditor
@@ -91,6 +89,8 @@ interface LeadsProps {
   onNavigateToCrm: () => void;
   onNavigateToSystemConfiguration: () => void;
   onConvertLead: (lead: LeadRecord) => void;
+  initialCandidate?: LeadCandidateRecord | null;
+  onInitialCandidateConsumed?: () => void;
 }
 
 interface LeadFormState {
@@ -216,13 +216,15 @@ export const Leads: React.FC<LeadsProps> = ({
   currentUser,
   onNavigateToCrm,
   onNavigateToSystemConfiguration,
-  onConvertLead
+  onConvertLead,
+  initialCandidate = null,
+  onInitialCandidateConsumed
 }) => {
   const { t } = useLanguage();
   const saleUsers = useMemo(() => users.filter(user => user.role === 'sale'), [users]);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [workspaceTab, setWorkspaceTab] = useState<'list' | 'performance' | 'data'>('list');
+  const [workspaceTab, setWorkspaceTab] = useState<'list' | 'performance'>('list');
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
   const [isEditingProfileStructure, setIsEditingProfileStructure] = useState(false);
   const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
@@ -299,8 +301,6 @@ export const Leads: React.FC<LeadsProps> = ({
     if (currentUser.role === 'admin') return true;
     return lead.assignedSaleId === currentUser.uid;
   }), [currentUser.role, currentUser.uid, leads]);
-
-  const accessibleCandidates = useMemo(() => candidates.filter(candidate => !candidate.archived), [candidates]);
 
   const quickFilterOptionsByField = useMemo(() => {
     const provinceValuesWithData = new Set(
@@ -486,7 +486,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setShowLeadForm(true);
   };
 
-  const openCreateFormFromCandidate = (candidate: LeadCandidateRecord) => {
+  const openCreateFormFromCandidate = useCallback((candidate: LeadCandidateRecord) => {
     setIsEditingProfileStructure(false);
     setEditingLeadId('');
     setConvertingCandidateId(candidate.id);
@@ -527,7 +527,17 @@ export const Leads: React.FC<LeadsProps> = ({
       note: notes
     });
     setShowLeadForm(true);
-  };
+  }, [currentUser, filterDefinitions, saleUsers]);
+
+  useEffect(() => {
+    if (!initialCandidate) return;
+    const timer = window.setTimeout(() => {
+      setWorkspaceTab('list');
+      openCreateFormFromCandidate(initialCandidate);
+      onInitialCandidateConsumed?.();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [initialCandidate, onInitialCandidateConsumed, openCreateFormFromCandidate]);
 
   const closeLeadForm = () => {
     setShowLeadForm(false);
@@ -1184,7 +1194,6 @@ export const Leads: React.FC<LeadsProps> = ({
         <div className="lead-workspace-tabs" role="tablist" aria-label="Không gian quản lý Lead">
           <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => setWorkspaceTab('list')}><List size={16} /> Danh sách Lead <span>{accessibleLeads.length}</span></button>
           {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}><Users size={16} /> Khách hàng của Sale</button>}
-          <button type="button" role="tab" aria-selected={workspaceTab === 'data'} className={workspaceTab === 'data' ? 'is-active' : ''} onClick={() => setWorkspaceTab('data')}><Database size={16} /> Dữ liệu khách hàng <span>{accessibleCandidates.filter(candidate => candidate.status === 'new' || candidate.status === 'retry').length}</span></button>
         </div>
         <div className="lead-page-actions">
           {workspaceTab === 'list' && <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm Lead')}</button>}
@@ -1198,15 +1207,6 @@ export const Leads: React.FC<LeadsProps> = ({
           saleUsers={saleUsers}
           definitions={filterDefinitions}
           onOpenLead={setSelectedLeadId}
-        />
-      ) : workspaceTab === 'data' ? (
-        <LeadCandidateWorkspace
-          candidates={candidates}
-          leads={leads}
-          customers={customers}
-          saleUsers={saleUsers}
-          currentUser={currentUser}
-          onStartConversion={openCreateFormFromCandidate}
         />
       ) : (
         <div className="lead-data-workspace">

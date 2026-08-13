@@ -92,7 +92,7 @@ const NATIONAL_VIEW: ViewBoxState = { x: 0, y: 0, width: 800, height: 860 };
 
 const LAYERS: Array<{ id: CommercialMapLayer; label: string; color: string }> = [
   { id: 'all', label: 'Tất cả dữ liệu nội bộ', color: '#1d4ed8' },
-  { id: 'customers', label: 'Khách hàng CRM', color: '#059669' },
+  { id: 'customers', label: 'Khách hàng hợp tác', color: '#059669' },
   { id: 'leads', label: 'Khách hàng tiềm năng', color: '#7c3aed' },
   { id: 'processing', label: 'Sale đang xử lý', color: '#ea580c' },
   { id: 'unassigned', label: 'Chưa phân công', color: '#64748b' }
@@ -580,7 +580,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
               </div>
               <dl>
                 <div><dt>Doanh nghiệp</dt><dd>{selectedProvinceSummary?.total || 0}</dd></div>
-                <div><dt>Khách hàng CRM</dt><dd>{selectedProvinceSummary?.customers || 0}</dd></div>
+                <div><dt>Khách hàng hợp tác</dt><dd>{selectedProvinceSummary?.customers || 0}</dd></div>
                 <div><dt>Lead</dt><dd>{selectedProvinceSummary?.leads || 0}</dd></div>
                 <div><dt>Sale đang xử lý</dt><dd>{selectedProvinceSummary?.processing || 0}</dd></div>
                 <div><dt>Chưa phân công</dt><dd>{selectedProvinceSummary?.unassigned || 0}</dd></div>
