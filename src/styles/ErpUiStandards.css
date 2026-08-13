@@ -185,6 +185,12 @@ table td {
   font-size: 13px;
 }
 
+/* Use a single white data canvas across compact CRM and Lead grids. */
+.crm-customer-table.is-compact tbody tr:nth-child(even):not(.crm-material-history-row) > td,
+.lead-candidate-table.is-compact tbody tr:nth-child(even):not(.is-selected):not(.is-overdue) > td {
+  background: #ffffff !important;
+}
+
 table .design-secondary-text,
 table .waiting-customer-secondary,
 table .crm-table-secondary {
