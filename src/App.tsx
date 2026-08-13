@@ -968,7 +968,7 @@ function App() {
             >
               <div className="sidebar-item-content">
                 <Users size={16} />
-                <span className="sidebar-item-label">Đang hợp tác</span>
+                <span className="sidebar-item-label">Khách hàng</span>
               </div>
               {getUnreadNotificationCount('crm') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('crm')}</span>}
             </button>
