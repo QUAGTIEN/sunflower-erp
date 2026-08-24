@@ -20,6 +20,7 @@ import { useLanguage } from './context/LanguageContext';
 import { RecycleBin } from './views/RecycleBin';
 import { SystemConfiguration } from './views/SystemConfiguration';
 import { CommercialMap } from './views/CommercialMap';
+import { WorkSchedule } from './views/WorkSchedule';
 import './styles/ErpUiStandards.css';
 import { DesignRequest } from './domain/designWorkflow';
 import { sortNewestFirst } from './domain/recordOrdering';
@@ -59,7 +60,8 @@ import {
   Bell,
   CheckCheck,
   SlidersHorizontal,
-  MapPinned
+  MapPinned,
+  CalendarDays
 } from 'lucide-react';
 
 const logo = '/sunflower-logo-horizontal-transparent.png';
@@ -68,6 +70,7 @@ const PAGE_NOTIFICATION_MODULES: Partial<Record<string, NotificationModule>> = {
   dashboard: 'dashboard',
   crm: 'crm',
   leads: 'leads',
+  work_schedule: 'system',
   sales: 'sales',
   design: 'design',
   purchase: 'purchase',
@@ -84,6 +87,7 @@ const AUDIT_PAGE_LABELS: Record<string, string> = {
   leads: 'Khách hàng tiềm năng',
   customer_data: 'Dữ liệu khách hàng',
   commercial_map: 'Bản đồ thương mại',
+  work_schedule: 'Lịch làm việc',
   sales: 'Tiếp nhận đơn PO',
   design: 'Yêu cầu thiết kế',
   design_library: 'Kho mẫu thiết kế',
@@ -147,19 +151,19 @@ function App() {
   const getDefaultPagesForRole = (role: string): string[] => {
     switch (role) {
       case 'admin':
-        return ['dashboard', 'chat', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
+        return ['dashboard', 'chat', 'work_schedule', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
       case 'sale':
-        return ['dashboard', 'chat', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'];
+        return ['dashboard', 'chat', 'work_schedule', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'];
       case 'designer':
-        return ['dashboard', 'chat', 'design'];
+        return ['dashboard', 'chat', 'work_schedule', 'design'];
       case 'purchaser':
-        return ['dashboard', 'chat', 'purchase', 'suppliers', 'inventory'];
+        return ['dashboard', 'chat', 'work_schedule', 'purchase', 'suppliers', 'inventory'];
       case 'producer':
-        return ['dashboard', 'chat', 'production'];
+        return ['dashboard', 'chat', 'work_schedule', 'production'];
       case 'accountant':
-        return ['dashboard', 'chat', 'accounting'];
+        return ['dashboard', 'chat', 'work_schedule', 'accounting'];
       default:
-        return ['dashboard', 'chat'];
+        return ['dashboard', 'chat', 'work_schedule'];
     }
   };
 
@@ -167,6 +171,7 @@ function App() {
     if (!user) return false;
     if (pageId === 'system_configuration') return user.role === 'admin';
     const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
+    if (pageId === 'work_schedule') return user.active !== false;
     if (pageId === 'leads') {
       return allowed.includes('leads') || allowed.includes('crm');
     }
@@ -621,6 +626,9 @@ function App() {
             onNavigateToLeads={() => setActivePage('leads')}
           />
         );
+      case 'work_schedule':
+        if (!isPageAllowed('work_schedule')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        return <WorkSchedule currentUser={user} users={users} />;
       case 'sales':
         if (!isPageAllowed('sales')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
         return (
@@ -918,6 +926,19 @@ function App() {
                 <span className="sidebar-item-label">Kênh chat</span>
               </div>
               {unreadChannelCount > 0 && <span className="sidebar-badge">{unreadChannelCount}</span>}
+            </button>
+          )}
+
+          {isPageAllowed('work_schedule') && (
+            <button
+              className={`sidebar-item ${activePage === 'work_schedule' ? 'active' : ''}`}
+              onClick={() => { setActivePage('work_schedule'); setIsSidebarOpen(false); }}
+              title={t('Lịch làm việc')}
+            >
+              <div className="sidebar-item-content">
+                <CalendarDays size={16} />
+                <span className="sidebar-item-label">Lịch làm việc</span>
+              </div>
             </button>
           )}
           

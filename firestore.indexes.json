@@ -7,6 +7,14 @@
         { "fieldPath": "actorId", "order": "ASCENDING" },
         { "fieldPath": "occurredAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "work_schedule_items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assigneeId", "order": "ASCENDING" },
+        { "fieldPath": "startAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

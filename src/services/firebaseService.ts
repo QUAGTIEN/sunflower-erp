@@ -26,6 +26,7 @@ import { normalizeCustomerRecords, normalizeLeadRecords } from '../domain/crmMod
 import { normalizeLeadCandidateRecords } from '../domain/leadCandidateModels';
 import { normalizeNotificationRecords } from '../domain/notificationModels';
 import { normalizeProcurementRequests, normalizeSupplierRecords } from '../domain/purchaseModels';
+import { normalizeWorkScheduleRecords } from '../domain/workScheduleModels';
 
 // Firebase Configuration from environment variables
 const firebaseConfig = {
@@ -786,6 +787,9 @@ const normalizeCollectionRecords = <T,>(colName: string, data: T[]): T[] => {
   }
   if (colName === 'notifications') {
     return normalizeNotificationRecords(data) as T[];
+  }
+  if (colName === 'work_schedule_items') {
+    return normalizeWorkScheduleRecords(data) as T[];
   }
   return data;
 };
