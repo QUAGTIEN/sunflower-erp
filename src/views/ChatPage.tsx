@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService, UserProfile } from '../services/firebaseService';
+import { auditService } from '../services/auditService';
 import { useLanguage } from '../context/LanguageContext';
 import { getPOQueueLabel } from '../domain/poWorkflow';
 import { Plus } from 'lucide-react';
@@ -96,6 +97,28 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const handleRecallMessage = async (msgId: string) => {
     if (window.confirm(t('Bạn có chắc chắn muốn thu hồi tin nhắn này?'))) {
       await dbService.updateDocument('messages', msgId, { recalled: true });
+    }
+  };
+
+  const handleDeleteMessage = async (message: { id: string; senderName?: string }) => {
+    if (currentUser.role !== 'admin') return;
+    if (!window.confirm(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.'))) return;
+
+    try {
+      await dbService.deleteDocument('messages', message.id);
+      auditService.recordSafely(currentUser, {
+        category: 'administration',
+        module: 'system',
+        action: 'chat_message_deleted',
+        summary: `Xóa tin nhắn của ${message.senderName || 'người dùng'} trong kênh chat`,
+        targetType: 'message',
+        targetId: message.id,
+        targetLabel: activeChannel?.name || activeChannelId,
+        pageId: 'chat'
+      });
+    } catch (error) {
+      console.error('[Chat] Could not delete message.', error);
+      window.alert(t('Không thể xóa tin nhắn. Vui lòng thử lại.'));
     }
   };
 
@@ -374,6 +397,18 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                               style={{ border: 'none', background: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
                             >
                               {t('Thu hồi')}
+                            </button>
+                          </>
+                        )}
+                        {currentUser.role === 'admin' && (
+                          <>
+                            <span>•</span>
+                            <button
+                              onClick={() => void handleDeleteMessage(msg)}
+                              style={{ border: 'none', background: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
+                              title={t('Xóa vĩnh viễn tin nhắn')}
+                            >
+                              {t('Xóa')}
                             </button>
                           </>
                         )}

@@ -37,7 +37,7 @@ export const CustomerData: React.FC<CustomerDataProps> = ({
         <div className="customer-data-page__title">
           <span className="customer-data-page__icon"><Database size={20} /></span>
           <div>
-            <h1>Dữ liệu</h1>
+            <h1>Dữ liệu thô</h1>
             <p>Quản lý dữ liệu doanh nghiệp tìm kiếm, phân công Sale và theo dõi lịch chăm sóc.</p>
           </div>
         </div>

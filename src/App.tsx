@@ -85,7 +85,7 @@ const AUDIT_PAGE_LABELS: Record<string, string> = {
   chat: 'Kênh trao đổi',
   crm: 'Khách hàng hợp tác',
   leads: 'Khách hàng tiềm năng',
-  customer_data: 'Dữ liệu khách hàng',
+  customer_data: 'Dữ liệu thô',
   commercial_map: 'Bản đồ thương mại',
   work_schedule: 'Lịch làm việc',
   sales: 'Tiếp nhận đơn PO',
@@ -973,11 +973,11 @@ function App() {
             <button
               className={`sidebar-item ${activePage === 'customer_data' ? 'active' : ''}`}
               onClick={() => { setActivePage('customer_data'); setIsSidebarOpen(false); }}
-              title={t('Dữ Liệu Khách Hàng')}
+              title={t('Dữ liệu thô')}
             >
               <div className="sidebar-item-content">
                 <Archive size={16} />
-                <span className="sidebar-item-label">Dữ liệu</span>
+                <span className="sidebar-item-label">Dữ liệu thô</span>
               </div>
             </button>
           )}
