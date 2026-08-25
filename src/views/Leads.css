@@ -201,6 +201,11 @@
   font-weight: 700;
 }
 
+.lead-date-upcoming {
+  color: #1e3a8a !important;
+  font-weight: 700;
+}
+
 .lead-empty {
   padding: 28px !important;
   color: #94a3b8;

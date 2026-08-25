@@ -60,6 +60,10 @@ import {
 } from '../services/firebaseService';
 import { auditService } from '../services/auditService';
 import {
+  getNotificationDocumentId,
+  NOTIFICATION_SCHEMA_VERSION
+} from '../domain/notificationModels';
+import {
   LeadDynamicFields,
   LeadSalesWorkspace
 } from '../components/LeadFilterSystem';
@@ -114,6 +118,10 @@ interface LeadFormState {
   note: string;
 }
 
+interface LeadScheduleFormState {
+  nextFollowUpAt: string;
+}
+
 const LEAD_STAGES: Array<{ id: LeadStage; label: string }> = [
   { id: 'new', label: 'Mới tiếp nhận' },
   { id: 'contacted', label: 'Đã liên hệ' },
@@ -145,6 +153,19 @@ const toDateTimeLocal = (value: string) => {
   if (Number.isNaN(date.getTime())) return '';
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return localDate.toISOString().slice(0, 16);
+};
+
+const tomorrowAtNine = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  return toDateTimeLocal(date.toISOString());
+};
+
+const getLeadScheduleTime = (lead: LeadRecord): number => {
+  if (!lead.nextFollowUpAt) return Number.POSITIVE_INFINITY;
+  const timestamp = new Date(lead.nextFollowUpAt).getTime();
+  return Number.isFinite(timestamp) ? timestamp : Number.POSITIVE_INFINITY;
 };
 
 const getStageLabel = (stage: LeadStage) => (
@@ -241,6 +262,12 @@ export const Leads: React.FC<LeadsProps> = ({
   const [uploadingFiles, setUploadingFiles] = useState<LeadFileRecord[]>([]);
   const [taxCodeSaveError, setTaxCodeSaveError] = useState('');
   const [profileSaveError, setProfileSaveError] = useState('');
+  const [scheduleLeadId, setScheduleLeadId] = useState('');
+  const [scheduleForm, setScheduleForm] = useState<LeadScheduleFormState>({
+    nextFollowUpAt: tomorrowAtNine()
+  });
+  const [scheduleError, setScheduleError] = useState('');
+  const [savingSchedule, setSavingSchedule] = useState(false);
 
   useEffect(() => {
     const unsubscribe = dbService.subscribeCollection('leads', data => {
@@ -386,6 +413,11 @@ export const Leads: React.FC<LeadsProps> = ({
         });
       return matchesSearch
         && matchesClassifications;
+    }).sort((left, right) => {
+      const leftSchedule = getLeadScheduleTime(left);
+      const rightSchedule = getLeadScheduleTime(right);
+      if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
+      return String(right.updatedAt || right.createdAt).localeCompare(String(left.updatedAt || left.createdAt));
     });
   }, [
     accessibleLeads,
@@ -399,6 +431,10 @@ export const Leads: React.FC<LeadsProps> = ({
 
   const selectedLead = selectedLeadId
     ? leads.find(lead => lead.id === selectedLeadId) || null
+    : null;
+
+  const scheduleLead = scheduleLeadId
+    ? leads.find(lead => lead.id === scheduleLeadId) || null
     : null;
 
   const updateForm = <K extends keyof LeadFormState>(field: K, value: LeadFormState[K]) => {
@@ -484,6 +520,87 @@ export const Leads: React.FC<LeadsProps> = ({
       note: lead.note
     });
     setShowLeadForm(true);
+  };
+
+  const openScheduleForm = (lead: LeadRecord) => {
+    setScheduleLeadId(lead.id);
+    setScheduleForm({
+      nextFollowUpAt: toDateTimeLocal(lead.nextFollowUpAt) || tomorrowAtNine()
+    });
+    setScheduleError('');
+  };
+
+  const closeScheduleForm = () => {
+    setScheduleLeadId('');
+    setScheduleError('');
+  };
+
+  const handleSaveSchedule = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!scheduleLead || !scheduleForm.nextFollowUpAt) return;
+    if (!scheduleLead.assignedSaleId) {
+      setScheduleError('Vui lòng phân công Sale phụ trách trước khi đặt lịch hẹn.');
+      return;
+    }
+
+    const nextFollowUpAt = new Date(scheduleForm.nextFollowUpAt).toISOString();
+    const now = new Date().toISOString();
+    const eventKey = `leads:scheduled:${scheduleLead.id}`;
+    const activityNote = `Đặt lịch chăm sóc: ${formatDateTime(nextFollowUpAt)}`;
+
+    setSavingSchedule(true);
+    setScheduleError('');
+    try {
+      await Promise.all([
+        dbService.updateDocument('leads', scheduleLead.id, {
+          reminderTime: nextFollowUpAt,
+          nextFollowUpAt,
+          activities: [{
+            id: `activity-schedule-${now}`,
+            type: 'schedule',
+            note: activityNote,
+            occurredAt: now,
+            createdById: currentUser.uid,
+            createdByName: currentUser.displayName
+          }, ...(scheduleLead.activities || [])],
+          updatedAt: now,
+          updatedBy: currentUser.displayName
+        }),
+        dbService.addDocument('notifications', {
+          id: getNotificationDocumentId(scheduleLead.assignedSaleId, eventKey),
+          schemaVersion: NOTIFICATION_SCHEMA_VERSION,
+          recipientId: scheduleLead.assignedSaleId,
+          module: 'leads',
+          eventType: 'lead_follow_up_scheduled',
+          eventKey,
+          entityId: scheduleLead.id,
+          entityCode: scheduleLead.companyName,
+          title: 'Lịch chăm sóc Lead mới',
+          message: `${scheduleLead.companyName} được hẹn chăm sóc vào ${formatDateTime(nextFollowUpAt)}.`,
+          createdAt: now,
+          createdById: currentUser.uid,
+          source: 'manual',
+          readAt: null
+        })
+      ]);
+
+      auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'leads',
+        action: 'lead_follow_up_scheduled',
+        summary: `Đặt lịch chăm sóc Lead ${scheduleLead.companyName}`,
+        targetType: 'lead',
+        targetId: scheduleLead.id,
+        targetLabel: scheduleLead.companyName,
+        changes: [{ field: 'nextFollowUpAt', label: 'Lịch chăm sóc', before: scheduleLead.nextFollowUpAt, after: nextFollowUpAt }]
+      });
+      closeScheduleForm();
+    } catch (error) {
+      console.error('[Leads] Could not save follow-up schedule.', error);
+      setScheduleError('Không thể lưu lịch hẹn. Vui lòng thử lại.');
+    } finally {
+      setSavingSchedule(false);
+    }
   };
 
   const openCreateFormFromCandidate = useCallback((candidate: LeadCandidateRecord) => {
@@ -866,6 +983,18 @@ export const Leads: React.FC<LeadsProps> = ({
     if (definition.type === 'checkbox') return values[0] === 'true' ? 'Có' : 'Không';
     const labels = values.map(value => definition.options.find(option => option.id === value)?.label || value);
     return labels.join(', ') || '—';
+  };
+
+  const renderFollowUp = (lead: LeadRecord) => {
+    if (!lead.nextFollowUpAt || !Number.isFinite(getLeadScheduleTime(lead))) {
+      return <span>Chưa đặt lịch</span>;
+    }
+    const overdue = isOverdue(lead);
+    return (
+      <span className={overdue ? 'lead-date-overdue' : 'lead-date-upcoming'}>
+        {overdue ? 'Quá hạn' : 'Sắp tới lịch'} · {formatDateTime(lead.nextFollowUpAt)}
+      </span>
+    );
   };
 
   if (showLeadForm) {
@@ -1276,13 +1405,14 @@ export const Leads: React.FC<LeadsProps> = ({
                       <td><strong>{getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || '—')}</strong><span>{getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || 'Chưa xác định')}</span></td>
                       <td><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>
                       <td>{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>
-                      <td><span className={isOverdue(lead) ? 'lead-date-overdue' : ''}>{formatDateTime(lead.nextFollowUpAt)}</span></td>
+                      <td>{renderFollowUp(lead)}</td>
                       <td>
                         <RowActionMenu
                           label={`${t('Thao tác')} ${lead.companyName}`}
                           actions={[
                             { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => setSelectedLeadId(lead.id) },
-                            { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) }
+                            { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) },
+                            { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) }
                           ]}
                         />
                       </td>
@@ -1293,6 +1423,26 @@ export const Leads: React.FC<LeadsProps> = ({
               </table>
             </div>
           </section>
+        </div>
+      )}
+
+      {scheduleLead && (
+        <div className="modal-overlay">
+          <form className="modal-content lead-candidate-schedule-modal" onSubmit={handleSaveSchedule}>
+            <div className="modal-header">
+              <div><strong>{t('ĐẶT LỊCH CHĂM SÓC TIẾP THEO')}</strong><span>{scheduleLead.companyName}</span></div>
+              <button type="button" className="btn btn-sm btn-outline" onClick={closeScheduleForm}><X size={14} /> {t('Đóng')}</button>
+            </div>
+            <div className="modal-body lead-candidate-schedule-form">
+              <label><span>{t('Lịch chăm sóc tiếp theo *')}</span><input required autoFocus type="datetime-local" value={scheduleForm.nextFollowUpAt} onChange={event => setScheduleForm(previous => ({ ...previous, nextFollowUpAt: event.target.value }))} /></label>
+              <p>{t('Sau khi lưu, Lead sẽ được đưa lên đầu danh sách và Sale phụ trách sẽ nhận được thông báo.')}</p>
+              {scheduleError && <div className="lead-candidate-warning is-error"><AlertCircle size={14} /><span>{scheduleError}</span></div>}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={closeScheduleForm}>{t('Hủy')}</button>
+              <button type="submit" className="btn btn-primary" disabled={savingSchedule}><CalendarClock size={14} /> {savingSchedule ? t('Đang lưu...') : t('Lưu lịch hẹn')}</button>
+            </div>
+          </form>
         </div>
       )}
 
