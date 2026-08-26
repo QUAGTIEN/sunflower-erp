@@ -1,0 +1,115 @@
+.dashboard-view .dashboard-admin-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-view .dashboard-admin-metrics .dashboard-metric-card {
+  min-height: 82px;
+  padding: 11px 13px;
+  gap: 2px;
+  border-radius: 7px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+}
+
+.dashboard-view .dashboard-admin-metrics .metric-title {
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+
+.dashboard-view .dashboard-admin-metrics .metric-value {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.dashboard-view .dashboard-admin-metrics .metric-sub {
+  overflow: hidden;
+  font-size: 10.5px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-activity-feed {
+  overflow-x: auto;
+  padding: 0 16px 12px;
+}
+
+.dashboard-activity-feed__header,
+.dashboard-activity-feed__row {
+  display: grid;
+  grid-template-columns: 128px minmax(120px, 0.8fr) minmax(220px, 1.6fr) minmax(130px, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 620px;
+}
+
+.dashboard-activity-feed__header {
+  padding: 8px 10px;
+  color: #64748b;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.dashboard-activity-feed__row {
+  min-height: 42px;
+  padding: 8px 10px;
+  color: #334155;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 12px;
+}
+
+.dashboard-activity-feed__row:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-activity-feed__row time {
+  color: #64748b;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.dashboard-activity-feed__row strong {
+  overflow: hidden;
+  color: #172554;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-activity-feed__row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-activity-feed__row > span:last-child {
+  color: #64748b;
+}
+
+.dashboard-activity-feed__empty {
+  padding: 28px 10px;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 1040px) {
+  .dashboard-view .dashboard-admin-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-view .dashboard-admin-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-activity-feed {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+}

@@ -7,9 +7,7 @@ import { calculatePOItemFinancials } from '../domain/poFinancials';
 import { DesignRequest } from '../domain/designWorkflow';
 import { formatDate, formatDateTime } from '../domain/dateFormatting';
 import {
-  Clock, Trash2, Plus, Check, CheckCircle,
-  AlertCircle, Calendar, User, DollarSign, Sliders, 
-  BarChart2, PieChart, Bell, Eye, Pencil, MessageSquare, ChevronDown, ChevronUp
+  Clock, Trash2, Plus, Sliders, Bell, ChevronDown, ChevronUp
 } from 'lucide-react';
 import {
   getPOBadgeClass,
@@ -23,6 +21,8 @@ import {
   POQueueStatus
 } from '../domain/poWorkflow';
 import { PageBackButton } from '../components/PageBackButton';
+import { type AuditEvent } from '../services/auditService';
+import './Dashboard.css';
 
 interface DashboardProps {
   user: UserProfile;
@@ -84,6 +84,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [reminders, setReminders] = useState<any[]>([]);
   const [newReminderText, setNewReminderText] = useState('');
   const [newReminderDate, setNewReminderDate] = useState('');
+  const [activityFeed, setActivityFeed] = useState<AuditEvent[]>([]);
 
   // Load reminders
   useEffect(() => {
@@ -97,6 +98,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
     fetchReminders();
   }, []);
+
+  useEffect(() => {
+    if (user.role !== 'admin') return undefined;
+
+    return dbService.subscribeCollection('audit_events', data => {
+      const recentBusinessEvents = (data as AuditEvent[])
+        .filter(event => event.category === 'business' || event.category === 'administration')
+        .sort((left, right) => String(right.occurredAt || right.createdAt).localeCompare(String(left.occurredAt || left.createdAt)))
+        .slice(0, 10);
+      setActivityFeed(recentBusinessEvents);
+    });
+  }, [user.role]);
+
+  const visibleActivityFeed = user.role === 'admin' ? activityFeed : [];
 
   const matchesTimeframe = (dateString?: string) => {
     if (!dateString) return false;
@@ -127,15 +142,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const collaboratingCustomers = activeCustomersList.filter(customer => customerIdsWithOrders.has(customer.id));
   const activeEmployees = (users || []).filter(employee => employee.active !== false);
   
-  // CSKH: Customers with lastOrderAt older than 30 days
-  const today = new Date();
-  const inactiveCustomers = activeCustomersList.filter(c => {
-    if (!c.lastOrderAt) return true;
-    const diffTime = Math.abs(today.getTime() - new Date(c.lastOrderAt).getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 30;
-  });
-
   // Financial calculations
   const totalRevenue = filteredInvoices
     .filter(inv => inv.type === 'receivable' && inv.status === 'paid')
@@ -653,7 +659,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* ADMIN / GIÁM ĐỐC VIEW */}
       {user.role === 'admin' && (
         <>
-          <div className="metrics-grid">
+          <div className="metrics-grid dashboard-admin-metrics">
             <div className="metric-card dashboard-metric-card dashboard-metric-card--customers">
               <span className="metric-title">{t('KHÁCH HÀNG ĐANG HỢP TÁC')}</span>
               <span className="metric-value">{collaboratingCustomers.length} {t('khách hàng')}</span>
@@ -758,38 +764,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="details-grid">
             <div className="card">
               <div className="card-header">
-                <span className="card-title">{t('Cần Chăm Sóc (Khách > 30 ngày chưa đặt đơn)')}</span>
-                <button className="btn btn-sm btn-outline" onClick={() => onNavigate('crm')}>{t('Xem chi tiết')}</button>
+                <span className="card-title">{t('Bảng tin hoạt động')}</span>
+                <button className="btn btn-sm btn-outline" onClick={() => onNavigate('users')}>{t('Xem lịch sử')}</button>
               </div>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t('Tên Công Ty')}</th>
-                      <th>{t('Người Liên Hệ')}</th>
-                      <th>{t('Ngày Đặt Cuối')}</th>
-                      <th>{t('Trạng Thái')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inactiveCustomers.length > 0 ? (
-                      inactiveCustomers.map(c => (
-                        <tr key={c.id}>
-                          <td style={{ fontWeight: 600 }}>{c.companyName}</td>
-                          <td>{c.contactPerson}</td>
-                          <td>{formatDate(c.lastOrderAt, 'vi-VN', t('Chưa từng đặt'))}</td>
-                          <td>
-                            <span className="badge badge-danger">{t('Khóa')} / {t('Lâu Chưa Đặt')}</span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} style={{ textAlign: 'center', padding: '16px' }}>{t('Không có khách hàng nào quá hạn đặt hàng.')}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="dashboard-activity-feed">
+                <div className="dashboard-activity-feed__header" aria-hidden="true">
+                  <span>{t('Thời gian')}</span>
+                  <span>{t('Nhân viên')}</span>
+                  <span>{t('Cập nhật')}</span>
+                  <span>{t('Đối tượng')}</span>
+                </div>
+                {visibleActivityFeed.length > 0 ? visibleActivityFeed.map(activity => (
+                  <div className="dashboard-activity-feed__row" key={activity.id}>
+                    <time dateTime={activity.occurredAt}>{formatDateTime(activity.occurredAt, 'vi-VN', '—')}</time>
+                    <strong>{activity.actorName || '—'}</strong>
+                    <span title={activity.summary}>{activity.summary || '—'}</span>
+                    <span title={activity.targetLabel || undefined}>{activity.targetLabel || activity.module || '—'}</span>
+                  </div>
+                )) : (
+                  <div className="dashboard-activity-feed__empty">{t('Chưa có cập nhật mới')}</div>
+                )}
               </div>
             </div>
 
