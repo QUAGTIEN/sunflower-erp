@@ -1,0 +1,344 @@
+/* Application color theme and compact navigation states. */
+
+.theme-toggle-btn {
+  display: inline-flex;
+  width: 34px;
+  height: 32px;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.theme-toggle-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.theme-toggle-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Keep the selected module calm: selection comes from the rail and tint, not bold text. */
+.sidebar-item.active {
+  color: #1d4ed8;
+  background: #eef2ff;
+  box-shadow: inset 2px 0 0 #2563eb;
+  font-weight: 500;
+}
+
+.sidebar-item.active .sidebar-item-label {
+  font-weight: 500;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-app: #0b1220;
+  --bg-card: #111c2e;
+  --bg-sidebar: #0d1728;
+  --bg-input: #0f1b2d;
+
+  --color-primary: #60a5fa;
+  --color-primary-dark: #dbeafe;
+  --color-primary-light: #172b4d;
+  --color-primary-text: #bfdbfe;
+
+  --color-text-main: #e7eef8;
+  --color-text-muted: #9fb0c6;
+  --color-border: #33445d;
+  --color-border-light: #263750;
+
+  --color-success: #5eead4;
+  --color-success-bg: #0d2b29;
+  --color-success-border: #1f5c55;
+  --color-warning: #fbbf24;
+  --color-warning-bg: #33260e;
+  --color-warning-border: #6c5319;
+  --color-danger: #fb7185;
+  --color-danger-bg: #351821;
+  --color-danger-border: #6b2837;
+  --color-info: #7dd3fc;
+  --color-info-bg: #102a3b;
+  --color-info-border: #24536c;
+
+  --erp-page-title-color: #f1f5f9;
+  --erp-table-header-bg: #18263b;
+  --erp-border-color: #33445d;
+  --erp-row-divider: #263750;
+  --erp-row-hover: #18283f;
+  --erp-focus-ring: rgb(96 165 250 / 20%);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
+  --shadow-md: 0 6px 16px rgb(0 0 0 / 24%);
+  --shadow-lg: 0 18px 42px rgb(0 0 0 / 34%);
+}
+
+html[data-theme='dark'] body,
+html[data-theme='dark'] .app-container,
+html[data-theme='dark'] .app-main {
+  color: var(--color-text-main);
+  background: var(--bg-app);
+}
+
+html[data-theme='dark'] .app-header,
+html[data-theme='dark'] .app-sidebar,
+html[data-theme='dark'] .sidebar-footer {
+  color: var(--color-text-main);
+  background: var(--bg-sidebar);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .sidebar-logo {
+  background: #101c2f;
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .sidebar-item {
+  color: var(--color-text-muted);
+}
+
+html[data-theme='dark'] .sidebar-item:hover {
+  color: #bfdbfe;
+  background: #17253b;
+}
+
+html[data-theme='dark'] .sidebar-item.active {
+  color: #bfdbfe;
+  background: #1a2d4a;
+  box-shadow: inset 2px 0 0 #60a5fa;
+}
+
+html[data-theme='dark'] .sidebar-item-content svg {
+  color: #8293ab;
+}
+
+html[data-theme='dark'] .sidebar-item:hover .sidebar-item-content svg,
+html[data-theme='dark'] .sidebar-item.active .sidebar-item-content svg {
+  color: currentColor;
+}
+
+html[data-theme='dark'] .header-title,
+html[data-theme='dark'] .page-title,
+html[data-theme='dark'] .view-title,
+html[data-theme='dark'] .card-title,
+html[data-theme='dark'] .lead-page-commandbar__title h1,
+html[data-theme='dark'] .customer-data-page__title h1,
+html[data-theme='dark'] .commercial-map-heading h1,
+html[data-theme='dark'] .system-config-header .page-title {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .table-container,
+html[data-theme='dark'] .modal-content,
+html[data-theme='dark'] .row-action-menu__popover,
+html[data-theme='dark'] .header-notification-panel,
+html[data-theme='dark'] .customer-data-section,
+html[data-theme='dark'] .customer-onboarding-profile-grid,
+html[data-theme='dark'] .customer-onboarding-items__table-wrap,
+html[data-theme='dark'] .lead-page-commandbar,
+html[data-theme='dark'] .lead-table-card,
+html[data-theme='dark'] .lead-candidate-workspace,
+html[data-theme='dark'] .crm-command-center,
+html[data-theme='dark'] .crm-list-commandbar,
+html[data-theme='dark'] .crm-customer-table-wrap,
+html[data-theme='dark'] .purchase-panel,
+html[data-theme='dark'] .purchase-list-card,
+html[data-theme='dark'] .supplier-list-card,
+html[data-theme='dark'] .work-schedule-card,
+html[data-theme='dark'] .work-schedule-tabs,
+html[data-theme='dark'] .work-schedule-modal,
+html[data-theme='dark'] .system-filter-catalog,
+html[data-theme='dark'] .system-filter-list,
+html[data-theme='dark'] .system-filter-editor,
+html[data-theme='dark'] .system-child-editor,
+html[data-theme='dark'] .system-filter-scope-section,
+html[data-theme='dark'] .system-location-select__dropdown,
+html[data-theme='dark'] .system-scope-picker__menu,
+html[data-theme='dark'] .kanban-card {
+  color: var(--color-text-main);
+  background-color: var(--bg-card) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea {
+  color: var(--color-text-main);
+  background-color: var(--bg-input);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder {
+  color: #74859d;
+}
+
+html[data-theme='dark'] input:disabled,
+html[data-theme='dark'] select:disabled,
+html[data-theme='dark'] textarea:disabled {
+  color: #718198;
+  background: #111a29;
+}
+
+html[data-theme='dark'] .btn,
+html[data-theme='dark'] .row-action-menu__trigger,
+html[data-theme='dark'] .app-back-button,
+html[data-theme='dark'] .desktop-menu-btn,
+html[data-theme='dark'] .mobile-menu-btn,
+html[data-theme='dark'] .lang-toggle-btn,
+html[data-theme='dark'] .theme-toggle-btn,
+html[data-theme='dark'] .data-filter-button,
+html[data-theme='dark'] .lead-candidate-column-button {
+  color: var(--color-text-muted);
+  background-color: var(--bg-input);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .btn:hover,
+html[data-theme='dark'] .row-action-menu__trigger:hover,
+html[data-theme='dark'] .app-back-button:hover,
+html[data-theme='dark'] .desktop-menu-btn:hover,
+html[data-theme='dark'] .mobile-menu-btn:hover,
+html[data-theme='dark'] .lang-toggle-btn:hover,
+html[data-theme='dark'] .theme-toggle-btn:hover,
+html[data-theme='dark'] .data-filter-button:hover,
+html[data-theme='dark'] .lead-candidate-column-button:hover {
+  color: #bfdbfe;
+  background-color: var(--color-primary-light);
+  border-color: #5276a8;
+}
+
+html[data-theme='dark'] .btn-primary,
+html[data-theme='dark'] .btn-success {
+  color: #ffffff;
+  background-color: #2563eb;
+  border-color: #3b82f6;
+}
+
+html[data-theme='dark'] .btn-danger {
+  color: var(--color-danger);
+  background: var(--bg-input);
+  border-color: var(--color-danger-border);
+}
+
+html[data-theme='dark'] .header-user-badge {
+  color: #bfdbfe;
+  background: #172b4d;
+  border-color: #38557b;
+}
+
+html[data-theme='dark'] .header-notification-button {
+  color: var(--color-text-muted);
+}
+
+html[data-theme='dark'] .header-notification-button:hover,
+html[data-theme='dark'] .header-notification-button.is-active {
+  color: #bfdbfe;
+  background: #172b4d;
+  border-color: #38557b;
+}
+
+html[data-theme='dark'] .header-notification-button > span {
+  border-color: var(--bg-sidebar);
+}
+
+html[data-theme='dark'] .header-notification-panel > header,
+html[data-theme='dark'] .header-notification-list > button {
+  color: var(--color-text-main);
+  background: var(--bg-card);
+  border-color: var(--color-border-light);
+}
+
+html[data-theme='dark'] .header-notification-list > button:hover,
+html[data-theme='dark'] .header-notification-list > button.is-unread {
+  background: #172b4d;
+}
+
+html[data-theme='dark'] .header-notification-content strong,
+html[data-theme='dark'] .header-notification-empty strong {
+  color: var(--color-text-main);
+}
+
+html[data-theme='dark'] .header-notification-content > span:nth-child(2),
+html[data-theme='dark'] .header-notification-content small,
+html[data-theme='dark'] .header-notification-panel > header > div > span {
+  color: var(--color-text-muted);
+}
+
+html[data-theme='dark'] table th {
+  color: #dbeafe !important;
+  background: var(--erp-table-header-bg) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme='dark'] table td,
+html[data-theme='dark'] .crm-customer-table.is-compact tbody tr:nth-child(even):not(.crm-material-history-row) > td,
+html[data-theme='dark'] .lead-candidate-table.is-compact tbody tr:nth-child(even):not(.is-selected):not(.is-overdue) > td {
+  color: var(--color-text-main);
+  background: var(--bg-card) !important;
+  border-color: var(--color-border-light) !important;
+}
+
+html[data-theme='dark'] table tbody tr:hover > td {
+  background: var(--erp-row-hover) !important;
+}
+
+html[data-theme='dark'] table tbody tr.is-selected > td {
+  background: #19375e !important;
+}
+
+html[data-theme='dark'] table tbody tr.is-overdue > td {
+  background: #352127 !important;
+}
+
+html[data-theme='dark'] .row-action-menu__popover button {
+  color: var(--color-text-main);
+}
+
+html[data-theme='dark'] .row-action-menu__popover button:hover:not(:disabled),
+html[data-theme='dark'] .row-action-menu__popover button:focus-visible {
+  color: #bfdbfe;
+  background: #172b4d;
+}
+
+html[data-theme='dark'] .data-filter-panel,
+html[data-theme='dark'] .data-filter-panel > footer,
+html[data-theme='dark'] .table-column-customizer__panel {
+  color: var(--color-text-main);
+  background: var(--bg-card);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .chat-message-row.other .chat-message-bubble,
+html[data-theme='dark'] .chat-suggestion-panel,
+html[data-theme='dark'] .chat-suggestion-item {
+  color: var(--color-text-main);
+  background: var(--bg-card);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #40516a;
+}
+
+@media (max-width: 768px) {
+  .theme-toggle-btn {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+  }
+}
