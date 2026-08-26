@@ -1,7 +1,7 @@
-import type { CustomerRecord, LeadRecord } from './crmModels';
+import { isActiveLeadRecord, type CustomerRecord, type LeadRecord } from './crmModels';
 import { normalizeTaxCode } from './taxCodeUniqueness';
 
-export const LEAD_CANDIDATE_SCHEMA_VERSION = 9;
+export const LEAD_CANDIDATE_SCHEMA_VERSION = 10;
 
 export type LeadCandidateStatus = 'new' | 'retry' | 'disqualified' | 'converted';
 export type LeadCandidateTaskStatus = 'pending' | 'completed' | 'dismissed';
@@ -88,6 +88,7 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   archivedByName: string;
   convertedLeadId: string;
   convertedAt: string;
+  returnedFromLeadId: string;
   createdAt: string;
   createdById: string;
   createdByName: string;
@@ -304,6 +305,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     archivedByName: asText(source.archivedByName),
     convertedLeadId: asText(source.convertedLeadId),
     convertedAt: asText(source.convertedAt),
+    returnedFromLeadId: asText(source.returnedFromLeadId),
     createdAt: asText(source.createdAt),
     createdById: asText(source.createdById),
     createdByName: asText(source.createdByName),
@@ -344,7 +346,7 @@ export const findCandidateDuplicate = (
     ...candidates
       .filter(item => item.id !== excludedCandidateId)
       .map(item => ({ ...item, recordType: 'candidate' as const })),
-    ...leads.map(item => ({ ...item, recordType: 'lead' as const })),
+    ...leads.filter(isActiveLeadRecord).map(item => ({ ...item, recordType: 'lead' as const })),
     ...customers.map(item => ({ ...item, recordType: 'customer' as const }))
   ];
 
@@ -378,4 +380,14 @@ export const mapCandidateSourceToLeadSource = (source: string): string => {
   if (normalizedSource === 'website') return 'Website';
   if (normalizedSource === 'khách hàng giới thiệu') return 'Khách hàng giới thiệu';
   return 'Sale tự tìm kiếm';
+};
+
+export const mapLeadSourceToCandidateSource = (source: string): string => {
+  const normalizedSource = source.trim().toLocaleLowerCase('vi-VN');
+  if (normalizedSource === 'google maps') return 'Google Maps';
+  if (normalizedSource === 'facebook') return 'Facebook';
+  if (normalizedSource === 'mạng xã hội') return 'Mạng xã hội';
+  if (normalizedSource === 'website') return 'Website';
+  if (normalizedSource === 'khách hàng giới thiệu') return 'Khách hàng giới thiệu';
+  return 'Khác';
 };

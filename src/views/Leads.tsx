@@ -14,23 +14,28 @@ import {
   Settings2,
   Tags,
   Trash2,
+  Undo2,
   UserCheck,
   Users,
   X
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import type {
-  CustomerRecord,
-  LeadCompanySize,
-  LeadFileRecord,
-  LeadFilterDefinition,
-  LeadProfileFieldDefinition,
-  LeadRecord,
-  LeadStage
+import {
+  isActiveLeadRecord,
+  type CustomerRecord,
+  type LeadCompanySize,
+  type LeadFileRecord,
+  type LeadFilterDefinition,
+  type LeadProfileFieldDefinition,
+  type LeadRecord,
+  type LeadStage
 } from '../domain/crmModels';
 import {
+  createCandidateDocumentIdFromTaxCode,
   findCandidateDuplicate,
+  LEAD_CANDIDATE_SCHEMA_VERSION,
   mapCandidateSourceToLeadSource,
+  mapLeadSourceToCandidateSource,
   type LeadCandidateRecord
 } from '../domain/leadCandidateModels';
 import { sortNewestFirst } from '../domain/recordOrdering';
@@ -88,6 +93,7 @@ interface LeadsProps {
   users: UserProfile[];
   currentUser: UserProfile;
   onNavigateToCrm: () => void;
+  onNavigateToCustomerData: () => void;
   onNavigateToSystemConfiguration: () => void;
   onConvertLead: (lead: LeadRecord) => void;
   initialCandidate?: LeadCandidateRecord | null;
@@ -239,6 +245,7 @@ export const Leads: React.FC<LeadsProps> = ({
   users,
   currentUser,
   onNavigateToCrm,
+  onNavigateToCustomerData,
   onNavigateToSystemConfiguration,
   onConvertLead,
   initialCandidate = null,
@@ -269,6 +276,7 @@ export const Leads: React.FC<LeadsProps> = ({
   });
   const [scheduleError, setScheduleError] = useState('');
   const [savingSchedule, setSavingSchedule] = useState(false);
+  const [returningLeadId, setReturningLeadId] = useState('');
 
   useEffect(() => {
     const unsubscribe = dbService.subscribeCollection('leads', data => {
@@ -321,7 +329,7 @@ export const Leads: React.FC<LeadsProps> = ({
   );
 
   const accessibleLeads = useMemo(() => leads.filter(lead => {
-    if (lead.deleted) return false;
+    if (!isActiveLeadRecord(lead)) return false;
     if (currentUser.role === 'admin') return true;
     return lead.assignedSaleId === currentUser.uid;
   }), [currentUser.role, currentUser.uid, leads]);
@@ -708,11 +716,26 @@ export const Leads: React.FC<LeadsProps> = ({
       dbService.getCollection('customers'),
       dbService.getCollection('lead_candidates')
     ]);
+    const latestLeads = latestLeadData as LeadRecord[];
+    const latestCandidates = latestCandidateData as LeadCandidateRecord[];
+    const conversionCandidate = convertingCandidateId
+      ? latestCandidates.find(candidate => candidate.id === convertingCandidateId) || null
+      : null;
+    const reusableLead = conversionCandidate
+      ? latestLeads.find(lead => (
+          lead.returnedToRawData
+          && (
+            lead.id === conversionCandidate.returnedFromLeadId
+            || lead.returnedToRawDataCandidateId === conversionCandidate.id
+            || normalizeTaxCode(lead.taxCode) === normalizedTaxCode
+          )
+        )) || null
+      : null;
     const latestConflict = findTaxCodeConflict(
       form.taxCode,
-      latestLeadData as LeadRecord[],
+      latestLeads,
       latestCustomerData as CustomerRecord[],
-      editingLeadId,
+      editingLeadId || reusableLead?.id || '',
       editingLead?.convertedCustomerId || ''
     );
     if (latestConflict) {
@@ -725,7 +748,7 @@ export const Leads: React.FC<LeadsProps> = ({
         phone: form.phone,
         taxCode: normalizedTaxCode
       },
-      latestCandidateData as LeadCandidateRecord[],
+      latestCandidates,
       [],
       [],
       convertingCandidateId || editingLead?.sourceCandidateId || ''
@@ -798,6 +821,24 @@ export const Leads: React.FC<LeadsProps> = ({
     let savedLeadId = editingLeadId;
     if (editingLeadId) {
       await dbService.updateDocument('leads', editingLeadId, payload);
+    } else if (reusableLead) {
+      savedLeadId = reusableLead.id;
+      await dbService.updateDocument('leads', reusableLead.id, {
+        ...payload,
+        returnedToRawData: false,
+        returnedToRawDataAt: '',
+        returnedToRawDataCandidateId: '',
+        returnedToRawDataById: '',
+        returnedToRawDataByName: '',
+        activities: [{
+          id: `activity-returned-to-lead-${now}`,
+          type: 'returned_to_lead',
+          note: 'Tiếp nhận lại từ Dữ liệu thô',
+          occurredAt: now,
+          createdById: currentUser.uid,
+          createdByName: currentUser.displayName
+        }, ...(reusableLead.activities || [])]
+      });
     } else {
       try {
         const createdLead = await dbService.addDocumentIfAbsent(
@@ -954,6 +995,170 @@ export const Leads: React.FC<LeadsProps> = ({
     onConvertLead(lead);
   };
 
+  const handleReturnLeadToRawData = async (lead: LeadRecord) => {
+    const canManage = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
+    if (!canManage || lead.stage === 'converted' || lead.convertedCustomerId) return;
+    if (!window.confirm(`Chuyển Lead “${lead.companyName}” về Dữ liệu thô? Lead sẽ rời danh sách tiềm năng và có thể được tiếp nhận lại sau.`)) return;
+
+    setReturningLeadId(lead.id);
+    try {
+      const latestCandidates = await dbService.getCollection('lead_candidates') as LeadCandidateRecord[];
+      const linkedCandidate = latestCandidates.find(candidate => (
+        candidate.id === lead.sourceCandidateId
+        || candidate.convertedLeadId === lead.id
+        || candidate.returnedFromLeadId === lead.id
+      )) || null;
+      const duplicate = findCandidateDuplicate(
+        {
+          companyName: lead.companyName,
+          phone: lead.phone,
+          taxCode: lead.taxCode
+        },
+        latestCandidates,
+        [],
+        customers,
+        linkedCandidate?.id || ''
+      );
+      if (duplicate) {
+        const duplicateType = duplicate.recordType === 'customer' ? 'Khách hàng' : 'Dữ liệu thô';
+        window.alert(`${duplicateType} “${duplicate.companyName}” đã tồn tại. Vui lòng kiểm tra trước khi chuyển.`);
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const nextContactAt = lead.nextFollowUpAt || '';
+      const returnLog = {
+        id: `activity-returned-from-lead-${now}`,
+        occurredAt: now,
+        outcome: 'not_contacted' as const,
+        eventType: 'activity' as const,
+        activityType: 'note' as const,
+        contactResult: 'not_contacted' as const,
+        potentialLevel: '' as const,
+        description: `Chuyển về Dữ liệu thô từ Lead ${lead.id}`,
+        note: '',
+        nextContactAt,
+        createdById: currentUser.uid,
+        createdByName: currentUser.displayName
+      };
+      const candidatePayload = {
+        schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
+        companyName: lead.companyName.trim(),
+        contactPerson: lead.contactPerson.trim(),
+        contactPosition: (lead.contactPosition || '').trim(),
+        phone: lead.phone.trim(),
+        email: lead.email.trim(),
+        taxCode: normalizeTaxCode(lead.taxCode),
+        address: lead.address.trim(),
+        province: lead.province.trim(),
+        ward: (lead.ward || '').trim(),
+        industrialPark: (lead.industrialPark || '').trim(),
+        website: (lead.website || '').trim(),
+        businessSector: (lead.businessSector || '').trim(),
+        expectedProducts: (lead.expectedProducts || '').trim(),
+        source: linkedCandidate?.source || mapLeadSourceToCandidateSource(lead.source),
+        sourceUrl: linkedCandidate?.sourceUrl || '',
+        note: lead.note.trim(),
+        status: 'new' as const,
+        assignedSaleId: lead.assignedSaleId,
+        assignedSaleName: lead.assignedSaleName,
+        discoveredById: lead.discoveredById || lead.createdById,
+        discoveredByName: lead.discoveredByName || currentUser.displayName,
+        nextContactAt,
+        queuedNextContactAt: '',
+        taskStatus: nextContactAt ? 'pending' as const : 'dismissed' as const,
+        taskSource: nextContactAt ? 'sale_created' as const : '' as const,
+        taskAssignedAt: nextContactAt ? now : '',
+        taskAssignedById: nextContactAt ? currentUser.uid : '',
+        taskAssignedByName: nextContactAt ? currentUser.displayName : '',
+        taskCompletedAt: '',
+        taskCompletedById: '',
+        taskCompletedByName: '',
+        taskDismissedAt: '',
+        workQueueHidden: !nextContactAt,
+        workStatus: nextContactAt ? 'pending' as const : 'not_contacted' as const,
+        archived: false,
+        archivedAt: '',
+        archivedById: '',
+        archivedByName: '',
+        convertedLeadId: '',
+        convertedAt: '',
+        returnedFromLeadId: lead.id,
+        updatedBy: currentUser.displayName
+      };
+
+      let candidateId = linkedCandidate?.id || '';
+      if (linkedCandidate) {
+        await dbService.updateDocument('lead_candidates', linkedCandidate.id, {
+          ...candidatePayload,
+          contactLogs: [returnLog, ...(linkedCandidate.contactLogs || [])].slice(0, 50)
+        });
+      } else {
+        const createPayload = {
+          ...candidatePayload,
+          contactAttempts: 0,
+          lastContactAt: '',
+          lastContactOutcome: '',
+          lastContactNote: '',
+          contactLogs: [returnLog],
+          contactResult: 'not_contacted' as const,
+          potentialLevel: 'unrated' as const,
+          pinned: false,
+          createdAt: now,
+          createdById: currentUser.uid,
+          createdByName: currentUser.displayName
+        };
+        const createdCandidate = candidatePayload.taxCode
+          ? await dbService.addDocumentIfAbsent(
+              'lead_candidates',
+              createCandidateDocumentIdFromTaxCode(candidatePayload.taxCode),
+              createPayload
+            )
+          : await dbService.addDocument('lead_candidates', createPayload);
+        candidateId = createdCandidate.id;
+      }
+
+      await dbService.updateDocument('leads', lead.id, {
+        returnedToRawData: true,
+        returnedToRawDataAt: now,
+        returnedToRawDataCandidateId: candidateId,
+        returnedToRawDataById: currentUser.uid,
+        returnedToRawDataByName: currentUser.displayName,
+        reminderTime: '',
+        nextFollowUpAt: '',
+        activities: [{
+          id: `activity-returned-to-raw-data-${now}`,
+          type: 'returned_to_raw_data',
+          note: `Chuyển về Dữ liệu thô (${candidateId})`,
+          occurredAt: now,
+          createdById: currentUser.uid,
+          createdByName: currentUser.displayName
+        }, ...(lead.activities || [])],
+        updatedBy: currentUser.displayName
+      });
+
+      auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'leads',
+        action: 'lead_returned_to_raw_data',
+        summary: `Chuyển Lead ${lead.companyName} về Dữ liệu thô`,
+        targetType: 'lead',
+        targetId: lead.id,
+        targetLabel: lead.companyName,
+        changes: [{ field: 'returnedToRawDataCandidateId', label: 'Dữ liệu thô', after: candidateId }]
+      });
+      setSelectedLeadId('');
+      onNavigateToCustomerData();
+    } catch (error) {
+      console.error('[Leads] Could not return lead to raw data.', error);
+      window.alert(isDocumentAlreadyExistsError(error)
+        ? 'Doanh nghiệp này vừa được tạo trong Dữ liệu thô. Vui lòng kiểm tra lại danh sách.'
+        : 'Không thể chuyển Lead về Dữ liệu thô. Vui lòng thử lại hoặc kiểm tra quyền tài khoản.');
+    } finally {
+      setReturningLeadId('');
+    }
+  };
+
   const handleMarkFollowUpHandled = async (lead: LeadRecord) => {
     if (!lead.nextFollowUpAt || !Number.isFinite(getLeadScheduleTime(lead))) return;
     const canHandle = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
@@ -1093,6 +1298,16 @@ export const Leads: React.FC<LeadsProps> = ({
             <button type="button" className="btn btn-outline" onClick={() => openEditForm(selectedLead)}>
               <Pencil size={15} /> {t('Chỉnh sửa')}
             </button>
+            {!['converted'].includes(selectedLead.stage) && !selectedLead.convertedCustomerId && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => void handleReturnLeadToRawData(selectedLead)}
+                disabled={returningLeadId === selectedLead.id || (currentUser.role !== 'admin' && selectedLead.assignedSaleId !== currentUser.uid)}
+              >
+                <Undo2 size={15} /> {returningLeadId === selectedLead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô')}
+              </button>
+            )}
             {!['converted', 'lost'].includes(selectedLead.stage) && (
               <button type="button" className="btn btn-primary" onClick={() => handleConvertLead(selectedLead)}>
                 <UserCheck size={15} /> {t('Chuyển thành khách hàng')}
@@ -1412,6 +1627,15 @@ export const Leads: React.FC<LeadsProps> = ({
                             { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => setSelectedLeadId(lead.id) },
                             { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) },
                             { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) },
+                            {
+                              label: returningLeadId === lead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô'),
+                              icon: <Undo2 size={14} />,
+                              onSelect: () => void handleReturnLeadToRawData(lead),
+                              disabled: returningLeadId === lead.id
+                                || lead.stage === 'converted'
+                                || Boolean(lead.convertedCustomerId)
+                                || (currentUser.role !== 'admin' && lead.assignedSaleId !== currentUser.uid)
+                            },
                             {
                               label: t('Xóa Lead'),
                               icon: <Trash2 size={14} />,

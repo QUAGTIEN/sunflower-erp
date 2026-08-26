@@ -100,7 +100,7 @@ const AUDIT_PAGE_LABELS: Record<string, string> = {
   customer_data: 'Dữ liệu thô',
   commercial_map: 'Bản đồ thương mại',
   work_schedule: 'Lịch làm việc',
-  sales: 'Tiếp nhận đơn PO',
+  sales: 'Tạo đơn hàng',
   design: 'Yêu cầu thiết kế',
   design_library: 'Kho mẫu thiết kế',
   purchase: 'Mua hàng',
@@ -612,6 +612,7 @@ function App() {
             users={users}
             currentUser={user}
             onNavigateToCrm={() => setActivePage('crm')}
+            onNavigateToCustomerData={() => setActivePage('customer_data')}
             onNavigateToSystemConfiguration={() => setActivePage('system_configuration')}
             onConvertLead={handleLeadConversionRequest}
             initialCandidate={candidateLeadConversion}
@@ -1019,11 +1020,11 @@ function App() {
             <button 
               className={`sidebar-item ${activePage === 'sales' ? 'active' : ''}`}
               onClick={() => { setActivePage('sales'); setIsSidebarOpen(false); }}
-              title={t('Tiếp Nhận Đơn (Sale PO)')}
+              title={t('Tạo đơn hàng')}
             >
               <div className="sidebar-item-content">
                 <FileText size={16} />
-                <span className="sidebar-item-label">Tiếp nhận đơn</span>
+                <span className="sidebar-item-label">Tạo đơn hàng</span>
               </div>
               {getUnreadNotificationCount('sales') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('sales')}</span>}
             </button>

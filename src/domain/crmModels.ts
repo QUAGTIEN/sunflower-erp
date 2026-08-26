@@ -281,6 +281,11 @@ export interface LeadRecord extends UnknownRecord {
   followUpHandledByName: string;
   convertedCustomerId: string;
   convertedAt: string;
+  returnedToRawData: boolean;
+  returnedToRawDataAt: string;
+  returnedToRawDataCandidateId: string;
+  returnedToRawDataById: string;
+  returnedToRawDataByName: string;
   deleted: boolean;
   deletedAt: string;
   deletedById: string;
@@ -641,6 +646,11 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     followUpHandledByName: asText(source.followUpHandledByName),
     convertedCustomerId: asText(source.convertedCustomerId),
     convertedAt: asText(source.convertedAt),
+    returnedToRawData: source.returnedToRawData === true,
+    returnedToRawDataAt: asText(source.returnedToRawDataAt),
+    returnedToRawDataCandidateId: asText(source.returnedToRawDataCandidateId),
+    returnedToRawDataById: asText(source.returnedToRawDataById),
+    returnedToRawDataByName: asText(source.returnedToRawDataByName),
     deleted: source.deleted === true,
     deletedAt: asText(source.deletedAt),
     deletedById: asText(source.deletedById),
@@ -656,4 +666,8 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
 
 export const normalizeLeadRecords = (values: unknown): LeadRecord[] => (
   asArray(values).map(normalizeLeadRecord)
+);
+
+export const isActiveLeadRecord = (lead: LeadRecord): boolean => (
+  !lead.deleted && !lead.returnedToRawData
 );

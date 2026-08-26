@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Eye, EyeOff, Pencil, Plus, Save, Search, Settings2, UserRoundSearch, X } from 'lucide-react';
-import type {
-  LeadCustomFieldType,
-  LeadFilterDefinition,
-  LeadRecord
+import {
+  isActiveLeadRecord,
+  type LeadCustomFieldType,
+  type LeadFilterDefinition,
+  type LeadRecord
 } from '../domain/crmModels';
 import type { LeadCandidateRecord } from '../domain/leadCandidateModels';
 import {
@@ -624,12 +625,14 @@ export const LeadSalesWorkspace: React.FC<{
   const [month, setMonth] = useState('all');
   const years = Array.from(new Set([
     currentYear,
-    ...leads.map(lead => new Date(lead.createdAt).getFullYear()).filter(Number.isFinite),
+    ...leads.filter(isActiveLeadRecord).map(lead => new Date(lead.createdAt).getFullYear()).filter(Number.isFinite),
     ...candidates.map(candidate => new Date(candidate.createdAt).getFullYear()).filter(Number.isFinite)
   ])).sort((a, b) => b - a);
   const periodLeads = leads.filter(lead => {
     const createdAt = new Date(lead.createdAt);
-    return createdAt.getFullYear() === year && (month === 'all' || createdAt.getMonth() + 1 === Number(month));
+    return isActiveLeadRecord(lead)
+      && createdAt.getFullYear() === year
+      && (month === 'all' || createdAt.getMonth() + 1 === Number(month));
   });
   const periodCandidates = candidates.filter(candidate => {
     const createdAt = new Date(candidate.createdAt);

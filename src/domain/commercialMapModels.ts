@@ -1,4 +1,4 @@
-import type { CustomerRecord, LeadRecord } from './crmModels';
+import { isActiveLeadRecord, type CustomerRecord, type LeadRecord } from './crmModels';
 import type { LeadCandidateRecord } from './leadCandidateModels';
 import type { CompatiblePORecord } from './poCompatibility';
 import type { UserProfile } from '../services/firebaseService';
@@ -173,7 +173,7 @@ export const buildCommercialMapRecords = ({
     });
   });
 
-  leads.filter(lead => lead.stage !== 'converted' && !lead.convertedCustomerId).forEach(lead => {
+  leads.filter(lead => isActiveLeadRecord(lead) && lead.stage !== 'converted' && !lead.convertedCustomerId).forEach(lead => {
     const province = resolveCommercialProvince(lead.province, lead.address);
     records.push({
       key: `lead:${lead.id}`,

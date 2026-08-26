@@ -1,4 +1,4 @@
-import type { CustomerRecord, LeadRecord } from './crmModels';
+import { isActiveLeadRecord, type CustomerRecord, type LeadRecord } from './crmModels';
 
 export type TaxCodeConflictRecord = {
   id: string;
@@ -29,6 +29,7 @@ export const findTaxCodeConflict = (
 
   const duplicateLead = leads.find(lead => (
     lead.id !== excludedLeadId
+    && isActiveLeadRecord(lead)
     && normalizeTaxCode(lead.taxCode) === normalizedTaxCode
   ));
   if (duplicateLead) {
