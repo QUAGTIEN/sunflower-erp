@@ -1082,7 +1082,6 @@ export const Leads: React.FC<LeadsProps> = ({
           <div>
             <span>{editingLeadId ? t('CHỈNH SỬA HỒ SƠ') : convertingCandidateId ? t('CHUYỂN TỪ DỮ LIỆU KHÁCH HÀNG') : t('HỒ SƠ MỚI')}</span>
             <h1>{editingLeadId ? t('Chỉnh sửa khách hàng tiềm năng') : convertingCandidateId ? t('Tiếp nhận khách hàng thành Lead') : t('Thêm khách hàng tiềm năng')}</h1>
-            <p>{t('Ghi nhận đầy đủ hồ sơ, phân loại và lịch phụ trách trong một lần tạo Lead.')}</p>
           </div>
         </header>
 
