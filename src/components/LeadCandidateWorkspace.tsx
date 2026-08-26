@@ -80,6 +80,7 @@ interface LeadCandidateWorkspaceProps {
 interface CandidateFormState {
   companyName: string;
   contactPerson: string;
+  contactPosition: string;
   phone: string;
   email: string;
   taxCode: string;
@@ -88,6 +89,8 @@ interface CandidateFormState {
   ward: string;
   industrialPark: string;
   website: string;
+  businessSector: string;
+  expectedProducts: string;
   source: string;
   sourceUrl: string;
   assignedSaleId: string;
@@ -253,6 +256,7 @@ const createEmptyCandidateForm = (
 ): CandidateFormState => ({
   companyName: '',
   contactPerson: '',
+  contactPosition: '',
   phone: '',
   email: '',
   taxCode: '',
@@ -261,6 +265,8 @@ const createEmptyCandidateForm = (
   ward: '',
   industrialPark: '',
   website: '',
+  businessSector: '',
+  expectedProducts: '',
   source: 'Google Maps',
   sourceUrl: '',
   assignedSaleId: currentUser.role === 'sale' ? currentUser.uid : (ownerUsers[0]?.uid || currentUser.uid),
@@ -281,12 +287,15 @@ const matchesSearch = (candidate: LeadCandidateRecord, searchTerm: string) => {
   const haystack = [
     candidate.companyName,
     candidate.contactPerson,
+    candidate.contactPosition,
     candidate.phone,
     candidate.email,
     candidate.taxCode,
     candidate.address,
     candidate.province,
     candidate.website,
+    candidate.businessSector,
+    candidate.expectedProducts,
     candidate.source,
     candidate.note,
     candidate.assignedSaleName
@@ -748,6 +757,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setForm({
       companyName: candidate.companyName,
       contactPerson: candidate.contactPerson,
+      contactPosition: candidate.contactPosition || '',
       phone: candidate.phone,
       email: candidate.email,
       taxCode: candidate.taxCode,
@@ -756,6 +766,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       ward: candidate.ward || '',
       industrialPark: candidate.industrialPark || '',
       website: candidate.website,
+      businessSector: candidate.businessSector || '',
+      expectedProducts: candidate.expectedProducts || '',
       source: candidate.source || 'Google Maps',
       sourceUrl: candidate.sourceUrl,
       assignedSaleId: candidate.assignedSaleId,
@@ -812,6 +824,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
         companyName: form.companyName.trim(),
         contactPerson: form.contactPerson.trim(),
+        contactPosition: form.contactPosition.trim(),
         phone: form.phone.trim(),
         email: form.email.trim(),
         taxCode: normalizedTaxCode,
@@ -820,6 +833,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         ward: form.ward.trim(),
         industrialPark: form.industrialPark.trim(),
         website: form.website.trim(),
+        businessSector: form.businessSector.trim(),
+        expectedProducts: form.expectedProducts.trim(),
         source: form.source,
         sourceUrl: form.sourceUrl.trim(),
         note: form.note.trim(),
@@ -1198,10 +1213,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <Building2 size={18} />
-                <div><h2>Dữ liệu khách hàng</h2><p>Chỉ tên doanh nghiệp là bắt buộc; các thông tin tìm được có thể bổ sung linh hoạt.</p></div>
+                <div><h2>Thông tin doanh nghiệp</h2><p>Thông tin nhận diện, pháp lý và địa bàn của doanh nghiệp.</p></div>
               </div>
               <div className="lead-form-grid">
                 <div className="form-group lead-form-grid__wide"><label>Tên doanh nghiệp *</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
+                <div className="form-group"><label>Mã số thuế</label><input value={form.taxCode} readOnly={Boolean(editingCandidate?.taxCode)} onChange={event => updateForm('taxCode', event.target.value)} /></div>
+                <div className="form-group"><label>Website</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
+                <div className="form-group lead-form-grid__wide"><label>Lĩnh vực hoạt động</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder="Ví dụ: Bao bì, thực phẩm, điện tử..." /></div>
                 <BusinessLocationFields
                   className="lead-form-grid__wide"
                   province={form.province}
@@ -1209,12 +1227,33 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   industrialPark={form.industrialPark}
                   onChange={location => setForm(previous => ({ ...previous, ...location }))}
                 />
+                <div className="form-group lead-form-grid__wide"><label>Địa chỉ doanh nghiệp</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
+              </div>
+            </section>
+
+            <section className="lead-form-card">
+              <div className="lead-form-card__heading">
+                <UserRoundSearch size={18} />
+                <div><h2>Liên hệ và nguồn dữ liệu</h2><p>Đầu mối liên hệ và nơi tìm thấy thông tin doanh nghiệp.</p></div>
+              </div>
+              <div className="lead-form-grid">
                 <div className="form-group"><label>Người liên hệ</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
+                <div className="form-group"><label>Chức vụ</label><input value={form.contactPosition} onChange={event => updateForm('contactPosition', event.target.value)} placeholder="Ví dụ: Thu mua, Giám đốc..." /></div>
                 <div className="form-group"><label>Điện thoại</label><input type="tel" value={form.phone} onChange={event => updateForm('phone', event.target.value)} /></div>
                 <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} /></div>
                 <div className="form-group"><label>Nguồn tìm kiếm</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}>{CANDIDATE_SOURCES.map(source => <option key={source}>{source}</option>)}</select></div>
                 <div className="form-group"><label>Đường dẫn nguồn</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="Link Facebook, Google Maps..." /></div>
-                <div className="form-group lead-form-grid__wide"><label>Ghi chú</label><textarea rows={7} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Nhu cầu sơ bộ, khu vực, thông tin cần lưu ý khi liên hệ..." /></div>
+              </div>
+            </section>
+
+            <section className="lead-form-card">
+              <div className="lead-form-card__heading">
+                <Search size={18} />
+                <div><h2>Nhu cầu sơ bộ</h2><p>Thông tin phục vụ đánh giá trước khi chuyển thành Lead.</p></div>
+              </div>
+              <div className="lead-form-grid">
+                <div className="form-group lead-form-grid__wide"><label>Sản phẩm / nhu cầu quan tâm</label><textarea rows={4} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder="Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến..." /></div>
+                <div className="form-group lead-form-grid__wide"><label>Ghi chú</label><textarea rows={5} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Thông tin cần lưu ý trước khi liên hệ..." /></div>
               </div>
             </section>
 
@@ -1227,15 +1266,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group lead-form-grid__wide"><label>Người phụ trách *</label><select required value={form.assignedSaleId} disabled={currentUser.role === 'sale'} onChange={event => updateForm('assignedSaleId', event.target.value)}><option value="">Chưa phân công</option>{candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></div>
                 <div className="form-group lead-form-grid__wide"><label>Lịch hẹn xử lý</label><input type="datetime-local" value={form.nextContactAt} onChange={event => updateForm('nextContactAt', event.target.value)} /></div>
               </div>
-
-              <details className="lead-candidate-extra-fields">
-                <summary>Thông tin bổ sung (không bắt buộc)</summary>
-                <div className="lead-form-grid">
-                  <div className="form-group lead-form-grid__wide"><label>Mã số thuế</label><input value={form.taxCode} readOnly={Boolean(editingCandidate?.taxCode)} onChange={event => updateForm('taxCode', event.target.value)} /></div>
-                  <div className="form-group lead-form-grid__wide"><label>Địa chỉ</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
-                  <div className="form-group lead-form-grid__wide"><label>Website</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
-                </div>
-              </details>
+              <div className="lead-fixed-form-note">Cấu trúc biểu mẫu được cố định để dữ liệu giữa các Sale luôn thống nhất.</div>
             </section>
           </div>
 
@@ -1609,8 +1640,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               <section>
                 <h3>Thông tin liên hệ</h3>
                 <div className="lead-candidate-drawer__info">
+                  <span><UserRoundSearch size={13} /> Người liên hệ</span><strong>{selectedCandidate.contactPerson || '—'}</strong>
                   <span><Phone size={13} /> Điện thoại</span><strong>{selectedCandidate.phone || '—'}</strong>
                   <span><Mail size={13} /> Email</span><strong>{selectedCandidate.email || '—'}</strong>
+                  <span><UserRoundSearch size={13} /> Chức vụ</span><strong>{selectedCandidate.contactPosition || '—'}</strong>
+                  <span><Building2 size={13} /> Lĩnh vực</span><strong>{selectedCandidate.businessSector || '—'}</strong>
                   <span><MapPin size={13} /> Địa chỉ</span><strong>{selectedCandidate.address || '—'}</strong>
                   <span><Building2 size={13} /> Mã số thuế</span><strong>{selectedCandidate.taxCode || '—'}</strong>
                   <span><UserRoundSearch size={13} /> Sale phụ trách</span><strong>{selectedCandidate.assignedSaleName || 'Chưa phân công'}</strong>
@@ -1618,6 +1652,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   <span><Star size={13} /> Tiềm năng</span><strong>{POTENTIAL_LEVEL_LABELS[selectedCandidate.potentialLevel]}</strong>
                 </div>
                 {(selectedCandidate.sourceUrl || selectedCandidate.website) && <a className="lead-candidate-source-link" href={selectedCandidate.sourceUrl || selectedCandidate.website} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Mở nguồn dữ liệu</a>}
+              </section>
+
+              <section>
+                <h3>Nhu cầu sơ bộ</h3>
+                <p className="lead-candidate-drawer__note">{selectedCandidate.expectedProducts || 'Chưa ghi nhận nhu cầu sản phẩm.'}</p>
               </section>
 
               <section>

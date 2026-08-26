@@ -391,12 +391,16 @@
 
 .lead-form-page__content {
   display: grid;
-  grid-template-columns: minmax(390px, 1.25fr) minmax(280px, .75fr) minmax(310px, .85fr);
-  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: 14px;
 }
 
 .lead-form-card {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
   padding: 18px;
   border: 1px solid #dbe3ef;
   border-radius: 9px;
@@ -446,6 +450,14 @@
 
 .lead-form-grid__wide {
   grid-column: 1 / -1;
+}
+
+.lead-fixed-form-note {
+  margin-top: auto;
+  padding-top: 16px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .lead-tax-code-message {
@@ -1371,11 +1383,11 @@
 }
 
 .lead-candidate-form-page__content {
-  grid-template-columns: minmax(360px, 1.15fr) minmax(270px, .8fr) minmax(330px, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lead-candidate-quick-form {
-  grid-template-columns: minmax(480px, 1.5fr) minmax(300px, .75fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .lead-candidate-extra-fields {

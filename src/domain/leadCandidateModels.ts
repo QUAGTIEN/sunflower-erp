@@ -42,6 +42,7 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   schemaVersion: number;
   companyName: string;
   contactPerson: string;
+  contactPosition: string;
   phone: string;
   email: string;
   taxCode: string;
@@ -50,6 +51,8 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   ward: string;
   industrialPark: string;
   website: string;
+  businessSector: string;
+  expectedProducts: string;
   source: string;
   sourceUrl: string;
   note: string;
@@ -253,6 +256,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
     companyName: asText(source.companyName ?? source.name),
     contactPerson: asText(source.contactPerson),
+    contactPosition: asText(source.contactPosition),
     phone: asText(source.phone),
     email: asText(source.email),
     taxCode: normalizeTaxCode(source.taxCode),
@@ -261,6 +265,8 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     ward: asText(source.ward),
     industrialPark: asText(source.industrialPark),
     website: asText(source.website),
+    businessSector: asText(source.businessSector),
+    expectedProducts: asText(source.expectedProducts),
     source: asText(source.source),
     sourceUrl: asText(source.sourceUrl),
     note: asText(source.note),

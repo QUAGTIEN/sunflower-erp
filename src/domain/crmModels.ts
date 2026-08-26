@@ -250,8 +250,11 @@ export interface LeadRecord extends UnknownRecord {
   name: string;
   companyName: string;
   contactPerson: string;
+  contactPosition: string;
   phone: string;
   email: string;
+  website: string;
+  businessSector: string;
   stage: LeadStage;
   companySize: LeadCompanySize;
   source: string;
@@ -589,8 +592,11 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     name,
     companyName: name,
     contactPerson: asText(source.contactPerson, asText(source.name)),
+    contactPosition: asText(source.contactPosition),
     phone: asText(source.phone),
     email: asText(source.email),
+    website: asText(source.website),
+    businessSector: asText(source.businessSector),
     stage: normalizeLeadStage(source.stage),
     companySize: normalizeLeadCompanySize(source.companySize),
     source: asText(source.source),
