@@ -2699,6 +2699,105 @@ tr:hover td {
   gap: 18px;
 }
 
+.customer-onboarding-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 16px;
+}
+
+.customer-profile-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.customer-profile-card__body {
+  flex: 1;
+  padding: 16px;
+}
+
+.customer-profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 14px;
+}
+
+.customer-profile-fields .form-group,
+.customer-location-section .form-group {
+  min-width: 0;
+  margin: 0;
+}
+
+.customer-profile-fields .form-group > span,
+.customer-location-section .form-group > span {
+  display: block;
+  margin-bottom: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.customer-profile-fields input,
+.customer-profile-fields select,
+.customer-location-section input,
+.customer-location-section select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+}
+
+.customer-profile-field--wide {
+  grid-column: 1 / -1;
+}
+
+.customer-location-preview {
+  grid-column: 1 / -1;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #dbe3ef;
+  background: #f8fafc;
+}
+
+.customer-location-preview span {
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.customer-location-preview strong {
+  overflow: hidden;
+  color: #172554;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-onboarding-profile-grid > .customer-contact-editor {
+  grid-column: 1 / -1;
+  background: #fff;
+}
+
+@media (max-width: 1180px) {
+  .customer-onboarding-profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .customer-profile-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-profile-field--wide {
+    grid-column: auto;
+  }
+}
+
 .customer-data-section {
   overflow: hidden;
   background: #fff;
@@ -3198,6 +3297,7 @@ tr:hover td {
 /* Keep numeric cells calm: values remain editable without browser hover steppers. */
 .po-inline-grid input[type="number"],
 .customer-data-table input[type="number"],
+.customer-profile-fields input[type="number"],
 .customer-onboarding-items__table input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
@@ -3207,6 +3307,8 @@ tr:hover td {
 .po-inline-grid input[type="number"]::-webkit-outer-spin-button,
 .customer-data-table input[type="number"]::-webkit-inner-spin-button,
 .customer-data-table input[type="number"]::-webkit-outer-spin-button,
+.customer-profile-fields input[type="number"]::-webkit-inner-spin-button,
+.customer-profile-fields input[type="number"]::-webkit-outer-spin-button,
 .customer-onboarding-items__table input[type="number"]::-webkit-inner-spin-button,
 .customer-onboarding-items__table input[type="number"]::-webkit-outer-spin-button {
   margin: 0;
