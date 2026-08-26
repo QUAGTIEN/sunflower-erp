@@ -955,6 +955,19 @@ function App() {
             </button>
           )}
 
+          {isPageAllowed('customer_data') && (
+            <button
+              className={`sidebar-item ${activePage === 'customer_data' ? 'active' : ''}`}
+              onClick={() => { setActivePage('customer_data'); setIsSidebarOpen(false); }}
+              title={t('Dữ liệu thô')}
+            >
+              <div className="sidebar-item-content">
+                <Archive size={16} />
+                <span className="sidebar-item-label">Dữ liệu thô</span>
+              </div>
+            </button>
+          )}
+
           {isPageAllowed('leads') && (
             <button
               className={`sidebar-item ${activePage === 'leads' ? 'active' : ''}`}
@@ -966,19 +979,6 @@ function App() {
                 <span className="sidebar-item-label">Tiềm năng</span>
               </div>
               {getUnreadNotificationCount('leads') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('leads')}</span>}
-            </button>
-          )}
-
-          {isPageAllowed('customer_data') && (
-            <button
-              className={`sidebar-item ${activePage === 'customer_data' ? 'active' : ''}`}
-              onClick={() => { setActivePage('customer_data'); setIsSidebarOpen(false); }}
-              title={t('Dữ liệu thô')}
-            >
-              <div className="sidebar-item-content">
-                <Archive size={16} />
-                <span className="sidebar-item-label">Dữ liệu thô</span>
-              </div>
             </button>
           )}
 
