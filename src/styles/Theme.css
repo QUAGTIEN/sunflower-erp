@@ -29,9 +29,10 @@
 
 /* Keep the selected module calm: selection comes from the rail and tint, not bold text. */
 .sidebar-item.active {
-  color: #1d4ed8;
-  background: #eef2ff;
-  box-shadow: inset 2px 0 0 #2563eb;
+  color: #1e40af;
+  background: #dce7ff;
+  border: 0;
+  box-shadow: none;
   font-weight: 500;
 }
 
@@ -42,20 +43,20 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --bg-app: #0b1220;
-  --bg-card: #111c2e;
-  --bg-sidebar: #0d1728;
-  --bg-input: #0f1b2d;
+  --bg-app: #181b22;
+  --bg-card: #242932;
+  --bg-sidebar: #1d2129;
+  --bg-input: #2a303b;
 
   --color-primary: #60a5fa;
   --color-primary-dark: #dbeafe;
-  --color-primary-light: #172b4d;
-  --color-primary-text: #bfdbfe;
+  --color-primary-light: #263d60;
+  --color-primary-text: #d6e7ff;
 
-  --color-text-main: #e7eef8;
-  --color-text-muted: #9fb0c6;
-  --color-border: #33445d;
-  --color-border-light: #263750;
+  --color-text-main: #f0f3f7;
+  --color-text-muted: #bac2ce;
+  --color-border: #46505e;
+  --color-border-light: #363e4a;
 
   --color-success: #5eead4;
   --color-success-bg: #0d2b29;
@@ -71,11 +72,19 @@
   --color-info-border: #24536c;
 
   --erp-page-title-color: #f1f5f9;
-  --erp-table-header-bg: #18263b;
-  --erp-border-color: #33445d;
-  --erp-row-divider: #263750;
-  --erp-row-hover: #18283f;
+  --erp-table-header-bg: #303744;
+  --erp-border-color: #46505e;
+  --erp-row-divider: #39414d;
+  --erp-row-hover: #303845;
   --erp-focus-ring: rgb(96 165 250 / 20%);
+
+  --chart-surface: #20252d;
+  --chart-grid: #46505e;
+  --chart-axis: #667180;
+  --chart-label: #d7dde6;
+  --chart-muted-label: #b8c0cc;
+  --chart-value-label: #9cc5ff;
+  --chart-empty: #3a424e;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
   --shadow-md: 0 6px 16px rgb(0 0 0 / 24%);
@@ -98,8 +107,12 @@ html[data-theme='dark'] .sidebar-footer {
 }
 
 html[data-theme='dark'] .sidebar-logo {
-  background: #101c2f;
+  background: #20242c;
   border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .sidebar-logo-image {
+  filter: brightness(1.65) saturate(.9);
 }
 
 html[data-theme='dark'] .sidebar-item {
@@ -107,14 +120,15 @@ html[data-theme='dark'] .sidebar-item {
 }
 
 html[data-theme='dark'] .sidebar-item:hover {
-  color: #bfdbfe;
-  background: #17253b;
+  color: #e4efff;
+  background: #2a3545;
 }
 
 html[data-theme='dark'] .sidebar-item.active {
-  color: #bfdbfe;
-  background: #1a2d4a;
-  box-shadow: inset 2px 0 0 #60a5fa;
+  color: #ffffff;
+  background: #315d96;
+  border: 0;
+  box-shadow: none;
 }
 
 html[data-theme='dark'] .sidebar-item-content svg {
@@ -186,8 +200,8 @@ html[data-theme='dark'] textarea::placeholder {
 html[data-theme='dark'] input:disabled,
 html[data-theme='dark'] select:disabled,
 html[data-theme='dark'] textarea:disabled {
-  color: #718198;
-  background: #111a29;
+  color: #929dab;
+  background: #222731;
 }
 
 html[data-theme='dark'] .btn,
@@ -213,16 +227,21 @@ html[data-theme='dark'] .lang-toggle-btn:hover,
 html[data-theme='dark'] .theme-toggle-btn:hover,
 html[data-theme='dark'] .data-filter-button:hover,
 html[data-theme='dark'] .lead-candidate-column-button:hover {
-  color: #bfdbfe;
+  color: #e4efff;
   background-color: var(--color-primary-light);
-  border-color: #5276a8;
+  border-color: #6885aa;
 }
 
-html[data-theme='dark'] .btn-primary,
-html[data-theme='dark'] .btn-success {
+html[data-theme='dark'] .btn-primary {
   color: #ffffff;
   background-color: #2563eb;
   border-color: #3b82f6;
+}
+
+html[data-theme='dark'] .btn-success {
+  color: #ffffff;
+  background-color: #0f766e;
+  border-color: #2dd4bf;
 }
 
 html[data-theme='dark'] .btn-danger {
@@ -232,9 +251,9 @@ html[data-theme='dark'] .btn-danger {
 }
 
 html[data-theme='dark'] .header-user-badge {
-  color: #bfdbfe;
-  background: #172b4d;
-  border-color: #38557b;
+  color: #e4efff;
+  background: #2a3f5e;
+  border-color: #536d8d;
 }
 
 html[data-theme='dark'] .header-notification-button {
@@ -243,9 +262,9 @@ html[data-theme='dark'] .header-notification-button {
 
 html[data-theme='dark'] .header-notification-button:hover,
 html[data-theme='dark'] .header-notification-button.is-active {
-  color: #bfdbfe;
-  background: #172b4d;
-  border-color: #38557b;
+  color: #e4efff;
+  background: #2a3f5e;
+  border-color: #536d8d;
 }
 
 html[data-theme='dark'] .header-notification-button > span {
@@ -261,7 +280,7 @@ html[data-theme='dark'] .header-notification-list > button {
 
 html[data-theme='dark'] .header-notification-list > button:hover,
 html[data-theme='dark'] .header-notification-list > button.is-unread {
-  background: #172b4d;
+  background: #2a3f5e;
 }
 
 html[data-theme='dark'] .header-notification-content strong,
@@ -294,11 +313,19 @@ html[data-theme='dark'] table tbody tr:hover > td {
 }
 
 html[data-theme='dark'] table tbody tr.is-selected > td {
-  background: #19375e !important;
+  background: #29496f !important;
 }
 
 html[data-theme='dark'] table tbody tr.is-overdue > td {
-  background: #352127 !important;
+  background: #463036 !important;
+}
+
+html[data-theme='dark'] table strong {
+  color: inherit !important;
+}
+
+html[data-theme='dark'] .app-main a {
+  color: #9cc5ff;
 }
 
 html[data-theme='dark'] .row-action-menu__popover button {
@@ -307,8 +334,8 @@ html[data-theme='dark'] .row-action-menu__popover button {
 
 html[data-theme='dark'] .row-action-menu__popover button:hover:not(:disabled),
 html[data-theme='dark'] .row-action-menu__popover button:focus-visible {
-  color: #bfdbfe;
-  background: #172b4d;
+  color: #e4efff;
+  background: #2a3f5e;
 }
 
 html[data-theme='dark'] .data-filter-panel,
@@ -325,6 +352,103 @@ html[data-theme='dark'] .chat-suggestion-item {
   color: var(--color-text-main);
   background: var(--bg-card);
   border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .chat-channels-list,
+html[data-theme='dark'] .chat-box-panel,
+html[data-theme='dark'] .chat-box-header,
+html[data-theme='dark'] .chat-input-bar {
+  color: var(--color-text-main);
+  background: var(--bg-card);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .chat-messages-area {
+  background: #1f242d;
+}
+
+html[data-theme='dark'] .chat-channel-btn.active {
+  color: #ffffff;
+  background: #3f78bd;
+  font-weight: 500;
+}
+
+html[data-theme='dark'] .chat-task-card {
+  background: #2d3541;
+  border-color: #6ea8fe;
+}
+
+html[data-theme='dark'] .dashboard-view > .page-header > div:last-child {
+  background: var(--bg-card) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme='dark'] .dashboard-activity-feed__header {
+  color: #d6dde7;
+  background: #303744;
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .dashboard-activity-feed__row {
+  color: var(--color-text-main);
+  border-color: var(--color-border-light);
+}
+
+html[data-theme='dark'] .dashboard-activity-feed__row time,
+html[data-theme='dark'] .dashboard-activity-feed__row > span:last-child,
+html[data-theme='dark'] .dashboard-activity-feed__empty {
+  color: var(--color-text-muted);
+}
+
+html[data-theme='dark'] .dashboard-activity-feed__row strong {
+  color: #d6e7ff;
+}
+
+html[data-theme='dark'] .po-progress-card-btn {
+  color: var(--color-text-main) !important;
+  background: #2b313b !important;
+}
+
+html[data-theme='dark'] .work-schedule-tabs button,
+html[data-theme='dark'] .work-schedule-toolbar,
+html[data-theme='dark'] .work-schedule-message,
+html[data-theme='dark'] .work-schedule-modal > header,
+html[data-theme='dark'] .work-schedule-modal > footer {
+  color: var(--color-text-main);
+  background: var(--bg-card);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .work-schedule-tabs button.is-active {
+  color: #d6e7ff;
+  border-bottom-color: #6ea8fe;
+}
+
+html[data-theme='dark'] .work-schedule-search,
+html[data-theme='dark'] .work-schedule-check,
+html[data-theme='dark'] .work-schedule-week-nav,
+html[data-theme='dark'] .work-schedule-muted,
+html[data-theme='dark'] .work-schedule-table small,
+html[data-theme='dark'] .work-schedule-inline-controls span {
+  color: var(--color-text-muted);
+}
+
+html[data-theme='dark'] .work-schedule-table td strong,
+html[data-theme='dark'] .work-schedule-modal > header strong {
+  color: #d6e7ff;
+}
+
+html[data-theme='dark'] .work-schedule-form-grid label {
+  color: var(--color-text-main);
+}
+
+html[data-theme='dark'] .visual-chart-surface {
+  background: var(--chart-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .horizontal-bar-chart__track {
+  background: var(--chart-empty);
 }
 
 html[data-theme='dark'] ::-webkit-scrollbar-track {

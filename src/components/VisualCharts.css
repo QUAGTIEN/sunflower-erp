@@ -1,3 +1,34 @@
+:root {
+  --chart-surface: #ffffff;
+  --chart-grid: #e2e8f0;
+  --chart-axis: #cbd5e1;
+  --chart-label: #475569;
+  --chart-muted-label: #64748b;
+  --chart-value-label: #1e3a8a;
+  --chart-empty: #f1f5f9;
+}
+
+.visual-chart-surface {
+  width: 100%;
+  color: var(--color-text-main);
+  background: var(--chart-surface);
+}
+
+.visual-chart-surface--bar {
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+.visual-chart-surface--donut {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 16px;
+  border-radius: 6px;
+}
+
 .horizontal-bar-chart {
   display: flex;
   width: 100%;

@@ -29,7 +29,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
   const stepX = graphWidth / data.length;
 
   return (
-    <div style={{ width: '100%', overflowX: 'auto', backgroundColor: '#ffffff', padding: '10px 0' }}>
+    <div className="visual-chart-surface visual-chart-surface--bar">
       <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} width="100%" height={chartHeight} style={{ overflow: 'visible' }}>
         {/* Gradients */}
         <defs>
@@ -50,7 +50,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
                 y1={y} 
                 x2={chartWidth - paddingRight} 
                 y2={y} 
-                stroke="#e2e8f0" 
+                stroke="var(--chart-grid, #e2e8f0)"
                 strokeWidth="1" 
                 strokeDasharray="4 4"
               />
@@ -59,7 +59,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
                 y={y + 4} 
                 textAnchor="end" 
                 fontSize="11" 
-                fill="#64748b"
+                fill="var(--chart-muted-label, #64748b)"
                 fontWeight="500"
               >
                 {val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : val.toLocaleString()}{yAxisSuffix}
@@ -74,7 +74,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
           y1={paddingTop + graphHeight} 
           x2={chartWidth - paddingRight} 
           y2={paddingTop + graphHeight} 
-          stroke="#cbd5e1" 
+          stroke="var(--chart-axis, #cbd5e1)"
           strokeWidth="1.5"
         />
 
@@ -104,7 +104,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
                   textAnchor="middle"
                   fontSize="10"
                   fontWeight="600"
-                  fill="#1e3a8a"
+                  fill="var(--chart-value-label, #1e3a8a)"
                 >
                   {item.value >= 1000000 ? `${(item.value / 1000000).toFixed(1)}M` : item.value.toLocaleString()}
                 </text>
@@ -115,7 +115,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
                 y={paddingTop + graphHeight + 16}
                 textAnchor="middle"
                 fontSize="10"
-                fill="#475569"
+                fill="var(--chart-label, #475569)"
                 fontWeight="500"
               >
                 {item.label}
@@ -147,7 +147,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data }) => {
   let accumulatedAngle = 0;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', flexWrap: 'wrap', backgroundColor: '#ffffff', padding: '16px', borderRadius: '6px' }}>
+    <div className="visual-chart-surface visual-chart-surface--donut">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
         {total === 0 ? (
           // Empty state placeholder donut
@@ -156,7 +156,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data }) => {
             cy={center}
             r={radius}
             fill="transparent"
-            stroke="#f1f5f9"
+            stroke="var(--chart-empty, #f1f5f9)"
             strokeWidth={strokeWidth}
           />
         ) : (
