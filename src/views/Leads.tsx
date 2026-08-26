@@ -3,6 +3,7 @@ import {
   AlertCircle,
   Building2,
   CalendarClock,
+  CheckCircle2,
   Eye,
   FileText,
   List,
@@ -12,6 +13,7 @@ import {
   Search,
   Settings2,
   Tags,
+  Trash2,
   UserCheck,
   Users,
   X
@@ -319,6 +321,7 @@ export const Leads: React.FC<LeadsProps> = ({
   );
 
   const accessibleLeads = useMemo(() => leads.filter(lead => {
+    if (lead.deleted) return false;
     if (currentUser.role === 'admin') return true;
     return lead.assignedSaleId === currentUser.uid;
   }), [currentUser.role, currentUser.uid, leads]);
@@ -551,6 +554,9 @@ export const Leads: React.FC<LeadsProps> = ({
         dbService.updateDocument('leads', scheduleLead.id, {
           reminderTime: nextFollowUpAt,
           nextFollowUpAt,
+          followUpHandledAt: '',
+          followUpHandledById: '',
+          followUpHandledByName: '',
           activities: [{
             id: `activity-schedule-${now}`,
             type: 'schedule',
@@ -780,6 +786,9 @@ export const Leads: React.FC<LeadsProps> = ({
       sourceCandidateId: convertingCandidateId || editingLead?.sourceCandidateId || '',
       reminderTime: form.nextFollowUpAt ? new Date(form.nextFollowUpAt).toISOString() : '',
       nextFollowUpAt: form.nextFollowUpAt ? new Date(form.nextFollowUpAt).toISOString() : '',
+      followUpHandledAt: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledAt || ''),
+      followUpHandledById: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledById || ''),
+      followUpHandledByName: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledByName || ''),
       note: form.note.trim(),
       files: uploadingFiles,
       updatedAt: now,
@@ -945,6 +954,81 @@ export const Leads: React.FC<LeadsProps> = ({
     onConvertLead(lead);
   };
 
+  const handleMarkFollowUpHandled = async (lead: LeadRecord) => {
+    if (!lead.nextFollowUpAt || !Number.isFinite(getLeadScheduleTime(lead))) return;
+    const canHandle = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
+    if (!canHandle) return;
+
+    const now = new Date().toISOString();
+    const handledSchedule = lead.nextFollowUpAt;
+    try {
+      await dbService.updateDocument('leads', lead.id, {
+        reminderTime: '',
+        nextFollowUpAt: '',
+        lastFollowUpAt: handledSchedule,
+        followUpHandledAt: now,
+        followUpHandledById: currentUser.uid,
+        followUpHandledByName: currentUser.displayName,
+        activities: [{
+          id: `activity-follow-up-handled-${now}`,
+          type: 'follow_up_handled',
+          note: `Đã xử lý lịch chăm sóc ${formatDateTime(handledSchedule)}`,
+          occurredAt: now,
+          createdById: currentUser.uid,
+          createdByName: currentUser.displayName
+        }, ...(lead.activities || [])],
+        updatedAt: now,
+        updatedBy: currentUser.displayName
+      });
+
+      auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'leads',
+        action: 'lead_follow_up_handled',
+        summary: `Đã xử lý lịch chăm sóc Lead ${lead.companyName}`,
+        targetType: 'lead',
+        targetId: lead.id,
+        targetLabel: lead.companyName,
+        changes: [{ field: 'nextFollowUpAt', label: 'Lịch chăm sóc', before: handledSchedule, after: 'Đã xử lý' }]
+      });
+    } catch (error) {
+      console.error('[Leads] Could not mark follow-up as handled.', error);
+      window.alert('Không thể đánh dấu lịch chăm sóc đã xử lý. Vui lòng thử lại.');
+    }
+  };
+
+  const handleDeleteLead = async (lead: LeadRecord) => {
+    const canDelete = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
+    if (!canDelete) return;
+    if (!window.confirm(`Đưa Lead “${lead.companyName}” vào Thùng rác?`)) return;
+
+    const now = new Date().toISOString();
+    try {
+      await dbService.updateDocument('leads', lead.id, {
+        deleted: true,
+        deletedAt: now,
+        deletedById: currentUser.uid,
+        deletedByName: currentUser.displayName,
+        updatedAt: now,
+        updatedBy: currentUser.displayName
+      });
+      if (selectedLeadId === lead.id) setSelectedLeadId('');
+
+      auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'leads',
+        action: 'lead_deleted',
+        summary: `Đưa Lead ${lead.companyName} vào Thùng rác`,
+        targetType: 'lead',
+        targetId: lead.id,
+        targetLabel: lead.companyName
+      });
+    } catch (error) {
+      console.error('[Leads] Could not delete lead.', error);
+      window.alert('Không thể xóa Lead. Vui lòng thử lại hoặc kiểm tra quyền tài khoản.');
+    }
+  };
+
   const clearFilters = () => {
     setSearchTerm('');
     setDynamicFilters({});
@@ -965,14 +1049,26 @@ export const Leads: React.FC<LeadsProps> = ({
   };
 
   const renderFollowUp = (lead: LeadRecord) => {
+    if (lead.followUpHandledAt) {
+      return <span className="lead-follow-up-handled">Đã xử lý</span>;
+    }
     if (!lead.nextFollowUpAt || !Number.isFinite(getLeadScheduleTime(lead))) {
       return <span>Chưa đặt lịch</span>;
     }
     const overdue = isOverdue(lead);
     return (
-      <span className={overdue ? 'lead-date-overdue' : 'lead-date-upcoming'}>
+      <button
+        type="button"
+        className={`lead-follow-up-action ${overdue ? 'lead-date-overdue' : 'lead-date-upcoming'}`}
+        title="Đánh dấu lịch chăm sóc đã xử lý"
+        onClick={event => {
+          event.stopPropagation();
+          void handleMarkFollowUpHandled(lead);
+        }}
+      >
+        <CheckCircle2 size={14} />
         {overdue ? 'Quá hạn' : 'Sắp tới lịch'} · {formatDateTime(lead.nextFollowUpAt)}
-      </span>
+      </button>
     );
   };
 
@@ -1315,7 +1411,14 @@ export const Leads: React.FC<LeadsProps> = ({
                           actions={[
                             { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => setSelectedLeadId(lead.id) },
                             { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) },
-                            { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) }
+                            { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) },
+                            {
+                              label: t('Xóa Lead'),
+                              icon: <Trash2 size={14} />,
+                              onSelect: () => void handleDeleteLead(lead),
+                              danger: true,
+                              disabled: currentUser.role !== 'admin' && lead.assignedSaleId !== currentUser.uid
+                            }
                           ]}
                         />
                       </td>

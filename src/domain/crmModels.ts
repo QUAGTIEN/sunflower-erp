@@ -275,8 +275,16 @@ export interface LeadRecord extends UnknownRecord {
   note: string;
   reminderTime: string;
   nextFollowUpAt: string;
+  lastFollowUpAt: string;
+  followUpHandledAt: string;
+  followUpHandledById: string;
+  followUpHandledByName: string;
   convertedCustomerId: string;
   convertedAt: string;
+  deleted: boolean;
+  deletedAt: string;
+  deletedById: string;
+  deletedByName: string;
   activities: LeadActivityRecord[];
   files: LeadFileRecord[];
   createdAt: string;
@@ -627,8 +635,16 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     note: asText(source.note),
     reminderTime,
     nextFollowUpAt: reminderTime,
+    lastFollowUpAt: asText(source.lastFollowUpAt),
+    followUpHandledAt: asText(source.followUpHandledAt),
+    followUpHandledById: asText(source.followUpHandledById),
+    followUpHandledByName: asText(source.followUpHandledByName),
     convertedCustomerId: asText(source.convertedCustomerId),
     convertedAt: asText(source.convertedAt),
+    deleted: source.deleted === true,
+    deletedAt: asText(source.deletedAt),
+    deletedById: asText(source.deletedById),
+    deletedByName: asText(source.deletedByName),
     activities: asArray(source.activities).map(normalizeLeadActivity),
     files: asArray(source.files).map(normalizeLeadFile),
     createdAt: asText(source.createdAt),

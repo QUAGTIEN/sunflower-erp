@@ -15,8 +15,40 @@ interface DeletedItem {
   name: string;
   deletedAt: string;
   details: string;
-  originalData: any;
+  originalData: RecycleRecord | DeletedProductData;
 }
+
+interface RecycleRecord extends Record<string, unknown> {
+  id: string;
+  deleted?: boolean;
+  deletedAt?: string;
+  updatedAt?: string;
+  createdAt?: string;
+  products?: unknown[];
+}
+
+interface DeletedProductData {
+  customerId: string;
+  product: RecycleRecord;
+}
+
+interface RecycleCollectionDefinition {
+  name: string;
+  label: string;
+  getName: (item: RecycleRecord) => string;
+}
+
+const asText = (value: unknown): string => typeof value === 'string' ? value : '';
+const readName = (item: RecycleRecord, ...keys: string[]): string => (
+  keys.map(key => asText(item[key])).find(Boolean) || item.id
+);
+
+const toRecycleRecord = (value: unknown): RecycleRecord | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  const id = asText(source.id);
+  return id ? { ...source, id } : null;
+};
 
 export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }) => {
   const { t } = useLanguage();
@@ -25,18 +57,19 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const collections = [
-      { name: 'customers', label: 'Khách hàng', getName: (item: any) => item.name || item.code || item.id },
-      { name: 'pos', label: 'Đơn đặt hàng PO', getName: (item: any) => item.poCode || item.id },
-      { name: 'suppliers', label: 'Nhà cung cấp', getName: (item: any) => item.name || item.code || item.id },
-      { name: 'purchase_orders', label: 'Đơn mua hàng NCC', getName: (item: any) => item.purCode || item.id },
-      { name: 'production_commands', label: 'Lệnh sản xuất LSX', getName: (item: any) => item.cmdCode || item.id },
-      { name: 'deliveries', label: 'Phiếu giao hàng', getName: (item: any) => item.deliveryCode || item.id },
-      { name: 'invoices', label: 'Hóa đơn Kế toán', getName: (item: any) => item.invoiceCode || item.invoiceNo || item.id }
+    const collections: RecycleCollectionDefinition[] = [
+      { name: 'customers', label: 'Khách hàng', getName: item => readName(item, 'companyName', 'name', 'customerCode', 'code') },
+      { name: 'leads', label: 'Khách hàng tiềm năng', getName: item => readName(item, 'companyName', 'name') },
+      { name: 'pos', label: 'Đơn đặt hàng PO', getName: item => readName(item, 'poCode') },
+      { name: 'suppliers', label: 'Nhà cung cấp', getName: item => readName(item, 'supplierName', 'name', 'code') },
+      { name: 'purchase_orders', label: 'Đơn mua hàng NCC', getName: item => readName(item, 'purCode') },
+      { name: 'production_commands', label: 'Lệnh sản xuất LSX', getName: item => readName(item, 'cmdCode') },
+      { name: 'deliveries', label: 'Phiếu giao hàng', getName: item => readName(item, 'deliveryCode') },
+      { name: 'invoices', label: 'Hóa đơn Kế toán', getName: item => readName(item, 'invoiceCode', 'invoiceNo') }
     ];
 
     const unsubs: (() => void)[] = [];
-    const rawData: { [key: string]: any[] } = {};
+    const rawData: Record<string, RecycleRecord[]> = {};
 
     const updateList = () => {
       const allDeleted: DeletedItem[] = [];
@@ -56,14 +89,15 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
           }
 
           // Scan for soft-deleted products inside active customers
-          if (col.name === 'customers' && item.deleted !== true && item.products && Array.isArray(item.products)) {
-            item.products.forEach((prod: any) => {
+          if (col.name === 'customers' && item.deleted !== true && Array.isArray(item.products)) {
+            item.products.map(toRecycleRecord).filter((product): product is RecycleRecord => Boolean(product)).forEach(prod => {
               if (prod.deleted === true) {
+                const companyName = readName(item, 'companyName', 'name');
                 allDeleted.push({
                   id: `${item.id}::${prod.id}`,
                   collection: 'customer_products',
                   typeLabel: 'Mã sản phẩm khách hàng',
-                  name: `[${item.companyName || item.name || item.id}] ${prod.productCode} - ${prod.productName}`,
+                  name: `[${companyName}] ${readName(prod, 'productCode')} - ${readName(prod, 'productName')}`,
                   deletedAt: prod.deletedAt || item.updatedAt || item.createdAt || 'N/A',
                   details: JSON.stringify({ customerId: item.id, product: prod }),
                   originalData: { customerId: item.id, product: prod }
@@ -81,7 +115,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
 
     collections.forEach(col => {
       const unsub = dbService.subscribeCollection(col.name, (data) => {
-        rawData[col.name] = data;
+        rawData[col.name] = data.map(toRecycleRecord).filter((item): item is RecycleRecord => Boolean(item));
         updateList();
       });
       unsubs.push(unsub);
@@ -98,13 +132,15 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
     }
     try {
       if (item.collection === 'customer_products') {
-        const { customerId, product } = item.originalData;
-        const customer = await dbService.getDocument('customers', customerId);
+        const { customerId, product } = item.originalData as DeletedProductData;
+        const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
         if (customer) {
-          const updatedProducts = (customer.products || []).map((p: any) => {
+          const updatedProducts = (customer.products || []).map(toRecycleRecord).filter((entry): entry is RecycleRecord => Boolean(entry)).map(p => {
             if (p.id === product.id) {
-              const { deleted, deletedAt, ...rest } = p;
-              return rest;
+              const restoredProduct = { ...p };
+              delete restoredProduct.deleted;
+              delete restoredProduct.deletedAt;
+              return restoredProduct;
             }
             return p;
           });
@@ -130,10 +166,13 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
     }
     try {
       if (item.collection === 'customer_products') {
-        const { customerId, product } = item.originalData;
-        const customer = await dbService.getDocument('customers', customerId);
+        const { customerId, product } = item.originalData as DeletedProductData;
+        const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
         if (customer) {
-          const updatedProducts = (customer.products || []).filter((p: any) => p.id !== product.id);
+          const updatedProducts = (customer.products || [])
+            .map(toRecycleRecord)
+            .filter((entry): entry is RecycleRecord => Boolean(entry))
+            .filter(entry => entry.id !== product.id);
           await dbService.updateDocument('customers', customerId, { products: updatedProducts });
           alert('Đã xóa vĩnh viễn sản phẩm thành công!');
           onRefresh();
@@ -189,6 +228,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
               <option value="all">-- {t('Tất cả')} --</option>
               <option value="pos">{t('Đơn đặt hàng PO')}</option>
               <option value="customers">{t('Khách hàng')}</option>
+              <option value="leads">{t('Khách hàng tiềm năng')}</option>
               <option value="customer_products">{t('Mã sản phẩm khách hàng')}</option>
               <option value="suppliers">{t('Nhà cung cấp')}</option>
               <option value="purchase_orders">{t('Đơn mua hàng NCC')}</option>

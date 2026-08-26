@@ -206,6 +206,34 @@
   font-weight: 700;
 }
 
+.lead-follow-up-action {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 5px;
+  margin: 0 !important;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lead-follow-up-action:hover {
+  text-decoration: underline;
+}
+
+.lead-follow-up-action:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 2px;
+}
+
+.lead-follow-up-handled {
+  color: #94a3b8 !important;
+  font-weight: 500;
+}
+
 .lead-empty {
   padding: 28px !important;
   color: #94a3b8;
