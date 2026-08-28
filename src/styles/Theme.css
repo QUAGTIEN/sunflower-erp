@@ -357,10 +357,38 @@ html[data-theme='dark'] .chat-suggestion-item {
 html[data-theme='dark'] .chat-channels-list,
 html[data-theme='dark'] .chat-box-panel,
 html[data-theme='dark'] .chat-box-header,
-html[data-theme='dark'] .chat-input-bar {
+html[data-theme='dark'] .chat-input-bar,
+html[data-theme='dark'] .chat-pending-attachments,
+html[data-theme='dark'] .chat-attachment-error {
   color: var(--color-text-main);
   background: var(--bg-card);
   border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .chat-attach-button,
+html[data-theme='dark'] .chat-pending-attachment {
+  color: var(--color-text-main);
+  background: #2b313b;
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .chat-attach-button:hover:not(:disabled),
+html[data-theme='dark'] .chat-attach-button:focus-visible {
+  color: #ffffff;
+  background: #3f78bd;
+  border-color: #3f78bd;
+}
+
+html[data-theme='dark'] .chat-pending-attachment > button {
+  color: var(--color-text-muted);
+  background: #202733;
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .chat-file-attachment {
+  color: var(--color-text-main);
+  background: #2d3541;
+  border-color: #4a5568;
 }
 
 html[data-theme='dark'] .chat-messages-area {

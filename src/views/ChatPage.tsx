@@ -3,8 +3,38 @@ import { dbService, UserProfile } from '../services/firebaseService';
 import { auditService } from '../services/auditService';
 import { useLanguage } from '../context/LanguageContext';
 import { getPOQueueLabel } from '../domain/poWorkflow';
-import { Plus } from 'lucide-react';
+import { Download, FileText, Paperclip, Plus, X } from 'lucide-react';
 import { formatTime } from '../domain/dateFormatting';
+import {
+  CHAT_ATTACHMENT_MAX_FILES,
+  CHAT_ATTACHMENT_MAX_FILE_SIZE,
+  deleteChatAttachments,
+  formatChatAttachmentSize,
+  type ChatAttachmentRecord,
+  uploadChatAttachments
+} from '../services/chatAttachmentService';
+
+interface PendingChatAttachment {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
+
+const createPendingAttachmentId = () => (
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+);
+
+const createMessageId = () => (
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? `message-${crypto.randomUUID()}`
+    : `message-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+);
+
+const isSafeAttachmentUrl = (url: string) => (
+  /^https:\/\//i.test(url) || /^data:/i.test(url)
+);
 
 interface ChatPageProps {
   currentUser: UserProfile;
@@ -31,7 +61,22 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [activeChannelId, setActiveChannelId] = useState<string>('all');
   const [messageText, setMessageText] = useState('');
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingChatAttachment[]>([]);
+  const [attachmentError, setAttachmentError] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const pendingAttachmentsRef = useRef<PendingChatAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    pendingAttachmentsRef.current = pendingAttachments;
+  }, [pendingAttachments]);
+
+  useEffect(() => () => {
+    pendingAttachmentsRef.current.forEach(attachment => {
+      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+    });
+  }, []);
 
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -94,18 +139,74 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
   };
 
-  const handleRecallMessage = async (msgId: string) => {
+  const clearPendingAttachments = () => {
+    setPendingAttachments(current => {
+      current.forEach(attachment => {
+        if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+      });
+      return [];
+    });
+    setAttachmentError('');
+    if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+  };
+
+  const removePendingAttachment = (attachmentId: string) => {
+    setPendingAttachments(current => current.filter(attachment => {
+      if (attachment.id !== attachmentId) return true;
+      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+      return false;
+    }));
+    setAttachmentError('');
+  };
+
+  const handleAttachmentSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (selectedFiles.length === 0) return;
+
+    const availableSlots = CHAT_ATTACHMENT_MAX_FILES - pendingAttachments.length;
+    if (availableSlots <= 0) {
+      setAttachmentError(t(`Mỗi tin nhắn chỉ được đính kèm tối đa ${CHAT_ATTACHMENT_MAX_FILES} tệp.`));
+      return;
+    }
+
+    const oversizedFiles = selectedFiles.filter(file => file.size > CHAT_ATTACHMENT_MAX_FILE_SIZE);
+    const acceptedFiles = selectedFiles
+      .filter(file => file.size <= CHAT_ATTACHMENT_MAX_FILE_SIZE)
+      .slice(0, availableSlots);
+
+    if (oversizedFiles.length > 0) {
+      setAttachmentError(t('Mỗi tệp đính kèm phải nhỏ hơn hoặc bằng 10 MB.'));
+    } else if (selectedFiles.length > availableSlots) {
+      setAttachmentError(t(`Mỗi tin nhắn chỉ được đính kèm tối đa ${CHAT_ATTACHMENT_MAX_FILES} tệp.`));
+    } else {
+      setAttachmentError('');
+    }
+
+    setPendingAttachments(current => [
+      ...current,
+      ...acceptedFiles.map(file => ({
+        id: createPendingAttachmentId(),
+        file,
+        previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
+      }))
+    ]);
+  };
+
+  const handleRecallMessage = async (message: { id: string; attachments?: ChatAttachmentRecord[] }) => {
     if (window.confirm(t('Bạn có chắc chắn muốn thu hồi tin nhắn này?'))) {
-      await dbService.updateDocument('messages', msgId, { recalled: true });
+      await dbService.updateDocument('messages', message.id, { recalled: true });
+      await deleteChatAttachments(message.attachments || []);
     }
   };
 
-  const handleDeleteMessage = async (message: { id: string; senderName?: string }) => {
+  const handleDeleteMessage = async (message: { id: string; senderName?: string; attachments?: ChatAttachmentRecord[] }) => {
     if (currentUser.role !== 'admin') return;
     if (!window.confirm(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.'))) return;
 
     try {
       await dbService.deleteDocument('messages', message.id);
+      await deleteChatAttachments(message.attachments || []);
       auditService.recordSafely(currentUser, {
         category: 'administration',
         module: 'system',
@@ -198,30 +299,56 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
+    if ((!messageText.trim() && pendingAttachments.length === 0) || isSendingMessage) return;
 
-    const newMessage = {
-      type: 'channel',
-      targetId: activeChannelId,
-      senderId: currentUser.uid,
-      senderName: currentUser.displayName,
-      senderRole: currentUser.role,
-      messageText: messageText.trim(),
-      createdAt: new Date().toISOString(),
-      ...(replyingTo ? {
-        replyTo: {
-          id: replyingTo.id,
-          senderName: replyingTo.senderName,
-          text: replyingTo.messageText
-        }
-      } : {})
-    };
+    const messageId = createMessageId();
+    const filesToUpload = pendingAttachments.map(attachment => attachment.file);
+    let uploadedAttachments: ChatAttachmentRecord[] = [];
+    setIsSendingMessage(true);
+    setAttachmentError('');
 
-    await dbService.addDocument('messages', newMessage);
-    setMessageText('');
-    setReplyingTo(null);
-    localStorage.setItem(`erp_last_read_ch_${currentUser.uid}_${activeChannelId}`, new Date().toISOString());
-    setTimeout(scrollToBottom, 50);
+    try {
+      uploadedAttachments = await uploadChatAttachments(
+        filesToUpload,
+        activeChannelId,
+        messageId,
+        currentUser.uid
+      );
+
+      const newMessage = {
+        id: messageId,
+        type: 'channel',
+        targetId: activeChannelId,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName,
+        senderRole: currentUser.role,
+        messageText: messageText.trim(),
+        attachments: uploadedAttachments,
+        createdAt: new Date().toISOString(),
+        ...(replyingTo ? {
+          replyTo: {
+            id: replyingTo.id,
+            senderName: replyingTo.senderName,
+            text: replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')
+          }
+        } : {})
+      };
+
+      await dbService.addDocument('messages', newMessage);
+      setMessageText('');
+      setReplyingTo(null);
+      clearPendingAttachments();
+      localStorage.setItem(`erp_last_read_ch_${currentUser.uid}_${activeChannelId}`, new Date().toISOString());
+      setTimeout(scrollToBottom, 50);
+    } catch (error) {
+      await deleteChatAttachments(uploadedAttachments);
+      console.error('[Chat] Could not send attachments.', error);
+      setAttachmentError(error instanceof Error
+        ? error.message
+        : t('Không thể gửi tệp đính kèm. Vui lòng thử lại.'));
+    } finally {
+      setIsSendingMessage(false);
+    }
   };
 
   // Helper to parse message text for PO or LSX codes and retrieve matching documents
@@ -274,6 +401,50 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             </div>
           );
         })}
+      </div>
+    );
+  };
+
+  const renderMessageAttachments = (attachments: ChatAttachmentRecord[] = []) => {
+    const safeAttachments = attachments.filter(attachment => (
+      attachment?.url && isSafeAttachmentUrl(attachment.url)
+    ));
+    if (safeAttachments.length === 0) return null;
+
+    return (
+      <div className="chat-message-attachments">
+        {safeAttachments.map(attachment => (
+          attachment.kind === 'image' ? (
+            <a
+              key={attachment.id}
+              className="chat-image-attachment"
+              href={attachment.url}
+              target="_blank"
+              rel="noreferrer"
+              title={t('Mở ảnh')}
+            >
+              <img src={attachment.url} alt={attachment.name} loading="lazy" />
+              <span>{attachment.name}</span>
+            </a>
+          ) : (
+            <a
+              key={attachment.id}
+              className="chat-file-attachment"
+              href={attachment.url}
+              target="_blank"
+              rel="noreferrer"
+              download={attachment.name}
+              title={t('Mở hoặc tải tệp')}
+            >
+              <FileText size={22} aria-hidden="true" />
+              <span className="chat-file-attachment__details">
+                <strong>{attachment.name}</strong>
+                <small>{formatChatAttachmentSize(attachment.size)}</small>
+              </span>
+              <Download size={16} aria-hidden="true" />
+            </a>
+          )
+        ))}
       </div>
     );
   };
@@ -337,7 +508,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               <button
                 key={ch.id}
                 className={`chat-channel-btn ${activeChannelId === ch.id ? 'active' : ''}`}
-                onClick={() => setActiveChannelId(ch.id)}
+                onClick={() => {
+                  clearPendingAttachments();
+                  setReplyingTo(null);
+                  setActiveChannelId(ch.id);
+                }}
               >
                 <span># {ch.name}</span>
                 {count > 0 && <span className="chat-channel-badge">{count}</span>}
@@ -377,7 +552,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 <div key={msg.id} className={`chat-message-row ${isMe ? 'me' : 'other'}`}>
                   <div className="chat-message-meta" style={{ display: 'flex', gap: '6px', justifyContent: isMe ? 'flex-end' : 'flex-start', alignItems: 'center' }}>
                     <span style={{ fontWeight: 600 }}>{msg.senderName}</span>
-                    <span style={{ fontSize: '10px', opacity: 0.8 }}>({msg.senderRole.toUpperCase()})</span>
+                    <span style={{ fontSize: '10px', opacity: 0.8 }}>({String(msg.senderRole || '').toUpperCase()})</span>
                     <span>•</span>
                     <span>{formatTime(msg.createdAt)}</span>
                     {!msg.recalled && (
@@ -393,7 +568,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                           <>
                             <span>•</span>
                             <button 
-                              onClick={() => handleRecallMessage(msg.id)}
+                              onClick={() => void handleRecallMessage(msg)}
                               style={{ border: 'none', background: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
                             >
                               {t('Thu hồi')}
@@ -437,10 +612,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap'
                           }}>
-                            <strong>@{msg.replyTo.senderName}:</strong> "{msg.replyTo.text}"
+                            <strong>@{msg.replyTo.senderName}:</strong> "{msg.replyTo.text || t('Tệp đính kèm')}"
                           </div>
                         )}
-                        {renderMessageContent(msg.messageText)}
+                        {msg.messageText ? renderMessageContent(msg.messageText) : null}
+                        {renderMessageAttachments(msg.attachments || [])}
                       </>
                     )}
                   </div>
@@ -491,7 +667,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 margin: '0 10px -1px 10px'
               }}>
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
-                  <strong>{t('Trả lời')} {replyingTo.senderName}:</strong> "{replyingTo.messageText}"
+                  <strong>{t('Trả lời')} {replyingTo.senderName}:</strong>{' '}
+                  "{replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')}"
                 </div>
                 <button 
                   type="button" 
@@ -509,17 +686,68 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 </button>
               </div>
             )}
+            {pendingAttachments.length > 0 && (
+              <div className="chat-pending-attachments" aria-label={t('Tệp đang chờ gửi')}>
+                {pendingAttachments.map(attachment => (
+                  <div key={attachment.id} className="chat-pending-attachment">
+                    {attachment.previewUrl ? (
+                      <img src={attachment.previewUrl} alt="" />
+                    ) : (
+                      <FileText size={24} aria-hidden="true" />
+                    )}
+                    <span>
+                      <strong>{attachment.file.name}</strong>
+                      <small>{formatChatAttachmentSize(attachment.file.size)}</small>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removePendingAttachment(attachment.id)}
+                      aria-label={`${t('Bỏ tệp')} ${attachment.file.name}`}
+                      title={t('Bỏ tệp')}
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {attachmentError && (
+              <div className="chat-attachment-error" role="alert">{attachmentError}</div>
+            )}
             <form onSubmit={handleSendMessage} className="chat-input-bar">
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                className="chat-attachment-input"
+                multiple
+                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
+                onChange={handleAttachmentSelection}
+              />
+              <button
+                type="button"
+                className="chat-attach-button"
+                onClick={() => attachmentInputRef.current?.click()}
+                disabled={isSendingMessage || pendingAttachments.length >= CHAT_ATTACHMENT_MAX_FILES}
+                title={t('Đính kèm ảnh hoặc tệp')}
+                aria-label={t('Đính kèm ảnh hoặc tệp')}
+              >
+                <Paperclip size={19} aria-hidden="true" />
+              </button>
               <input
                 type="text"
                 className="chat-input-field"
                 placeholder={t('Nhập nội dung... (Gõ @ để tag nhân viên, # để gọi đơn hàng PO/LSX)')}
                 value={messageText}
                 onChange={e => setMessageText(e.target.value)}
-                required
+                disabled={isSendingMessage}
               />
-              <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px', fontWeight: 600 }}>
-                {t('Gửi')}
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ padding: '8px 20px', fontWeight: 600 }}
+                disabled={isSendingMessage || (!messageText.trim() && pendingAttachments.length === 0)}
+              >
+                {isSendingMessage ? t('Đang gửi...') : t('Gửi')}
               </button>
             </form>
           </div>
