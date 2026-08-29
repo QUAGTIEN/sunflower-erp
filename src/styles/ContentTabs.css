@@ -5,7 +5,8 @@
  * their own styles so users can distinguish navigation from data filtering.
  */
 .content-tabs.content-tabs {
-  --content-tab-accent: #1686d9;
+  /* Match the ERP's navy primary instead of the previous pale blue accent. */
+  --content-tab-accent: #1e3a8a;
   --content-tab-text: #475569;
   --content-tab-divider: #d9e1ea;
   display: flex;
@@ -70,7 +71,7 @@
 }
 
 .content-tabs.content-tabs > button:hover {
-  color: #174f8f;
+  color: #172554;
   background: transparent;
   box-shadow: none;
 }
@@ -153,7 +154,7 @@
 }
 
 html[data-theme='dark'] .content-tabs.content-tabs {
-  --content-tab-accent: #69b7f1;
+  --content-tab-accent: #78b8f2;
   --content-tab-text: #aebdd0;
   --content-tab-divider: #344256;
   background: transparent;
