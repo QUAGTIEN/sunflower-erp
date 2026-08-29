@@ -134,6 +134,9 @@
 
 .content-tabs.content-tabs--compact,
 .content-tabs.content-tabs--commandbar {
+  width: fit-content;
+  min-width: max-content;
+  flex: 0 0 auto;
   min-height: 38px;
   padding-right: 4px;
   padding-left: 4px;
