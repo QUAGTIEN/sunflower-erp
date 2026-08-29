@@ -1,0 +1,212 @@
+/*
+ * Shared content-navigation tabs.
+ *
+ * These tabs switch between complete views. Filters and segmented controls use
+ * their own styles so users can distinguish navigation from data filtering.
+ */
+.content-tabs.content-tabs {
+  --content-tab-accent: #1686d9;
+  --content-tab-text: #475569;
+  --content-tab-divider: #d9e1ea;
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-height: 42px;
+  align-items: stretch;
+  gap: 4px;
+  margin: 0;
+  padding: 0 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 0;
+  border-bottom: 1px solid var(--content-tab-divider);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  scrollbar-width: none;
+}
+
+.content-tabs.content-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.content-tabs.content-tabs > button {
+  position: relative;
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 0;
+  color: var(--content-tab-text);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition: color 160ms ease;
+}
+
+.content-tabs.content-tabs > button::after {
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--content-tab-accent);
+  content: '';
+  opacity: 0;
+  transform: scaleX(0.45);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.content-tabs.content-tabs > button:hover {
+  color: #174f8f;
+  background: transparent;
+  box-shadow: none;
+}
+
+.content-tabs.content-tabs > button.active,
+.content-tabs.content-tabs > button.is-active,
+.content-tabs.content-tabs > button[aria-selected='true'] {
+  color: var(--content-tab-accent);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.content-tabs.content-tabs > button.active::after,
+.content-tabs.content-tabs > button.is-active::after,
+.content-tabs.content-tabs > button[aria-selected='true']::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.content-tabs.content-tabs > button svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: currentColor;
+  stroke-width: 1.8;
+}
+
+.content-tabs.content-tabs .crm-list-tab__count,
+.content-tabs.content-tabs .purchase-list-tab__count,
+.content-tabs.content-tabs .sales-list-tab__count,
+.content-tabs.content-tabs.lead-workspace-tabs > button > span,
+.content-tabs.content-tabs.lead-candidate-queues > button > strong,
+.content-tabs.content-tabs.customer-order-history-tabs > button > span,
+.content-tabs.content-tabs.custom-field-config__tables > button > span {
+  min-width: 19px;
+  margin: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 10px;
+  color: #52647b;
+  background: #edf2f7;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.content-tabs.content-tabs > button.active .crm-list-tab__count,
+.content-tabs.content-tabs > button.is-active .crm-list-tab__count,
+.content-tabs.content-tabs > button.is-active .purchase-list-tab__count,
+.content-tabs.content-tabs > button.is-active .sales-list-tab__count,
+.content-tabs.content-tabs.lead-workspace-tabs > button.is-active > span,
+.content-tabs.content-tabs.lead-candidate-queues > button.is-active > strong,
+.content-tabs.content-tabs.customer-order-history-tabs > button.is-active > span,
+.content-tabs.content-tabs.custom-field-config__tables > button.is-active > span {
+  color: #0e66ad;
+  background: #e6f2fc;
+}
+
+.content-tabs.content-tabs--compact,
+.content-tabs.content-tabs--commandbar {
+  min-height: 38px;
+  padding-right: 4px;
+  padding-left: 4px;
+}
+
+.content-tabs.content-tabs--compact > button,
+.content-tabs.content-tabs--commandbar > button {
+  min-height: 38px;
+  padding-right: 11px;
+  padding-left: 11px;
+  font-size: 12.5px;
+}
+
+.content-tabs.content-tabs--header {
+  width: auto;
+  align-self: stretch;
+  border-bottom-color: transparent;
+}
+
+html[data-theme='dark'] .content-tabs.content-tabs {
+  --content-tab-accent: #69b7f1;
+  --content-tab-text: #aebdd0;
+  --content-tab-divider: #344256;
+  background: transparent;
+  border-bottom-color: var(--content-tab-divider);
+}
+
+html[data-theme='dark'] .content-tabs.content-tabs > button,
+html[data-theme='dark'] .content-tabs.content-tabs > button:hover {
+  background: transparent;
+}
+
+html[data-theme='dark'] .content-tabs.content-tabs > button:hover {
+  color: #d8eaff;
+}
+
+html[data-theme='dark'] .content-tabs.content-tabs .crm-list-tab__count,
+html[data-theme='dark'] .content-tabs.content-tabs .purchase-list-tab__count,
+html[data-theme='dark'] .content-tabs.content-tabs .sales-list-tab__count,
+html[data-theme='dark'] .content-tabs.content-tabs.lead-workspace-tabs > button > span,
+html[data-theme='dark'] .content-tabs.content-tabs.lead-candidate-queues > button > strong,
+html[data-theme='dark'] .content-tabs.content-tabs.customer-order-history-tabs > button > span,
+html[data-theme='dark'] .content-tabs.content-tabs.custom-field-config__tables > button > span {
+  color: #b9c7d8;
+  background: #253248;
+}
+
+html[data-theme='dark'] .content-tabs.content-tabs > button.active .crm-list-tab__count,
+html[data-theme='dark'] .content-tabs.content-tabs > button.is-active .crm-list-tab__count,
+html[data-theme='dark'] .content-tabs.content-tabs > button.is-active .purchase-list-tab__count,
+html[data-theme='dark'] .content-tabs.content-tabs > button.is-active .sales-list-tab__count,
+html[data-theme='dark'] .content-tabs.content-tabs.lead-workspace-tabs > button.is-active > span,
+html[data-theme='dark'] .content-tabs.content-tabs.lead-candidate-queues > button.is-active > strong,
+html[data-theme='dark'] .content-tabs.content-tabs.customer-order-history-tabs > button.is-active > span,
+html[data-theme='dark'] .content-tabs.content-tabs.custom-field-config__tables > button.is-active > span {
+  color: #bfe2ff;
+  background: #203d5b;
+}
+
+@media (max-width: 720px) {
+  .content-tabs.content-tabs {
+    width: 100%;
+    min-height: 40px;
+    flex-direction: row;
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .content-tabs.content-tabs > button {
+    width: auto;
+    min-height: 40px;
+    flex: 0 0 auto;
+    justify-content: center;
+    padding-right: 11px;
+    padding-left: 11px;
+  }
+}

@@ -197,7 +197,7 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
     </header>
 
     <div className="custom-field-config__toolbar">
-      <div className="custom-field-config__tables">{TABLES.map(table => <button type="button" key={table} className={selectedTable === table ? 'is-active' : ''} onClick={() => setSelectedTable(table)}>{ENTITY_FIELD_TABLE_LABELS[table]} <span>{allDefinitions.filter(item => item.table === table && item.active).length}</span></button>)}</div>
+      <div className="custom-field-config__tables content-tabs content-tabs--compact" role="tablist" aria-label="Bảng áp dụng trường tùy chỉnh">{TABLES.map(table => <button type="button" role="tab" aria-selected={selectedTable === table} key={table} className={selectedTable === table ? 'is-active' : ''} onClick={() => setSelectedTable(table)}>{ENTITY_FIELD_TABLE_LABELS[table]} <span>{allDefinitions.filter(item => item.table === table && item.active).length}</span></button>)}</div>
       <div className="custom-field-config__filters"><label><Search size={14} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Tìm tên trường..." /></label><select value={statusFilter} onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}><option value="all">Tất cả trạng thái</option><option value="active">Đang sử dụng</option><option value="inactive">Ngừng sử dụng</option></select></div>
     </div>
 

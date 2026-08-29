@@ -2290,7 +2290,7 @@ export const Crm: React.FC<CrmProps> = ({
         <>
           <div className="crm-command-center crm-data-workspace">
             <div className="crm-list-commandbar">
-              <div className="crm-list-tabs" role="tablist" aria-label={t('Chọn nhóm khách hàng')}>
+              <div className="crm-list-tabs content-tabs content-tabs--commandbar" role="tablist" aria-label={t('Chọn nhóm khách hàng')}>
                 <button type="button" className={`crm-list-tab ${filterType === 'all' ? 'is-active' : ''}`} onClick={() => { setFilterType('all'); setCustomerPage(1); }} role="tab" aria-selected={filterType === 'all'}>
                   <Building2 size={15} /><span>{t('Tất cả')}</span><span className="crm-list-tab__count">{accessibleCustomers.length}</span>
                 </button>
@@ -2588,7 +2588,7 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
 
           <div className="card customer-order-history-card">
-            <div className="customer-order-history-tabs" role="tablist" aria-label={t('Lịch sử giao dịch khách hàng')}>
+            <div className="customer-order-history-tabs content-tabs" role="tablist" aria-label={t('Lịch sử giao dịch khách hàng')}>
               <button
                 type="button"
                 role="tab"

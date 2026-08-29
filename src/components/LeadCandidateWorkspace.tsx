@@ -1360,7 +1360,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   return (
     <div className="lead-candidate-workspace">
       <div className="lead-candidate-commandbar">
-        <nav className="lead-candidate-queues" aria-label="Không gian làm việc Sale">
+        <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Không gian làm việc Sale">
           {([
             ['tasks', 'Công việc cần xử lý'],
             ['all', 'Tất cả dữ liệu']
@@ -1368,6 +1368,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <button
               key={value}
               type="button"
+              role="tab"
+              aria-selected={workspaceView === value}
               className={workspaceView === value ? 'is-active' : ''}
               onClick={() => {
                 setWorkspaceView(value);

@@ -760,7 +760,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
 
       {!selectedPO && (
         <div className="card">
-          <div className="sales-list-tabs" role="tablist" aria-label={t('Chọn danh sách Sale PO')}>
+          <div className="sales-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách Sale PO')}>
             <button
               type="button"
               className={`sales-list-tab ${activeListView === 'orders' ? 'is-active' : ''}`}

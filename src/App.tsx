@@ -23,6 +23,7 @@ import { CommercialMap } from './views/CommercialMap';
 import { WorkSchedule } from './views/WorkSchedule';
 import './styles/ErpUiStandards.css';
 import './styles/Theme.css';
+import './styles/ContentTabs.css';
 import { DesignRequest } from './domain/designWorkflow';
 import { sortNewestFirst } from './domain/recordOrdering';
 import { normalizePORecords } from './domain/poCompatibility';

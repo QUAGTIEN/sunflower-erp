@@ -361,7 +361,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
       </div>
 
       <section className="purchase-panel purchase-list-card">
-        <div className="purchase-list-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>
+        <div className="purchase-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>
           <button type="button" className={`purchase-list-tab ${activeListView === 'requests' ? 'is-active' : ''}`} onClick={() => { setActiveListView('requests'); setSearchTerm(''); }} role="tab" aria-selected={activeListView === 'requests'}>
             <ClipboardList size={16} /><span>{t('Yêu cầu từ Sale PO')}</span><span className="purchase-list-tab__count">{filteredRequests.length}</span>
           </button>

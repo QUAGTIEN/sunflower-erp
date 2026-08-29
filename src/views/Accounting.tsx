@@ -448,15 +448,21 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
       </div>
 
       {/* Tabs */}
-      <div className="tab-container">
+      <div className="tab-container content-tabs" role="tablist" aria-label={t('Kế toán')}>
         <button 
+          type="button"
           className={`tab-btn ${activeTab === 'invoices' ? 'active' : ''}`}
+          role="tab"
+          aria-selected={activeTab === 'invoices'}
           onClick={() => setActiveTab('invoices')}
         >
           {t('Công Nợ Phải Thu')} ({filteredInvoices.filter(i => i.type === 'receivable').length}) & Phải Trả ({filteredInvoices.filter(i => i.type === 'payable').length})
         </button>
         <button 
+          type="button"
           className={`tab-btn ${activeTab === 'costing' ? 'active' : ''}`}
+          role="tab"
+          aria-selected={activeTab === 'costing'}
           onClick={() => setActiveTab('costing')}
         >
           {t('Báo Cáo Lãi Gộp Đơn Hàng')} ({pos.length})

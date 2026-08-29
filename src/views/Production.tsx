@@ -591,7 +591,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         )}
       </div>
 
-      <div className="production-tabs" role="tablist" aria-label="Quản lý sản xuất">
+      <div className="production-tabs content-tabs" role="tablist" aria-label="Quản lý sản xuất">
         <button
           type="button"
           role="tab"
@@ -638,15 +638,19 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
       ) : isOperator ? (
         /* THỢ B OPERATION VIEW */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid var(--color-border-light)', paddingBottom: '10px' }}>
+          <div className="content-tabs production-operator-tabs" role="tablist" aria-label={t('Theo dõi lệnh sản xuất')}>
             <button
               className={`btn ${operatorTab === 'producing' ? 'btn-primary' : 'btn-outline'}`}
+              role="tab"
+              aria-selected={operatorTab === 'producing'}
               onClick={() => setOperatorTab('producing')}
             >
               {t('Lệnh Chờ & Đang Chạy Máy')}
             </button>
             <button
               className={`btn ${operatorTab === 'completed' ? 'btn-primary' : 'btn-outline'}`}
+              role="tab"
+              aria-selected={operatorTab === 'completed'}
               onClick={() => setOperatorTab('completed')}
             >
               {t('Lịch Sử Lệnh Đã Hoàn Thành')}

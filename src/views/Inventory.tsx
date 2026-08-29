@@ -273,10 +273,10 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '10px', borderBottom: '2px solid var(--color-border-light)', paddingBottom: '10px' }}>
-        <button className={`btn ${activeTab === 'inventory' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('inventory')}>{t('Tồn Kho Hiện Tại')}</button>
-        <button className={`btn ${activeTab === 'exports' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('exports')}>{t('Lịch Sử Phiếu Xuất Kho')}</button>
-        <button className={`btn ${activeTab === 'nxt' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setActiveTab('nxt')}>{t('Báo Cáo Nhập Xuất Tồn')}</button>
+      <div className="content-tabs inventory-view-tabs" role="tablist" aria-label={t('Kho nguyên vật tư')}>
+        <button type="button" role="tab" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'is-active' : ''} onClick={() => setActiveTab('inventory')}>{t('Tồn Kho Hiện Tại')}</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'exports'} className={activeTab === 'exports' ? 'is-active' : ''} onClick={() => setActiveTab('exports')}>{t('Lịch Sử Phiếu Xuất Kho')}</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'nxt'} className={activeTab === 'nxt' ? 'is-active' : ''} onClick={() => setActiveTab('nxt')}>{t('Báo Cáo Nhập Xuất Tồn')}</button>
       </div>
 
       {activeTab === 'inventory' && (

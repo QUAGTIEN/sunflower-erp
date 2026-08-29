@@ -1606,7 +1606,7 @@ export const Leads: React.FC<LeadsProps> = ({
         <div className="lead-page-commandbar__title">
           <h1>{t('Tiềm năng')}</h1>
         </div>
-        <div className="lead-workspace-tabs" role="tablist" aria-label="Không gian quản lý Lead">
+        <div className="lead-workspace-tabs content-tabs content-tabs--header" role="tablist" aria-label="Không gian quản lý Lead">
           <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => setWorkspaceTab('list')}><List size={16} /> Danh sách Lead <span>{accessibleLeads.length}</span></button>
           {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}><Users size={16} /> Khách hàng của Sale</button>}
         </div>

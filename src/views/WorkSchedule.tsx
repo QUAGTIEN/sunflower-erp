@@ -319,9 +319,9 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
       </header>
 
       <section className="work-schedule-card">
-        <div className="work-schedule-tabs">
-          <button type="button" className={activeTab === 'today' ? 'is-active' : ''} onClick={() => setActiveTab('today')}>Hôm nay</button>
-          <button type="button" className={activeTab === 'week' ? 'is-active' : ''} onClick={() => setActiveTab('week')}>Lịch tuần</button>
+        <div className="work-schedule-tabs content-tabs" role="tablist" aria-label="Chế độ xem lịch làm việc">
+          <button type="button" role="tab" aria-selected={activeTab === 'today'} className={activeTab === 'today' ? 'is-active' : ''} onClick={() => setActiveTab('today')}>Hôm nay</button>
+          <button type="button" role="tab" aria-selected={activeTab === 'week'} className={activeTab === 'week' ? 'is-active' : ''} onClick={() => setActiveTab('week')}>Lịch tuần</button>
         </div>
         <div className="work-schedule-toolbar">
           {activeTab === 'today' ? <input type="date" value={selectedDate} onChange={event => setSelectedDate(event.target.value)} aria-label="Ngày xem lịch" /> : <div className="work-schedule-week-nav"><button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() - 7))} aria-label="Tuần trước"><ChevronLeft size={16} /></button><span>{getDayLabel(weekDates[0])} – {getDayLabel(weekDates[6])}</span><button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() + 7))} aria-label="Tuần sau"><ChevronRight size={16} /></button></div>}

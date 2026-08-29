@@ -928,7 +928,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
         )}
       </div>
 
-      <div className="delivery-tabs" role="tablist" aria-label="Điều phối giao hàng">
+      <div className="delivery-tabs content-tabs" role="tablist" aria-label="Điều phối giao hàng">
         {([
           ['control', 'Bảng điều phối'],
           ['trips', 'Chuyến giao'],
@@ -939,6 +939,8 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
             key={tabKey}
             type="button"
             className={activeTab === tabKey ? 'active' : ''}
+            role="tab"
+            aria-selected={activeTab === tabKey}
             onClick={() => setActiveTab(tabKey)}
           >
             {label}
