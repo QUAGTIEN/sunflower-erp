@@ -31,6 +31,7 @@ import {
   type SystemFilterScope
 } from '../domain/systemFilterConfig';
 import { dbService, type UserProfile } from '../services/firebaseService';
+import { CustomFieldConfiguration } from '../components/CustomFieldConfiguration';
 import './SystemConfiguration.css';
 
 interface SystemConfigurationProps {
@@ -134,6 +135,7 @@ const SearchableLocationSelect: React.FC<{
 };
 
 export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ currentUser }) => {
+  const [configurationTab, setConfigurationTab] = useState<'filters' | 'custom_fields'>('filters');
   const [storedLeadDefinitions, setStoredLeadDefinitions] = useState<LeadFilterDefinition[]>([]);
   const [storedCustomerDefinitions, setStoredCustomerDefinitions] = useState<CustomerFilterDefinition[]>([]);
   const [storedSystemDefinitions, setStoredSystemDefinitions] = useState<SystemFilterDefinition[]>([]);
@@ -475,7 +477,12 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
         <span className="system-config-admin-badge"><LockKeyhole size={14} /> Chỉ Giám đốc/Admin</span>
       </div>
 
-      <section className="system-filter-catalog">
+      <nav className="system-config-tabs" aria-label="Nhóm cấu hình">
+        <button type="button" className={configurationTab === 'filters' ? 'is-active' : ''} onClick={() => setConfigurationTab('filters')}>Tiêu chí bộ lọc</button>
+        <button type="button" className={configurationTab === 'custom_fields' ? 'is-active' : ''} onClick={() => setConfigurationTab('custom_fields')}>Trường tùy chỉnh</button>
+      </nav>
+
+      {configurationTab === 'custom_fields' ? <CustomFieldConfiguration currentUser={currentUser} /> : <section className="system-filter-catalog">
         <header className="system-filter-catalog__header">
           <div><h2>Tiêu chí bộ lọc</h2><p>Chọn một tiêu chí để chỉnh sửa tên, mục con và nơi sử dụng.</p></div>
           <button type="button" className="btn btn-primary" onClick={startCreateDefinition}><Plus size={14} /> Thêm tiêu chí</button>
@@ -601,7 +608,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
             )}
           </main>
         </div>
-      </section>
+      </section>}
     </div>
   );
 };

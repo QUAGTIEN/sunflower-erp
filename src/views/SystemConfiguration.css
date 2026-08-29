@@ -31,6 +31,32 @@
   white-space: nowrap;
 }
 
+.system-config-tabs {
+  align-items: end;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-color, #dbe3ef);
+  display: flex;
+  gap: 22px;
+  min-height: 45px;
+  padding: 0 16px;
+}
+
+.system-config-tabs button {
+  align-self: stretch;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary, #64748b);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 2px;
+}
+
+.system-config-tabs button.is-active {
+  border-bottom-color: #2563eb;
+  color: #1747a6;
+}
+
 .system-filter-catalog {
   min-width: 0;
   overflow: hidden;

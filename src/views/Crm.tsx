@@ -14,6 +14,17 @@ import {
 } from '../components/DataWorkspaceFilters';
 import { PageBackButton } from '../components/PageBackButton';
 import { RowActionMenu } from '../components/RowActionMenu';
+import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '../components/EntityCustomFields';
+import { useEntityFieldDefinitions } from '../hooks/useEntityFieldDefinitions';
+import {
+  formatEntityCustomFieldValue,
+  downloadEntityCsv,
+  getMissingRequiredEntityFields,
+  getEntityCustomFieldSearchValues,
+  getEntityCustomFieldFilterLabel,
+  getEntityCustomFieldFilterTokens,
+  type EntityCustomFieldValues
+} from '../domain/entityFieldConfig';
 import { createCustomerOnboardingItem } from '../domain/customerOnboardingItem';
 import { getPOBadgeClass, getPOQueueLabel } from '../domain/poWorkflow';
 import { sortNewestFirst } from '../domain/recordOrdering';
@@ -223,6 +234,7 @@ export const Crm: React.FC<CrmProps> = ({
   onNavigateToSystemConfiguration
 }) => {
   const { t } = useLanguage();
+  const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<CrmListFilter>('all');
   const [saleFilters, setSaleFilters] = useState<string[]>([]);
@@ -230,6 +242,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [timeFilters, setTimeFilters] = useState<CrmTimeFilter[]>([]);
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
   const [productFilters, setProductFilters] = useState<string[]>([]);
+  const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [showListFilters, setShowListFilters] = useState(false);
   const [customerPageSize, setCustomerPageSize] = useState(25);
   const [customerPage, setCustomerPage] = useState(1);
@@ -445,6 +458,7 @@ export const Crm: React.FC<CrmProps> = ({
     initialLead?.expectedProducts ? `Nhu cầu dự kiến: ${initialLead.expectedProducts}` : ''
   ].filter(Boolean).join('\n'));
   const [additionalContacts, setAdditionalContacts] = useState<CustomerContactRecord[]>([]);
+  const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   
   const [procurementPhone, setProcurementPhone] = useState('');
   const [warehousePhone, setWarehousePhone] = useState('');
@@ -592,6 +606,7 @@ export const Crm: React.FC<CrmProps> = ({
     setWarehousePhone('');
     setBankAccount('');
     setAdditionalContacts([]);
+    setCustomFieldValues({});
     setOnboardingItems([
       createCustomerOnboardingItem(0, '', 'percent', 0, 0)
     ]);
@@ -627,6 +642,7 @@ export const Crm: React.FC<CrmProps> = ({
     setAdditionalContacts(
       (cust.contacts || []).filter(contact => contact.role !== 'primary' && contact.id !== 'primary')
     );
+    setCustomFieldValues(cust.customFieldValues || {});
     setSelectedCustomer(cust);
     setShowEditModal(true);
   };
@@ -657,6 +673,7 @@ export const Crm: React.FC<CrmProps> = ({
       debtLimit: Number(debtLimit),
       paymentTerms,
       note,
+      customFieldValues,
       procurementPhone,
       warehousePhone,
       bankAccount,
@@ -717,6 +734,11 @@ export const Crm: React.FC<CrmProps> = ({
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyName.trim() || !customerRank) return;
+    const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
+    if (missingCustomFields.length > 0) {
+      alert(t(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`));
+      return;
+    }
 
     const taxCodeConflict = findTaxCodeConflict(
       taxCode,
@@ -804,6 +826,11 @@ export const Crm: React.FC<CrmProps> = ({
   const handleEditCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCustomer) return;
+    const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
+    if (missingCustomFields.length > 0) {
+      alert(t(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`));
+      return;
+    }
 
     await dbService.updateDocument('customers', selectedCustomer.id, {
       customerCode: customerCode.trim() || selectedCustomer.customerCode,
@@ -824,6 +851,7 @@ export const Crm: React.FC<CrmProps> = ({
       debtLimit: Number(debtLimit),
       paymentTerms,
       note,
+      customFieldValues,
       procurementPhone,
       warehousePhone,
       bankAccount,
@@ -1646,6 +1674,14 @@ export const Crm: React.FC<CrmProps> = ({
     && (currentUser.role !== 'sale' || !customer.assignedSaleId || customer.assignedSaleId === currentUser.uid)
   ));
   const accessibleCustomerIds = new Set(accessibleCustomers.map(customer => customer.id));
+  const customFilterOptions = Object.fromEntries(
+    customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => [
+      definition.id,
+      Array.from(new Set(accessibleCustomers.flatMap(customer => getEntityCustomFieldFilterTokens(definition, customer.customFieldValues?.[definition.id]))))
+        .map(value => ({ value, label: getEntityCustomFieldFilterLabel(definition, value) }))
+        .sort((left, right) => left.label.localeCompare(right.label, 'vi-VN'))
+    ])
+  );
   const customerMaterialsById = useMemo(() => buildCustomerMaterialHistory(pos), [pos]);
   const customerSamplesById = useMemo(() => buildCustomerOrderedSampleHistory(pos), [pos]);
 
@@ -1756,7 +1792,8 @@ export const Crm: React.FC<CrmProps> = ({
     + (rankFilterEnabled ? rankFilters.length : 0)
     + (poTimeFilterEnabled ? timeFilters.length : 0)
     + (provinceFilterEnabled ? provinceFilters.length : 0)
-    + (productFilterEnabled ? productFilters.length : 0);
+    + (productFilterEnabled ? productFilters.length : 0)
+    + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
   const resetCrmListFilters = () => {
     setSearchTerm('');
     setSaleFilters([]);
@@ -1764,7 +1801,19 @@ export const Crm: React.FC<CrmProps> = ({
     setTimeFilters([]);
     setProvinceFilters([]);
     setProductFilters([]);
+    setCustomFieldFilters({});
     setCustomerPage(1);
+  };
+  const exportCustomers = () => {
+    const exportableFields = customFieldDefinitions.filter(definition => definition.active && definition.exportable);
+    downloadEntityCsv('danh-sach-khach-hang.csv', [
+      { label: 'Khách hàng', value: (customer: CustomerRecord) => customer.companyName },
+      { label: 'Mã khách hàng', value: (customer: CustomerRecord) => customer.customerCode },
+      { label: 'Mã số thuế', value: (customer: CustomerRecord) => customer.taxCode },
+      { label: 'Số điện thoại', value: (customer: CustomerRecord) => customer.phone },
+      { label: 'Email', value: (customer: CustomerRecord) => customer.email },
+      ...exportableFields.map(definition => ({ label: definition.name, value: (customer: CustomerRecord) => formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id]) }))
+    ], filteredCustomers);
   };
   const crmFilterChips = [
     ...(saleFilterEnabled ? saleFilters.map(value => ({
@@ -1791,7 +1840,12 @@ export const Crm: React.FC<CrmProps> = ({
       id: `product-${value}`,
       label: `${productFilterCopy.name}: ${productFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setProductFilters(previous => previous.filter(item => item !== value))
-    })) : [])
+    })) : []),
+    ...customFieldDefinitions.filter(definition => definition.active && definition.filterable).flatMap(definition => (customFieldFilters[definition.id] || []).map(value => ({
+      id: `custom-${definition.id}-${value}`,
+      label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
+      onRemove: () => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: (previous[definition.id] || []).filter(item => item !== value) }))
+    })))
   ];
 
   const normalizedSearch = searchTerm.trim().toLocaleLowerCase('vi-VN');
@@ -1805,6 +1859,7 @@ export const Crm: React.FC<CrmProps> = ({
       customer.phone,
       customer.email,
       customer.taxCode,
+      ...getEntityCustomFieldSearchValues(customFieldDefinitions, customer.customFieldValues),
       ...customerMaterials.flatMap(material => [
         material.materialName,
         ...material.productCodes,
@@ -1823,6 +1878,12 @@ export const Crm: React.FC<CrmProps> = ({
     ));
     const customerProductKeys = productKeysByCustomerId.get(customer.id) || new Set<string>();
     const matchesProduct = !productFilterEnabled || productFilters.length === 0 || productFilters.some(value => customerProductKeys.has(value));
+    const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active && definition.filterable).every(definition => {
+      const selected = customFieldFilters[definition.id] || [];
+      if (selected.length === 0) return true;
+      const tokens = getEntityCustomFieldFilterTokens(definition, customer.customFieldValues?.[definition.id]);
+      return selected.some(value => tokens.includes(value));
+    });
     const matchesTime = !poTimeFilterEnabled || timeFilters.length === 0 || timeFilters.some(value => {
       if (value === 'no_orders') return customerOrders.length === 0;
       return customerOrders.some(order => {
@@ -1833,7 +1894,7 @@ export const Crm: React.FC<CrmProps> = ({
         return elapsedDays >= 0 && elapsedDays <= (value === 'last_30_days' ? 30 : 90);
       });
     });
-    if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesProduct || !matchesTime) return false;
+    if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesProduct || !matchesTime || !matchesCustomFields) return false;
 
     if (filterType === 'has_debt') return getCustomerOutstandingDebt(customer.id) > 0;
     return true;
@@ -2243,6 +2304,7 @@ export const Crm: React.FC<CrmProps> = ({
               {filterType !== 'analytics' && <div className="crm-list-toolbar">
                 <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
                 <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
+                <button type="button" className="btn btn-outline" onClick={exportCustomers}><Download size={14} /> {t('Xuất CSV')}</button>
                 {(searchTerm || activeFilterCount > 0) && (
                   <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
                 )}
@@ -2309,12 +2371,22 @@ export const Crm: React.FC<CrmProps> = ({
                       <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={values => { setProductFilters(values); setCustomerPage(1); }} searchable />
                     </DataFilterSection>
                   )}
+                  {customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => (
+                    <DataFilterSection key={definition.id} title={definition.name} description={definition.description || 'Lọc theo trường tùy chỉnh.'} selectedCount={(customFieldFilters[definition.id] || []).length}>
+                      <DataFilterCheckboxGroup
+                        options={customFilterOptions[definition.id] || []}
+                        selectedValues={customFieldFilters[definition.id] || []}
+                        onChange={values => { setCustomFieldFilters(previous => ({ ...previous, [definition.id]: values })); setCustomerPage(1); }}
+                        searchable={(customFilterOptions[definition.id] || []).length > 8}
+                      />
+                    </DataFilterSection>
+                  ))}
                 </DataFilterPanel>
 
                 <div className="crm-customer-grid">
                   <div className="table-container crm-customer-table-wrap">
                   <table className="crm-customer-table is-compact">
-                    <thead><tr><th>{t('Khách hàng')}</th><th>{t('Mã KH')}</th><th>{t('Phân loại')}</th><th>{t('Mã số thuế')}</th><th>{t('SĐT')}</th><th>{t('Mail')}</th><th>{t('Sale phụ trách')}</th><th>{t('Kết quả kinh doanh')}</th><th>{t('NVL gốc')}</th><th>{t('Thao tác')}</th></tr></thead>
+                    <thead><tr><th>{t('Khách hàng')}</th><th>{t('Mã KH')}</th><th>{t('Phân loại')}</th><th>{t('Mã số thuế')}</th><th>{t('SĐT')}</th><th>{t('Mail')}</th><th>{t('Sale phụ trách')}</th><th>{t('Kết quả kinh doanh')}</th><th>{t('NVL gốc')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
                     <tbody>
                       {displayedCustomers.map(customer => {
                         const customerOrders = getCustomerOrders(customer.id);
@@ -2350,6 +2422,7 @@ export const Crm: React.FC<CrmProps> = ({
                                   <span className="crm-material-empty">{t('Chưa có dữ liệu')}</span>
                                 )}
                               </td>
+                              {customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id])}</td>)}
                               <td>
                                 <RowActionMenu
                                   label={`${t('Thao tác')} ${customer.companyName}`}
@@ -2372,7 +2445,7 @@ export const Crm: React.FC<CrmProps> = ({
                             </tr>
                             {isMaterialsExpanded && (
                               <tr className="crm-material-history-row" onClick={(event) => event.stopPropagation()}>
-                                <td colSpan={10}>
+                                <td colSpan={10 + customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).length}>
                                   <div className="crm-material-history-panel">
                                     <div className="crm-material-history-heading">
                                       <span><Layers3 size={15} /> {t('Nguyên vật liệu đã sử dụng')}</span>
@@ -2403,7 +2476,7 @@ export const Crm: React.FC<CrmProps> = ({
                           </React.Fragment>
                         );
                       })}
-                      {filteredCustomers.length === 0 && <tr><td colSpan={10} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
+                      {filteredCustomers.length === 0 && <tr><td colSpan={10 + customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).length} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
                     </tbody>
                   </table>
                   </div>
@@ -2490,6 +2563,8 @@ export const Crm: React.FC<CrmProps> = ({
                 <span style={{ fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '12px' }}>{t('Cập nhật bởi:')}</span>
                 <span style={{ fontSize: '12px' }}>{selectedCustomer.updatedBy || t('Chưa cập nhật')} {selectedCustomer.updatedAt && `(${formatDateTime(selectedCustomer.updatedAt, t('vi-VN'))})`}</span>
               </div>
+
+              <EntityCustomFieldsReadOnly definitions={customFieldDefinitions} values={selectedCustomer.customFieldValues} />
 
               <div className="customer-contact-panel">
                 <div className="customer-contact-panel__heading">
@@ -2861,6 +2936,12 @@ export const Crm: React.FC<CrmProps> = ({
             <form className="customer-onboarding-form" onSubmit={handleAddCustomer}>
               <div className="modal-body customer-onboarding-body">
                 {renderCustomerOnboardingTables()}
+                <EntityCustomFieldsSection
+                  definitions={customFieldDefinitions}
+                  values={customFieldValues}
+                  role={currentUser.role}
+                  onChange={setCustomFieldValues}
+                />
               </div>
               <div className="modal-footer customer-onboarding-footer">
                 <div className="customer-onboarding-footer-note">
@@ -3005,6 +3086,12 @@ export const Crm: React.FC<CrmProps> = ({
                   <label>{t('Ghi Chú Yêu Cầu Riêng')}</label>
                   <textarea value={note} onChange={e => setNote(e.target.value)} />
                 </div>
+                <EntityCustomFieldsSection
+                  definitions={customFieldDefinitions}
+                  values={customFieldValues}
+                  role={currentUser.role}
+                  onChange={setCustomFieldValues}
+                />
                 {renderAdditionalContactsEditor()}
               </div>
               <div className="modal-footer">

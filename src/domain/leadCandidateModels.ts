@@ -1,5 +1,6 @@
 import { isActiveLeadRecord, type CustomerRecord, type LeadRecord } from './crmModels';
 import { normalizeTaxCode } from './taxCodeUniqueness';
+import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
 
 export const LEAD_CANDIDATE_SCHEMA_VERSION = 10;
 
@@ -56,6 +57,7 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   source: string;
   sourceUrl: string;
   note: string;
+  customFieldValues: EntityCustomFieldValues;
   status: LeadCandidateStatus;
   assignedSaleId: string;
   assignedSaleName: string;
@@ -271,6 +273,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     source: asText(source.source),
     sourceUrl: asText(source.sourceUrl),
     note: asText(source.note),
+    customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
     status: normalizeStatus(source.status),
     assignedSaleId: asText(source.assignedSaleId),
     assignedSaleName: asText(source.assignedSaleName),

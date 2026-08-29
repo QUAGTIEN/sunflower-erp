@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Eye,
+  Download,
   FileText,
   List,
   Paperclip,
@@ -79,6 +80,17 @@ import {
 } from '../domain/leadProfileConfig';
 import { PageBackButton } from '../components/PageBackButton';
 import { RowActionMenu } from '../components/RowActionMenu';
+import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '../components/EntityCustomFields';
+import { useEntityFieldDefinitions } from '../hooks/useEntityFieldDefinitions';
+import {
+  formatEntityCustomFieldValue,
+  downloadEntityCsv,
+  getMissingRequiredEntityFields,
+  getEntityCustomFieldSearchValues,
+  getEntityCustomFieldFilterLabel,
+  getEntityCustomFieldFilterTokens,
+  type EntityCustomFieldValues
+} from '../domain/entityFieldConfig';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -252,6 +264,7 @@ export const Leads: React.FC<LeadsProps> = ({
   onInitialCandidateConsumed
 }) => {
   const { t } = useLanguage();
+  const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('leads', currentUser.role);
   const saleUsers = useMemo(() => users.filter(user => user.role === 'sale'), [users]);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -260,6 +273,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
   const [profileDefinitions, setProfileDefinitions] = useState<LeadProfileFieldDefinition[]>([]);
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, string[]>>({});
+  const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [showLeadFilters, setShowLeadFilters] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [showLeadForm, setShowLeadForm] = useState(false);
@@ -268,6 +282,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [form, setForm] = useState<LeadFormState>(() => createEmptyForm(currentUser, saleUsers));
   const [formFilterValues, setFormFilterValues] = useState<Record<string, string[]>>({});
   const [formProfileValues, setFormProfileValues] = useState<Record<string, string[]>>({});
+  const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   const [uploadingFiles, setUploadingFiles] = useState<LeadFileRecord[]>([]);
   const [taxCodeSaveError, setTaxCodeSaveError] = useState('');
   const [scheduleLeadId, setScheduleLeadId] = useState('');
@@ -334,6 +349,15 @@ export const Leads: React.FC<LeadsProps> = ({
     return lead.assignedSaleId === currentUser.uid;
   }), [currentUser.role, currentUser.uid, leads]);
 
+  const customFilterOptions = useMemo(() => Object.fromEntries(
+    customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => [
+      definition.id,
+      Array.from(new Set(accessibleLeads.flatMap(lead => getEntityCustomFieldFilterTokens(definition, lead.customFieldValues?.[definition.id]))))
+        .map(value => ({ value, label: getEntityCustomFieldFilterLabel(definition, value) }))
+        .sort((left, right) => left.label.localeCompare(right.label, 'vi-VN'))
+    ])
+  ), [accessibleLeads, customFieldDefinitions]);
+
   const quickFilterOptionsByField = useMemo(() => {
     const provinceValuesWithData = new Set(
       accessibleLeads.flatMap(lead => getLeadFilterValues(lead, filterDefinitions)[LEAD_FILTER_IDS.province] || [])
@@ -360,7 +384,8 @@ export const Leads: React.FC<LeadsProps> = ({
   );
   const leadActiveFilterCount = Object.entries(dynamicFilters)
     .filter(([fieldId]) => visibleFilterIds.has(fieldId))
-    .reduce((total, [, values]) => total + values.length, 0);
+    .reduce((total, [, values]) => total + values.length, 0)
+    + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
   const leadFilterChips = Object.entries(dynamicFilters).flatMap(([fieldId, values]) => {
     if (!visibleFilterIds.has(fieldId)) return [];
     const field = filterDefinitions.find(definition => definition.id === fieldId);
@@ -374,7 +399,13 @@ export const Leads: React.FC<LeadsProps> = ({
         [fieldId]: (previous[fieldId] || []).filter(item => item !== value)
       }))
     }));
-  });
+  }).concat(customFieldDefinitions.filter(definition => definition.active && definition.filterable).flatMap(definition => (
+    (customFieldFilters[definition.id] || []).map(value => ({
+      id: `custom-${definition.id}-${value}`,
+      label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
+      onRemove: () => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: (previous[definition.id] || []).filter(item => item !== value) }))
+    }))
+  )));
 
   const isOverdue = (lead: LeadRecord) => {
     if (!lead.nextFollowUpAt || ['won', 'lost', 'converted'].includes(lead.stage)) return false;
@@ -411,7 +442,8 @@ export const Leads: React.FC<LeadsProps> = ({
         Object.entries(lead.profileValues || {}).flatMap(([fieldId, fieldValues]) => {
           const definition = customProfileDefinitions.find(field => field.id === fieldId);
           return fieldValues.map(value => definition?.options.find(option => option.id === value)?.label || value);
-        })
+        }),
+        ...getEntityCustomFieldSearchValues(customFieldDefinitions, lead.customFieldValues)
       ]);
       const matchesClassifications = Object.entries(dynamicFilters)
         .filter(([fieldId, selectedValues]) => visibleFilterIds.has(fieldId) && selectedValues.length > 0)
@@ -419,8 +451,15 @@ export const Leads: React.FC<LeadsProps> = ({
           const currentValues = leadFilterValues[fieldId] || [];
           return selectedValues.some(value => currentValues.includes(value));
         });
+      const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active && definition.filterable).every(definition => {
+        const selected = customFieldFilters[definition.id] || [];
+        if (selected.length === 0) return true;
+        const tokens = getEntityCustomFieldFilterTokens(definition, lead.customFieldValues?.[definition.id]);
+        return selected.some(value => tokens.includes(value));
+      });
       return matchesSearch
-        && matchesClassifications;
+        && matchesClassifications
+        && matchesCustomFields;
     }).sort((left, right) => {
       const leftSchedule = getLeadScheduleTime(left);
       const rightSchedule = getLeadScheduleTime(right);
@@ -434,6 +473,8 @@ export const Leads: React.FC<LeadsProps> = ({
     searchTerm,
     users,
     customProfileDefinitions,
+    customFieldDefinitions,
+    customFieldFilters,
     visibleFilterIds
   ]);
 
@@ -490,6 +531,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setConvertingCandidateId('');
     setFormFilterValues({});
     setFormProfileValues({});
+    setCustomFieldValues({});
     setUploadingFiles([]);
     setForm(createEmptyForm(currentUser, saleUsers));
     setTaxCodeSaveError('');
@@ -501,6 +543,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setConvertingCandidateId('');
     setFormFilterValues(getLeadFilterValues(lead, filterDefinitions));
     setFormProfileValues(lead.profileValues || {});
+    setCustomFieldValues(lead.customFieldValues || {});
     setUploadingFiles(lead.files || []);
     setTaxCodeSaveError('');
     setForm({
@@ -618,6 +661,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setConvertingCandidateId(candidate.id);
     setUploadingFiles([]);
     setFormProfileValues({});
+    setCustomFieldValues({});
     setTaxCodeSaveError('');
     const leadSource = mapCandidateSourceToLeadSource(candidate.source);
     const sourceOptionId = findLeadFilterOptionId(filterDefinitions, LEAD_FILTER_IDS.source, leadSource);
@@ -711,6 +755,11 @@ export const Leads: React.FC<LeadsProps> = ({
     event.preventDefault();
     const normalizedTaxCode = normalizeTaxCode(form.taxCode);
     if (!form.companyName.trim() || !normalizedTaxCode) return;
+    const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
+    if (missingCustomFields.length > 0) {
+      setTaxCodeSaveError(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
+      return;
+    }
     const [latestLeadData, latestCustomerData, latestCandidateData] = await Promise.all([
       dbService.getCollection('leads'),
       dbService.getCollection('customers'),
@@ -802,6 +851,7 @@ export const Leads: React.FC<LeadsProps> = ({
       stage: form.stage,
       filterValues: profileFilterValues,
       profileValues: formProfileValues,
+      customFieldValues,
       assignedSaleId: form.assignedSaleId,
       assignedSaleName: assignedSale?.displayName || '',
       discoveredById,
@@ -1237,6 +1287,20 @@ export const Leads: React.FC<LeadsProps> = ({
   const clearFilters = () => {
     setSearchTerm('');
     setDynamicFilters({});
+    setCustomFieldFilters({});
+  };
+
+  const exportLeads = () => {
+    const exportableFields = customFieldDefinitions.filter(definition => definition.active && definition.exportable);
+    downloadEntityCsv('danh-sach-lead.csv', [
+      { label: 'Doanh nghiệp', value: (lead: LeadRecord) => lead.companyName },
+      { label: 'Mã số thuế', value: (lead: LeadRecord) => lead.taxCode },
+      { label: 'Người liên hệ', value: (lead: LeadRecord) => lead.contactPerson },
+      { label: 'Điện thoại', value: (lead: LeadRecord) => lead.phone },
+      { label: 'Tỉnh/thành', value: (lead: LeadRecord) => lead.province },
+      { label: 'Sale phụ trách', value: (lead: LeadRecord) => lead.assignedSaleName },
+      ...exportableFields.map(definition => ({ label: definition.name, value: (lead: LeadRecord) => formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id]) }))
+    ], filteredLeads);
   };
 
   const getClassificationLabel = (lead: LeadRecord, fieldId: string, fallback = '—') => {
@@ -1356,6 +1420,7 @@ export const Leads: React.FC<LeadsProps> = ({
               <strong>{t('Ghi chú')}</strong>
               <p>{selectedLead.note || t('Chưa có ghi chú.')}</p>
             </div>
+            <EntityCustomFieldsReadOnly definitions={customFieldDefinitions} values={selectedLead.customFieldValues} />
             {(selectedLead.files || []).length > 0 && (
               <div className="lead-profile-files">
                 <strong><Paperclip size={13} /> {t('Tài liệu đính kèm')}</strong>
@@ -1509,6 +1574,13 @@ export const Leads: React.FC<LeadsProps> = ({
               </div>
               <div className="lead-fixed-form-note">{t('Cấu trúc biểu mẫu được cố định để dữ liệu giữa các Sale luôn thống nhất.')}</div>
             </section>
+
+            <EntityCustomFieldsSection
+              definitions={customFieldDefinitions}
+              values={customFieldValues}
+              role={currentUser.role}
+              onChange={setCustomFieldValues}
+            />
           </div>
           <footer className="lead-form-page__footer">
             <span>{t('Các thay đổi chỉ được ghi nhận khi bấm Lưu.')}</span>
@@ -1559,6 +1631,7 @@ export const Leads: React.FC<LeadsProps> = ({
               <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
             </div>
             <DataFilterButton activeCount={leadActiveFilterCount} open={showLeadFilters} onClick={() => setShowLeadFilters(true)} />
+            <button type="button" className="btn btn-outline" onClick={exportLeads}><Download size={14} /> Xuất CSV</button>
             {(searchTerm || leadActiveFilterCount > 0) && <button type="button" className="btn btn-outline lead-toolbar-reset" onClick={clearFilters}><X size={14} /> Đặt lại</button>}
           </section>
 
@@ -1604,13 +1677,23 @@ export const Leads: React.FC<LeadsProps> = ({
                 </DataFilterSection>
               );
             })}
+            {customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => (
+              <DataFilterSection key={definition.id} title={definition.name} description={definition.description || 'Lọc theo trường tùy chỉnh.'} selectedCount={(customFieldFilters[definition.id] || []).length}>
+                <DataFilterCheckboxGroup
+                  options={customFilterOptions[definition.id] || []}
+                  selectedValues={customFieldFilters[definition.id] || []}
+                  onChange={values => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: values }))}
+                  searchable={(customFilterOptions[definition.id] || []).length > 8}
+                />
+              </DataFilterSection>
+            ))}
           </DataFilterPanel>
 
           <section className="lead-table-card">
             <div className="lead-table-result">Hiển thị <strong>{filteredLeads.length}</strong> / {accessibleLeads.length} Lead</div>
             <div className="table-container">
               <table className="lead-table lead-table--classified">
-                <thead><tr><th>{t('Doanh nghiệp')}</th><th>{t('Liên hệ')}</th><th>{t('Nguồn / khu vực')}</th><th>{t('Giá trị tiềm năng')}</th><th>{t('Sale phụ trách')}</th><th>{t('Chăm sóc tiếp')}</th><th>{t('Thao tác')}</th></tr></thead>
+                <thead><tr><th>{t('Doanh nghiệp')}</th><th>{t('Liên hệ')}</th><th>{t('Nguồn / khu vực')}</th><th>{t('Giá trị tiềm năng')}</th><th>{t('Sale phụ trách')}</th><th>{t('Chăm sóc tiếp')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
                 <tbody>
                   {filteredLeads.map(lead => (
                     <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
@@ -1620,6 +1703,7 @@ export const Leads: React.FC<LeadsProps> = ({
                       <td><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>
                       <td>{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>
                       <td>{renderFollowUp(lead)}</td>
+                      {customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id])}</td>)}
                       <td>
                         <RowActionMenu
                           label={`${t('Thao tác')} ${lead.companyName}`}
@@ -1648,7 +1732,7 @@ export const Leads: React.FC<LeadsProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {filteredLeads.length === 0 && <tr><td colSpan={7} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
+                  {filteredLeads.length === 0 && <tr><td colSpan={7 + customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).length} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
                 </tbody>
               </table>
             </div>

@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  Download,
   Eye,
   History,
   ListPlus,
@@ -60,6 +61,18 @@ import { PageBackButton } from './PageBackButton';
 import { BusinessLocationFields } from './BusinessLocationFields';
 import { RowActionMenu } from './RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from './TableColumnCustomizer';
+import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from './EntityCustomFields';
+import { useEntityFieldDefinitions } from '../hooks/useEntityFieldDefinitions';
+import {
+  formatEntityCustomFieldValue,
+  downloadEntityCsv,
+  getMissingRequiredEntityFields,
+  getEntityCustomFieldSearchValues,
+  getEntityCustomFieldFilterLabel,
+  getEntityCustomFieldFilterTokens,
+  type EntityCustomFieldValues,
+  type EntityFieldDefinition
+} from '../domain/entityFieldConfig';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -106,8 +119,7 @@ interface ScheduleFormState {
 const CANDIDATE_SOURCES = ['Google Maps', 'Facebook', 'Mạng xã hội', 'Website', 'Khách hàng giới thiệu', 'Khác'];
 type CandidateWorkspaceView = 'tasks' | 'all';
 type CandidateSort = 'priority' | 'updated_desc' | 'company_asc' | 'next_contact_asc';
-type CandidateColumnId = 'select' | 'status' | 'company' | 'province' | 'contact' | 'assignee' | 'processing'
-  | 'potential' | 'schedule' | 'latest' | 'actions';
+type CandidateColumnId = string;
 
 interface CandidateColumnOption extends TableColumnOption {
   id: CandidateColumnId;
@@ -140,10 +152,10 @@ const ALL_COLUMN_OPTIONS: CandidateColumnOption[] = [
   { id: 'actions', label: 'Thao tác', required: true }
 ];
 
-const getAvailableColumns = (view: CandidateWorkspaceView, isAdmin: boolean) => (
-  (view === 'tasks' ? TASK_COLUMN_OPTIONS : ALL_COLUMN_OPTIONS)
-    .filter(column => !column.adminOnly || isAdmin)
-);
+const getAvailableColumns = (view: CandidateWorkspaceView, isAdmin: boolean, customDefinitions: EntityFieldDefinition[] = []): CandidateColumnOption[] => ([
+  ...(view === 'tasks' ? TASK_COLUMN_OPTIONS : ALL_COLUMN_OPTIONS).filter(column => !column.adminOnly || isAdmin),
+  ...customDefinitions.filter(definition => definition.active).map(definition => ({ id: `custom:${definition.id}`, label: definition.name }))
+]);
 
 const getDefaultVisibleColumns = (isAdmin: boolean): Record<CandidateWorkspaceView, CandidateColumnId[]> => ({
   tasks: getAvailableColumns('tasks', isAdmin).map(column => column.id),
@@ -274,7 +286,7 @@ const createEmptyCandidateForm = (
   note: ''
 });
 
-const matchesSearch = (candidate: LeadCandidateRecord, searchTerm: string) => {
+const matchesSearch = (candidate: LeadCandidateRecord, searchTerm: string, customDefinitions: EntityFieldDefinition[] = []) => {
   const terms = searchTerm
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -298,7 +310,8 @@ const matchesSearch = (candidate: LeadCandidateRecord, searchTerm: string) => {
     candidate.expectedProducts,
     candidate.source,
     candidate.note,
-    candidate.assignedSaleName
+    candidate.assignedSaleName,
+    ...getEntityCustomFieldSearchValues(customDefinitions, candidate.customFieldValues)
   ]
     .join(' ')
     .normalize('NFD')
@@ -326,6 +339,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   currentUser,
   onStartConversion
 }) => {
+  const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('lead_candidates', currentUser.role);
   const systemFilterDefinitions = useSystemFilterConfiguration();
   const provinceFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, LEAD_FILTER_IDS.province, 'customer_data');
   const sourceFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, LEAD_FILTER_IDS.source, 'customer_data');
@@ -350,6 +364,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [contactResultFilters, setContactResultFilters] = useState<LeadCandidateContactResult[]>([]);
   const [potentialFilters, setPotentialFilters] = useState<LeadCandidatePotentialLevel[]>([]);
   const [pinnedOnly, setPinnedOnly] = useState(false);
+  const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [candidateSort, setCandidateSort] = useState<CandidateSort>('priority');
   const [showDataFilters, setShowDataFilters] = useState(false);
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
@@ -359,6 +374,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [showForm, setShowForm] = useState(false);
   const [editingCandidateId, setEditingCandidateId] = useState('');
   const [form, setForm] = useState<CandidateFormState>(() => createEmptyCandidateForm(currentUser, candidateOwners));
+  const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   const [saveError, setSaveError] = useState('');
   const [scheduleCandidateId, setScheduleCandidateId] = useState('');
   const [scheduleForm, setScheduleForm] = useState<ScheduleFormState>({ nextContactAt: tomorrowAtNine(), note: '' });
@@ -375,8 +391,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [savingBatchQueue, setSavingBatchQueue] = useState(false);
   const [referenceTime] = useState(() => Date.now());
 
-  const availableColumnOptions = getAvailableColumns(workspaceView, currentUser.role === 'admin');
-  const visibleColumnSet = new Set(visibleColumnsByView[workspaceView]);
+  const availableColumnOptions = getAvailableColumns(workspaceView, currentUser.role === 'admin', customFieldDefinitions);
+  const visibleColumnSet = new Set([
+    ...visibleColumnsByView[workspaceView],
+    ...customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => `custom:${definition.id}`)
+  ]);
   const visibleColumnCount = availableColumnOptions.filter(column => visibleColumnSet.has(column.id)).length;
 
   const saveVisibleColumns = (selectedIds: string[]) => {
@@ -414,6 +433,15 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     accessibleCandidates.map(candidate => candidate.province.trim()).filter(Boolean)
   )).sort((left, right) => left.localeCompare(right, 'vi-VN')), [accessibleCandidates]);
 
+  const customFilterOptions = useMemo(() => Object.fromEntries(
+    customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => [
+      definition.id,
+      Array.from(new Set(accessibleCandidates.flatMap(candidate => getEntityCustomFieldFilterTokens(definition, candidate.customFieldValues?.[definition.id]))))
+        .map(value => ({ value, label: getEntityCustomFieldFilterLabel(definition, value) }))
+        .sort((left, right) => left.label.localeCompare(right.label, 'vi-VN'))
+    ])
+  ), [accessibleCandidates, customFieldDefinitions]);
+
   const filteredCandidates = useMemo(() => {
     const sourceCandidates = workspaceView === 'tasks' ? taskCandidates : accessibleCandidates;
     return sourceCandidates.filter(candidate => {
@@ -422,7 +450,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     const matchesProvince = !provinceFilterEnabled || provinceFilters.length === 0 || provinceFilters.includes(candidate.province);
     const matchesContactResult = !contactResultFilterEnabled || contactResultFilters.length === 0 || contactResultFilters.includes(candidate.contactResult);
     const matchesPotential = !potentialFilterEnabled || potentialFilters.length === 0 || potentialFilters.includes(candidate.potentialLevel);
-    return matchesSale && matchesSource && matchesProvince && matchesContactResult && matchesPotential && (!pinnedFilterEnabled || !pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm);
+    const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active && definition.filterable).every(definition => {
+      const selected = customFieldFilters[definition.id] || [];
+      if (selected.length === 0) return true;
+      const tokens = getEntityCustomFieldFilterTokens(definition, candidate.customFieldValues?.[definition.id]);
+      return selected.some(value => tokens.includes(value));
+    });
+    return matchesSale && matchesSource && matchesProvince && matchesContactResult && matchesPotential && matchesCustomFields && (!pinnedFilterEnabled || !pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm, customFieldDefinitions);
   }).sort((left, right) => {
     if (workspaceView === 'tasks') {
       if (candidateSort === 'company_asc') return left.companyName.localeCompare(right.companyName, 'vi-VN');
@@ -454,7 +488,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
     return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
     });
-  }, [accessibleCandidates, candidateSort, contactResultFilterEnabled, contactResultFilters, pinnedFilterEnabled, pinnedOnly, potentialFilterEnabled, potentialFilters, provinceFilterEnabled, provinceFilters, saleFilterEnabled, saleFilters, searchTerm, sourceFilterEnabled, sourceFilters, taskCandidates, workspaceView]);
+  }, [accessibleCandidates, candidateSort, contactResultFilterEnabled, contactResultFilters, customFieldDefinitions, customFieldFilters, pinnedFilterEnabled, pinnedOnly, potentialFilterEnabled, potentialFilters, provinceFilterEnabled, provinceFilters, saleFilterEnabled, saleFilters, searchTerm, sourceFilterEnabled, sourceFilters, taskCandidates, workspaceView]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -464,7 +498,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     + (contactResultFilterEnabled ? contactResultFilters.length : 0)
     + (potentialFilterEnabled ? potentialFilters.length : 0)
     + (saleFilterEnabled ? saleFilters.length : 0)
-    + (pinnedFilterEnabled && pinnedOnly ? 1 : 0);
+    + (pinnedFilterEnabled && pinnedOnly ? 1 : 0)
+    + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
   const adminAssignedTaskCount = workspaceView === 'tasks'
     ? filteredCandidates.filter(candidate => candidate.taskSource === 'admin_assigned').length
     : 0;
@@ -494,7 +529,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       label: `${configuredFilterName(CUSTOMER_FILTER_IDS.sale, 'Sale phụ trách')}: ${candidateOwners.find(user => user.uid === value)?.displayName || value}`,
       onRemove: () => setSaleFilters(previous => previous.filter(item => item !== value))
     })) : []),
-    ...(pinnedFilterEnabled && pinnedOnly ? [{ id: 'pinned', label: configuredFilterName('pinned', 'Đã ghim'), onRemove: () => setPinnedOnly(false) }] : [])
+    ...(pinnedFilterEnabled && pinnedOnly ? [{ id: 'pinned', label: configuredFilterName('pinned', 'Đã ghim'), onRemove: () => setPinnedOnly(false) }] : []),
+    ...customFieldDefinitions.filter(definition => definition.active && definition.filterable).flatMap(definition => (customFieldFilters[definition.id] || []).map(value => ({
+      id: `custom-${definition.id}-${value}`,
+      label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
+      onRemove: () => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: (previous[definition.id] || []).filter(item => item !== value) }))
+    })))
   ];
 
   const editingCandidate = editingCandidateId
@@ -748,6 +788,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const openCreateForm = () => {
     setEditingCandidateId('');
     setForm(createEmptyCandidateForm(currentUser, candidateOwners));
+    setCustomFieldValues({});
     setSaveError('');
     setShowForm(true);
   };
@@ -774,6 +815,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       nextContactAt: toDateTimeLocal(candidate.nextContactAt),
       note: candidate.note
     });
+    setCustomFieldValues(candidate.customFieldValues || {});
     setSaveError('');
     setShowForm(true);
   };
@@ -781,6 +823,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const handleSaveCandidate = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.companyName.trim() || !form.assignedSaleId || hasBlockingDuplicate) return;
+    const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
+    if (missingCustomFields.length > 0) {
+      setSaveError(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
+      return;
+    }
 
     try {
       const [latestLeads, latestCustomers, latestCandidates] = await Promise.all([
@@ -838,6 +885,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         source: form.source,
         sourceUrl: form.sourceUrl.trim(),
         note: form.note.trim(),
+        customFieldValues,
         assignedSaleId: form.assignedSaleId,
         assignedSaleName: assignedSale?.displayName || '',
         discoveredById: editingCandidate?.discoveredById || currentUser.uid,
@@ -1139,7 +1187,21 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setPotentialFilters([]);
     setSaleFilters([]);
     setPinnedOnly(false);
+    setCustomFieldFilters({});
     setCurrentPage(1);
+  };
+
+  const exportCandidates = () => {
+    const exportableFields = customFieldDefinitions.filter(definition => definition.active && definition.exportable);
+    downloadEntityCsv('du-lieu-tho.csv', [
+      { label: 'Doanh nghiệp', value: (candidate: LeadCandidateRecord) => candidate.companyName },
+      { label: 'Mã số thuế', value: (candidate: LeadCandidateRecord) => candidate.taxCode },
+      { label: 'Tỉnh/thành', value: (candidate: LeadCandidateRecord) => candidate.province },
+      { label: 'Người liên hệ', value: (candidate: LeadCandidateRecord) => candidate.contactPerson },
+      { label: 'Điện thoại', value: (candidate: LeadCandidateRecord) => candidate.phone },
+      { label: 'Sale phụ trách', value: (candidate: LeadCandidateRecord) => candidate.assignedSaleName },
+      ...exportableFields.map(definition => ({ label: definition.name, value: (candidate: LeadCandidateRecord) => formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id]) }))
+    ], filteredCandidates);
   };
 
   const renderContactResult = (candidate: LeadCandidateRecord) => {
@@ -1267,6 +1329,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               </div>
               <div className="lead-fixed-form-note">Cấu trúc biểu mẫu được cố định để dữ liệu giữa các Sale luôn thống nhất.</div>
             </section>
+
+            <EntityCustomFieldsSection
+              definitions={customFieldDefinitions}
+              values={customFieldValues}
+              role={currentUser.role}
+              onChange={setCustomFieldValues}
+            />
           </div>
 
           {(duplicate || saveError) && (
@@ -1336,6 +1405,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           <button type="button" className="lead-candidate-column-button" aria-label="Tùy chỉnh cột" title="Tùy chỉnh cột" onClick={() => setShowColumnCustomizer(true)}>
             <Settings2 size={16} />
           </button>
+          <button type="button" className="btn btn-outline" onClick={exportCandidates}><Download size={15} /> Xuất CSV</button>
           {workspaceView === 'all' && <button type="button" className="btn btn-primary lead-candidate-add-button" onClick={openCreateForm}>
             <Plus size={15} /> Thêm dữ liệu
           </button>}
@@ -1399,13 +1469,23 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <Star size={14} fill={pinnedOnly ? 'currentColor' : 'none'} /> Chỉ hiển thị dữ liệu đã ghim
           </button>
         </DataFilterSection>}
+        {customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => (
+          <DataFilterSection key={definition.id} title={definition.name} description={definition.description || 'Lọc theo trường tùy chỉnh.'} selectedCount={(customFieldFilters[definition.id] || []).length}>
+            <DataFilterCheckboxGroup
+              options={customFilterOptions[definition.id] || []}
+              selectedValues={customFieldFilters[definition.id] || []}
+              onChange={values => { setCustomFieldFilters(previous => ({ ...previous, [definition.id]: values })); setCurrentPage(1); }}
+              searchable={(customFilterOptions[definition.id] || []).length > 8}
+            />
+          </DataFilterSection>
+        ))}
       </DataFilterPanel>
 
       {showColumnCustomizer && (
         <TableColumnCustomizer
           open
           columns={availableColumnOptions}
-          selectedIds={visibleColumnsByView[workspaceView]}
+          selectedIds={Array.from(visibleColumnSet)}
           onClose={() => setShowColumnCustomizer(false)}
           onSave={saveVisibleColumns}
         />
@@ -1473,6 +1553,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 {visibleColumnSet.has('potential') && <th>Mức độ tiềm năng</th>}
                 {visibleColumnSet.has('schedule') && <th>Lịch hẹn</th>}
                 {visibleColumnSet.has('latest') && <th>Cập nhật gần nhất</th>}
+                {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={definition.id}>{definition.name}</th>)}
                 {visibleColumnSet.has('actions') && <th className="lead-candidate-actions-column">Thao tác</th>}
               </tr></thead>
               <tbody>
@@ -1496,6 +1577,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                         ? renderCompactValue(formatShortDateTime(candidate.nextContactAt), `${formatShortDateTime(candidate.nextContactAt)} · ${isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : 'Sắp tới'}`, isOverdue ? 'lead-date-overdue' : '')
                         : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
                       {visibleColumnSet.has('latest') && <td>{renderCompactLatestActivity(candidate)}</td>}
+                      {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id])}</td>)}
                       {visibleColumnSet.has('actions') && <td className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
@@ -1536,6 +1618,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   {visibleColumnSet.has('potential') && <th>Mức độ tiềm năng</th>}
                   {visibleColumnSet.has('schedule') && <th>Lịch tiếp theo</th>}
                   {visibleColumnSet.has('latest') && <th>Cập nhật gần nhất</th>}
+                  {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={definition.id}>{definition.name}</th>)}
                   {visibleColumnSet.has('actions') && <th className="lead-candidate-actions-column">Thao tác</th>}
                 </tr>
               </thead>
@@ -1588,6 +1671,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                         ? renderCompactValue(formatShortDateTime(candidate.nextContactAt), `${formatShortDateTime(candidate.nextContactAt)} · ${new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}`, new Date(candidate.nextContactAt).getTime() < referenceTime ? 'lead-date-overdue' : '')
                         : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
                       {visibleColumnSet.has('latest') && <td>{renderCompactLatestActivity(candidate)}</td>}
+                      {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id])}</td>)}
                       {visibleColumnSet.has('actions') && <td className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
@@ -1662,6 +1746,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <h3>Ghi chú làm việc</h3>
                 <p className="lead-candidate-drawer__note">{selectedCandidate.note || 'Chưa có ghi chú.'}</p>
               </section>
+
+              <EntityCustomFieldsReadOnly definitions={customFieldDefinitions} values={selectedCandidate.customFieldValues} />
 
               <section>
                 <h3>Lịch sử cập nhật ({selectedCandidate.contactLogs.length})</h3>

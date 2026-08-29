@@ -1,4 +1,5 @@
 import type { PODiscountType } from './poFinancials';
+import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
 
 export const CRM_SCHEMA_VERSION = 2;
 
@@ -169,6 +170,7 @@ export interface CustomerRecord extends UnknownRecord {
   debtLimit: number;
   paymentTerms: string;
   note: string;
+  customFieldValues: EntityCustomFieldValues;
   lastOrderAt: string | null;
   contacts: CustomerContactRecord[];
   products: CustomerProductRecord[];
@@ -272,6 +274,7 @@ export interface LeadRecord extends UnknownRecord {
   sourceCandidateId: string;
   filterValues: Record<string, string[]>;
   profileValues: Record<string, string[]>;
+  customFieldValues: EntityCustomFieldValues;
   note: string;
   reminderTime: string;
   nextFollowUpAt: string;
@@ -545,6 +548,7 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     debtLimit: Math.max(0, asNumber(source.debtLimit)),
     paymentTerms: asText(source.paymentTerms),
     note: asText(source.note),
+    customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
     lastOrderAt: source.lastOrderAt ? asText(source.lastOrderAt) : null,
     contacts: existingContacts.length > 0
       ? existingContacts.map(normalizeCustomerContact)
@@ -637,6 +641,7 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
         asArray(fieldValue).map(item => asText(item)).filter(Boolean)
       ])
     ),
+    customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
     note: asText(source.note),
     reminderTime,
     nextFollowUpAt: reminderTime,
