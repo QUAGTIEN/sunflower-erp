@@ -39,7 +39,6 @@ export interface EntityFieldDefinition extends Record<string, unknown> {
   defaultVisible: boolean;
   searchable: boolean;
   filterable: boolean;
-  exportable: boolean;
   viewRoles: EntityFieldRole[];
   editRoles: EntityFieldRole[];
   order: number;
@@ -157,7 +156,6 @@ export const normalizeEntityFieldDefinition = (value: unknown): EntityFieldDefin
     defaultVisible: source.defaultVisible === true,
     searchable: source.searchable === true,
     filterable: source.filterable === true,
-    exportable: source.exportable !== false,
     viewRoles: normalizeRoles(source.viewRoles),
     editRoles: normalizeRoles(source.editRoles),
     order: Number.isFinite(Number(source.order)) ? Number(source.order) : 0,
@@ -264,23 +262,3 @@ export const getMissingRequiredEntityFields = (
   && (!role || canEditEntityField(definition, role))
   && isEntityCustomFieldValueEmpty(values[definition.id])
 ));
-
-export interface EntityCsvColumn<T> {
-  label: string;
-  value: (record: T) => unknown;
-}
-
-export const downloadEntityCsv = <T,>(fileName: string, columns: EntityCsvColumn<T>[], records: T[]): void => {
-  const escapeCell = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-  const rows = [
-    columns.map(column => escapeCell(column.label)).join(','),
-    ...records.map(record => columns.map(column => escapeCell(column.value(record))).join(','))
-  ];
-  const blob = new Blob([`\uFEFF${rows.join('\n')}`], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  URL.revokeObjectURL(url);
-};

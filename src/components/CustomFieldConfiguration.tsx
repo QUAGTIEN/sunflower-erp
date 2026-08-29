@@ -41,7 +41,6 @@ interface FieldDraft {
   defaultVisible: boolean;
   searchable: boolean;
   filterable: boolean;
-  exportable: boolean;
   viewRoles: EntityFieldRole[];
   editRoles: EntityFieldRole[];
 }
@@ -52,7 +51,7 @@ const SELECT_TYPES: EntityCustomFieldType[] = ['single_select', 'multi_select'];
 
 const createEmptyDraft = (table: EntityFieldTable): FieldDraft => ({
   id: '', table, name: '', description: '', type: 'text', optionText: '', required: false,
-  active: true, defaultVisible: false, searchable: false, filterable: false, exportable: true,
+  active: true, defaultVisible: false, searchable: false, filterable: false,
   viewRoles: [...ALL_ROLES], editRoles: ['admin', 'sale']
 });
 
@@ -70,7 +69,6 @@ const toDraft = (definition: EntityFieldDefinition): FieldDraft => ({
   defaultVisible: definition.defaultVisible,
   searchable: definition.searchable,
   filterable: definition.filterable,
-  exportable: definition.exportable,
   viewRoles: [...definition.viewRoles],
   editRoles: [...definition.editRoles]
 });
@@ -128,7 +126,6 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
       defaultVisible: draft.defaultVisible,
       searchable: draft.searchable,
       filterable: draft.filterable,
-      exportable: draft.exportable,
       viewRoles: draft.viewRoles,
       editRoles: draft.editRoles.filter(role => draft.viewRoles.includes(role)),
       order: existing?.order ?? Math.max(0, ...allDefinitions.filter(item => item.table === draft.table).map(item => item.order)) + 10,
@@ -223,7 +220,7 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
         <label><span>Tên trường *</span><input autoFocus value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} placeholder="Ví dụ: Các doanh nghiệp đối thủ" /></label>
         <label><span>Mô tả / hướng dẫn</span><textarea rows={2} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} placeholder="Giải thích ngắn để người nhập hiểu đúng dữ liệu..." /></label>
         {SELECT_TYPES.includes(draft.type) && <label><span>Các lựa chọn * <small>(mỗi dòng một lựa chọn)</small></span><textarea rows={5} value={draft.optionText} onChange={event => setDraft({ ...draft, optionText: event.target.value })} placeholder={'Đối thủ A\nĐối thủ B\nChưa xác định'} /></label>}
-        <fieldset><legend>Quy tắc sử dụng</legend><div className="custom-field-modal__checks"><label><input type="checkbox" checked={draft.required} onChange={event => setDraft({ ...draft, required: event.target.checked })} /> Bắt buộc nhập</label><label><input type="checkbox" checked={draft.defaultVisible} onChange={event => setDraft({ ...draft, defaultVisible: event.target.checked })} /> Hiện thành cột mặc định</label><label><input type="checkbox" checked={draft.searchable} onChange={event => setDraft({ ...draft, searchable: event.target.checked })} /> Cho phép tìm kiếm</label><label><input type="checkbox" checked={draft.filterable} onChange={event => setDraft({ ...draft, filterable: event.target.checked })} /> Cho phép lọc</label><label><input type="checkbox" checked={draft.exportable} onChange={event => setDraft({ ...draft, exportable: event.target.checked })} /> Cho phép xuất dữ liệu</label></div></fieldset>
+        <fieldset><legend>Quy tắc sử dụng</legend><div className="custom-field-modal__checks"><label><input type="checkbox" checked={draft.required} onChange={event => setDraft({ ...draft, required: event.target.checked })} /> Bắt buộc nhập</label><label><input type="checkbox" checked={draft.defaultVisible} onChange={event => setDraft({ ...draft, defaultVisible: event.target.checked })} /> Hiện thành cột mặc định</label><label><input type="checkbox" checked={draft.searchable} onChange={event => setDraft({ ...draft, searchable: event.target.checked })} /> Cho phép tìm kiếm</label><label><input type="checkbox" checked={draft.filterable} onChange={event => setDraft({ ...draft, filterable: event.target.checked })} /> Cho phép lọc</label></div></fieldset>
         <fieldset><legend>Quyền xem và chỉnh sửa</legend><div className="custom-field-role-grid"><strong>Vai trò</strong><strong>Được xem</strong><strong>Được sửa</strong>{ENTITY_FIELD_ROLES.map(role => <React.Fragment key={role.id}><span>{role.label}</span><input type="checkbox" checked={draft.viewRoles.includes(role.id)} disabled={role.id === 'admin'} onChange={event => updateRole('viewRoles', role.id, event.target.checked)} /><input type="checkbox" checked={draft.editRoles.includes(role.id)} disabled={role.id === 'admin'} onChange={event => updateRole('editRoles', role.id, event.target.checked)} /></React.Fragment>)}</div></fieldset>
         {error && <p className="custom-field-modal__error">{error}</p>}
       </div>

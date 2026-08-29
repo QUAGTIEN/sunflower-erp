@@ -34,7 +34,6 @@ import {
   Copy,
   Folder, 
   FileText, 
-  FileSpreadsheet
 } from 'lucide-react';
 
 interface SalesProps {
@@ -642,47 +641,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     onRefresh();
   };
 
-  const handleExportCSV = () => {
-    const headers = [
-      t('Mã PO Nội bộ'),
-      t('Mã PO Khách hàng'),
-      t('Tên Khách Hàng'),
-      t('Ngày Đặt Hàng'),
-      t('Ngày Giao Dự Kiến'),
-      t('Tổng Giá Trị'),
-      t('Trạng Thái')
-    ];
-
-    const rows = filteredPOs.map(po => [
-      po.poCode,
-      po.customerPoCode || '',
-      po.customerName,
-      formatDate(po.orderDate, 'vi-VN', ''),
-      formatDate(po.expectedDeliveryDate, 'vi-VN', ''),
-      po.netAmount,
-      t(getPOQueueLabel(po))
-    ]);
-
-    let csvContent = '\uFEFF'; // BOM for Excel UTF-8
-    csvContent += headers.join(',') + '\n';
-    rows.forEach(row => {
-      const escapedRow = row.map(val => {
-        const strVal = String(val ?? '');
-        return `"${strVal.replace(/"/g, '""')}"`;
-      });
-      csvContent += escapedRow.join(',') + '\n';
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `ERP_DanhSach_PO_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase('vi-VN');
   const activePOs = pos.filter(po => po.deleted !== true);
 
@@ -808,12 +766,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             <button className="btn btn-outline btn-symbol" onClick={() => setSearchTerm('')} title={t('Xóa Tìm Kiếm')}>
               <X size={16} />
             </button>
-            {activeListView === 'orders' && (
-              <button className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }} onClick={handleExportCSV}>
-                <FileSpreadsheet size={16} />
-                <span>{t('Xuất Excel')}</span>
-              </button>
-            )}
           </div>
 
           {activeListView === 'orders' ? (

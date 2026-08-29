@@ -541,7 +541,6 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Lợi Nhuận Lãi Gộp': 'Gross Profit Margin',
     'Tỷ Suất Lãi Gộp (%)': 'Profit Margin (%)',
     'Chưa Giao Hàng (Lãi dự kiến)': 'Undelivered (Estimated Profit)',
-    'Xuất Excel Báo Cáo': 'Export CSV Data',
 
     // Users Page
     'QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN': 'USER MANAGEMENT & PRIVILEGES',

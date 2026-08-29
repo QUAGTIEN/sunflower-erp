@@ -192,25 +192,6 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
     }
   };
 
-  // CSV Export for Accountant
-  const handleExportCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    csvContent += "Mã PO,Khách Hàng,Doanh Thu (đ),Chi Phí Vật Tư (đ),Nhân Công (đ),Vận Chuyển (đ),Chi Phí Khác (đ),Tổng Chi Phí (đ),Lợi Nhuận (đ),Tỷ Suất Lãi Gộp (%)\n";
-    
-    pos.forEach(po => {
-      const c = calculateCosting(po);
-      csvContent += `${po.poCode},${po.customerName},${c.revenue},${c.materialCost},${c.laborCost},${c.transportCost},${c.otherCost},${c.totalCost},${c.grossProfit},${c.marginPercent.toFixed(1)}%\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Bao_Cao_Lai_Gop_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const printWorkOrder = (po: any) => {
     const c = calculateCosting(po);
     const printWindow = window.open('', '_blank');
@@ -580,9 +561,6 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
           <div className="card">
             <div className="card-header">
               <span className="card-title">{t('Báo Cáo Lãi Gộp Đơn Hàng')}</span>
-              <div className="btn-group">
-                <button className="btn btn-primary" onClick={handleExportCSV}>{t('Xuất Excel Báo Cáo')}</button>
-              </div>
             </div>
             <div className="table-container">
               <table>

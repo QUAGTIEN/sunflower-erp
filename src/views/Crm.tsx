@@ -18,7 +18,6 @@ import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '../compon
 import { useEntityFieldDefinitions } from '../hooks/useEntityFieldDefinitions';
 import {
   formatEntityCustomFieldValue,
-  downloadEntityCsv,
   getMissingRequiredEntityFields,
   getEntityCustomFieldSearchValues,
   getEntityCustomFieldFilterLabel,
@@ -1804,17 +1803,6 @@ export const Crm: React.FC<CrmProps> = ({
     setCustomFieldFilters({});
     setCustomerPage(1);
   };
-  const exportCustomers = () => {
-    const exportableFields = customFieldDefinitions.filter(definition => definition.active && definition.exportable);
-    downloadEntityCsv('danh-sach-khach-hang.csv', [
-      { label: 'Khách hàng', value: (customer: CustomerRecord) => customer.companyName },
-      { label: 'Mã khách hàng', value: (customer: CustomerRecord) => customer.customerCode },
-      { label: 'Mã số thuế', value: (customer: CustomerRecord) => customer.taxCode },
-      { label: 'Số điện thoại', value: (customer: CustomerRecord) => customer.phone },
-      { label: 'Email', value: (customer: CustomerRecord) => customer.email },
-      ...exportableFields.map(definition => ({ label: definition.name, value: (customer: CustomerRecord) => formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id]) }))
-    ], filteredCustomers);
-  };
   const crmFilterChips = [
     ...(saleFilterEnabled ? saleFilters.map(value => ({
       id: `sale-${value}`,
@@ -2304,7 +2292,6 @@ export const Crm: React.FC<CrmProps> = ({
               {filterType !== 'analytics' && <div className="crm-list-toolbar">
                 <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
                 <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
-                <button type="button" className="btn btn-outline" onClick={exportCustomers}><Download size={14} /> {t('Xuất CSV')}</button>
                 {(searchTerm || activeFilterCount > 0) && (
                   <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
                 )}

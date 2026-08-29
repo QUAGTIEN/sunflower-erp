@@ -15,7 +15,7 @@ import {
   sortMachinesForAssignment,
   subscribeMachines
 } from '../services/machineService';
-import { AlertTriangle, CalendarDays, FileSpreadsheet, Info, ListChecks, Pencil, Settings2, Trash2, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Info, ListChecks, Pencil, Settings2, Trash2, X } from 'lucide-react';
 import { getPOQueueUpdate, isPOInQueue } from '../domain/poWorkflow';
 import { sortNewestFirst } from '../domain/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '../domain/dateFormatting';
@@ -323,59 +323,6 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
     const runtimeStatus = getMachineRuntimeStatus(machine, activeCommands, excludeCommandId);
     const colorLabel = machine.colorCount > 0 ? `${machine.colorCount} màu` : 'chưa khai báo số màu';
     return `${machine.code} - ${machine.name} (${colorLabel} · ${getMachineStatusLabel(runtimeStatus)})`;
-  };
-
-  const handleExportCSV = () => {
-    const headers = [
-      t('Mã LSX'),
-      t('Mã PO'),
-      t('Tên Tem Cần Bế'),
-      t('Máy Sản Xuất'),
-      t('Ca Sản Xuất'),
-      t('Lõi Giấy'),
-      t('Giấy NVL'),
-      t('SL Đặt'),
-      t('Phế phẩm'),
-      t('Trạng Thái'),
-      t('Người Vận Hành'),
-      t('Ngày Lập Lệnh'),
-      t('Ngày Hoàn Thành')
-    ];
-
-    const rows = activeCommands.map(cmd => [
-      cmd.lsxCode || '',
-      cmd.poCode || '',
-      cmd.productNameToBeCut || cmd.productName || '',
-      cmd.machineId || '',
-      cmd.shift || '',
-      cmd.paperCore || '76mm',
-      `${cmd.paperMaterialCode || ''} (${cmd.paperQuantity || 0} cuộn)`,
-      getProductionQuantity(cmd),
-      cmd.scrapQty || 0,
-      cmd.status === 'completed' ? t('Đã hoàn thành') : cmd.status === 'transfer_pending' ? t('Bàn giao chờ duyệt') : t('Đang in'),
-      cmd.operatorName || '',
-      formatDate(cmd.startedAt, 'vi-VN', ''),
-      formatDate(cmd.completedAt, 'vi-VN', '')
-    ]);
-
-    let csvContent = '\uFEFF'; // BOM
-    csvContent += headers.join(',') + '\n';
-    rows.forEach(row => {
-      const escapedRow = row.map(val => {
-        const strVal = String(val ?? '');
-        return `"${strVal.replace(/"/g, '""')}"`;
-      });
-      csvContent += escapedRow.join(',') + '\n';
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `ERP_DanhSach_LSX_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const handleCompleteLsx = async (e: React.FormEvent) => {
@@ -791,12 +738,8 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
           )}
 
           <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <span className="card-title" style={{ margin: 0 }}>{t('Danh Sách Lệnh Sản Xuất Đang Chạy và Đã Xong')}</span>
-              <button className="btn btn-sm btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }} onClick={handleExportCSV}>
-                <FileSpreadsheet size={16} />
-                <span>{t('Xuất Excel')}</span>
-              </button>
             </div>
             <div className="table-container">
               <table>

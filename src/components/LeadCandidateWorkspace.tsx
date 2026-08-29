@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  Download,
   Eye,
   History,
   ListPlus,
@@ -65,7 +64,6 @@ import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from './EntityC
 import { useEntityFieldDefinitions } from '../hooks/useEntityFieldDefinitions';
 import {
   formatEntityCustomFieldValue,
-  downloadEntityCsv,
   getMissingRequiredEntityFields,
   getEntityCustomFieldSearchValues,
   getEntityCustomFieldFilterLabel,
@@ -1191,19 +1189,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setCurrentPage(1);
   };
 
-  const exportCandidates = () => {
-    const exportableFields = customFieldDefinitions.filter(definition => definition.active && definition.exportable);
-    downloadEntityCsv('du-lieu-tho.csv', [
-      { label: 'Doanh nghiệp', value: (candidate: LeadCandidateRecord) => candidate.companyName },
-      { label: 'Mã số thuế', value: (candidate: LeadCandidateRecord) => candidate.taxCode },
-      { label: 'Tỉnh/thành', value: (candidate: LeadCandidateRecord) => candidate.province },
-      { label: 'Người liên hệ', value: (candidate: LeadCandidateRecord) => candidate.contactPerson },
-      { label: 'Điện thoại', value: (candidate: LeadCandidateRecord) => candidate.phone },
-      { label: 'Sale phụ trách', value: (candidate: LeadCandidateRecord) => candidate.assignedSaleName },
-      ...exportableFields.map(definition => ({ label: definition.name, value: (candidate: LeadCandidateRecord) => formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id]) }))
-    ], filteredCandidates);
-  };
-
   const renderContactResult = (candidate: LeadCandidateRecord) => {
     const canManage = canManageCandidate(candidate);
     return (
@@ -1407,7 +1392,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           <button type="button" className="lead-candidate-column-button" aria-label="Tùy chỉnh cột" title="Tùy chỉnh cột" onClick={() => setShowColumnCustomizer(true)}>
             <Settings2 size={16} />
           </button>
-          <button type="button" className="btn btn-outline" onClick={exportCandidates}><Download size={15} /> Xuất CSV</button>
           {workspaceView === 'all' && <button type="button" className="btn btn-primary lead-candidate-add-button" onClick={openCreateForm}>
             <Plus size={15} /> Thêm dữ liệu
           </button>}

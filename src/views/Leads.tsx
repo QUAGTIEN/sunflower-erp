@@ -5,7 +5,6 @@ import {
   CalendarClock,
   CheckCircle2,
   Eye,
-  Download,
   FileText,
   List,
   Paperclip,
@@ -84,7 +83,6 @@ import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '../compon
 import { useEntityFieldDefinitions } from '../hooks/useEntityFieldDefinitions';
 import {
   formatEntityCustomFieldValue,
-  downloadEntityCsv,
   getMissingRequiredEntityFields,
   getEntityCustomFieldSearchValues,
   getEntityCustomFieldFilterLabel,
@@ -1290,19 +1288,6 @@ export const Leads: React.FC<LeadsProps> = ({
     setCustomFieldFilters({});
   };
 
-  const exportLeads = () => {
-    const exportableFields = customFieldDefinitions.filter(definition => definition.active && definition.exportable);
-    downloadEntityCsv('danh-sach-lead.csv', [
-      { label: 'Doanh nghiệp', value: (lead: LeadRecord) => lead.companyName },
-      { label: 'Mã số thuế', value: (lead: LeadRecord) => lead.taxCode },
-      { label: 'Người liên hệ', value: (lead: LeadRecord) => lead.contactPerson },
-      { label: 'Điện thoại', value: (lead: LeadRecord) => lead.phone },
-      { label: 'Tỉnh/thành', value: (lead: LeadRecord) => lead.province },
-      { label: 'Sale phụ trách', value: (lead: LeadRecord) => lead.assignedSaleName },
-      ...exportableFields.map(definition => ({ label: definition.name, value: (lead: LeadRecord) => formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id]) }))
-    ], filteredLeads);
-  };
-
   const getClassificationLabel = (lead: LeadRecord, fieldId: string, fallback = '—') => {
     const optionIds = getLeadFilterValues(lead, filterDefinitions)[fieldId] || [];
     const labels = optionIds
@@ -1631,7 +1616,6 @@ export const Leads: React.FC<LeadsProps> = ({
               <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
             </div>
             <DataFilterButton activeCount={leadActiveFilterCount} open={showLeadFilters} onClick={() => setShowLeadFilters(true)} />
-            <button type="button" className="btn btn-outline" onClick={exportLeads}><Download size={14} /> Xuất CSV</button>
             {(searchTerm || leadActiveFilterCount > 0) && <button type="button" className="btn btn-outline lead-toolbar-reset" onClick={clearFilters}><X size={14} /> Đặt lại</button>}
           </section>
 
