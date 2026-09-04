@@ -1,4 +1,4 @@
-import { authService, type UserProfile } from './firebaseService';
+import { authService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 
 type UserRole = UserProfile['role'];
 

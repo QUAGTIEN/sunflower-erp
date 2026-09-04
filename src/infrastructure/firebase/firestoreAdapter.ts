@@ -1,0 +1,246 @@
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  runTransaction,
+  setDoc,
+  updateDoc,
+  where
+} from 'firebase/firestore';
+import {
+  getFirebaseDatabase,
+  isFirebaseRuntimeEnabled,
+  reportFirebaseFailure
+} from './client';
+import {
+  deleteLocalDocument,
+  initializeLocalStorage,
+  normalizeCollectionRecords,
+  readLocalCollection,
+  subscribeLocalCollection,
+  updateLocalDocument,
+  upsertLocalDocument
+} from '@/infrastructure/local-storage/localCollectionStore';
+
+if (!isFirebaseRuntimeEnabled) {
+  initializeLocalStorage();
+}
+
+const createDocumentAlreadyExistsError = (existingDocument: unknown) => Object.assign(
+  new Error('Document already exists.'),
+  { code: 'document-already-exists', existingDocument }
+);
+
+export const isDocumentAlreadyExistsError = (error: unknown): boolean => (
+  typeof error === 'object'
+  && error !== null
+  && 'code' in error
+  && error.code === 'document-already-exists'
+);
+
+// ----------------------------------------------------
+// DB SERVICE WRAPPER (Firestore or Mock DB)
+// ----------------------------------------------------
+export const dbService = {
+  async getCollection(colName: string): Promise<any[]> {
+    const database = await getFirebaseDatabase(`reading collection ${colName}`);
+    if (database) {
+      try {
+        const snap = await getDocs(collection(database, colName));
+        const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return normalizeCollectionRecords(colName, data);
+      } catch (error) {
+        reportFirebaseFailure(`reading collection ${colName}`, error);
+        throw error;
+      }
+    }
+    return readLocalCollection(colName);
+  },
+
+  async getDocument(colName: string, docId: string): Promise<any | null> {
+    const database = await getFirebaseDatabase(`reading document ${colName}/${docId}`);
+    if (database) {
+      try {
+        const snap = await getDoc(doc(database, colName, docId));
+        if (!snap.exists()) return null;
+        return normalizeCollectionRecords(colName, [{ id: snap.id, ...snap.data() }])[0];
+      } catch (error) {
+        reportFirebaseFailure(`reading document ${colName}/${docId}`, error);
+        throw error;
+      }
+    }
+    const list = readLocalCollection(colName);
+    return list.find((item: any) => item.id === docId) || null;
+  },
+
+  async getCollectionByField(
+    colName: string,
+    fieldName: string,
+    fieldValue: unknown,
+    options: { orderByField?: string; direction?: 'asc' | 'desc'; maxResults?: number } = {}
+  ): Promise<any[]> {
+    const database = await getFirebaseDatabase(`querying collection ${colName}`);
+    const maxResults = options.maxResults || 250;
+    if (database) {
+      try {
+        const constraints: any[] = [where(fieldName, '==', fieldValue)];
+        if (options.orderByField) {
+          constraints.push(orderBy(options.orderByField, options.direction || 'desc'));
+        }
+        constraints.push(limit(maxResults));
+        const snap = await getDocs(query(collection(database, colName), ...constraints));
+        return normalizeCollectionRecords(colName, snap.docs.map(item => ({ id: item.id, ...item.data() })));
+      } catch (error) {
+        reportFirebaseFailure(`querying collection ${colName}`, error);
+        throw error;
+      }
+    }
+
+    const records = readLocalCollection(colName)
+      .filter((item: any) => item?.[fieldName] === fieldValue);
+    if (options.orderByField) {
+      const direction = options.direction === 'asc' ? 1 : -1;
+      records.sort((left: any, right: any) => String(left?.[options.orderByField!] || '')
+        .localeCompare(String(right?.[options.orderByField!] || '')) * direction);
+    }
+    return records.slice(0, maxResults);
+  },
+
+  async addDocument(colName: string, docData: any): Promise<any> {
+    const docId = docData.id || `${colName.substring(0, 3)}-${Math.random().toString(36).substr(2, 9)}`;
+    const finalDoc = normalizeCollectionRecords(colName, [{
+      ...docData,
+      id: docId,
+      createdAt: docData.createdAt || new Date().toISOString()
+    }])[0];
+
+    const database = await getFirebaseDatabase(`creating document in ${colName}`);
+    if (database) {
+      try {
+        await setDoc(doc(database, colName, docId), finalDoc);
+        return finalDoc;
+      } catch (error) {
+        reportFirebaseFailure(`creating document in ${colName}`, error);
+        throw error;
+      }
+    }
+
+    upsertLocalDocument(colName, finalDoc);
+    return finalDoc;
+  },
+
+  async addDocumentIfAbsent(colName: string, docId: string, docData: any): Promise<any> {
+    const finalDoc = normalizeCollectionRecords(colName, [{
+      ...docData,
+      id: docId,
+      createdAt: docData.createdAt || new Date().toISOString()
+    }])[0];
+
+    const database = await getFirebaseDatabase(`creating unique document in ${colName}`);
+    if (database) {
+      try {
+        const documentReference = doc(database, colName, docId);
+        await runTransaction(database, async transaction => {
+          const existingSnapshot = await transaction.get(documentReference);
+          if (existingSnapshot.exists()) {
+            throw createDocumentAlreadyExistsError({
+              id: existingSnapshot.id,
+              ...existingSnapshot.data()
+            });
+          }
+          transaction.set(documentReference, finalDoc);
+        });
+        return finalDoc;
+      } catch (error) {
+        if (isDocumentAlreadyExistsError(error)) throw error;
+        reportFirebaseFailure(`creating unique document in ${colName}`, error);
+        // Unique records must fail closed. Falling back to a local write here
+        // could let two Sales register the same business while remote sync is down.
+        throw error;
+      }
+    }
+
+    const existingDocument = readLocalCollection(colName).find(item => item.id === docId);
+    if (existingDocument) throw createDocumentAlreadyExistsError(existingDocument);
+    upsertLocalDocument(colName, finalDoc);
+    return finalDoc;
+  },
+
+  async updateDocument(colName: string, docId: string, updatedFields: any): Promise<boolean> {
+    const finalUpdatedFields = {
+      ...updatedFields,
+      updatedAt: new Date().toISOString()
+    };
+
+    const database = await getFirebaseDatabase(`updating document ${colName}/${docId}`);
+    if (database) {
+      try {
+        await updateDoc(doc(database, colName, docId), finalUpdatedFields);
+        return true;
+      } catch (error) {
+        reportFirebaseFailure(`updating document ${colName}/${docId}`, error);
+        throw error;
+      }
+    }
+
+    return updateLocalDocument(colName, docId, finalUpdatedFields);
+  },
+
+  async deleteDocument(colName: string, docId: string): Promise<boolean> {
+    const database = await getFirebaseDatabase(`deleting document ${colName}/${docId}`);
+    if (database) {
+      try {
+        await deleteDoc(doc(database, colName, docId));
+        return true;
+      } catch (error) {
+        reportFirebaseFailure(`deleting document ${colName}/${docId}`, error);
+        throw error;
+      }
+    }
+
+    return deleteLocalDocument(colName, docId);
+  },
+
+  subscribeCollection(colName: string, callback: (data: any[]) => void): () => void {
+    if (isFirebaseRuntimeEnabled) {
+      callback([]);
+
+      let active = true;
+      let unsubscribeRemote: (() => void) | null = null;
+
+      void (async () => {
+        try {
+          const database = await getFirebaseDatabase(`subscribing to ${colName}`);
+          if (!database || !active) return;
+
+          unsubscribeRemote = onSnapshot(collection(database, colName), (snapshot) => {
+            if (!active) return;
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            callback(normalizeCollectionRecords(colName, data));
+          }, (error) => {
+            if (!active) return;
+            reportFirebaseFailure(`subscribing to ${colName}`, error);
+            callback([]);
+          });
+        } catch (error) {
+          if (!active) return;
+          reportFirebaseFailure(`subscribing to ${colName}`, error);
+          callback([]);
+        }
+      })();
+
+      return () => {
+        active = false;
+        unsubscribeRemote?.();
+      };
+    }
+
+    return subscribeLocalCollection(colName, callback);
+  }
+};

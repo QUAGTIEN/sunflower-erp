@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { dbService, UserProfile } from '../services/firebaseService';
+import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '../context/LanguageContext';
 import { X } from 'lucide-react';
-import { formatTime } from '../domain/dateFormatting';
+import { formatTime } from '@/shared/utils/dateFormatting';
 
 interface FloatingChatProps {
   currentUser: UserProfile;
@@ -57,7 +57,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
       const char = triggerMatch[1];
       const queryStr = triggerMatch[2];
       const index = triggerMatch.index ?? -1;
-      
+
       setSuggestionType(char === '@' ? 'member' : 'task');
       setSuggestionQuery(queryStr);
       setSuggestionTriggerIndex(index);
@@ -70,7 +70,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   // Filter items
   const getFilteredSuggestions = () => {
     if (suggestionType === 'member') {
-      return (users || []).filter(u => 
+      return (users || []).filter(u =>
         u.displayName.toLowerCase().includes(suggestionQuery.toLowerCase()) ||
         u.role.toLowerCase().includes(suggestionQuery.toLowerCase())
       );
@@ -78,11 +78,11 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
       const matchedPos = (allPos || [])
         .filter(p => p.poCode.toLowerCase().includes(suggestionQuery.toLowerCase()))
         .map(p => ({ id: p.id, code: p.poCode, type: 'PO', label: `${p.poCode} (${p.customerName})` }));
-        
+
       const matchedLsx = (allLsx || [])
         .filter(l => l.lsxCode?.toLowerCase().includes(suggestionQuery.toLowerCase()))
         .map(l => ({ id: l.id, code: l.lsxCode, type: 'LSX', label: `${l.lsxCode} (${l.productName})` }));
-        
+
       return [...matchedPos, ...matchedLsx];
     }
   };
@@ -91,10 +91,10 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
 
   const handleSelectSuggestion = (item: any) => {
     const beforeTrigger = messageText.substring(0, suggestionTriggerIndex);
-    const replacement = suggestionType === 'member' 
-      ? `@${item.displayName} ` 
+    const replacement = suggestionType === 'member'
+      ? `@${item.displayName} `
       : `${item.code} `;
-    
+
     setMessageText(beforeTrigger + replacement);
     setShowSuggestions(false);
   };
@@ -121,7 +121,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     if (isOpen) return 0;
     const lastReadStr = localStorage.getItem(`erp_last_read_floating_${targetId}`);
     if (!lastReadStr) return chatMessages.length; // If never read, all are unread
-    
+
     const lastReadTime = new Date(lastReadStr).getTime();
     return chatMessages.filter(
       msg => msg.senderId !== currentUser.uid && new Date(msg.createdAt).getTime() > lastReadTime
@@ -176,13 +176,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
           <span>Chat: {targetCode}</span>
           <button onClick={() => setIsOpen(false)}>×</button>
         </div>
-        
+
         <div className="floating-chat-body">
           {chatMessages.map(msg => {
             const isMe = msg.senderId === currentUser.uid;
             return (
-              <div 
-                key={msg.id} 
+              <div
+                key={msg.id}
                 className={`chat-message-row ${isMe ? 'me' : 'other'}`}
                 style={{ maxWidth: '85%' }}
               >
@@ -193,7 +193,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   {!msg.recalled && (
                     <>
                       <span>•</span>
-                      <button 
+                      <button
                         onClick={() => setReplyingTo(msg)}
                         style={{ border: 'none', background: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
                       >
@@ -202,7 +202,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                       {(isMe || currentUser.role === 'admin') && (
                         <>
                           <span>•</span>
-                          <button 
+                          <button
                             onClick={() => handleRecallMessage(msg.id)}
                             style={{ border: 'none', background: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
                           >
@@ -213,10 +213,10 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                     </>
                   )}
                 </div>
-                <div 
+                <div
                   className="chat-message-bubble"
-                  style={{ 
-                    padding: '8px 12px', 
+                  style={{
+                    padding: '8px 12px',
                     fontSize: '12.5px',
                     backgroundColor: isMe ? 'var(--color-primary)' : '#ffffff',
                     color: isMe ? '#ffffff' : 'var(--color-text-main)',
@@ -269,8 +269,8 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                 {suggestionType === 'member' ? t('Gợi ý tag nhân viên') : t('Gợi ý mã liên kết')}
               </div>
               {filteredSuggestions.map((item: any) => (
-                <div 
-                  key={item.id} 
+                <div
+                  key={item.id}
                   className="chat-suggestion-item"
                   onClick={() => handleSelectSuggestion(item)}
                 >
@@ -299,8 +299,8 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
                 <strong>{t('Trả lời')} {replyingTo.senderName}:</strong> "{replyingTo.messageText}"
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setReplyingTo(null)}
                 style={{
                   border: 'none',

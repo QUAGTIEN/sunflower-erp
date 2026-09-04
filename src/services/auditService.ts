@@ -1,4 +1,4 @@
-import { dbService, type UserProfile } from './firebaseService';
+import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 
 export type AuditCategory = 'session' | 'navigation' | 'business' | 'administration';
 export type AuditModule =

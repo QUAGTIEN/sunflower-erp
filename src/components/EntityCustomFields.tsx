@@ -6,7 +6,7 @@ import {
   type EntityCustomFieldValues,
   type EntityFieldDefinition,
   type EntityFieldRole
-} from '../domain/entityFieldConfig';
+} from '@/features/crm/model/entityFieldConfig';
 import './EntityCustomFields.css';
 
 interface EntityCustomFieldControlProps {
@@ -75,4 +75,3 @@ export const EntityCustomFieldsReadOnly: React.FC<{
   if (visibleDefinitions.length === 0) return null;
   return <section className="entity-custom-fields entity-custom-fields--readonly"><header><h3>Thông tin tùy chỉnh</h3></header><dl>{visibleDefinitions.map(definition => <div key={definition.id}><dt>{definition.name}</dt><dd>{formatEntityCustomFieldValue(definition, values[definition.id])}</dd></div>)}</dl></section>;
 };
-

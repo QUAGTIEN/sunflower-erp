@@ -5,8 +5,8 @@ import {
   type EntityFieldDefinition,
   type EntityFieldRole,
   type EntityFieldTable
-} from '../domain/entityFieldConfig';
-import { dbService } from '../services/firebaseService';
+} from '@/features/crm/model/entityFieldConfig';
+import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 
 export const useEntityFieldDefinitions = (table?: EntityFieldTable, role?: EntityFieldRole) => {
   const [allDefinitions, setAllDefinitions] = useState<EntityFieldDefinition[]>([]);
@@ -27,4 +27,3 @@ export const useEntityFieldDefinitions = (table?: EntityFieldTable, role?: Entit
 
   return { definitions, allDefinitions, loading };
 };
-

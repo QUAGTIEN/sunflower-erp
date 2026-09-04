@@ -3,9 +3,9 @@ import {
   mergeSystemFilterDefinitions,
   type SystemFilterDefinition
 } from '../domain/systemFilterConfig';
-import type { LeadFilterDefinition } from '../domain/crmModels';
-import type { CustomerFilterDefinition } from '../domain/customerFilterConfig';
-import { dbService } from '../services/firebaseService';
+import type { LeadFilterDefinition } from '@/features/crm/model/crmModels';
+import type { CustomerFilterDefinition } from '@/features/crm/model/customerFilterConfig';
+import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 
 export const useSystemFilterConfiguration = (
   leadDefinitions: LeadFilterDefinition[] = [],

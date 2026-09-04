@@ -1,12 +1,12 @@
-import type { CustomerRecord, LeadRecord } from '../domain/crmModels';
-import type { DesignRequest } from '../domain/designWorkflow';
-import type { ProcurementRequestRecord } from '../domain/purchaseModels';
+import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
+import type { DesignRequest } from '@/features/design/model/designWorkflow';
+import type { ProcurementRequestRecord } from '@/features/procurement/model/purchaseModels';
 import {
   getNotificationDocumentId,
   type NotificationModule,
   type UserNotificationRecord
 } from '../domain/notificationModels';
-import { dbService, type UserProfile } from './firebaseService';
+import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 
 type UnknownRecord = Record<string, unknown>;
 

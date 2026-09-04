@@ -1,73 +1,59 @@
-# React + TypeScript + Vite
+# Sunflower ERP
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Hệ thống ERP nội bộ dành cho quy trình kinh doanh và sản xuất tem nhãn Sunflower. Ứng dụng sử dụng React, TypeScript, Vite và Firebase, đồng thời hỗ trợ local storage khi Firebase runtime không khả dụng.
 
-Currently, two official plugins are available:
+## Chạy dự án
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Các lệnh kiểm tra và chạy production:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
+npm run lint
+npm run preview
 ```
+
+Sao chép `.env.example` thành `.env` và điền cấu hình Firebase trước khi dùng backend thật. Không commit file `.env` hoặc thông tin xác thực.
+
+## Cấu trúc chính
+
+```text
+sunflower/
+├── .agents/skills/    # Skill dành cho agent và quy tắc UI
+├── .codex/            # Hook tự động hóa Codex
+├── docs/              # Kiến trúc và hướng dẫn phát triển
+├── scripts/           # Script bảo trì chạy thủ công
+├── api/               # API entry points
+├── server/            # Server-side code
+├── public/            # Static assets
+└── src/
+    ├── app/           # Composition, providers và lifecycle
+    ├── features/      # Module nghiệp vụ ERP
+    ├── shared/        # Kiểu dữ liệu và utility dùng chung
+    ├── infrastructure/ # Firebase và local-storage adapters
+    └── data/          # Seed và dữ liệu tĩnh
+```
+
+Xem [kiến trúc source](docs/ARCHITECTURE.md) và [quy tắc phát triển](docs/DEVELOPER_GUIDELINES.md) trước khi thay đổi cấu trúc hoặc giao diện.
+
+## Skill và agent guidance
+
+- `AGENTS.md`: quy tắc điều phối ở cấp dự án.
+- `.agents/skills/sunflower-erp-ui/SKILL.md`: hướng dẫn UI dành riêng cho ERP.
+- `.agents/skills/design-taste-frontend/SKILL.md`: tham chiếu anti-slop phụ trợ.
+- `skills-lock.json`: nguồn và phiên bản của skill được cài đặt.
+- `.codex/hooks.json`: hook Graphify.
+
+## Script bảo trì
+
+`npm run db:clear` xóa và tạo lại dữ liệu Firebase theo seed trong script. Đây là thao tác phá hủy dữ liệu; chỉ chạy khi đã xác nhận đúng project Firebase và có bản sao lưu cần thiết.
+
+## Triển khai
+
+- Firebase: `firebase.json`, `firestore.rules`, `storage.rules`.
+- Vercel: `vercel.json` và thư mục `api/`.
+- Production build: `npm run build` tạo thư mục `dist/`.

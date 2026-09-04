@@ -1,7 +1,7 @@
-import type { LeadFilterDefinition } from './crmModels';
-import type { CustomerFilterDefinition } from './customerFilterConfig';
-import { CUSTOMER_FILTER_IDS } from './customerFilterConfig';
-import { LEAD_FILTER_IDS } from './leadFilterConfig';
+import type { LeadFilterDefinition } from '@/features/crm/model/crmModels';
+import type { CustomerFilterDefinition } from '@/features/crm/model/customerFilterConfig';
+import { CUSTOMER_FILTER_IDS } from '@/features/crm/model/customerFilterConfig';
+import { LEAD_FILTER_IDS } from '@/features/crm/model/leadFilterConfig';
 
 export type SystemFilterScope = 'lead_list' | 'customer_data' | 'crm_customers';
 export type SystemFilterSourceType = 'manual_catalog' | 'system_data';

@@ -19,4 +19,41 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ['src/shared/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: [
+            '@/app/**',
+            '@/features/**',
+            '@/infrastructure/**',
+            '../../app/**',
+            '../../features/**',
+            '../../infrastructure/**',
+          ],
+          message: 'Shared code cannot depend on app, features, or infrastructure.',
+        }],
+      }],
+    },
+  },
+  {
+    files: ['src/domain/**/*.{ts,tsx}', 'src/features/**/model/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: [
+            '@/services/**',
+            '@/infrastructure/**',
+            '@/components/**',
+            '../services/**',
+            '../components/**',
+            '../../services/**',
+            '../../components/**',
+          ],
+          message: 'Business models cannot depend on UI or infrastructure adapters.',
+        }],
+      }],
+    },
+  },
 ])
