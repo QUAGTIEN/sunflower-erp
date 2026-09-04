@@ -1,5 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import { sanitizeCustomerNoteHtml } from '@/features/crm/model/customerNote';
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Redo2,
+  Underline,
+  Undo2
+} from 'lucide-react';
 
 interface CustomerNoteEditorProps {
   value: string;
@@ -32,16 +45,20 @@ export function CustomerNoteEditor({ value, disabled = false, placeholder, onCha
     <div className={`customer-rich-note ${disabled ? 'is-disabled' : ''}`}>
       {!disabled && (
         <div className="customer-rich-note__toolbar" aria-label="Công cụ định dạng ghi chú" onMouseDown={event => event.preventDefault()}>
-          <button type="button" onClick={() => runCommand('bold')}><strong>Đậm</strong></button>
-          <button type="button" onClick={() => runCommand('italic')}><em>Nghiêng</em></button>
-          <button type="button" onClick={() => runCommand('underline')}><u>Gạch chân</u></button>
-          <button type="button" onClick={() => runCommand('insertUnorderedList')}>Danh sách chấm</button>
-          <button type="button" onClick={() => runCommand('insertOrderedList')}>Danh sách số</button>
-          <button type="button" onClick={() => runCommand('justifyLeft')}>Căn trái</button>
-          <button type="button" onClick={() => runCommand('justifyCenter')}>Căn giữa</button>
-          <button type="button" onClick={addLink}>Liên kết</button>
-          <button type="button" onClick={() => runCommand('undo')}>Hoàn tác</button>
-          <button type="button" onClick={() => runCommand('redo')}>Làm lại</button>
+          <button type="button" title="Đậm" aria-label="Đậm" onClick={() => runCommand('bold')}><Bold size={15} /></button>
+          <button type="button" title="Nghiêng" aria-label="Nghiêng" onClick={() => runCommand('italic')}><Italic size={15} /></button>
+          <button type="button" title="Gạch chân" aria-label="Gạch chân" onClick={() => runCommand('underline')}><Underline size={15} /></button>
+          <span className="customer-rich-note__toolbar-divider" aria-hidden="true" />
+          <button type="button" title="Danh sách chấm" aria-label="Danh sách chấm" onClick={() => runCommand('insertUnorderedList')}><List size={15} /></button>
+          <button type="button" title="Danh sách số" aria-label="Danh sách số" onClick={() => runCommand('insertOrderedList')}><ListOrdered size={15} /></button>
+          <span className="customer-rich-note__toolbar-divider" aria-hidden="true" />
+          <button type="button" title="Căn trái" aria-label="Căn trái" onClick={() => runCommand('justifyLeft')}><AlignLeft size={15} /></button>
+          <button type="button" title="Căn giữa" aria-label="Căn giữa" onClick={() => runCommand('justifyCenter')}><AlignCenter size={15} /></button>
+          <button type="button" title="Căn phải" aria-label="Căn phải" onClick={() => runCommand('justifyRight')}><AlignRight size={15} /></button>
+          <span className="customer-rich-note__toolbar-divider" aria-hidden="true" />
+          <button type="button" title="Thêm liên kết" aria-label="Thêm liên kết" onClick={addLink}><Link2 size={15} /></button>
+          <button type="button" title="Hoàn tác" aria-label="Hoàn tác" onClick={() => runCommand('undo')}><Undo2 size={15} /></button>
+          <button type="button" title="Làm lại" aria-label="Làm lại" onClick={() => runCommand('redo')}><Redo2 size={15} /></button>
         </div>
       )}
       <div

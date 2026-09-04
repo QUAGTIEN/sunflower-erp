@@ -101,11 +101,8 @@
 }
 
 .customer-profile-column {
-  display: flex;
+  display: contents;
   min-width: 0;
-  flex-direction: column;
-  gap: 16px;
-  grid-column: 1 / -1;
 }
 
 .customer-note-card {
@@ -279,6 +276,23 @@
   grid-column: 1 / -1;
 }
 
+/* Desktop detail layout: note on the left, PO/products on the right. */
+.crm-view--detail .customer-details-grid {
+  grid-template-columns: minmax(320px, 0.9fr) minmax(520px, 1.4fr);
+}
+
+.crm-view--detail .customer-company-card {
+  grid-column: 1 / -1;
+}
+
+.crm-view--detail .customer-note-card {
+  grid-column: 1;
+}
+
+.crm-view--detail .customer-order-history-card {
+  grid-column: 2;
+}
+
 .customer-rich-note {
   overflow: hidden;
   border: 1px solid #cbd5e1;
@@ -290,15 +304,20 @@
   display: flex;
   min-height: 38px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 2px;
   padding: 4px 6px;
   border-bottom: 1px solid #dbe3ef;
   background: #f8fafc;
+  overflow-x: auto;
 }
 
 .customer-rich-note__toolbar button {
+  display: inline-flex;
   min-height: 28px;
+  min-width: 28px;
+  align-items: center;
+  justify-content: center;
   padding: 4px 8px;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -307,6 +326,20 @@
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+}
+
+.customer-rich-note__toolbar-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 3px;
+  background: #dbe3ef;
+  flex: 0 0 auto;
+}
+
+.customer-rich-note__strike-icon {
+  font-size: 13px;
+  line-height: 1;
+  text-decoration: line-through;
 }
 
 .customer-rich-note__toolbar button:hover,
@@ -613,6 +646,20 @@
 
   .customer-company-summary-inline {
     display: none;
+  }
+}
+
+@media (max-width: 1180px) {
+  .crm-view--detail .customer-profile-column {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: 16px;
+  }
+
+  .crm-view--detail .customer-company-card,
+  .crm-view--detail .customer-note-card,
+  .crm-view--detail .customer-order-history-card {
+    grid-column: 1 / -1;
   }
 }
 
