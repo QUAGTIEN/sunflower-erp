@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import {
   AlertCircle,
   CheckCircle2,
@@ -485,12 +486,7 @@ export const Design: React.FC<DesignProps> = ({
     <div className="design-request-view">
       {!selectedRequest && (
       <>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('Thiết kế')}</h1>
-          <p className="page-subtitle">{t('Mỗi mặt hàng trong PO là một công việc thiết kế độc lập, chỉ hiển thị thông tin cần thiết cho bộ phận Thiết kế.')}</p>
-        </div>
-      </div>
+      <PageContextHeader section={t('Thiết kế')} current={t('Danh sách yêu cầu thiết kế')} />
 
       <div className="design-request-metrics">
         {metrics.map(status => (

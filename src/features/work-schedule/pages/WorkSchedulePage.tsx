@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
@@ -313,10 +314,9 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
 
   return (
     <div className="work-schedule-page">
-      <header className="page-header work-schedule-header">
-        <div><h1 className="page-title">Lịch làm việc</h1></div>
+      <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Hôm nay'} className="work-schedule-header">
         {isAdmin && <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}>Giao việc</button>}
-      </header>
+      </PageContextHeader>
 
       <section className="work-schedule-card">
         <div className="work-schedule-tabs content-tabs" role="tablist" aria-label="Chế độ xem lịch làm việc">

@@ -4,6 +4,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { FloatingChat } from '@/components/FloatingChat';
 import POFormFullScreen from '@/features/sales/components/POFormFullScreen';
 import { PageBackButton } from '@/components/PageBackButton';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { ensureReceivableInvoice } from '@/features/sales/api/poWorkflowService';
 import { syncDesignRequestsForPO } from '@/features/design/api/designRequestService';
 import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/procurementService';
@@ -703,17 +704,11 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
 
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('Tạo đơn hàng')}</h1>
-          <p className="page-subtitle">{t('Tạo đơn hàng PO mới, theo dõi hàng đợi công việc và quản lý file thiết kế, thông số kỹ thuật.')}</p>
-        </div>
+      <PageContextHeader section={t('Tạo đơn hàng')} current={!selectedPO ? (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Danh sách PO')) : undefined}>
         {(currentUser.role === 'admin' || currentUser.role === 'sale') && !selectedPO && (
-          <button className="btn btn-primary" onClick={() => handleOpenCreatePO()}>
-            {t('Tạo đơn hàng mới')}
-          </button>
+          <button className="btn btn-primary" onClick={() => handleOpenCreatePO()}>{t('Tạo đơn hàng mới')}</button>
         )}
-      </div>
+      </PageContextHeader>
 
       {!selectedPO && (
         <div className="card">

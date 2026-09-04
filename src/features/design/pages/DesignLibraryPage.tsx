@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { Archive, CheckCircle2, FolderOpen } from 'lucide-react';
 import { ApprovedDesignLibrary } from '@/features/design/components/ApprovedDesignLibrary';
 import { useLanguage } from '@/context/LanguageContext';
@@ -26,12 +27,7 @@ export const DesignLibrary: React.FC<DesignLibraryProps> = ({ pos, currentUser }
 
   return (
     <div className="design-library-view">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('Kho mẫu')}</h1>
-          <p className="page-subtitle">{t('Kho tài sản thiết kế của công ty, lưu mẫu chuẩn theo mã khách hàng, sản phẩm và phiên bản.')}</p>
-        </div>
-      </div>
+      <PageContextHeader section={t('Kho mẫu')} current={t('Danh sách mẫu thiết kế')} />
 
       <div className="design-library-metrics">
         <div className="design-metric-card">

@@ -32,6 +32,7 @@ import {
 } from '@/domain/systemFilterConfig';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { CustomFieldConfiguration } from '@/features/administration/components/CustomFieldConfiguration';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import './SystemConfiguration.css';
 
 interface SystemConfigurationProps {
@@ -469,13 +470,9 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
 
   return (
     <div className="system-config-view">
-      <div className="page-header system-config-header">
-        <div>
-          <h1 className="page-title">Cấu hình</h1>
-          <p>Quản lý tiêu chí và các mục con dùng chung cho những nút Bộ lọc trong phần mềm.</p>
-        </div>
+      <PageContextHeader section="Cấu hình" current={configurationTab === 'custom_fields' ? 'Trường thông tin' : 'Tiêu chí bộ lọc'} className="system-config-header">
         <span className="system-config-admin-badge"><LockKeyhole size={14} /> Chỉ Giám đốc/Admin</span>
-      </div>
+      </PageContextHeader>
 
       <nav className="system-config-tabs content-tabs" role="tablist" aria-label="Nhóm cấu hình">
         <button type="button" role="tab" aria-selected={configurationTab === 'filters'} className={configurationTab === 'filters' ? 'is-active' : ''} onClick={() => setConfigurationTab('filters')}>Tiêu chí bộ lọc</button>

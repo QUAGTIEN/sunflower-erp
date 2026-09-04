@@ -12,7 +12,7 @@
   /* Color Palette - Light Professional Office Theme */
   --bg-app: #f1f5f9;          /* Light Slate Gray for app background */
   --bg-card: #ffffff;         /* Pure white for cards, panels, tables */
-  --bg-sidebar: #ffffff;      /* Sidebar white */
+  --bg-sidebar: #172554;      /* Deep navy navigation rail */
   --bg-input: #ffffff;
   
   --color-primary: #1e3a8a;       /* Navy Blue primary color */
@@ -365,7 +365,7 @@ body {
 .app-sidebar {
   grid-area: sidebar;
   background-color: var(--bg-sidebar);
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid #243b69;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -381,8 +381,9 @@ body {
   justify-content: center;
   flex: 0 0 var(--header-height);
   padding: 0 10px;
-  border-bottom: 1px solid var(--color-border);
-  background-color: #f8fafc;
+  border-bottom: 1px solid #243b69;
+  /* Keep the supplied brand wordmark crisp while the navigation rail remains navy. */
+  background-color: #ffffff;
   overflow: hidden;
 }
 
@@ -417,7 +418,7 @@ body {
 }
 
 .app-sidebar:hover .sidebar-menu {
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #5573aa transparent;
 }
 
 .sidebar-menu::-webkit-scrollbar {
@@ -434,7 +435,7 @@ body {
 }
 
 .app-sidebar:hover .sidebar-menu::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #5573aa;
 }
 
 .sidebar-item {
@@ -448,7 +449,7 @@ body {
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.25;
-  color: var(--color-text-muted);
+  color: #c9d7f2;
   text-align: left;
   border: none;
   background: none;
@@ -459,14 +460,14 @@ body {
 }
 
 .sidebar-item:hover {
-  background-color: #f1f4ff;
-  color: #244fca;
+  background-color: #203765;
+  color: #ffffff;
 }
 
 .sidebar-item.active {
-  background-color: #e7ecff;
-  color: #244fca;
-  font-weight: 600;
+  background-color: #2d4f8d;
+  color: #ffffff;
+  font-weight: 500;
   box-shadow: none;
 }
 
@@ -487,7 +488,7 @@ body {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
-  color: #7a879d;
+  color: #9fb4d8;
 }
 
 .sidebar-item:hover .sidebar-item-content svg,
@@ -514,8 +515,8 @@ body {
 .sidebar-footer {
   flex: 0 0 auto;
   padding: 7px 8px 8px;
-  border-top: 1px solid var(--color-border);
-  background-color: #ffffff;
+  border-top: 1px solid #243b69;
+  background-color: #172554;
 }
 
 .sidebar-logout-btn {

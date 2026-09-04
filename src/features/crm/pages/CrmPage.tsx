@@ -20,6 +20,7 @@ import {
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
 import { PageBackButton } from '@/components/PageBackButton';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
@@ -2441,18 +2442,14 @@ export const Crm: React.FC<CrmProps> = ({
 
   return (
     <SystemFieldSurface table="customers" className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('Khách hàng')}</h1>
-          <p className="page-subtitle">{t('Quản lý danh sách, hồ sơ liên hệ, hạn mức công nợ và cảnh báo chăm sóc khách hàng.')}</p>
-        </div>
+      <PageContextHeader section={t('Khách hàng')} current={filterType === 'has_debt' ? t('Có công nợ') : filterType === 'analytics' ? t('Phân tích') : t('Tất cả')}>
         {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
           <button className="btn btn-primary crm-add-customer" onClick={() => openAddModal()} title={t('Thêm Khách Hàng Mới')}>
             <Plus size={18} />
             <span>{t('Thêm khách hàng')}</span>
           </button>
         )}
-      </div>
+      </PageContextHeader>
 
       {currentUser.role === 'admin' && (editRequests.some(r => r.status === 'pending') || customers.some(c => c.deleteRequested && !c.deleted)) && (
         <div className="card" style={{ border: '2px solid var(--color-primary-light)', backgroundColor: '#f0fdf4', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>

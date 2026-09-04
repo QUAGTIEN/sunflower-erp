@@ -1,4 +1,5 @@
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
@@ -1588,11 +1589,11 @@ export const Leads: React.FC<LeadsProps> = ({
 
   return (
     <SystemFieldSurface table="leads" className="leads-page">
-      <header className="lead-page-commandbar">
-        <div className="lead-page-commandbar__title">
-          <h1>{t('Tiềm năng')}</h1>
-        </div>
-      </header>
+      <PageContextHeader
+        section={t('Tiềm năng')}
+        current={workspaceTab === 'performance' ? t('Khách hàng của Sale') : t('Danh sách Lead')}
+        className="lead-page-commandbar"
+      />
 
       <div className="lead-page-navigation lead-candidate-commandbar">
         <div className="lead-workspace-tabs content-tabs content-tabs--compact" role="tablist" aria-label="Không gian quản lý Lead">

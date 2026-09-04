@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { adminUserService } from '@/services/adminUserService';
 import { useLanguage } from '@/context/LanguageContext';
@@ -318,15 +319,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
 
   return (
     <div className="users-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('Tài khoản')}</h1>
-          <p className="page-subtitle">{t('Xem danh sách nhân sự, phân quyền vai trò phòng ban và quản lý trạng thái hoạt động.')}</p>
-        </div>
-        <button className="btn btn-primary" onClick={openAddModal}>
-          {t('Thêm người dùng')}
-        </button>
-      </div>
+      <PageContextHeader section={t('Tài khoản')} current={t('Danh sách người dùng')}>
+        <button className="btn btn-primary" onClick={openAddModal}>{t('Thêm người dùng')}</button>
+      </PageContextHeader>
 
       <div className="card">
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>

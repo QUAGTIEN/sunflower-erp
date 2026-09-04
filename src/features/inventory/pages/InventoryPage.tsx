@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { Trash2, Pencil } from 'lucide-react';
@@ -258,20 +259,14 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
 
   return (
     <div className="inventory-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('Vật liệu')}</h1>
-          <p className="page-subtitle">{t('Quản lý số lượng tồn kho khả dụng, lịch sử phiếu xuất kho vật tư và báo cáo Nhập Xuất Tồn.')}</p>
-        </div>
+      <PageContextHeader section={t('Vật liệu')} current={activeTab === 'exports' ? t('Lịch Sử Phiếu Xuất Kho') : activeTab === 'nxt' ? t('Báo Cáo Nhập Xuất Tồn') : t('Tồn Kho Hiện Tại')}>
         {(currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <>
             <button className="btn btn-outline" onClick={handleOpenAddExport}>{t('Tạo Phiếu Xuất Kho')}</button>
-            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-              {t('Thêm vật tư')}
-            </button>
-          </div>
+            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>{t('Thêm vật tư')}</button>
+          </>
         )}
-      </div>
+      </PageContextHeader>
 
       <div className="content-tabs inventory-view-tabs" role="tablist" aria-label={t('Kho nguyên vật tư')}>
         <button type="button" role="tab" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'is-active' : ''} onClick={() => setActiveTab('inventory')}>{t('Tồn Kho Hiện Tại')}</button>

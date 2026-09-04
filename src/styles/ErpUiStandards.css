@@ -34,6 +34,96 @@
   padding: 0;
 }
 
+/* Compact MISA-like context row: module, active view and actions share one line. */
+.erp-page-context {
+  min-height: 40px;
+  margin-bottom: 0;
+}
+
+.erp-page-context__path {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.erp-page-context__separator {
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.erp-page-context__current {
+  min-width: 0;
+  overflow: hidden;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.erp-page-context__actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.erp-page-context + .content-tabs,
+.erp-page-context + .lead-page-navigation,
+.erp-page-context + .lead-candidate-workspace,
+.erp-page-context + .crm-command-center {
+  margin-top: 0;
+}
+
+/* List screens place navigation above the toolbar so the hierarchy is always predictable. */
+.lead-page-navigation.lead-page-navigation,
+.lead-candidate-commandbar.lead-candidate-commandbar,
+.crm-list-commandbar.crm-list-commandbar {
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.lead-page-navigation > .lead-workspace-tabs,
+.lead-candidate-commandbar > .lead-candidate-queues,
+.crm-list-commandbar > .crm-list-tabs {
+  width: 100%;
+  min-width: 0;
+  border-bottom: 1px solid var(--erp-border-color);
+}
+
+.lead-page-navigation__tools,
+.lead-candidate-commandbar > .lead-candidate-toolbar,
+.crm-list-commandbar > .crm-list-toolbar {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.crm-list-commandbar > .crm-list-toolbar {
+  flex: 0 0 auto;
+}
+
+.sales-list-tabs.content-tabs,
+.purchase-list-tabs.content-tabs {
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--erp-border-color);
+  border-radius: 0;
+  background: transparent;
+}
+
 /* Keep the page command area compact after secondary descriptions are hidden. */
 .sales-view,
 .accounting-view,
@@ -428,6 +518,15 @@ table button:not(.row-action-menu__trigger) {
 
   .lead-detail-actions,
   .crm-detail-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .erp-page-context__path {
+    width: 100%;
+  }
+
+  .erp-page-context__actions {
     width: 100%;
     justify-content: flex-start;
   }

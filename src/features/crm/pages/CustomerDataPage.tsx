@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Database } from 'lucide-react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { LeadCandidateWorkspace } from '@/features/crm/components/LeadCandidateWorkspace';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
@@ -33,15 +33,7 @@ export const CustomerData: React.FC<CustomerDataProps> = ({
 
   return (
     <div className="customer-data-page">
-      <header className="customer-data-page__header">
-        <div className="customer-data-page__title">
-          <span className="customer-data-page__icon"><Database size={20} /></span>
-          <div>
-            <h1>Dữ liệu thô</h1>
-            <p>Quản lý dữ liệu doanh nghiệp tìm kiếm, phân công Sale và theo dõi lịch chăm sóc.</p>
-          </div>
-        </div>
-      </header>
+      <PageContextHeader section="Dữ liệu thô" current="Tất cả dữ liệu" className="customer-data-page__header" />
 
       <LeadCandidateWorkspace
         candidates={candidates}

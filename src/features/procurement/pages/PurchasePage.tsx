@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import {
   ClipboardList,
   Search,
@@ -356,9 +357,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
 
   return (
     <div className="purchase-page">
-      <div className="page-header">
-        <div><h1 className="page-title">{t('Mua hàng')}</h1><p className="page-subtitle">{t('Tiếp nhận nhu cầu từ Sale PO, chọn phương án cung ứng, đề xuất nhà cung cấp và theo dõi đơn mua.')}</p></div>
-      </div>
+      <PageContextHeader section={t('Mua hàng')} current={activeListView === 'orders' ? t('Đơn mua đã phát hành') : t('Yêu cầu từ Sale PO')} />
 
       <section className="purchase-panel purchase-list-card">
         <div className="purchase-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>

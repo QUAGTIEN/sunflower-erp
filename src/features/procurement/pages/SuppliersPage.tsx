@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import {
   Building2,
   CalendarDays,
@@ -467,10 +468,9 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
 
   return (
     <div className="suppliers-page">
-      <div className="page-header">
-        <div><h1 className="page-title">{t('Nhà cung cấp')}</h1><p className="page-subtitle">{t('Quản lý hồ sơ, năng lực, lịch sử mua hàng, tài liệu và công nợ của toàn bộ nhà cung cấp.')}</p></div>
+      <PageContextHeader section={t('Nhà cung cấp')} current={t('Danh sách nhà cung cấp')}>
         <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm NCC')}</button>
-      </div>
+      </PageContextHeader>
 
       <div className="supplier-kpi-grid">
         <div><Building2 size={18} /><strong>{suppliers.length}</strong><span>{t('Tổng NCC')}</span></div>

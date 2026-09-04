@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { FloatingChat } from '@/components/FloatingChat';
@@ -514,29 +515,11 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
 
   return (
     <div className="production-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">
-            {productionTab === 'schedule'
-              ? 'Lịch và tải máy sản xuất'
-              : productionTab === 'machines'
-                ? 'Danh mục máy sản xuất'
-                : isOperator ? t('Phòng máy sản xuất') : t('Sản xuất')}
-          </h1>
-          <p className="page-subtitle">
-            {productionTab === 'schedule'
-              ? 'Quan sát máy đang chạy, máy sẵn sàng và các LSX đang chiếm tải theo thời gian thực.'
-              : productionTab === 'machines'
-                ? 'Quản lý máy in, số màu, khổ in, năng suất và tình trạng vận hành.'
-                : isOperator
-                  ? t('Danh sách lệnh in và bế tem được phân công, thông số kỹ thuật lõi/giấy và bản vẽ layout thiết kế.')
-                  : t('Phát hành lệnh sản xuất, phân bổ máy in, ca máy, thợ in và ghi nhận sản lượng hoàn thành, hao hụt.')}
-          </p>
-        </div>
+      <PageContextHeader section={isOperator ? t('Phòng máy sản xuất') : t('Sản xuất')} current={productionTab === 'schedule' ? 'Lịch máy' : productionTab === 'machines' ? 'Danh mục máy' : 'Danh sách LSX'}>
         {productionTab === 'commands' && !isOperator && (currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
           <button className="btn btn-primary" onClick={handleOpenAddLsx}>{t('Phát hành lệnh sản xuất')}</button>
         )}
-      </div>
+      </PageContextHeader>
 
       <div className="production-tabs content-tabs" role="tablist" aria-label="Quản lý sản xuất">
         <button

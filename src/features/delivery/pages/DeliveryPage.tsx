@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { getPODeliveryStage, getPOQueueUpdate, isPOInQueue } from '@/features/sales/model/poWorkflow';
@@ -918,15 +919,11 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
 
   return (
     <div className="delivery-view delivery-control-center">
-      <div className="page-header delivery-page-header">
-        <div>
-          <h1 className="page-title">Giao hàng</h1>
-          <p className="page-subtitle">Gom đơn theo tuyến, kiểm soát tải trọng, tránh trùng xe và theo dõi ký nhận đến khi hoàn tất.</p>
-        </div>
+      <PageContextHeader section="Giao hàng" current={activeTab === 'trips' ? 'Chuyến giao' : activeTab === 'fleet' ? 'Xe & tài xế' : activeTab === 'proof' ? 'POD & đối soát' : 'Bảng điều phối'} className="delivery-page-header">
         {(currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
           <button className="btn btn-primary" onClick={handleOpenAddTrip}>Lập chuyến giao hàng</button>
         )}
-      </div>
+      </PageContextHeader>
 
       <div className="delivery-tabs content-tabs" role="tablist" aria-label="Điều phối giao hàng">
         {([

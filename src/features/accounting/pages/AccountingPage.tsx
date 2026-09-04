@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { BarChart } from '@/components/VisualCharts';
@@ -421,12 +422,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
 
   return (
     <div className="accounting-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">{t('Kế toán')}</h1>
-          <p className="page-subtitle">{t('Theo dõi công nợ phải thu (AR) / phải trả (AP), hóa đơn VAT, phân tích lãi gộp của từng PO thực tế.')}</p>
-        </div>
-      </div>
+      <PageContextHeader section={t('Kế toán')} current={activeTab === 'costing' ? t('Báo cáo lãi gộp đơn hàng') : t('Công nợ phải thu & phải trả')} />
 
       {/* Tabs */}
       <div className="tab-container content-tabs" role="tablist" aria-label={t('Kế toán')}>
