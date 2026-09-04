@@ -2762,7 +2762,7 @@ export const Crm: React.FC<CrmProps> = ({
               </div>
             </div>
 
-            <div style={{ padding: '16px 0 0 0', borderTop: '1px solid var(--color-border-light)', display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px' }}>
+            <div className="customer-file-storage-layout">
               <div>
                 {!selectedCustomer.files || selectedCustomer.files.length === 0 ? (
                   <p className="text-muted text-center" style={{ padding: '30px' }}>{t('Kho lưu trữ hiện tại trống. Vui lòng tạo thư mục và tải lên tệp tin.')}</p>

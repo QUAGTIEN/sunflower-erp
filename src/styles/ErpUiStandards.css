@@ -22,9 +22,13 @@
 .view-header,
 .system-config-header {
   display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 40px;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--erp-page-gap);
   margin: 0;
   padding: 0;
@@ -107,11 +111,74 @@
 .design-task-page-header,
 .supplier-detail-header,
 .lead-candidate-form-page__header {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 40px;
   align-items: center;
   gap: var(--erp-page-gap);
-  padding-right: 0;
-  padding-left: 0;
+}
+
+.app-main > *,
+.lead-detail-page,
+.customer-details-grid,
+.design-task-page,
+.suppliers-page {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.app-container,
+.app-header,
+.app-main,
+.crm-view,
+.crm-view--detail,
+.customer-details-grid,
+.customer-details-grid > .card {
+  min-width: 0;
+}
+
+.app-main {
+  width: 100%;
+  max-width: 100%;
+}
+
+.lead-detail-header > :nth-child(2),
+.customer-detail-heading,
+.design-task-page-header > div,
+.supplier-detail-header > :nth-child(2),
+.lead-candidate-form-page__header > div {
+  min-width: 0;
+}
+
+.lead-detail-actions,
+.crm-detail-actions {
+  display: flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.lead-detail-actions > .btn,
+.crm-detail-actions > .btn,
+.supplier-detail-header > .btn,
+.page-header > .btn {
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.card-header {
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .table-container,
@@ -338,8 +405,46 @@ table button:not(.row-action-menu__trigger) {
     flex-wrap: wrap;
   }
 
+  .customer-details-grid,
+  .crm-view--detail .customer-details-grid,
+  .customer-detail-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-header,
+  .header-title-container,
+  .header-actions {
+    min-width: 0;
+  }
+
+  .header-actions > div > span {
+    display: none !important;
+  }
+
+  .header-actions select {
+    width: 92px !important;
+    max-width: 92px;
+  }
+
+  .lead-detail-actions,
+  .crm-detail-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .lead-detail-actions > .btn,
+  .crm-detail-actions > .btn {
+    flex: 1 1 180px;
+  }
+
   table th,
   table td {
     padding: 7px 10px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-title {
+    display: none;
   }
 }

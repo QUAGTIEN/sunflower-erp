@@ -843,6 +843,14 @@
   gap: 5px;
 }
 
+.customer-file-storage-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
+  gap: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-light);
+}
+
 .crm-detail-delete {
   color: #b91c1c;
   border-color: #fecaca;
@@ -1173,6 +1181,10 @@
 
   .crm-detail-actions {
     justify-self: start;
+  }
+
+  .customer-file-storage-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
