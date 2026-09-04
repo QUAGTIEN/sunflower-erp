@@ -237,6 +237,19 @@ table td {
   font-size: 13px;
 }
 
+/* Company names stay compact in dense ERP grids while preserving the full value on hover. */
+.erp-company-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: #172554;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Use a single white data canvas across compact CRM and Lead grids. */
 .crm-customer-table.is-compact tbody tr:nth-child(even):not(.crm-material-history-row) > td,
 .lead-candidate-table.is-compact tbody tr:nth-child(even):not(.is-selected):not(.is-overdue) > td {

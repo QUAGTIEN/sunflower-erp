@@ -1592,14 +1592,24 @@ export const Leads: React.FC<LeadsProps> = ({
         <div className="lead-page-commandbar__title">
           <h1>{t('Tiềm năng')}</h1>
         </div>
-        <div className="lead-page-actions">
-          {workspaceTab === 'list' && <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm Lead')}</button>}
-        </div>
       </header>
 
-      <div className="lead-workspace-tabs content-tabs" role="tablist" aria-label="Không gian quản lý Lead">
-        <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => setWorkspaceTab('list')}><List size={16} /> Danh sách Lead <span>{accessibleLeads.length}</span></button>
-        {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}><Users size={16} /> Khách hàng của Sale</button>}
+      <div className="lead-page-navigation lead-candidate-commandbar">
+        <div className="lead-workspace-tabs content-tabs content-tabs--compact" role="tablist" aria-label="Không gian quản lý Lead">
+          <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => setWorkspaceTab('list')}><List size={16} /> Danh sách Lead <span>{accessibleLeads.length}</span></button>
+          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}><Users size={16} /> Khách hàng của Sale</button>}
+        </div>
+        {workspaceTab === 'list' && (
+          <section className="lead-page-navigation__tools lead-candidate-toolbar">
+            <div className="lead-search">
+              <Search size={16} />
+              <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
+            </div>
+            <DataFilterButton activeCount={leadActiveFilterCount} open={showLeadFilters} onClick={() => setShowLeadFilters(true)} />
+            {(searchTerm || leadActiveFilterCount > 0) && <button type="button" className="btn btn-outline lead-toolbar-reset" onClick={clearFilters}><X size={14} /> Đặt lại</button>}
+            <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm Lead')}</button>
+          </section>
+        )}
       </div>
 
       {workspaceTab === 'performance' && currentUser.role === 'admin' ? (
@@ -1612,15 +1622,6 @@ export const Leads: React.FC<LeadsProps> = ({
         />
       ) : (
         <div className="lead-data-workspace">
-          <section className="lead-toolbar">
-            <div className="lead-search">
-              <Search size={16} />
-              <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
-            </div>
-            <DataFilterButton activeCount={leadActiveFilterCount} open={showLeadFilters} onClick={() => setShowLeadFilters(true)} />
-            {(searchTerm || leadActiveFilterCount > 0) && <button type="button" className="btn btn-outline lead-toolbar-reset" onClick={clearFilters}><X size={14} /> Đặt lại</button>}
-          </section>
-
           <DataFilterChipBar chips={leadFilterChips} onClear={clearFilters} />
 
           <DataFilterPanel
@@ -1683,7 +1684,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 <tbody>
                   {filteredLeads.map(lead => (
                     <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
-                      <td><strong>{lead.companyName}</strong></td>
+                      <td><strong className="erp-company-name" title={lead.companyName}>{lead.companyName}</strong></td>
                       <td><strong>{lead.contactPerson || '—'}</strong><span>{lead.phone || lead.email || 'Chưa có liên hệ'}</span></td>
                       <td><strong>{getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || '—')}</strong><span>{getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || 'Chưa xác định')}</span></td>
                       <td><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>

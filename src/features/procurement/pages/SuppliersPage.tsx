@@ -493,7 +493,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                 const orders = getSupplierOrders(supplier.id);
                 const spend = orders.reduce((sum, order) => sum + asNumber(order.totalPrice), 0);
                 return <tr key={supplier.id} onClick={() => setSelectedSupplierId(supplier.id)}>
-                  <td><strong>{supplier.supplierName}</strong><span>{supplier.supplierCode || supplier.id}</span></td>
+                  <td><strong className="erp-company-name" title={supplier.supplierName}>{supplier.supplierName}</strong><span>{supplier.supplierCode || supplier.id}</span></td>
                   <td><strong>{supplier.contactPerson || '—'}</strong><span>{supplier.phone || supplier.email || '—'}</span></td>
                   <td>{supplier.categories.join(', ') || '—'}</td>
                   <td><strong>{orders.length}</strong></td>

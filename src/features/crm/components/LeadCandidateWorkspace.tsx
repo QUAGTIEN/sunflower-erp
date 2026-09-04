@@ -1555,7 +1555,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   return (
                     <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
                       {visibleColumnSet.has('status') && <td>{renderContactResult(candidate)}</td>}
-                      {visibleColumnSet.has('company') && <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong>{candidate.companyName}</strong></button></td>}
+                      {visibleColumnSet.has('company') && <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
                       {visibleColumnSet.has('province') && <td>{renderCompactValue(candidate.province || 'Chưa cập nhật', `${candidate.province || 'Chưa cập nhật'} · ${candidate.source || 'Chưa rõ nguồn'}`)}</td>}
                       {visibleColumnSet.has('contact') && <td>{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
                       {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <td>{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
@@ -1640,7 +1640,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                             onClick={() => togglePinned(candidate)}
                           ><Star size={14} fill={candidate.pinned ? 'currentColor' : 'none'} /></button>}
                           <button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName} · ${candidate.source || 'Chưa rõ nguồn'}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}>
-                            <strong>{candidate.companyName}</strong>
+                            <strong className="erp-company-name">{candidate.companyName}</strong>
                           </button>
                         </div>
                       </td>}
