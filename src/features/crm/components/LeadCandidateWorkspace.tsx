@@ -356,7 +356,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     ? [currentUser, ...saleUsers.filter(user => user.uid !== currentUser.uid)]
     : saleUsers.some(user => user.uid === currentUser.uid) ? saleUsers : [currentUser, ...saleUsers];
   const [searchTerm, setSearchTerm] = useState('');
-  const [workspaceView, setWorkspaceView] = useState<CandidateWorkspaceView>('tasks');
+  const [workspaceView, setWorkspaceView] = useState<CandidateWorkspaceView>('all');
   const [saleFilters, setSaleFilters] = useState<string[]>([]);
   const [sourceFilters, setSourceFilters] = useState<string[]>([]);
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
@@ -1348,8 +1348,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       <div className="lead-candidate-commandbar">
         <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Không gian làm việc Sale">
           {([
-            ['tasks', 'Công việc cần xử lý'],
-            ['all', 'Tất cả dữ liệu']
+            ['all', 'Tất cả dữ liệu'],
+            ['tasks', 'Công việc cần xử lý']
           ] as Array<[CandidateWorkspaceView, string]>).map(([value, label]) => (
             <button
               key={value}

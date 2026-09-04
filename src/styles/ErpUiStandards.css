@@ -96,7 +96,6 @@
   display: none;
 }
 
-.sidebar-item-content svg,
 .btn:not(.btn-symbol):not(.btn-symbol-sm) > svg,
 .page-header .btn > svg {
   display: none;
