@@ -6,6 +6,12 @@ import { useLanguage } from '@/context/LanguageContext';
 import { HorizontalBarChart } from '@/components/VisualCharts';
 import { CustomerOnboardingItems } from '@/features/crm/components/CustomerOnboardingItems';
 import { BusinessLocationFields } from '@/features/crm/components/BusinessLocationFields';
+import { CustomerNoteEditor } from '@/features/crm/components/CustomerNoteEditor';
+import {
+  customerNoteHtmlToText,
+  plainTextToNoteHtml,
+  sanitizeCustomerNoteHtml
+} from '@/features/crm/model/customerNote';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -36,10 +42,17 @@ import {
   type CustomerProductRecord,
   type CustomerContactRecord,
   type CustomerContactRole,
+  type CustomerRepositoryFolder,
   type CustomerRank,
   type CustomerRecord,
   type LeadRecord
 } from '@/features/crm/model/crmModels';
+import {
+  createCustomerFolderId,
+  DEFAULT_CUSTOMER_REPOSITORY_FOLDERS,
+  getCustomerRepositoryFolders,
+  resolveCustomerFileFolderId
+} from '@/features/crm/model/customerRepository';
 import { findTaxCodeConflict } from '@/features/crm/model/taxCodeUniqueness';
 import {
   buildCustomerMaterialHistory,
@@ -87,22 +100,21 @@ import {
   Settings2
 } from 'lucide-react';
 
-const CUSTOMER_FILE_FOLDERS = [
-  'Hợp đồng',
-  'Biên bản nghiệm thu',
-  'QC',
-  'QA',
-  'Artwork',
-  'Báo giá',
-  'Khác'
-];
-
 const CONTACT_ROLE_LABELS: Record<CustomerContactRole, string> = {
   primary: 'Liên hệ chính',
   procurement: 'Mua hàng',
   warehouse: 'Kho / nhận hàng',
   accounting: 'Kế toán',
   other: 'Khác'
+};
+
+const DOCUMENT_REPOSITORY_FOLDER_IDS: Record<string, string> = {
+  contract: 'contracts',
+  acceptance: 'minutes',
+  qc: 'technical',
+  qa: 'technical',
+  artwork: 'technical',
+  other: 'other'
 };
 
 type CrmListFilter = 'all' | 'has_debt' | 'analytics';
@@ -265,9 +277,13 @@ export const Crm: React.FC<CrmProps> = ({
 
   // File Repository states
   const [newFolderName, setNewFolderName] = useState('');
-  const [selectedFolderForUpload, setSelectedFolderForUpload] = useState('');
+  const [selectedFolderForUpload, setSelectedFolderForUpload] = useState('contracts');
+  const [activeRepositoryFolderId, setActiveRepositoryFolderId] = useState('contracts');
+  const [renamingFolderId, setRenamingFolderId] = useState('');
+  const [folderNameDraft, setFolderNameDraft] = useState('');
   const [repoUploadFile, setRepoUploadFile] = useState('');
   const [repoUploadFileName, setRepoUploadFileName] = useState('');
+  const [repoUploadLink, setRepoUploadLink] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Dynamic categories and admin approvals states
@@ -681,6 +697,7 @@ export const Crm: React.FC<CrmProps> = ({
       debtLimit: Number(debtLimit),
       paymentTerms,
       note,
+      noteHtml: plainTextToNoteHtml(note),
       customFieldValues,
       procurementPhone,
       warehousePhone,
@@ -689,8 +706,27 @@ export const Crm: React.FC<CrmProps> = ({
       products,
       documents: [],
       contracts: [],
+      fileFolders: [
+        ...DEFAULT_CUSTOMER_REPOSITORY_FOLDERS.map(folder => ({
+          ...folder,
+          createdAt: now,
+          createdById: currentUser.uid
+        })),
+        ...((onboardingSourceLead?.files || []).length > 0 ? [{
+          id: 'lead-documents',
+          name: 'Tài liệu từ Lead',
+          parentId: null,
+          order: 80,
+          active: true,
+          createdAt: now,
+          createdById: currentUser.uid,
+          updatedAt: '',
+          updatedById: ''
+        }] : [])
+      ],
       files: (onboardingSourceLead?.files || []).map(file => ({
         ...file,
+        folderId: 'lead-documents',
         folder: 'Tài liệu từ Lead',
         createdAt: now,
         createdById: currentUser.uid
@@ -859,6 +895,7 @@ export const Crm: React.FC<CrmProps> = ({
       debtLimit: Number(debtLimit),
       paymentTerms,
       note,
+      noteHtml: plainTextToNoteHtml(note),
       customFieldValues,
       procurementPhone,
       warehousePhone,
@@ -885,9 +922,12 @@ export const Crm: React.FC<CrmProps> = ({
 
   const handleSaveCustomerNote = async () => {
     if (!selectedCustomer || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
-    const nextNote = customerNoteDraft.trim();
-    const previousNote = String(selectedCustomer.note || '').trim();
-    if (nextNote === previousNote) return;
+    const nextNoteHtml = sanitizeCustomerNoteHtml(customerNoteDraft).trim();
+    const nextNote = customerNoteHtmlToText(nextNoteHtml);
+    const previousNoteHtml = sanitizeCustomerNoteHtml(
+      selectedCustomer.noteHtml || plainTextToNoteHtml(String(selectedCustomer.note || ''))
+    ).trim();
+    if (nextNoteHtml === previousNoteHtml) return;
 
     setIsSavingCustomerNote(true);
     setCustomerNoteFeedback('');
@@ -896,11 +936,12 @@ export const Crm: React.FC<CrmProps> = ({
       const updatedBy = `${currentUser.displayName} (${currentUser.role.toUpperCase()})`;
       await dbService.updateDocument('customers', selectedCustomer.id, {
         note: nextNote,
+        noteHtml: nextNoteHtml,
         updatedBy,
         updatedAt
       });
-      setSelectedCustomer((previous: any) => previous ? ({ ...previous, note: nextNote, updatedBy, updatedAt }) : previous);
-      setCustomerNoteDraft(nextNote);
+      setSelectedCustomer((previous: any) => previous ? ({ ...previous, note: nextNote, noteHtml: nextNoteHtml, updatedBy, updatedAt }) : previous);
+      setCustomerNoteDraft(nextNoteHtml);
       setCustomerNoteFeedback(t('Đã lưu ghi chú.'));
       auditService.recordSafely(currentUser, {
         category: 'business',
@@ -1276,6 +1317,11 @@ export const Crm: React.FC<CrmProps> = ({
   const handleRepoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 900_000) {
+      alert(t('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.'));
+      e.target.value = '';
+      return;
+    }
     setRepoUploadFileName(file.name);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -1286,84 +1332,126 @@ export const Crm: React.FC<CrmProps> = ({
 
   // Add folder
   const handleAddFolder = async () => {
-    if (!selectedCustomer) return;
+    if (!selectedCustomer || currentUser.role !== 'admin') return;
     const folderNameTrim = newFolderName.trim();
     if (!folderNameTrim) return;
 
-    const updatedFiles = selectedCustomer.files || [];
-    const folderExists = updatedFiles.some((f: any) => f.folder === folderNameTrim);
+    const folders = getCustomerRepositoryFolders(selectedCustomer);
+    const folderExists = folders.some(folder => folder.name.trim().toLocaleLowerCase('vi-VN') === folderNameTrim.toLocaleLowerCase('vi-VN'));
     if (folderExists) {
       alert(t('Thư mục này đã tồn tại.'));
       return;
     }
 
-    const newPlaceholder = {
-      folder: folderNameTrim,
-      name: '.placeholder',
-      base64: '',
-      createdAt: new Date().toISOString()
+    const now = new Date().toISOString();
+    const newFolder: CustomerRepositoryFolder = {
+      id: createCustomerFolderId(folderNameTrim, folders.map(folder => folder.id)),
+      name: folderNameTrim,
+      parentId: null,
+      order: (Math.max(0, ...folders.map(folder => Number(folder.order) || 0)) + 10),
+      active: true,
+      createdAt: now,
+      createdById: currentUser.uid,
+      updatedAt: '',
+      updatedById: ''
     };
-
-    const newFiles = [...updatedFiles, newPlaceholder];
+    const nextFolders = [...folders, newFolder];
     await dbService.updateDocument('customers', selectedCustomer.id, {
-      files: newFiles
+      fileFolders: nextFolders,
+      updatedAt: now,
+      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
     });
 
     setNewFolderName('');
-    setSelectedCustomer((prev: any) => ({ ...prev, files: newFiles }));
+    setActiveRepositoryFolderId(newFolder.id);
+    setSelectedFolderForUpload(newFolder.id);
+    setSelectedCustomer((prev: any) => ({ ...prev, fileFolders: nextFolders }));
     onRefresh();
-    alert(t('Đã tạo thư mục thành công.'));
+  };
+
+  const handleRenameRepoFolder = async (folderId: string) => {
+    if (!selectedCustomer || currentUser.role !== 'admin') return;
+    const nextName = folderNameDraft.trim();
+    if (!nextName) return;
+    const folders = getCustomerRepositoryFolders(selectedCustomer);
+    if (folders.some(folder => folder.id !== folderId && folder.name.trim().toLocaleLowerCase('vi-VN') === nextName.toLocaleLowerCase('vi-VN'))) {
+      alert(t('Tên thư mục này đã tồn tại.'));
+      return;
+    }
+    const now = new Date().toISOString();
+    const nextFolders = folders.map(folder => folder.id === folderId ? ({
+      ...folder,
+      name: nextName,
+      updatedAt: now,
+      updatedById: currentUser.uid
+    }) : folder);
+    await dbService.updateDocument('customers', selectedCustomer.id, {
+      fileFolders: nextFolders,
+      updatedAt: now,
+      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+    });
+    setSelectedCustomer((previous: any) => previous ? ({ ...previous, fileFolders: nextFolders }) : previous);
+    setRenamingFolderId('');
+    setFolderNameDraft('');
+    onRefresh();
   };
 
   // Upload file to customer repo
   const handleUploadRepoFile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCustomer) return;
-    if (!selectedFolderForUpload || !repoUploadFile || !repoUploadFileName) {
-      alert(t('Vui lòng chọn thư mục và chọn file để tải lên!'));
+    const normalizedLink = repoUploadLink.trim();
+    if (!selectedFolderForUpload || (!repoUploadFile && !normalizedLink) || !repoUploadFileName) {
+      alert(t('Vui lòng chọn thư mục, nhập tên và chọn tệp hoặc đường dẫn chia sẻ.'));
+      return;
+    }
+    if (normalizedLink && !/^https?:\/\//i.test(normalizedLink)) {
+      alert(t('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.'));
       return;
     }
 
-    const updatedFiles = selectedCustomer.files || [];
-    const filteredFiles = updatedFiles.filter((f: any) => !(f.folder === selectedFolderForUpload && f.name === '.placeholder'));
+    const folders = getCustomerRepositoryFolders(selectedCustomer);
+    const selectedFolder = folders.find(folder => folder.id === selectedFolderForUpload && folder.active !== false);
+    if (!selectedFolder) {
+      alert(t('Thư mục lưu trữ không còn tồn tại.'));
+      return;
+    }
+    const updatedFiles = (selectedCustomer.files || []).filter((file: any) => file.name !== '.placeholder');
 
     const newFileObj = {
-      folder: selectedFolderForUpload,
+      id: `customer-file-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      folderId: selectedFolder.id,
+      folder: selectedFolder.name,
       name: repoUploadFileName,
       base64: repoUploadFile,
-      createdAt: new Date().toISOString()
+      data: repoUploadFile,
+      url: normalizedLink,
+      createdAt: new Date().toISOString(),
+      createdById: currentUser.uid,
+      createdBy: currentUser.displayName
     };
 
-    const newFiles = [...filteredFiles, newFileObj];
+    const newFiles = [...updatedFiles, newFileObj];
     await dbService.updateDocument('customers', selectedCustomer.id, {
-      files: newFiles
+      files: newFiles,
+      fileFolders: folders
     });
 
     setRepoUploadFile('');
     setRepoUploadFileName('');
+    setRepoUploadLink('');
     setSelectedCustomer((prev: any) => ({ ...prev, files: newFiles }));
     onRefresh();
-    alert(t('Đã tải tệp lên kho lưu trữ thành công.'));
   };
 
   // Delete file/folder from customer repo
-  const handleDeleteRepoFile = async (folder: string, name: string) => {
+  const handleDeleteRepoFile = async (fileId: string) => {
     if (!selectedCustomer) return;
     if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) {
       return;
     }
     const updatedFiles = selectedCustomer.files || [];
-    const newFiles = updatedFiles.filter((f: any) => !(f.folder === folder && f.name === name));
-
-    const folderFiles = newFiles.filter((f: any) => f.folder === folder);
-    if (folderFiles.length === 0) {
-      newFiles.push({
-        folder,
-        name: '.placeholder',
-        base64: '',
-        createdAt: new Date().toISOString()
-      });
-    }
+    const newFiles = updatedFiles.filter((file: any) => file.id !== fileId);
 
     await dbService.updateDocument('customers', selectedCustomer.id, {
       files: newFiles
@@ -1371,24 +1459,35 @@ export const Crm: React.FC<CrmProps> = ({
 
     setSelectedCustomer((prev: any) => ({ ...prev, files: newFiles }));
     onRefresh();
-    alert(t('Đã xóa tệp thành công.'));
   };
 
-  const handleDeleteRepoFolder = async (folder: string) => {
-    if (!selectedCustomer) return;
-    if (!window.confirm(t('CẢNH BÁO: Xóa thư mục sẽ xóa toàn bộ các tệp tin bên trong thư mục này. Bạn có chắc chắn muốn tiếp tục?'))) {
+  const handleDeleteRepoFolder = async (folderId: string) => {
+    if (!selectedCustomer || currentUser.role !== 'admin') return;
+    const folders = getCustomerRepositoryFolders(selectedCustomer);
+    const folder = folders.find(item => item.id === folderId);
+    if (!folder) return;
+    const containsFiles = (selectedCustomer.files || []).some((file: any) => file.name !== '.placeholder' && resolveCustomerFileFolderId(file, folders) === folderId);
+    const containsContracts = folderId === 'contracts' && (selectedCustomer.contracts || []).length > 0;
+    if (containsFiles || containsContracts) {
+      alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
       return;
     }
-    const updatedFiles = selectedCustomer.files || [];
-    const newFiles = updatedFiles.filter((f: any) => f.folder !== folder);
+    if (folders.length === 1) {
+      alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
+      return;
+    }
+    if (!window.confirm(`${t('Xóa thư mục')} “${folder.name}”?`)) return;
+    const nextFolders = folders.filter(item => item.id !== folderId);
 
     await dbService.updateDocument('customers', selectedCustomer.id, {
-      files: newFiles
+      fileFolders: nextFolders
     });
 
-    setSelectedCustomer((prev: any) => ({ ...prev, files: newFiles }));
+    const nextActiveId = nextFolders[0]?.id || '';
+    setActiveRepositoryFolderId(nextActiveId);
+    setSelectedFolderForUpload(nextActiveId);
+    setSelectedCustomer((prev: any) => ({ ...prev, fileFolders: nextFolders }));
     onRefresh();
-    alert(t('Đã xóa thư mục thành công.'));
   };
 
   // Product Helpers
@@ -1627,6 +1726,11 @@ export const Crm: React.FC<CrmProps> = ({
   const handleContractFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 900_000) {
+      alert(t('Tệp lớn hơn 900 KB. Vui lòng lưu hợp đồng trên Drive/OneDrive và thêm dưới dạng đường dẫn trong kho tài liệu.'));
+      e.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
       setContractFile(event.target?.result as string);
@@ -1646,7 +1750,9 @@ export const Crm: React.FC<CrmProps> = ({
       value: Number(contractValue),
       fileUrl: contractFile,
       status: new Date(contractExpiryDate).getTime() > Date.now() ? 'active' : 'expired',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      createdById: currentUser.uid,
+      createdBy: currentUser.displayName
     };
 
     const updatedContracts = [...(selectedCustomer.contracts || []), newContract];
@@ -1732,18 +1838,46 @@ export const Crm: React.FC<CrmProps> = ({
   const openCustomerDetail = (customer: CustomerRecord) => {
     setCustomerHistoryTab('po');
     setIsCompanyInfoExpanded(false);
-    setCustomerNoteDraft(customer.note || '');
+    setCustomerNoteDraft(sanitizeCustomerNoteHtml(customer.noteHtml || plainTextToNoteHtml(customer.note || '')));
     setCustomerNoteFeedback('');
+    const initialFolders = getCustomerRepositoryFolders(customer);
+    const initialFolderId = initialFolders.find(folder => folder.id === 'contracts')?.id || initialFolders[0]?.id || '';
+    setActiveRepositoryFolderId(initialFolderId);
+    setSelectedFolderForUpload(initialFolderId);
+    setRenamingFolderId('');
     setSelectedCustomer(customer);
   };
 
   const closeCustomerDetail = () => {
+    const savedNoteHtml = selectedCustomer
+      ? sanitizeCustomerNoteHtml(selectedCustomer.noteHtml || plainTextToNoteHtml(String(selectedCustomer.note || ''))).trim()
+      : '';
     const hasUnsavedNote = selectedCustomer
-      && customerNoteDraft.trim() !== String(selectedCustomer.note || '').trim();
+      && sanitizeCustomerNoteHtml(customerNoteDraft).trim() !== savedNoteHtml;
     if (hasUnsavedNote && !window.confirm(t('Ghi chú chưa được lưu. Bạn có muốn rời khỏi trang?'))) return;
     setSelectedCustomer(null);
     setCustomerNoteFeedback('');
   };
+
+  const customerRepositoryFolders = selectedCustomer
+    ? getCustomerRepositoryFolders(selectedCustomer).filter(folder => folder.active !== false)
+    : [];
+  const activeRepositoryFolder = customerRepositoryFolders.find(folder => folder.id === activeRepositoryFolderId)
+    || customerRepositoryFolders[0];
+  const activeRepositoryFiles = selectedCustomer && activeRepositoryFolder
+    ? (selectedCustomer.files || []).filter((file: any) => (
+      file.name !== '.placeholder'
+      && resolveCustomerFileFolderId(file, customerRepositoryFolders) === activeRepositoryFolder.id
+    ))
+    : [];
+  const activeRepositoryContracts = selectedCustomer && activeRepositoryFolder?.id === 'contracts'
+    ? (selectedCustomer.contracts || [])
+    : [];
+  const activeRepositoryDocuments = selectedCustomer && activeRepositoryFolder
+    ? (selectedCustomer.documents || []).filter((documentRecord: any) => (
+      (DOCUMENT_REPOSITORY_FOLDER_IDS[documentRecord.category] || 'other') === activeRepositoryFolder.id
+    ))
+    : [];
 
   const getCustomerOrderValue = (customerId: string) => getCustomerOrders(customerId)
     .reduce((total, order) => total + Number(order.netAmount || order.totalAmount || 0), 0);
@@ -2546,78 +2680,38 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
 
           <div className="customer-profile-column">
-            <section className="card customer-note-card">
-              <div className="card-header customer-note-card__header">
-                <div>
-                  <span className="card-title">{t('Ghi chú khách hàng')}</span>
-                  <small>{t('Thông tin cần nhớ khi trao đổi và xử lý đơn hàng')}</small>
-                </div>
-              </div>
-              {(currentUser.role === 'admin' || currentUser.role === 'sale') ? (
-                <>
-                  <label className="customer-note-editor">
-                    <span>{t('Nội dung ghi chú')}</span>
-                    <textarea
-                      value={customerNoteDraft}
-                      onChange={event => {
-                        setCustomerNoteDraft(event.target.value);
-                        setCustomerNoteFeedback('');
-                      }}
-                      placeholder={t('Ví dụ: Đây là khách hàng lớn ở Hà Nội, có nhu cầu cao về tem nhãn sản xuất...')}
-                      rows={5}
-                    />
-                  </label>
-                  <div className="customer-note-card__footer">
-                    <span role="status">{customerNoteFeedback}</span>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => void handleSaveCustomerNote()}
-                      disabled={isSavingCustomerNote || customerNoteDraft.trim() === String(selectedCustomer.note || '').trim()}
-                    >
-                      {isSavingCustomerNote ? t('Đang lưu...') : t('Lưu ghi chú')}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className={selectedCustomer.note ? '' : 'is-empty'}>
-                  {selectedCustomer.note || t('Chưa có ghi chú về khách hàng này.')}
-                </p>
-              )}
-              <small className="customer-note-card__meta">
-                {selectedCustomer.updatedAt
-                  ? `${t('Cập nhật gần nhất')}: ${formatDateTime(selectedCustomer.updatedAt, t('vi-VN'))}${selectedCustomer.updatedBy ? ` · ${selectedCustomer.updatedBy}` : ''}`
-                  : t('Chưa có lịch sử cập nhật')}
-              </small>
-            </section>
-
             <section className="card customer-company-card">
-              <div className="card-header crm-company-info-header">
-                <span className="card-title">{t('Thông tin doanh nghiệp')}</span>
-                <div className="crm-company-info-actions">
+              <div className="crm-company-accordion-row">
+                <button
+                  type="button"
+                  className="crm-company-accordion-trigger"
+                  aria-expanded={isCompanyInfoExpanded}
+                  onClick={() => setIsCompanyInfoExpanded(value => !value)}
+                >
+                  <span className="card-title">{t('Thông tin doanh nghiệp')}</span>
+                  <span className="customer-company-summary-inline" title={[selectedCustomer.contactPerson, selectedCustomer.phone, selectedCustomer.email].filter(Boolean).join(' · ')}>
+                    {selectedCustomer.contactPerson || t('Chưa có liên hệ')} · {selectedCustomer.phone || t('Chưa có điện thoại')} · {users.find(u => u.uid === selectedCustomer.assignedSaleId)?.displayName || t('Chưa phân công')}
+                  </span>
+                  <span className="crm-company-accordion-action">{isCompanyInfoExpanded ? t('Thu gọn') : t('Xem đầy đủ')}</span>
+                </button>
+                {isCompanyInfoExpanded && (
                   <button type="button" className="btn btn-sm btn-outline" onClick={() => void handleCopyCustomerInformation(selectedCustomer)} title={t('Sao chép thông tin doanh nghiệp')}>
                     {t('Sao chép')}
                   </button>
-                  <button type="button" className="btn btn-sm btn-outline" aria-expanded={isCompanyInfoExpanded} onClick={() => setIsCompanyInfoExpanded(value => !value)}>
-                    {isCompanyInfoExpanded ? t('Thu gọn') : t('Xem đầy đủ')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="customer-company-summary">
-                <span>{t('Liên hệ chính')}</span>
-                <strong>{selectedCustomer.contactPerson || t('Chưa cập nhật')}</strong>
-                <span>{t('Điện thoại')}</span>
-                <strong>{selectedCustomer.phone || t('Chưa cập nhật')}</strong>
-                <span>{t('Email')}</span>
-                <strong>{selectedCustomer.email || t('Chưa cập nhật')}</strong>
-                <span>{t('Sale phụ trách')}</span>
-                <strong>{users.find(u => u.uid === selectedCustomer.assignedSaleId)?.displayName || t('Chưa phân công')}</strong>
+                )}
               </div>
 
               {isCompanyInfoExpanded && (
                 <div className="customer-company-expanded">
                   <div className="customer-company-detail-grid">
+                    <span>{t('Liên hệ chính')}</span>
+                    <strong>{selectedCustomer.contactPerson || t('Chưa cập nhật')}</strong>
+                    <span>{t('Điện thoại')}</span>
+                    <strong>{selectedCustomer.phone || t('Chưa cập nhật')}</strong>
+                    <span>{t('Email')}</span>
+                    <strong>{selectedCustomer.email || t('Chưa cập nhật')}</strong>
+                    <span>{t('Sale phụ trách')}</span>
+                    <strong>{users.find(u => u.uid === selectedCustomer.assignedSaleId)?.displayName || t('Chưa phân công')}</strong>
                     <span>{t('Mã số thuế')}</span>
                     <strong>{selectedCustomer.taxCode || t('Chưa cung cấp')}</strong>
                     <span>{t('Địa chỉ giao hàng')}</span>
@@ -2663,6 +2757,42 @@ export const Crm: React.FC<CrmProps> = ({
                   </div>
                 </div>
               )}
+            </section>
+
+            <section className="card customer-note-card">
+              <div className="card-header customer-note-card__header">
+                <div>
+                  <span className="card-title">{t('Ghi chú khách hàng')}</span>
+                  <small>{t('Thông tin cần nhớ khi trao đổi và xử lý đơn hàng')}</small>
+                </div>
+              </div>
+              <CustomerNoteEditor
+                value={customerNoteDraft}
+                disabled={currentUser.role !== 'admin' && currentUser.role !== 'sale'}
+                placeholder={t('Nhập ghi chú về nhu cầu, thỏa thuận hoặc lưu ý khi làm việc với khách hàng...')}
+                onChange={value => {
+                  setCustomerNoteDraft(value);
+                  setCustomerNoteFeedback('');
+                }}
+              />
+              <div className="customer-note-card__footer">
+                <span role="status">{customerNoteFeedback}</span>
+                {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => void handleSaveCustomerNote()}
+                    disabled={isSavingCustomerNote || sanitizeCustomerNoteHtml(customerNoteDraft).trim() === sanitizeCustomerNoteHtml(selectedCustomer.noteHtml || plainTextToNoteHtml(String(selectedCustomer.note || ''))).trim()}
+                  >
+                    {isSavingCustomerNote ? t('Đang lưu...') : t('Lưu ghi chú')}
+                  </button>
+                )}
+              </div>
+              <small className="customer-note-card__meta">
+                {selectedCustomer.updatedAt
+                  ? `${t('Cập nhật gần nhất')}: ${formatDateTime(selectedCustomer.updatedAt, t('vi-VN'))}${selectedCustomer.updatedBy ? ` · ${selectedCustomer.updatedBy}` : ''}`
+                  : t('Chưa có lịch sử cập nhật')}
+              </small>
             </section>
           </div>
 
@@ -2783,7 +2913,182 @@ export const Crm: React.FC<CrmProps> = ({
             )}
           </div>
 
-          <div className="card" style={{ gridColumn: '1 / -1', marginTop: '24px' }}>
+          <section className="card customer-file-repository-card">
+            <div className="card-header customer-file-repository-header">
+              <div>
+                <span className="card-title">{t('Kho lưu trữ khách hàng')}</span>
+                <small>{t('Hợp đồng, biên bản, báo giá và các tài liệu liên quan của khách hàng.')}</small>
+              </div>
+              {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeRepositoryFolder?.id === 'contracts' && (
+                <button type="button" className="btn btn-outline" onClick={() => setShowAddContractModal(true)}>{t('Thêm hợp đồng')}</button>
+              )}
+            </div>
+
+            <div className="customer-drive-layout">
+              <aside className="customer-drive-sidebar" aria-label={t('Danh sách thư mục')}>
+                {currentUser.role === 'admin' && (
+                  <div className="customer-drive-new-folder">
+                    <input
+                      type="text"
+                      value={newFolderName}
+                      onChange={event => setNewFolderName(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void handleAddFolder();
+                        }
+                      }}
+                      placeholder={t('Tên thư mục mới')}
+                      aria-label={t('Tên thư mục mới')}
+                    />
+                    <button type="button" className="btn btn-primary" onClick={() => void handleAddFolder()} disabled={!newFolderName.trim()}>{t('Tạo thư mục')}</button>
+                  </div>
+                )}
+
+                <div className="customer-drive-folder-list">
+                  {customerRepositoryFolders.map(folder => {
+                    const fileCount = (selectedCustomer.files || []).filter((file: any) => file.name !== '.placeholder' && resolveCustomerFileFolderId(file, customerRepositoryFolders) === folder.id).length;
+                    const contractCount = folder.id === 'contracts' ? (selectedCustomer.contracts || []).length : 0;
+                    const documentCount = (selectedCustomer.documents || []).filter((documentRecord: any) => (DOCUMENT_REPOSITORY_FOLDER_IDS[documentRecord.category] || 'other') === folder.id).length;
+                    const totalCount = fileCount + contractCount + documentCount;
+                    return (
+                      <div key={folder.id} className={`customer-drive-folder ${activeRepositoryFolder?.id === folder.id ? 'is-active' : ''}`}>
+                        {renamingFolderId === folder.id ? (
+                          <div className="customer-drive-folder-rename">
+                            <input
+                              autoFocus
+                              value={folderNameDraft}
+                              onChange={event => setFolderNameDraft(event.target.value)}
+                              onKeyDown={event => {
+                                if (event.key === 'Enter') void handleRenameRepoFolder(folder.id);
+                                if (event.key === 'Escape') setRenamingFolderId('');
+                              }}
+                              aria-label={t('Tên thư mục')}
+                            />
+                            <button type="button" onClick={() => void handleRenameRepoFolder(folder.id)}>{t('Lưu')}</button>
+                            <button type="button" onClick={() => setRenamingFolderId('')}>{t('Hủy')}</button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="customer-drive-folder-select"
+                              onClick={() => {
+                                setActiveRepositoryFolderId(folder.id);
+                                setSelectedFolderForUpload(folder.id);
+                              }}
+                            >
+                              <span title={folder.name}>{folder.name}</span>
+                              <small>{totalCount}</small>
+                            </button>
+                            {currentUser.role === 'admin' && (
+                              <div className="customer-drive-folder-actions">
+                                <button type="button" onClick={() => { setRenamingFolderId(folder.id); setFolderNameDraft(folder.name); }}>{t('Đổi tên')}</button>
+                                <button type="button" onClick={() => void handleDeleteRepoFolder(folder.id)}>{t('Xóa')}</button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </aside>
+
+              <div className="customer-drive-content">
+                <div className="customer-drive-path">
+                  <span>{t('Kho lưu trữ khách hàng')}</span>
+                  <strong>/ {activeRepositoryFolder?.name || t('Chưa chọn thư mục')}</strong>
+                </div>
+
+                {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeRepositoryFolder && (
+                  <details className="customer-drive-upload-panel">
+                    <summary>{t('Thêm tài liệu vào thư mục này')}</summary>
+                    <form onSubmit={handleUploadRepoFile}>
+                      <label>
+                        <span>{t('Tên tài liệu')} *</span>
+                        <input value={repoUploadFileName} onChange={event => setRepoUploadFileName(event.target.value)} required placeholder={t('Ví dụ: Biên bản nghiệm thu tháng 8')} />
+                      </label>
+                      <label>
+                        <span>{t('Chọn tệp dưới 900 KB')}</span>
+                        <input type="file" onChange={handleRepoFileChange} />
+                      </label>
+                      <label>
+                        <span>{t('Hoặc đường dẫn Drive/OneDrive')}</span>
+                        <input type="url" value={repoUploadLink} onChange={event => setRepoUploadLink(event.target.value)} placeholder="https://..." />
+                      </label>
+                      <button type="submit" className="btn btn-primary">{t('Lưu tài liệu')}</button>
+                    </form>
+                  </details>
+                )}
+
+                <div className="table-container customer-drive-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>{t('Tên tài liệu')}</th>
+                        <th>{t('Loại')}</th>
+                        <th>{t('Ngày cập nhật')}</th>
+                        <th>{t('Người cập nhật')}</th>
+                        <th>{t('Thao tác')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeRepositoryContracts.map((contract: any) => (
+                        <tr key={`contract-${contract.id}`}>
+                          <td><strong>{contract.contractNo || t('Hợp đồng chưa có số')}</strong><small>{contract.expiryDate ? `${t('Hạn hiệu lực')}: ${formatDate(contract.expiryDate)}` : ''}</small></td>
+                          <td>{t('Hợp đồng')}</td>
+                          <td>{formatDate(contract.signDate || contract.createdAt)}</td>
+                          <td>{contract.createdBy || selectedCustomer.createdBy || '—'}</td>
+                          <td>
+                            <div className="customer-drive-file-actions">
+                              {contract.fileUrl && <a href={contract.fileUrl} download={`HopDong_${contract.contractNo || contract.id}`}>{t('Tải xuống')}</a>}
+                              {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" onClick={() => void handleDeleteContract(contract.id)}>{t('Xóa')}</button>}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {activeRepositoryDocuments.map((documentRecord: any) => (
+                        <tr key={`document-${documentRecord.id}`}>
+                          <td><strong>{documentRecord.name || t('Tài liệu chưa đặt tên')}</strong></td>
+                          <td>{t('Văn bản')}</td>
+                          <td>{formatDate(documentRecord.createdAt)}</td>
+                          <td>{documentRecord.createdBy || documentRecord.createdById || '—'}</td>
+                          <td>{documentRecord.url ? <a href={documentRecord.url} target="_blank" rel="noreferrer">{t('Mở tài liệu')}</a> : '—'}</td>
+                        </tr>
+                      ))}
+                      {activeRepositoryFiles.map((file: any) => {
+                        const source = file.base64 || file.data || file.url;
+                        const isImage = String(source || '').startsWith('data:image/');
+                        return (
+                          <tr key={file.id}>
+                            <td><strong title={file.name}>{file.name}</strong></td>
+                            <td>{isImage ? t('Hình ảnh') : file.url ? t('Đường dẫn') : t('Tệp tài liệu')}</td>
+                            <td>{formatDateTime(file.createdAt, 'vi-VN', '—')}</td>
+                            <td>{file.createdBy || users.find(user => user.uid === file.createdById)?.displayName || '—'}</td>
+                            <td>
+                              <div className="customer-drive-file-actions">
+                                {isImage && <button type="button" onClick={() => setPreviewImage(source)}>{t('Xem')}</button>}
+                                {file.url
+                                  ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a>
+                                  : source && <a href={source} download={file.name}>{t('Tải xuống')}</a>}
+                                {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" onClick={() => void handleDeleteRepoFile(file.id)}>{t('Xóa')}</button>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {activeRepositoryFiles.length === 0 && activeRepositoryContracts.length === 0 && activeRepositoryDocuments.length === 0 && (
+                        <tr><td colSpan={5} className="customer-history-empty">{t('Thư mục chưa có tài liệu.')}</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="card customer-legacy-contract-card" hidden style={{ gridColumn: '1 / -1', marginTop: '24px' }}>
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="card-title">{t('HỢP ĐỒNG & VĂN BẢN KÝ KẾT')}</span>
               {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
@@ -2846,7 +3151,7 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
 
           {/* CUSTOMER FILE REPOSITORY CARD */}
-          <div className="card" style={{ gridColumn: '1 / -1', marginTop: '24px' }}>
+          <div className="card customer-legacy-file-repository" hidden style={{ gridColumn: '1 / -1', marginTop: '24px' }}>
             <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <span className="card-title" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <Folder size={18} />
@@ -2935,7 +3240,7 @@ export const Crm: React.FC<CrmProps> = ({
                                   <button
                                     type="button"
                                     className="btn btn-sm btn-danger btn-symbol-sm"
-                                    onClick={() => handleDeleteRepoFile(folderName, file.name)}
+                                    onClick={() => handleDeleteRepoFile(file.id)}
                                   >
                                     <Trash2 size={12} />
                                   </button>
@@ -2968,8 +3273,8 @@ export const Crm: React.FC<CrmProps> = ({
                       style={{ fontSize: '12.5px' }}
                     />
                     <datalist id="customer-folders-list">
-                      {CUSTOMER_FILE_FOLDERS.map(folder => (
-                        <option key={`default-${folder}`} value={folder} />
+                      {customerRepositoryFolders.map(folder => (
+                        <option key={`default-${folder.id}`} value={folder.id}>{folder.name}</option>
                       ))}
                       {Array.from(new Set((selectedCustomer.files || []).map((f: any) => f.folder))).map((folder: any) => (
                         <option key={folder} value={folder} />

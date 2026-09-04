@@ -1,7 +1,7 @@
 import type { PODiscountType } from '@/domain/poFinancials';
 import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
 
-export const CRM_SCHEMA_VERSION = 2;
+export const CRM_SCHEMA_VERSION = 3;
 
 export type CustomerRank = '' | 'A' | 'B' | 'C' | 'D';
 export type CustomerContactRole = 'primary' | 'procurement' | 'warehouse' | 'accounting' | 'other';
@@ -74,11 +74,24 @@ export interface CustomerDocumentRecord extends UnknownRecord {
 export interface CustomerFileRecord extends UnknownRecord {
   id: string;
   name: string;
+  folderId: string;
   folder: string;
   url: string;
   data: string;
   createdAt: string;
   createdById: string;
+}
+
+export interface CustomerRepositoryFolder extends UnknownRecord {
+  id: string;
+  name: string;
+  parentId: string | null;
+  order: number;
+  active: boolean;
+  createdAt: string;
+  createdById: string;
+  updatedAt: string;
+  updatedById: string;
 }
 
 export interface CustomerProductRecord extends UnknownRecord {
@@ -170,12 +183,14 @@ export interface CustomerRecord extends UnknownRecord {
   debtLimit: number;
   paymentTerms: string;
   note: string;
+  noteHtml: string;
   customFieldValues: EntityCustomFieldValues;
   lastOrderAt: string | null;
   contacts: CustomerContactRecord[];
   products: CustomerProductRecord[];
   documents: CustomerDocumentRecord[];
   files: CustomerFileRecord[];
+  fileFolders: CustomerRepositoryFolder[];
   contracts: unknown[];
   pendingOrderDraft: CustomerPendingOrderDraft | null;
   deleted: boolean;
@@ -390,11 +405,28 @@ const normalizeCustomerFile = (value: unknown, index = 0): CustomerFileRecord =>
     ...source,
     id: asText(source.id, `file-${index + 1}`),
     name: asText(source.name ?? source.fileName),
+    folderId: asText(source.folderId),
     folder: asText(source.folder),
     url: asText(source.url ?? source.fileUrl),
     data: asText(source.data),
     createdAt: asText(source.createdAt),
     createdById: asText(source.createdById)
+  };
+};
+
+const normalizeCustomerRepositoryFolder = (value: unknown, index = 0): CustomerRepositoryFolder => {
+  const source = asRecord(value);
+  return {
+    ...source,
+    id: asText(source.id, `folder-${index + 1}`),
+    name: asText(source.name, `Thư mục ${index + 1}`),
+    parentId: source.parentId ? asText(source.parentId) : null,
+    order: asNumber(source.order, index * 10),
+    active: source.active !== false,
+    createdAt: asText(source.createdAt),
+    createdById: asText(source.createdById),
+    updatedAt: asText(source.updatedAt),
+    updatedById: asText(source.updatedById)
   };
 };
 
@@ -548,6 +580,7 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     debtLimit: Math.max(0, asNumber(source.debtLimit)),
     paymentTerms: asText(source.paymentTerms),
     note: asText(source.note),
+    noteHtml: asText(source.noteHtml),
     customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
     lastOrderAt: source.lastOrderAt ? asText(source.lastOrderAt) : null,
     contacts: existingContacts.length > 0
@@ -556,6 +589,7 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     products,
     documents,
     files: asArray(source.files).map(normalizeCustomerFile),
+    fileFolders: asArray(source.fileFolders).map(normalizeCustomerRepositoryFolder),
     contracts: asArray(source.contracts),
     pendingOrderDraft: normalizePendingOrderDraft(source.pendingOrderDraft),
     deleted: source.deleted === true,
