@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { adminUserService } from '@/services/adminUserService';
 import { useLanguage } from '@/context/LanguageContext';
-import { Activity, Clock3, History, Plus, Search, Trash2, Pencil, X } from 'lucide-react';
+import { Activity, Clock3, History, Search, Trash2, Pencil, X } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
 import { auditService, type AuditEvent, type UserPresence } from '@/services/auditService';
 import './UserManagement.css';
@@ -323,8 +323,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
           <h1 className="page-title">{t('Tài khoản')}</h1>
           <p className="page-subtitle">{t('Xem danh sách nhân sự, phân quyền vai trò phòng ban và quản lý trạng thái hoạt động.')}</p>
         </div>
-        <button className="btn btn-primary btn-symbol" onClick={openAddModal} title={t('Thêm Người Dùng Mới')}>
-          <Plus size={18} />
+        <button className="btn btn-primary" onClick={openAddModal}>
+          {t('Thêm người dùng')}
         </button>
       </div>
 

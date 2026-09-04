@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { BarChart } from '@/components/VisualCharts';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import { getPOQueueLabel, getPOQueueStatus, getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
@@ -455,11 +455,11 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
         <div className="card">
           {(currentUser.role === 'admin' || currentUser.role === 'accountant') && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
-              <button className="btn btn-primary btn-symbol" onClick={() => {
+              <button className="btn btn-primary" onClick={() => {
                 setAddDueDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
                 setShowAddInvoiceModal(true);
-              }} title={t('Tạo Hóa Đơn Hàng Thủ Công')}>
-                <Plus size={18} />
+              }}>
+                {t('Tạo hóa đơn')}
               </button>
             </div>
           )}

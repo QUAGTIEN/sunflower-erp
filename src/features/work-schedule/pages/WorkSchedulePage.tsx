@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Search, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
 import { WORK_SCHEDULE_DEPARTMENT_LABELS, WORK_SCHEDULE_REFERENCE_LABELS, WORK_SCHEDULE_STATUS_LABELS, formatScheduleDate, formatScheduleTime, getWeekStart, isScheduleOnDate, normalizeWorkScheduleRecords, overlapsSchedule, parseDateKey, toDateKey, type WorkScheduleRecord, type WorkScheduleReferenceType, type WorkScheduleStatus } from '@/features/work-schedule/model/workScheduleModels';
@@ -315,7 +315,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
     <div className="work-schedule-page">
       <header className="page-header work-schedule-header">
         <div><h1 className="page-title">Lịch làm việc</h1></div>
-        {isAdmin && <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}><Plus size={16} /> Giao việc</button>}
+        {isAdmin && <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}>Giao việc</button>}
       </header>
 
       <section className="work-schedule-card">

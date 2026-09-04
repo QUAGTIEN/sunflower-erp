@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
-import { Plus, Trash2, Pencil } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
 
 interface InventoryProps {
@@ -266,8 +266,8 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
         {(currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
           <div style={{ display: 'flex', gap: '12px' }}>
             <button className="btn btn-outline" onClick={handleOpenAddExport}>{t('Tạo Phiếu Xuất Kho')}</button>
-            <button className="btn btn-primary btn-symbol" onClick={() => setShowAddModal(true)} title={t('Thêm Vật Tư Mới')}>
-              <Plus size={18} />
+            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+              {t('Thêm vật tư')}
             </button>
           </div>
         )}

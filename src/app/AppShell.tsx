@@ -23,7 +23,6 @@ import {
   NOTIFICATION_MODULE_LABELS,
   PAGE_NOTIFICATION_MODULES
 } from '@/app/config/appConfig';
-import { useAppTheme } from '@/app/hooks/useAppTheme';
 import { canAccessPage, getDefaultPagesForRole } from '@/app/navigation/accessControl';
 import '@/styles/ErpUiStandards.css';
 import '@/styles/Theme.css';
@@ -67,9 +66,7 @@ import {
   CheckCheck,
   SlidersHorizontal,
   MapPinned,
-  CalendarDays,
-  Moon,
-  Sun
+  CalendarDays
 } from 'lucide-react';
 
 function AppShell() {
@@ -79,8 +76,13 @@ function AppShell() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('erp_sidebar_collapsed') === 'true';
   });
-  const [theme, setTheme] = useAppTheme();
   const { t, language, setLanguage } = useLanguage();
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = 'light';
+    document.documentElement.style.colorScheme = 'light';
+    localStorage.setItem('erp_color_theme', 'light');
+  }, []);
 
   const isPageAllowed = (pageId: string): boolean => canAccessPage(user, pageId);
 
@@ -1118,19 +1120,6 @@ function AppShell() {
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
             </svg>
             <span>{language === 'vi' ? 'EN' : 'VI'}</span>
-          </button>
-
-          <button
-            type="button"
-            className="theme-toggle-btn"
-            onClick={() => setTheme(currentTheme => currentTheme === 'light' ? 'dark' : 'light')}
-            aria-label={theme === 'light' ? 'Bật giao diện tối' : 'Bật giao diện sáng'}
-            aria-pressed={theme === 'dark'}
-            title={theme === 'light' ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
-          >
-            {theme === 'light'
-              ? <Moon size={16} aria-hidden="true" />
-              : <Sun size={16} aria-hidden="true" />}
           </button>
 
           <div className="header-notification-center" ref={notificationCenterRef}>

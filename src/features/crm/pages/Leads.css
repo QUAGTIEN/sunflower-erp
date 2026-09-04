@@ -19,20 +19,21 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  min-height: 52px;
+  min-height: 40px;
   align-items: center;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 16px;
-  padding: 0 12px 0 16px;
-  border: 1px solid #dbe3ef;
-  border-radius: 7px;
-  background: #fff;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .lead-page-commandbar__title h1 {
   margin: 0;
   color: #172554;
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
 }

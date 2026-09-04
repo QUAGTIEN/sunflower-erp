@@ -534,7 +534,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
           </p>
         </div>
         {productionTab === 'commands' && !isOperator && (currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
-          <button className="btn btn-primary" onClick={handleOpenAddLsx}>{t('PHÁT HÀNH LỆNH SẢN XUẤT (LSX) MỚI')}</button>
+          <button className="btn btn-primary" onClick={handleOpenAddLsx}>{t('Phát hành lệnh sản xuất')}</button>
         )}
       </div>
 

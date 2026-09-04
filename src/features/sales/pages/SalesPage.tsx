@@ -29,7 +29,6 @@ import {
   Plus,
   Trash2,
   Pencil,
-  X,
   Check,
   Copy,
   Folder,
@@ -710,8 +709,8 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
           <p className="page-subtitle">{t('Tạo đơn hàng PO mới, theo dõi hàng đợi công việc và quản lý file thiết kế, thông số kỹ thuật.')}</p>
         </div>
         {(currentUser.role === 'admin' || currentUser.role === 'sale') && !selectedPO && (
-          <button className="btn btn-primary btn-symbol" onClick={() => handleOpenCreatePO()} title={t('TẠO ĐƠN HÀNG PO MỚI')}>
-            <Plus size={18} />
+          <button className="btn btn-primary" onClick={() => handleOpenCreatePO()}>
+            {t('Tạo đơn hàng mới')}
           </button>
         )}
       </div>
@@ -763,8 +762,8 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ maxWidth: '400px', flex: 1 }}
             />
-            <button className="btn btn-outline btn-symbol" onClick={() => setSearchTerm('')} title={t('Xóa Tìm Kiếm')}>
-              <X size={16} />
+            <button className="btn btn-outline" onClick={() => setSearchTerm('')}>
+              {t('Xóa tìm kiếm')}
             </button>
           </div>
 
