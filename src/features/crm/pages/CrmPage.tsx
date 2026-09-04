@@ -83,8 +83,6 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
-  Layers3,
   MapPinned,
   Settings2
 } from 'lucide-react';
@@ -124,6 +122,13 @@ const normalizeFilterValue = (value: unknown) => String(value || '')
   .replace(/Đ/g, 'D')
   .trim()
   .toLocaleLowerCase('vi-VN');
+
+const getProductAssetSource = (asset: unknown): string => {
+  if (typeof asset === 'string') return asset;
+  if (!asset || typeof asset !== 'object') return '';
+  const record = asset as Record<string, unknown>;
+  return String(record.base64 || record.data || record.url || '');
+};
 
 const copyTextToClipboard = async (text: string) => {
   if (navigator.clipboard?.writeText) {
@@ -248,8 +253,8 @@ export const Crm: React.FC<CrmProps> = ({
   const [customerPage, setCustomerPage] = useState(1);
   const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
-  const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'samples'>('po');
-  const [expandedMaterialsCustomerId, setExpandedMaterialsCustomerId] = useState('');
+  const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'products'>('po');
+  const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(false);
 
   const [chartMonth, setChartMonth] = useState<string>('all');
   const [chartYear, setChartYear] = useState<string>(() => String(new Date().getFullYear()));
@@ -1687,6 +1692,7 @@ export const Crm: React.FC<CrmProps> = ({
 
   const openCustomerDetail = (customer: CustomerRecord) => {
     setCustomerHistoryTab('po');
+    setIsCompanyInfoExpanded(false);
     setSelectedCustomer(customer);
   };
 
@@ -1897,6 +1903,43 @@ export const Crm: React.FC<CrmProps> = ({
   const selectedCustomerSamples = selectedCustomer
     ? customerSamplesById[selectedCustomer.id] || []
     : [];
+  const storedCustomerProducts = selectedCustomer
+    ? ((selectedCustomer.products || []) as CustomerProductRecord[]).filter(product => !product.deleted)
+    : [];
+  const matchedSampleKeys = new Set<string>();
+  const selectedCustomerProducts = [
+    ...storedCustomerProducts.map(product => {
+      const matchingSample = selectedCustomerSamples.find(sample => (
+        (product.productCode && sample.productCode === product.productCode)
+        || (!product.productCode && normalizeFilterValue(sample.productName) === normalizeFilterValue(product.productName))
+      ));
+      if (matchingSample) matchedSampleKeys.add(matchingSample.key);
+      const assets = [product.layoutUrl, ...(product.designLayouts || []), ...(product.files || [])]
+        .map(getProductAssetSource)
+        .filter(Boolean);
+      return {
+        key: product.id,
+        record: product,
+        productCode: product.productCode,
+        productName: product.productName,
+        material: product.material || matchingSample?.material || '',
+        specification: product.size || matchingSample?.specification || '',
+        unit: product.unit || matchingSample?.unit || 'cái',
+        orderCount: matchingSample?.orderCount || 0,
+        totalQuantity: matchingSample?.totalQuantity || 0,
+        lastPoId: matchingSample?.lastPoId || '',
+        lastPoCode: matchingSample?.lastPoCode || '',
+        lastOrderedAt: matchingSample?.lastOrderedAt || '',
+        previewImage: assets[0] || matchingSample?.previewImage || '',
+        assetCount: assets.length || (matchingSample?.previewImage ? 1 : 0)
+      };
+    }),
+    ...selectedCustomerSamples.filter(sample => !matchedSampleKeys.has(sample.key)).map(sample => ({
+      ...sample,
+      record: null,
+      assetCount: sample.previewImage ? 1 : 0
+    }))
+  ];
 
   // Top 5/15 customers by sales volume with time filters
   const topCustomerSales = accessibleCustomers
@@ -2374,12 +2417,10 @@ export const Crm: React.FC<CrmProps> = ({
                 <div className="crm-customer-grid">
                   <div className="table-container crm-customer-table-wrap">
                   <ConfiguredSystemTable table="customers" className="crm-customer-table is-compact">
-                    <thead><tr><th data-system-field="companyName">{t('Khách hàng')}</th><th data-system-field="customerCode">{t('Mã KH')}</th><th data-system-field="customerRank">{t('Phân loại')}</th><th data-system-field="taxCode">{t('Mã số thuế')}</th><th data-system-field="phone">{t('SĐT')}</th><th data-system-field="email">{t('Mail')}</th><th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th><th data-system-field="businessResult">{t('Kết quả kinh doanh')}</th><th data-system-field="materials">{t('NVL gốc')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
+                    <thead><tr><th data-system-field="companyName">{t('Khách hàng')}</th><th data-system-field="customerCode">{t('Mã KH')}</th><th data-system-field="customerRank">{t('Phân loại')}</th><th data-system-field="taxCode">{t('Mã số thuế')}</th><th data-system-field="phone">{t('SĐT')}</th><th data-system-field="email">{t('Mail')}</th><th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th><th data-system-field="businessResult">{t('Kết quả kinh doanh')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
                     <tbody>
                       {displayedCustomers.map(customer => {
                         const customerOrders = getCustomerOrders(customer.id);
-                        const customerMaterials = customerMaterialsById[customer.id] || [];
-                        const isMaterialsExpanded = expandedMaterialsCustomerId === customer.id;
                         const orderValue = getCustomerOrderValue(customer.id);
                         const isNew = isNewCustomer(customer);
                         const saleName = users.find(user => user.uid === customer.assignedSaleId)?.displayName || t('Chưa phân công');
@@ -2394,22 +2435,6 @@ export const Crm: React.FC<CrmProps> = ({
                               <td><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>
                               <td><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>
                               <td><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')} · {orderValue.toLocaleString('vi-VN')} đ</strong></div></td>
-                              <td onClick={(event) => event.stopPropagation()}>
-                                {customerMaterials.length > 0 ? (
-                                  <button
-                                    type="button"
-                                    className={`crm-material-summary ${isMaterialsExpanded ? 'is-expanded' : ''}`}
-                                    onClick={() => setExpandedMaterialsCustomerId(isMaterialsExpanded ? '' : customer.id)}
-                                    aria-expanded={isMaterialsExpanded}
-                                    title={t('Xem nguyên vật liệu từng sử dụng')}
-                                  >
-                                    <span><Layers3 size={13} /> {customerMaterials.length} {t('NVL')} · {customerMaterials[0].materialName}</span>
-                                    <ChevronDown size={13} />
-                                  </button>
-                                ) : (
-                                  <span className="crm-material-empty">{t('Chưa có dữ liệu')}</span>
-                                )}
-                              </td>
                               {customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id])}</td>)}
                               <td>
                                 <RowActionMenu
@@ -2431,36 +2456,6 @@ export const Crm: React.FC<CrmProps> = ({
                                 />
                               </td>
                             </tr>
-                            {isMaterialsExpanded && (
-                              <tr className="crm-material-history-row" onClick={(event) => event.stopPropagation()}>
-                                <td colSpan={10 + customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).length}>
-                                  <div className="crm-material-history-panel">
-                                    <div className="crm-material-history-heading">
-                                      <span><Layers3 size={15} /> {t('Nguyên vật liệu đã sử dụng')}</span>
-                                      <small>{customer.companyName} · {customerOrders.length} {t('đơn hàng')}</small>
-                                    </div>
-                                    <div className="crm-material-history-list">
-                                      {customerMaterials.map(material => (
-                                        <div key={material.key} className="crm-material-history-item">
-                                          <div>
-                                            <strong>{material.materialName}</strong>
-                                            <span>{material.productCodes.length > 0 ? `${t('Mã hàng')}: ${material.productCodes.join(', ')}` : t('Chưa có mã hàng')}</span>
-                                          </div>
-                                          <div>
-                                            <strong>{material.orderCount} {t('đơn')}</strong>
-                                            <span>{material.specifications.length > 0 ? material.specifications.join(' · ') : t('Chưa có quy cách')}</span>
-                                          </div>
-                                          <div>
-                                            <strong>{material.lastPoCode || t('PO gần nhất')}</strong>
-                                            <span>{material.lastUsedAt ? formatDate(material.lastUsedAt, 'vi-VN', '') : t('Chưa có ngày')}</span>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
                           </React.Fragment>
                         );
                       })}
@@ -2501,78 +2496,102 @@ export const Crm: React.FC<CrmProps> = ({
             )}
           </div>
 
-          <div className="card">
-            <div className="card-header crm-company-info-header">
-              <span className="card-title">{t('THÔNG TIN DOANH NGHIỆP')}</span>
-              <button type="button" className="btn btn-sm btn-outline" onClick={() => void handleCopyCustomerInformation(selectedCustomer)} title={t('Sao chép thông tin doanh nghiệp')}>
-                <Copy size={13} /> {t('Sao chép')}
-              </button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '8px' }}>
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Mã số thuế:')}</span>
-                <span>{selectedCustomer.taxCode || t('Chưa cung cấp')}</span>
+          <div className="customer-profile-column">
+            <section className="card customer-note-card">
+              <div className="card-header customer-note-card__header">
+                <div>
+                  <span className="card-title">{t('Ghi chú khách hàng')}</span>
+                  <small>{t('Thông tin cần nhớ khi trao đổi và xử lý đơn hàng')}</small>
+                </div>
+                {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => openEditModal(selectedCustomer)}>
+                    {t('Chỉnh sửa ghi chú')}
+                  </button>
+                )}
+              </div>
+              <p className={selectedCustomer.note ? '' : 'is-empty'}>
+                {selectedCustomer.note || t('Chưa có ghi chú. Hãy bổ sung đặc điểm, yêu cầu và lưu ý quan trọng của khách hàng.')}
+              </p>
+              <small className="customer-note-card__meta">
+                {selectedCustomer.updatedAt
+                  ? `${t('Cập nhật gần nhất')}: ${formatDateTime(selectedCustomer.updatedAt, t('vi-VN'))}${selectedCustomer.updatedBy ? ` · ${selectedCustomer.updatedBy}` : ''}`
+                  : t('Chưa có lịch sử cập nhật')}
+              </small>
+            </section>
 
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Địa chỉ giao hàng:')}</span>
-                <span>{selectedCustomer.address}</span>
-
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Email:')}</span>
-                <span>{selectedCustomer.email || t('Chưa cung cấp')}</span>
-
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Sale phụ trách:')}</span>
-                <span>{users.find(u => u.uid === selectedCustomer.assignedSaleId)?.displayName || t('Chưa phân công')}</span>
-
-                {(selectedCustomer.customFields || [
-                  {
-                    id: 'discount',
-                    name: t('Chiết khấu mặc định'),
-                    value: selectedCustomer.discountType === 'amount'
-                      ? `${Number(selectedCustomer.discountAmount || 0).toLocaleString('vi-VN')} đ`
-                      : `${Number(selectedCustomer.discountRate || 0)}%`
-                  },
-                  { id: 'debtLimit', name: t('Hạn mức công nợ (đ)'), value: selectedCustomer.debtLimit },
-                  { id: 'paymentTerms', name: t('Điều khoản thanh toán'), value: selectedCustomer.paymentTerms },
-                  { id: 'note', name: t('Ghi chú yêu cầu riêng'), value: selectedCustomer.note }
-                ]).map((field: any) => (
-                  <React.Fragment key={field.id}>
-                    <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{field.name}:</span>
-                    <span>{field.id === 'debtLimit' ? `${field.value?.toLocaleString()} đ` : (field.value || t('Không có'))}</span>
-                  </React.Fragment>
-                ))}
-
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tần suất đặt hàng:')}</span>
-                <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>{calculateFrequency(selectedCustomer.id)}</span>
-
-                <span style={{ gridColumn: '1 / -1', borderBottom: '1px dashed var(--color-border-light)', margin: '8px 0' }}></span>
-
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '12px' }}>{t('Tạo bởi:')}</span>
-                <span style={{ fontSize: '12px' }}>{selectedCustomer.createdBy || t('Không xác định')} {selectedCustomer.createdAt && `(${formatDateTime(selectedCustomer.createdAt, t('vi-VN'))})`}</span>
-
-                <span style={{ fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '12px' }}>{t('Cập nhật bởi:')}</span>
-                <span style={{ fontSize: '12px' }}>{selectedCustomer.updatedBy || t('Chưa cập nhật')} {selectedCustomer.updatedAt && `(${formatDateTime(selectedCustomer.updatedAt, t('vi-VN'))})`}</span>
+            <section className="card customer-company-card">
+              <div className="card-header crm-company-info-header">
+                <span className="card-title">{t('Thông tin doanh nghiệp')}</span>
+                <div className="crm-company-info-actions">
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => void handleCopyCustomerInformation(selectedCustomer)} title={t('Sao chép thông tin doanh nghiệp')}>
+                    {t('Sao chép')}
+                  </button>
+                  <button type="button" className="btn btn-sm btn-outline" aria-expanded={isCompanyInfoExpanded} onClick={() => setIsCompanyInfoExpanded(value => !value)}>
+                    {isCompanyInfoExpanded ? t('Thu gọn') : t('Xem đầy đủ')}
+                  </button>
+                </div>
               </div>
 
-              <EntityCustomFieldsReadOnly definitions={customFieldDefinitions} values={selectedCustomer.customFieldValues} />
+              <div className="customer-company-summary">
+                <span>{t('Liên hệ chính')}</span>
+                <strong>{selectedCustomer.contactPerson || t('Chưa cập nhật')}</strong>
+                <span>{t('Điện thoại')}</span>
+                <strong>{selectedCustomer.phone || t('Chưa cập nhật')}</strong>
+                <span>{t('Email')}</span>
+                <strong>{selectedCustomer.email || t('Chưa cập nhật')}</strong>
+                <span>{t('Sale phụ trách')}</span>
+                <strong>{users.find(u => u.uid === selectedCustomer.assignedSaleId)?.displayName || t('Chưa phân công')}</strong>
+              </div>
 
-              <div className="customer-contact-panel">
-                <div className="customer-contact-panel__heading">
-                  <Users size={16} />
-                  <strong>{t('Đầu mối liên hệ')}</strong>
-                </div>
-                <div className="customer-contact-list">
-                  {(selectedCustomer.contacts || []).map((contact: CustomerContactRecord) => (
-                    <div key={contact.id} className="customer-contact-item">
-                      <span className="customer-contact-item__role">{CONTACT_ROLE_LABELS[contact.role]}</span>
-                      <strong>{contact.name || t('Chưa cập nhật tên')}</strong>
-                      <span>{[contact.phone, contact.email].filter(Boolean).join(' · ') || t('Chưa có thông tin liên hệ')}</span>
+              {isCompanyInfoExpanded && (
+                <div className="customer-company-expanded">
+                  <div className="customer-company-detail-grid">
+                    <span>{t('Mã số thuế')}</span>
+                    <strong>{selectedCustomer.taxCode || t('Chưa cung cấp')}</strong>
+                    <span>{t('Địa chỉ giao hàng')}</span>
+                    <strong>{selectedCustomer.address || t('Chưa cập nhật')}</strong>
+                    {(selectedCustomer.customFields || [
+                      {
+                        id: 'discount',
+                        name: t('Chiết khấu mặc định'),
+                        value: selectedCustomer.discountType === 'amount'
+                          ? `${Number(selectedCustomer.discountAmount || 0).toLocaleString('vi-VN')} đ`
+                          : `${Number(selectedCustomer.discountRate || 0)}%`
+                      },
+                      { id: 'debtLimit', name: t('Hạn mức công nợ (đ)'), value: selectedCustomer.debtLimit },
+                      { id: 'paymentTerms', name: t('Điều khoản thanh toán'), value: selectedCustomer.paymentTerms }
+                    ]).filter((field: any) => field.id !== 'note').map((field: any) => (
+                      <React.Fragment key={field.id}>
+                        <span>{field.name}</span>
+                        <strong>{field.id === 'debtLimit' ? `${Number(field.value || 0).toLocaleString('vi-VN')} đ` : (field.value || t('Không có'))}</strong>
+                      </React.Fragment>
+                    ))}
+                    <span>{t('Tần suất đặt hàng')}</span>
+                    <strong>{calculateFrequency(selectedCustomer.id)}</strong>
+                    <span>{t('Tạo bởi')}</span>
+                    <strong>{selectedCustomer.createdBy || t('Không xác định')} {selectedCustomer.createdAt && `(${formatDateTime(selectedCustomer.createdAt, t('vi-VN'))})`}</strong>
+                    <span>{t('Cập nhật bởi')}</span>
+                    <strong>{selectedCustomer.updatedBy || t('Chưa cập nhật')} {selectedCustomer.updatedAt && `(${formatDateTime(selectedCustomer.updatedAt, t('vi-VN'))})`}</strong>
+                  </div>
+
+                  <EntityCustomFieldsReadOnly definitions={customFieldDefinitions} values={selectedCustomer.customFieldValues} />
+
+                  <div className="customer-contact-panel">
+                    <div className="customer-contact-panel__heading"><strong>{t('Đầu mối liên hệ')}</strong></div>
+                    <div className="customer-contact-list">
+                      {(selectedCustomer.contacts || []).map((contact: CustomerContactRecord) => (
+                        <div key={contact.id} className="customer-contact-item">
+                          <span className="customer-contact-item__role">{CONTACT_ROLE_LABELS[contact.role]}</span>
+                          <strong>{contact.name || t('Chưa cập nhật tên')}</strong>
+                          <span>{[contact.phone, contact.email].filter(Boolean).join(' · ') || t('Chưa có thông tin liên hệ')}</span>
+                        </div>
+                      ))}
+                      {(selectedCustomer.contacts || []).length === 0 && <span className="text-muted">{t('Chưa có đầu mối liên hệ.')}</span>}
                     </div>
-                  ))}
-                  {(selectedCustomer.contacts || []).length === 0 && (
-                    <span className="text-muted">{t('Chưa có đầu mối liên hệ.')}</span>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              )}
+            </section>
           </div>
 
           <div className="card customer-order-history-card">
@@ -2584,16 +2603,16 @@ export const Crm: React.FC<CrmProps> = ({
                 className={customerHistoryTab === 'po' ? 'is-active' : ''}
                 onClick={() => setCustomerHistoryTab('po')}
               >
-                <FileText size={14} /> {t('PO')} <span>{getCustomerOrders(selectedCustomer.id).length}</span>
+                {t('PO')} <span>{getCustomerOrders(selectedCustomer.id).length}</span>
               </button>
               <button
                 type="button"
                 role="tab"
-                aria-selected={customerHistoryTab === 'samples'}
-                className={customerHistoryTab === 'samples' ? 'is-active' : ''}
-                onClick={() => setCustomerHistoryTab('samples')}
+                aria-selected={customerHistoryTab === 'products'}
+                className={customerHistoryTab === 'products' ? 'is-active' : ''}
+                onClick={() => setCustomerHistoryTab('products')}
               >
-                <ShoppingBag size={14} /> {t('Lịch sử mẫu đã đặt')} <span>{selectedCustomerSamples.length}</span>
+                {t('Danh sách sản phẩm')} <span>{selectedCustomerProducts.length}</span>
               </button>
             </div>
 
@@ -2641,36 +2660,50 @@ export const Crm: React.FC<CrmProps> = ({
               </div>
             ) : (
               <div className="table-container customer-order-history-table">
-                <table className="customer-sample-history-table">
+                <table className="customer-sample-history-table customer-product-history-table">
                   <thead>
                     <tr>
-                      <th>{t('Mẫu / mã hàng')}</th>
+                      <th>{t('Sản phẩm / mã hàng')}</th>
                       <th>{t('Quy cách & NVL')}</th>
                       <th>{t('Lịch sử đặt')}</th>
-                      <th>{t('PO gần nhất')}</th>
+                      <th>{t('Hình ảnh / tệp')}</th>
+                      <th>{t('Thao tác')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedCustomerSamples.map(sample => (
-                      <tr key={sample.key}>
+                    {selectedCustomerProducts.map(product => (
+                      <tr key={product.key}>
                         <td>
                           <div className="customer-sample-identity">
-                            {sample.previewImage ? <img src={sample.previewImage} alt={sample.productName} /> : <span><FileText size={16} /></span>}
-                            <div><strong>{sample.productName}</strong><small>{sample.productCode || t('Chưa có mã hàng')}</small></div>
+                            {product.previewImage ? <img src={product.previewImage} alt={product.productName} /> : <span>{t('Chưa có ảnh')}</span>}
+                            <div><strong title={product.productName}>{product.productName}</strong><small>{product.productCode || t('Chưa có mã hàng')}</small></div>
                           </div>
                         </td>
-                        <td><div className="customer-sample-spec"><strong>{sample.material || t('Chưa có NVL')}</strong><span>{sample.specification || t('Chưa có quy cách')}</span></div></td>
-                        <td><div className="customer-sample-spec"><strong>{sample.orderCount} {t('đơn')}</strong><span>{sample.totalQuantity.toLocaleString('vi-VN')} {sample.unit}</span></div></td>
+                        <td><div className="customer-sample-spec"><strong title={product.material}>{product.material || t('Chưa có NVL')}</strong><span title={product.specification}>{product.specification || t('Chưa có quy cách')}</span></div></td>
                         <td>
-                          <button type="button" className="customer-po-link" onClick={() => sample.lastPoId && onOpenPO?.(sample.lastPoId)} disabled={!sample.lastPoId || !onOpenPO}>
-                            {sample.lastPoCode || t('Chưa có mã PO')}
-                          </button>
-                          <div className="crm-table-secondary">{formatDate(sample.lastOrderedAt, 'vi-VN', '—')}</div>
+                          <div className="customer-sample-spec">
+                            <strong>{product.orderCount > 0 ? `${product.orderCount} ${t('đơn')} · ${product.totalQuantity.toLocaleString('vi-VN')} ${product.unit}` : t('Chưa phát sinh PO')}</strong>
+                            <button type="button" className="customer-po-link" onClick={() => product.lastPoId && onOpenPO?.(product.lastPoId)} disabled={!product.lastPoId || !onOpenPO}>
+                              {product.lastPoCode || t('Chưa có mã PO')}
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          {product.previewImage ? (
+                            <button type="button" className="customer-product-asset-button" onClick={() => setPreviewImage(product.previewImage)}>
+                              {t('Xem ảnh')} · {product.assetCount} {t('tệp')}
+                            </button>
+                          ) : <span className="crm-text-muted">{t('Chưa có tệp')}</span>}
+                        </td>
+                        <td>
+                          {product.record && (currentUser.role === 'admin' || currentUser.role === 'sale') ? (
+                            <button type="button" className="btn btn-sm btn-outline" onClick={() => handleOpenEditProduct(product.record)}>{t('Chỉnh sửa')}</button>
+                          ) : '—'}
                         </td>
                       </tr>
                     ))}
-                    {selectedCustomerSamples.length === 0 && (
-                      <tr><td colSpan={4} className="customer-history-empty">{t('Chưa có mẫu nào trong lịch sử PO.')}</td></tr>
+                    {selectedCustomerProducts.length === 0 && (
+                      <tr><td colSpan={5} className="customer-history-empty">{t('Chưa có sản phẩm nào trong lịch sử đặt hàng.')}</td></tr>
                     )}
                   </tbody>
                 </table>
