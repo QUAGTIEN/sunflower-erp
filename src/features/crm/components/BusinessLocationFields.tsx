@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { SystemFieldContext } from '@/components/systemFieldContext';
 import type { LeadFilterDefinition, LeadFilterOption } from '@/features/crm/model/crmModels';
 import { LEAD_FILTER_IDS, mergeLeadFilterDefinitions } from '@/features/crm/model/leadFilterConfig';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
@@ -27,6 +28,8 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
   className = ''
 }) => {
   const [storedDefinitions, setStoredDefinitions] = useState<LeadFilterDefinition[]>([]);
+  const systemFields = useContext(SystemFieldContext);
+  const label = (key: string, fallback: string) => systemFields.find(field => field.key === key)?.label || fallback;
 
   useEffect(() => dbService.subscribeCollection('lead_filter_definitions', data => {
     setStoredDefinitions(data as LeadFilterDefinition[]);
@@ -45,7 +48,7 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
   return (
     <div className={`business-location-fields ${className}`.trim()}>
       <label className="form-group">
-        <span>Tỉnh / thành</span>
+        <span>{label('province', 'Tỉnh / thành')}</span>
         <select
           value={province}
           onChange={event => onChange({ province: event.target.value, ward: '', industrialPark: '' })}
@@ -55,7 +58,7 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
         </select>
       </label>
       <label className="form-group">
-        <span>Phường / xã</span>
+        <span>{label('ward', 'Phường / xã')}</span>
         <select
           value={ward}
           disabled={!selectedProvince}
@@ -66,7 +69,7 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
         </select>
       </label>
       <label className="form-group">
-        <span>Khu công nghiệp</span>
+        <span>{label('industrialPark', 'Khu công nghiệp')}</span>
         <select
           value={industrialPark}
           disabled={!selectedWard || industrialParkOptions.length === 0}

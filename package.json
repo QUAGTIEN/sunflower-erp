@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && tsc -p tsconfig.server.json && vite build",
     "lint": "eslint .",
+    "test:fields": "node --test tests/field-configuration.test.cjs",
     "preview": "vite preview",
     "db:clear": "node scripts/clear-db.js"
   },

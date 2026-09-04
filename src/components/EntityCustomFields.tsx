@@ -17,14 +17,15 @@ interface EntityCustomFieldControlProps {
 }
 
 export const EntityCustomFieldControl: React.FC<EntityCustomFieldControlProps> = ({ definition, value, disabled, onChange }) => {
-  const activeOptions = definition.options.filter(option => option.active);
+  const selectedIds = Array.isArray(value) ? value : [String(value ?? '')];
+  const activeOptions = definition.options.filter(option => option.active || selectedIds.includes(option.id));
   const common = { disabled, required: definition.required };
 
   if (definition.type === 'textarea') {
     return <textarea {...common} rows={3} value={String(value ?? '')} onChange={event => onChange(event.target.value)} />;
   }
   if (definition.type === 'single_select') {
-    return <select {...common} value={String(value ?? '')} onChange={event => onChange(event.target.value)}><option value="">Chưa chọn</option>{activeOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select>;
+    return <select {...common} value={String(value ?? '')} onChange={event => onChange(event.target.value)}><option value="">Chưa chọn</option>{activeOptions.map(option => <option key={option.id} value={option.id} disabled={!option.active}>{option.label}{!option.active ? ' (ngừng dùng)' : ''}</option>)}</select>;
   }
   if (definition.type === 'multi_select') {
     const selectedValues = Array.isArray(value) ? value.map(String) : [];

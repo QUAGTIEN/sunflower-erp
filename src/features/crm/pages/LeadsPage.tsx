@@ -1,3 +1,4 @@
+import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
@@ -1437,7 +1438,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
   function renderLeadForm() {
     return (
-      <div className="lead-form-page">
+      <SystemFieldSurface table="leads" className="lead-form-page">
         <header className="lead-form-page__header">
           <PageBackButton onClick={closeLeadForm} />
           <div>
@@ -1454,9 +1455,9 @@ export const Leads: React.FC<LeadsProps> = ({
                 <div><h2>{t('Thông tin doanh nghiệp')}</h2><p>{t('Thông tin pháp lý và nhận diện doanh nghiệp.')}</p></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label>{t('Tên doanh nghiệp *')}</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="companyName">{t('Tên doanh nghiệp *')}</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
                 <div className="form-group lead-form-grid__wide">
-                  <label>{t('Mã số thuế *')}</label>
+                  <label data-system-label="taxCode">{t('Mã số thuế *')}</label>
                   <input
                     required
                     value={form.taxCode}
@@ -1476,9 +1477,9 @@ export const Leads: React.FC<LeadsProps> = ({
                           : t('Mã số thuế được kiểm tra trên toàn bộ Lead và khách hàng.'))}
                   </span>
                 </div>
-                <div className="form-group"><label>{t('Website')}</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
-                <div className="form-group"><label>{t('Lĩnh vực hoạt động')}</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder={t('Ví dụ: Bao bì, thực phẩm, điện tử...')} /></div>
-                <div className="form-group lead-form-grid__wide"><label>{t('Địa chỉ doanh nghiệp')}</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="website">{t('Website')}</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
+                <div className="form-group"><label data-system-label="businessSector">{t('Lĩnh vực hoạt động')}</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder={t('Ví dụ: Bao bì, thực phẩm, điện tử...')} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="address">{t('Địa chỉ doanh nghiệp')}</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
               </div>
             </section>
 
@@ -1501,14 +1502,14 @@ export const Leads: React.FC<LeadsProps> = ({
                 <div><h2>{t('Liên hệ và nhu cầu')}</h2><p>{t('Đầu mối liên hệ, nhu cầu và giá trị cơ hội.')}</p></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group"><label>{t('Người liên hệ')}</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
-                <div className="form-group"><label>{t('Chức vụ')}</label><input value={form.contactPosition} onChange={event => updateForm('contactPosition', event.target.value)} placeholder={t('Ví dụ: Thu mua, Giám đốc...')} /></div>
-                <div className="form-group"><label>{t('Điện thoại')}</label><input type="tel" value={form.phone} onChange={event => updateForm('phone', event.target.value)} /></div>
-                <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} /></div>
-                <div className="form-group lead-form-grid__wide"><label>{t('Sản phẩm / nhu cầu quan tâm')}</label><textarea rows={3} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder={t('Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến...')} /></div>
-                <div className="form-group"><label>{t('Giá trị tiềm năng (đ)')}</label><input type="number" min="0" value={form.potentialValue} onChange={event => updateForm('potentialValue', Number(event.target.value))} /></div>
-                <div className="form-group"><label>{t('Giai đoạn xử lý')}</label><select value={form.stage} onChange={event => updateForm('stage', event.target.value as LeadStage)}>{LEAD_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.label}</option>)}</select></div>
-                <div className="form-group lead-form-grid__wide"><label>{t('Ghi chú')}</label><textarea rows={3} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder={t('Thông tin cần lưu ý khi làm việc với khách hàng...')} /></div>
+                <div className="form-group"><label data-system-label="contactPerson">{t('Người liên hệ')}</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="contactPosition">{t('Chức vụ')}</label><input value={form.contactPosition} onChange={event => updateForm('contactPosition', event.target.value)} placeholder={t('Ví dụ: Thu mua, Giám đốc...')} /></div>
+                <div className="form-group"><label data-system-label="phone">{t('Điện thoại')}</label><input type="tel" value={form.phone} onChange={event => updateForm('phone', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="email">Email</label><input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">{t('Sản phẩm / nhu cầu quan tâm')}</label><textarea rows={3} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder={t('Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến...')} /></div>
+                <div className="form-group"><label data-system-label="potentialValue">{t('Giá trị tiềm năng (đ)')}</label><input type="number" min="0" value={form.potentialValue} onChange={event => updateForm('potentialValue', Number(event.target.value))} /></div>
+                <div className="form-group"><label data-system-label="stage">{t('Giai đoạn xử lý')}</label><select value={form.stage} onChange={event => updateForm('stage', event.target.value as LeadStage)}>{LEAD_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.label}</option>)}</select></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="note">{t('Ghi chú')}</label><textarea rows={3} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder={t('Thông tin cần lưu ý khi làm việc với khách hàng...')} /></div>
                 <div className="form-group lead-form-grid__wide">
                   <label>{t('Tệp / tài liệu liên quan')}</label>
                   <div className="lead-file-dropzone">
@@ -1537,7 +1538,7 @@ export const Leads: React.FC<LeadsProps> = ({
               </div>
               <div className="lead-form-grid">
                 <div className={`form-group${currentUser.role === 'admin' ? '' : ' lead-form-grid__wide'}`}>
-                  <label>{t('Sale phụ trách')}</label>
+                  <label data-system-label="assignedSaleId">{t('Sale phụ trách')}</label>
                   <select value={form.assignedSaleId} onChange={event => updateForm('assignedSaleId', event.target.value)} disabled={currentUser.role === 'sale'}>
                     <option value="">{t('-- Chưa phân công --')}</option>
                     {saleUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
@@ -1545,7 +1546,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 </div>
                 {currentUser.role === 'admin' && (
                   <div className="form-group">
-                    <label>{t('Sale tìm được Lead')}</label>
+                    <label data-system-label="discoveredById">{t('Sale tìm được Lead')}</label>
                     <select value={form.discoveredById} onChange={event => updateForm('discoveredById', event.target.value)}>
                       <option value="">{t('-- Chưa xác định --')}</option>
                       {saleUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
@@ -1553,7 +1554,7 @@ export const Leads: React.FC<LeadsProps> = ({
                   </div>
                 )}
                 <div className="form-group lead-form-grid__wide">
-                  <label>{t('Lịch chăm sóc tiếp theo')}</label>
+                  <label data-system-label="nextFollowUpAt">{t('Lịch chăm sóc tiếp theo')}</label>
                   <input type="datetime-local" value={form.nextFollowUpAt} onChange={event => updateForm('nextFollowUpAt', event.target.value)} />
                 </div>
               </div>
@@ -1581,12 +1582,12 @@ export const Leads: React.FC<LeadsProps> = ({
             </div>
           </footer>
         </form>
-      </div>
+      </SystemFieldSurface>
     );
   }
 
   return (
-    <div className="leads-page">
+    <SystemFieldSurface table="leads" className="leads-page">
       <header className="lead-page-commandbar">
         <div className="lead-page-commandbar__title">
           <h1>{t('Tiềm năng')}</h1>
@@ -1676,8 +1677,8 @@ export const Leads: React.FC<LeadsProps> = ({
           <section className="lead-table-card">
             <div className="lead-table-result">Hiển thị <strong>{filteredLeads.length}</strong> / {accessibleLeads.length} Lead</div>
             <div className="table-container">
-              <table className="lead-table lead-table--classified">
-                <thead><tr><th>{t('Doanh nghiệp')}</th><th>{t('Liên hệ')}</th><th>{t('Nguồn / khu vực')}</th><th>{t('Giá trị tiềm năng')}</th><th>{t('Sale phụ trách')}</th><th>{t('Chăm sóc tiếp')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
+              <ConfiguredSystemTable table="leads" className="lead-table lead-table--classified">
+                <thead><tr><th data-system-field="companyName">{t('Doanh nghiệp')}</th><th data-system-field="contact">{t('Liên hệ')}</th><th data-system-field="source">{t('Nguồn / khu vực')}</th><th data-system-field="potentialValue">{t('Giá trị tiềm năng')}</th><th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th><th data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
                 <tbody>
                   {filteredLeads.map(lead => (
                     <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
@@ -1718,7 +1719,7 @@ export const Leads: React.FC<LeadsProps> = ({
                   ))}
                   {filteredLeads.length === 0 && <tr><td colSpan={7 + customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).length} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
                 </tbody>
-              </table>
+              </ConfiguredSystemTable>
             </div>
           </section>
         </div>
@@ -1732,7 +1733,7 @@ export const Leads: React.FC<LeadsProps> = ({
               <button type="button" className="btn btn-sm btn-outline" onClick={closeScheduleForm}><X size={14} /> {t('Đóng')}</button>
             </div>
             <div className="modal-body lead-candidate-schedule-form">
-              <label><span>{t('Lịch chăm sóc tiếp theo *')}</span><input required autoFocus type="datetime-local" value={scheduleForm.nextFollowUpAt} onChange={event => setScheduleForm(previous => ({ ...previous, nextFollowUpAt: event.target.value }))} /></label>
+              <label><span data-system-label="nextFollowUpAt">{t('Lịch chăm sóc tiếp theo *')}</span><input required autoFocus type="datetime-local" value={scheduleForm.nextFollowUpAt} onChange={event => setScheduleForm(previous => ({ ...previous, nextFollowUpAt: event.target.value }))} /></label>
               <p>{t('Sau khi lưu, Lead sẽ được đưa lên đầu danh sách và Sale phụ trách sẽ nhận được thông báo.')}</p>
               {scheduleError && <div className="lead-candidate-warning is-error"><AlertCircle size={14} /><span>{scheduleError}</span></div>}
             </div>
@@ -1744,6 +1745,6 @@ export const Leads: React.FC<LeadsProps> = ({
         </div>
       )}
 
-    </div>
+    </SystemFieldSurface>
   );
 };

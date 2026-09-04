@@ -207,9 +207,9 @@ export const dbService = {
     return deleteLocalDocument(colName, docId);
   },
 
-  subscribeCollection(colName: string, callback: (data: any[]) => void): () => void {
+  subscribeCollection(colName: string, callback: (data: any[]) => void, options?: { onError: (error: unknown) => void }): () => void {
     if (isFirebaseRuntimeEnabled) {
-      callback([]);
+      if (!options) callback([]);
 
       let active = true;
       let unsubscribeRemote: (() => void) | null = null;
@@ -226,12 +226,12 @@ export const dbService = {
           }, (error) => {
             if (!active) return;
             reportFirebaseFailure(`subscribing to ${colName}`, error);
-            callback([]);
+            if (options) options.onError(error); else callback([]);
           });
         } catch (error) {
           if (!active) return;
           reportFirebaseFailure(`subscribing to ${colName}`, error);
-          callback([]);
+          if (options) options.onError(error); else callback([]);
         }
       })();
 

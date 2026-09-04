@@ -479,7 +479,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
 
       <nav className="system-config-tabs content-tabs" role="tablist" aria-label="Nhóm cấu hình">
         <button type="button" role="tab" aria-selected={configurationTab === 'filters'} className={configurationTab === 'filters' ? 'is-active' : ''} onClick={() => setConfigurationTab('filters')}>Tiêu chí bộ lọc</button>
-        <button type="button" role="tab" aria-selected={configurationTab === 'custom_fields'} className={configurationTab === 'custom_fields' ? 'is-active' : ''} onClick={() => setConfigurationTab('custom_fields')}>Trường tùy chỉnh</button>
+        <button type="button" role="tab" aria-selected={configurationTab === 'custom_fields'} className={configurationTab === 'custom_fields' ? 'is-active' : ''} onClick={() => setConfigurationTab('custom_fields')}>Trường thông tin</button>
       </nav>
 
       {configurationTab === 'custom_fields' ? <CustomFieldConfiguration currentUser={currentUser} /> : <section className="system-filter-catalog">

@@ -1,3 +1,4 @@
+import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
@@ -2060,19 +2061,19 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
           <div className="customer-profile-card__body customer-profile-fields">
             <label className="form-group customer-profile-field--wide">
-              <span>Tên công ty *</span>
+              <span data-system-label="companyName">Tên công ty *</span>
               <input type="text" value={companyName} onChange={event => setCompanyName(event.target.value)} placeholder="Nhập tên doanh nghiệp..." required />
             </label>
             <label className="form-group">
-              <span>Mã khách hàng *</span>
+              <span data-system-label="customerCode">Mã khách hàng *</span>
               <input type="text" value={customerCode} onChange={event => setCustomerCode(event.target.value)} required />
             </label>
             <label className="form-group">
-              <span>Mã số thuế</span>
+              <span data-system-label="taxCode">Mã số thuế</span>
               <input type="text" value={taxCode} onChange={event => setTaxCode(event.target.value)} />
             </label>
             <label className="form-group">
-              <span>Hạng khách hàng *</span>
+              <span data-system-label="customerRank">Hạng khách hàng *</span>
               <select value={customerRank} onChange={event => setCustomerRank(event.target.value as CustomerRank)} required>
                 <option value="">Chọn hạng</option>
                 <option value="A">A</option>
@@ -2082,7 +2083,7 @@ export const Crm: React.FC<CrmProps> = ({
               </select>
             </label>
             <label className="form-group">
-              <span>Sale phụ trách</span>
+              <span data-system-label="assignedSaleId">Sale phụ trách</span>
               <select value={assignedSaleId} onChange={event => setAssignedSaleId(event.target.value)} disabled={currentUser.role === 'sale'}>
                 {saleUsers.map(sale => <option key={sale.uid} value={sale.uid}>{sale.displayName}</option>)}
               </select>
@@ -2107,7 +2108,7 @@ export const Crm: React.FC<CrmProps> = ({
               }}
             />
             <label className="form-group customer-location-address">
-              <span>Địa chỉ chi tiết / giao hàng</span>
+              <span data-system-label="address">Địa chỉ chi tiết / giao hàng</span>
               <input value={address} onChange={event => setAddress(event.target.value)} placeholder="Số nhà, đường, lô đất..." />
             </label>
             <div className="customer-location-preview">
@@ -2124,23 +2125,23 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
           <div className="customer-profile-card__body customer-profile-fields">
             <label className="form-group">
-              <span>Người liên hệ</span>
+              <span data-system-label="contactPerson">Người liên hệ</span>
               <input value={contactPerson} onChange={event => setContactPerson(event.target.value)} />
             </label>
             <label className="form-group">
-              <span>Số điện thoại</span>
+              <span data-system-label="phone">Số điện thoại</span>
               <input value={phone} onChange={event => setPhone(event.target.value)} />
             </label>
             <label className="form-group">
-              <span>SĐT thu mua</span>
+              <span data-system-label="procurementPhone">SĐT thu mua</span>
               <input value={procurementPhone} onChange={event => setProcurementPhone(event.target.value)} />
             </label>
             <label className="form-group">
-              <span>SĐT nhận hàng / kho</span>
+              <span data-system-label="warehousePhone">SĐT nhận hàng / kho</span>
               <input value={warehousePhone} onChange={event => setWarehousePhone(event.target.value)} />
             </label>
             <label className="form-group customer-profile-field--wide">
-              <span>Email</span>
+              <span data-system-label="email">Email</span>
               <input type="email" value={email} onChange={event => setEmail(event.target.value)} />
             </label>
           </div>
@@ -2153,7 +2154,7 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
           <div className="customer-profile-card__body customer-profile-fields">
             <label className="form-group">
-              <span>Hình thức chiết khấu</span>
+              <span data-system-label="discountType">Hình thức chiết khấu</span>
               <select value={discountType} onChange={event => setDiscountType(event.target.value as PODiscountType)}>
                 <option value="percent">Theo phần trăm (%)</option>
                 <option value="amount">Theo tiền chênh (đ)</option>
@@ -2168,11 +2169,11 @@ export const Crm: React.FC<CrmProps> = ({
               )}
             </label>
             <label className="form-group">
-              <span>Hạn mức công nợ (đ)</span>
+              <span data-system-label="debtLimit">Hạn mức công nợ (đ)</span>
               <input type="number" min="0" value={debtLimit} onChange={event => setDebtLimit(Number(event.target.value))} />
             </label>
             <label className="form-group">
-              <span>Điều khoản thanh toán</span>
+              <span data-system-label="paymentTerms">Điều khoản thanh toán</span>
               <select value={paymentTerms} onChange={event => setPaymentTerms(event.target.value)}>
                 <option value="Thanh toán trước">Thanh toán trước</option>
                 <option value="Thanh toán khi nhận hàng">Thanh toán khi nhận hàng</option>
@@ -2182,11 +2183,11 @@ export const Crm: React.FC<CrmProps> = ({
               </select>
             </label>
             <label className="form-group customer-profile-field--wide">
-              <span>Tài khoản ngân hàng</span>
+              <span data-system-label="bankAccount">Tài khoản ngân hàng</span>
               <input value={bankAccount} onChange={event => setBankAccount(event.target.value)} placeholder="Số tài khoản, ngân hàng, chi nhánh..." />
             </label>
             <label className="form-group customer-profile-field--wide">
-              <span>Ghi chú yêu cầu riêng</span>
+              <span data-system-label="note">Ghi chú yêu cầu riêng</span>
               <input value={note} onChange={event => setNote(event.target.value)} />
             </label>
           </div>
@@ -2213,7 +2214,7 @@ export const Crm: React.FC<CrmProps> = ({
   );
 
   return (
-    <div className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
+    <SystemFieldSurface table="customers" className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
       <div className="page-header">
         <div>
           <h1 className="page-title">{t('Khách hàng')}</h1>
@@ -2372,8 +2373,8 @@ export const Crm: React.FC<CrmProps> = ({
 
                 <div className="crm-customer-grid">
                   <div className="table-container crm-customer-table-wrap">
-                  <table className="crm-customer-table is-compact">
-                    <thead><tr><th>{t('Khách hàng')}</th><th>{t('Mã KH')}</th><th>{t('Phân loại')}</th><th>{t('Mã số thuế')}</th><th>{t('SĐT')}</th><th>{t('Mail')}</th><th>{t('Sale phụ trách')}</th><th>{t('Kết quả kinh doanh')}</th><th>{t('NVL gốc')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
+                  <ConfiguredSystemTable table="customers" className="crm-customer-table is-compact">
+                    <thead><tr><th data-system-field="companyName">{t('Khách hàng')}</th><th data-system-field="customerCode">{t('Mã KH')}</th><th data-system-field="customerRank">{t('Phân loại')}</th><th data-system-field="taxCode">{t('Mã số thuế')}</th><th data-system-field="phone">{t('SĐT')}</th><th data-system-field="email">{t('Mail')}</th><th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th><th data-system-field="businessResult">{t('Kết quả kinh doanh')}</th><th data-system-field="materials">{t('NVL gốc')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
                     <tbody>
                       {displayedCustomers.map(customer => {
                         const customerOrders = getCustomerOrders(customer.id);
@@ -2465,7 +2466,7 @@ export const Crm: React.FC<CrmProps> = ({
                       })}
                       {filteredCustomers.length === 0 && <tr><td colSpan={10 + customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).length} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
                     </tbody>
-                  </table>
+                  </ConfiguredSystemTable>
                   </div>
                   {filteredCustomers.length > 0 && <footer className="crm-customer-pagination">
                     <label>{t('Hiển thị')} <select value={customerPageSize} onChange={event => { setCustomerPageSize(Number(event.target.value)); setCustomerPage(1); }}><option value={25}>25 {t('dòng')}</option><option value={50}>50 {t('dòng')}</option><option value={100}>100 {t('dòng')}</option></select></label>
@@ -2960,11 +2961,11 @@ export const Crm: React.FC<CrmProps> = ({
               <div className="modal-body">
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>{t('Mã Khách Hàng *')}</label>
+                    <label data-system-label="customerCode">{t('Mã Khách Hàng *')}</label>
                     <input type="text" value={customerCode} onChange={e => setCustomerCode(e.target.value)} required />
                   </div>
                   <div className="form-group">
-                    <label>{t('Hạng Khách Hàng')}</label>
+                    <label data-system-label="customerRank">{t('Hạng Khách Hàng')}</label>
                     <select value={customerRank} onChange={e => setCustomerRank(e.target.value as CustomerRank)}>
                       <option value="">{t('Chưa xếp hạng')}</option>
                       <option value="A">A</option>
@@ -2975,45 +2976,45 @@ export const Crm: React.FC<CrmProps> = ({
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>{t('Tên Công Ty *')}</label>
+                  <label data-system-label="companyName">{t('Tên Công Ty *')}</label>
                   <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} required />
                 </div>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>{t('Người Liên Hệ')}</label>
+                    <label data-system-label="contactPerson">{t('Người Liên Hệ')}</label>
                     <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label>{t('Số Điện Thoại')}</label>
+                    <label data-system-label="phone">{t('Số Điện Thoại')}</label>
                     <input type="text" value={phone} onChange={e => setPhone(e.target.value)} />
                   </div>
                 </div>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>{t('SĐT Thu Mua')}</label>
+                    <label data-system-label="procurementPhone">{t('SĐT Thu Mua')}</label>
                     <input type="text" value={procurementPhone} onChange={e => setProcurementPhone(e.target.value)} placeholder={t('SĐT người làm việc mua hàng...')} />
                   </div>
                   <div className="form-group">
-                    <label>{t('SĐT Nhận Hàng / Kho')}</label>
+                    <label data-system-label="warehousePhone">{t('SĐT Nhận Hàng / Kho')}</label>
                     <input type="text" value={warehousePhone} onChange={e => setWarehousePhone(e.target.value)} placeholder={t('SĐT liên hệ kho hàng...')} />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>{t('Tài Khoản Ngân Hàng')}</label>
+                  <label data-system-label="bankAccount">{t('Tài Khoản Ngân Hàng')}</label>
                   <input type="text" value={bankAccount} onChange={e => setBankAccount(e.target.value)} placeholder={t('Số tài khoản, tên ngân hàng, chi nhánh...')} />
                 </div>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>{t('Mã Số Thuế')}</label>
+                    <label data-system-label="taxCode">{t('Mã Số Thuế')}</label>
                     <input type="text" value={taxCode} onChange={e => setTaxCode(e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label>{t('Email:')}</label>
+                    <label data-system-label="email">{t('Email:')}</label>
                     <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>{t('Địa Chỉ Giao Hàng')}</label>
+                  <label data-system-label="address">{t('Địa Chỉ Giao Hàng')}</label>
                   <input type="text" value={address} onChange={e => setAddress(e.target.value)} />
                 </div>
                 <BusinessLocationFields
@@ -3028,7 +3029,7 @@ export const Crm: React.FC<CrmProps> = ({
                 />
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>{t('Hình Thức Chiết Khấu')}</label>
+                    <label data-system-label="discountType">{t('Hình Thức Chiết Khấu')}</label>
                     <select value={discountType} onChange={e => setDiscountType(e.target.value as PODiscountType)}>
                       <option value="percent">{t('Theo phần trăm (%)')}</option>
                       <option value="amount">{t('Theo tiền chênh (đ)')}</option>
@@ -3045,13 +3046,13 @@ export const Crm: React.FC<CrmProps> = ({
                 </div>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>{t('Hạn Mức Công Nợ (đ)')}</label>
+                    <label data-system-label="debtLimit">{t('Hạn Mức Công Nợ (đ)')}</label>
                     <input type="number" min="0" value={debtLimit} onChange={e => setDebtLimit(Number(e.target.value))} />
                   </div>
                 </div>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>{t('Điều Khoản Thanh Toán')}</label>
+                    <label data-system-label="paymentTerms">{t('Điều Khoản Thanh Toán')}</label>
                     <select value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)}>
                       <option value="Thanh toán trước">{t('Thanh toán trước')}</option>
                       <option value="Thanh toán khi nhận hàng">{t('Thanh toán khi nhận hàng')}</option>
@@ -3061,7 +3062,7 @@ export const Crm: React.FC<CrmProps> = ({
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>{t('Sale Phụ Trách')}</label>
+                    <label data-system-label="assignedSaleId">{t('Sale Phụ Trách')}</label>
                     <select value={assignedSaleId} onChange={e => setAssignedSaleId(e.target.value)} disabled={currentUser.role === 'sale'}>
                       {saleUsers.map(s => (
                         <option key={s.uid} value={s.uid}>{s.displayName}</option>
@@ -3070,7 +3071,7 @@ export const Crm: React.FC<CrmProps> = ({
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>{t('Ghi Chú Yêu Cầu Riêng')}</label>
+                  <label data-system-label="note">{t('Ghi Chú Yêu Cầu Riêng')}</label>
                   <textarea value={note} onChange={e => setNote(e.target.value)} />
                 </div>
                 <EntityCustomFieldsSection
@@ -3996,6 +3997,6 @@ export const Crm: React.FC<CrmProps> = ({
         </div>
       )}
 
-    </div>
+    </SystemFieldSurface>
   );
 };

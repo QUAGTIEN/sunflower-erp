@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
   ArrowDown,
@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import {
   ENTITY_FIELD_ROLES,
-  ENTITY_SYSTEM_FIELD_LABELS,
   ENTITY_FIELD_TABLE_LABELS,
   ENTITY_FIELD_TYPE_LABELS,
   normalizeEntityFieldDefinition,
@@ -22,15 +21,17 @@ import {
   type EntityFieldRole,
   type EntityFieldTable
 } from '@/features/crm/model/entityFieldConfig';
-import { auditService } from '@/services/auditService';
-import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
+import { type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
+import { manageFieldConfiguration } from '@/services/fieldConfigurationService';
+import { SystemFieldConfiguration } from './SystemFieldConfiguration';
 import './CustomFieldConfiguration.css';
 
 interface CustomFieldConfigurationProps { currentUser: UserProfile; }
 
 interface FieldDraft {
   id: string;
+  expectedUpdatedAt: string;
   table: EntityFieldTable;
   name: string;
   description: string;
@@ -50,7 +51,7 @@ const ALL_ROLES = ENTITY_FIELD_ROLES.map(role => role.id);
 const SELECT_TYPES: EntityCustomFieldType[] = ['single_select', 'multi_select'];
 
 const createEmptyDraft = (table: EntityFieldTable): FieldDraft => ({
-  id: '', table, name: '', description: '', type: 'text', optionText: '', required: false,
+  id: '', expectedUpdatedAt: '', table, name: '', description: '', type: 'text', optionText: '', required: false,
   active: true, defaultVisible: false, searchable: false, filterable: false,
   viewRoles: [...ALL_ROLES], editRoles: ['admin', 'sale']
 });
@@ -59,6 +60,7 @@ const createId = (name: string) => `custom_${slugifyEntityFieldKey(name) || 'fie
 
 const toDraft = (definition: EntityFieldDefinition): FieldDraft => ({
   id: definition.id,
+  expectedUpdatedAt: definition.updatedAt,
   table: definition.table,
   name: definition.name,
   description: definition.description,
@@ -84,16 +86,27 @@ const parseOptions = (text: string, existing: EntityFieldDefinition['options'] =
 };
 
 export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> = ({ currentUser }) => {
-  const { allDefinitions } = useEntityFieldDefinitions();
+  const { allDefinitions, loading, error: loadError, retry } = useEntityFieldDefinitions();
+  const [group, setGroup] = useState<'system' | 'custom'>('system');
+  const [systemEditing, setSystemEditing] = useState(false);
   const [selectedTable, setSelectedTable] = useState<EntityFieldTable>('lead_candidates');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'removed'>('all');
   const [draft, setDraft] = useState<FieldDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const modalRef = useRef<HTMLFormElement>(null);
+  const isDraftOpen = Boolean(draft);
+  useEffect(() => {
+    if (!isDraftOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    modalRef.current?.querySelector<HTMLElement>('input:not(:disabled)')?.focus();
+    return () => previous?.focus();
+  }, [isDraftOpen]);
 
   const tableDefinitions = useMemo(() => allDefinitions.filter(definition => {
     if (definition.table !== selectedTable) return false;
+    if (statusFilter === 'removed' ? !definition.removed : definition.removed) return false;
     if (statusFilter === 'active' && !definition.active) return false;
     if (statusFilter === 'inactive' && definition.active) return false;
     const normalized = searchTerm.trim().toLocaleLowerCase('vi-VN');
@@ -137,46 +150,38 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
       updatedByName: currentUser.displayName
     });
     try {
-      await dbService.addDocument('entity_field_definitions', definition);
-      auditService.recordSafely(currentUser, {
-        category: 'administration', module: 'system',
-        action: existing ? 'custom_field_updated' : 'custom_field_created',
-        summary: `${existing ? 'Cập nhật' : 'Tạo'} trường tùy chỉnh ${definition.name} cho ${ENTITY_FIELD_TABLE_LABELS[definition.table]}`,
-        targetType: 'entity_field_definition', targetId: definition.id, targetLabel: definition.name
-      });
+      await manageFieldConfiguration(currentUser, { action: 'save', table: definition.table, definition, expectedUpdatedAt: draft.expectedUpdatedAt });
       setDraft(null);
     } catch (saveError) {
       console.error(saveError);
-      setError('Không thể lưu trường tùy chỉnh. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      setError(saveError instanceof Error ? saveError.message : 'Không thể lưu trường tùy chỉnh.');
     } finally { setSaving(false); }
   };
 
-  const toggleActive = async (definition: EntityFieldDefinition) => {
-    const now = new Date().toISOString();
-    await dbService.updateDocument('entity_field_definitions', definition.id, {
-      active: !definition.active, updatedAt: now, updatedById: currentUser.uid, updatedByName: currentUser.displayName
-    });
-    auditService.recordSafely(currentUser, {
-      category: 'administration', module: 'system', action: definition.active ? 'custom_field_archived' : 'custom_field_restored',
-      summary: `${definition.active ? 'Ngừng sử dụng' : 'Khôi phục'} trường ${definition.name}`,
-      targetType: 'entity_field_definition', targetId: definition.id, targetLabel: definition.name
-    });
+  const changeDefinition = async (definition: EntityFieldDefinition, action: 'archive' | 'restore' | 'remove') => {
+    if (action !== 'restore' && !window.confirm(action === 'remove' ? 'Xóa trường khỏi sử dụng? Chỉ trường chưa có dữ liệu mới được xóa; cấu hình được giữ để có thể khôi phục.' : 'Ngừng sử dụng trường? Dữ liệu đã nhập vẫn được giữ trong hồ sơ.')) return;
+    setSaving(true); setError('');
+    try {
+      await manageFieldConfiguration(currentUser, { action, table: definition.table, id: definition.id, expectedUpdatedAt: definition.updatedAt });
+    } catch (error) { setError(error instanceof Error ? error.message : 'Không thể cập nhật trường.'); }
+    finally { setSaving(false); }
   };
 
   const duplicateDefinition = (definition: EntityFieldDefinition) => {
-    setDraft({ ...toDraft(definition), id: '', name: `${definition.name} (bản sao)`, active: true });
+    setDraft({ ...toDraft(definition), id: '', expectedUpdatedAt: '', name: `${definition.name} (bản sao)`, active: true });
     setError('');
   };
 
   const moveDefinition = async (definition: EntityFieldDefinition, direction: -1 | 1) => {
-    const ordered = allDefinitions.filter(item => item.table === definition.table).sort((a, b) => a.order - b.order);
-    const index = ordered.findIndex(item => item.id === definition.id);
-    const target = ordered[index + direction];
-    if (!target) return;
-    await Promise.all([
-      dbService.updateDocument('entity_field_definitions', definition.id, { order: target.order, updatedAt: new Date().toISOString() }),
-      dbService.updateDocument('entity_field_definitions', target.id, { order: definition.order, updatedAt: new Date().toISOString() })
-    ]);
+    setSaving(true); setError('');
+    try {
+      await manageFieldConfiguration(currentUser, { action: 'move', table: definition.table, id: definition.id, direction, expectedUpdatedAt: definition.updatedAt });
+    } catch (error) { setError(error instanceof Error ? error.message : 'Không thể đổi thứ tự.'); }
+    finally { setSaving(false); }
+  };
+
+  const closeDraft = () => {
+    if (!saving && window.confirm('Đóng biểu mẫu và bỏ các thay đổi chưa lưu?')) { setDraft(null); setError(''); }
   };
 
   const updateRole = (kind: 'viewRoles' | 'editRoles', role: EntityFieldRole, checked: boolean) => setDraft(previous => {
@@ -189,42 +194,48 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
 
   return <section className="custom-field-config">
     <header className="custom-field-config__header">
-      <div><h2>Trường tùy chỉnh</h2><p>Mỗi trường chỉ thuộc một bảng. Dữ liệu không tự động ánh xạ khi chuyển đổi.</p></div>
-      <button type="button" className="btn btn-primary" onClick={() => { setDraft(createEmptyDraft(selectedTable)); setError(''); }}><Plus size={15} /> Thêm trường</button>
+      <div><h2>Trường thông tin</h2><p>Mỗi trường chỉ thuộc một bảng. Dữ liệu không tự động ánh xạ khi chuyển đổi.</p></div>
+      <button type="button" className="btn btn-primary" disabled={loading || !!loadError || saving || systemEditing} onClick={() => { setGroup('custom'); setDraft(createEmptyDraft(selectedTable)); setError(''); }}><Plus size={15} /> Thêm trường</button>
     </header>
 
     <div className="custom-field-config__toolbar">
-      <div className="custom-field-config__tables content-tabs content-tabs--compact" role="tablist" aria-label="Bảng áp dụng trường tùy chỉnh">{TABLES.map(table => <button type="button" role="tab" aria-selected={selectedTable === table} key={table} className={selectedTable === table ? 'is-active' : ''} onClick={() => setSelectedTable(table)}>{ENTITY_FIELD_TABLE_LABELS[table]} <span>{allDefinitions.filter(item => item.table === table && item.active).length}</span></button>)}</div>
-      <div className="custom-field-config__filters"><label><Search size={14} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Tìm tên trường..." /></label><select value={statusFilter} onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}><option value="all">Tất cả trạng thái</option><option value="active">Đang sử dụng</option><option value="inactive">Ngừng sử dụng</option></select></div>
+      <div className="custom-field-config__tables content-tabs content-tabs--compact" role="tablist" aria-label="Bảng áp dụng trường tùy chỉnh">{TABLES.map(table => <button type="button" role="tab" aria-selected={selectedTable === table} key={table} className={selectedTable === table ? 'is-active' : ''} disabled={systemEditing} onClick={() => setSelectedTable(table)}>{ENTITY_FIELD_TABLE_LABELS[table]} <span>{allDefinitions.filter(item => item.table === table && item.active).length}</span></button>)}</div>
+      <div className="custom-field-config__filters"><label><Search size={14} /><input aria-label="Tìm trường thông tin" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Tìm tên trường..." /></label><select aria-label="Trạng thái trường tùy chỉnh" disabled={group === 'system'} value={statusFilter} onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}><option value="all">Tất cả trạng thái</option><option value="active">Đang sử dụng</option><option value="inactive">Ngừng sử dụng</option><option value="removed">Đã xóa (có thể khôi phục)</option></select></div>
     </div>
 
-    <div className="custom-field-system-fields">
-      <div><strong>Trường hệ thống cố định</strong><span>Không thể xóa, đổi kiểu hoặc thay đổi ý nghĩa vì đang được nghiệp vụ sử dụng.</span></div>
-      <div>{ENTITY_SYSTEM_FIELD_LABELS[selectedTable].map(field => <span key={field}>{field}</span>)}</div>
+    <div className="field-config-groups content-tabs" aria-label="Nhóm trường">
+      <button type="button" className={group === 'system' ? 'is-active' : ''} disabled={systemEditing} onClick={() => setGroup('system')}>Hệ thống</button>
+      <button type="button" className={group === 'custom' ? 'is-active' : ''} disabled={systemEditing} onClick={() => setGroup('custom')}>Tùy chỉnh</button>
     </div>
-
+    {group === 'system' && <SystemFieldConfiguration key={selectedTable} table={selectedTable} currentUser={currentUser} searchTerm={searchTerm} onEditingChange={setSystemEditing} />}
+    {group === 'custom' && loading && <p className="field-config-notice" role="status">Đang tải trường tùy chỉnh…</p>}
+    {group === 'custom' && loadError && <p className="field-config-notice" role="alert">{loadError} <button type="button" onClick={retry}>Thử lại</button></p>}
+    {error && !draft && <p className="field-config-notice custom-field-modal__error" role="alert">{error}</p>}
+    {group === 'custom' && !loading && !loadError && <>
+    <p className="field-config-notice">Trường có dữ liệu chỉ được ngừng sử dụng. Xóa trường chưa có dữ liệu vẫn giữ bản cấu hình để khôi phục; không xóa thông tin trong hồ sơ.</p>
     <div className="custom-field-config__table-wrap"><table><thead><tr><th>Thứ tự</th><th>Tên trường</th><th>Kiểu dữ liệu</th><th>Hiển thị cột</th><th>Tìm kiếm</th><th>Trạng thái</th><th>Cập nhật</th><th>Thao tác</th></tr></thead><tbody>
       {tableDefinitions.map((definition, index) => <tr key={definition.id} className={!definition.active ? 'is-inactive' : ''}>
-        <td><div className="custom-field-order"><button type="button" disabled={index === 0} onClick={() => void moveDefinition(definition, -1)}><ArrowUp size={13} /></button><button type="button" disabled={index === tableDefinitions.length - 1} onClick={() => void moveDefinition(definition, 1)}><ArrowDown size={13} /></button></div></td>
+        <td><div className="custom-field-order"><button type="button" aria-label={`Đưa trường ${definition.name} lên`} disabled={saving || index === 0 || !!definition.removed} onClick={() => void moveDefinition(definition, -1)}><ArrowUp size={13} /></button><button type="button" aria-label={`Đưa trường ${definition.name} xuống`} disabled={saving || index === tableDefinitions.length - 1 || !!definition.removed} onClick={() => void moveDefinition(definition, 1)}><ArrowDown size={13} /></button></div></td>
         <td><strong>{definition.name}{definition.required && <em>*</em>}</strong><small>{definition.description || definition.fieldKey}</small></td>
-        <td>{ENTITY_FIELD_TYPE_LABELS[definition.type]}</td><td>{definition.defaultVisible ? 'Có' : 'Không'}</td><td>{definition.searchable ? 'Có' : 'Không'}</td><td><span className={`custom-field-status ${definition.active ? 'is-active' : ''}`}>{definition.active ? 'Đang sử dụng' : 'Ngừng sử dụng'}</span></td><td><small>{definition.updatedByName || definition.createdByName || '—'}</small></td>
-        <td><div className="custom-field-actions"><button type="button" title="Chỉnh sửa" onClick={() => { setDraft(toDraft(definition)); setError(''); }}><Pencil size={14} /></button><button type="button" title="Nhân bản" onClick={() => duplicateDefinition(definition)}><Copy size={14} /></button><button type="button" title={definition.active ? 'Ngừng sử dụng' : 'Khôi phục'} onClick={() => void toggleActive(definition)}>{definition.active ? <Archive size={14} /> : <RotateCcw size={14} />}</button></div></td>
+        <td>{ENTITY_FIELD_TYPE_LABELS[definition.type]}</td><td>{definition.defaultVisible ? 'Có' : 'Không'}</td><td>{definition.searchable ? 'Có' : 'Không'}</td><td><span className={`custom-field-status ${definition.active ? 'is-active' : ''}`}>{definition.removed ? 'Đã xóa' : definition.active ? 'Đang sử dụng' : 'Ngừng sử dụng'}</span></td><td><small>{definition.updatedByName || definition.createdByName || '—'}</small></td>
+        <td><div className="custom-field-actions"><button type="button" title="Chỉnh sửa" disabled={saving || !!definition.removed} onClick={() => { setDraft(toDraft(definition)); setError(''); }}><Pencil size={14} /></button><button type="button" title="Nhân bản" disabled={saving || !!definition.removed} onClick={() => duplicateDefinition(definition)}><Copy size={14} /></button><button type="button" title={definition.active ? 'Ngừng sử dụng' : 'Khôi phục'} disabled={saving} onClick={() => void changeDefinition(definition, definition.active ? 'archive' : 'restore')}>{definition.active ? <Archive size={14} /> : <RotateCcw size={14} />}</button>{!definition.active && !definition.removed && <button type="button" disabled={saving} onClick={() => void changeDefinition(definition, 'remove')}>Xóa</button>}</div></td>
       </tr>)}
       {tableDefinitions.length === 0 && <tr><td colSpan={8} className="custom-field-empty">Chưa có trường tùy chỉnh phù hợp.</td></tr>}
     </tbody></table></div>
+    </>}
 
-    {draft && <div className="custom-field-modal-backdrop" role="presentation"><form className="custom-field-modal" onSubmit={event => { event.preventDefault(); void saveDefinition(); }}>
-      <header><div><h3>{draft.id ? 'Chỉnh sửa trường tùy chỉnh' : 'Thêm trường tùy chỉnh'}</h3><p>Trường này chỉ được sử dụng trong bảng đã chọn.</p></div><button type="button" onClick={() => setDraft(null)}><X size={20} /></button></header>
+    {draft && <div className="custom-field-modal-backdrop" role="presentation"><form ref={modalRef} onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); closeDraft(); } if (event.key === 'Tab') { const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)')); const first = items[0]; const last = items[items.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); } } }} role="dialog" aria-modal="true" aria-label="Thiết lập trường tùy chỉnh" className="custom-field-modal" onSubmit={event => { event.preventDefault(); void saveDefinition(); }}>
+      <header><div><h3>{draft.id ? 'Chỉnh sửa trường tùy chỉnh' : 'Thêm trường tùy chỉnh'}</h3><p>Trường này chỉ được sử dụng trong bảng đã chọn.</p></div><button type="button" aria-label="Đóng thiết lập trường" disabled={saving} onClick={closeDraft}><X size={20} /></button></header>
       <div className="custom-field-modal__body">
         <div className="custom-field-modal__row"><label><span>Bảng áp dụng *</span><select value={draft.table} disabled={Boolean(draft.id)} onChange={event => setDraft({ ...draft, table: event.target.value as EntityFieldTable })}>{TABLES.map(table => <option key={table} value={table}>{ENTITY_FIELD_TABLE_LABELS[table]}</option>)}</select></label><label><span>Kiểu dữ liệu *</span><select value={draft.type} disabled={Boolean(draft.id)} onChange={event => setDraft({ ...draft, type: event.target.value as EntityCustomFieldType, optionText: '' })}>{Object.entries(ENTITY_FIELD_TYPE_LABELS).map(([type, label]) => <option key={type} value={type}>{label}</option>)}</select></label></div>
-        <label><span>Tên trường *</span><input autoFocus value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} placeholder="Ví dụ: Các doanh nghiệp đối thủ" /></label>
-        <label><span>Mô tả / hướng dẫn</span><textarea rows={2} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} placeholder="Giải thích ngắn để người nhập hiểu đúng dữ liệu..." /></label>
+        <label><span>Tên trường *</span><input required maxLength={100} value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} placeholder="Ví dụ: Các doanh nghiệp đối thủ" /></label>
+        <label><span>Mô tả / hướng dẫn</span><textarea rows={2} maxLength={500} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} placeholder="Giải thích ngắn để người nhập hiểu đúng dữ liệu..." /></label>
         {SELECT_TYPES.includes(draft.type) && <label><span>Các lựa chọn * <small>(mỗi dòng một lựa chọn)</small></span><textarea rows={5} value={draft.optionText} onChange={event => setDraft({ ...draft, optionText: event.target.value })} placeholder={'Đối thủ A\nĐối thủ B\nChưa xác định'} /></label>}
         <fieldset><legend>Quy tắc sử dụng</legend><div className="custom-field-modal__checks"><label><input type="checkbox" checked={draft.required} onChange={event => setDraft({ ...draft, required: event.target.checked })} /> Bắt buộc nhập</label><label><input type="checkbox" checked={draft.defaultVisible} onChange={event => setDraft({ ...draft, defaultVisible: event.target.checked })} /> Hiện thành cột mặc định</label><label><input type="checkbox" checked={draft.searchable} onChange={event => setDraft({ ...draft, searchable: event.target.checked })} /> Cho phép tìm kiếm</label><label><input type="checkbox" checked={draft.filterable} onChange={event => setDraft({ ...draft, filterable: event.target.checked })} /> Cho phép lọc</label></div></fieldset>
-        <fieldset><legend>Quyền xem và chỉnh sửa</legend><div className="custom-field-role-grid"><strong>Vai trò</strong><strong>Được xem</strong><strong>Được sửa</strong>{ENTITY_FIELD_ROLES.map(role => <React.Fragment key={role.id}><span>{role.label}</span><input type="checkbox" checked={draft.viewRoles.includes(role.id)} disabled={role.id === 'admin'} onChange={event => updateRole('viewRoles', role.id, event.target.checked)} /><input type="checkbox" checked={draft.editRoles.includes(role.id)} disabled={role.id === 'admin'} onChange={event => updateRole('editRoles', role.id, event.target.checked)} /></React.Fragment>)}</div></fieldset>
+        <p className="field-config-notice">Quyền dưới đây điều khiển giao diện nhập liệu, không thay thế quyền truy cập hồ sơ. Không dùng để lưu dữ liệu bí mật cần phân quyền theo từng trường.</p><fieldset><legend>Quyền xem và chỉnh sửa</legend><div className="custom-field-role-grid"><strong>Vai trò</strong><strong>Được xem</strong><strong>Được sửa</strong>{ENTITY_FIELD_ROLES.map(role => <React.Fragment key={role.id}><span>{role.label}</span><input type="checkbox" aria-label={`${role.label}: quyền xem`} checked={draft.viewRoles.includes(role.id)} disabled={role.id === 'admin'} onChange={event => updateRole('viewRoles', role.id, event.target.checked)} /><input type="checkbox" aria-label={`${role.label}: quyền sửa`} checked={draft.editRoles.includes(role.id)} disabled={role.id === 'admin'} onChange={event => updateRole('editRoles', role.id, event.target.checked)} /></React.Fragment>)}</div></fieldset>
         {error && <p className="custom-field-modal__error">{error}</p>}
       </div>
-      <footer><button type="button" className="btn btn-outline" onClick={() => setDraft(null)}>Hủy</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu trường'}</button></footer>
+      <footer><button type="button" className="btn btn-outline" disabled={saving} onClick={closeDraft}>Hủy</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu trường'}</button></footer>
     </form></div>}
   </section>;
 };

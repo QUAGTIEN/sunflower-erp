@@ -57,3 +57,4 @@ Xem [kiến trúc source](docs/ARCHITECTURE.md) và [quy tắc phát triển](do
 - Firebase: `firebase.json`, `firestore.rules`, `storage.rules`.
 - Vercel: `vercel.json` và thư mục `api/`.
 - Production build: `npm run build` tạo thư mục `dist/`.
+- Cấu hình trường thông tin: xem [phạm vi, bảo vệ dữ liệu và thứ tự triển khai API/rules](docs/FIELD_CONFIGURATION.md). Kiểm thử bằng `npm run test:fields`.

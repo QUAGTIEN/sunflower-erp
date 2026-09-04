@@ -1,3 +1,4 @@
+import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import React, { useMemo, useState } from 'react';
 import {
   AlertCircle,
@@ -1245,7 +1246,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   if (showForm) {
     return (
-      <div className="lead-form-page lead-candidate-form-page">
+      <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
         <header className="lead-form-page__header">
           <PageBackButton onClick={() => setShowForm(false)} />
           <div>
@@ -1262,10 +1263,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div><h2>Thông tin doanh nghiệp</h2><p>Thông tin nhận diện, pháp lý và địa bàn của doanh nghiệp.</p></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label>Tên doanh nghiệp *</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
-                <div className="form-group"><label>Mã số thuế</label><input value={form.taxCode} readOnly={Boolean(editingCandidate?.taxCode)} onChange={event => updateForm('taxCode', event.target.value)} /></div>
-                <div className="form-group"><label>Website</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
-                <div className="form-group lead-form-grid__wide"><label>Lĩnh vực hoạt động</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder="Ví dụ: Bao bì, thực phẩm, điện tử..." /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="companyName">Tên doanh nghiệp *</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="taxCode">Mã số thuế</label><input value={form.taxCode} readOnly={Boolean(editingCandidate?.taxCode)} onChange={event => updateForm('taxCode', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="website">Website</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="businessSector">Lĩnh vực hoạt động</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder="Ví dụ: Bao bì, thực phẩm, điện tử..." /></div>
                 <BusinessLocationFields
                   className="lead-form-grid__wide"
                   province={form.province}
@@ -1273,7 +1274,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   industrialPark={form.industrialPark}
                   onChange={location => setForm(previous => ({ ...previous, ...location }))}
                 />
-                <div className="form-group lead-form-grid__wide"><label>Địa chỉ doanh nghiệp</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="address">Địa chỉ doanh nghiệp</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
               </div>
             </section>
 
@@ -1283,12 +1284,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div><h2>Liên hệ và nguồn dữ liệu</h2><p>Đầu mối liên hệ và nơi tìm thấy thông tin doanh nghiệp.</p></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group"><label>Người liên hệ</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
-                <div className="form-group"><label>Chức vụ</label><input value={form.contactPosition} onChange={event => updateForm('contactPosition', event.target.value)} placeholder="Ví dụ: Thu mua, Giám đốc..." /></div>
-                <div className="form-group"><label>Điện thoại</label><input type="tel" value={form.phone} onChange={event => updateForm('phone', event.target.value)} /></div>
-                <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} /></div>
-                <div className="form-group"><label>Nguồn tìm kiếm</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}>{CANDIDATE_SOURCES.map(source => <option key={source}>{source}</option>)}</select></div>
-                <div className="form-group"><label>Đường dẫn nguồn</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="Link Facebook, Google Maps..." /></div>
+                <div className="form-group"><label data-system-label="contactPerson">Người liên hệ</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="contactPosition">Chức vụ</label><input value={form.contactPosition} onChange={event => updateForm('contactPosition', event.target.value)} placeholder="Ví dụ: Thu mua, Giám đốc..." /></div>
+                <div className="form-group"><label data-system-label="phone">Điện thoại</label><input type="tel" value={form.phone} onChange={event => updateForm('phone', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="email">Email</label><input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="source">Nguồn tìm kiếm</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}>{CANDIDATE_SOURCES.map(source => <option key={source}>{source}</option>)}</select></div>
+                <div className="form-group"><label data-system-label="sourceUrl">Đường dẫn nguồn</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="Link Facebook, Google Maps..." /></div>
               </div>
             </section>
 
@@ -1298,8 +1299,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div><h2>Nhu cầu sơ bộ</h2><p>Thông tin phục vụ đánh giá trước khi chuyển thành Lead.</p></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label>Sản phẩm / nhu cầu quan tâm</label><textarea rows={4} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder="Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến..." /></div>
-                <div className="form-group lead-form-grid__wide"><label>Ghi chú</label><textarea rows={5} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Thông tin cần lưu ý trước khi liên hệ..." /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">Sản phẩm / nhu cầu quan tâm</label><textarea rows={4} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder="Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến..." /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="note">Ghi chú</label><textarea rows={5} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Thông tin cần lưu ý trước khi liên hệ..." /></div>
               </div>
             </section>
 
@@ -1309,8 +1310,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div><h2>Phụ trách và lịch hẹn</h2><p>Có thể lưu dữ liệu trước và đặt lịch làm việc sau.</p></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label>Người phụ trách *</label><select required value={form.assignedSaleId} disabled={currentUser.role === 'sale'} onChange={event => updateForm('assignedSaleId', event.target.value)}><option value="">Chưa phân công</option>{candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></div>
-                <div className="form-group lead-form-grid__wide"><label>Lịch hẹn xử lý</label><input type="datetime-local" value={form.nextContactAt} onChange={event => updateForm('nextContactAt', event.target.value)} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="assignedSaleId">Người phụ trách *</label><select required value={form.assignedSaleId} disabled={currentUser.role === 'sale'} onChange={event => updateForm('assignedSaleId', event.target.value)}><option value="">Chưa phân công</option>{candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="nextContactAt">Lịch hẹn xử lý</label><input type="datetime-local" value={form.nextContactAt} onChange={event => updateForm('nextContactAt', event.target.value)} /></div>
               </div>
               <div className="lead-fixed-form-note">Cấu trúc biểu mẫu được cố định để dữ liệu giữa các Sale luôn thống nhất.</div>
             </section>
@@ -1338,12 +1339,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </div>
           </footer>
         </form>
-      </div>
+      </SystemFieldSurface>
     );
   }
 
   return (
-    <div className="lead-candidate-workspace">
+    <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace">
       <div className="lead-candidate-commandbar">
         <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Không gian làm việc Sale">
           {([
@@ -1529,16 +1530,16 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         </div>
         <div className="table-container">
           {workspaceView === 'tasks' ? (
-            <table className="lead-candidate-table lead-candidate-task-table is-compact">
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact">
               <thead><tr>
-                {visibleColumnSet.has('status') && <th>Trạng thái</th>}
-                {visibleColumnSet.has('company') && <th>Doanh nghiệp</th>}
-                {visibleColumnSet.has('province') && <th>Tỉnh/thành</th>}
-                {visibleColumnSet.has('contact') && <th>Liên hệ</th>}
-                {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <th>Sale phụ trách</th>}
-                {visibleColumnSet.has('potential') && <th>Mức độ tiềm năng</th>}
-                {visibleColumnSet.has('schedule') && <th>Lịch hẹn</th>}
-                {visibleColumnSet.has('latest') && <th>Cập nhật gần nhất</th>}
+                {visibleColumnSet.has('status') && <th data-system-field="contactResult">Trạng thái</th>}
+                {visibleColumnSet.has('company') && <th data-system-field="companyName">Doanh nghiệp</th>}
+                {visibleColumnSet.has('province') && <th data-system-field="province">Tỉnh/thành</th>}
+                {visibleColumnSet.has('contact') && <th data-system-field="contact">Liên hệ</th>}
+                {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <th data-system-field="assignedSaleId">Sale phụ trách</th>}
+                {visibleColumnSet.has('potential') && <th data-system-field="potentialLevel">Mức độ tiềm năng</th>}
+                {visibleColumnSet.has('schedule') && <th data-system-field="nextContactAt">Lịch hẹn</th>}
+                {visibleColumnSet.has('latest') && <th data-system-field="latest">Cập nhật gần nhất</th>}
                 {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={definition.id}>{definition.name}</th>)}
                 {visibleColumnSet.has('actions') && <th className="lead-candidate-actions-column">Thao tác</th>}
               </tr></thead>
@@ -1581,9 +1582,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 })}
                 {filteredCandidates.length === 0 && <tr><td colSpan={visibleColumnCount} className="lead-empty">Không có công việc phù hợp. Công việc chỉ biến mất khi được chọn “Tắt công việc”.</td></tr>}
               </tbody>
-            </table>
+            </ConfiguredSystemTable>
           ) : (
-            <table className="lead-candidate-table is-compact">
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact">
               <thead>
                 <tr>
                   {visibleColumnSet.has('select') && <th className="lead-candidate-select-column">
@@ -1595,15 +1596,15 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       aria-label="Chọn dữ liệu có thể đưa vào công việc trên trang này"
                     />
                   </th>}
-                  {visibleColumnSet.has('company') && <th>Doanh nghiệp</th>}
-                  {visibleColumnSet.has('province') && <th>Tỉnh/thành</th>}
-                  {visibleColumnSet.has('contact') && <th>Thông tin liên hệ</th>}
-                  {visibleColumnSet.has('assignee') && <th>Sale phụ trách</th>}
-                  {visibleColumnSet.has('processing') && <th>Sale đang xử lý</th>}
-                  {visibleColumnSet.has('status') && <th>Trạng thái</th>}
-                  {visibleColumnSet.has('potential') && <th>Mức độ tiềm năng</th>}
-                  {visibleColumnSet.has('schedule') && <th>Lịch tiếp theo</th>}
-                  {visibleColumnSet.has('latest') && <th>Cập nhật gần nhất</th>}
+                  {visibleColumnSet.has('company') && <th data-system-field="companyName">Doanh nghiệp</th>}
+                  {visibleColumnSet.has('province') && <th data-system-field="province">Tỉnh/thành</th>}
+                  {visibleColumnSet.has('contact') && <th data-system-field="contact">Thông tin liên hệ</th>}
+                  {visibleColumnSet.has('assignee') && <th data-system-field="assignedSaleId">Sale phụ trách</th>}
+                  {visibleColumnSet.has('processing') && <th data-system-field="processing">Sale đang xử lý</th>}
+                  {visibleColumnSet.has('status') && <th data-system-field="contactResult">Trạng thái</th>}
+                  {visibleColumnSet.has('potential') && <th data-system-field="potentialLevel">Mức độ tiềm năng</th>}
+                  {visibleColumnSet.has('schedule') && <th data-system-field="nextContactAt">Lịch tiếp theo</th>}
+                  {visibleColumnSet.has('latest') && <th data-system-field="latest">Cập nhật gần nhất</th>}
                   {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={definition.id}>{definition.name}</th>)}
                   {visibleColumnSet.has('actions') && <th className="lead-candidate-actions-column">Thao tác</th>}
                 </tr>
@@ -1678,7 +1679,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 })}
                 {filteredCandidates.length === 0 && <tr><td colSpan={visibleColumnCount} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
               </tbody>
-            </table>
+            </ConfiguredSystemTable>
           )}
         </div>
         {filteredCandidates.length > 0 && (
@@ -1771,7 +1772,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </div>
             <div className="modal-body lead-candidate-schedule-form">
               <label><span>Ngày giờ xử lý *</span><input required autoFocus type="datetime-local" value={scheduleForm.nextContactAt} onChange={event => setScheduleForm(previous => ({ ...previous, nextContactAt: event.target.value }))} /></label>
-              <label><span>Ghi chú</span><textarea rows={5} value={scheduleForm.note} onChange={event => setScheduleForm(previous => ({ ...previous, note: event.target.value }))} placeholder="Thông tin Sale cần lưu ý khi xử lý công việc..." /></label>
+              <label><span data-system-label="note">Ghi chú</span><textarea rows={5} value={scheduleForm.note} onChange={event => setScheduleForm(previous => ({ ...previous, note: event.target.value }))} placeholder="Thông tin Sale cần lưu ý khi xử lý công việc..." /></label>
               <p>{scheduleContactResult === 'callback' ? <>Lưu lịch sẽ cập nhật trạng thái thành <strong>Hẹn gọi lại</strong> và ghi vào lịch sử.</> : <>Công việc sẽ được đưa trở lại danh sách xử lý nếu trước đó đã tắt.</>}</p>
               {scheduleError && <div className="lead-candidate-warning is-error"><AlertCircle size={14} /><span>{scheduleError}</span></div>}
             </div>
@@ -1783,6 +1784,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         </div>
       )}
 
-    </div>
+    </SystemFieldSurface>
   );
 };

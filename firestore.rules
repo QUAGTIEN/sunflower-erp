@@ -191,7 +191,13 @@ service cloud.firestore {
 
     match /entity_field_definitions/{documentId} {
       allow read: if isActive();
-      allow create, update, delete: if isAdmin();
+      // Metadata writes go through the admin API (type locks, usage checks, audit).
+      allow create, update, delete: if false;
+    }
+
+    match /entity_system_field_overrides/{documentId} {
+      allow read: if isActive();
+      allow write: if false;
     }
 
     // Sale PO is shared by all downstream departments because every team
