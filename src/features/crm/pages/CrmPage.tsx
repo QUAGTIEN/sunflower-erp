@@ -255,6 +255,9 @@ export const Crm: React.FC<CrmProps> = ({
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'products'>('po');
   const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(false);
+  const [customerNoteDraft, setCustomerNoteDraft] = useState('');
+  const [isSavingCustomerNote, setIsSavingCustomerNote] = useState(false);
+  const [customerNoteFeedback, setCustomerNoteFeedback] = useState('');
 
   const [chartMonth, setChartMonth] = useState<string>('all');
   const [chartYear, setChartYear] = useState<string>(() => String(new Date().getFullYear()));
@@ -878,6 +881,42 @@ export const Crm: React.FC<CrmProps> = ({
     setShowEditModal(false);
     setSelectedCustomer(null);
     onRefresh();
+  };
+
+  const handleSaveCustomerNote = async () => {
+    if (!selectedCustomer || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
+    const nextNote = customerNoteDraft.trim();
+    const previousNote = String(selectedCustomer.note || '').trim();
+    if (nextNote === previousNote) return;
+
+    setIsSavingCustomerNote(true);
+    setCustomerNoteFeedback('');
+    try {
+      const updatedAt = new Date().toISOString();
+      const updatedBy = `${currentUser.displayName} (${currentUser.role.toUpperCase()})`;
+      await dbService.updateDocument('customers', selectedCustomer.id, {
+        note: nextNote,
+        updatedBy,
+        updatedAt
+      });
+      setSelectedCustomer((previous: any) => previous ? ({ ...previous, note: nextNote, updatedBy, updatedAt }) : previous);
+      setCustomerNoteDraft(nextNote);
+      setCustomerNoteFeedback(t('Đã lưu ghi chú.'));
+      auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'crm',
+        action: 'customer_note_updated',
+        summary: `Cập nhật ghi chú khách hàng ${selectedCustomer.companyName}`,
+        targetType: 'customer',
+        targetId: selectedCustomer.id,
+        targetLabel: selectedCustomer.companyName
+      });
+      onRefresh();
+    } catch {
+      setCustomerNoteFeedback(t('Không thể lưu ghi chú. Vui lòng thử lại.'));
+    } finally {
+      setIsSavingCustomerNote(false);
+    }
   };
 
   // Delete customer
@@ -1693,7 +1732,17 @@ export const Crm: React.FC<CrmProps> = ({
   const openCustomerDetail = (customer: CustomerRecord) => {
     setCustomerHistoryTab('po');
     setIsCompanyInfoExpanded(false);
+    setCustomerNoteDraft(customer.note || '');
+    setCustomerNoteFeedback('');
     setSelectedCustomer(customer);
+  };
+
+  const closeCustomerDetail = () => {
+    const hasUnsavedNote = selectedCustomer
+      && customerNoteDraft.trim() !== String(selectedCustomer.note || '').trim();
+    if (hasUnsavedNote && !window.confirm(t('Ghi chú chưa được lưu. Bạn có muốn rời khỏi trang?'))) return;
+    setSelectedCustomer(null);
+    setCustomerNoteFeedback('');
   };
 
   const getCustomerOrderValue = (customerId: string) => getCustomerOrders(customerId)
@@ -2477,7 +2526,7 @@ export const Crm: React.FC<CrmProps> = ({
        {selectedCustomer && (
         <div className="customer-details-grid">
           <div className="customer-detail-header">
-            <PageBackButton onClick={() => setSelectedCustomer(null)} />
+            <PageBackButton onClick={closeCustomerDetail} />
             <div className="customer-detail-heading">
               <div className="customer-detail-heading__title">
                 <span className="customer-code-badge">{selectedCustomer.customerCode || selectedCustomer.id}</span>
@@ -2503,15 +2552,38 @@ export const Crm: React.FC<CrmProps> = ({
                   <span className="card-title">{t('Ghi chú khách hàng')}</span>
                   <small>{t('Thông tin cần nhớ khi trao đổi và xử lý đơn hàng')}</small>
                 </div>
-                {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
-                  <button type="button" className="btn btn-sm btn-outline" onClick={() => openEditModal(selectedCustomer)}>
-                    {t('Chỉnh sửa ghi chú')}
-                  </button>
-                )}
               </div>
-              <p className={selectedCustomer.note ? '' : 'is-empty'}>
-                {selectedCustomer.note || t('Chưa có ghi chú. Hãy bổ sung đặc điểm, yêu cầu và lưu ý quan trọng của khách hàng.')}
-              </p>
+              {(currentUser.role === 'admin' || currentUser.role === 'sale') ? (
+                <>
+                  <label className="customer-note-editor">
+                    <span>{t('Nội dung ghi chú')}</span>
+                    <textarea
+                      value={customerNoteDraft}
+                      onChange={event => {
+                        setCustomerNoteDraft(event.target.value);
+                        setCustomerNoteFeedback('');
+                      }}
+                      placeholder={t('Ví dụ: Đây là khách hàng lớn ở Hà Nội, có nhu cầu cao về tem nhãn sản xuất...')}
+                      rows={5}
+                    />
+                  </label>
+                  <div className="customer-note-card__footer">
+                    <span role="status">{customerNoteFeedback}</span>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => void handleSaveCustomerNote()}
+                      disabled={isSavingCustomerNote || customerNoteDraft.trim() === String(selectedCustomer.note || '').trim()}
+                    >
+                      {isSavingCustomerNote ? t('Đang lưu...') : t('Lưu ghi chú')}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className={selectedCustomer.note ? '' : 'is-empty'}>
+                  {selectedCustomer.note || t('Chưa có ghi chú về khách hàng này.')}
+                </p>
+              )}
               <small className="customer-note-card__meta">
                 {selectedCustomer.updatedAt
                   ? `${t('Cập nhật gần nhất')}: ${formatDateTime(selectedCustomer.updatedAt, t('vi-VN'))}${selectedCustomer.updatedBy ? ` · ${selectedCustomer.updatedBy}` : ''}`

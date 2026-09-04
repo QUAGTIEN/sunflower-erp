@@ -145,6 +145,53 @@
   font-style: italic;
 }
 
+.customer-note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.customer-note-editor > span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.customer-note-editor textarea {
+  width: 100%;
+  min-height: 112px;
+  padding: 10px 12px;
+  resize: vertical;
+  border: 1px solid #b9c9dd;
+  background: #ffffff;
+  color: #172554;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.customer-note-editor textarea::placeholder {
+  color: #94a3b8;
+}
+
+.customer-note-card__footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.customer-note-card__footer > span {
+  color: #475569;
+  font-size: 12px;
+}
+
+.customer-note-card__footer .btn {
+  flex: 0 0 auto;
+}
+
 .customer-company-card {
   gap: 12px;
 }
