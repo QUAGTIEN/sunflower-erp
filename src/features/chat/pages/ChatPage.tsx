@@ -475,11 +475,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
   return (
     <div className="chat-page-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
-      <div>
-        <h1 className="page-title">{t('Kênh chat')}</h1>
-        <p className="page-subtitle">{t('Hệ thống trao đổi thông tin phòng ban, kết nối trực tiếp đến Đơn Hàng PO và Lệnh Sản Xuất.')}</p>
-      </div>
-
       <div className="chat-page-container">
         {/* Sidebar Kênh */}
         <div className="chat-channels-list">

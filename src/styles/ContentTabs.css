@@ -22,7 +22,7 @@
   border: 0;
   border-bottom: 1px solid var(--content-tab-divider);
   border-radius: 0;
-  background: #ffffff;
+  background: transparent;
   box-shadow: none;
   scrollbar-width: none;
 }

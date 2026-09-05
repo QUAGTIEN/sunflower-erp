@@ -21,6 +21,7 @@ import {
   POQueueStatus
 } from '@/features/sales/model/poWorkflow';
 import { PageBackButton } from '@/components/PageBackButton';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import { type AuditEvent } from '@/services/auditService';
 import './Dashboard.css';
 
@@ -583,13 +584,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="dashboard-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-      {/* HEADER SECTION */}
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1 className="page-title">{t('Tổng quan')}</h1>
-          <p className="page-subtitle">{t('Xin chào,')} {user.displayName} | {t('Vai trò:')} {user.role.toUpperCase()}</p>
-        </div>
-
+      <PageContextHeader section={t('Tổng quan')}>
         {/* TIME RANGE & DATE FILTERS */}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', backgroundColor: '#f1f5f9', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
           {/* Toggle filter mode */}
@@ -654,7 +649,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </PageContextHeader>
 
       {/* ADMIN / GIÁM ĐỐC VIEW */}
       {user.role === 'admin' && (
