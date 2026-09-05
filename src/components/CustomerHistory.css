@@ -1860,6 +1860,70 @@
   margin-bottom: 16px;
 }
 
+.sales-customer-po-header {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #dbe3ef;
+}
+
+.sales-customer-po-header > div,
+.sales-customer-po-header > div > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.sales-customer-po-header > div > div {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sales-customer-po-header strong {
+  max-width: 560px;
+  overflow: hidden;
+  color: #172554;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-customer-po-header span,
+.sales-table-secondary {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.sales-order-customer-table table,
+.customer-po-list-table table {
+  min-width: 1180px;
+}
+
+.sales-customer-row {
+  cursor: pointer;
+}
+
+.customer-po-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sales-table-empty {
+  padding: 28px !important;
+  color: #64748b;
+  text-align: center;
+}
+
 .waiting-customer-intro {
   display: flex;
   align-items: center;

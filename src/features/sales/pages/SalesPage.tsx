@@ -26,6 +26,7 @@ import {
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
 import type { CustomerRecord } from '@/features/crm/model/crmModels';
+import '@/components/CustomerHistory.css';
 import {
   Plus,
   Trash2,
@@ -76,6 +77,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
   const [searchTerm, setSearchTerm] = useState('');
   const [activeListView, setActiveListView] = useState<SalesListView>('orders');
   const [initialCustomerId, setInitialCustomerId] = useState('');
+  const [selectedOrderCustomerId, setSelectedOrderCustomerId] = useState('');
 
   // Auto-select PO when initialSelectedPoId changes
   useEffect(() => {
@@ -657,17 +659,47 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     return true;
   });
 
-  const filteredPOs = sortNewestFirst(
+  const accessibleCustomers = customers.filter(customer => {
+    if (customer.deleted === true) return false;
+    return currentUser.role !== 'sale' || !customer.assignedSaleId || customer.assignedSaleId === currentUser.uid;
+  });
+  const getCustomerPOs = (customer: CustomerRecord) => sortNewestFirst(
     visiblePOs.filter(po => (
-      String(po.poCode || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm) ||
-      String(po.customerPoCode || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm) ||
-      String(po.customerName || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm) ||
-      (Array.isArray(po.items) && po.items.some((item: any) => (
-        String(item.productName || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm)
-      )))
+      po.customerId === customer.id
+      || (!po.customerId && po.customerName === customer.companyName)
     )),
     po => [po.createdAt, po.orderDate]
   );
+  const selectedOrderCustomer = accessibleCustomers.find(customer => customer.id === selectedOrderCustomerId) || null;
+  const customerPOs = selectedOrderCustomer ? getCustomerPOs(selectedOrderCustomer) : [];
+  const filteredPOs = customerPOs.filter(po => (
+    !normalizedSearchTerm
+    || String(po.poCode || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm)
+    || String(po.customerPoCode || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm)
+    || String(po.createdBy || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm)
+    || (Array.isArray(po.items) && po.items.some((item: any) => (
+      String(item.productName || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm)
+    )))
+  ));
+  const orderCustomers = accessibleCustomers
+    .filter(customer => {
+      if (!normalizedSearchTerm) return true;
+      return [
+        getCustomerCode(customer),
+        customer.companyName,
+        customer.contactPerson,
+        customer.phone,
+        customer.email,
+        users.find(user => user.uid === customer.assignedSaleId)?.displayName
+      ].some(value => String(value || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm));
+    })
+    .sort((left, right) => {
+      const leftLatest = getCustomerPOs(left)[0];
+      const rightLatest = getCustomerPOs(right)[0];
+      const leftTime = parseValidDate(leftLatest?.createdAt || leftLatest?.orderDate)?.getTime() || 0;
+      const rightTime = parseValidDate(rightLatest?.createdAt || rightLatest?.orderDate)?.getTime() || 0;
+      return rightTime - leftTime || left.companyName.localeCompare(right.companyName, 'vi-VN');
+    });
 
   const customerIdsWithOrders = new Set(
     activePOs.map(po => po.customerId).filter(Boolean)
@@ -704,7 +736,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
 
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Tạo đơn hàng')} current={!selectedPO ? (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Danh sách PO')) : undefined} />
+      <PageContextHeader section={t('Tạo đơn hàng')} current={!selectedPO ? (selectedOrderCustomer?.companyName || (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Danh sách PO'))) : undefined} />
 
       {!selectedPO && (
         <>
@@ -712,18 +744,18 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             <button
               type="button"
               className={`sales-list-tab ${activeListView === 'orders' ? 'is-active' : ''}`}
-              onClick={() => { setActiveListView('orders'); setSearchTerm(''); }}
+              onClick={() => { setActiveListView('orders'); setSelectedOrderCustomerId(''); setSearchTerm(''); }}
               role="tab"
               aria-selected={activeListView === 'orders'}
             >
               <FileText size={16} />
               <span>{t('Danh sách PO')}</span>
-              <span className="sales-list-tab__count">{visiblePOs.length}</span>
+              <span className="sales-list-tab__count">{accessibleCustomers.length}</span>
             </button>
             <button
               type="button"
               className={`sales-list-tab ${activeListView === 'waiting-customers' ? 'is-active' : ''}`}
-              onClick={() => { setActiveListView('waiting-customers'); setSearchTerm(''); }}
+              onClick={() => { setActiveListView('waiting-customers'); setSelectedOrderCustomerId(''); setSearchTerm(''); }}
               role="tab"
               aria-selected={activeListView === 'waiting-customers'}
             >
@@ -745,11 +777,28 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             </div>
           )}
 
+          {activeListView === 'orders' && selectedOrderCustomer && (
+            <div className="sales-customer-po-header">
+              <div>
+                <PageBackButton onClick={() => { setSelectedOrderCustomerId(''); setSearchTerm(''); }} />
+                <div>
+                  <strong>{selectedOrderCustomer.companyName}</strong>
+                  <span>{getCustomerCode(selectedOrderCustomer)} · {customerPOs.length} PO</span>
+                </div>
+              </div>
+              {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
+                <button className="btn btn-primary" onClick={() => handleOpenCreatePO(selectedOrderCustomer.id)}>{t('Tạo PO mới')}</button>
+              )}
+            </div>
+          )}
+
           <div className="sales-list-toolbar">
             <input
               type="text"
               placeholder={activeListView === 'orders'
-                ? t('Nhập mã PO, tên sản phẩm hoặc khách hàng...')
+                ? selectedOrderCustomer
+                  ? t('Nhập mã PO, tên sản phẩm hoặc người tạo...')
+                  : t('Tìm mã khách hàng, công ty, người liên hệ...')
                 : t('Tìm mã khách hàng, công ty, người liên hệ...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -758,61 +807,114 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             <button className="btn btn-outline" onClick={() => setSearchTerm('')}>
               {t('Xóa tìm kiếm')}
             </button>
-            {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
-              <button className="btn btn-primary" onClick={() => handleOpenCreatePO()}>{t('Tạo đơn hàng mới')}</button>
-            )}
           </div>
 
           {activeListView === 'orders' ? (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>{t('Mã PO')}</th>
-                  <th>{t('Tên Công Ty')}</th>
-                  <th>{t('Sản Phẩm')}</th>
-                  <th>{t('Số Lượng')}</th>
-                  <th>{t('Thành Tiền')}</th>
-                  <th>{t('Ngày Giao Dự Kiến')}</th>
-                  <th>{t('Trạng Thái')}</th>
-                  <th>{t('Thao Tác')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPOs.map(po => {
-                  const item = po.items?.[0] || {};
-                  return (
-                    <tr key={po.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedPO(po)}>
-                      <td style={{ fontWeight: 600 }}>
-                        {po.poCode}
-                        {po.customerPoCode && po.customerPoCode !== po.poCode && (
-                          <span style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 'normal' }}>
-                            ({po.customerPoCode})
-                          </span>
-                        )}
-                      </td>
-                      <td>{po.customerName}</td>
-                      <td style={{ fontWeight: 500 }}>{item.productName}</td>
-                      <td>{item.quantity?.toLocaleString()}</td>
-                      <td>{po.netAmount?.toLocaleString()} đ</td>
-                      <td>{formatDate(po.expectedDeliveryDate, t('vi-VN'))}</td>
-                      <td>
-                        <span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span>
-                      </td>
-                      <td>
-                        <button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); setSelectedPO(po); }}>{t('Chi Tiết')}</button>
-                      </td>
+            selectedOrderCustomer ? (
+              <div className="table-container customer-po-list-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t('Mã PO')}</th>
+                      <th>{t('Ngày tạo')}</th>
+                      <th>{t('Sản phẩm')}</th>
+                      <th>{t('Tổng số lượng')}</th>
+                      <th>{t('Thành tiền')}</th>
+                      <th>{t('Ngày giao dự kiến')}</th>
+                      <th>{t('Trạng thái')}</th>
+                      <th>{t('Người tạo')}</th>
+                      <th>{t('Cập nhật gần nhất')}</th>
+                      <th>{t('Thao tác')}</th>
                     </tr>
-                  );
-                })}
-                {filteredPOs.length === 0 && (
-                  <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '24px' }}>{t('Không tìm thấy đơn hàng PO nào.')}</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {filteredPOs.map(po => {
+                      const items = Array.isArray(po.items) ? po.items : [];
+                      const firstItem = items[0] || {};
+                      const productSummary = firstItem.productName
+                        ? `${firstItem.productName}${items.length > 1 ? ` +${items.length - 1} sản phẩm` : ''}`
+                        : '—';
+                      const totalQuantity = items.reduce((total: number, item: any) => total + Number(item.quantity || 0), 0);
+                      return (
+                        <tr key={po.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedPO(po)}>
+                          <td style={{ fontWeight: 600 }}>
+                            {po.poCode}
+                            {po.customerPoCode && po.customerPoCode !== po.poCode && (
+                              <span className="sales-table-secondary">({po.customerPoCode})</span>
+                            )}
+                          </td>
+                          <td>{formatDate(po.orderDate || po.createdAt, t('vi-VN'))}</td>
+                          <td title={items.map((item: any) => item.productName).filter(Boolean).join(', ')}>{productSummary}</td>
+                          <td>{totalQuantity.toLocaleString('vi-VN')}</td>
+                          <td>{Number(po.netAmount || po.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
+                          <td>{formatDate(po.expectedDeliveryDate, t('vi-VN'))}</td>
+                          <td><span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span></td>
+                          <td>{po.createdBy || '—'}</td>
+                          <td>{formatDateTime(po.updatedAt || po.createdAt, t('vi-VN'), '—')}</td>
+                          <td>
+                            <div className="customer-po-row-actions">
+                              <button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); setSelectedPO(po); }}>{t('Chi tiết')}</button>
+                              {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
+                                <button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); handleOpenRepeatOrder(po); }}>{t('Đặt lại')}</button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {filteredPOs.length === 0 && (
+                      <tr>
+                        <td colSpan={10} className="sales-table-empty">
+                          {normalizedSearchTerm ? t('Không tìm thấy PO phù hợp.') : t('Khách hàng chưa có PO. Bạn có thể tạo PO mới ngay tại đây.')}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="table-container sales-order-customer-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>{t('Khách hàng')}</th>
+                      <th>{t('Mã KH')}</th>
+                      <th>{t('Người liên hệ')}</th>
+                      <th>{t('Sale phụ trách')}</th>
+                      <th>{t('Số PO')}</th>
+                      <th>{t('PO gần nhất')}</th>
+                      <th>{t('Tổng giá trị')}</th>
+                      <th>{t('Trạng thái gần nhất')}</th>
+                      <th>{t('Thao tác')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orderCustomers.map(customer => {
+                      const customerOrders = getCustomerPOs(customer);
+                      const latestPO = customerOrders[0];
+                      const totalValue = customerOrders.reduce((total, po) => total + Number(po.netAmount || po.totalAmount || 0), 0);
+                      const assignedSale = users.find(user => user.uid === customer.assignedSaleId || (user as any).id === customer.assignedSaleId);
+                      return (
+                        <tr key={customer.id} className="sales-customer-row" onClick={() => { setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>
+                          <td><strong className="erp-company-name" title={customer.companyName}>{customer.companyName}</strong></td>
+                          <td><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>
+                          <td><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong><span className="sales-table-secondary">{customer.phone || customer.email || ''}</span></td>
+                          <td>{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>
+                          <td>{customerOrders.length.toLocaleString('vi-VN')}</td>
+                          <td>{latestPO ? <><strong>{latestPO.poCode}</strong><span className="sales-table-secondary">{formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN'))}</span></> : '—'}</td>
+                          <td>{totalValue.toLocaleString('vi-VN')} đ</td>
+                          <td>{latestPO ? <span className={`badge ${getPOBadgeClass(latestPO)}`}>{t(getPOQueueLabel(latestPO))}</span> : t('Chưa có PO')}</td>
+                          <td><button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>{t('Xem PO')}</button></td>
+                        </tr>
+                      );
+                    })}
+                    {orderCustomers.length === 0 && (
+                      <tr><td colSpan={9} className="sales-table-empty">{t('Không tìm thấy khách hàng phù hợp.')}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )
           ) : (
             <div className="table-container waiting-customer-table">
               <table>
