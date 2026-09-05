@@ -103,6 +103,16 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
+import { AdvancedDataFilters } from '@/components/AdvancedDataFilters';
+import {
+  countAdvancedFilters,
+  getAdvancedFilterKindForFieldType,
+  getAdvancedFilterSummaries,
+  matchesAdvancedFilters,
+  toAdvancedFilterValues,
+  type AdvancedFilterField,
+  type AdvancedFilterState
+} from '@/components/advancedDataFilterModel';
 import './Leads.css';
 
 interface LeadsProps {
@@ -282,6 +292,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [profileDefinitions, setProfileDefinitions] = useState<LeadProfileFieldDefinition[]>([]);
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, string[]>>({});
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [showLeadFilters, setShowLeadFilters] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [showLeadForm, setShowLeadForm] = useState(false);
@@ -493,10 +504,96 @@ export const Leads: React.FC<LeadsProps> = ({
     () => new Set(visibleFilterDefinitions.map(field => field.id)),
     [visibleFilterDefinitions]
   );
-  const leadActiveFilterCount = Object.entries(dynamicFilters)
+
+  const advancedFilterFields = useMemo<AdvancedFilterField<LeadRecord>[]>(() => {
+    const groups = {
+      company: t('Thông tin doanh nghiệp'),
+      contact: t('Liên hệ và nguồn dữ liệu'),
+      needs: t('Nhu cầu sơ bộ'),
+      assignment: t('Phụ trách và lịch hẹn'),
+      additional: t('Thông tin bổ sung')
+    };
+    const systemField = (
+      id: string,
+      fallbackLabel: string,
+      group: string,
+      kind: AdvancedFilterField<LeadRecord>['kind'],
+      getValues: AdvancedFilterField<LeadRecord>['getValues'],
+      options?: AdvancedFilterField<LeadRecord>['options']
+    ): AdvancedFilterField<LeadRecord> | null => {
+      const configuration = inlineSystemFieldConfiguration.fields.find(field => field.key === id);
+      return configuration?.removed ? null : { id: `system:${id}`, label: configuration?.label || t(fallbackLabel), group, kind, getValues, options };
+    };
+    const configuredClassificationFields: AdvancedFilterField<LeadRecord>[] = filterDefinitions
+      .filter(definition => definition.active)
+      .map(definition => ({
+        id: `classification:${definition.id}`,
+        label: definition.name,
+        group: definition.group || groups.needs,
+        kind: getAdvancedFilterKindForFieldType(definition.type),
+        options: flattenLeadFilterOptions(definition.options).filter(option => option.active).map(option => ({ value: option.id, label: option.label })),
+        getValues: lead => getLeadFilterValues(lead, filterDefinitions)[definition.id] || []
+      }));
+    const profileFields: AdvancedFilterField<LeadRecord>[] = customProfileDefinitions
+      .filter(definition => definition.active)
+      .map(definition => ({
+        id: `profile:${definition.id}`,
+        label: definition.name,
+        group: groups.additional,
+        kind: getAdvancedFilterKindForFieldType(definition.type),
+        options: definition.type === 'checkbox'
+          ? [{ value: 'true', label: 'Có' }, { value: 'false', label: 'Không' }]
+          : definition.options.filter(option => option.active).map(option => ({ value: option.id, label: option.label })),
+        getValues: lead => lead.profileValues?.[definition.id] || []
+      }));
+    const customFields: AdvancedFilterField<LeadRecord>[] = customFieldDefinitions
+      .filter(definition => definition.active)
+      .map(definition => ({
+        id: `custom:${definition.id}`,
+        label: definition.name,
+        group: groups[definition.section as keyof typeof groups] || groups.additional,
+        kind: getAdvancedFilterKindForFieldType(definition.type),
+        description: definition.description,
+        options: definition.type === 'boolean'
+          ? [{ value: 'true', label: 'Có' }, { value: 'false', label: 'Không' }]
+          : definition.options.filter(option => option.active).map(option => ({ value: option.id, label: option.label })),
+        getValues: lead => toAdvancedFilterValues(lead.customFieldValues?.[definition.id])
+      }));
+    return [
+      systemField('companyName', 'Tên doanh nghiệp', groups.company, 'text', lead => [lead.companyName]),
+      systemField('taxCode', 'Mã số thuế', groups.company, 'text', lead => [lead.taxCode]),
+      systemField('website', 'Website', groups.company, 'text', lead => [lead.website]),
+      systemField('businessSector', 'Lĩnh vực hoạt động', groups.company, 'text', lead => [lead.businessSector]),
+      systemField('address', 'Địa chỉ doanh nghiệp', groups.company, 'text', lead => [lead.address]),
+      systemField('companySize', 'Quy mô', groups.company, 'select', lead => [lead.companySize], Object.entries(COMPANY_SIZE_LABELS).map(([value, label]) => ({ value, label }))),
+      systemField('contactPerson', 'Người liên hệ', groups.contact, 'text', lead => [lead.contactPerson]),
+      systemField('contactPosition', 'Chức vụ', groups.contact, 'text', lead => [lead.contactPosition]),
+      systemField('phone', 'Điện thoại', groups.contact, 'text', lead => [lead.phone]),
+      systemField('email', 'Email', groups.contact, 'text', lead => [lead.email]),
+      systemField('source', 'Nguồn tìm kiếm', groups.contact, 'text', lead => [lead.source]),
+      systemField('province', 'Tỉnh / thành', groups.contact, 'text', lead => [lead.province]),
+      systemField('ward', 'Phường / xã', groups.contact, 'text', lead => [lead.ward]),
+      systemField('industrialPark', 'Khu công nghiệp', groups.contact, 'text', lead => [lead.industrialPark]),
+      systemField('expectedProducts', 'Sản phẩm / nhu cầu quan tâm', groups.needs, 'text', lead => [lead.expectedProducts]),
+      systemField('potentialValue', 'Giá trị tiềm năng', groups.needs, 'number', lead => [lead.potentialValue]),
+      systemField('stage', 'Giai đoạn xử lý', groups.needs, 'select', lead => [lead.stage], LEAD_STAGES.map(stage => ({ value: stage.id, label: stage.label }))),
+      systemField('note', 'Ghi chú', groups.needs, 'text', lead => [lead.note]),
+      systemField('assignedSaleId', 'Sale phụ trách', groups.assignment, 'select', lead => [lead.assignedSaleId], users.map(user => ({ value: user.uid, label: user.displayName }))),
+      systemField('discoveredById', 'Sale tìm được Lead', groups.assignment, 'select', lead => [lead.discoveredById], users.map(user => ({ value: user.uid, label: user.displayName }))),
+      systemField('nextFollowUpAt', 'Lịch chăm sóc tiếp theo', groups.assignment, 'date', lead => [lead.nextFollowUpAt]),
+      systemField('updatedAt', 'Cập nhật gần nhất', groups.assignment, 'date', lead => [lead.updatedAt]),
+      ...configuredClassificationFields,
+      ...profileFields,
+      ...customFields
+    ].filter((field): field is AdvancedFilterField<LeadRecord> => Boolean(field));
+  }, [customFieldDefinitions, customProfileDefinitions, filterDefinitions, inlineSystemFieldConfiguration.fields, t, users]);
+
+  const leadQuickFilterCount = Object.entries(dynamicFilters)
     .filter(([fieldId]) => visibleFilterIds.has(fieldId))
     .reduce((total, [, values]) => total + values.length, 0)
     + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
+  const leadAdvancedFilterCount = countAdvancedFilters(advancedFilters);
+  const leadActiveFilterCount = leadQuickFilterCount + leadAdvancedFilterCount;
   const leadFilterChips = Object.entries(dynamicFilters).flatMap(([fieldId, values]) => {
     if (!visibleFilterIds.has(fieldId)) return [];
     const field = filterDefinitions.find(definition => definition.id === fieldId);
@@ -516,7 +613,16 @@ export const Leads: React.FC<LeadsProps> = ({
       label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
       onRemove: () => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: (previous[definition.id] || []).filter(item => item !== value) }))
     }))
-  )));
+  ))).concat(getAdvancedFilterSummaries(advancedFilterFields, advancedFilters).map(summary => ({
+    id: `advanced-${summary.id}`,
+    label: summary.label,
+    onRemove: () => setAdvancedFilters(previous => {
+      const next = { ...previous };
+      delete next[summary.id];
+      setLeadCurrentPage(1);
+      return next;
+    })
+  })));
 
   const isOverdue = (lead: LeadRecord) => {
     if (!lead.nextFollowUpAt || ['won', 'lost', 'converted'].includes(lead.stage)) return false;
@@ -572,7 +678,8 @@ export const Leads: React.FC<LeadsProps> = ({
       });
       return matchesSearch
         && matchesClassifications
-        && matchesCustomFields;
+        && matchesCustomFields
+        && matchesAdvancedFilters(lead, advancedFilterFields, advancedFilters);
     }).sort((left, right) => {
       const leftSchedule = getLeadScheduleTime(left);
       const rightSchedule = getLeadScheduleTime(right);
@@ -581,6 +688,8 @@ export const Leads: React.FC<LeadsProps> = ({
     });
   }, [
     accessibleLeads,
+    advancedFilterFields,
+    advancedFilters,
     dynamicFilters,
     filterDefinitions,
     searchTerm,
@@ -601,7 +710,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
   useEffect(() => {
     setLeadCurrentPage(1);
-  }, [searchTerm, dynamicFilters, customFieldFilters]);
+  }, [searchTerm, dynamicFilters, customFieldFilters, advancedFilters]);
 
   const selectedLead = selectedLeadId
     ? leads.find(lead => lead.id === selectedLeadId) || null
@@ -1432,6 +1541,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setSearchTerm('');
     setDynamicFilters({});
     setCustomFieldFilters({});
+    setAdvancedFilters({});
     setLeadCurrentPage(1);
   };
 
@@ -1791,7 +1901,8 @@ export const Leads: React.FC<LeadsProps> = ({
             open={showLeadFilters}
             title="Lọc danh sách Lead"
             description="Chọn nhiều tiêu chí để thu hẹp danh sách khách hàng tiềm năng."
-            activeCount={leadActiveFilterCount}
+            activeCount={leadQuickFilterCount}
+            advancedActiveCount={leadAdvancedFilterCount}
             onClose={() => setShowLeadFilters(false)}
             onReset={clearFilters}
             headerAction={currentUser.role === 'admin' ? (
@@ -1799,6 +1910,13 @@ export const Leads: React.FC<LeadsProps> = ({
                 <Settings2 size={14} /> Mở cấu hình hệ thống
               </button>
             ) : undefined}
+            advancedContent={(
+              <AdvancedDataFilters
+                fields={advancedFilterFields}
+                filters={advancedFilters}
+                onChange={filters => { setAdvancedFilters(filters); setLeadCurrentPage(1); }}
+              />
+            )}
           >
             {visibleFilterDefinitions.map(field => {
               const fieldOptions = quickFilterOptionsByField[field.id] || [];

@@ -19,6 +19,16 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
+import { AdvancedDataFilters } from '@/components/AdvancedDataFilters';
+import {
+  countAdvancedFilters,
+  getAdvancedFilterKindForFieldType,
+  getAdvancedFilterSummaries,
+  matchesAdvancedFilters,
+  toAdvancedFilterValues,
+  type AdvancedFilterField,
+  type AdvancedFilterState
+} from '@/components/advancedDataFilterModel';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { RowActionMenu } from '@/components/RowActionMenu';
@@ -266,6 +276,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [industrialParkFilters, setIndustrialParkFilters] = useState<string[]>([]);
   const [productFilters, setProductFilters] = useState<string[]>([]);
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [showListFilters, setShowListFilters] = useState(false);
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [customerPageSize, setCustomerPageSize] = useState(25);
@@ -2118,13 +2129,74 @@ export const Crm: React.FC<CrmProps> = ({
   const industrialParkFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.industrialPark, industrialParkFilterDefinition);
   const poTimeFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.poTime, poTimeFilterDefinition);
   const productFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.product, productFilterDefinition);
-  const activeFilterCount = (saleFilterEnabled ? saleFilters.length : 0)
+  const advancedFilterGroups = {
+    company: t('Hồ sơ doanh nghiệp'),
+    classification: t('Địa bàn doanh nghiệp'),
+    contact: t('Liên hệ và nguồn dữ liệu'),
+    needs: t('Nhu cầu và sản phẩm'),
+    assignment: t('Phụ trách và lịch hẹn'),
+    additional: t('Điều khoản thương mại'),
+    result: t('Kết quả kinh doanh')
+  };
+  const customerSystemAdvancedField = (
+    id: string,
+    fallbackLabel: string,
+    group: string,
+    kind: AdvancedFilterField<CustomerRecord>['kind'],
+    getValues: AdvancedFilterField<CustomerRecord>['getValues'],
+    options?: AdvancedFilterField<CustomerRecord>['options']
+  ): AdvancedFilterField<CustomerRecord> | null => {
+    const configuration = inlineSystemFieldConfiguration.fields.find(field => field.key === id);
+    return configuration?.removed ? null : { id: `system:${id}`, label: configuration?.label || t(fallbackLabel), group, kind, getValues, options };
+  };
+  const advancedFilterFields: AdvancedFilterField<CustomerRecord>[] = [
+    customerSystemAdvancedField('companyName', 'Tên khách hàng', advancedFilterGroups.company, 'text', customer => [customer.companyName]),
+    customerSystemAdvancedField('customerCode', 'Mã khách hàng', advancedFilterGroups.company, 'text', customer => [customer.customerCode]),
+    customerSystemAdvancedField('customerRank', 'Phân loại', advancedFilterGroups.company, 'select', customer => [customer.customerRank], (['A', 'B', 'C', 'D'] as CustomerRank[]).map(rank => ({ value: rank, label: `Hạng ${rank}` }))),
+    customerSystemAdvancedField('taxCode', 'Mã số thuế', advancedFilterGroups.company, 'text', customer => [customer.taxCode]),
+    customerSystemAdvancedField('assignedSaleId', 'Sale phụ trách', advancedFilterGroups.company, 'select', customer => [customer.assignedSaleId], users.map(user => ({ value: user.uid, label: user.displayName }))),
+    customerSystemAdvancedField('province', 'Tỉnh / thành', advancedFilterGroups.classification, 'text', customer => [customer.province]),
+    customerSystemAdvancedField('ward', 'Phường / xã', advancedFilterGroups.classification, 'text', customer => [customer.ward]),
+    customerSystemAdvancedField('industrialPark', 'Khu công nghiệp', advancedFilterGroups.classification, 'text', customer => [customer.industrialPark]),
+    customerSystemAdvancedField('address', 'Địa chỉ chi tiết / giao hàng', advancedFilterGroups.classification, 'text', customer => [customer.address]),
+    customerSystemAdvancedField('contactPerson', 'Người liên hệ', advancedFilterGroups.contact, 'text', customer => [customer.contactPerson, ...(customer.contacts || []).map(contact => contact.name)]),
+    customerSystemAdvancedField('phone', 'Số điện thoại', advancedFilterGroups.contact, 'text', customer => [customer.phone, ...(customer.contacts || []).map(contact => contact.phone)]),
+    customerSystemAdvancedField('procurementPhone', 'SĐT thu mua', advancedFilterGroups.contact, 'text', customer => [customer.procurementPhone]),
+    customerSystemAdvancedField('warehousePhone', 'SĐT nhận hàng / kho', advancedFilterGroups.contact, 'text', customer => [customer.warehousePhone]),
+    customerSystemAdvancedField('email', 'Email', advancedFilterGroups.contact, 'text', customer => [customer.email, ...(customer.contacts || []).map(contact => contact.email)]),
+    customerSystemAdvancedField('discountType', 'Hình thức chiết khấu', advancedFilterGroups.additional, 'select', customer => [customer.discountType], [{ value: 'percent', label: 'Theo phần trăm' }, { value: 'amount', label: 'Theo tiền chênh' }]),
+    customerSystemAdvancedField('discountRate', 'Chiết khấu mặc định (%)', advancedFilterGroups.additional, 'number', customer => [customer.discountRate]),
+    customerSystemAdvancedField('discountAmount', 'Tiền chênh mặc định (đ)', advancedFilterGroups.additional, 'number', customer => [customer.discountAmount]),
+    customerSystemAdvancedField('debtLimit', 'Hạn mức công nợ (đ)', advancedFilterGroups.additional, 'number', customer => [customer.debtLimit]),
+    customerSystemAdvancedField('paymentTerms', 'Điều khoản thanh toán', advancedFilterGroups.additional, 'text', customer => [customer.paymentTerms]),
+    customerSystemAdvancedField('bankAccount', 'Tài khoản ngân hàng', advancedFilterGroups.additional, 'text', customer => [customer.bankAccount]),
+    customerSystemAdvancedField('note', 'Ghi chú yêu cầu riêng', advancedFilterGroups.additional, 'text', customer => [customer.note]),
+    customerSystemAdvancedField('orderCount', 'Số PO', advancedFilterGroups.result, 'number', customer => [getCustomerOrders(customer.id).length]),
+    customerSystemAdvancedField('orderValue', 'Tổng giá trị PO', advancedFilterGroups.result, 'number', customer => [getCustomerOrderValue(customer.id)]),
+    customerSystemAdvancedField('outstandingDebt', 'Công nợ hiện tại', advancedFilterGroups.result, 'number', customer => [getCustomerOutstandingDebt(customer.id)]),
+    customerSystemAdvancedField('lastOrderAt', 'Lần mua gần nhất', advancedFilterGroups.result, 'date', customer => [customer.lastOrderAt]),
+    customerSystemAdvancedField('updatedAt', 'Cập nhật gần nhất', advancedFilterGroups.result, 'date', customer => [customer.updatedAt]),
+    ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
+      id: `custom:${definition.id}`,
+      label: definition.name,
+      group: advancedFilterGroups[definition.section as keyof typeof advancedFilterGroups] || advancedFilterGroups.needs,
+      kind: getAdvancedFilterKindForFieldType(definition.type),
+      description: definition.description,
+      options: definition.type === 'boolean'
+        ? [{ value: 'true', label: 'Có' }, { value: 'false', label: 'Không' }]
+        : definition.options.filter(option => option.active).map(option => ({ value: option.id, label: option.label })),
+      getValues: customer => toAdvancedFilterValues(customer.customFieldValues?.[definition.id])
+    } as AdvancedFilterField<CustomerRecord>))
+  ].filter((field): field is AdvancedFilterField<CustomerRecord> => Boolean(field));
+  const advancedFilterCount = countAdvancedFilters(advancedFilters);
+  const quickFilterCount = (saleFilterEnabled ? saleFilters.length : 0)
     + (rankFilterEnabled ? rankFilters.length : 0)
     + (poTimeFilterEnabled ? timeFilters.length : 0)
     + (provinceFilterEnabled ? provinceFilters.length : 0)
     + (industrialParkFilterEnabled ? industrialParkFilters.length : 0)
     + (productFilterEnabled ? productFilters.length : 0)
     + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
+  const activeFilterCount = quickFilterCount + advancedFilterCount;
   const resetCrmListFilters = () => {
     setSearchTerm('');
     setSaleFilters([]);
@@ -2134,6 +2206,7 @@ export const Crm: React.FC<CrmProps> = ({
     setIndustrialParkFilters([]);
     setProductFilters([]);
     setCustomFieldFilters({});
+    setAdvancedFilters({});
     setCustomerPage(1);
   };
   const crmFilterChips = [
@@ -2171,7 +2244,17 @@ export const Crm: React.FC<CrmProps> = ({
       id: `custom-${definition.id}-${value}`,
       label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
       onRemove: () => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: (previous[definition.id] || []).filter(item => item !== value) }))
-    })))
+    }))),
+    ...getAdvancedFilterSummaries(advancedFilterFields, advancedFilters).map(summary => ({
+      id: `advanced-${summary.id}`,
+      label: summary.label,
+      onRemove: () => setAdvancedFilters(previous => {
+        const next = { ...previous };
+        delete next[summary.id];
+        setCustomerPage(1);
+        return next;
+      })
+    }))
   ];
 
   const normalizedSearch = searchTerm.trim().toLocaleLowerCase('vi-VN');
@@ -2226,7 +2309,7 @@ export const Crm: React.FC<CrmProps> = ({
         return elapsedDays >= 0 && elapsedDays <= (value === 'last_30_days' ? 30 : 90);
       });
     });
-    if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesIndustrialPark || !matchesProduct || !matchesTime || !matchesCustomFields) return false;
+    if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesIndustrialPark || !matchesProduct || !matchesTime || !matchesCustomFields || !matchesAdvancedFilters(customer, advancedFilterFields, advancedFilters)) return false;
 
     if (filterType === 'has_debt') return getCustomerOutstandingDebt(customer.id) > 0;
     return true;
@@ -2721,7 +2804,8 @@ export const Crm: React.FC<CrmProps> = ({
                   open={showListFilters}
                   title="Lọc danh sách khách hàng"
                   description="Kết hợp nhiều tiêu chí để tạo đúng danh sách cần theo dõi."
-                  activeCount={activeFilterCount}
+                  activeCount={quickFilterCount}
+                  advancedActiveCount={advancedFilterCount}
                   onClose={() => setShowListFilters(false)}
                   onReset={resetCrmListFilters}
                   headerAction={currentUser.role === 'admin' ? (
@@ -2729,6 +2813,13 @@ export const Crm: React.FC<CrmProps> = ({
                       <Settings2 size={14} /> Mở cấu hình hệ thống
                     </button>
                   ) : undefined}
+                  advancedContent={(
+                    <AdvancedDataFilters
+                      fields={advancedFilterFields}
+                      filters={advancedFilters}
+                      onChange={filters => { setAdvancedFilters(filters); setCustomerPage(1); }}
+                    />
+                  )}
                 >
                   {saleFilterEnabled && (
                     <DataFilterSection title={saleFilterCopy.name} description={saleFilterCopy.description} selectedCount={saleFilters.length}>

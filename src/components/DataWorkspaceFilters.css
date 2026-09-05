@@ -101,13 +101,72 @@
   z-index: 90;
   top: 0;
   right: 0;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   width: min(370px, 100vw);
   height: 100vh;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
   border-left: 1px solid #dbe3ef;
   background: #fff;
   box-shadow: -16px 0 36px rgb(15 23 42 / 14%);
+}
+
+.data-filter-panel__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 8px 18px 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.data-filter-panel__tabs button {
+  position: relative;
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px 7px;
+  border: 0;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.data-filter-panel__tabs button::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: transparent;
+  content: '';
+}
+
+.data-filter-panel__tabs button:hover,
+.data-filter-panel__tabs button.is-active {
+  color: #1e3a8a;
+}
+
+.data-filter-panel__tabs button.is-active::after {
+  background: #3157c8;
+}
+
+.data-filter-panel__tabs button span {
+  display: inline-flex;
+  min-width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 999px;
+  color: #1e3a8a;
+  background: #e8eefc;
+  font-size: 9.5px;
 }
 
 .data-filter-panel > header {
@@ -169,6 +228,7 @@
 }
 
 .data-filter-panel__body {
+  flex: 1 1 auto;
   min-height: 0;
   padding: 0 18px 18px;
   overflow-y: auto;
