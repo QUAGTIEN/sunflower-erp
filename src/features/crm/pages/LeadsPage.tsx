@@ -5,6 +5,8 @@ import {
   AlertCircle,
   Building2,
   CalendarClock,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Eye,
   FileText,
@@ -272,6 +274,8 @@ export const Leads: React.FC<LeadsProps> = ({
   const saleUsers = useMemo(() => users.filter(user => user.role === 'sale'), [users]);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [leadPageSize, setLeadPageSize] = useState(25);
+  const [leadCurrentPage, setLeadCurrentPage] = useState(1);
   const [workspaceTab, setWorkspaceTab] = useState<'list' | 'performance'>('list');
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
   const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
@@ -548,6 +552,24 @@ export const Leads: React.FC<LeadsProps> = ({
     customFieldFilters,
     visibleFilterIds
   ]);
+
+  const leadTotalPages = Math.max(1, Math.ceil(filteredLeads.length / leadPageSize));
+  const safeLeadCurrentPage = Math.min(leadCurrentPage, leadTotalPages);
+  const displayedLeads = filteredLeads.slice(
+    (safeLeadCurrentPage - 1) * leadPageSize,
+    safeLeadCurrentPage * leadPageSize
+  );
+  const visibleLeadColumnCount = 2
+    + Number(visibleLeadColumnIds.has('contact'))
+    + Number(visibleLeadColumnIds.has('source'))
+    + Number(visibleLeadColumnIds.has('potentialValue'))
+    + Number(visibleLeadColumnIds.has('assignedSale'))
+    + Number(visibleLeadColumnIds.has('nextFollowUpAt'))
+    + visibleLeadCustomFields.length;
+
+  useEffect(() => {
+    setLeadCurrentPage(1);
+  }, [searchTerm, dynamicFilters, customFieldFilters]);
 
   const selectedLead = selectedLeadId
     ? leads.find(lead => lead.id === selectedLeadId) || null
@@ -1378,6 +1400,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setSearchTerm('');
     setDynamicFilters({});
     setCustomFieldFilters({});
+    setLeadCurrentPage(1);
   };
 
   const getClassificationLabel = (lead: LeadRecord, fieldId: string, fallback = '—') => {
@@ -1702,7 +1725,7 @@ export const Leads: React.FC<LeadsProps> = ({
           <section className="lead-page-navigation__tools lead-candidate-toolbar">
             <div className="lead-search">
               <Search size={16} />
-              <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
+              <input value={searchTerm} onChange={event => { setSearchTerm(event.target.value); setLeadCurrentPage(1); }} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
             </div>
             <DataFilterButton activeCount={leadActiveFilterCount} open={showLeadFilters} onClick={() => setShowLeadFilters(true)} />
             <button type="button" className="lead-candidate-column-button" aria-label={t('Tùy chỉnh cột')} title={t('Tùy chỉnh cột')} onClick={() => setShowColumnCustomizer(true)}>
@@ -1786,7 +1809,7 @@ export const Leads: React.FC<LeadsProps> = ({
               <ConfiguredSystemTable table="leads" className="lead-table lead-table--classified">
                 <thead><tr><th data-system-field="companyName">{t('Doanh nghiệp')}</th>{visibleLeadColumnIds.has('contact') && <th data-system-field="contact">{t('Liên hệ')}</th>}{visibleLeadColumnIds.has('source') && <th data-system-field="source">{t('Nguồn / khu vực')}</th>}{visibleLeadColumnIds.has('potentialValue') && <th data-system-field="potentialValue">{t('Giá trị tiềm năng')}</th>}{visibleLeadColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}{visibleLeadColumnIds.has('nextFollowUpAt') && <th data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>}{visibleLeadCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
                 <tbody>
-                  {filteredLeads.map(lead => (
+                  {displayedLeads.map(lead => (
                     <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
                       <td><strong className="erp-company-name" title={lead.companyName}>{lead.companyName}</strong></td>
                       {visibleLeadColumnIds.has('contact') && <td><strong>{lead.contactPerson || '—'}</strong><span>{lead.phone || lead.email || 'Chưa có liên hệ'}</span></td>}
@@ -1823,10 +1846,28 @@ export const Leads: React.FC<LeadsProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {filteredLeads.length === 0 && <tr><td colSpan={visibleLeadColumnIds.size} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
+                  {filteredLeads.length === 0 && <tr><td colSpan={visibleLeadColumnCount} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
                 </tbody>
               </ConfiguredSystemTable>
             </div>
+            {filteredLeads.length > 0 && (
+              <footer className="lead-candidate-pagination lead-table-pagination">
+                <label>
+                  Hiển thị
+                  <select value={leadPageSize} onChange={event => { setLeadPageSize(Number(event.target.value)); setLeadCurrentPage(1); }}>
+                    <option value={25}>25 dòng</option>
+                    <option value={50}>50 dòng</option>
+                    <option value={100}>100 dòng</option>
+                  </select>
+                </label>
+                <span>{(safeLeadCurrentPage - 1) * leadPageSize + 1}–{Math.min(safeLeadCurrentPage * leadPageSize, filteredLeads.length)} trong {filteredLeads.length}</span>
+                <div>
+                  <button type="button" onClick={() => setLeadCurrentPage(page => Math.max(1, page - 1))} disabled={safeLeadCurrentPage === 1} aria-label="Trang trước"><ChevronLeft size={15} /></button>
+                  <strong>{safeLeadCurrentPage} / {leadTotalPages}</strong>
+                  <button type="button" onClick={() => setLeadCurrentPage(page => Math.min(leadTotalPages, page + 1))} disabled={safeLeadCurrentPage === leadTotalPages} aria-label="Trang sau"><ChevronRight size={15} /></button>
+                </div>
+              </footer>
+            )}
           </section>
         </div>
       )}

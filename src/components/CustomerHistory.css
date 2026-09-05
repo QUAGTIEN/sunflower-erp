@@ -1908,6 +1908,41 @@
   min-width: 1180px;
 }
 
+/* Sales list rows prioritize a compact scan rhythm while keeping controls usable. */
+.sales-order-customer-table th,
+.sales-order-customer-table td,
+.customer-po-list-table th,
+.customer-po-list-table td,
+.waiting-customer-table th,
+.waiting-customer-table td {
+  height: 40px !important;
+  padding: 6px 12px !important;
+}
+
+.sales-order-customer-table td .sales-table-secondary,
+.customer-po-list-table td .sales-table-secondary {
+  margin-top: 1px;
+  line-height: 1.2;
+}
+
+.sales-status-label {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.sales-status-label--waiting_design { color: #6d28d9; }
+.sales-status-label--waiting_production { color: #1d4ed8; }
+.sales-status-label--waiting_delivery { color: #b45309; }
+.sales-status-label--waiting_invoice { color: #0e7490; }
+.sales-status-label--waiting_receivable { color: #b91c1c; }
+.sales-status-label--waiting_discount { color: #a21caf; }
+.sales-status-label--completed { color: #047857; }
+
 .sales-customer-row {
   cursor: pointer;
 }

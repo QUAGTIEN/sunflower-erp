@@ -903,7 +903,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                           <td>{customerOrders.length.toLocaleString('vi-VN')}</td>
                           <td>{latestPO ? <><strong>{latestPO.poCode}</strong><span className="sales-table-secondary">{formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN'))}</span></> : '—'}</td>
                           <td>{totalValue.toLocaleString('vi-VN')} đ</td>
-                          <td>{latestPO ? <span className={`badge ${getPOBadgeClass(latestPO)}`}>{t(getPOQueueLabel(latestPO))}</span> : t('Chưa có PO')}</td>
+                          <td>{latestPO ? <span className={`sales-status-label sales-status-label--${getPOQueueStatus(latestPO)}`}>{t(getPOQueueLabel(latestPO))}</span> : t('Chưa có PO')}</td>
                           <td><button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>{t('Xem PO')}</button></td>
                         </tr>
                       );

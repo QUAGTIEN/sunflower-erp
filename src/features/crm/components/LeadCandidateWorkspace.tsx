@@ -147,7 +147,6 @@ const ALL_COLUMN_OPTIONS: CandidateColumnOption[] = [
   { id: 'contact', label: 'Thông tin liên hệ' },
   { id: 'assignee', label: 'Sale phụ trách' },
   { id: 'processing', label: 'Sale đang xử lý' },
-  { id: 'status', label: 'Trạng thái' },
   { id: 'potential', label: 'Mức độ tiềm năng' },
   { id: 'schedule', label: 'Lịch tiếp theo' },
   { id: 'latest', label: 'Cập nhật gần nhất' },
@@ -1647,7 +1646,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   {visibleColumnSet.has('contact') && <th data-system-field="contact">Thông tin liên hệ</th>}
                   {visibleColumnSet.has('assignee') && <th data-system-field="assignedSaleId">Sale phụ trách</th>}
                   {visibleColumnSet.has('processing') && <th data-system-field="processing">Sale đang xử lý</th>}
-                  {visibleColumnSet.has('status') && <th data-system-field="contactResult">Trạng thái</th>}
                   {visibleColumnSet.has('potential') && <th data-system-field="potentialLevel">Mức độ tiềm năng</th>}
                   {visibleColumnSet.has('schedule') && <th data-system-field="nextContactAt">Lịch tiếp theo</th>}
                   {visibleColumnSet.has('latest') && <th data-system-field="latest">Cập nhật gần nhất</th>}
@@ -1698,7 +1696,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           ? renderCompactValue(candidate.assignedSaleName || 'Chờ phân công')
                           : renderCompactValue('—', 'Chưa đưa vào xử lý', 'is-muted')}
                       </td>}
-                      {visibleColumnSet.has('status') && <td>{renderContactResult(candidate)}</td>}
                       {visibleColumnSet.has('potential') && <td>{renderPotentialLevel(candidate)}</td>}
                       {visibleColumnSet.has('schedule') && <td>{candidate.nextContactAt
                         ? renderCompactValue(formatShortDateTime(candidate.nextContactAt), `${formatShortDateTime(candidate.nextContactAt)} · ${new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}`, new Date(candidate.nextContactAt).getTime() < referenceTime ? 'lead-date-overdue' : '')
