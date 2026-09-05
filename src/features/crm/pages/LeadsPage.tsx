@@ -81,6 +81,7 @@ import {
 } from '@/features/crm/model/leadProfileConfig';
 import { PageBackButton } from '@/components/PageBackButton';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
 import {
@@ -292,6 +293,16 @@ export const Leads: React.FC<LeadsProps> = ({
   const [scheduleError, setScheduleError] = useState('');
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [returningLeadId, setReturningLeadId] = useState('');
+  const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
+  const [storedVisibleColumnIds, setStoredVisibleColumnIds] = useState<string[] | null>(() => {
+    try {
+      const stored = window.localStorage.getItem(`sunflower:lead-columns:${currentUser.uid}`);
+      const parsed = stored ? JSON.parse(stored) : null;
+      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     const unsubscribe = dbService.subscribeCollection('leads', data => {
@@ -342,6 +353,43 @@ export const Leads: React.FC<LeadsProps> = ({
     () => profileDefinitions.filter(definition => !isLeadSystemProfileField(definition)),
     [profileDefinitions]
   );
+
+  const leadColumnOptions = useMemo<TableColumnOption[]>(() => [
+    { id: 'company', label: t('Doanh nghiệp'), required: true },
+    { id: 'contact', label: t('Liên hệ') },
+    { id: 'source', label: t('Nguồn / khu vực') },
+    { id: 'potentialValue', label: t('Giá trị tiềm năng') },
+    { id: 'assignedSale', label: t('Sale phụ trách') },
+    { id: 'nextFollowUpAt', label: t('Chăm sóc tiếp') },
+    ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
+      id: `custom:${definition.id}`,
+      label: definition.name
+    })),
+    { id: 'actions', label: t('Thao tác'), required: true }
+  ], [customFieldDefinitions, t]);
+  const visibleLeadColumnIds = useMemo(() => {
+    const availableIds = new Set(leadColumnOptions.map(column => column.id));
+    const requiredIds = leadColumnOptions.filter(column => column.required).map(column => column.id);
+    const selectedIds = storedVisibleColumnIds?.filter(id => availableIds.has(id));
+    return new Set([...requiredIds, ...(selectedIds?.length ? selectedIds : leadColumnOptions.map(column => column.id))]);
+  }, [leadColumnOptions, storedVisibleColumnIds]);
+  const visibleLeadCustomFields = useMemo(
+    () => customFieldDefinitions.filter(definition => definition.active && visibleLeadColumnIds.has(`custom:${definition.id}`)),
+    [customFieldDefinitions, visibleLeadColumnIds]
+  );
+
+  const saveVisibleLeadColumns = (selectedIds: string[]) => {
+    const availableIds = new Set(leadColumnOptions.map(column => column.id));
+    const requiredIds = leadColumnOptions.filter(column => column.required).map(column => column.id);
+    const nextIds = Array.from(new Set([...requiredIds, ...selectedIds.filter(id => availableIds.has(id))]));
+    setStoredVisibleColumnIds(nextIds);
+    try {
+      window.localStorage.setItem(`sunflower:lead-columns:${currentUser.uid}`, JSON.stringify(nextIds));
+    } catch {
+      // The current page state stays usable when the browser blocks local storage.
+    }
+    setShowColumnCustomizer(false);
+  };
 
   const accessibleLeads = useMemo(() => leads.filter(lead => {
     if (!isActiveLeadRecord(lead)) return false;
@@ -1636,6 +1684,7 @@ export const Leads: React.FC<LeadsProps> = ({
               <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
             </div>
             <DataFilterButton activeCount={leadActiveFilterCount} open={showLeadFilters} onClick={() => setShowLeadFilters(true)} />
+            <button type="button" className="btn btn-outline" onClick={() => setShowColumnCustomizer(true)}>Tùy chỉnh cột</button>
             {(searchTerm || leadActiveFilterCount > 0) && <button type="button" className="btn btn-outline lead-toolbar-reset" onClick={clearFilters}><X size={14} /> Đặt lại</button>}
             <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm Lead')}</button>
           </section>
@@ -1712,17 +1761,17 @@ export const Leads: React.FC<LeadsProps> = ({
             <div className="lead-table-result">Hiển thị <strong>{filteredLeads.length}</strong> / {accessibleLeads.length} Lead</div>
             <div className="table-container">
               <ConfiguredSystemTable table="leads" className="lead-table lead-table--classified">
-                <thead><tr><th data-system-field="companyName">{t('Doanh nghiệp')}</th><th data-system-field="contact">{t('Liên hệ')}</th><th data-system-field="source">{t('Nguồn / khu vực')}</th><th data-system-field="potentialValue">{t('Giá trị tiềm năng')}</th><th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th><th data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
+                <thead><tr><th data-system-field="companyName">{t('Doanh nghiệp')}</th>{visibleLeadColumnIds.has('contact') && <th data-system-field="contact">{t('Liên hệ')}</th>}{visibleLeadColumnIds.has('source') && <th data-system-field="source">{t('Nguồn / khu vực')}</th>}{visibleLeadColumnIds.has('potentialValue') && <th data-system-field="potentialValue">{t('Giá trị tiềm năng')}</th>}{visibleLeadColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}{visibleLeadColumnIds.has('nextFollowUpAt') && <th data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>}{visibleLeadCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
                 <tbody>
                   {filteredLeads.map(lead => (
                     <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
                       <td><strong className="erp-company-name" title={lead.companyName}>{lead.companyName}</strong></td>
-                      <td><strong>{lead.contactPerson || '—'}</strong><span>{lead.phone || lead.email || 'Chưa có liên hệ'}</span></td>
-                      <td><strong>{getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || '—')}</strong><span>{getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || 'Chưa xác định')}</span></td>
-                      <td><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>
-                      <td>{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>
-                      <td>{renderFollowUp(lead)}</td>
-                      {customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id])}</td>)}
+                      {visibleLeadColumnIds.has('contact') && <td><strong>{lead.contactPerson || '—'}</strong><span>{lead.phone || lead.email || 'Chưa có liên hệ'}</span></td>}
+                      {visibleLeadColumnIds.has('source') && <td><strong>{getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || '—')}</strong><span>{getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || 'Chưa xác định')}</span></td>}
+                      {visibleLeadColumnIds.has('potentialValue') && <td><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>}
+                      {visibleLeadColumnIds.has('assignedSale') && <td>{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>}
+                      {visibleLeadColumnIds.has('nextFollowUpAt') && <td>{renderFollowUp(lead)}</td>}
+                      {visibleLeadCustomFields.map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id])}</td>)}
                       <td>
                         <RowActionMenu
                           label={`${t('Thao tác')} ${lead.companyName}`}
@@ -1751,13 +1800,21 @@ export const Leads: React.FC<LeadsProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {filteredLeads.length === 0 && <tr><td colSpan={7 + customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).length} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
+                  {filteredLeads.length === 0 && <tr><td colSpan={visibleLeadColumnIds.size} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
                 </tbody>
               </ConfiguredSystemTable>
             </div>
           </section>
         </div>
       )}
+
+      <TableColumnCustomizer
+        open={showColumnCustomizer}
+        columns={leadColumnOptions}
+        selectedIds={Array.from(visibleLeadColumnIds)}
+        onClose={() => setShowColumnCustomizer(false)}
+        onSave={saveVisibleLeadColumns}
+      />
 
       {scheduleLead && (
         <div className="modal-overlay">

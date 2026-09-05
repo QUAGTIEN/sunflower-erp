@@ -22,6 +22,7 @@ import {
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
 import {
@@ -263,6 +264,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [productFilters, setProductFilters] = useState<string[]>([]);
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [showListFilters, setShowListFilters] = useState(false);
+  const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [customerPageSize, setCustomerPageSize] = useState(25);
   const [customerPage, setCustomerPage] = useState(1);
   const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>([]);
@@ -272,6 +274,15 @@ export const Crm: React.FC<CrmProps> = ({
   const [customerNoteDraft, setCustomerNoteDraft] = useState('');
   const [isSavingCustomerNote, setIsSavingCustomerNote] = useState(false);
   const [customerNoteFeedback, setCustomerNoteFeedback] = useState('');
+  const [storedVisibleColumnIds, setStoredVisibleColumnIds] = useState<string[] | null>(() => {
+    try {
+      const stored = window.localStorage.getItem(`sunflower:customer-columns:${currentUser.uid}`);
+      const parsed = stored ? JSON.parse(stored) : null;
+      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : null;
+    } catch {
+      return null;
+    }
+  });
 
   const [chartMonth, setChartMonth] = useState<string>('all');
   const [chartYear, setChartYear] = useState<string>(() => String(new Date().getFullYear()));
@@ -297,6 +308,45 @@ export const Crm: React.FC<CrmProps> = ({
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [selectedEditRequest, setSelectedEditRequest] = useState<any | null>(null);
   const [windDirectionFiles, setWindDirectionFiles] = useState<any[]>([]);
+
+  const customerColumnOptions = useMemo<TableColumnOption[]>(() => [
+    { id: 'company', label: t('Khách hàng'), required: true },
+    { id: 'customerCode', label: t('Mã KH') },
+    { id: 'rank', label: t('Phân loại') },
+    { id: 'taxCode', label: t('Mã số thuế') },
+    { id: 'phone', label: t('SĐT') },
+    { id: 'email', label: t('Mail') },
+    { id: 'assignedSale', label: t('Sale phụ trách') },
+    { id: 'businessResult', label: t('Kết quả kinh doanh') },
+    ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
+      id: `custom:${definition.id}`,
+      label: definition.name
+    })),
+    { id: 'actions', label: t('Thao tác'), required: true }
+  ], [customFieldDefinitions, t]);
+  const visibleCustomerColumnIds = useMemo(() => {
+    const availableIds = new Set(customerColumnOptions.map(column => column.id));
+    const requiredIds = customerColumnOptions.filter(column => column.required).map(column => column.id);
+    const selectedIds = storedVisibleColumnIds?.filter(id => availableIds.has(id));
+    return new Set([...requiredIds, ...(selectedIds?.length ? selectedIds : customerColumnOptions.map(column => column.id))]);
+  }, [customerColumnOptions, storedVisibleColumnIds]);
+  const visibleCustomerCustomFields = useMemo(
+    () => customFieldDefinitions.filter(definition => definition.active && visibleCustomerColumnIds.has(`custom:${definition.id}`)),
+    [customFieldDefinitions, visibleCustomerColumnIds]
+  );
+
+  const saveVisibleCustomerColumns = (selectedIds: string[]) => {
+    const availableIds = new Set(customerColumnOptions.map(column => column.id));
+    const requiredIds = customerColumnOptions.filter(column => column.required).map(column => column.id);
+    const nextIds = Array.from(new Set([...requiredIds, ...selectedIds.filter(id => availableIds.has(id))]));
+    setStoredVisibleColumnIds(nextIds);
+    try {
+      window.localStorage.setItem(`sunflower:customer-columns:${currentUser.uid}`, JSON.stringify(nextIds));
+    } catch {
+      // The current page state stays usable when the browser blocks local storage.
+    }
+    setShowColumnCustomizer(false);
+  };
 
   useEffect(() => {
     const unsubClass = dbService.subscribeCollection('product_classifications', setProductClassifications);
@@ -2541,6 +2591,7 @@ export const Crm: React.FC<CrmProps> = ({
                   <>
                     <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
                     <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
+                    <button type="button" className="btn btn-outline" onClick={() => setShowColumnCustomizer(true)}>{t('Tùy chỉnh cột')}</button>
                     {(searchTerm || activeFilterCount > 0) && (
                       <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
                     )}
@@ -2635,7 +2686,7 @@ export const Crm: React.FC<CrmProps> = ({
                 <div className="crm-customer-grid">
                   <div className="table-container crm-customer-table-wrap">
                   <ConfiguredSystemTable table="customers" className="crm-customer-table is-compact">
-                    <thead><tr><th data-system-field="companyName">{t('Khách hàng')}</th><th data-system-field="customerCode">{t('Mã KH')}</th><th data-system-field="customerRank">{t('Phân loại')}</th><th data-system-field="taxCode">{t('Mã số thuế')}</th><th data-system-field="phone">{t('SĐT')}</th><th data-system-field="email">{t('Mail')}</th><th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th><th data-system-field="businessResult">{t('Kết quả kinh doanh')}</th>{customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
+                    <thead><tr><th data-system-field="companyName">{t('Khách hàng')}</th>{visibleCustomerColumnIds.has('customerCode') && <th data-system-field="customerCode">{t('Mã KH')}</th>}{visibleCustomerColumnIds.has('rank') && <th data-system-field="customerRank">{t('Phân loại')}</th>}{visibleCustomerColumnIds.has('taxCode') && <th data-system-field="taxCode">{t('Mã số thuế')}</th>}{visibleCustomerColumnIds.has('phone') && <th data-system-field="phone">{t('SĐT')}</th>}{visibleCustomerColumnIds.has('email') && <th data-system-field="email">{t('Mail')}</th>}{visibleCustomerColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}{visibleCustomerColumnIds.has('businessResult') && <th data-system-field="businessResult">{t('Kết quả kinh doanh')}</th>}{visibleCustomerCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
                     <tbody>
                       {displayedCustomers.map(customer => {
                         const customerOrders = getCustomerOrders(customer.id);
@@ -2646,14 +2697,14 @@ export const Crm: React.FC<CrmProps> = ({
                           <React.Fragment key={customer.id}>
                             <tr onClick={() => openCustomerDetail(customer)}>
                               <td><div className="crm-customer-identity" title={`${customer.companyName} · ${customer.contactPerson || t('Chưa có người liên hệ')}`}><strong className="erp-company-name">{customer.companyName}</strong>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div></td>
-                              <td><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>
-                              <td><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>
-                              <td><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>
-                              <td><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>
-                              <td><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>
-                              <td><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>
-                              <td><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')} · {orderValue.toLocaleString('vi-VN')} đ</strong></div></td>
-                              {customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id])}</td>)}
+                              {visibleCustomerColumnIds.has('customerCode') && <td><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>}
+                              {visibleCustomerColumnIds.has('rank') && <td><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>}
+                              {visibleCustomerColumnIds.has('taxCode') && <td><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>}
+                              {visibleCustomerColumnIds.has('phone') && <td><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>}
+                              {visibleCustomerColumnIds.has('email') && <td><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>}
+                              {visibleCustomerColumnIds.has('assignedSale') && <td><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>}
+                              {visibleCustomerColumnIds.has('businessResult') && <td><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')} · {orderValue.toLocaleString('vi-VN')} đ</strong></div></td>}
+                              {visibleCustomerCustomFields.map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id])}</td>)}
                               <td>
                                 <RowActionMenu
                                   label={`${t('Thao tác')} ${customer.companyName}`}
@@ -2677,7 +2728,7 @@ export const Crm: React.FC<CrmProps> = ({
                           </React.Fragment>
                         );
                       })}
-                      {filteredCustomers.length === 0 && <tr><td colSpan={10 + customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).length} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
+                      {filteredCustomers.length === 0 && <tr><td colSpan={visibleCustomerColumnIds.size} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
                     </tbody>
                   </ConfiguredSystemTable>
                   </div>
@@ -2690,6 +2741,14 @@ export const Crm: React.FC<CrmProps> = ({
               </>
             )}
           </div>
+
+          <TableColumnCustomizer
+            open={showColumnCustomizer}
+            columns={customerColumnOptions}
+            selectedIds={Array.from(visibleCustomerColumnIds)}
+            onClose={() => setShowColumnCustomizer(false)}
+            onSave={saveVisibleCustomerColumns}
+          />
 
       {/* SELECTED CUSTOMER DETAIL */}
        {selectedCustomer && (
