@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { PageContextHeader } from '@/components/PageContextHeader';
 import { LeadCandidateWorkspace } from '@/features/crm/components/LeadCandidateWorkspace';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
@@ -33,8 +32,6 @@ export const CustomerData: React.FC<CustomerDataProps> = ({
 
   return (
     <div className="customer-data-page">
-      <PageContextHeader section="Dữ liệu thô" current="Tất cả dữ liệu" className="customer-data-page__header" />
-
       <LeadCandidateWorkspace
         candidates={candidates}
         leads={leads}

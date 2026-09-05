@@ -13,6 +13,8 @@ import { Accounting } from '@/features/accounting';
 import { RecycleBin, SystemConfiguration, UserManagement } from '@/features/administration';
 import { ChatPage } from '@/features/chat';
 import { useLanguage } from '@/context/LanguageContext';
+import { PageContextProvider } from '@/context/PageContext';
+import type { AppPageContext } from '@/context/PageContextState';
 import { CommercialMap } from '@/features/commercial-map';
 import { WorkSchedule } from '@/features/work-schedule';
 import {
@@ -69,9 +71,32 @@ import {
   CalendarDays
 } from 'lucide-react';
 
+const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
+  dashboard: { section: 'Tổng quan' },
+  chat: { section: 'Kênh chat' },
+  work_schedule: { section: 'Lịch làm việc', current: 'Hôm nay' },
+  commercial_map: { section: 'Bản đồ' },
+  customer_data: { section: 'Dữ liệu thô', current: 'Tất cả dữ liệu' },
+  leads: { section: 'Tiềm năng', current: 'Danh sách Lead' },
+  crm: { section: 'Khách hàng', current: 'Tất cả' },
+  sales: { section: 'Tạo đơn hàng', current: 'Danh sách PO' },
+  design: { section: 'Thiết kế', current: 'Danh sách yêu cầu thiết kế' },
+  design_library: { section: 'Kho mẫu', current: 'Danh sách mẫu thiết kế' },
+  purchase: { section: 'Mua hàng', current: 'Yêu cầu từ Sale PO' },
+  suppliers: { section: 'Nhà cung cấp', current: 'Danh sách nhà cung cấp' },
+  inventory: { section: 'Vật liệu', current: 'Tồn kho hiện tại' },
+  production: { section: 'Sản xuất', current: 'Danh sách LSX' },
+  delivery: { section: 'Giao hàng', current: 'Bảng điều phối' },
+  accounting: { section: 'Kế toán', current: 'Công nợ phải thu & phải trả' },
+  recycle_bin: { section: 'Thùng rác' },
+  system_configuration: { section: 'Cấu hình', current: 'Tiêu chí bộ lọc' },
+  users: { section: 'Tài khoản', current: 'Danh sách người dùng' }
+};
+
 function AppShell() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activePage, setActivePage] = useState<string>('dashboard');
+  const [reportedPageContext, setReportedPageContext] = useState<(AppPageContext & { pageId: string }) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('erp_sidebar_collapsed') === 'true';
@@ -83,6 +108,14 @@ function AppShell() {
     document.documentElement.style.colorScheme = 'light';
     localStorage.setItem('erp_color_theme', 'light');
   }, []);
+
+  const handlePageContextChange = useCallback((context: AppPageContext) => {
+    setReportedPageContext({ ...context, pageId: activePage });
+  }, [activePage]);
+
+  const pageContext = reportedPageContext?.pageId === activePage
+    ? reportedPageContext
+    : (DEFAULT_PAGE_CONTEXTS[activePage] ?? { section: activePage });
 
   const isPageAllowed = (pageId: string): boolean => canAccessPage(user, pageId);
 
@@ -784,6 +817,7 @@ function AppShell() {
   const unreadChannelCount = getUnreadChannelMessagesTotal();
 
   return (
+    <PageContextProvider onChange={handlePageContextChange}>
     <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {/* Mobile backdrop overlay */}
       <div
@@ -1104,7 +1138,15 @@ function AppShell() {
             </svg>
             <span>Menu</span>
           </button>
-          <span className="header-title">{t('SUNFLOWER LABEL MANUFACTURING ERP')}</span>
+          <div className="header-page-context" aria-label="Vị trí hiện tại">
+            <span className="header-page-context__section">{t(pageContext.section)}</span>
+            {pageContext.current && (
+              <>
+                <span className="header-page-context__separator" aria-hidden="true">›</span>
+                <span className="header-page-context__current">{t(pageContext.current)}</span>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="header-actions">
@@ -1208,6 +1250,7 @@ function AppShell() {
         {renderPageContent()}
       </main>
     </div>
+    </PageContextProvider>
   );
 }
 

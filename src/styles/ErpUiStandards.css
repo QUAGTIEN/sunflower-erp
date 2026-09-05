@@ -34,49 +34,15 @@
   padding: 0;
 }
 
-/* Compact MISA-like context row: module, active view and actions share one line. */
-.erp-page-context {
-  min-height: 40px;
-  margin-bottom: 0;
-}
-
-.erp-page-context__path {
+/* Page titles live in the application header; page-level primary actions stay compact. */
+.erp-page-context-actions {
   display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.erp-page-context__separator {
-  color: #94a3b8;
-  font-size: 18px;
-  font-weight: 400;
-  line-height: 1;
-}
-
-.erp-page-context__current {
-  min-width: 0;
-  overflow: hidden;
-  color: #475569;
-  font-size: 14px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.erp-page-context__actions {
-  display: flex;
+  width: 100%;
   min-width: 0;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.erp-page-context + .content-tabs,
-.erp-page-context + .lead-page-navigation,
-.erp-page-context + .lead-candidate-workspace,
-.erp-page-context + .crm-command-center {
-  margin-top: 0;
+  min-height: 36px;
 }
 
 /* List screens place navigation above the toolbar so the hierarchy is always predictable. */
@@ -522,12 +488,7 @@ table button:not(.row-action-menu__trigger) {
     justify-content: flex-start;
   }
 
-  .erp-page-context__path {
-    width: 100%;
-  }
-
-  .erp-page-context__actions {
-    width: 100%;
+  .erp-page-context-actions {
     justify-content: flex-start;
   }
 

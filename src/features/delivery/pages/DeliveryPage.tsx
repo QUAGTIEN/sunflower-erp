@@ -919,7 +919,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
 
   return (
     <div className="delivery-view delivery-control-center">
-      <PageContextHeader section="Giao hàng" current={activeTab === 'trips' ? 'Chuyến giao' : activeTab === 'fleet' ? 'Xe & tài xế' : activeTab === 'proof' ? 'POD & đối soát' : 'Bảng điều phối'} className="delivery-page-header">
+      <PageContextHeader section="Giao hàng" current={activeTab === 'trips' ? 'Chuyến giao' : activeTab === 'fleet' ? 'Xe & tài xế' : activeTab === 'proof' ? 'POD & đối soát' : 'Bảng điều phối'}>
         {(currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
           <button className="btn btn-primary" onClick={handleOpenAddTrip}>Lập chuyến giao hàng</button>
         )}

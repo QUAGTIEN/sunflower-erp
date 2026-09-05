@@ -1592,7 +1592,6 @@ export const Leads: React.FC<LeadsProps> = ({
       <PageContextHeader
         section={t('Tiềm năng')}
         current={workspaceTab === 'performance' ? t('Khách hàng của Sale') : t('Danh sách Lead')}
-        className="lead-page-commandbar"
       />
 
       <div className="lead-page-navigation lead-candidate-commandbar">

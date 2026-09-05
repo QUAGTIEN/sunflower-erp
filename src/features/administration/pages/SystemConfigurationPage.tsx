@@ -470,7 +470,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
 
   return (
     <div className="system-config-view">
-      <PageContextHeader section="Cấu hình" current={configurationTab === 'custom_fields' ? 'Trường thông tin' : 'Tiêu chí bộ lọc'} className="system-config-header">
+      <PageContextHeader section="Cấu hình" current={configurationTab === 'custom_fields' ? 'Trường thông tin' : 'Tiêu chí bộ lọc'}>
         <span className="system-config-admin-badge"><LockKeyhole size={14} /> Chỉ Giám đốc/Admin</span>
       </PageContextHeader>
 

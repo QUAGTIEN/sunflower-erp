@@ -1,4 +1,5 @@
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
+import { PageContextHeader } from '@/components/PageContextHeader';
 import React, { useMemo, useState } from 'react';
 import {
   AlertCircle,
@@ -1345,6 +1346,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   return (
     <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace">
+      <PageContextHeader section="Dữ liệu thô" current={workspaceView === 'tasks' ? 'Công việc cần xử lý' : 'Tất cả dữ liệu'} />
       <div className="lead-candidate-commandbar">
         <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Không gian làm việc Sale">
           {([

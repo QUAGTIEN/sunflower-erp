@@ -12,17 +12,17 @@
   display: flex;
   width: 100%;
   max-width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   align-items: stretch;
-  gap: 4px;
+  gap: 8px;
   margin: 0;
-  padding: 0;
+  padding: 0 12px;
   overflow-x: auto;
   overflow-y: hidden;
   border: 0;
   border-bottom: 1px solid var(--content-tab-divider);
   border-radius: 0;
-  background: transparent;
+  background: #ffffff;
   box-shadow: none;
   scrollbar-width: none;
 }
@@ -36,12 +36,12 @@
   display: inline-flex;
   width: auto;
   min-width: 0;
-  min-height: 40px;
+  min-height: 44px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 12px;
+  padding: 0 14px;
   border: 0;
   border-radius: 0;
   color: var(--content-tab-text);
@@ -49,7 +49,7 @@
   box-shadow: none;
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -58,9 +58,9 @@
 
 .content-tabs.content-tabs > button::after {
   position: absolute;
-  right: 10px;
+  right: 12px;
   bottom: -1px;
-  left: 10px;
+  left: 12px;
   height: 2px;
   border-radius: 2px 2px 0 0;
   background: var(--content-tab-accent);
@@ -103,16 +103,16 @@
 .content-tabs.content-tabs.lead-candidate-queues > button > strong,
 .content-tabs.content-tabs.customer-order-history-tabs > button > span,
 .content-tabs.content-tabs.custom-field-config__tables > button > span {
-  min-width: 19px;
+  min-width: auto;
   margin: 0;
-  padding: 2px 6px;
+  padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: 0;
   color: #52647b;
-  background: #edf2f7;
+  background: transparent;
   font-size: 11px;
   font-weight: 600;
-  line-height: 16px;
+  line-height: 1;
   text-align: center;
 }
 
@@ -124,26 +124,26 @@
 .content-tabs.content-tabs.lead-candidate-queues > button.is-active > strong,
 .content-tabs.content-tabs.customer-order-history-tabs > button.is-active > span,
 .content-tabs.content-tabs.custom-field-config__tables > button.is-active > span {
-  color: #0e66ad;
-  background: #e6f2fc;
+  color: var(--content-tab-accent);
+  background: transparent;
 }
 
 .content-tabs.content-tabs--compact,
 .content-tabs.content-tabs--commandbar {
-  width: fit-content;
-  min-width: max-content;
-  flex: 0 0 auto;
-  min-height: 38px;
-  padding-right: 4px;
-  padding-left: 4px;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding-right: 12px;
+  padding-left: 12px;
 }
 
 .content-tabs.content-tabs--compact > button,
 .content-tabs.content-tabs--commandbar > button {
-  min-height: 38px;
-  padding-right: 11px;
-  padding-left: 11px;
-  font-size: 12.5px;
+  min-height: 44px;
+  padding-right: 14px;
+  padding-left: 14px;
+  font-size: 13.5px;
 }
 
 .content-tabs.content-tabs--header {

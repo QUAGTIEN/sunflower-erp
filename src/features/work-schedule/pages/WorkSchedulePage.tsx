@@ -314,7 +314,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
 
   return (
     <div className="work-schedule-page">
-      <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Hôm nay'} className="work-schedule-header">
+      <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Hôm nay'}>
         {isAdmin && <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}>Giao việc</button>}
       </PageContextHeader>
 
