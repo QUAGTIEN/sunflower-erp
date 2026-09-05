@@ -259,6 +259,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [rankFilters, setRankFilters] = useState<string[]>([]);
   const [timeFilters, setTimeFilters] = useState<CrmTimeFilter[]>([]);
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
+  const [industrialParkFilters, setIndustrialParkFilters] = useState<string[]>([]);
   const [productFilters, setProductFilters] = useState<string[]>([]);
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [showListFilters, setShowListFilters] = useState(false);
@@ -1916,6 +1917,18 @@ export const Crm: React.FC<CrmProps> = ({
   if (Array.from(provinceByCustomerId.values()).some(value => !value)) {
     provinceFilterOptions.push({ value: UNASSIGNED_FILTER_VALUE, label: 'Chưa xác định tỉnh/thành' });
   }
+  const industrialParkByCustomerId = new Map<string, string>(accessibleCustomers.map(customer => {
+    const customerIndustrialPark = customer.industrialPark?.trim();
+    if (customerIndustrialPark) return [customer.id, customerIndustrialPark] as const;
+    return [customer.id, leadById.get(customer.sourceLeadId)?.industrialPark?.trim() || ''] as const;
+  }));
+  const industrialParkFilterOptions: CrmFilterOption[] = Array.from(new Set(industrialParkByCustomerId.values()))
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right, 'vi-VN'))
+    .map(industrialPark => ({ value: industrialPark, label: industrialPark }));
+  if (Array.from(industrialParkByCustomerId.values()).some(value => !value)) {
+    industrialParkFilterOptions.push({ value: UNASSIGNED_FILTER_VALUE, label: 'Chưa xác định KCN' });
+  }
 
   const productLabels = new Map<string, string>();
   const productKeysByCustomerId = new Map(accessibleCustomers.map(customer => [customer.id, new Set<string>()] as const));
@@ -1954,6 +1967,7 @@ export const Crm: React.FC<CrmProps> = ({
   const saleFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.sale)!;
   const rankFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.rank)!;
   const provinceFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.province)!;
+  const industrialParkFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.industrialPark)!;
   const poTimeFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.poTime)!;
   const productFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.product)!;
   const saleFilterEnabled = saleFilterDefinition.active
@@ -1962,6 +1976,8 @@ export const Crm: React.FC<CrmProps> = ({
     && isSystemFilterEnabled(systemFilterDefinitions, CUSTOMER_FILTER_IDS.rank, 'crm_customers');
   const provinceFilterEnabled = provinceFilterDefinition.active
     && isSystemFilterEnabled(systemFilterDefinitions, CUSTOMER_FILTER_IDS.province, 'crm_customers');
+  const industrialParkFilterEnabled = industrialParkFilterDefinition.active
+    && isSystemFilterEnabled(systemFilterDefinitions, CUSTOMER_FILTER_IDS.industrialPark, 'crm_customers');
   const poTimeFilterEnabled = poTimeFilterDefinition.active
     && isSystemFilterEnabled(systemFilterDefinitions, CUSTOMER_FILTER_IDS.poTime, 'crm_customers');
   const productFilterEnabled = productFilterDefinition.active
@@ -1976,12 +1992,14 @@ export const Crm: React.FC<CrmProps> = ({
   const saleFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.sale, saleFilterDefinition);
   const rankFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.rank, rankFilterDefinition);
   const provinceFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.province, provinceFilterDefinition);
+  const industrialParkFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.industrialPark, industrialParkFilterDefinition);
   const poTimeFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.poTime, poTimeFilterDefinition);
   const productFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.product, productFilterDefinition);
   const activeFilterCount = (saleFilterEnabled ? saleFilters.length : 0)
     + (rankFilterEnabled ? rankFilters.length : 0)
     + (poTimeFilterEnabled ? timeFilters.length : 0)
     + (provinceFilterEnabled ? provinceFilters.length : 0)
+    + (industrialParkFilterEnabled ? industrialParkFilters.length : 0)
     + (productFilterEnabled ? productFilters.length : 0)
     + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
   const resetCrmListFilters = () => {
@@ -1990,6 +2008,7 @@ export const Crm: React.FC<CrmProps> = ({
     setRankFilters([]);
     setTimeFilters([]);
     setProvinceFilters([]);
+    setIndustrialParkFilters([]);
     setProductFilters([]);
     setCustomFieldFilters({});
     setCustomerPage(1);
@@ -2015,6 +2034,11 @@ export const Crm: React.FC<CrmProps> = ({
       label: `${provinceFilterCopy.name}: ${provinceFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setProvinceFilters(previous => previous.filter(item => item !== value))
     })) : []),
+    ...(industrialParkFilterEnabled ? industrialParkFilters.map(value => ({
+      id: `industrial-park-${value}`,
+      label: `${industrialParkFilterCopy.name}: ${industrialParkFilterOptions.find(option => option.value === value)?.label || value}`,
+      onRemove: () => setIndustrialParkFilters(previous => previous.filter(item => item !== value))
+    })) : []),
     ...(productFilterEnabled ? productFilters.map(value => ({
       id: `product-${value}`,
       label: `${productFilterCopy.name}: ${productFilterOptions.find(option => option.value === value)?.label || value}`,
@@ -2038,6 +2062,8 @@ export const Crm: React.FC<CrmProps> = ({
       customer.phone,
       customer.email,
       customer.taxCode,
+      customer.province,
+      customer.industrialPark,
       ...getEntityCustomFieldSearchValues(customFieldDefinitions, customer.customFieldValues),
       ...customerMaterials.flatMap(material => [
         material.materialName,
@@ -2054,6 +2080,10 @@ export const Crm: React.FC<CrmProps> = ({
     const customerProvince = provinceByCustomerId.get(customer.id) || '';
     const matchesProvince = !provinceFilterEnabled || provinceFilters.length === 0 || provinceFilters.some(value => (
       value === UNASSIGNED_FILTER_VALUE ? !customerProvince : customerProvince === value
+    ));
+    const customerIndustrialPark = industrialParkByCustomerId.get(customer.id) || '';
+    const matchesIndustrialPark = !industrialParkFilterEnabled || industrialParkFilters.length === 0 || industrialParkFilters.some(value => (
+      value === UNASSIGNED_FILTER_VALUE ? !customerIndustrialPark : customerIndustrialPark === value
     ));
     const customerProductKeys = productKeysByCustomerId.get(customer.id) || new Set<string>();
     const matchesProduct = !productFilterEnabled || productFilters.length === 0 || productFilters.some(value => customerProductKeys.has(value));
@@ -2073,7 +2103,7 @@ export const Crm: React.FC<CrmProps> = ({
         return elapsedDays >= 0 && elapsedDays <= (value === 'last_30_days' ? 30 : 90);
       });
     });
-    if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesProduct || !matchesTime || !matchesCustomFields) return false;
+    if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesIndustrialPark || !matchesProduct || !matchesTime || !matchesCustomFields) return false;
 
     if (filterType === 'has_debt') return getCustomerOutstandingDebt(customer.id) > 0;
     return true;
@@ -2573,6 +2603,11 @@ export const Crm: React.FC<CrmProps> = ({
                   {provinceFilterEnabled && (
                     <DataFilterSection title={provinceFilterCopy.name} description={provinceFilterCopy.description} selectedCount={provinceFilters.length}>
                       <DataFilterCheckboxGroup options={provinceFilterOptions} selectedValues={provinceFilters} onChange={values => { setProvinceFilters(values); setCustomerPage(1); }} searchable />
+                    </DataFilterSection>
+                  )}
+                  {industrialParkFilterEnabled && (
+                    <DataFilterSection title={industrialParkFilterCopy.name} description={industrialParkFilterCopy.description} selectedCount={industrialParkFilters.length}>
+                      <DataFilterCheckboxGroup options={industrialParkFilterOptions} selectedValues={industrialParkFilters} onChange={values => { setIndustrialParkFilters(values); setCustomerPage(1); }} searchable />
                     </DataFilterSection>
                   )}
                   {poTimeFilterEnabled && (

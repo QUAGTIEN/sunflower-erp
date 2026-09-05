@@ -409,6 +409,10 @@
   margin-top: 11px;
 }
 
+.system-location-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .system-location-select {
   position: relative;
   min-width: 0;

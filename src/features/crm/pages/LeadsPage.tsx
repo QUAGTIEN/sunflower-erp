@@ -359,18 +359,26 @@ export const Leads: React.FC<LeadsProps> = ({
   ), [accessibleLeads, customFieldDefinitions]);
 
   const quickFilterOptionsByField = useMemo(() => {
-    const provinceValuesWithData = new Set(
-      accessibleLeads.flatMap(lead => getLeadFilterValues(lead, filterDefinitions)[LEAD_FILTER_IDS.province] || [])
-    );
+    const valuesWithDataByField = new Map<string, Set<string>>([
+      LEAD_FILTER_IDS.province,
+      LEAD_FILTER_IDS.industrialPark
+    ].map(fieldId => [fieldId, new Set(
+      accessibleLeads.flatMap(lead => getLeadFilterValues(lead, filterDefinitions)[fieldId] || [])
+    )]));
 
     return Object.fromEntries(filterDefinitions.map(field => {
       const activeOptions = field.options.filter(option => option.active);
-      if (field.id !== LEAD_FILTER_IDS.province) return [field.id, activeOptions];
+      if (field.id === LEAD_FILTER_IDS.province) {
+        const valuesWithData = valuesWithDataByField.get(field.id) || new Set<string>();
+        return [field.id, activeOptions.filter(option => valuesWithData.has(option.id))];
+      }
+      if (field.id !== LEAD_FILTER_IDS.industrialPark) return [field.id, activeOptions];
 
       const pruneOptionsWithData = (options: typeof activeOptions): typeof activeOptions => options.flatMap(option => {
         const activeChildren = (option.children || []).filter(child => child.active);
         const childrenWithData = pruneOptionsWithData(activeChildren);
-        return provinceValuesWithData.has(option.id) || childrenWithData.length > 0
+        const valuesWithData = valuesWithDataByField.get(field.id) || new Set<string>();
+        return valuesWithData.has(option.id) || childrenWithData.length > 0
           ? [{ ...option, children: childrenWithData }]
           : [];
       });
@@ -428,6 +436,8 @@ export const Leads: React.FC<LeadsProps> = ({
         lead.taxCode,
         lead.address,
         lead.province,
+        lead.ward,
+        lead.industrialPark,
         lead.source,
         lead.expectedProducts,
         lead.note,
@@ -729,7 +739,13 @@ export const Leads: React.FC<LeadsProps> = ({
     if (field.id === LEAD_FILTER_IDS.companySize) {
       updateForm('companySize', ['', 'large', 'medium', 'small'].includes(value) ? value as LeadCompanySize : '');
     } else if (field.id === LEAD_FILTER_IDS.province) {
-      updateForm('province', findLeadFilterParentOption(filterDefinitions, field.id, value)?.label || '');
+      const selectedPath = findLeadFilterOptionPathInOptions(field.options, value);
+      updateForm('province', selectedPath[0]?.label || '');
+      updateForm('ward', selectedPath.find(option => option.kind === 'ward')?.label || '');
+      updateForm('industrialPark', '');
+      setFormFilterValues(previous => ({ ...previous, [LEAD_FILTER_IDS.industrialPark]: [] }));
+    } else if (field.id === LEAD_FILTER_IDS.industrialPark) {
+      updateForm('industrialPark', selectedLabel);
     } else if (field.id === LEAD_FILTER_IDS.source) {
       updateForm('source', selectedLabel);
     }
@@ -822,11 +838,17 @@ export const Leads: React.FC<LeadsProps> = ({
     const provinceFilterValues = selectedProvince?.id === provinceOptionId
       ? selectedProvinceValues
       : [provinceOptionId].filter(Boolean);
+    const industrialParkOptionId = findLeadFilterOptionId(
+      filterDefinitions,
+      LEAD_FILTER_IDS.industrialPark,
+      form.industrialPark
+    );
     const profileFilterValues = {
       ...currentFilterValues,
       ...formFilterValues,
       [LEAD_FILTER_IDS.companySize]: form.companySize ? [form.companySize] : [],
       [LEAD_FILTER_IDS.province]: provinceFilterValues,
+      [LEAD_FILTER_IDS.industrialPark]: [industrialParkOptionId].filter(Boolean),
       [LEAD_FILTER_IDS.source]: [findLeadFilterOptionId(filterDefinitions, LEAD_FILTER_IDS.source, form.source)].filter(Boolean)
     };
     const now = new Date().toISOString();
@@ -998,12 +1020,19 @@ export const Leads: React.FC<LeadsProps> = ({
       ? (checked ? 'Thêm' : 'Bỏ')
       : 'Cập nhật';
     const now = new Date().toISOString();
-    const linkedProfileFields: Partial<Pick<LeadRecord, 'companySize' | 'province' | 'source'>> = {};
+    const linkedProfileFields: Partial<Pick<LeadRecord, 'companySize' | 'province' | 'ward' | 'industrialPark' | 'source'>> = {};
     if (field.id === LEAD_FILTER_IDS.companySize && ['', 'large', 'medium', 'small'].includes(value)) {
       linkedProfileFields.companySize = value as LeadCompanySize;
     }
     if (field.id === LEAD_FILTER_IDS.province) {
-      linkedProfileFields.province = findLeadFilterParentOption(filterDefinitions, field.id, value)?.label || '';
+      const selectedPath = findLeadFilterOptionPathInOptions(field.options, value);
+      linkedProfileFields.province = selectedPath[0]?.label || '';
+      linkedProfileFields.ward = selectedPath.find(option => option.kind === 'ward')?.label || '';
+      linkedProfileFields.industrialPark = '';
+      nextFilterValues[LEAD_FILTER_IDS.industrialPark] = [];
+    }
+    if (field.id === LEAD_FILTER_IDS.industrialPark) {
+      linkedProfileFields.industrialPark = findLeadFilterOption(filterDefinitions, field.id, value)?.label || '';
     }
     if (field.id === LEAD_FILTER_IDS.source) {
       linkedProfileFields.source = field.options.find(item => item.id === value)?.label || '';
@@ -1385,6 +1414,7 @@ export const Leads: React.FC<LeadsProps> = ({
               <span>{t('Mã số thuế')}</span><strong>{selectedLead.taxCode || '—'}</strong>
               <span>{t('Địa chỉ')}</span><strong>{selectedLead.address || '—'}</strong>
               <span>{t('Tỉnh / thành')}</span><strong>{getClassificationLabel(selectedLead, LEAD_FILTER_IDS.province, selectedLead.province || '—')}</strong>
+              <span>{t('Khu công nghiệp')}</span><strong>{selectedLead.industrialPark || '—'}</strong>
               <span>{t('Quy mô')}</span><strong>{getClassificationLabel(selectedLead, LEAD_FILTER_IDS.companySize, COMPANY_SIZE_LABELS[selectedLead.companySize])}</strong>
               <span>{t('Nguồn Lead')}</span><strong>{getClassificationLabel(selectedLead, LEAD_FILTER_IDS.source, selectedLead.source || '—')}</strong>
               <span>{t('Sale phụ trách')}</span><strong>{assignedSale?.displayName || selectedLead.assignedSaleName || 'Chưa phân công'}</strong>
@@ -1424,7 +1454,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
           <section className="lead-panel lead-classification-panel">
             <div className="lead-panel__title"><Tags size={17} /> {t('Phân loại khách hàng')}</div>
-            <p className="lead-panel__hint">5 nhóm thông tin dùng để tìm và lọc Lead ngoài danh sách.</p>
+            <p className="lead-panel__hint">Các nhóm thông tin dùng để tìm và lọc Lead ngoài danh sách.</p>
             <LeadDynamicFields
               lead={selectedLead}
               definitions={filterDefinitions}
@@ -1640,18 +1670,20 @@ export const Leads: React.FC<LeadsProps> = ({
             {visibleFilterDefinitions.map(field => {
               const fieldOptions = quickFilterOptionsByField[field.id] || [];
               const configuredField = getSystemFilterDefinition(systemFilterDefinitions, field.id);
-              const options = field.id === LEAD_FILTER_IDS.province
-                ? fieldOptions.flatMap(province => flattenLeadFilterOptions([province]).map(option => {
+              const options = field.id === LEAD_FILTER_IDS.industrialPark
+                ? fieldOptions.flatMap(province => flattenLeadFilterOptions([province])
+                  .filter(option => option.kind === 'region')
+                  .map(option => {
                   const path = findLeadFilterOptionPathInOptions([province], option.id);
                   return {
                     value: option.id,
                     label: option.label,
                     description: path.slice(0, -1).map(parent => parent.label).join(' · ')
                   };
-                }))
+                  }))
                 : fieldOptions.map(option => ({ value: option.id, label: option.label }));
               return (
-                <DataFilterSection key={field.id} title={configuredField?.name || field.name} selectedCount={(dynamicFilters[field.id] || []).length} description={configuredField?.description || (field.id === LEAD_FILTER_IDS.province ? 'Lọc theo tỉnh/thành, phường/xã hoặc vùng/KCN trực thuộc.' : 'Có thể chọn đồng thời nhiều giá trị.')}>
+                <DataFilterSection key={field.id} title={configuredField?.name || field.name} selectedCount={(dynamicFilters[field.id] || []).length} description={configuredField?.description || (field.id === LEAD_FILTER_IDS.province ? 'Lọc riêng theo tỉnh/thành.' : field.id === LEAD_FILTER_IDS.industrialPark ? 'Lọc theo khu công nghiệp đã cấu hình cho từng tỉnh/thành.' : 'Có thể chọn đồng thời nhiều giá trị.')}>
                   <DataFilterCheckboxGroup
                     options={options}
                     selectedValues={dynamicFilters[field.id] || []}

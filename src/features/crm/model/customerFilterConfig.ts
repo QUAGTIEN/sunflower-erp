@@ -2,6 +2,7 @@ export const CUSTOMER_FILTER_IDS = {
   sale: 'assigned_sale',
   rank: 'customer_rank',
   province: 'province',
+  industrialPark: 'industrial_park',
   poTime: 'po_time',
   product: 'purchased_product'
 } as const;
@@ -32,6 +33,12 @@ export const DEFAULT_CUSTOMER_FILTER_DEFINITIONS: CustomerFilterDefinition[] = [
     id: CUSTOMER_FILTER_IDS.province,
     name: 'Tỉnh/thành',
     description: 'Tỉnh/thành được lấy từ hồ sơ Lead hoặc địa chỉ khách hàng.',
+    active: true
+  },
+  {
+    id: CUSTOMER_FILTER_IDS.industrialPark,
+    name: 'Khu công nghiệp',
+    description: 'Khu công nghiệp được lấy từ hồ sơ khách hàng và quản lý riêng theo tỉnh/thành.',
     active: true
   },
   {

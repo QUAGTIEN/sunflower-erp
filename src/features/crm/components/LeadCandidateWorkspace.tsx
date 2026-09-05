@@ -305,6 +305,8 @@ const matchesSearch = (candidate: LeadCandidateRecord, searchTerm: string, custo
     candidate.taxCode,
     candidate.address,
     candidate.province,
+    candidate.ward,
+    candidate.industrialPark,
     candidate.website,
     candidate.businessSector,
     candidate.expectedProducts,
@@ -342,6 +344,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('lead_candidates', currentUser.role);
   const systemFilterDefinitions = useSystemFilterConfiguration();
   const provinceFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, LEAD_FILTER_IDS.province, 'customer_data');
+  const industrialParkFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, LEAD_FILTER_IDS.industrialPark, 'customer_data');
   const sourceFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, LEAD_FILTER_IDS.source, 'customer_data');
   const contactResultFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, 'contact_result', 'customer_data');
   const potentialFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, 'potential_level', 'customer_data');
@@ -361,6 +364,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [saleFilters, setSaleFilters] = useState<string[]>([]);
   const [sourceFilters, setSourceFilters] = useState<string[]>([]);
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
+  const [industrialParkFilters, setIndustrialParkFilters] = useState<string[]>([]);
   const [contactResultFilters, setContactResultFilters] = useState<LeadCandidateContactResult[]>([]);
   const [potentialFilters, setPotentialFilters] = useState<LeadCandidatePotentialLevel[]>([]);
   const [pinnedOnly, setPinnedOnly] = useState(false);
@@ -432,6 +436,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const provinceOptions = useMemo(() => Array.from(new Set(
     accessibleCandidates.map(candidate => candidate.province.trim()).filter(Boolean)
   )).sort((left, right) => left.localeCompare(right, 'vi-VN')), [accessibleCandidates]);
+  const industrialParkOptions = useMemo(() => Array.from(new Set(
+    accessibleCandidates.map(candidate => candidate.industrialPark.trim()).filter(Boolean)
+  )).sort((left, right) => left.localeCompare(right, 'vi-VN')), [accessibleCandidates]);
 
   const customFilterOptions = useMemo(() => Object.fromEntries(
     customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => [
@@ -448,6 +455,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     const matchesSale = !saleFilterEnabled || saleFilters.length === 0 || saleFilters.includes(candidate.assignedSaleId);
     const matchesSource = !sourceFilterEnabled || sourceFilters.length === 0 || sourceFilters.includes(candidate.source);
     const matchesProvince = !provinceFilterEnabled || provinceFilters.length === 0 || provinceFilters.includes(candidate.province);
+    const matchesIndustrialPark = !industrialParkFilterEnabled || industrialParkFilters.length === 0 || industrialParkFilters.includes(candidate.industrialPark);
     const matchesContactResult = !contactResultFilterEnabled || contactResultFilters.length === 0 || contactResultFilters.includes(candidate.contactResult);
     const matchesPotential = !potentialFilterEnabled || potentialFilters.length === 0 || potentialFilters.includes(candidate.potentialLevel);
     const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active && definition.filterable).every(definition => {
@@ -456,7 +464,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       const tokens = getEntityCustomFieldFilterTokens(definition, candidate.customFieldValues?.[definition.id]);
       return selected.some(value => tokens.includes(value));
     });
-    return matchesSale && matchesSource && matchesProvince && matchesContactResult && matchesPotential && matchesCustomFields && (!pinnedFilterEnabled || !pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm, customFieldDefinitions);
+    return matchesSale && matchesSource && matchesProvince && matchesIndustrialPark && matchesContactResult && matchesPotential && matchesCustomFields && (!pinnedFilterEnabled || !pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm, customFieldDefinitions);
   }).sort((left, right) => {
     if (workspaceView === 'tasks') {
       if (candidateSort === 'company_asc') return left.companyName.localeCompare(right.companyName, 'vi-VN');
@@ -488,12 +496,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
     return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
     });
-  }, [accessibleCandidates, candidateSort, contactResultFilterEnabled, contactResultFilters, customFieldDefinitions, customFieldFilters, pinnedFilterEnabled, pinnedOnly, potentialFilterEnabled, potentialFilters, provinceFilterEnabled, provinceFilters, saleFilterEnabled, saleFilters, searchTerm, sourceFilterEnabled, sourceFilters, taskCandidates, workspaceView]);
+  }, [accessibleCandidates, candidateSort, contactResultFilterEnabled, contactResultFilters, customFieldDefinitions, customFieldFilters, industrialParkFilterEnabled, industrialParkFilters, pinnedFilterEnabled, pinnedOnly, potentialFilterEnabled, potentialFilters, provinceFilterEnabled, provinceFilters, saleFilterEnabled, saleFilters, searchTerm, sourceFilterEnabled, sourceFilters, taskCandidates, workspaceView]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const displayedCandidates = filteredCandidates.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
   const activeFilterCount = (provinceFilterEnabled ? provinceFilters.length : 0)
+    + (industrialParkFilterEnabled ? industrialParkFilters.length : 0)
     + (sourceFilterEnabled ? sourceFilters.length : 0)
     + (contactResultFilterEnabled ? contactResultFilters.length : 0)
     + (potentialFilterEnabled ? potentialFilters.length : 0)
@@ -508,6 +517,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       id: `province-${value}`,
       label: `${configuredFilterName(LEAD_FILTER_IDS.province, 'Tỉnh/thành')}: ${value}`,
       onRemove: () => setProvinceFilters(previous => previous.filter(item => item !== value))
+    })) : []),
+    ...(industrialParkFilterEnabled ? industrialParkFilters.map(value => ({
+      id: `industrial-park-${value}`,
+      label: `${configuredFilterName(LEAD_FILTER_IDS.industrialPark, 'Khu công nghiệp')}: ${value}`,
+      onRemove: () => setIndustrialParkFilters(previous => previous.filter(item => item !== value))
     })) : []),
     ...(sourceFilterEnabled ? sourceFilters.map(value => ({
       id: `source-${value}`,
@@ -1182,6 +1196,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const clearDataFilters = () => {
     setSearchTerm('');
     setProvinceFilters([]);
+    setIndustrialParkFilters([]);
     setSourceFilters([]);
     setContactResultFilters([]);
     setPotentialFilters([]);
@@ -1419,6 +1434,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             options={provinceOptions.map(province => ({ value: province, label: province }))}
             selectedValues={provinceFilters}
             onChange={values => { setProvinceFilters(values); setCurrentPage(1); }}
+            searchable
+          />
+        </DataFilterSection>}
+        {industrialParkFilterEnabled && <DataFilterSection title={configuredFilterName(LEAD_FILTER_IDS.industrialPark, 'Khu công nghiệp')} description={configuredFilterDescription(LEAD_FILTER_IDS.industrialPark, 'Lọc riêng theo khu công nghiệp của doanh nghiệp.')} selectedCount={industrialParkFilters.length}>
+          <DataFilterCheckboxGroup
+            options={industrialParkOptions.map(industrialPark => ({ value: industrialPark, label: industrialPark }))}
+            selectedValues={industrialParkFilters}
+            onChange={values => { setIndustrialParkFilters(values); setCurrentPage(1); }}
             searchable
           />
         </DataFilterSection>}

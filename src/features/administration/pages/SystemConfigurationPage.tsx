@@ -144,7 +144,6 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
   const [systemDraft, setSystemDraft] = useState<SystemFilterDefinition | null>(null);
   const [leadDraft, setLeadDraft] = useState<LeadFilterDefinition | null>(null);
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
-  const [selectedWardId, setSelectedWardId] = useState('');
   const [newOptionName, setNewOptionName] = useState('');
   const [newRegionName, setNewRegionName] = useState('');
   const [showScopeMenu, setShowScopeMenu] = useState(false);
@@ -232,17 +231,13 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     const nextLeadDraft = matchingLeadDefinition
       ? { ...matchingLeadDefinition, options: cloneOptions(matchingLeadDefinition.options) }
       : null;
-    const initialProvince = nextLeadDraft?.id === LEAD_FILTER_IDS.province
-      ? nextLeadDraft.options.find(province => province.active && (province.children || []).some(ward => ward.active && (ward.children || []).some(region => region.active)))
-        || nextLeadDraft.options.find(province => province.active)
+    const initialProvince = nextLeadDraft?.id === LEAD_FILTER_IDS.industrialPark
+      ? nextLeadDraft.options.find(province => province.active && (province.children || []).some(park => park.active))
       : undefined;
-    const initialWard = (initialProvince?.children || []).find(ward => ward.active && (ward.children || []).some(region => region.active))
-      || (initialProvince?.children || []).find(ward => ward.active);
     setSelectedDefinitionId(definition.id);
     setSystemDraft({ ...definition, scopes: [...definition.scopes] });
     setLeadDraft(nextLeadDraft);
     setSelectedProvinceId(initialProvince?.id || '');
-    setSelectedWardId(initialWard?.id || '');
     setNewOptionName('');
     setNewRegionName('');
     setShowScopeMenu(false);
@@ -282,7 +277,6 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     setSystemDraft(newSystemDefinition);
     setLeadDraft(newLeadDefinition);
     setSelectedProvinceId('');
-    setSelectedWardId('');
     setNewOptionName('');
     setNewRegionName('');
     setShowScopeMenu(false);
@@ -333,56 +327,50 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     setSaveError('');
   };
 
-  const activeProvinceOptions = leadDraft?.id === LEAD_FILTER_IDS.province
+  const activeProvinceOptions = leadDraft?.id === LEAD_FILTER_IDS.industrialPark
     ? leadDraft.options.filter(option => option.active)
     : [];
   const selectedProvince = activeProvinceOptions.find(province => province.id === selectedProvinceId)
     || activeProvinceOptions[0];
-  const activeWardOptions = (selectedProvince?.children || []).filter(ward => ward.active);
-  const selectedWard = activeWardOptions.find(ward => ward.id === selectedWardId)
-    || activeWardOptions[0];
-  const activeRegions = (selectedWard?.children || []).filter(region => region.active);
+  const activeRegions = (selectedProvince?.children || []).filter(region => region.active);
 
   const updateRegion = (regionId: string, label: string) => {
-    if (!selectedProvince || !selectedWard) return;
+    if (!selectedProvince) return;
     setLeadDraft(previous => previous ? {
       ...previous,
       options: previous.options.map(province => province.id !== selectedProvince.id ? province : {
         ...province,
-        children: (province.children || []).map(ward => ward.id !== selectedWard.id ? ward : {
-          ...ward,
-          children: (ward.children || []).map(region => region.id === regionId ? { ...region, label } : region)
-        })
+        children: (province.children || []).map(region => region.id === regionId ? { ...region, label } : region)
       })
     } : previous);
   };
 
   const archiveRegion = (regionId: string) => {
-    if (!selectedProvince || !selectedWard) return;
+    if (!selectedProvince) return;
     setLeadDraft(previous => previous ? {
       ...previous,
       options: previous.options.map(province => province.id !== selectedProvince.id ? province : {
         ...province,
-        children: (province.children || []).map(ward => ward.id !== selectedWard.id ? ward : {
-          ...ward,
-          children: (ward.children || []).map(region => region.id === regionId ? { ...region, active: false } : region)
-        })
+        children: (province.children || []).map(region => region.id === regionId ? { ...region, active: false } : region)
       })
     } : previous);
   };
 
   const addRegion = () => {
     const label = newRegionName.trim();
-    if (!label || !selectedProvince || !selectedWard) return;
-    if (activeRegions.some(region => normalizeSearch(region.label) === normalizeSearch(label))) {
-      setSaveError('Vùng/KCN này đã tồn tại tại địa bàn đã chọn.');
+    if (!label || !selectedProvince) {
+      if (!selectedProvince) setSaveError('Vui lòng chọn tỉnh/thành trước khi thêm khu công nghiệp.');
       return;
     }
-    const baseId = `${selectedWard.id}__region_${slugifyLeadFilterId(label) || 'kcn'}`;
+    if (activeRegions.some(region => normalizeSearch(region.label) === normalizeSearch(label))) {
+      setSaveError('Khu công nghiệp này đã tồn tại trong tỉnh/thành đã chọn.');
+      return;
+    }
+    const baseId = `${selectedProvince.id}__industrial_park_${slugifyLeadFilterId(label) || 'kcn'}`;
     const region: LeadFilterOption = {
-      id: createUniqueId(baseId, new Set((selectedWard.children || []).map(item => item.id))),
+      id: createUniqueId(baseId, new Set((selectedProvince.children || []).map(item => item.id))),
       label,
-      color: selectedWard.color,
+      color: selectedProvince.color,
       active: true,
       kind: 'region',
       system: false
@@ -391,10 +379,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
       ...previous,
       options: previous.options.map(province => province.id !== selectedProvince.id ? province : {
         ...province,
-        children: (province.children || []).map(ward => ward.id !== selectedWard.id ? ward : {
-          ...ward,
-          children: [...(ward.children || []), region]
-        })
+        children: [...(province.children || []), region]
       })
     } : previous);
     setNewRegionName('');
@@ -403,14 +388,16 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
 
   const saveSelectedDefinition = async () => {
     if (!systemDraft?.name.trim()) return;
-    const invalidOption = leadDraft?.id !== LEAD_FILTER_IDS.province
+    const isLocationCatalog = leadDraft?.id === LEAD_FILTER_IDS.province
+      || leadDraft?.id === LEAD_FILTER_IDS.industrialPark;
+    const invalidOption = !isLocationCatalog
       && leadDraft?.options.some(option => option.active && !option.label.trim());
-    const hasNoOption = leadDraft?.id !== LEAD_FILTER_IDS.province
+    const hasNoOption = !isLocationCatalog
       && leadDraft?.options.every(option => !option.active);
-    const invalidRegion = leadDraft?.id === LEAD_FILTER_IDS.province
-      && leadDraft.options.some(province => (province.children || []).some(ward => (
-        (ward.children || []).some(region => region.active && !region.label.trim())
-      )));
+    const invalidRegion = leadDraft?.id === LEAD_FILTER_IDS.industrialPark
+      && leadDraft.options.some(province => (
+        (province.children || []).some(region => region.active && !region.label.trim())
+      ));
     if (invalidOption || invalidRegion || hasNoOption) {
       setSaveError(hasNoOption ? 'Tiêu chí mới cần có ít nhất một mục con.' : 'Tên mục con không được để trống.');
       return;
@@ -430,11 +417,14 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     try {
       await dbService.addDocument('system_filter_definitions', savedSystemDefinition);
       if (leadDraft) {
+        const storedLeadDefinition = storedLeadDefinitions.find(item => item.id === leadDraft.id);
         await saveLeadDefinition({
           ...leadDraft,
           name: savedSystemDefinition.name,
           active: savedSystemDefinition.active,
-          options: cloneOptions(leadDraft.options)
+          options: leadDraft.id === LEAD_FILTER_IDS.province
+            ? cloneOptions(storedLeadDefinition?.options || [])
+            : cloneOptions(leadDraft.options)
         });
       }
       const customerDefinition = customerDefinitions.find(item => item.id === savedSystemDefinition.id);
@@ -463,8 +453,8 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
   };
 
   const selectedChildCount = leadDraft
-    ? leadDraft.id === LEAD_FILTER_IDS.province
-      ? leadDraft.options.flatMap(province => province.children || []).flatMap(ward => ward.children || []).filter(region => region.active).length
+    ? leadDraft.id === LEAD_FILTER_IDS.industrialPark
+      ? leadDraft.options.flatMap(province => province.children || []).filter(region => region.active).length
       : leadDraft.options.filter(option => option.active).length
     : 0;
 
@@ -493,14 +483,14 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
             {systemDefinitions.map((definition, index) => {
               const matchingLead = leadDefinitions.find(item => item.id === definition.id);
               const childCount = matchingLead
-                ? definition.id === LEAD_FILTER_IDS.province
-                  ? matchingLead.options.flatMap(province => province.children || []).flatMap(ward => ward.children || []).filter(region => region.active).length
+                ? definition.id === LEAD_FILTER_IDS.industrialPark
+                  ? matchingLead.options.flatMap(province => province.children || []).filter(region => region.active).length
                   : matchingLead.options.filter(option => option.active).length
                 : null;
               return (
                 <button type="button" key={definition.id} className={`${selectedDefinitionId === definition.id ? 'is-selected' : ''} ${!definition.active ? 'is-inactive' : ''}`} onClick={() => selectDefinition(definition)}>
                   <span className="system-filter-list__number">{index + 1}</span>
-                  <div><strong>{definition.name}</strong><span>{childCount === null ? 'Danh sách tự động từ hệ thống' : definition.id === LEAD_FILTER_IDS.province ? `${childCount} Vùng/KCN` : `${childCount} mục con`}</span></div>
+                  <div><strong>{definition.name}</strong><span>{childCount === null ? 'Danh sách tự động từ hệ thống' : definition.id === LEAD_FILTER_IDS.province ? `${childCount} tỉnh/thành` : definition.id === LEAD_FILTER_IDS.industrialPark ? `${childCount} KCN` : `${childCount} mục con`}</span></div>
                   <ChevronDown size={15} />
                 </button>
               );
@@ -520,7 +510,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
                   <label><span>Mô tả hướng dẫn</span><input value={systemDraft.description} onChange={event => setSystemDraft(previous => previous ? { ...previous, description: event.target.value } : previous)} /></label>
                 </div>
 
-                {leadDraft && leadDraft.id !== LEAD_FILTER_IDS.province && (
+                {leadDraft && leadDraft.id !== LEAD_FILTER_IDS.province && leadDraft.id !== LEAD_FILTER_IDS.industrialPark && (
                   <section className="system-child-editor">
                     <div className="system-child-editor__title">
                       <div><h4>Các mục con</h4><p>Chỉnh sửa trực tiếp từng lựa chọn. Mục bị xóa sẽ được lưu trữ để không làm mất dữ liệu cũ.</p></div>
@@ -544,27 +534,33 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
 
                 {leadDraft?.id === LEAD_FILTER_IDS.province && (
                   <section className="system-child-editor system-location-editor">
-                    <div className="system-child-editor__title"><div><h4>Tỉnh/thành – Phường/xã – Vùng/KCN</h4><p>Tỉnh/thành và phường/xã là danh mục cố định. Admin chỉ bổ sung Vùng/KCN vào địa bàn phù hợp.</p></div><span className="system-fixed-badge"><LockKeyhole size={12} /> Địa giới cố định</span></div>
-                    <div className="system-location-grid">
-                      <label><span>Tỉnh/Thành phố</span><SearchableLocationSelect value={selectedProvince?.id || ''} placeholder="Chọn tỉnh/thành" searchPlaceholder="Tìm nhanh tỉnh/thành..." options={activeProvinceOptions.map(province => ({ id: province.id, label: province.label, meta: `${(province.children || []).flatMap(ward => ward.children || []).filter(region => region.active).length} KCN` }))} onChange={provinceId => { const province = activeProvinceOptions.find(item => item.id === provinceId); setSelectedProvinceId(provinceId); setSelectedWardId((province?.children || []).find(ward => ward.active)?.id || ''); setNewRegionName(''); }} /></label>
-                      <label><span>Phường/Xã</span><SearchableLocationSelect key={selectedProvince?.id || 'no-province'} value={selectedWard?.id || ''} placeholder="Chọn phường/xã" searchPlaceholder="Tìm nhanh phường/xã..." options={activeWardOptions.map(ward => ({ id: ward.id, label: ward.label, meta: `${(ward.children || []).filter(region => region.active).length} KCN` }))} onChange={wardId => { setSelectedWardId(wardId); setNewRegionName(''); }} /></label>
+                    <div className="system-child-editor__title"><div><h4>Danh mục tỉnh/thành</h4><p>Danh mục địa giới được hệ thống đồng bộ cố định và sử dụng độc lập với Khu công nghiệp.</p></div><span className="system-fixed-badge"><LockKeyhole size={12} /> Địa giới cố định</span></div>
+                    <div className="system-child-empty">Hệ thống đang sử dụng {leadDraft.options.filter(option => option.active).length} tỉnh/thành.</div>
+                  </section>
+                )}
+
+                {leadDraft?.id === LEAD_FILTER_IDS.industrialPark && (
+                  <section className="system-child-editor system-location-editor">
+                    <div className="system-child-editor__title"><div><h4>Danh mục khu công nghiệp theo tỉnh/thành</h4><p>Chọn tỉnh/thành trước, sau đó thêm hoặc chỉnh sửa các KCN thuộc địa bàn đó.</p></div></div>
+                    <div className="system-location-grid system-location-grid--single">
+                      <label><span>Tỉnh/Thành phố *</span><SearchableLocationSelect value={selectedProvince?.id || ''} placeholder="Chọn tỉnh/thành trước" searchPlaceholder="Tìm nhanh tỉnh/thành..." options={activeProvinceOptions.map(province => ({ id: province.id, label: province.label, meta: `${(province.children || []).filter(region => region.active).length} KCN` }))} onChange={provinceId => { setSelectedProvinceId(provinceId); setNewRegionName(''); setSaveError(''); }} /></label>
                     </div>
-                    {selectedProvince && selectedWard && (
+                    {selectedProvince && (
                       <div className="system-region-workspace">
-                        <div className="system-region-workspace__heading"><strong>Vùng/KCN tại {selectedWard.label}, {selectedProvince.label}</strong><span>{activeRegions.length} mục</span></div>
+                        <div className="system-region-workspace__heading"><strong>Khu công nghiệp tại {selectedProvince.label}</strong><span>{activeRegions.length} KCN</span></div>
                         <div className="system-child-list">
                           {activeRegions.map((region, index) => (
                             <div className="system-child-row" key={region.id}>
                               <span>{index + 1}</span>
                               <input value={region.label} onChange={event => updateRegion(region.id, event.target.value)} />
-                              <button type="button" title="Ngừng sử dụng Vùng/KCN này" onClick={() => archiveRegion(region.id)}><Trash2 size={14} /></button>
+                              <button type="button" title="Ngừng sử dụng KCN này" onClick={() => archiveRegion(region.id)}><Trash2 size={14} /></button>
                             </div>
                           ))}
-                          {activeRegions.length === 0 && <div className="system-child-empty">Địa bàn này chưa có Vùng/KCN.</div>}
+                          {activeRegions.length === 0 && <div className="system-child-empty">Tỉnh/thành này chưa có KCN được cấu hình.</div>}
                         </div>
                         <div className="system-child-add">
-                          <input value={newRegionName} onChange={event => setNewRegionName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addRegion(); } }} placeholder="Nhập tên Vùng/KCN cần bổ sung..." />
-                          <button type="button" className="btn btn-outline" onClick={addRegion}><Plus size={14} /> Thêm Vùng/KCN</button>
+                          <input value={newRegionName} onChange={event => setNewRegionName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addRegion(); } }} placeholder="Nhập tên khu công nghiệp..." />
+                          <button type="button" className="btn btn-outline" onClick={addRegion}><Plus size={14} /> Thêm KCN</button>
                         </div>
                       </div>
                     )}

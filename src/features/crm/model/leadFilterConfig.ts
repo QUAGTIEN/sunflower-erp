@@ -35,9 +35,17 @@ const SYSTEM_PROVINCE_OPTIONS: LeadFilterOption[] = VIETNAM_ADMINISTRATIVE_UNITS
   }))
 }));
 
+const SYSTEM_INDUSTRIAL_PARK_OPTIONS: LeadFilterOption[] = VIETNAM_ADMINISTRATIVE_UNITS.map((province, provinceIndex) => ({
+  ...option(province.id, province.label, provinceIndex),
+  kind: 'province',
+  system: true,
+  children: []
+}));
+
 export const LEAD_FILTER_IDS = {
   companySize: 'company_size',
   province: 'province',
+  industrialPark: 'industrial_park',
   productNeed: 'product_need',
   source: 'lead_source',
   progress: 'lead_progress'
@@ -62,7 +70,7 @@ export const DEFAULT_LEAD_FILTER_DEFINITIONS: LeadFilterDefinition[] = [
   },
   {
     id: LEAD_FILTER_IDS.province,
-    name: 'Tỉnh thành',
+    name: 'Tỉnh/thành',
     group: 'Phân loại khách hàng tiềm năng',
     type: 'single_select',
     active: true,
@@ -71,6 +79,18 @@ export const DEFAULT_LEAD_FILTER_DEFINITIONS: LeadFilterDefinition[] = [
     saleEditable: true,
     order: 40,
     options: SYSTEM_PROVINCE_OPTIONS
+  },
+  {
+    id: LEAD_FILTER_IDS.industrialPark,
+    name: 'Khu công nghiệp',
+    group: 'Phân loại khách hàng tiềm năng',
+    type: 'single_select',
+    active: true,
+    showInQuickFilter: true,
+    reportable: true,
+    saleEditable: true,
+    order: 45,
+    options: SYSTEM_INDUSTRIAL_PARK_OPTIONS
   },
   {
     id: LEAD_FILTER_IDS.productNeed,
@@ -240,9 +260,11 @@ export const getLeadFilterValues = (
   const resolvedProvincePath = deepestProvinceValue
     ? findLeadFilterOptionPath(definitions, LEAD_FILTER_IDS.province, deepestProvinceValue)
     : [];
-  const provinceValues = resolvedProvincePath.length > 0
-    ? resolvedProvincePath.map(item => item.id)
-    : rawProvinceValues;
+  const provinceValues = [resolvedProvincePath[0]?.id
+    || findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)]
+    .filter(Boolean);
+  const industrialParkValues = existingValues[LEAD_FILTER_IDS.industrialPark]
+    || [findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.industrialPark, lead.industrialPark)].filter(Boolean);
   const productNeedValues = existingValues[LEAD_FILTER_IDS.productNeed]
     || existingValues.product_interest
     || [];
@@ -253,6 +275,7 @@ export const getLeadFilterValues = (
     ...existingValues,
     [LEAD_FILTER_IDS.companySize]: companySizeValues,
     [LEAD_FILTER_IDS.province]: provinceValues,
+    [LEAD_FILTER_IDS.industrialPark]: industrialParkValues,
     [LEAD_FILTER_IDS.productNeed]: productNeedValues,
     [LEAD_FILTER_IDS.source]: sourceValues,
     [LEAD_FILTER_IDS.progress]: getLegacyProgressValues(lead.stage, existingValues)
@@ -264,7 +287,17 @@ export const mergeLeadFilterDefinitions = (stored: LeadFilterDefinition[] = []):
   const defaultIds = new Set(DEFAULT_LEAD_FILTER_DEFINITIONS.map(field => field.id));
   const defaultDefinitions = DEFAULT_LEAD_FILTER_DEFINITIONS.map(defaultField => {
     const savedField = storedById.get(defaultField.id);
-    if (!savedField) return defaultField;
+    if (!savedField) {
+      return defaultField.id === LEAD_FILTER_IDS.industrialPark
+        ? {
+          ...defaultField,
+          options: mergeIndustrialParkFilterOptions(
+            [],
+            storedById.get(LEAD_FILTER_IDS.province)?.options || []
+          )
+        }
+        : defaultField;
+    }
     return {
       ...defaultField,
       ...savedField,
@@ -272,7 +305,12 @@ export const mergeLeadFilterDefinitions = (stored: LeadFilterDefinition[] = []):
       showInQuickFilter: true,
       options: defaultField.id === LEAD_FILTER_IDS.province
         ? mergeProvinceFilterOptions(Array.isArray(savedField.options) ? savedField.options : [])
-        : Array.isArray(savedField.options) ? savedField.options : defaultField.options
+        : defaultField.id === LEAD_FILTER_IDS.industrialPark
+          ? mergeIndustrialParkFilterOptions(
+            Array.isArray(savedField.options) ? savedField.options : [],
+            storedById.get(LEAD_FILTER_IDS.province)?.options || []
+          )
+          : Array.isArray(savedField.options) ? savedField.options : defaultField.options
     };
   });
   const customDefinitions = stored.filter(field => !defaultIds.has(field.id)).map(field => ({
@@ -312,26 +350,13 @@ const mergeProvinceFilterOptions = (storedOptions: LeadFilterOption[]): LeadFilt
         kind: 'ward' as const,
         system: true,
         active: true,
-        children: (storedWard.children || []).map(region => ({
-          ...region,
-          kind: 'region' as const,
-          system: false
-        }))
+        children: []
       };
     });
 
     const unmatchedStoredWards = storedChildren
       .filter(child => child.kind === 'ward' && !matchedStoredWardIds.has(child.id))
-      .map(ward => ({ ...ward, kind: 'ward' as const }));
-    const legacyRegions = storedChildren
-      .filter(child => child.kind !== 'ward')
-      .map(region => ({ ...region, kind: 'region' as const, system: false }));
-    const legacyWard = legacyRegions.length > 0 ? [{
-      ...option(`${systemProvince.id}__legacy_ward`, 'Chưa xác định phường/xã'),
-      kind: 'ward' as const,
-      system: false,
-      children: legacyRegions
-    }] : [];
+      .map(ward => ({ ...ward, kind: 'ward' as const, children: [] }));
 
     return {
       ...systemProvince,
@@ -341,7 +366,7 @@ const mergeProvinceFilterOptions = (storedOptions: LeadFilterOption[]): LeadFilt
       kind: 'province' as const,
       system: true,
       active: true,
-      children: [...legacyWard, ...unmatchedStoredWards, ...mergedSystemWards]
+      children: [...unmatchedStoredWards, ...mergedSystemWards]
     };
   });
 
@@ -351,18 +376,67 @@ const mergeProvinceFilterOptions = (storedOptions: LeadFilterOption[]): LeadFilt
   return [...mergedSystemProvinces, ...unmatchedStoredProvinces];
 };
 
+const mergeIndustrialParkFilterOptions = (
+  storedOptions: LeadFilterOption[],
+  legacyProvinceOptions: LeadFilterOption[]
+): LeadFilterOption[] => SYSTEM_INDUSTRIAL_PARK_OPTIONS.map(systemProvince => {
+  const storedProvince = storedOptions.find(candidate => (
+    candidate.id === systemProvince.id
+    || slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemProvince.label)
+  ));
+  const legacyProvince = legacyProvinceOptions.find(candidate => (
+    candidate.id === systemProvince.id
+    || slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemProvince.label)
+  ));
+  const storedParks = (storedProvince?.children || []).flatMap(child => (
+    child.kind === 'ward' ? child.children || [] : [child]
+  ));
+  const legacyParks = (legacyProvince?.children || []).flatMap(child => (
+    child.kind === 'ward' ? child.children || [] : child.kind === 'region' ? [child] : []
+  ));
+  const parksByLabel = new Map<string, LeadFilterOption>();
+  [...legacyParks, ...storedParks].forEach(park => {
+    const normalizedLabel = slugifyLeadFilterId(park.label);
+    if (!normalizedLabel) return;
+    parksByLabel.set(normalizedLabel, {
+      ...park,
+      kind: 'region',
+      system: false
+    });
+  });
+  return {
+    ...systemProvince,
+    ...storedProvince,
+    id: systemProvince.id,
+    label: systemProvince.label,
+    kind: 'province',
+    system: true,
+    active: true,
+    children: Array.from(parksByLabel.values())
+  };
+});
+
 export const compactLeadFilterDefinitionForStorage = (
   definition: LeadFilterDefinition
 ): LeadFilterDefinition => {
-  if (definition.id !== LEAD_FILTER_IDS.province) return definition;
-  const configuredOptions = definition.options.flatMap(province => {
-    const configuredWards = (province.children || []).flatMap(ward => {
-      const regions = (ward.children || []).filter(region => region.kind === 'region');
-      if (regions.length === 0) return [];
-      return [{ ...ward, children: regions }];
+  if (definition.id === LEAD_FILTER_IDS.province) {
+    const configuredOptions = definition.options.flatMap(province => {
+      const configuredWards = (province.children || []).flatMap(ward => {
+        const regions = (ward.children || []).filter(region => region.kind === 'region');
+        return regions.length > 0 ? [{ ...ward, children: regions }] : [];
+      });
+      const directRegions = (province.children || []).filter(child => child.kind === 'region');
+      const children = [...directRegions, ...configuredWards];
+      return children.length > 0 ? [{ ...province, children }] : [];
     });
-    if (configuredWards.length === 0) return [];
-    return [{ ...province, children: configuredWards }];
-  });
-  return { ...definition, options: configuredOptions };
+    return { ...definition, options: configuredOptions };
+  }
+  if (definition.id !== LEAD_FILTER_IDS.industrialPark) return definition;
+  return {
+    ...definition,
+    options: definition.options.flatMap(province => {
+      const configuredParks = (province.children || []).filter(park => park.kind === 'region');
+      return configuredParks.length > 0 ? [{ ...province, children: configuredParks }] : [];
+    })
+  };
 };

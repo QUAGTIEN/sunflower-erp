@@ -172,8 +172,6 @@ export const LeadDynamicFields: React.FC<{
           const selectedProvince = activeOptions.find(option => fieldValues.includes(option.id));
           const activeWards = (selectedProvince?.children || []).filter(ward => ward.active);
           const selectedWard = activeWards.find(ward => fieldValues.includes(ward.id));
-          const activeRegions = (selectedWard?.children || []).filter(region => region.active);
-          const selectedRegion = activeRegions.find(region => fieldValues.includes(region.id));
 
           return (
             <div key={field.id} className="lead-compact-filter-row lead-compact-filter-row--province">
@@ -193,15 +191,29 @@ export const LeadDynamicFields: React.FC<{
                     {activeWards.map(ward => <option key={ward.id} value={ward.id}>{ward.label}</option>)}
                   </select>
                 </label>
-                <label>
-                  <span>Vùng/KCN</span>
-                  <select value={selectedRegion?.id || ''} disabled={disabled || !selectedWard || activeRegions.length === 0} onChange={event => onChange(field, event.target.value || selectedWard?.id || '')}>
-                    <option value="">{!selectedWard ? 'Chọn phường/xã trước' : activeRegions.length > 0 ? 'Chọn vùng/KCN' : 'Chưa có vùng/KCN'}</option>
-                    {activeRegions.map(region => <option key={region.id} value={region.id}>{region.label}</option>)}
-                  </select>
-                </label>
               </div>
             </div>
+          );
+        }
+
+        if (field.id === LEAD_FILTER_IDS.industrialPark) {
+          const provinceId = values[LEAD_FILTER_IDS.province]?.[0] || '';
+          const selectedProvince = activeOptions.find(option => option.id === provinceId);
+          const activeIndustrialParks = (selectedProvince?.children || []).filter(park => park.active);
+          const selectedIndustrialPark = activeIndustrialParks.find(park => fieldValues.includes(park.id));
+
+          return (
+            <label key={field.id} className="lead-compact-filter-row">
+              <span>{field.name}</span>
+              <select
+                value={selectedIndustrialPark?.id || ''}
+                disabled={disabled || !selectedProvince || activeIndustrialParks.length === 0}
+                onChange={event => onChange(field, event.target.value)}
+              >
+                <option value="">{!selectedProvince ? 'Chọn tỉnh/thành trước' : activeIndustrialParks.length > 0 ? 'Chọn khu công nghiệp' : 'Chưa cấu hình KCN cho tỉnh/thành này'}</option>
+                {activeIndustrialParks.map(park => <option key={park.id} value={park.id}>{park.label}</option>)}
+              </select>
+            </label>
           );
         }
 

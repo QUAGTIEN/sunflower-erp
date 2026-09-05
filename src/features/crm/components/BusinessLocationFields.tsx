@@ -35,15 +35,17 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
     setStoredDefinitions(data as LeadFilterDefinition[]);
   }), []);
 
-  const provinceOptions = useMemo(() => (
-    mergeLeadFilterDefinitions(storedDefinitions)
-      .find(definition => definition.id === LEAD_FILTER_IDS.province)
-      ?.options.filter(option => option.active !== false) || []
-  ), [storedDefinitions]);
+  const definitions = useMemo(() => mergeLeadFilterDefinitions(storedDefinitions), [storedDefinitions]);
+  const provinceOptions = definitions
+    .find(definition => definition.id === LEAD_FILTER_IDS.province)
+    ?.options.filter(option => option.active !== false) || [];
+  const industrialParkProvinceOptions = definitions
+    .find(definition => definition.id === LEAD_FILTER_IDS.industrialPark)
+    ?.options.filter(option => option.active !== false) || [];
   const selectedProvince = provinceOptions.find(option => option.label === province);
   const wardOptions = activeChildren(selectedProvince).filter(option => option.kind === 'ward');
-  const selectedWard = wardOptions.find(option => option.label === ward);
-  const industrialParkOptions = activeChildren(selectedWard).filter(option => option.kind === 'region');
+  const selectedIndustrialParkProvince = industrialParkProvinceOptions.find(option => option.label === province);
+  const industrialParkOptions = activeChildren(selectedIndustrialParkProvince).filter(option => option.kind === 'region');
 
   return (
     <div className={`business-location-fields ${className}`.trim()}>
@@ -72,10 +74,10 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
         <span>{label('industrialPark', 'Khu công nghiệp')}</span>
         <select
           value={industrialPark}
-          disabled={!selectedWard || industrialParkOptions.length === 0}
+          disabled={!selectedProvince || industrialParkOptions.length === 0}
           onChange={event => onChange({ province, ward, industrialPark: event.target.value })}
         >
-          <option value="">{!selectedWard ? 'Chọn phường/xã trước' : industrialParkOptions.length > 0 ? 'Chọn KCN' : 'Chưa cấu hình KCN'}</option>
+          <option value="">{!selectedProvince ? 'Chọn tỉnh/thành trước' : industrialParkOptions.length > 0 ? 'Chọn KCN' : 'Chưa cấu hình KCN cho tỉnh/thành này'}</option>
           {industrialParkOptions.map(option => <option key={option.id} value={option.label}>{option.label}</option>)}
         </select>
       </label>
