@@ -2591,7 +2591,9 @@ export const Crm: React.FC<CrmProps> = ({
                   <>
                     <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
                     <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
-                    <button type="button" className="btn btn-outline" onClick={() => setShowColumnCustomizer(true)}>{t('Tùy chỉnh cột')}</button>
+                    <button type="button" className="lead-candidate-column-button" aria-label={t('Tùy chỉnh cột')} title={t('Tùy chỉnh cột')} onClick={() => setShowColumnCustomizer(true)}>
+                      <Settings2 size={16} />
+                    </button>
                     {(searchTerm || activeFilterCount > 0) && (
                       <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
                     )}
