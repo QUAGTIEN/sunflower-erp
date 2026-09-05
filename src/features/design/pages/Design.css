@@ -204,6 +204,32 @@
   white-space: nowrap;
 }
 
+/* The list uses a lightweight text treatment for progress so the status is
+   easy to scan without adding another visual pill to every row. */
+.design-progress-text {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.design-request-view .design-request-table table {
+  table-layout: auto;
+  min-width: 1180px;
+}
+
+.design-request-view .design-request-table th,
+.design-request-view .design-request-table td {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.design-request-view .design-request-table td:last-child {
+  white-space: nowrap !important;
+}
+
 .design-overdue-text {
   color: #c1150c;
   font-weight: 700;

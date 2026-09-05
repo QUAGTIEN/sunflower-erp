@@ -563,7 +563,7 @@ export const Design: React.FC<DesignProps> = ({
                     </td>
                     <td>{designer?.displayName || t('Chưa phân công')}</td>
                     <td>
-                      <span className="design-work-badge" style={{ color: status.color, background: status.background, borderColor: status.color }}>
+                      <span className="design-progress-text" style={{ color: status.color }}>
                         {t(status.label)}
                       </span>
                     </td>
