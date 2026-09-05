@@ -413,6 +413,22 @@ body {
   transition: transform var(--transition-normal), width var(--transition-normal), border-color var(--transition-normal);
 }
 
+.app-sidebar::after {
+  position: absolute;
+  right: 0;
+  bottom: 49px;
+  left: 0;
+  height: 220px;
+  z-index: 0;
+  background-image: linear-gradient(to bottom, transparent 0%, rgb(23 37 84 / 18%) 34%, rgb(23 37 84 / 2%) 100%), url('./assets/sidebar-machinery-watermark.png');
+  background-position: center bottom;
+  background-size: cover;
+  background-repeat: no-repeat;
+  content: '';
+  opacity: 0.13;
+  pointer-events: none;
+}
+
 .sidebar-logo {
   width: var(--sidebar-width);
   height: 100%;
@@ -443,6 +459,8 @@ body {
 }
 
 .sidebar-menu {
+  position: relative;
+  z-index: 1;
   flex-grow: 1;
   min-height: 0;
   padding: 7px 8px;
@@ -551,6 +569,8 @@ body {
 }
 
 .sidebar-footer {
+  position: relative;
+  z-index: 2;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -558,6 +578,12 @@ body {
   padding: 7px 8px 8px;
   border-top: 1px solid #243b69;
   background-color: #172554;
+}
+
+@media (max-height: 720px) {
+  .app-sidebar::after {
+    display: none;
+  }
 }
 
 .sidebar-logout-btn {
