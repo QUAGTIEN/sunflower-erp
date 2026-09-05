@@ -89,23 +89,52 @@ test('default headers keep original translations and form controls are unchanged
   assert.ok(form.includes('Hồ sơ cũ'));
 });
 
+test('removed optional system fields disappear from their complete form control', () => {
+  const fields = model.resolveSystemFields('leads', {});
+  const configured = fields.map(field => field.key === 'website' ? { ...field, visible: false, removed: true } : field);
+  const labelUi = loader({ '@/hooks/useSystemFieldConfiguration': { useSystemFieldConfiguration: () => ({ fields: configured }) } })('src/components/ConfiguredSystemFields.tsx');
+  const form = renderToStaticMarkup(e(labelUi.SystemFieldSurface, { table: 'leads' },
+    e('div', { className: 'form-group' }, e('label', { 'data-system-label': 'website' }, 'Website'), e('input', { defaultValue: 'https://deleted.example' })),
+    e('div', { className: 'form-group' }, e('label', { 'data-system-label': 'companyName' }, 'Doanh nghiệp *'), e('input', { defaultValue: 'Sunflower' }))
+  ));
+  assert.ok(!form.includes('deleted.example'));
+  assert.ok(form.includes('Sunflower'));
+});
+
 class ApiError extends Error { constructor(status, message, code) { super(message); this.status = status; this.code = code; } }
 function backend(seed = {}) {
   const store = new Map(Object.entries(structuredClone(seed)));
   let serial = 0;
-  const snapshot = ref => ({ id: ref.id, exists: store.has(ref.path), data: () => structuredClone(store.get(ref.path)) });
+  const snapshot = ref => ({ id: ref.id, ref, exists: store.has(ref.path), data: () => structuredClone(store.get(ref.path)) });
+  const snapshots = name => [...store.keys()].filter(key => key.startsWith(`${name}/`)).map(key => snapshot({ id: key.split('/')[1], path: key }));
   const collection = name => ({ name,
     doc: id => ({ id: id || `auto${++serial}`, path: `${name}/${id || `auto${serial}`}` }),
-    where: (field, operator, value) => ({ name, field, operator, value })
+    where: (field, operator, value) => ({ name, field, operator, value }),
+    get: async () => ({ docs: snapshots(name) })
   });
   const firestore = { collection, runTransaction: async callback => {
     const pending = [];
     const result = await callback({
-      get: async ref => ref.path ? snapshot(ref) : { docs: [...store.keys()].filter(key => key.startsWith(`${ref.name}/`)).map(key => snapshot({ id: key.split('/')[1], path: key })).filter(doc => !ref.field || doc.data()[ref.field] === ref.value) },
+      get: async ref => ref.path ? snapshot(ref) : { docs: snapshots(ref.name).filter(doc => !ref.field || doc.data()[ref.field] === ref.value) },
       set: (ref, data) => pending.push(() => store.set(ref.path, structuredClone(data))),
       update: (ref, data) => pending.push(() => store.set(ref.path, { ...store.get(ref.path), ...structuredClone(data) }))
     });
     pending.forEach(write => write()); return result;
+  }, bulkWriter: () => {
+    const pending = [];
+    return {
+      update: (ref, updates) => pending.push(() => {
+        const data = structuredClone(store.get(ref.path));
+        for (const path of Object.keys(updates)) {
+          const parts = path.split('.');
+          const last = parts.pop();
+          const parent = parts.reduce((value, part) => value?.[part], data);
+          if (parent && last) delete parent[last];
+        }
+        store.set(ref.path, data);
+      }),
+      close: async () => pending.forEach(write => write())
+    };
   } };
   const load = loader({ './firebaseAdmin.js': { getFirebaseAdminServices: () => ({ firestore }) }, './adminUsers.js': { AdminApiError: ApiError } });
   const manage = load('server/fieldConfiguration.ts').manageFieldConfiguration;
@@ -151,6 +180,28 @@ test('inline fields retain their form section while legacy fields remain additio
   const { manage, store } = backend();
   await manage({ action: 'save', table: 'leads', definition: companyField, expectedUpdatedAt: '' });
   assert.equal(store.get('entity_field_definitions/custom_competitor').section, 'company');
+});
+
+test('permanent custom-field deletion removes values from every record', async () => {
+  const { manage, store } = backend({
+    'entity_field_definitions/custom_test': definition(),
+    'leads/one': { customFieldValues: { custom_test: 'Dữ liệu sẽ mất', keep: 'Giữ lại' } },
+    'leads/two': { customFieldValues: { custom_test: 10 } }
+  });
+  await manage(mutation('purge'));
+  assert.equal(store.get('entity_field_definitions/custom_test').removed, true);
+  assert.equal(store.get('leads/one').customFieldValues.custom_test, undefined);
+  assert.equal(store.get('leads/one').customFieldValues.keep, 'Giữ lại');
+  assert.equal(store.get('leads/two').customFieldValues.custom_test, undefined);
+});
+
+test('optional system fields can be purged but protected fields cannot', async () => {
+  const { manage, store } = backend({ 'leads/one': { companyName: 'Bắt buộc', website: 'https://example.com' } });
+  await manage({ action: 'purge_system', table: 'leads', key: 'website', expectedUpdatedAt: '' });
+  assert.equal(store.get('leads/one').website, undefined);
+  assert.equal(store.get('entity_system_field_overrides/leads').fields.website.removed, true);
+  await assert.rejects(manage({ action: 'purge_system', table: 'leads', key: 'companyName', expectedUpdatedAt: store.get('entity_system_field_overrides/leads').updatedAt }), /Không thể xóa/);
+  assert.equal(store.get('leads/one').companyName, 'Bắt buộc');
 });
 
 test('retired select options remain readable after configuration update', async () => {

@@ -37,7 +37,7 @@ export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> =
     input('companyName', 'Doanh nghiệp', ['Tên doanh nghiệp'], true),
     linked('province', 'Tỉnh/thành', ['Tỉnh / thành']),
     input('contact', 'Thông tin liên hệ', ['Liên hệ']),
-    linked('assignedSaleId', 'Sale phụ trách', ['Người phụ trách']),
+    { ...linked('assignedSaleId', 'Sale phụ trách', ['Người phụ trách']), protected: true },
     computed('processing', 'Sale đang xử lý'),
     linked('contactResult', 'Trạng thái liên hệ', ['Trạng thái']),
     linked('potentialLevel', 'Mức độ tiềm năng'),
@@ -53,7 +53,7 @@ export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> =
     linked('source', 'Nguồn / khu vực'),
     input('potentialValue', 'Giá trị tiềm năng', ['Giá trị tiềm năng (đ)']),
     linked('assignedSaleId', 'Sale phụ trách'),
-    linked('nextFollowUpAt', 'Chăm sóc tiếp', ['Lịch chăm sóc tiếp theo']), ...commonFormFields,
+    linked('nextFollowUpAt', 'Chăm sóc tiếp', ['Lịch chăm sóc tiếp theo']), ...commonFormFields.map(field => field.key === 'taxCode' ? { ...field, protected: true } : field),
     { ...linked('discoveredById', 'Sale tìm được Lead'), formOnly: true },
     { ...linked('stage', 'Giai đoạn xử lý'), formOnly: true }
   ],
@@ -85,6 +85,7 @@ export interface SystemFieldOverride {
   label: string;
   description: string;
   visible: boolean;
+  removed: boolean;
   order: number;
 }
 export type SystemFieldOverrides = Record<string, SystemFieldOverride>;
@@ -98,7 +99,8 @@ export function resolveSystemFields(table: EntityFieldTable, raw: unknown): Syst
       key: field.key,
       label: typeof item.label === 'string' && item.label.trim() ? item.label.trim().slice(0, 100) : field.label,
       description: typeof item.description === 'string' ? item.description.trim().slice(0, 500) : '',
-      visible: !field.formOnly && (field.protected || item.visible !== false),
+      visible: item.removed === true ? false : !field.formOnly && (field.protected || item.visible !== false),
+      removed: item.removed === true && !field.protected,
       order: typeof item.order === 'number' && Number.isFinite(item.order) ? Math.max(0, item.order) : index * 10
     };
   });
@@ -113,10 +115,11 @@ export function validateSystemFieldOverrides(table: EntityFieldTable, raw: unkno
     const spec = SYSTEM_FIELD_CATALOG[table].find(field => field.key === key);
     if (!spec || !value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Trường hệ thống không hợp lệ.');
     const item = value as Record<string, unknown>;
-    if (Object.keys(item).some(property => !['key', 'label', 'description', 'visible', 'order'].includes(property))) throw new Error('Không được thay đổi cấu trúc trường hệ thống.');
+    if (Object.keys(item).some(property => !['key', 'label', 'description', 'visible', 'removed', 'order'].includes(property))) throw new Error('Không được thay đổi cấu trúc trường hệ thống.');
     if (typeof item.label !== 'string' || !item.label.trim() || item.label.length > 100) throw new Error('Tên trường cần từ 1 đến 100 ký tự.');
     if (typeof item.description !== 'string' || item.description.length > 500) throw new Error('Mô tả tối đa 500 ký tự.');
-    if (typeof item.visible !== 'boolean' || (spec.protected && !item.visible)) throw new Error('Không thể ẩn trường nhận diện hồ sơ.');
+    if (typeof item.visible !== 'boolean' || (spec.protected && !spec.formOnly && !item.visible)) throw new Error('Không thể ẩn trường nhận diện hồ sơ.');
+    if (typeof item.removed !== 'boolean' || (spec.protected && item.removed)) throw new Error('Không thể xóa trường bắt buộc hoặc trường nhận diện hồ sơ.');
     if (typeof item.order !== 'number' || !Number.isFinite(item.order) || item.order < 0) throw new Error('Thứ tự không hợp lệ.');
   }
   const result = resolveSystemFields(table, source);

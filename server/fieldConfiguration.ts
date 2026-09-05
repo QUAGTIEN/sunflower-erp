@@ -1,7 +1,8 @@
 import { AdminApiError, type requireAdmin } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
+import { FieldValue } from 'firebase-admin/firestore';
 import { ENTITY_FIELD_TABLE_LABELS, ENTITY_FIELD_TYPE_LABELS, normalizeEntityFieldDefinition, isEntityCustomFieldValueEmpty, type EntityFieldTable } from '../src/features/crm/model/entityFieldConfig.js';
-import { SYSTEM_FIELD_CATALOG, validateSystemFieldOverrides } from '../src/features/crm/model/systemFieldConfig.js';
+import { SYSTEM_FIELD_CATALOG, resolveSystemFields, validateSystemFieldOverrides } from '../src/features/crm/model/systemFieldConfig.js';
 
 type Caller = Awaited<ReturnType<typeof requireAdmin>>;
 const fail = (message: string): never => { throw new AdminApiError(400, message, 'fields/invalid'); };
@@ -21,6 +22,18 @@ export async function manageFieldConfiguration(caller: Caller, body: Record<stri
     targetType: 'field_configuration', targetId, targetLabel: label, createdAt: now, occurredAt: now, sessionId: 'admin-api'
   });
 
+  const purgeRecordField = async (fieldKey: string, custom: boolean) => {
+    const records = await firestore.collection(table).get();
+    const writer = firestore.bulkWriter();
+    for (const record of records.docs) {
+      const data = record.data();
+      if (custom ? Object.hasOwn(data.customFieldValues || {}, fieldKey) : Object.hasOwn(data, fieldKey)) {
+        writer.update(record.ref, { [custom ? `customFieldValues.${fieldKey}` : fieldKey]: FieldValue.delete() });
+      }
+    }
+    await writer.close();
+  };
+
   if (action === 'system') {
     let fields;
     try { fields = validateSystemFieldOverrides(table, body.fields); }
@@ -38,10 +51,29 @@ export async function manageFieldConfiguration(caller: Caller, body: Record<stri
     return { success: true };
   }
 
+  if (action === 'purge_system') {
+    const key = String(body.key || '');
+    const spec = SYSTEM_FIELD_CATALOG[table].find(field => field.key === key);
+    if (!spec) return fail('Không thể xóa trường không tồn tại.');
+    if (spec.protected) return fail('Không thể xóa trường bắt buộc hoặc trường nhận diện hồ sơ.');
+    const configRef = firestore.collection('entity_system_field_overrides').doc(table);
+    await firestore.runTransaction(async transaction => {
+      const previous = await transaction.get(configRef);
+      if ((previous.data()?.updatedAt || '') !== (body.expectedUpdatedAt || '')) throw new AdminApiError(409, 'Cấu hình vừa được người khác cập nhật. Hãy tải lại trước khi xóa.', 'fields/conflict');
+      const fields = Object.fromEntries(resolveSystemFields(table, previous.data()?.fields).map(field => [field.key, field]));
+      fields[key] = { ...fields[key], visible: false, removed: true };
+      transaction.set(configRef, { id: table, table, fields: validateSystemFieldOverrides(table, fields), ...actor });
+      transaction.set(auditRef, audit(key, spec.label));
+    });
+    await purgeRecordField(key, false);
+    return { success: true };
+  }
+
   const raw = body.definition && typeof body.definition === 'object' && !Array.isArray(body.definition) ? body.definition as Record<string, unknown> : {};
   const id = (body.id || raw.id) as string;
   if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]{1,160}$/.test(id)) fail('Mã trường không hợp lệ.');
   const ref = firestore.collection('entity_field_definitions').doc(id);
+  let purgeCustom = false;
   await firestore.runTransaction(async transaction => {
     const snapshot = await transaction.get(ref);
     const previous = snapshot.exists ? normalizeEntityFieldDefinition({ ...snapshot.data(), id: snapshot.id }) : null;
@@ -79,7 +111,14 @@ export async function manageFieldConfiguration(caller: Caller, body: Record<stri
       transaction.set(auditRef, audit(id, definition.name));
       return;
     }
-    if (!previous) fail('Không tìm thấy trường.');
+    if (!previous) return fail('Không tìm thấy trường.');
+    if (action === 'purge') {
+      if (previous.required) fail('Không thể xóa trường bắt buộc.');
+      transaction.update(ref, { active: false, removed: true, purgedAt: now, ...actor });
+      transaction.set(auditRef, audit(id, previous.name));
+      purgeCustom = true;
+      return;
+    }
     if (action === 'move') {
       if (body.direction !== -1 && body.direction !== 1) fail('Hướng sắp xếp không hợp lệ.');
       const siblings = await transaction.get(firestore.collection('entity_field_definitions').where('table', '==', table));
@@ -104,5 +143,6 @@ export async function manageFieldConfiguration(caller: Caller, body: Record<stri
     } else fail('Thao tác không được hỗ trợ.');
     transaction.set(auditRef, audit(id, previous!.name));
   });
+  if (purgeCustom) await purgeRecordField(id, true);
   return { success: true };
 }

@@ -12,6 +12,7 @@ import {
 } from '@/features/crm/model/entityFieldConfig';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { manageFieldConfiguration } from '@/services/fieldConfigurationService';
+import type { SystemFieldOverride } from '@/features/crm/model/systemFieldConfig';
 import './InlineEntityFieldManager.css';
 
 interface FieldDraft {
@@ -28,6 +29,11 @@ interface FieldDraft {
   filterable: boolean;
   viewRoles: EntityFieldRole[];
   editRoles: EntityFieldRole[];
+}
+
+export interface InlineSystemFieldOption {
+  key: string;
+  label: string;
 }
 
 const SELECT_TYPES: EntityCustomFieldType[] = ['single_select', 'multi_select'];
@@ -70,18 +76,27 @@ export const InlineEntityFieldManager: React.FC<{
   sectionLabel: string;
   definitions: EntityFieldDefinition[];
   currentUser: UserProfile;
-}> = ({ table, section, sectionLabel, definitions, currentUser }) => {
+  systemFields?: InlineSystemFieldOption[];
+  systemConfiguration: { fields: SystemFieldOverride[]; updatedAt: string };
+  onCustomFieldPurged?: (fieldId: string) => void;
+  onSystemFieldPurged?: (fieldKey: string) => void;
+}> = ({ table, section, sectionLabel, definitions, currentUser, systemFields = [], systemConfiguration, onCustomFieldPurged, onSystemFieldPurged }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [draft, setDraft] = useState<FieldDraft | null>(null);
+  const [systemDraft, setSystemDraft] = useState<SystemFieldOverride | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const sectionDefinitions = useMemo(
-    () => definitions.filter(definition => definition.section === section && !definition.removed),
+    () => definitions.filter(definition => definition.section === section && !definition.removed && !definition.required),
     [definitions, section]
   );
+  const editableSystemFields = useMemo(() => systemFields.flatMap(option => {
+    const field = systemConfiguration.fields.find(item => item.key === option.key);
+    return field && !field.removed ? [{ ...field, fallbackLabel: option.label }] : [];
+  }), [systemConfiguration.fields, systemFields]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -98,16 +113,17 @@ export const InlineEntityFieldManager: React.FC<{
   }, [draft]);
 
   useEffect(() => {
-    if (!manageOpen && !draft) return;
+    if (!manageOpen && !draft && !systemDraft) return;
     const closeDialog = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || saving) return;
       setDraft(null);
+      setSystemDraft(null);
       setManageOpen(false);
       setError('');
     };
     document.addEventListener('keydown', closeDialog);
     return () => document.removeEventListener('keydown', closeDialog);
-  }, [draft, manageOpen, saving]);
+  }, [draft, manageOpen, saving, systemDraft]);
 
   if (currentUser.role !== 'admin') return null;
 
@@ -116,6 +132,7 @@ export const InlineEntityFieldManager: React.FC<{
     setManageOpen(false);
     setError('');
     setDraft(createEmptyDraft());
+    setSystemDraft(null);
   };
 
   const openManage = () => {
@@ -177,6 +194,66 @@ export const InlineEntityFieldManager: React.FC<{
     }
   };
 
+  const editSystemField = (field: SystemFieldOverride) => {
+    setDraft(null);
+    setSystemDraft({ key: field.key, label: field.label, description: field.description, visible: field.visible, removed: field.removed, order: field.order });
+    setError('');
+  };
+
+  const saveSystemField = async () => {
+    if (!systemDraft?.label.trim()) { setError('Tên trường không được để trống.'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      await manageFieldConfiguration(currentUser, {
+        action: 'system', table, expectedUpdatedAt: systemConfiguration.updatedAt,
+        fields: Object.fromEntries(systemConfiguration.fields.map(field => [field.key, field.key === systemDraft.key ? systemDraft : field]))
+      });
+      setSystemDraft(null);
+      setManageOpen(true);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Không thể lưu trường hệ thống.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const confirmPermanentDelete = (name: string) => window.prompt(
+    `Xóa vĩnh viễn trường “${name}” và toàn bộ thông tin đã nhập ở tất cả hồ sơ? Thao tác này không thể hoàn tác.\n\nNhập XÓA để xác nhận.`
+  ) === 'XÓA';
+
+  const purgeCustomField = async (definition: EntityFieldDefinition) => {
+    if (!confirmPermanentDelete(definition.name)) return;
+    setSaving(true);
+    setError('');
+    try {
+      await manageFieldConfiguration(currentUser, {
+        action: 'purge', table, id: definition.id, expectedUpdatedAt: definition.updatedAt
+      });
+      onCustomFieldPurged?.(definition.id);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Không thể xóa trường.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const purgeSystemField = async (field: SystemFieldOverride) => {
+    if (!confirmPermanentDelete(field.label)) return;
+    setSaving(true);
+    setError('');
+    try {
+      await manageFieldConfiguration(currentUser, {
+        action: 'purge_system', table, key: field.key, expectedUpdatedAt: systemConfiguration.updatedAt
+      });
+      onSystemFieldPurged?.(field.key);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Không thể xóa trường.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return <>
     <div className="inline-field-manager" ref={menuRef}>
       <button
@@ -193,19 +270,36 @@ export const InlineEntityFieldManager: React.FC<{
       </div>}
     </div>
 
-    {manageOpen && !draft && <div className="inline-field-modal-backdrop" role="presentation">
+    {manageOpen && !draft && !systemDraft && <div className="inline-field-modal-backdrop" role="presentation">
       <section className="inline-field-list-modal" role="dialog" aria-modal="true" aria-label={`Chỉnh sửa trường ${sectionLabel}`}>
         <header><div><h3>Chỉnh sửa trường</h3><p>{sectionLabel} · Chỉ áp dụng cho phân hệ hiện tại</p></div><button type="button" onClick={() => setManageOpen(false)}>Đóng</button></header>
         <div className="inline-field-list-modal__body">
-          {sectionDefinitions.length === 0
-            ? <p className="inline-field-manager__empty">Khung này chưa có trường tùy chỉnh.</p>
-            : sectionDefinitions.map(definition => <div className="inline-field-manager__field" key={definition.id}>
-              <div><strong>{definition.name}</strong><span>{ENTITY_FIELD_TYPE_LABELS[definition.type]} · {definition.active ? 'Đang sử dụng' : 'Ngừng sử dụng'}</span></div>
-              <button type="button" onClick={() => { setDraft(toDraft(definition)); setError(''); }}>Chỉnh sửa</button>
-            </div>)}
+          {editableSystemFields.map(field => <div className="inline-field-manager__field" key={`system:${field.key}`}>
+            <div><strong>{field.label}</strong><span>Trường hệ thống · Có thể chỉnh sửa hoặc xóa</span></div>
+            <div className="inline-field-manager__actions"><button type="button" disabled={saving} onClick={() => editSystemField(field)}>Chỉnh sửa</button><button type="button" className="is-danger" disabled={saving} onClick={() => void purgeSystemField(field)}>Xóa</button></div>
+          </div>)}
+          {sectionDefinitions.map(definition => <div className="inline-field-manager__field" key={definition.id}>
+            <div><strong>{definition.name}</strong><span>{ENTITY_FIELD_TYPE_LABELS[definition.type]} · Trường tùy chỉnh</span></div>
+            <div className="inline-field-manager__actions"><button type="button" disabled={saving} onClick={() => { setDraft(toDraft(definition)); setError(''); }}>Chỉnh sửa</button><button type="button" className="is-danger" disabled={saving} onClick={() => void purgeCustomField(definition)}>Xóa</button></div>
+          </div>)}
+          {editableSystemFields.length === 0 && sectionDefinitions.length === 0 && <p className="inline-field-manager__empty">Khung này không có trường có thể chỉnh sửa.</p>}
+          {error && <p className="inline-field-editor__error" role="alert">{error}</p>}
         </div>
         <footer><button type="button" className="btn btn-primary" onClick={openCreate}>Thêm trường</button></footer>
       </section>
+    </div>}
+
+    {systemDraft && <div className="inline-field-modal-backdrop" role="presentation">
+      <div className="inline-field-editor" role="dialog" aria-modal="true" aria-label="Chỉnh sửa trường hệ thống">
+        <header><div><h3>Chỉnh sửa trường</h3><p>{sectionLabel} · Trường hệ thống</p></div><button type="button" disabled={saving} onClick={() => setSystemDraft(null)}>Đóng</button></header>
+        <div className="inline-field-editor__body">
+          <label><span>Tên hiển thị *</span><input autoFocus required maxLength={100} value={systemDraft.label} onChange={event => setSystemDraft({ ...systemDraft, label: event.target.value })} /></label>
+          <label><span>Mô tả / hướng dẫn</span><textarea rows={3} maxLength={500} value={systemDraft.description} onChange={event => setSystemDraft({ ...systemDraft, description: event.target.value })} /></label>
+          <p className="inline-field-manager__empty">Kiểu dữ liệu và mã trường được giữ nguyên để bảo đảm cấu trúc hệ thống.</p>
+          {error && <p className="inline-field-editor__error" role="alert">{error}</p>}
+        </div>
+        <footer><button type="button" className="btn btn-outline" disabled={saving} onClick={() => setSystemDraft(null)}>Hủy</button><button type="button" className="btn btn-primary" disabled={saving} onClick={() => void saveSystemField()}>{saving ? 'Đang lưu…' : 'Lưu trường'}</button></footer>
+      </div>
     </div>}
 
     {draft && <div className="inline-field-modal-backdrop" role="presentation">

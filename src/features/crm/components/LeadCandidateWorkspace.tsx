@@ -48,6 +48,7 @@ import {
   isSystemFilterEnabled
 } from '@/domain/systemFilterConfig';
 import { useSystemFilterConfiguration } from '@/hooks/useSystemFilterConfiguration';
+import { useSystemFieldConfiguration } from '@/hooks/useSystemFieldConfiguration';
 import {
   getNotificationDocumentId,
   NOTIFICATION_SCHEMA_VERSION
@@ -343,6 +344,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   onStartConversion
 }) => {
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('lead_candidates', currentUser.role);
+  const inlineSystemFieldConfiguration = useSystemFieldConfiguration('lead_candidates');
   const systemFilterDefinitions = useSystemFilterConfiguration();
   const provinceFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, LEAD_FILTER_IDS.province, 'customer_data');
   const industrialParkFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, LEAD_FILTER_IDS.industrialPark, 'customer_data');
@@ -395,6 +397,16 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [batchQueueError, setBatchQueueError] = useState('');
   const [savingBatchQueue, setSavingBatchQueue] = useState(false);
   const [referenceTime] = useState(() => Date.now());
+
+  const clearPurgedCustomField = (fieldId: string) => setCustomFieldValues(previous => {
+    const next = { ...previous };
+    delete next[fieldId];
+    return next;
+  });
+  const clearPurgedSystemField = (fieldKey: string) => setForm(previous => ({
+    ...previous,
+    [fieldKey]: typeof (previous as unknown as Record<string, unknown>)[fieldKey] === 'number' ? 0 : ''
+  }));
 
   const availableColumnOptions = getAvailableColumns(workspaceView, currentUser.role === 'admin', customFieldDefinitions);
   const visibleColumnSet = new Set([
@@ -1294,7 +1306,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group lead-form-grid__wide"><label data-system-label="address">Địa chỉ doanh nghiệp</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
               </div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="lead_candidates" section="company" sectionLabel="Thông tin doanh nghiệp" definitions={customFieldDefinitions} currentUser={currentUser} />
+              <InlineEntityFieldManager table="lead_candidates" section="company" sectionLabel="Thông tin doanh nghiệp" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'taxCode', label: 'Mã số thuế' }, { key: 'website', label: 'Website' }, { key: 'businessSector', label: 'Lĩnh vực hoạt động' }, { key: 'province', label: 'Tỉnh / thành' }, { key: 'ward', label: 'Phường / xã' }, { key: 'industrialPark', label: 'Khu công nghiệp' }, { key: 'address', label: 'Địa chỉ doanh nghiệp' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -1311,7 +1323,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group"><label data-system-label="sourceUrl">Đường dẫn nguồn</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="Link Facebook, Google Maps..." /></div>
               </div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="lead_candidates" section="contact" sectionLabel="Liên hệ và nguồn dữ liệu" definitions={customFieldDefinitions} currentUser={currentUser} />
+              <InlineEntityFieldManager table="lead_candidates" section="contact" sectionLabel="Liên hệ và nguồn dữ liệu" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'source', label: 'Nguồn tìm kiếm' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -1324,7 +1336,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group lead-form-grid__wide"><label data-system-label="note">Ghi chú</label><textarea rows={5} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Thông tin cần lưu ý trước khi liên hệ..." /></div>
               </div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="lead_candidates" section="needs" sectionLabel="Nhu cầu sơ bộ" definitions={customFieldDefinitions} currentUser={currentUser} />
+              <InlineEntityFieldManager table="lead_candidates" section="needs" sectionLabel="Nhu cầu sơ bộ" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }, { key: 'note', label: 'Ghi chú' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -1338,7 +1350,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               </div>
               <div className="lead-fixed-form-note">Trường hệ thống được giữ ổn định; Admin có thể bổ sung trường riêng cho khung này.</div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="lead_candidates" section="assignment" sectionLabel="Phụ trách và lịch hẹn" definitions={customFieldDefinitions} currentUser={currentUser} />
+              <InlineEntityFieldManager table="lead_candidates" section="assignment" sectionLabel="Phụ trách và lịch hẹn" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'nextContactAt', label: 'Lịch hẹn xử lý' }]} />
             </section>
 
             <EntityCustomFieldsSection

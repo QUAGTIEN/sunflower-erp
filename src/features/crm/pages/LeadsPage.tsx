@@ -62,6 +62,7 @@ import {
   isSystemFilterEnabled
 } from '@/domain/systemFilterConfig';
 import { useSystemFilterConfiguration } from '@/hooks/useSystemFilterConfiguration';
+import { useSystemFieldConfiguration } from '@/hooks/useSystemFieldConfiguration';
 import {
   dbService,
   isDocumentAlreadyExistsError,
@@ -267,6 +268,7 @@ export const Leads: React.FC<LeadsProps> = ({
 }) => {
   const { t } = useLanguage();
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('leads', currentUser.role);
+  const inlineSystemFieldConfiguration = useSystemFieldConfiguration('leads');
   const saleUsers = useMemo(() => users.filter(user => user.role === 'sale'), [users]);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -304,6 +306,16 @@ export const Leads: React.FC<LeadsProps> = ({
       return null;
     }
   });
+
+  const clearPurgedCustomField = (fieldId: string) => setCustomFieldValues(previous => {
+    const next = { ...previous };
+    delete next[fieldId];
+    return next;
+  });
+  const clearPurgedSystemField = (fieldKey: string) => setForm(previous => ({
+    ...previous,
+    [fieldKey]: typeof (previous as unknown as Record<string, unknown>)[fieldKey] === 'number' ? 0 : ''
+  }));
 
   useEffect(() => {
     const unsubscribe = dbService.subscribeCollection('leads', data => {
@@ -1562,7 +1574,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 <div className="form-group lead-form-grid__wide"><label data-system-label="address">{t('Địa chỉ doanh nghiệp')}</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
               </div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="company" sectionLabel={t('Thông tin doanh nghiệp')} definitions={customFieldDefinitions} currentUser={currentUser} />
+              <InlineEntityFieldManager table="leads" section="company" sectionLabel={t('Thông tin doanh nghiệp')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'website', label: 'Website' }, { key: 'businessSector', label: 'Lĩnh vực hoạt động' }, { key: 'address', label: 'Địa chỉ doanh nghiệp' }]} />
             </section>
 
             <section className="lead-form-card lead-form-card--classification">
@@ -1577,7 +1589,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 onChange={handleFormFilterValueChange}
               />
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Phân loại khách hàng')} definitions={customFieldDefinitions} currentUser={currentUser} />
+              <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Phân loại khách hàng')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} />
             </section>
 
             <section className="lead-form-card">
@@ -1614,7 +1626,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 </div>
               </div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="contact" sectionLabel={t('Liên hệ và nhu cầu')} definitions={customFieldDefinitions} currentUser={currentUser} />
+              <InlineEntityFieldManager table="leads" section="contact" sectionLabel={t('Liên hệ và nhu cầu')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }, { key: 'potentialValue', label: 'Giá trị tiềm năng' }, { key: 'stage', label: 'Giai đoạn xử lý' }, { key: 'note', label: 'Ghi chú' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -1646,7 +1658,7 @@ export const Leads: React.FC<LeadsProps> = ({
               </div>
               <div className="lead-fixed-form-note">{t('Trường hệ thống được giữ ổn định; Admin có thể bổ sung trường riêng cho khung này.')}</div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="assignment" sectionLabel={t('Phụ trách và lịch làm việc')} definitions={customFieldDefinitions} currentUser={currentUser} />
+              <InlineEntityFieldManager table="leads" section="assignment" sectionLabel={t('Phụ trách và lịch làm việc')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'discoveredById', label: 'Sale tìm được Lead' }, { key: 'nextFollowUpAt', label: 'Lịch chăm sóc tiếp theo' }]} />
             </section>
 
             <EntityCustomFieldsSection

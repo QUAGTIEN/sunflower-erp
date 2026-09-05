@@ -1,6 +1,6 @@
 import { authService, dbService, isFirebaseRuntimeEnabled, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { isEntityCustomFieldValueEmpty } from '@/features/crm/model/entityFieldConfig';
-import { validateSystemFieldOverrides } from '@/features/crm/model/systemFieldConfig';
+import { SYSTEM_FIELD_CATALOG, validateSystemFieldOverrides } from '@/features/crm/model/systemFieldConfig';
 import type { EntityFieldTable } from '@/features/crm/model/entityFieldConfig';
 
 export async function manageFieldConfiguration(user: UserProfile, body: Record<string, unknown>) {
@@ -21,11 +21,36 @@ export async function manageFieldConfiguration(user: UserProfile, body: Record<s
     await dbService.addDocument('entity_system_field_overrides', { id: table, table, fields: validateSystemFieldOverrides(table, body.fields), ...actor });
     return;
   }
+  if (body.action === 'purge_system') {
+    const key = String(body.key || '');
+    const current = await dbService.getDocument('entity_system_field_overrides', table);
+    const fields = validateSystemFieldOverrides(table, current?.fields || {});
+    const spec = SYSTEM_FIELD_CATALOG[table].find(field => field.key === key);
+    if (!spec || spec.protected) throw new Error('Không thể xóa trường bắt buộc hoặc trường nhận diện hồ sơ.');
+    fields[key] = { ...fields[key], visible: false, removed: true };
+    await dbService.addDocument('entity_system_field_overrides', { id: table, table, fields, ...actor });
+    const records = await dbService.getCollection(table);
+    await Promise.all(records.map(record => dbService.updateDocument(table, record.id, { [key]: '' })));
+    return;
+  }
   if (body.action === 'save') {
     await dbService.addDocument('entity_field_definitions', { ...(body.definition as object), ...actor });
     return;
   }
   const id = String(body.id);
+  if (body.action === 'purge') {
+    const definition = await dbService.getDocument('entity_field_definitions', id);
+    if (!definition) throw new Error('Không tìm thấy trường.');
+    if (definition.required) throw new Error('Không thể xóa trường bắt buộc.');
+    const records = await dbService.getCollection(table);
+    await Promise.all(records.map(record => {
+      const values = { ...(record.customFieldValues || {}) };
+      delete values[id];
+      return dbService.updateDocument(table, record.id, { customFieldValues: values });
+    }));
+    await dbService.updateDocument('entity_field_definitions', id, { active: false, removed: true, purgedAt: actor.updatedAt, ...actor });
+    return;
+  }
   if (body.action === 'move') {
     const definitions = (await dbService.getCollection('entity_field_definitions')).filter(item => item.table === table && !item.removed).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, 'vi'));
     const index = definitions.findIndex(item => item.id === id);

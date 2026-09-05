@@ -111,6 +111,10 @@
 .inline-field-manager__field span,
 .inline-field-manager__empty { color: #64748b; font-size: 12px; }
 .inline-field-manager__field button { min-height: 32px; padding: 0 11px; border: 1px solid #cbd7e7; border-radius: 5px; background: #fff; color: #17356f; cursor: pointer; }
+.inline-field-manager__field .inline-field-manager__actions { display: flex; flex: 0 0 auto; flex-direction: row; gap: 6px; }
+.inline-field-manager__field button.is-danger { border-color: #fecaca; color: #b42318; }
+.inline-field-manager__field button.is-danger:hover,
+.inline-field-manager__field button.is-danger:focus-visible { background: #fff1f2; outline: 2px solid rgb(220 38 38 / 10%); }
 .inline-field-list-modal > footer,
 .inline-field-editor > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #dbe3ef; }
 

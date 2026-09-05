@@ -21,6 +21,12 @@ export function SystemFieldSurface({ table, children, ...props }: React.HTMLAttr
       const key = node.props['data-system-label'];
       const field = fields.find(item => item.key === key);
       const spec = SYSTEM_FIELD_CATALOG[table].find(item => item.key === key);
+      const childFieldKey = Children.toArray(node.props.children).find(child => (
+        isValidElement<NodeProps>(child) && child.props['data-system-label']
+      ));
+      const nestedKey = isValidElement<NodeProps>(childFieldKey) ? childFieldKey.props['data-system-label'] : undefined;
+      if (nestedKey && fields.find(item => item.key === nestedKey)?.removed) return null;
+      if (field?.removed) return null;
       if (field && spec) {
         const original = Children.toArray(node.props.children).filter(item => typeof item === 'string').join('');
         return cloneElement(node, { title: field.description || undefined }, field.label !== spec.label ? `${field.label}${original.includes('*') ? ' *' : ''}` : node.props.children);

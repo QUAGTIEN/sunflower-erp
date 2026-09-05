@@ -30,6 +30,7 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
   const [storedDefinitions, setStoredDefinitions] = useState<LeadFilterDefinition[]>([]);
   const systemFields = useContext(SystemFieldContext);
   const label = (key: string, fallback: string) => systemFields.find(field => field.key === key)?.label || fallback;
+  const isVisible = (key: string) => !systemFields.find(field => field.key === key)?.removed;
 
   useEffect(() => dbService.subscribeCollection('lead_filter_definitions', data => {
     setStoredDefinitions(data as LeadFilterDefinition[]);
@@ -49,7 +50,7 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
 
   return (
     <div className={`business-location-fields ${className}`.trim()}>
-      <label className="form-group">
+      {isVisible('province') && <label className="form-group">
         <span>{label('province', 'Tỉnh / thành')}</span>
         <select
           value={province}
@@ -58,8 +59,8 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
           <option value="">Chọn tỉnh/thành</option>
           {provinceOptions.map(option => <option key={option.id} value={option.label}>{option.label}</option>)}
         </select>
-      </label>
-      <label className="form-group">
+      </label>}
+      {isVisible('ward') && <label className="form-group">
         <span>{label('ward', 'Phường / xã')}</span>
         <select
           value={ward}
@@ -69,8 +70,8 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
           <option value="">{selectedProvince ? 'Chọn phường/xã' : 'Chọn tỉnh/thành trước'}</option>
           {wardOptions.map(option => <option key={option.id} value={option.label}>{option.label}</option>)}
         </select>
-      </label>
-      <label className="form-group">
+      </label>}
+      {isVisible('industrialPark') && <label className="form-group">
         <span>{label('industrialPark', 'Khu công nghiệp')}</span>
         <select
           value={industrialPark}
@@ -80,7 +81,7 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
           <option value="">{!selectedProvince ? 'Chọn tỉnh/thành trước' : industrialParkOptions.length > 0 ? 'Chọn KCN' : 'Chưa cấu hình KCN cho tỉnh/thành này'}</option>
           {industrialParkOptions.map(option => <option key={option.id} value={option.label}>{option.label}</option>)}
         </select>
-      </label>
+      </label>}
     </div>
   );
 };

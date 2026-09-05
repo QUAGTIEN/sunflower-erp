@@ -13,7 +13,7 @@ export function SystemFieldConfiguration({ table, currentUser, searchTerm = '', 
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
   const spec = SYSTEM_FIELD_CATALOG[table].find(field => field.key === draft?.key);
-  const filteredFields = fields.filter(field => `${field.label} ${field.key}`.toLocaleLowerCase('vi').includes(searchTerm.trim().toLocaleLowerCase('vi')));
+  const filteredFields = fields.filter(field => !field.removed && `${field.label} ${field.key}`.toLocaleLowerCase('vi').includes(searchTerm.trim().toLocaleLowerCase('vi')));
   const cancel = () => {
     if (saving) return;
     const original = fields.find(field => field.key === draft?.key);
