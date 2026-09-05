@@ -180,10 +180,12 @@
 }
 
 .purchase-request-table {
+  table-layout: auto !important;
   min-width: 1460px;
 }
 
 .purchase-table {
+  table-layout: auto !important;
   min-width: 1050px;
 }
 
