@@ -62,7 +62,8 @@ import { PageBackButton } from '@/components/PageBackButton';
 import { BusinessLocationFields } from './BusinessLocationFields';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
-import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
+import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
+import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
 import {
   formatEntityCustomFieldValue,
@@ -1292,6 +1293,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 />
                 <div className="form-group lead-form-grid__wide"><label data-system-label="address">Địa chỉ doanh nghiệp</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
               </div>
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="lead_candidates" section="company" sectionLabel="Thông tin doanh nghiệp" definitions={customFieldDefinitions} currentUser={currentUser} />
             </section>
 
             <section className="lead-form-card">
@@ -1307,6 +1310,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group"><label data-system-label="source">Nguồn tìm kiếm</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}>{CANDIDATE_SOURCES.map(source => <option key={source}>{source}</option>)}</select></div>
                 <div className="form-group"><label data-system-label="sourceUrl">Đường dẫn nguồn</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="Link Facebook, Google Maps..." /></div>
               </div>
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="lead_candidates" section="contact" sectionLabel="Liên hệ và nguồn dữ liệu" definitions={customFieldDefinitions} currentUser={currentUser} />
             </section>
 
             <section className="lead-form-card">
@@ -1318,6 +1323,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">Sản phẩm / nhu cầu quan tâm</label><textarea rows={4} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder="Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến..." /></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="note">Ghi chú</label><textarea rows={5} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Thông tin cần lưu ý trước khi liên hệ..." /></div>
               </div>
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="lead_candidates" section="needs" sectionLabel="Nhu cầu sơ bộ" definitions={customFieldDefinitions} currentUser={currentUser} />
             </section>
 
             <section className="lead-form-card">
@@ -1329,11 +1336,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group lead-form-grid__wide"><label data-system-label="assignedSaleId">Người phụ trách *</label><select required value={form.assignedSaleId} disabled={currentUser.role === 'sale'} onChange={event => updateForm('assignedSaleId', event.target.value)}><option value="">Chưa phân công</option>{candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="nextContactAt">Lịch hẹn xử lý</label><input type="datetime-local" value={form.nextContactAt} onChange={event => updateForm('nextContactAt', event.target.value)} /></div>
               </div>
-              <div className="lead-fixed-form-note">Cấu trúc biểu mẫu được cố định để dữ liệu giữa các Sale luôn thống nhất.</div>
+              <div className="lead-fixed-form-note">Trường hệ thống được giữ ổn định; Admin có thể bổ sung trường riêng cho khung này.</div>
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="lead_candidates" section="assignment" sectionLabel="Phụ trách và lịch hẹn" definitions={customFieldDefinitions} currentUser={currentUser} />
             </section>
 
             <EntityCustomFieldsSection
-              definitions={customFieldDefinitions}
+              definitions={customFieldDefinitions.filter(definition => definition.section === 'additional')}
               values={customFieldValues}
               role={currentUser.role}
               onChange={setCustomFieldValues}

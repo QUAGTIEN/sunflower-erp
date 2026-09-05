@@ -45,6 +45,23 @@ export const EntityCustomFieldControl: React.FC<EntityCustomFieldControlProps> =
   return <input {...common} type={inputType} step={step} value={value === null || value === undefined ? '' : String(value)} onChange={event => onChange(inputType === 'number' ? (event.target.value === '' ? null : Number(event.target.value)) : event.target.value)} />;
 };
 
+export const EntityCustomFieldsGrid: React.FC<{
+  definitions: EntityFieldDefinition[];
+  values: EntityCustomFieldValues;
+  role: EntityFieldRole;
+  onChange: (values: EntityCustomFieldValues) => void;
+}> = ({ definitions, values, role, onChange }) => {
+  const visibleDefinitions = definitions.filter(definition => definition.active);
+  if (visibleDefinitions.length === 0) return null;
+  return <div className="entity-custom-fields__grid entity-custom-fields__grid--inline">
+    {visibleDefinitions.map(definition => <label className={definition.type === 'textarea' || definition.type === 'multi_select' ? 'is-wide' : ''} key={definition.id}>
+      <span>{definition.name}{definition.required ? ' *' : ''}</span>
+      <EntityCustomFieldControl definition={definition} value={values[definition.id]} disabled={!canEditEntityField(definition, role)} onChange={nextValue => onChange({ ...values, [definition.id]: nextValue })} />
+      {definition.description && <small>{definition.description}</small>}
+    </label>)}
+  </div>;
+};
+
 export const EntityCustomFieldsSection: React.FC<{
   definitions: EntityFieldDefinition[];
   values: EntityCustomFieldValues;
@@ -57,13 +74,7 @@ export const EntityCustomFieldsSection: React.FC<{
   return (
     <section className="entity-custom-fields">
       <header><h3>{title}</h3><p>Các trường do Admin cấu hình riêng cho bảng này.</p></header>
-      <div className="entity-custom-fields__grid">
-        {visibleDefinitions.map(definition => <label className={definition.type === 'textarea' || definition.type === 'multi_select' ? 'is-wide' : ''} key={definition.id}>
-          <span>{definition.name}{definition.required ? ' *' : ''}</span>
-          <EntityCustomFieldControl definition={definition} value={values[definition.id]} disabled={!canEditEntityField(definition, role)} onChange={nextValue => onChange({ ...values, [definition.id]: nextValue })} />
-          {definition.description && <small>{definition.description}</small>}
-        </label>)}
-      </div>
+      <EntityCustomFieldsGrid definitions={visibleDefinitions} values={values} role={role} onChange={onChange} />
     </section>
   );
 };

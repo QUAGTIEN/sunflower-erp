@@ -51,8 +51,8 @@ export async function manageFieldConfiguration(caller: Caller, body: Record<stri
       if (!Object.hasOwn(ENTITY_FIELD_TYPE_LABELS, String(raw.type))) fail('Kiểu dữ liệu không được hỗ trợ.');
       if (typeof raw.name !== 'string' || !raw.name.trim() || raw.name.length > 100) fail('Tên trường cần từ 1 đến 100 ký tự.');
       if (typeof raw.description !== 'string' || raw.description.length > 500) fail('Mô tả tối đa 500 ký tự.');
-      if (previous && (raw.type !== previous.type || raw.fieldKey !== previous.fieldKey || raw.table !== previous.table)) fail('Không thể đổi mã, bảng hoặc kiểu dữ liệu của trường đã tạo.');
-      const allowedProperties = ['fieldKey', 'name', 'description', 'type', 'options', 'required', 'active', 'defaultVisible', 'searchable', 'filterable', 'viewRoles', 'editRoles', 'order'];
+      if (previous && (raw.type !== previous.type || raw.fieldKey !== previous.fieldKey || raw.table !== previous.table || raw.section !== previous.section)) fail('Không thể đổi mã, bảng, khung thông tin hoặc kiểu dữ liệu của trường đã tạo.');
+      const allowedProperties = ['fieldKey', 'name', 'description', 'type', 'section', 'options', 'required', 'active', 'defaultVisible', 'searchable', 'filterable', 'viewRoles', 'editRoles', 'order'];
       const safeInput = Object.fromEntries(Object.entries(raw).filter(([key]) => allowedProperties.includes(key)));
       const definition = normalizeEntityFieldDefinition({ ...safeInput, name: String(raw.name).trim(), description: String(raw.description).trim(), id, table, ...actor,
         createdAt: previous?.createdAt || now, createdById: previous?.createdById || caller.uid,

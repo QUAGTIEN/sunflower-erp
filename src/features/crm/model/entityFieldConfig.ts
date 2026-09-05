@@ -1,4 +1,5 @@
 export type EntityFieldTable = 'lead_candidates' | 'leads' | 'customers';
+export type EntityFieldSection = 'company' | 'classification' | 'contact' | 'needs' | 'assignment' | 'additional';
 
 export type EntityCustomFieldType =
   | 'text'
@@ -30,6 +31,7 @@ export interface EntityFieldDefinition extends Record<string, unknown> {
   id: string;
   fieldKey: string;
   table: EntityFieldTable;
+  section: EntityFieldSection;
   name: string;
   description: string;
   type: EntityCustomFieldType;
@@ -91,6 +93,7 @@ export const ENTITY_FIELD_ROLES: Array<{ id: EntityFieldRole; label: string }> =
 const ALL_ROLES = ENTITY_FIELD_ROLES.map(role => role.id);
 const TABLES: EntityFieldTable[] = ['lead_candidates', 'leads', 'customers'];
 const TYPES = Object.keys(ENTITY_FIELD_TYPE_LABELS) as EntityCustomFieldType[];
+const SECTIONS: EntityFieldSection[] = ['company', 'classification', 'contact', 'needs', 'assignment', 'additional'];
 
 const asRecord = (value: unknown): Record<string, unknown> => (
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
@@ -131,6 +134,7 @@ export const normalizeEntityCustomFieldValues = (value: unknown): EntityCustomFi
 export const normalizeEntityFieldDefinition = (value: unknown): EntityFieldDefinition => {
   const source = asRecord(value);
   const table = TABLES.includes(source.table as EntityFieldTable) ? source.table as EntityFieldTable : 'lead_candidates';
+  const section = SECTIONS.includes(source.section as EntityFieldSection) ? source.section as EntityFieldSection : 'additional';
   const type = TYPES.includes(source.type as EntityCustomFieldType) ? source.type as EntityCustomFieldType : 'text';
   const options = Array.isArray(source.options) ? source.options.map((item, index) => {
     const option = asRecord(item);
@@ -147,6 +151,7 @@ export const normalizeEntityFieldDefinition = (value: unknown): EntityFieldDefin
     id,
     fieldKey: asText(source.fieldKey) || slugifyEntityFieldKey(name) || id,
     table,
+    section,
     name,
     description: asText(source.description),
     type,

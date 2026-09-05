@@ -140,9 +140,17 @@ test('active fields cannot be removed and concurrent edits cannot overwrite sile
 
 test('server locks custom field type/table/key and duplicate labels', async () => {
   const { manage } = backend({ 'entity_field_definitions/custom_test': definition(), 'entity_field_definitions/other': definition({ id: 'other', name: 'Khác' }) });
-  for (const change of [{ type: 'integer' }, { table: 'customers' }, { fieldKey: 'another' }, { name: 'Khác' }]) {
+  for (const change of [{ type: 'integer' }, { table: 'customers' }, { section: 'company' }, { fieldKey: 'another' }, { name: 'Khác' }]) {
     await assert.rejects(manage(mutation('save', { definition: definition(change) })));
   }
+});
+
+test('inline fields retain their form section while legacy fields remain additional', async () => {
+  assert.equal(definition().section, 'additional');
+  const companyField = definition({ id: 'custom_competitor', name: 'Doanh nghiệp đối thủ', fieldKey: 'doanh_nghiep_doi_thu', section: 'company', active: true, updatedAt: '' });
+  const { manage, store } = backend();
+  await manage({ action: 'save', table: 'leads', definition: companyField, expectedUpdatedAt: '' });
+  assert.equal(store.get('entity_field_definitions/custom_competitor').section, 'company');
 });
 
 test('retired select options remain readable after configuration update', async () => {

@@ -82,7 +82,8 @@ import {
 import { PageBackButton } from '@/components/PageBackButton';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
-import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
+import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
+import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
 import {
   formatEntityCustomFieldValue,
@@ -1560,6 +1561,8 @@ export const Leads: React.FC<LeadsProps> = ({
                 <div className="form-group"><label data-system-label="businessSector">{t('Lĩnh vực hoạt động')}</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder={t('Ví dụ: Bao bì, thực phẩm, điện tử...')} /></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="address">{t('Địa chỉ doanh nghiệp')}</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
               </div>
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="company" sectionLabel={t('Thông tin doanh nghiệp')} definitions={customFieldDefinitions} currentUser={currentUser} />
             </section>
 
             <section className="lead-form-card lead-form-card--classification">
@@ -1573,6 +1576,8 @@ export const Leads: React.FC<LeadsProps> = ({
                 canEditAll={currentUser.role === 'admin'}
                 onChange={handleFormFilterValueChange}
               />
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Phân loại khách hàng')} definitions={customFieldDefinitions} currentUser={currentUser} />
             </section>
 
             <section className="lead-form-card">
@@ -1608,6 +1613,8 @@ export const Leads: React.FC<LeadsProps> = ({
                   )}
                 </div>
               </div>
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="contact" sectionLabel={t('Liên hệ và nhu cầu')} definitions={customFieldDefinitions} currentUser={currentUser} />
             </section>
 
             <section className="lead-form-card">
@@ -1637,11 +1644,13 @@ export const Leads: React.FC<LeadsProps> = ({
                   <input type="datetime-local" value={form.nextFollowUpAt} onChange={event => updateForm('nextFollowUpAt', event.target.value)} />
                 </div>
               </div>
-              <div className="lead-fixed-form-note">{t('Cấu trúc biểu mẫu được cố định để dữ liệu giữa các Sale luôn thống nhất.')}</div>
+              <div className="lead-fixed-form-note">{t('Trường hệ thống được giữ ổn định; Admin có thể bổ sung trường riêng cho khung này.')}</div>
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="assignment" sectionLabel={t('Phụ trách và lịch làm việc')} definitions={customFieldDefinitions} currentUser={currentUser} />
             </section>
 
             <EntityCustomFieldsSection
-              definitions={customFieldDefinitions}
+              definitions={customFieldDefinitions.filter(definition => definition.section === 'additional')}
               values={customFieldValues}
               role={currentUser.role}
               onChange={setCustomFieldValues}

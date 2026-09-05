@@ -1,0 +1,133 @@
+.inline-field-manager {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.inline-field-manager__trigger {
+  width: 34px;
+  min-height: 32px;
+  padding: 0;
+  border: 1px solid #cbd7e7;
+  border-radius: 5px;
+  background: #fff;
+  color: #17356f;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.inline-field-manager__trigger:hover,
+.inline-field-manager__trigger:focus-visible {
+  border-color: #6687c7;
+  background: #f3f6fb;
+  outline: 2px solid rgb(37 99 235 / 12%);
+}
+
+.inline-field-manager__menu {
+  position: absolute;
+  right: 0;
+  bottom: 38px;
+  z-index: 30;
+  width: 170px;
+  padding: 4px;
+  border: 1px solid #cbd7e7;
+  border-radius: 5px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgb(15 23 42 / 12%);
+}
+
+.inline-field-manager__menu button {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: #172554;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inline-field-manager__menu button:hover,
+.inline-field-manager__menu button:focus-visible { background: #eef3fa; outline: none; }
+
+.inline-field-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 42%);
+}
+
+.inline-field-list-modal,
+.inline-field-editor {
+  width: min(660px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border: 1px solid #cbd7e7;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgb(15 23 42 / 18%);
+}
+
+.inline-field-list-modal > header,
+.inline-field-editor > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #dbe3ef;
+}
+
+.inline-field-list-modal h3,
+.inline-field-editor h3 { margin: 0; color: #172554; font-size: 17px; }
+.inline-field-list-modal header p,
+.inline-field-editor header p { margin: 4px 0 0; color: #64748b; font-size: 12px; }
+.inline-field-list-modal header button,
+.inline-field-editor header button { min-height: 32px; border: 0; background: transparent; color: #334155; cursor: pointer; }
+.inline-field-list-modal__body,
+.inline-field-editor__body { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+
+.inline-field-manager__field {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+.inline-field-manager__field:last-child { border-bottom: 0; }
+.inline-field-manager__field div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.inline-field-manager__field strong { overflow: hidden; color: #172554; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.inline-field-manager__field span,
+.inline-field-manager__empty { color: #64748b; font-size: 12px; }
+.inline-field-manager__field button { min-height: 32px; padding: 0 11px; border: 1px solid #cbd7e7; border-radius: 5px; background: #fff; color: #17356f; cursor: pointer; }
+.inline-field-list-modal > footer,
+.inline-field-editor > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #dbe3ef; }
+
+.inline-field-editor__row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .7fr); gap: 12px; }
+.inline-field-editor__body > label,
+.inline-field-editor__row > label { display: flex; flex-direction: column; gap: 6px; color: #334155; font-size: 12px; font-weight: 600; }
+.inline-field-editor input:not([type='checkbox']),
+.inline-field-editor select,
+.inline-field-editor textarea { width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid #c8d5e6; border-radius: 5px; background: #fff; color: #172554; font: inherit; }
+.inline-field-editor textarea { resize: vertical; }
+.inline-field-editor fieldset { margin: 0; padding: 12px; border: 1px solid #dbe3ef; }
+.inline-field-editor legend { padding: 0 5px; color: #334155; font-size: 12px; font-weight: 600; }
+.inline-field-editor__checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.inline-field-editor__checks label { display: flex; align-items: center; gap: 7px; color: #334155; font-size: 12px; }
+.inline-field-editor__error { margin: 0; color: #b42318; font-size: 12px; }
+
+@media (max-width: 680px) {
+  .inline-field-editor__row,
+  .inline-field-editor__checks { grid-template-columns: 1fr; }
+}
