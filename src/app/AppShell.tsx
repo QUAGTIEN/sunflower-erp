@@ -62,7 +62,8 @@ import {
   Trash2,
   UserCog,
   LogOut,
-  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Target,
   Bell,
   CheckCheck,
@@ -1087,6 +1088,18 @@ function AppShell() {
         </nav>
         <div className="sidebar-footer">
           <button
+            type="button"
+            className="sidebar-collapse-btn"
+            onClick={() => {
+              setIsSidebarCollapsed(true);
+              localStorage.setItem('erp_sidebar_collapsed', 'true');
+            }}
+            aria-label="Thu gọn thanh menu"
+            title="Thu gọn thanh menu"
+          >
+            <PanelLeftClose size={17} aria-hidden="true" />
+          </button>
+          <button
             className="btn btn-outline sidebar-logout-btn"
             onClick={() => { handleLogout(); setIsSidebarOpen(false); }}
           >
@@ -1095,6 +1108,19 @@ function AppShell() {
           </button>
         </div>
       </aside>
+
+      <button
+        type="button"
+        className="sidebar-collapsed-toggle"
+        onClick={() => {
+          setIsSidebarCollapsed(false);
+          localStorage.setItem('erp_sidebar_collapsed', 'false');
+        }}
+        aria-label="Mở thanh menu"
+        title="Mở thanh menu"
+      >
+        <PanelLeftOpen size={17} aria-hidden="true" />
+      </button>
 
       {/* APP HEADER */}
       <header className="app-header">
@@ -1106,23 +1132,6 @@ function AppShell() {
           />
         </div>
         <div className="header-title-container">
-          <button
-            type="button"
-            className="desktop-menu-btn"
-            onClick={() => {
-              setIsSidebarCollapsed((currentValue) => {
-                const nextValue = !currentValue;
-                localStorage.setItem('erp_sidebar_collapsed', String(nextValue));
-                return nextValue;
-              });
-            }}
-            aria-label={isSidebarCollapsed ? 'Mở thanh menu' : 'Ẩn thanh menu'}
-            aria-expanded={!isSidebarCollapsed}
-            title={isSidebarCollapsed ? 'Mở thanh menu' : 'Ẩn thanh menu'}
-          >
-            <Menu size={20} aria-hidden="true" />
-          </button>
-
           {/* Hamburger menu toggle button for mobile */}
           <button
             type="button"
