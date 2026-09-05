@@ -688,8 +688,8 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
               <span className="card-title" style={{ color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {t('Yêu Cầu Phê Duyệt Bàn Giao Lệnh')}
               </span>
-              <div className="table-container">
-                <table>
+              <div className="table-container production-approval-table-wrap">
+                <table className="production-approval-table">
                   <thead>
                     <tr>
                       <th>{t('Mã LSX')}</th>
@@ -726,8 +726,8 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
             <div style={{ marginBottom: '16px' }}>
               <span className="card-title" style={{ margin: 0 }}>{t('Danh Sách Lệnh Sản Xuất Đang Chạy và Đã Xong')}</span>
             </div>
-            <div className="table-container">
-              <table>
+            <div className="table-container production-command-table-wrap">
+              <table className="production-command-table">
                 <thead>
                   <tr>
                     <th>{t('Mã LSX')}</th>

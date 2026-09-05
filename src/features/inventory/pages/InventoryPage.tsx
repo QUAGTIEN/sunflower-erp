@@ -4,6 +4,7 @@ import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway
 import { useLanguage } from '@/context/LanguageContext';
 import { Trash2, Pencil } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
+import './Inventory.css';
 
 interface InventoryProps {
   currentUser: UserProfile;
@@ -298,7 +299,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
           </div>
 
           <div className="table-container">
-            <table>
+            <table className="inventory-stock-table">
               <thead>
                 <tr>
                   <th>{t('Tên Vật Tư')}</th>
@@ -379,7 +380,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
           </div>
 
           <div className="table-container">
-            <table>
+            <table className="inventory-export-table">
               <thead>
                 <tr>
                   <th>{t('Số Phiếu')}</th>
@@ -427,7 +428,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
           </p>
 
           <div className="table-container">
-            <table>
+            <table className="inventory-summary-table">
               <thead>
                 <tr>
                   <th>{t('Tên Vật Tư')}</th>

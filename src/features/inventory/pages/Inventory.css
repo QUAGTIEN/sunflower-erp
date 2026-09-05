@@ -1,0 +1,39 @@
+.inventory-view .table-container {
+  overflow-x: auto;
+}
+
+/* Keep the material lists readable at narrow widths without allowing the
+   global fixed-grid rule to clip status and action labels. */
+.inventory-view .inventory-stock-table,
+.inventory-view .inventory-export-table,
+.inventory-view .inventory-summary-table {
+  table-layout: auto;
+  min-width: 1080px;
+}
+
+.inventory-view .inventory-stock-table th,
+.inventory-view .inventory-stock-table td,
+.inventory-view .inventory-export-table th,
+.inventory-view .inventory-export-table td,
+.inventory-view .inventory-summary-table th,
+.inventory-view .inventory-summary-table td {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal !important;
+}
+
+.inventory-view .inventory-stock-table th:last-child,
+.inventory-view .inventory-stock-table td:last-child {
+  min-width: 310px;
+  white-space: nowrap !important;
+}
+
+.inventory-view .inventory-stock-table td:nth-last-child(2) {
+  min-width: 185px;
+}
+
+.inventory-view .inventory-stock-table td:last-child > div {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}

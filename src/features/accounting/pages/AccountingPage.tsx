@@ -7,6 +7,7 @@ import { Trash2, Pencil } from 'lucide-react';
 import { getPOQueueLabel, getPOQueueStatus, getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
+import './Accounting.css';
 
 interface AccountingProps {
   pos: any[];
@@ -459,8 +460,8 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
               </button>
             </div>
           )}
-          <div className="table-container">
-            <table>
+          <div className="table-container accounting-invoice-table-wrap">
+            <table className="accounting-invoice-table">
               <thead>
                 <tr>
                   <th>{t('Số Hóa Đơn')}</th>
@@ -558,8 +559,8 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
             <div className="card-header">
               <span className="card-title">{t('Báo Cáo Lãi Gộp Đơn Hàng')}</span>
             </div>
-            <div className="table-container">
-              <table>
+            <div className="table-container accounting-costing-table-wrap">
+              <table className="accounting-costing-table">
                 <thead>
                   <tr>
                     <th>{t('Mã PO')}</th>
