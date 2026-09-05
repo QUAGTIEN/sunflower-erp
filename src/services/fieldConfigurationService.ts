@@ -30,7 +30,20 @@ export async function manageFieldConfiguration(user: UserProfile, body: Record<s
     fields[key] = { ...fields[key], visible: false, removed: true };
     await dbService.addDocument('entity_system_field_overrides', { id: table, table, fields, ...actor });
     const records = await dbService.getCollection(table);
-    await Promise.all(records.map(record => dbService.updateDocument(table, record.id, { [key]: '' })));
+    await Promise.all(records.map(record => {
+      const updates: Record<string, unknown> = { [key]: '' };
+      if (table === 'customers' && key === 'discountType') {
+        updates.discountRate = 0;
+        updates.discountAmount = 0;
+      }
+      if (table === 'customers' && ['contactPerson', 'phone', 'email'].includes(key) && Array.isArray(record.contacts)) {
+        const contactProperty = key === 'contactPerson' ? 'name' : key;
+        updates.contacts = record.contacts.map((contact: Record<string, unknown>) => (
+          contact.role === 'primary' || contact.id === 'primary' ? { ...contact, [contactProperty]: '' } : contact
+        ));
+      }
+      return dbService.updateDocument(table, record.id, updates);
+    }));
     return;
   }
   if (body.action === 'save') {

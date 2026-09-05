@@ -60,7 +60,7 @@ export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> =
   customers: [
     input('companyName', 'Khách hàng', ['Tên công ty'], true),
     input('customerCode', 'Mã khách hàng', ['Mã KH'], true),
-    linked('customerRank', 'Phân loại', ['Hạng khách hàng']),
+    { ...linked('customerRank', 'Phân loại', ['Hạng khách hàng']), protected: true },
     input('taxCode', 'Mã số thuế'),
     input('phone', 'Số điện thoại', ['SĐT']),
     input('email', 'Email', ['Mail', 'Email:']),

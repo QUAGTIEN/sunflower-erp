@@ -27,9 +27,24 @@ export async function manageFieldConfiguration(caller: Caller, body: Record<stri
     const writer = firestore.bulkWriter();
     for (const record of records.docs) {
       const data = record.data();
-      if (custom ? Object.hasOwn(data.customFieldValues || {}, fieldKey) : Object.hasOwn(data, fieldKey)) {
-        writer.update(record.ref, { [custom ? `customFieldValues.${fieldKey}` : fieldKey]: FieldValue.delete() });
+      if (custom && Object.hasOwn(data.customFieldValues || {}, fieldKey)) {
+        writer.update(record.ref, { [`customFieldValues.${fieldKey}`]: FieldValue.delete() });
+        continue;
       }
+      if (custom) continue;
+      const updates: Record<string, unknown> = {};
+      if (Object.hasOwn(data, fieldKey)) updates[fieldKey] = FieldValue.delete();
+      if (table === 'customers' && fieldKey === 'discountType') {
+        updates.discountRate = FieldValue.delete();
+        updates.discountAmount = FieldValue.delete();
+      }
+      if (table === 'customers' && ['contactPerson', 'phone', 'email'].includes(fieldKey) && Array.isArray(data.contacts)) {
+        const contactProperty = fieldKey === 'contactPerson' ? 'name' : fieldKey;
+        updates.contacts = data.contacts.map((contact: Record<string, unknown>) => (
+          contact.role === 'primary' || contact.id === 'primary' ? { ...contact, [contactProperty]: '' } : contact
+        ));
+      }
+      if (Object.keys(updates).length > 0) writer.update(record.ref, updates);
     }
     await writer.close();
   };

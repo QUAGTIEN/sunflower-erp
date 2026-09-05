@@ -125,11 +125,13 @@ function backend(seed = {}) {
     return {
       update: (ref, updates) => pending.push(() => {
         const data = structuredClone(store.get(ref.path));
-        for (const path of Object.keys(updates)) {
+        for (const [path, update] of Object.entries(updates)) {
           const parts = path.split('.');
           const last = parts.pop();
           const parent = parts.reduce((value, part) => value?.[part], data);
-          if (parent && last) delete parent[last];
+          if (!parent || !last) continue;
+          if (update?.constructor?.name === 'DeleteTransform') delete parent[last];
+          else parent[last] = structuredClone(update);
         }
         store.set(ref.path, data);
       }),
@@ -202,6 +204,30 @@ test('optional system fields can be purged but protected fields cannot', async (
   assert.equal(store.get('entity_system_field_overrides/leads').fields.website.removed, true);
   await assert.rejects(manage({ action: 'purge_system', table: 'leads', key: 'companyName', expectedUpdatedAt: store.get('entity_system_field_overrides/leads').updatedAt }), /Không thể xóa/);
   assert.equal(store.get('leads/one').companyName, 'Bắt buộc');
+});
+
+test('customer system-field purge also clears duplicated profile values', async () => {
+  const customer = {
+    contactPerson: 'Nguyễn Văn A',
+    discountType: 'percent',
+    discountRate: 12,
+    discountAmount: 300000,
+    contacts: [
+      { id: 'primary', role: 'primary', name: 'Nguyễn Văn A', phone: '0901' },
+      { id: 'purchasing', role: 'procurement', name: 'Trần Văn B', phone: '0902' }
+    ]
+  };
+  const first = backend({ 'customers/one': customer });
+  await first.manage({ action: 'purge_system', table: 'customers', key: 'contactPerson', expectedUpdatedAt: '' });
+  assert.equal(first.store.get('customers/one').contactPerson, undefined);
+  assert.equal(first.store.get('customers/one').contacts[0].name, '');
+  assert.equal(first.store.get('customers/one').contacts[1].name, 'Trần Văn B');
+
+  const second = backend({ 'customers/one': customer });
+  await second.manage({ action: 'purge_system', table: 'customers', key: 'discountType', expectedUpdatedAt: '' });
+  assert.equal(second.store.get('customers/one').discountType, undefined);
+  assert.equal(second.store.get('customers/one').discountRate, undefined);
+  assert.equal(second.store.get('customers/one').discountAmount, undefined);
 });
 
 test('retired select options remain readable after configuration update', async () => {

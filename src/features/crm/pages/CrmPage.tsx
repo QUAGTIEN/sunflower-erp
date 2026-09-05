@@ -23,8 +23,10 @@ import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
-import { EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
+import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly } from '@/components/EntityCustomFields';
+import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
+import { useSystemFieldConfiguration } from '@/hooks/useSystemFieldConfiguration';
 import {
   formatEntityCustomFieldValue,
   getMissingRequiredEntityFields,
@@ -254,6 +256,7 @@ export const Crm: React.FC<CrmProps> = ({
 }) => {
   const { t } = useLanguage();
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
+  const inlineSystemFieldConfiguration = useSystemFieldConfiguration('customers');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<CrmListFilter>('all');
   const [saleFilters, setSaleFilters] = useState<string[]>([]);
@@ -539,6 +542,41 @@ export const Crm: React.FC<CrmProps> = ({
   const [procurementPhone, setProcurementPhone] = useState('');
   const [warehousePhone, setWarehousePhone] = useState('');
   const [bankAccount, setBankAccount] = useState('');
+
+  const clearPurgedCustomField = (fieldId: string) => {
+    setCustomFieldValues(previous => {
+      const next = { ...previous };
+      delete next[fieldId];
+      return next;
+    });
+  };
+
+  const clearPurgedSystemField = (fieldKey: string) => {
+    const clearTextField = (setter: React.Dispatch<React.SetStateAction<string>>) => setter('');
+    const textSetters: Record<string, React.Dispatch<React.SetStateAction<string>>> = {
+      taxCode: setTaxCode,
+      assignedSaleId: setAssignedSaleId,
+      province: setProvince,
+      ward: setWard,
+      industrialPark: setIndustrialPark,
+      address: setAddress,
+      contactPerson: setContactPerson,
+      phone: setPhone,
+      procurementPhone: setProcurementPhone,
+      warehousePhone: setWarehousePhone,
+      email: setEmail,
+      bankAccount: setBankAccount,
+      paymentTerms: setPaymentTerms,
+      note: setNote
+    };
+    if (textSetters[fieldKey]) clearTextField(textSetters[fieldKey]);
+    if (fieldKey === 'discountType') {
+      setDiscountType('percent');
+      setDiscountRate(0);
+      setDiscountAmount(0);
+    }
+    if (fieldKey === 'debtLimit') setDebtLimit(0);
+  };
 
   const saleUsers = users.filter(u => u.role === 'sale');
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -2356,7 +2394,7 @@ export const Crm: React.FC<CrmProps> = ({
     </div>
   );
 
-  const renderCustomerOnboardingTables = () => (
+  const renderCustomerOnboardingTables = (includeOrderItems = true) => (
     <div className="customer-onboarding-tables">
       <div className="customer-onboarding-profile-grid">
         <section className="customer-data-section customer-profile-card">
@@ -2396,6 +2434,8 @@ export const Crm: React.FC<CrmProps> = ({
               </select>
             </label>
           </div>
+          <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="company" sectionLabel="Hồ sơ doanh nghiệp" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'taxCode', label: 'Mã số thuế' }, { key: 'assignedSaleId', label: 'Sale phụ trách' }]} /></div>
         </section>
 
         <section className="customer-data-section customer-profile-card">
@@ -2423,6 +2463,8 @@ export const Crm: React.FC<CrmProps> = ({
               <strong>{[address, industrialPark, ward, province].filter(Boolean).join(', ') || 'Chưa chọn địa bàn doanh nghiệp'}</strong>
             </div>
           </div>
+          <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="classification" sectionLabel="Địa bàn doanh nghiệp" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'province', label: 'Tỉnh / thành' }, { key: 'ward', label: 'Phường / xã' }, { key: 'industrialPark', label: 'Khu công nghiệp' }, { key: 'address', label: 'Địa chỉ chi tiết / giao hàng' }]} /></div>
         </section>
 
         <section className="customer-data-section customer-profile-card">
@@ -2452,6 +2494,8 @@ export const Crm: React.FC<CrmProps> = ({
               <input type="email" value={email} onChange={event => setEmail(event.target.value)} />
             </label>
           </div>
+          <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="contact" sectionLabel="Liên hệ và giao nhận" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'phone', label: 'Số điện thoại' }, { key: 'procurementPhone', label: 'SĐT thu mua' }, { key: 'warehousePhone', label: 'SĐT nhận hàng / kho' }, { key: 'email', label: 'Email' }]} /></div>
         </section>
 
         <section className="customer-data-section customer-profile-card">
@@ -2460,21 +2504,23 @@ export const Crm: React.FC<CrmProps> = ({
             <span>Điều khoản thương mại</span>
           </div>
           <div className="customer-profile-card__body customer-profile-fields">
-            <label className="form-group">
-              <span data-system-label="discountType">Hình thức chiết khấu</span>
-              <select value={discountType} onChange={event => setDiscountType(event.target.value as PODiscountType)}>
-                <option value="percent">Theo phần trăm (%)</option>
-                <option value="amount">Theo tiền chênh (đ)</option>
-              </select>
-            </label>
-            <label className="form-group">
-              <span>{discountType === 'amount' ? 'Tiền chênh mặc định (đ)' : 'Chiết khấu mặc định (%)'}</span>
-              {discountType === 'amount' ? (
-                <input type="number" min="0" value={discountAmount} onChange={event => setDiscountAmount(Number(event.target.value))} />
-              ) : (
-                <input type="number" min="0" max="100" value={discountRate} onChange={event => setDiscountRate(Number(event.target.value))} />
-              )}
-            </label>
+            {!inlineSystemFieldConfiguration.fields.find(field => field.key === 'discountType')?.removed && <>
+              <label className="form-group">
+                <span data-system-label="discountType">Hình thức chiết khấu</span>
+                <select value={discountType} onChange={event => setDiscountType(event.target.value as PODiscountType)}>
+                  <option value="percent">Theo phần trăm (%)</option>
+                  <option value="amount">Theo tiền chênh (đ)</option>
+                </select>
+              </label>
+              <label className="form-group">
+                <span>{discountType === 'amount' ? 'Tiền chênh mặc định (đ)' : 'Chiết khấu mặc định (%)'}</span>
+                {discountType === 'amount' ? (
+                  <input type="number" min="0" value={discountAmount} onChange={event => setDiscountAmount(Number(event.target.value))} />
+                ) : (
+                  <input type="number" min="0" max="100" value={discountRate} onChange={event => setDiscountRate(Number(event.target.value))} />
+                )}
+              </label>
+            </>}
             <label className="form-group">
               <span data-system-label="debtLimit">Hạn mức công nợ (đ)</span>
               <input type="number" min="0" value={debtLimit} onChange={event => setDebtLimit(Number(event.target.value))} />
@@ -2498,12 +2544,14 @@ export const Crm: React.FC<CrmProps> = ({
               <input value={note} onChange={event => setNote(event.target.value)} />
             </label>
           </div>
+          <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'additional')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="additional" sectionLabel="Điều khoản thương mại" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'discountType', label: 'Hình thức chiết khấu' }, { key: 'debtLimit', label: 'Hạn mức công nợ (đ)' }, { key: 'paymentTerms', label: 'Điều khoản thanh toán' }, { key: 'bankAccount', label: 'Tài khoản ngân hàng' }, { key: 'note', label: 'Ghi chú yêu cầu riêng' }]} /></div>
         </section>
 
         {renderAdditionalContactsEditor()}
       </div>
 
-      <CustomerOnboardingItems
+      {includeOrderItems && <CustomerOnboardingItems
         items={onboardingItems}
         customerPoCode={onboardingCustomerPoCode}
         expectedDeliveryDate={onboardingExpectedDeliveryDate}
@@ -2516,7 +2564,7 @@ export const Crm: React.FC<CrmProps> = ({
         onCustomerPoCodeChange={setOnboardingCustomerPoCode}
         onExpectedDeliveryDateChange={setOnboardingExpectedDeliveryDate}
         onNotesChange={setOnboardingOrderNotes}
-      />
+      />}
     </div>
   );
 
@@ -3430,12 +3478,6 @@ export const Crm: React.FC<CrmProps> = ({
             <form className="customer-onboarding-form" onSubmit={handleAddCustomer}>
               <div className="modal-body customer-onboarding-body">
                 {renderCustomerOnboardingTables()}
-                <EntityCustomFieldsSection
-                  definitions={customFieldDefinitions}
-                  values={customFieldValues}
-                  role={currentUser.role}
-                  onChange={setCustomFieldValues}
-                />
               </div>
               <div className="modal-footer customer-onboarding-footer">
                 <div className="customer-onboarding-footer-note">
@@ -3457,140 +3499,24 @@ export const Crm: React.FC<CrmProps> = ({
 
       {/* EDIT MODAL */}
       {showEditModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '920px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHỈNH SỬA HỒ SƠ KHÁCH HÀNG')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowEditModal(false)}>{t('Đóng')}</button>
-            </div>
-            <form onSubmit={handleEditCustomer}>
-              <div className="modal-body">
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label data-system-label="customerCode">{t('Mã Khách Hàng *')}</label>
-                    <input type="text" value={customerCode} onChange={e => setCustomerCode(e.target.value)} required />
-                  </div>
-                  <div className="form-group">
-                    <label data-system-label="customerRank">{t('Hạng Khách Hàng')}</label>
-                    <select value={customerRank} onChange={e => setCustomerRank(e.target.value as CustomerRank)}>
-                      <option value="">{t('Chưa xếp hạng')}</option>
-                      <option value="A">A</option>
-                      <option value="B">B</option>
-                      <option value="C">C</option>
-                      <option value="D">D</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label data-system-label="companyName">{t('Tên Công Ty *')}</label>
-                  <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} required />
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label data-system-label="contactPerson">{t('Người Liên Hệ')}</label>
-                    <input type="text" value={contactPerson} onChange={e => setContactPerson(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label data-system-label="phone">{t('Số Điện Thoại')}</label>
-                    <input type="text" value={phone} onChange={e => setPhone(e.target.value)} />
-                  </div>
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label data-system-label="procurementPhone">{t('SĐT Thu Mua')}</label>
-                    <input type="text" value={procurementPhone} onChange={e => setProcurementPhone(e.target.value)} placeholder={t('SĐT người làm việc mua hàng...')} />
-                  </div>
-                  <div className="form-group">
-                    <label data-system-label="warehousePhone">{t('SĐT Nhận Hàng / Kho')}</label>
-                    <input type="text" value={warehousePhone} onChange={e => setWarehousePhone(e.target.value)} placeholder={t('SĐT liên hệ kho hàng...')} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label data-system-label="bankAccount">{t('Tài Khoản Ngân Hàng')}</label>
-                  <input type="text" value={bankAccount} onChange={e => setBankAccount(e.target.value)} placeholder={t('Số tài khoản, tên ngân hàng, chi nhánh...')} />
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label data-system-label="taxCode">{t('Mã Số Thuế')}</label>
-                    <input type="text" value={taxCode} onChange={e => setTaxCode(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label data-system-label="email">{t('Email:')}</label>
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label data-system-label="address">{t('Địa Chỉ Giao Hàng')}</label>
-                  <input type="text" value={address} onChange={e => setAddress(e.target.value)} />
-                </div>
-                <BusinessLocationFields
-                  province={province}
-                  ward={ward}
-                  industrialPark={industrialPark}
-                  onChange={location => {
-                    setProvince(location.province);
-                    setWard(location.ward);
-                    setIndustrialPark(location.industrialPark);
-                  }}
-                />
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label data-system-label="discountType">{t('Hình Thức Chiết Khấu')}</label>
-                    <select value={discountType} onChange={e => setDiscountType(e.target.value as PODiscountType)}>
-                      <option value="percent">{t('Theo phần trăm (%)')}</option>
-                      <option value="amount">{t('Theo tiền chênh (đ)')}</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>{discountType === 'amount' ? t('Tiền Chênh Mặc Định (đ)') : t('Chiết Khấu Mặc Định (%)')}</label>
-                    {discountType === 'amount' ? (
-                      <input type="number" min="0" value={discountAmount} onChange={e => setDiscountAmount(Number(e.target.value))} />
-                    ) : (
-                      <input type="number" min="0" max="100" value={discountRate} onChange={e => setDiscountRate(Number(e.target.value))} />
-                    )}
-                  </div>
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label data-system-label="debtLimit">{t('Hạn Mức Công Nợ (đ)')}</label>
-                    <input type="number" min="0" value={debtLimit} onChange={e => setDebtLimit(Number(e.target.value))} />
-                  </div>
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label data-system-label="paymentTerms">{t('Điều Khoản Thanh Toán')}</label>
-                    <select value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)}>
-                      <option value="Thanh toán trước">{t('Thanh toán trước')}</option>
-                      <option value="Thanh toán khi nhận hàng">{t('Thanh toán khi nhận hàng')}</option>
-                      <option value="30 ngày">{t('30 ngày kể từ khi giao hàng')}</option>
-                      <option value="45 ngày">{t('45 ngày kể từ khi giao hàng')}</option>
-                      <option value="60 ngày">{t('60 ngày kể từ khi giao hàng')}</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label data-system-label="assignedSaleId">{t('Sale Phụ Trách')}</label>
-                    <select value={assignedSaleId} onChange={e => setAssignedSaleId(e.target.value)} disabled={currentUser.role === 'sale'}>
-                      {saleUsers.map(s => (
-                        <option key={s.uid} value={s.uid}>{s.displayName}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label data-system-label="note">{t('Ghi Chú Yêu Cầu Riêng')}</label>
-                  <textarea value={note} onChange={e => setNote(e.target.value)} />
-                </div>
-                <EntityCustomFieldsSection
-                  definitions={customFieldDefinitions}
-                  values={customFieldValues}
-                  role={currentUser.role}
-                  onChange={setCustomFieldValues}
-                />
-                {renderAdditionalContactsEditor()}
+        <div className="modal-overlay-fullscreen">
+          <div className="modal-content-fullscreen customer-onboarding-screen">
+            <div className="customer-onboarding-header">
+              <div>
+                <span className="customer-onboarding-step">HỒ SƠ KHÁCH HÀNG</span>
+                <h2>{t('CHỈNH SỬA HỒ SƠ KHÁCH HÀNG')}</h2>
+                <p>{t('Cập nhật hồ sơ trên cùng cấu trúc với màn hình thêm khách hàng.')}</p>
               </div>
-              <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>{t('Đóng / Hủy')}</button>
+            </div>
+            <form className="customer-onboarding-form" onSubmit={handleEditCustomer}>
+              <div className="modal-body customer-onboarding-body">
+                {renderCustomerOnboardingTables(false)}
+              </div>
+              <div className="modal-footer customer-onboarding-footer">
+                <div className="customer-onboarding-footer-note">{t('Các thay đổi chỉ được ghi nhận khi bấm Lưu thay đổi.')}</div>
                 <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Cập Nhật')}</button>
+                <button type="submit" className="btn btn-primary">{t('Lưu thay đổi')}</button>
               </div>
             </form>
           </div>
