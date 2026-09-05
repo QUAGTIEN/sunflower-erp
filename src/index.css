@@ -418,15 +418,17 @@ body {
   right: 0;
   bottom: 49px;
   left: 0;
-  height: 220px;
+  height: 56%;
   z-index: 0;
-  background-image: linear-gradient(to bottom, transparent 0%, rgb(23 37 84 / 18%) 34%, rgb(23 37 84 / 2%) 100%), url('./assets/sidebar-machinery-watermark.png');
+  background-image: linear-gradient(rgb(23 37 84 / 28%), rgb(23 37 84 / 8%)), url('./assets/sidebar-machinery-watermark.png');
   background-position: center bottom;
   background-size: cover;
   background-repeat: no-repeat;
   content: '';
   opacity: 0.13;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 18%) 18%, #000 62%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 18%) 18%, #000 62%);
 }
 
 .sidebar-logo {
