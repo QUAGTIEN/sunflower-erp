@@ -5,7 +5,8 @@
   --erp-page-gap: 12px;
   --erp-section-gap: 16px;
   --erp-control-height: 36px;
-  --erp-table-header-bg: #f3f5f8;
+  --erp-table-header-bg: #e7ebf1;
+  --erp-table-header-border: #c5cfdd;
   --erp-table-row-height: 44px;
   --erp-table-text: #334155;
   --erp-table-secondary-text: #64748b;
@@ -405,73 +406,80 @@ input[type='checkbox']:disabled {
   border-radius: var(--erp-status-radius) !important;
 }
 
-table {
+/* Keep every data row on the exact same column grid as its header. */
+.app-main table {
+  width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
+  border-spacing: 0;
 }
 
-table thead tr,
-table thead th {
+.app-main table thead tr,
+.app-main table thead th {
   height: 40px;
 }
 
-table tbody tr,
-table tbody td {
+.app-main table tbody tr,
+.app-main table tbody td {
   height: var(--erp-table-row-height);
 }
 
-table th,
-table td {
+.app-main table th,
+.app-main table td {
+  box-sizing: border-box;
   max-width: 360px;
   padding: 8px 12px !important;
   overflow: hidden;
   line-height: 1.25;
   text-overflow: ellipsis;
+  vertical-align: middle !important;
   white-space: nowrap !important;
   border-right: 0 !important;
   border-left: 0 !important;
   border-radius: 0 !important;
 }
 
-table thead tr {
-  border-bottom: 1px solid #cfd8e6;
+.app-main table thead tr {
+  border-bottom: 1px solid var(--erp-table-header-border);
 }
 
-table tbody tr {
+.app-main table tbody tr {
   border-bottom: 1px solid var(--erp-row-divider);
   transition: background-color 120ms ease;
 }
 
-table tbody tr:last-child {
+.app-main table tbody tr:last-child {
   border-bottom: 0;
 }
 
-table th {
+.app-main table th {
   background: var(--erp-table-header-bg) !important;
   color: #172554 !important;
   font-size: 13px;
   font-weight: 550 !important;
+  text-align: left;
 }
 
-table td {
+.app-main table td {
   background: #ffffff;
   color: var(--erp-table-text);
   font-size: 13px;
   font-weight: 400 !important;
 }
 
-table td strong,
-table td b {
+.app-main table td strong,
+.app-main table td b {
   font-weight: 550 !important;
 }
 
-table td a {
+.app-main table td a {
   color: var(--erp-table-link);
   font-weight: 500;
 }
 
-table td small,
-table td [class*='secondary'],
-table td [class*='muted'] {
+.app-main table td small,
+.app-main table td [class*='secondary'],
+.app-main table td [class*='muted'] {
   color: var(--erp-table-secondary-text);
   font-weight: 400;
 }
@@ -495,19 +503,19 @@ table td [class*='muted'] {
   background: #ffffff !important;
 }
 
-table .design-secondary-text,
-table .waiting-customer-secondary,
-table .crm-table-secondary {
+.app-main table .design-secondary-text,
+.app-main table .waiting-customer-secondary,
+.app-main table .crm-table-secondary {
   display: none !important;
 }
 
-table tbody tr:hover > td {
+.app-main table tbody tr:hover > td {
   background: var(--erp-row-hover) !important;
 }
 
-table input,
-table select,
-table button:not(.row-action-menu__trigger) {
+.app-main table input,
+.app-main table select,
+.app-main table button:not(.row-action-menu__trigger) {
   min-height: 32px;
   border-radius: var(--erp-control-radius) !important;
 }
