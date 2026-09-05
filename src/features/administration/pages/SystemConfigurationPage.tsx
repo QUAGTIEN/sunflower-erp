@@ -470,14 +470,16 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
 
   return (
     <div className="system-config-view">
-      <PageContextHeader section="Cấu hình" current={configurationTab === 'custom_fields' ? 'Trường thông tin' : 'Tiêu chí bộ lọc'}>
-        <span className="system-config-admin-badge"><LockKeyhole size={14} /> Chỉ Giám đốc/Admin</span>
-      </PageContextHeader>
+      <PageContextHeader section="Cấu hình" current={configurationTab === 'custom_fields' ? 'Trường thông tin' : 'Tiêu chí bộ lọc'} />
 
       <nav className="system-config-tabs content-tabs" role="tablist" aria-label="Nhóm cấu hình">
         <button type="button" role="tab" aria-selected={configurationTab === 'filters'} className={configurationTab === 'filters' ? 'is-active' : ''} onClick={() => setConfigurationTab('filters')}>Tiêu chí bộ lọc</button>
         <button type="button" role="tab" aria-selected={configurationTab === 'custom_fields'} className={configurationTab === 'custom_fields' ? 'is-active' : ''} onClick={() => setConfigurationTab('custom_fields')}>Trường thông tin</button>
       </nav>
+
+      <div className="erp-tab-actionbar">
+        <span className="system-config-admin-badge"><LockKeyhole size={14} /> Chỉ Giám đốc/Admin</span>
+      </div>
 
       {configurationTab === 'custom_fields' ? <CustomFieldConfiguration currentUser={currentUser} /> : <section className="system-filter-catalog">
         <header className="system-filter-catalog__header">

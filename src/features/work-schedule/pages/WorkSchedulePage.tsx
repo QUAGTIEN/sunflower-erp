@@ -314,21 +314,21 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
 
   return (
     <div className="work-schedule-page">
-      <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Hôm nay'}>
-        {isAdmin && <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}>Giao việc</button>}
-      </PageContextHeader>
+      <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Hôm nay'} />
 
-      <section className="work-schedule-card">
-        <div className="work-schedule-tabs content-tabs" role="tablist" aria-label="Chế độ xem lịch làm việc">
+      <div className="work-schedule-tabs content-tabs" role="tablist" aria-label="Chế độ xem lịch làm việc">
           <button type="button" role="tab" aria-selected={activeTab === 'today'} className={activeTab === 'today' ? 'is-active' : ''} onClick={() => setActiveTab('today')}>Hôm nay</button>
           <button type="button" role="tab" aria-selected={activeTab === 'week'} className={activeTab === 'week' ? 'is-active' : ''} onClick={() => setActiveTab('week')}>Lịch tuần</button>
-        </div>
+      </div>
+
+      <section className="work-schedule-card">
         <div className="work-schedule-toolbar">
           {activeTab === 'today' ? <input type="date" value={selectedDate} onChange={event => setSelectedDate(event.target.value)} aria-label="Ngày xem lịch" /> : <div className="work-schedule-week-nav"><button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() - 7))} aria-label="Tuần trước"><ChevronLeft size={16} /></button><span>{getDayLabel(weekDates[0])} – {getDayLabel(weekDates[6])}</span><button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() + 7))} aria-label="Tuần sau"><ChevronRight size={16} /></button></div>}
           <select value={departmentFilter} onChange={event => setDepartmentFilter(event.target.value)} aria-label="Lọc bộ phận"><option value="all">Tất cả bộ phận</option>{Object.entries(WORK_SCHEDULE_DEPARTMENT_LABELS).filter(([role]) => role !== 'admin').map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select>
           <label className="work-schedule-search"><Search size={15} /><input placeholder="Tìm nhân viên..." value={searchTerm} onChange={event => setSearchTerm(event.target.value)} /></label>
           {activeTab === 'today' && <label className="work-schedule-check"><input type="checkbox" checked={onlyAvailable} onChange={event => setOnlyAvailable(event.target.checked)} /> Chỉ người rảnh</label>}
           <button type="button" className="btn btn-outline" onClick={() => { setSelectedDate(todayKey); setWeekAnchor(getWeekStart(new Date())); }}>Hôm nay</button>
+          {isAdmin && <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}>Giao việc</button>}
         </div>
 
         {errorMessage && <div className="work-schedule-message">{errorMessage}</div>}

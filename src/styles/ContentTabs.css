@@ -12,11 +12,11 @@
   display: flex;
   width: 100%;
   max-width: 100%;
-  min-height: 44px;
+  min-height: 36px;
   align-items: stretch;
-  gap: 8px;
+  gap: 4px;
   margin: 0;
-  padding: 0 12px;
+  padding: 0 8px;
   overflow-x: auto;
   overflow-y: hidden;
   border: 0;
@@ -36,12 +36,12 @@
   display: inline-flex;
   width: auto;
   min-width: 0;
-  min-height: 44px;
+  min-height: 36px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 0;
   border-radius: 0;
   color: var(--content-tab-text);
@@ -58,10 +58,10 @@
 
 .content-tabs.content-tabs > button::after {
   position: absolute;
-  right: 12px;
+  right: 10px;
   bottom: -1px;
-  left: 12px;
-  height: 2px;
+  left: 10px;
+  height: 3px;
   border-radius: 2px 2px 0 0;
   background: var(--content-tab-accent);
   content: '';
@@ -79,6 +79,7 @@
 .content-tabs.content-tabs > button.active,
 .content-tabs.content-tabs > button.is-active,
 .content-tabs.content-tabs > button[aria-selected='true'] {
+  border-bottom: 0;
   color: var(--content-tab-accent);
   background: transparent;
   box-shadow: none;
@@ -133,17 +134,17 @@
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
-  min-height: 44px;
-  padding-right: 12px;
-  padding-left: 12px;
+  min-height: 36px;
+  padding-right: 8px;
+  padding-left: 8px;
 }
 
 .content-tabs.content-tabs--compact > button,
 .content-tabs.content-tabs--commandbar > button {
-  min-height: 44px;
-  padding-right: 14px;
-  padding-left: 14px;
-  font-size: 13.5px;
+  min-height: 36px;
+  padding-right: 12px;
+  padding-left: 12px;
+  font-size: 13px;
 }
 
 .content-tabs.content-tabs--header {

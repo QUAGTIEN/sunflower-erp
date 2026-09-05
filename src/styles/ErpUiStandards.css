@@ -45,6 +45,19 @@
   min-height: 36px;
 }
 
+/* Primary list actions sit below the page tabs so navigation stays first. */
+.erp-tab-actionbar {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0 0;
+}
+
 /* List screens place navigation above the toolbar so the hierarchy is always predictable. */
 .lead-page-navigation.lead-page-navigation,
 .lead-candidate-commandbar.lead-candidate-commandbar,
@@ -79,6 +92,12 @@
 
 .crm-list-commandbar > .crm-list-toolbar {
   flex: 0 0 auto;
+}
+
+.crm-list-toolbar > .crm-add-customer,
+.sales-list-toolbar > .btn-primary,
+.work-schedule-toolbar > .work-schedule-add {
+  margin-left: auto;
 }
 
 .sales-list-tabs.content-tabs,

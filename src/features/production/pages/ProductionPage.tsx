@@ -515,11 +515,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
 
   return (
     <div className="production-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={isOperator ? t('Phòng máy sản xuất') : t('Sản xuất')} current={productionTab === 'schedule' ? 'Lịch máy' : productionTab === 'machines' ? 'Danh mục máy' : 'Danh sách LSX'}>
-        {productionTab === 'commands' && !isOperator && (currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
-          <button className="btn btn-primary" onClick={handleOpenAddLsx}>{t('Phát hành lệnh sản xuất')}</button>
-        )}
-      </PageContextHeader>
+      <PageContextHeader section={isOperator ? t('Phòng máy sản xuất') : t('Sản xuất')} current={productionTab === 'schedule' ? 'Lịch máy' : productionTab === 'machines' ? 'Danh mục máy' : 'Danh sách LSX'} />
 
       <div className="production-tabs content-tabs" role="tablist" aria-label="Quản lý sản xuất">
         <button
@@ -550,6 +546,12 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
           <Settings2 size={16} /> Danh mục máy
         </button>
       </div>
+
+      {productionTab === 'commands' && !isOperator && (currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
+        <div className="erp-tab-actionbar">
+          <button className="btn btn-primary" onClick={handleOpenAddLsx}>{t('Phát hành lệnh sản xuất')}</button>
+        </div>
+      )}
 
       {productionTab === 'schedule' ? (
         <MachineManagement

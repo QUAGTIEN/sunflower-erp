@@ -704,14 +704,10 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
 
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Tạo đơn hàng')} current={!selectedPO ? (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Danh sách PO')) : undefined}>
-        {(currentUser.role === 'admin' || currentUser.role === 'sale') && !selectedPO && (
-          <button className="btn btn-primary" onClick={() => handleOpenCreatePO()}>{t('Tạo đơn hàng mới')}</button>
-        )}
-      </PageContextHeader>
+      <PageContextHeader section={t('Tạo đơn hàng')} current={!selectedPO ? (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Danh sách PO')) : undefined} />
 
       {!selectedPO && (
-        <div className="card">
+        <>
           <div className="sales-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách Sale PO')}>
             <button
               type="button"
@@ -737,6 +733,8 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             </button>
           </div>
 
+        <div className="card">
+
           {activeListView === 'waiting-customers' && (
             <div className="waiting-customer-intro">
               <div>
@@ -760,6 +758,9 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             <button className="btn btn-outline" onClick={() => setSearchTerm('')}>
               {t('Xóa tìm kiếm')}
             </button>
+            {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
+              <button className="btn btn-primary" onClick={() => handleOpenCreatePO()}>{t('Tạo đơn hàng mới')}</button>
+            )}
           </div>
 
           {activeListView === 'orders' ? (
@@ -887,6 +888,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* PO DETAIL PANEL WITH QUEUE-BASED WORKFLOW */}

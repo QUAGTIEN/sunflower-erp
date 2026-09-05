@@ -51,6 +51,10 @@
   background: #fff;
 }
 
+.supplier-toolbar {
+  grid-template-columns: minmax(320px, 1fr) repeat(2, minmax(150px, auto)) auto;
+}
+
 .purchase-toolbar select,
 .supplier-toolbar select,
 .panel-heading-row select {

@@ -359,16 +359,16 @@ export const Purchase: React.FC<PurchaseProps> = ({
     <div className="purchase-page">
       <PageContextHeader section={t('Mua hàng')} current={activeListView === 'orders' ? t('Đơn mua đã phát hành') : t('Yêu cầu từ Sale PO')} />
 
-      <section className="purchase-panel purchase-list-card">
-        <div className="purchase-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>
+      <div className="purchase-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>
           <button type="button" className={`purchase-list-tab ${activeListView === 'requests' ? 'is-active' : ''}`} onClick={() => { setActiveListView('requests'); setSearchTerm(''); }} role="tab" aria-selected={activeListView === 'requests'}>
             <ClipboardList size={16} /><span>{t('Yêu cầu từ Sale PO')}</span><span className="purchase-list-tab__count">{filteredRequests.length}</span>
           </button>
           <button type="button" className={`purchase-list-tab ${activeListView === 'orders' ? 'is-active' : ''}`} onClick={() => { setActiveListView('orders'); setSearchTerm(''); }} role="tab" aria-selected={activeListView === 'orders'}>
             <ShoppingBag size={16} /><span>{t('Đơn mua đã phát hành')}</span><span className="purchase-list-tab__count">{filteredPurchaseOrders.length}</span>
           </button>
-        </div>
+      </div>
 
+      <section className="purchase-panel purchase-list-card">
         <div className="purchase-toolbar">
           <div className="purchase-search"><Search size={16} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={activeListView === 'requests' ? t('Tìm mã PO, khách hàng, mã hàng, vật liệu hoặc NCC...') : t('Tìm mã đơn mua, NCC, PO khách hàng hoặc mặt hàng...')} /></div>
           <select value={sourcingFilter} onChange={event => setSourcingFilter(event.target.value as typeof sourcingFilter)}><option value="all">{t('Tất cả phương án')}</option>{(['finished_good', 'raw_material', 'subcontract'] as SourcingType[]).map(type => <option key={type} value={type}>{getSourcingTypeLabel(type)}</option>)}</select>

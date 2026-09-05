@@ -2442,14 +2442,7 @@ export const Crm: React.FC<CrmProps> = ({
 
   return (
     <SystemFieldSurface table="customers" className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
-      <PageContextHeader section={t('Khách hàng')} current={filterType === 'has_debt' ? t('Có công nợ') : filterType === 'analytics' ? t('Phân tích') : t('Tất cả')}>
-        {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
-          <button className="btn btn-primary crm-add-customer" onClick={() => openAddModal()} title={t('Thêm Khách Hàng Mới')}>
-            <Plus size={18} />
-            <span>{t('Thêm khách hàng')}</span>
-          </button>
-        )}
-      </PageContextHeader>
+      <PageContextHeader section={t('Khách hàng')} current={filterType === 'has_debt' ? t('Có công nợ') : filterType === 'analytics' ? t('Phân tích') : t('Tất cả')} />
 
       {currentUser.role === 'admin' && (editRequests.some(r => r.status === 'pending') || customers.some(c => c.deleteRequested && !c.deleted)) && (
         <div className="card" style={{ border: '2px solid var(--color-primary-light)', backgroundColor: '#f0fdf4', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
@@ -2513,13 +2506,23 @@ export const Crm: React.FC<CrmProps> = ({
                   <BarChart3 size={15} /><span>{t('Phân tích')}</span>
                 </button>
               </div>
-              {filterType !== 'analytics' && <div className="crm-list-toolbar">
-                <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
-                <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
-                {(searchTerm || activeFilterCount > 0) && (
-                  <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
+              <div className="crm-list-toolbar">
+                {filterType !== 'analytics' && (
+                  <>
+                    <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
+                    <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
+                    {(searchTerm || activeFilterCount > 0) && (
+                      <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
+                    )}
+                  </>
                 )}
-              </div>}
+                {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
+                  <button className="btn btn-primary crm-add-customer" onClick={() => openAddModal()} title={t('Thêm Khách Hàng Mới')}>
+                    <Plus size={18} />
+                    <span>{t('Thêm khách hàng')}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {filterType === 'analytics' ? (

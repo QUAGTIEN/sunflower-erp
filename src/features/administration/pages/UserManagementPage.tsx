@@ -319,9 +319,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
 
   return (
     <div className="users-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Tài khoản')} current={t('Danh sách người dùng')}>
-        <button className="btn btn-primary" onClick={openAddModal}>{t('Thêm người dùng')}</button>
-      </PageContextHeader>
+      <PageContextHeader section={t('Tài khoản')} current={t('Danh sách người dùng')} />
 
       <div className="card">
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -348,6 +346,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
             </select>
             <button className="btn btn-outline" onClick={() => { setSearchTerm(''); setRoleFilter('all'); }}>{t('Đặt Lại')}</button>
           </div>
+          <button className="btn btn-primary" onClick={openAddModal}>{t('Thêm người dùng')}</button>
         </div>
 
         <div className="table-container">

@@ -468,9 +468,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
 
   return (
     <div className="suppliers-page">
-      <PageContextHeader section={t('Nhà cung cấp')} current={t('Danh sách nhà cung cấp')}>
-        <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm NCC')}</button>
-      </PageContextHeader>
+      <PageContextHeader section={t('Nhà cung cấp')} current={t('Danh sách nhà cung cấp')} />
 
       <div className="supplier-kpi-grid">
         <div><Building2 size={18} /><strong>{suppliers.length}</strong><span>{t('Tổng NCC')}</span></div>
@@ -482,6 +480,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
         <div className="purchase-search"><Search size={16} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm NCC, MST, liên hệ, mặt hàng, mã PO hoặc đơn mua...')} /></div>
         <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="all">{t('Tất cả nhóm hàng')}</option>{categories.map(category => <option key={category}>{category}</option>)}</select>
         <select value={monthFilter} onChange={event => setMonthFilter(event.target.value)}><option value="all">{t('Tất cả tháng')}</option>{months.map(month => <option key={month}>{month}</option>)}</select>
+        <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm NCC')}</button>
       </section>
 
       <section className="purchase-panel">

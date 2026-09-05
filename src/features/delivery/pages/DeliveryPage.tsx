@@ -919,11 +919,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
 
   return (
     <div className="delivery-view delivery-control-center">
-      <PageContextHeader section="Giao hàng" current={activeTab === 'trips' ? 'Chuyến giao' : activeTab === 'fleet' ? 'Xe & tài xế' : activeTab === 'proof' ? 'POD & đối soát' : 'Bảng điều phối'}>
-        {(currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
-          <button className="btn btn-primary" onClick={handleOpenAddTrip}>Lập chuyến giao hàng</button>
-        )}
-      </PageContextHeader>
+      <PageContextHeader section="Giao hàng" current={activeTab === 'trips' ? 'Chuyến giao' : activeTab === 'fleet' ? 'Xe & tài xế' : activeTab === 'proof' ? 'POD & đối soát' : 'Bảng điều phối'} />
 
       <div className="delivery-tabs content-tabs" role="tablist" aria-label="Điều phối giao hàng">
         {([
@@ -944,6 +940,12 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
           </button>
         ))}
       </div>
+
+      {(currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
+        <div className="erp-tab-actionbar">
+          <button className="btn btn-primary" onClick={handleOpenAddTrip}>Lập chuyến giao hàng</button>
+        </div>
+      )}
 
       <div className="delivery-kpi-grid">
         <div className="delivery-kpi-card">
