@@ -7,6 +7,9 @@
   --erp-control-height: 36px;
   --erp-table-header-bg: #f3f5f8;
   --erp-table-row-height: 44px;
+  --erp-table-text: #334155;
+  --erp-table-secondary-text: #64748b;
+  --erp-table-link: #1d4ed8;
   --erp-surface-radius: 2px;
   --erp-control-radius: 5px;
   --erp-status-radius: 999px;
@@ -296,6 +299,81 @@
   border-radius: var(--erp-control-radius);
 }
 
+/* Checkboxes are compact controls, not full-height text inputs. */
+.app-main input[type='checkbox'],
+input[type='checkbox'] {
+  width: 15px;
+  min-width: 15px;
+  height: 15px;
+  min-height: 15px !important;
+  flex: 0 0 15px;
+  margin: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 3px !important;
+  outline-offset: 2px;
+  background: transparent;
+  box-shadow: none !important;
+  accent-color: #1e3a8a;
+  cursor: pointer;
+}
+
+.app-main input[type='checkbox']:focus-visible,
+input[type='checkbox']:focus-visible {
+  outline: 2px solid #93b4ed;
+}
+
+.app-main input[type='checkbox']:disabled,
+input[type='checkbox']:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Create/edit record headers stay on one compact line on desktop. */
+.lead-form-page__header,
+.lead-candidate-form-page__header {
+  display: flex !important;
+  min-height: 48px !important;
+  align-items: center !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 10px !important;
+  padding: 7px 10px !important;
+}
+
+.lead-form-page__header > .app-back-button,
+.lead-candidate-form-page__header > .app-back-button {
+  min-height: 32px;
+  flex: 0 0 auto;
+}
+
+.lead-form-page__header > div,
+.lead-candidate-form-page__header > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  flex: 1 1 auto;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.lead-form-page__header > div > span,
+.lead-candidate-form-page__header > div > span {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.lead-form-page__header h1,
+.lead-candidate-form-page__header h1 {
+  min-width: 0;
+  margin: 0 !important;
+  overflow: hidden;
+  font-size: 18px !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .page-header > .btn,
 .page-header > .btn-group,
 .customer-data-page__header > .btn,
@@ -371,12 +449,31 @@ table th {
   background: var(--erp-table-header-bg) !important;
   color: #172554 !important;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 550 !important;
 }
 
 table td {
   background: #ffffff;
+  color: var(--erp-table-text);
   font-size: 13px;
+  font-weight: 400 !important;
+}
+
+table td strong,
+table td b {
+  font-weight: 550 !important;
+}
+
+table td a {
+  color: var(--erp-table-link);
+  font-weight: 500;
+}
+
+table td small,
+table td [class*='secondary'],
+table td [class*='muted'] {
+  color: var(--erp-table-secondary-text);
+  font-weight: 400;
 }
 
 /* Company names stay compact in dense ERP grids while preserving the full value on hover. */
@@ -386,7 +483,7 @@ table td {
   overflow: hidden;
   color: #172554;
   font-size: 12px !important;
-  font-weight: 600 !important;
+  font-weight: 550 !important;
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -519,6 +616,20 @@ table button:not(.row-action-menu__trigger) {
   table th,
   table td {
     padding: 7px 10px !important;
+  }
+
+  .lead-form-page__header,
+  .lead-candidate-form-page__header {
+    align-items: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .lead-form-page__header > div,
+  .lead-candidate-form-page__header > div {
+    min-width: min(100%, 320px);
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 }
 
