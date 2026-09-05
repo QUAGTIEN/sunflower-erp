@@ -523,6 +523,10 @@ table button:not(.row-action-menu__trigger) {
 }
 
 @media (max-width: 480px) {
+  .header-page-context {
+    display: none;
+  }
+
   .header-title {
     display: none;
   }

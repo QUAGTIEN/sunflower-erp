@@ -827,13 +827,6 @@ function AppShell() {
 
       {/* APP SIDEBAR NAVIGATION (Strictly Text Links, No Icons) */}
       <aside className={`app-sidebar ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-        <div className="sidebar-logo">
-          <img
-            src={APP_LOGO_PATH}
-            alt="Sunflower"
-            className="sidebar-logo-image"
-          />
-        </div>
         <nav className="sidebar-menu">
           {isPageAllowed('dashboard') && (
             <button
@@ -1105,6 +1098,13 @@ function AppShell() {
 
       {/* APP HEADER */}
       <header className="app-header">
+        <div className="sidebar-logo">
+          <img
+            src={APP_LOGO_PATH}
+            alt="Sunflower"
+            className="sidebar-logo-image"
+          />
+        </div>
         <div className="header-title-container">
           <button
             type="button"
