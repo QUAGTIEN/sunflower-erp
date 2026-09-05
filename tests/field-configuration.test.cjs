@@ -89,6 +89,23 @@ test('default headers keep original translations and form controls are unchanged
   assert.ok(form.includes('Hồ sơ cũ'));
 });
 
+test('form-only fields can be rendered as optional table columns and removed fields stay hidden', () => {
+  const fields = model.resolveSystemFields('lead_candidates', {});
+  const markup = e('thead', {}, e('tr', {},
+    e('th', { 'data-system-field': 'companyName' }, 'Doanh nghiệp'),
+    e('th', { 'data-system-field': 'taxCode' }, 'Mã số thuế'),
+    e('th', { 'data-system-field': 'website' }, 'Website')
+  ));
+  const visibleHtml = renderToStaticMarkup(e('table', {}, tableUi.configureSystemTable(markup, fields, model.SYSTEM_FIELD_CATALOG.lead_candidates)));
+  assert.ok(visibleHtml.includes('Mã số thuế'));
+  assert.ok(visibleHtml.includes('Website'));
+
+  const removed = fields.map(field => field.key === 'website' ? { ...field, removed: true } : field);
+  const removedHtml = renderToStaticMarkup(e('table', {}, tableUi.configureSystemTable(markup, removed, model.SYSTEM_FIELD_CATALOG.lead_candidates)));
+  assert.ok(removedHtml.includes('Mã số thuế'));
+  assert.ok(!removedHtml.includes('Website'));
+});
+
 test('removed optional system fields disappear from their complete form control', () => {
   const fields = model.resolveSystemFields('leads', {});
   const configured = fields.map(field => field.key === 'website' ? { ...field, visible: false, removed: true } : field);

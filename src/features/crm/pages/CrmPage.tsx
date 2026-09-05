@@ -312,27 +312,62 @@ export const Crm: React.FC<CrmProps> = ({
   const [selectedEditRequest, setSelectedEditRequest] = useState<any | null>(null);
   const [windDirectionFiles, setWindDirectionFiles] = useState<any[]>([]);
 
-  const customerColumnOptions = useMemo<TableColumnOption[]>(() => [
-    { id: 'company', label: t('Khách hàng'), required: true },
-    { id: 'customerCode', label: t('Mã KH') },
-    { id: 'rank', label: t('Phân loại') },
-    { id: 'taxCode', label: t('Mã số thuế') },
-    { id: 'phone', label: t('SĐT') },
-    { id: 'email', label: t('Mail') },
-    { id: 'assignedSale', label: t('Sale phụ trách') },
-    { id: 'businessResult', label: t('Kết quả kinh doanh') },
-    ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
-      id: `custom:${definition.id}`,
-      label: definition.name
-    })),
-    { id: 'actions', label: t('Thao tác'), required: true }
-  ], [customFieldDefinitions, t]);
+  const customerColumnOptions = useMemo<TableColumnOption[]>(() => {
+    const sectionLabels: Record<string, string> = {
+      company: t('Hồ sơ doanh nghiệp'),
+      classification: t('Địa bàn doanh nghiệp'),
+      contact: t('Liên hệ và giao nhận'),
+      additional: t('Điều khoản thương mại'),
+      assignment: t('Phụ trách'),
+      needs: t('Trường thông tin bổ sung')
+    };
+    const configuredField = (key: string, fallback: string) => {
+      const field = inlineSystemFieldConfiguration.fields.find(item => item.key === key);
+      return field?.removed ? null : field?.label || t(fallback);
+    };
+    const systemColumn = (id: string, key: string, fallback: string, group: string, defaultVisible = false): TableColumnOption | null => {
+      const label = configuredField(key, fallback);
+      return label ? { id, label, group, defaultVisible } : null;
+    };
+    return [
+      { id: 'company', label: configuredField('companyName', 'Khách hàng') || t('Khách hàng'), group: sectionLabels.company, required: true },
+      systemColumn('customerCode', 'customerCode', 'Mã KH', sectionLabels.company, true),
+      systemColumn('rank', 'customerRank', 'Phân loại', sectionLabels.company, true),
+      systemColumn('taxCode', 'taxCode', 'Mã số thuế', sectionLabels.company, true),
+      systemColumn('assignedSale', 'assignedSaleId', 'Sale phụ trách', sectionLabels.company, true),
+      systemColumn('province', 'province', 'Tỉnh / thành', sectionLabels.classification),
+      systemColumn('ward', 'ward', 'Phường / xã', sectionLabels.classification),
+      systemColumn('industrialPark', 'industrialPark', 'Khu công nghiệp', sectionLabels.classification),
+      systemColumn('address', 'address', 'Địa chỉ chi tiết / giao hàng', sectionLabels.classification),
+      systemColumn('contactPerson', 'contactPerson', 'Người liên hệ', sectionLabels.contact),
+      systemColumn('phone', 'phone', 'SĐT', sectionLabels.contact, true),
+      systemColumn('procurementPhone', 'procurementPhone', 'SĐT thu mua', sectionLabels.contact),
+      systemColumn('warehousePhone', 'warehousePhone', 'SĐT nhận hàng / kho', sectionLabels.contact),
+      systemColumn('email', 'email', 'Mail', sectionLabels.contact, true),
+      systemColumn('discountType', 'discountType', 'Hình thức chiết khấu', sectionLabels.additional),
+      { id: 'discountValue', label: t('Chiết khấu mặc định'), group: sectionLabels.additional, defaultVisible: false },
+      systemColumn('debtLimit', 'debtLimit', 'Hạn mức công nợ', sectionLabels.additional),
+      systemColumn('paymentTerms', 'paymentTerms', 'Điều khoản thanh toán', sectionLabels.additional),
+      systemColumn('bankAccount', 'bankAccount', 'Tài khoản ngân hàng', sectionLabels.additional),
+      systemColumn('note', 'note', 'Ghi chú yêu cầu riêng', sectionLabels.additional),
+      { id: 'businessResult', label: t('Kết quả kinh doanh'), group: t('Kết quả kinh doanh') },
+      ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
+        id: `custom:${definition.id}`,
+        label: definition.name,
+        group: sectionLabels[definition.section] || t('Trường thông tin bổ sung'),
+        defaultVisible: definition.defaultVisible
+      })),
+      { id: 'actions', label: t('Thao tác'), group: t('Điều khiển bảng'), required: true }
+    ].filter((column): column is TableColumnOption => Boolean(column));
+  }, [customFieldDefinitions, inlineSystemFieldConfiguration.fields, t]);
   const visibleCustomerColumnIds = useMemo(() => {
     const availableIds = new Set(customerColumnOptions.map(column => column.id));
     const requiredIds = customerColumnOptions.filter(column => column.required).map(column => column.id);
     const selectedIds = storedVisibleColumnIds?.filter(id => availableIds.has(id));
-    return new Set([...requiredIds, ...(selectedIds?.length ? selectedIds : customerColumnOptions.map(column => column.id))]);
+    const defaultIds = customerColumnOptions.filter(column => column.required || column.defaultVisible !== false).map(column => column.id);
+    return new Set([...requiredIds, ...(selectedIds?.length ? selectedIds : defaultIds)]);
   }, [customerColumnOptions, storedVisibleColumnIds]);
+  const visibleCustomerColumnCount = customerColumnOptions.filter(column => visibleCustomerColumnIds.has(column.id)).length;
   const visibleCustomerCustomFields = useMemo(
     () => customFieldDefinitions.filter(definition => definition.active && visibleCustomerColumnIds.has(`custom:${definition.id}`)),
     [customFieldDefinitions, visibleCustomerColumnIds]
@@ -2202,6 +2237,10 @@ export const Crm: React.FC<CrmProps> = ({
     (safeCustomerPage - 1) * customerPageSize,
     safeCustomerPage * customerPageSize
   );
+  const renderCustomerText = (value?: string | number) => {
+    const displayValue = value === undefined || value === null || value === '' ? t('Chưa cập nhật') : String(value);
+    return <span className={displayValue === t('Chưa cập nhật') ? 'crm-text-muted crm-table-text' : 'crm-table-text'} title={displayValue}>{displayValue}</span>;
+  };
   const selectedCustomerSamples = selectedCustomer
     ? customerSamplesById[selectedCustomer.id] || []
     : [];
@@ -2735,8 +2774,36 @@ export const Crm: React.FC<CrmProps> = ({
 
                 <div className="crm-customer-grid">
                   <div className="table-container crm-customer-table-wrap">
-                  <ConfiguredSystemTable table="customers" className="crm-customer-table is-compact">
-                    <thead><tr><th data-system-field="companyName">{t('Khách hàng')}</th>{visibleCustomerColumnIds.has('customerCode') && <th data-system-field="customerCode">{t('Mã KH')}</th>}{visibleCustomerColumnIds.has('rank') && <th data-system-field="customerRank">{t('Phân loại')}</th>}{visibleCustomerColumnIds.has('taxCode') && <th data-system-field="taxCode">{t('Mã số thuế')}</th>}{visibleCustomerColumnIds.has('phone') && <th data-system-field="phone">{t('SĐT')}</th>}{visibleCustomerColumnIds.has('email') && <th data-system-field="email">{t('Mail')}</th>}{visibleCustomerColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}{visibleCustomerColumnIds.has('businessResult') && <th data-system-field="businessResult">{t('Kết quả kinh doanh')}</th>}{visibleCustomerCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
+                  <ConfiguredSystemTable
+                    table="customers"
+                    className="crm-customer-table is-compact has-dynamic-columns"
+                    style={{ minWidth: `${Math.max(1180, visibleCustomerColumnCount * 150)}px` }}
+                  >
+                    <thead><tr>
+                      <th data-system-field="companyName">{t('Khách hàng')}</th>
+                      {visibleCustomerColumnIds.has('customerCode') && <th data-system-field="customerCode">{t('Mã KH')}</th>}
+                      {visibleCustomerColumnIds.has('rank') && <th data-system-field="customerRank">{t('Phân loại')}</th>}
+                      {visibleCustomerColumnIds.has('taxCode') && <th data-system-field="taxCode">{t('Mã số thuế')}</th>}
+                      {visibleCustomerColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}
+                      {visibleCustomerColumnIds.has('province') && <th data-system-field="province">{t('Tỉnh / thành')}</th>}
+                      {visibleCustomerColumnIds.has('ward') && <th data-system-field="ward">{t('Phường / xã')}</th>}
+                      {visibleCustomerColumnIds.has('industrialPark') && <th data-system-field="industrialPark">{t('Khu công nghiệp')}</th>}
+                      {visibleCustomerColumnIds.has('address') && <th data-system-field="address">{t('Địa chỉ chi tiết / giao hàng')}</th>}
+                      {visibleCustomerColumnIds.has('contactPerson') && <th data-system-field="contactPerson">{t('Người liên hệ')}</th>}
+                      {visibleCustomerColumnIds.has('phone') && <th data-system-field="phone">{t('SĐT')}</th>}
+                      {visibleCustomerColumnIds.has('procurementPhone') && <th data-system-field="procurementPhone">{t('SĐT thu mua')}</th>}
+                      {visibleCustomerColumnIds.has('warehousePhone') && <th data-system-field="warehousePhone">{t('SĐT nhận hàng / kho')}</th>}
+                      {visibleCustomerColumnIds.has('email') && <th data-system-field="email">{t('Mail')}</th>}
+                      {visibleCustomerColumnIds.has('discountType') && <th data-system-field="discountType">{t('Hình thức chiết khấu')}</th>}
+                      {visibleCustomerColumnIds.has('discountValue') && <th>{t('Chiết khấu mặc định')}</th>}
+                      {visibleCustomerColumnIds.has('debtLimit') && <th data-system-field="debtLimit">{t('Hạn mức công nợ')}</th>}
+                      {visibleCustomerColumnIds.has('paymentTerms') && <th data-system-field="paymentTerms">{t('Điều khoản thanh toán')}</th>}
+                      {visibleCustomerColumnIds.has('bankAccount') && <th data-system-field="bankAccount">{t('Tài khoản ngân hàng')}</th>}
+                      {visibleCustomerColumnIds.has('note') && <th data-system-field="note">{t('Ghi chú yêu cầu riêng')}</th>}
+                      {visibleCustomerColumnIds.has('businessResult') && <th data-system-field="businessResult">{t('Kết quả kinh doanh')}</th>}
+                      {visibleCustomerCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}
+                      <th>{t('Thao tác')}</th>
+                    </tr></thead>
                     <tbody>
                       {displayedCustomers.map(customer => {
                         const customerOrders = getCustomerOrders(customer.id);
@@ -2750,9 +2817,22 @@ export const Crm: React.FC<CrmProps> = ({
                               {visibleCustomerColumnIds.has('customerCode') && <td><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>}
                               {visibleCustomerColumnIds.has('rank') && <td><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>}
                               {visibleCustomerColumnIds.has('taxCode') && <td><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>}
-                              {visibleCustomerColumnIds.has('phone') && <td><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>}
-                              {visibleCustomerColumnIds.has('email') && <td><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>}
                               {visibleCustomerColumnIds.has('assignedSale') && <td><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>}
+                              {visibleCustomerColumnIds.has('province') && <td>{renderCustomerText(customer.province)}</td>}
+                              {visibleCustomerColumnIds.has('ward') && <td>{renderCustomerText(customer.ward)}</td>}
+                              {visibleCustomerColumnIds.has('industrialPark') && <td>{renderCustomerText(customer.industrialPark)}</td>}
+                              {visibleCustomerColumnIds.has('address') && <td>{renderCustomerText(customer.address)}</td>}
+                              {visibleCustomerColumnIds.has('contactPerson') && <td>{renderCustomerText(customer.contactPerson)}</td>}
+                              {visibleCustomerColumnIds.has('phone') && <td><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>}
+                              {visibleCustomerColumnIds.has('procurementPhone') && <td>{renderCustomerText(customer.procurementPhone)}</td>}
+                              {visibleCustomerColumnIds.has('warehousePhone') && <td>{renderCustomerText(customer.warehousePhone)}</td>}
+                              {visibleCustomerColumnIds.has('email') && <td><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>}
+                              {visibleCustomerColumnIds.has('discountType') && <td>{renderCustomerText(customer.discountType === 'amount' ? t('Theo tiền chênh') : t('Theo phần trăm'))}</td>}
+                              {visibleCustomerColumnIds.has('discountValue') && <td>{renderCustomerText(customer.discountType === 'amount' ? `${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${Number(customer.discountRate || 0).toLocaleString('vi-VN')}%`)}</td>}
+                              {visibleCustomerColumnIds.has('debtLimit') && <td>{renderCustomerText(`${Number(customer.debtLimit || 0).toLocaleString('vi-VN')} đ`)}</td>}
+                              {visibleCustomerColumnIds.has('paymentTerms') && <td>{renderCustomerText(customer.paymentTerms)}</td>}
+                              {visibleCustomerColumnIds.has('bankAccount') && <td>{renderCustomerText(customer.bankAccount)}</td>}
+                              {visibleCustomerColumnIds.has('note') && <td>{renderCustomerText(customer.note)}</td>}
                               {visibleCustomerColumnIds.has('businessResult') && <td><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')} · {orderValue.toLocaleString('vi-VN')} đ</strong></div></td>}
                               {visibleCustomerCustomFields.map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id])}</td>)}
                               <td>
@@ -2778,7 +2858,7 @@ export const Crm: React.FC<CrmProps> = ({
                           </React.Fragment>
                         );
                       })}
-                      {filteredCustomers.length === 0 && <tr><td colSpan={visibleCustomerColumnIds.size} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
+                      {filteredCustomers.length === 0 && <tr><td colSpan={visibleCustomerColumnCount} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
                     </tbody>
                   </ConfiguredSystemTable>
                   </div>

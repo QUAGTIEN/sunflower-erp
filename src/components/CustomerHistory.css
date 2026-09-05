@@ -1051,6 +1051,28 @@
 .crm-customer-table th:nth-child(9) { width: 195px; }
 .crm-customer-table th:nth-child(10) { width: 72px; }
 
+.crm-customer-table.has-dynamic-columns th {
+  width: 150px;
+  min-width: 150px;
+}
+
+.crm-customer-table.has-dynamic-columns th:first-child {
+  width: 230px;
+  min-width: 230px;
+}
+
+.crm-customer-table.has-dynamic-columns th:last-child {
+  width: 72px;
+  min-width: 72px;
+}
+
+.crm-customer-table .crm-table-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .crm-tax-code {
   color: #172554;
   font-weight: 550;

@@ -371,24 +371,62 @@ export const Leads: React.FC<LeadsProps> = ({
     [profileDefinitions]
   );
 
-  const leadColumnOptions = useMemo<TableColumnOption[]>(() => [
-    { id: 'company', label: t('Doanh nghiệp'), required: true },
-    { id: 'contact', label: t('Liên hệ') },
-    { id: 'source', label: t('Nguồn / khu vực') },
-    { id: 'potentialValue', label: t('Giá trị tiềm năng') },
-    { id: 'assignedSale', label: t('Sale phụ trách') },
-    { id: 'nextFollowUpAt', label: t('Chăm sóc tiếp') },
-    ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
-      id: `custom:${definition.id}`,
-      label: definition.name
-    })),
-    { id: 'actions', label: t('Thao tác'), required: true }
-  ], [customFieldDefinitions, t]);
+  const leadColumnOptions = useMemo<TableColumnOption[]>(() => {
+    const sectionLabels: Record<string, string> = {
+      company: t('Thông tin doanh nghiệp'),
+      classification: t('Phân loại khách hàng'),
+      contact: t('Liên hệ và nhu cầu'),
+      needs: t('Liên hệ và nhu cầu'),
+      assignment: t('Phụ trách và lịch làm việc'),
+      additional: t('Trường thông tin bổ sung')
+    };
+    const configuredField = (key: string, fallback: string) => {
+      const field = inlineSystemFieldConfiguration.fields.find(item => item.key === key);
+      return field?.removed ? null : field?.label || t(fallback);
+    };
+    const systemColumn = (id: string, key: string, fallback: string, group: string, defaultVisible = false): TableColumnOption | null => {
+      const label = configuredField(key, fallback);
+      return label ? { id, label, group, defaultVisible } : null;
+    };
+    return [
+      { id: 'company', label: configuredField('companyName', 'Doanh nghiệp') || t('Doanh nghiệp'), group: sectionLabels.company, required: true },
+      systemColumn('taxCode', 'taxCode', 'Mã số thuế', sectionLabels.company),
+      systemColumn('website', 'website', 'Website', sectionLabels.company),
+      systemColumn('businessSector', 'businessSector', 'Lĩnh vực hoạt động', sectionLabels.company),
+      systemColumn('address', 'address', 'Địa chỉ doanh nghiệp', sectionLabels.company),
+      systemColumn('companySize', 'companySize', 'Quy mô', sectionLabels.classification),
+      { id: 'source', label: t('Nguồn / khu vực (tóm tắt)'), group: sectionLabels.classification },
+      systemColumn('sourceValue', 'source', 'Nguồn tìm kiếm', sectionLabels.classification),
+      systemColumn('province', 'province', 'Tỉnh/thành', sectionLabels.classification),
+      systemColumn('ward', 'ward', 'Phường/xã', sectionLabels.classification),
+      systemColumn('industrialPark', 'industrialPark', 'Khu công nghiệp', sectionLabels.classification),
+      { id: 'contact', label: t('Liên hệ (tóm tắt)'), group: sectionLabels.contact },
+      systemColumn('contactPerson', 'contactPerson', 'Người liên hệ', sectionLabels.contact),
+      systemColumn('contactPosition', 'contactPosition', 'Chức vụ', sectionLabels.contact),
+      systemColumn('phone', 'phone', 'Điện thoại', sectionLabels.contact),
+      systemColumn('email', 'email', 'Email', sectionLabels.contact),
+      systemColumn('expectedProducts', 'expectedProducts', 'Sản phẩm / nhu cầu quan tâm', sectionLabels.contact),
+      systemColumn('potentialValue', 'potentialValue', 'Giá trị tiềm năng', sectionLabels.contact, true),
+      systemColumn('stage', 'stage', 'Giai đoạn xử lý', sectionLabels.contact),
+      systemColumn('note', 'note', 'Ghi chú', sectionLabels.contact),
+      systemColumn('assignedSale', 'assignedSaleId', 'Sale phụ trách', sectionLabels.assignment, true),
+      systemColumn('discoveredBy', 'discoveredById', 'Sale tìm được Lead', sectionLabels.assignment),
+      systemColumn('nextFollowUpAt', 'nextFollowUpAt', 'Chăm sóc tiếp', sectionLabels.assignment, true),
+      ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
+        id: `custom:${definition.id}`,
+        label: definition.name,
+        group: sectionLabels[definition.section] || sectionLabels.additional,
+        defaultVisible: definition.defaultVisible
+      })),
+      { id: 'actions', label: t('Thao tác'), group: t('Điều khiển bảng'), required: true }
+    ].filter((column): column is TableColumnOption => Boolean(column));
+  }, [customFieldDefinitions, inlineSystemFieldConfiguration.fields, t]);
   const visibleLeadColumnIds = useMemo(() => {
     const availableIds = new Set(leadColumnOptions.map(column => column.id));
     const requiredIds = leadColumnOptions.filter(column => column.required).map(column => column.id);
     const selectedIds = storedVisibleColumnIds?.filter(id => availableIds.has(id));
-    return new Set([...requiredIds, ...(selectedIds?.length ? selectedIds : leadColumnOptions.map(column => column.id))]);
+    const defaultIds = leadColumnOptions.filter(column => column.required || column.defaultVisible !== false).map(column => column.id);
+    return new Set([...requiredIds, ...(selectedIds?.length ? selectedIds : defaultIds)]);
   }, [leadColumnOptions, storedVisibleColumnIds]);
   const visibleLeadCustomFields = useMemo(
     () => customFieldDefinitions.filter(definition => definition.active && visibleLeadColumnIds.has(`custom:${definition.id}`)),
@@ -559,13 +597,7 @@ export const Leads: React.FC<LeadsProps> = ({
     (safeLeadCurrentPage - 1) * leadPageSize,
     safeLeadCurrentPage * leadPageSize
   );
-  const visibleLeadColumnCount = 2
-    + Number(visibleLeadColumnIds.has('contact'))
-    + Number(visibleLeadColumnIds.has('source'))
-    + Number(visibleLeadColumnIds.has('potentialValue'))
-    + Number(visibleLeadColumnIds.has('assignedSale'))
-    + Number(visibleLeadColumnIds.has('nextFollowUpAt'))
-    + visibleLeadCustomFields.length;
+  const visibleLeadColumnCount = leadColumnOptions.filter(column => visibleLeadColumnIds.has(column.id)).length;
 
   useEffect(() => {
     setLeadCurrentPage(1);
@@ -1441,6 +1473,12 @@ export const Leads: React.FC<LeadsProps> = ({
     );
   };
 
+  const renderLeadText = (value?: string) => (
+    <span className={value ? 'lead-table-text' : 'lead-table-text is-muted'} title={value || 'Chưa cập nhật'}>
+      {value || 'Chưa cập nhật'}
+    </span>
+  );
+
   if (showLeadForm) {
     return renderLeadForm();
   }
@@ -1806,16 +1844,63 @@ export const Leads: React.FC<LeadsProps> = ({
           <section className="lead-table-card">
             <div className="lead-table-result">Hiển thị <strong>{filteredLeads.length}</strong> / {accessibleLeads.length} Lead</div>
             <div className="table-container">
-              <ConfiguredSystemTable table="leads" className="lead-table lead-table--classified">
-                <thead><tr><th data-system-field="companyName">{t('Doanh nghiệp')}</th>{visibleLeadColumnIds.has('contact') && <th data-system-field="contact">{t('Liên hệ')}</th>}{visibleLeadColumnIds.has('source') && <th data-system-field="source">{t('Nguồn / khu vực')}</th>}{visibleLeadColumnIds.has('potentialValue') && <th data-system-field="potentialValue">{t('Giá trị tiềm năng')}</th>}{visibleLeadColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}{visibleLeadColumnIds.has('nextFollowUpAt') && <th data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>}{visibleLeadCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}<th>{t('Thao tác')}</th></tr></thead>
+              <ConfiguredSystemTable
+                table="leads"
+                className="lead-table lead-table--classified has-dynamic-columns"
+                style={{ minWidth: `${Math.max(1180, visibleLeadColumnCount * 150)}px` }}
+              >
+                <thead><tr>
+                  <th data-system-field="companyName">{t('Doanh nghiệp')}</th>
+                  {visibleLeadColumnIds.has('taxCode') && <th data-system-field="taxCode">{t('Mã số thuế')}</th>}
+                  {visibleLeadColumnIds.has('website') && <th data-system-field="website">Website</th>}
+                  {visibleLeadColumnIds.has('businessSector') && <th data-system-field="businessSector">{t('Lĩnh vực hoạt động')}</th>}
+                  {visibleLeadColumnIds.has('address') && <th data-system-field="address">{t('Địa chỉ doanh nghiệp')}</th>}
+                  {visibleLeadColumnIds.has('companySize') && <th data-system-field="companySize">{t('Quy mô')}</th>}
+                  {visibleLeadColumnIds.has('source') && <th data-system-field="source">{t('Nguồn / khu vực (tóm tắt)')}</th>}
+                  {visibleLeadColumnIds.has('sourceValue') && <th data-system-field="sourceValue">{t('Nguồn tìm kiếm')}</th>}
+                  {visibleLeadColumnIds.has('province') && <th data-system-field="province">{t('Tỉnh/thành')}</th>}
+                  {visibleLeadColumnIds.has('ward') && <th data-system-field="ward">{t('Phường/xã')}</th>}
+                  {visibleLeadColumnIds.has('industrialPark') && <th data-system-field="industrialPark">{t('Khu công nghiệp')}</th>}
+                  {visibleLeadColumnIds.has('contact') && <th data-system-field="contact">{t('Liên hệ (tóm tắt)')}</th>}
+                  {visibleLeadColumnIds.has('contactPerson') && <th data-system-field="contactPerson">{t('Người liên hệ')}</th>}
+                  {visibleLeadColumnIds.has('contactPosition') && <th data-system-field="contactPosition">{t('Chức vụ')}</th>}
+                  {visibleLeadColumnIds.has('phone') && <th data-system-field="phone">{t('Điện thoại')}</th>}
+                  {visibleLeadColumnIds.has('email') && <th data-system-field="email">Email</th>}
+                  {visibleLeadColumnIds.has('expectedProducts') && <th data-system-field="expectedProducts">{t('Sản phẩm / nhu cầu quan tâm')}</th>}
+                  {visibleLeadColumnIds.has('potentialValue') && <th data-system-field="potentialValue">{t('Giá trị tiềm năng')}</th>}
+                  {visibleLeadColumnIds.has('stage') && <th data-system-field="stage">{t('Giai đoạn xử lý')}</th>}
+                  {visibleLeadColumnIds.has('note') && <th data-system-field="note">{t('Ghi chú')}</th>}
+                  {visibleLeadColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}
+                  {visibleLeadColumnIds.has('discoveredBy') && <th data-system-field="discoveredById">{t('Sale tìm được Lead')}</th>}
+                  {visibleLeadColumnIds.has('nextFollowUpAt') && <th data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>}
+                  {visibleLeadCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}
+                  <th>{t('Thao tác')}</th>
+                </tr></thead>
                 <tbody>
                   {displayedLeads.map(lead => (
                     <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
                       <td><strong className="erp-company-name" title={lead.companyName}>{lead.companyName}</strong></td>
-                      {visibleLeadColumnIds.has('contact') && <td><strong>{lead.contactPerson || '—'}</strong><span>{lead.phone || lead.email || 'Chưa có liên hệ'}</span></td>}
+                      {visibleLeadColumnIds.has('taxCode') && <td>{renderLeadText(lead.taxCode)}</td>}
+                      {visibleLeadColumnIds.has('website') && <td>{renderLeadText(lead.website)}</td>}
+                      {visibleLeadColumnIds.has('businessSector') && <td>{renderLeadText(lead.businessSector)}</td>}
+                      {visibleLeadColumnIds.has('address') && <td>{renderLeadText(lead.address)}</td>}
+                      {visibleLeadColumnIds.has('companySize') && <td>{renderLeadText(COMPANY_SIZE_LABELS[lead.companySize])}</td>}
                       {visibleLeadColumnIds.has('source') && <td><strong>{getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || '—')}</strong><span>{getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || 'Chưa xác định')}</span></td>}
+                      {visibleLeadColumnIds.has('sourceValue') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || ''))}</td>}
+                      {visibleLeadColumnIds.has('province') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || ''))}</td>}
+                      {visibleLeadColumnIds.has('ward') && <td>{renderLeadText(lead.ward)}</td>}
+                      {visibleLeadColumnIds.has('industrialPark') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.industrialPark, lead.industrialPark || ''))}</td>}
+                      {visibleLeadColumnIds.has('contact') && <td><strong>{lead.contactPerson || '—'}</strong><span>{lead.phone || lead.email || 'Chưa có liên hệ'}</span></td>}
+                      {visibleLeadColumnIds.has('contactPerson') && <td>{renderLeadText(lead.contactPerson)}</td>}
+                      {visibleLeadColumnIds.has('contactPosition') && <td>{renderLeadText(lead.contactPosition)}</td>}
+                      {visibleLeadColumnIds.has('phone') && <td>{renderLeadText(lead.phone)}</td>}
+                      {visibleLeadColumnIds.has('email') && <td>{renderLeadText(lead.email)}</td>}
+                      {visibleLeadColumnIds.has('expectedProducts') && <td>{renderLeadText(lead.expectedProducts)}</td>}
                       {visibleLeadColumnIds.has('potentialValue') && <td><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>}
+                      {visibleLeadColumnIds.has('stage') && <td>{renderLeadText(getStageLabel(lead.stage))}</td>}
+                      {visibleLeadColumnIds.has('note') && <td>{renderLeadText(lead.note)}</td>}
                       {visibleLeadColumnIds.has('assignedSale') && <td>{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>}
+                      {visibleLeadColumnIds.has('discoveredBy') && <td>{renderLeadText(users.find(user => user.uid === lead.discoveredById)?.displayName || lead.discoveredByName)}</td>}
                       {visibleLeadColumnIds.has('nextFollowUpAt') && <td>{renderFollowUp(lead)}</td>}
                       {visibleLeadCustomFields.map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id])}</td>)}
                       <td>

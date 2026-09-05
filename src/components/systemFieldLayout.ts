@@ -18,7 +18,11 @@ export function configureSystemTable(children: ReactNode, fields: SystemFieldOve
   if (!header) return children;
   const cells = elements(header.props.children);
   const configured = cells.map((cell, index) => ({ cell, index, field: fields.find(field => field.key === cell.props['data-system-field']) }));
-  const ordered = configured.filter(item => item.field?.visible !== false).sort((a, b) => {
+  const ordered = configured.filter(item => {
+    if (item.field?.visible !== false) return true;
+    const specification = defaults.find(field => field.key === item.field?.key);
+    return Boolean(specification?.formOnly && !item.field?.removed);
+  }).sort((a, b) => {
     // Unknown columns retain their location at the leading/trailing edge.
     const rank = (item: typeof a) => item.field ? item.field.order : item.index === 0 ? -1 : 1e9 + item.index;
     return rank(a) - rank(b) || a.index - b.index;

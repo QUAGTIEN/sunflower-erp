@@ -122,6 +122,24 @@
   scrollbar-width: thin;
 }
 
+.table-column-customizer__group + .table-column-customizer__group {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eef2f7;
+}
+
+.table-column-customizer__group h4 {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  margin: 0 0 3px;
+  padding: 4px;
+  color: #1e3a8a;
+  background: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
 .table-column-customizer__options label {
   display: flex;
   min-height: 36px;

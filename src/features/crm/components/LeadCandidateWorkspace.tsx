@@ -126,41 +126,85 @@ type CandidateColumnId = string;
 interface CandidateColumnOption extends TableColumnOption {
   id: CandidateColumnId;
   adminOnly?: boolean;
+  fieldKey?: string;
 }
 
+const CANDIDATE_SECTION_LABELS: Record<string, string> = {
+  company: 'Thông tin doanh nghiệp',
+  classification: 'Thông tin doanh nghiệp',
+  contact: 'Liên hệ và nguồn dữ liệu',
+  needs: 'Nhu cầu sơ bộ',
+  assignment: 'Phụ trách và lịch hẹn',
+  additional: 'Trường thông tin bổ sung'
+};
+
+const CANDIDATE_PROFILE_COLUMN_OPTIONS: CandidateColumnOption[] = [
+  { id: 'company', fieldKey: 'companyName', label: 'Doanh nghiệp', group: CANDIDATE_SECTION_LABELS.company, required: true },
+  { id: 'taxCode', fieldKey: 'taxCode', label: 'Mã số thuế', group: CANDIDATE_SECTION_LABELS.company, defaultVisible: false },
+  { id: 'website', fieldKey: 'website', label: 'Website', group: CANDIDATE_SECTION_LABELS.company, defaultVisible: false },
+  { id: 'businessSector', fieldKey: 'businessSector', label: 'Lĩnh vực hoạt động', group: CANDIDATE_SECTION_LABELS.company, defaultVisible: false },
+  { id: 'province', fieldKey: 'province', label: 'Tỉnh/thành', group: CANDIDATE_SECTION_LABELS.company },
+  { id: 'ward', fieldKey: 'ward', label: 'Phường/xã', group: CANDIDATE_SECTION_LABELS.company, defaultVisible: false },
+  { id: 'industrialPark', fieldKey: 'industrialPark', label: 'Khu công nghiệp', group: CANDIDATE_SECTION_LABELS.company, defaultVisible: false },
+  { id: 'address', fieldKey: 'address', label: 'Địa chỉ doanh nghiệp', group: CANDIDATE_SECTION_LABELS.company, defaultVisible: false },
+  { id: 'contact', fieldKey: 'contact', label: 'Thông tin liên hệ (tóm tắt)', group: CANDIDATE_SECTION_LABELS.contact },
+  { id: 'contactPerson', fieldKey: 'contactPerson', label: 'Người liên hệ', group: CANDIDATE_SECTION_LABELS.contact, defaultVisible: false },
+  { id: 'contactPosition', fieldKey: 'contactPosition', label: 'Chức vụ', group: CANDIDATE_SECTION_LABELS.contact, defaultVisible: false },
+  { id: 'phone', fieldKey: 'phone', label: 'Điện thoại', group: CANDIDATE_SECTION_LABELS.contact, defaultVisible: false },
+  { id: 'email', fieldKey: 'email', label: 'Email', group: CANDIDATE_SECTION_LABELS.contact, defaultVisible: false },
+  { id: 'source', fieldKey: 'source', label: 'Nguồn tìm kiếm', group: CANDIDATE_SECTION_LABELS.contact, defaultVisible: false },
+  { id: 'sourceUrl', fieldKey: 'sourceUrl', label: 'Đường dẫn nguồn', group: CANDIDATE_SECTION_LABELS.contact, defaultVisible: false },
+  { id: 'expectedProducts', fieldKey: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm', group: CANDIDATE_SECTION_LABELS.needs, defaultVisible: false },
+  { id: 'note', fieldKey: 'note', label: 'Ghi chú', group: CANDIDATE_SECTION_LABELS.needs, defaultVisible: false }
+];
+
 const TASK_COLUMN_OPTIONS: CandidateColumnOption[] = [
-  { id: 'status', label: 'Trạng thái' },
-  { id: 'company', label: 'Doanh nghiệp', required: true },
-  { id: 'province', label: 'Tỉnh/thành' },
-  { id: 'contact', label: 'Liên hệ' },
-  { id: 'assignee', label: 'Sale phụ trách', adminOnly: true },
-  { id: 'potential', label: 'Mức độ tiềm năng' },
-  { id: 'schedule', label: 'Lịch hẹn' },
-  { id: 'latest', label: 'Cập nhật gần nhất' },
-  { id: 'actions', label: 'Thao tác', required: true }
+  ...CANDIDATE_PROFILE_COLUMN_OPTIONS,
+  { id: 'status', fieldKey: 'contactResult', label: 'Trạng thái', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'assignee', fieldKey: 'assignedSaleId', label: 'Sale phụ trách', group: CANDIDATE_SECTION_LABELS.assignment, adminOnly: true },
+  { id: 'potential', fieldKey: 'potentialLevel', label: 'Mức độ tiềm năng', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'schedule', fieldKey: 'nextContactAt', label: 'Lịch hẹn', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'latest', fieldKey: 'latest', label: 'Cập nhật gần nhất', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'actions', label: 'Thao tác', group: 'Điều khiển bảng', required: true }
 ];
 
 const ALL_COLUMN_OPTIONS: CandidateColumnOption[] = [
-  { id: 'select', label: 'Chọn dữ liệu', required: true },
-  { id: 'company', label: 'Doanh nghiệp', required: true },
-  { id: 'province', label: 'Tỉnh/thành' },
-  { id: 'contact', label: 'Thông tin liên hệ' },
-  { id: 'assignee', label: 'Sale phụ trách' },
-  { id: 'processing', label: 'Sale đang xử lý' },
-  { id: 'potential', label: 'Mức độ tiềm năng' },
-  { id: 'schedule', label: 'Lịch tiếp theo' },
-  { id: 'latest', label: 'Cập nhật gần nhất' },
-  { id: 'actions', label: 'Thao tác', required: true }
+  { id: 'select', label: 'Chọn dữ liệu', group: 'Điều khiển bảng', required: true },
+  ...CANDIDATE_PROFILE_COLUMN_OPTIONS,
+  { id: 'assignee', fieldKey: 'assignedSaleId', label: 'Sale phụ trách', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'processing', fieldKey: 'processing', label: 'Sale đang xử lý', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'potential', fieldKey: 'potentialLevel', label: 'Mức độ tiềm năng', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'schedule', fieldKey: 'nextContactAt', label: 'Lịch tiếp theo', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'latest', fieldKey: 'latest', label: 'Cập nhật gần nhất', group: CANDIDATE_SECTION_LABELS.assignment },
+  { id: 'actions', label: 'Thao tác', group: 'Điều khiển bảng', required: true }
 ];
 
-const getAvailableColumns = (view: CandidateWorkspaceView, isAdmin: boolean, customDefinitions: EntityFieldDefinition[] = []): CandidateColumnOption[] => ([
-  ...(view === 'tasks' ? TASK_COLUMN_OPTIONS : ALL_COLUMN_OPTIONS).filter(column => !column.adminOnly || isAdmin),
-  ...customDefinitions.filter(definition => definition.active).map(definition => ({ id: `custom:${definition.id}`, label: definition.name }))
+const getAvailableColumns = (
+  view: CandidateWorkspaceView,
+  isAdmin: boolean,
+  customDefinitions: EntityFieldDefinition[] = [],
+  systemFields: Array<{ key: string; label: string; removed: boolean }> = []
+): CandidateColumnOption[] => ([
+  ...(view === 'tasks' ? TASK_COLUMN_OPTIONS : ALL_COLUMN_OPTIONS)
+    .filter(column => !column.adminOnly || isAdmin)
+    .filter(column => !column.fieldKey || !systemFields.find(field => field.key === column.fieldKey)?.removed)
+    .map(column => ({
+      ...column,
+      label: column.fieldKey
+        ? systemFields.find(field => field.key === column.fieldKey)?.label || column.label
+        : column.label
+    })),
+  ...customDefinitions.filter(definition => definition.active).map(definition => ({
+    id: `custom:${definition.id}`,
+    label: definition.name,
+    group: CANDIDATE_SECTION_LABELS[definition.section] || CANDIDATE_SECTION_LABELS.additional,
+    defaultVisible: definition.defaultVisible
+  }))
 ]);
 
 const getDefaultVisibleColumns = (isAdmin: boolean): Record<CandidateWorkspaceView, CandidateColumnId[]> => ({
-  tasks: getAvailableColumns('tasks', isAdmin).map(column => column.id),
-  all: getAvailableColumns('all', isAdmin).map(column => column.id)
+  tasks: getAvailableColumns('tasks', isAdmin).filter(column => column.required || column.defaultVisible !== false).map(column => column.id),
+  all: getAvailableColumns('all', isAdmin).filter(column => column.required || column.defaultVisible !== false).map(column => column.id)
 });
 
 const loadVisibleColumns = (userId: string, isAdmin: boolean) => {
@@ -173,7 +217,7 @@ const loadVisibleColumns = (userId: string, isAdmin: boolean) => {
       const available = getAvailableColumns(view, isAdmin);
       const availableIds = new Set(available.map(column => column.id));
       const requiredIds = available.filter(column => column.required).map(column => column.id);
-      const storedIds = Array.isArray(parsed[view]) ? parsed[view].filter((id): id is CandidateColumnId => availableIds.has(id as CandidateColumnId)) : [];
+      const storedIds = Array.isArray(parsed[view]) ? parsed[view].filter((id): id is CandidateColumnId => availableIds.has(id as CandidateColumnId) || id.startsWith('custom:')) : [];
       result[view] = Array.from(new Set([...requiredIds, ...(storedIds.length > 0 ? storedIds : defaults[view])]));
       return result;
     }, { tasks: [], all: [] });
@@ -375,6 +419,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [showDataFilters, setShowDataFilters] = useState(false);
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [visibleColumnsByView, setVisibleColumnsByView] = useState(() => loadVisibleColumns(currentUser.uid, currentUser.role === 'admin'));
+  const [hasStoredColumnPreferences, setHasStoredColumnPreferences] = useState(() => {
+    try {
+      return Boolean(window.localStorage.getItem(`sunflower:lead-candidate-columns:${currentUser.uid}`));
+    } catch {
+      return false;
+    }
+  });
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
@@ -407,10 +458,17 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     [fieldKey]: typeof (previous as unknown as Record<string, unknown>)[fieldKey] === 'number' ? 0 : ''
   }));
 
-  const availableColumnOptions = getAvailableColumns(workspaceView, currentUser.role === 'admin', customFieldDefinitions);
+  const availableColumnOptions = getAvailableColumns(
+    workspaceView,
+    currentUser.role === 'admin',
+    customFieldDefinitions,
+    inlineSystemFieldConfiguration.fields
+  );
   const visibleColumnSet = new Set([
     ...visibleColumnsByView[workspaceView],
-    ...customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => `custom:${definition.id}`)
+    ...(!hasStoredColumnPreferences
+      ? customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => `custom:${definition.id}`)
+      : [])
   ]);
   const visibleColumnCount = availableColumnOptions.filter(column => visibleColumnSet.has(column.id)).length;
 
@@ -423,6 +481,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     ]));
     const nextPreferences = { ...visibleColumnsByView, [workspaceView]: nextIds };
     setVisibleColumnsByView(nextPreferences);
+    setHasStoredColumnPreferences(true);
     try {
       window.localStorage.setItem(`sunflower:lead-candidate-columns:${currentUser.uid}`, JSON.stringify(nextPreferences));
     } catch {
@@ -1256,6 +1315,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     <span className={`lead-candidate-compact-value ${className}`.trim()} title={title}>{value}</span>
   );
 
+  const renderCandidateField = (value?: string) => (
+    renderCompactValue(value || 'Chưa cập nhật', value || 'Chưa cập nhật', value ? '' : 'is-muted')
+  );
+
   const getContactSummary = (candidate: LeadCandidateRecord) => {
     const primaryContact = candidate.contactPerson || 'Chưa rõ người liên hệ';
     const contactChannel = candidate.phone || candidate.email || 'Chưa có thông tin liên hệ';
@@ -1575,12 +1638,26 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         </div>
         <div className="table-container">
           {workspaceView === 'tasks' ? (
-            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact">
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150)}px` }}>
               <thead><tr>
-                {visibleColumnSet.has('status') && <th data-system-field="contactResult">Trạng thái</th>}
                 {visibleColumnSet.has('company') && <th data-system-field="companyName">Doanh nghiệp</th>}
+                {visibleColumnSet.has('taxCode') && <th data-system-field="taxCode">Mã số thuế</th>}
+                {visibleColumnSet.has('website') && <th data-system-field="website">Website</th>}
+                {visibleColumnSet.has('businessSector') && <th data-system-field="businessSector">Lĩnh vực hoạt động</th>}
                 {visibleColumnSet.has('province') && <th data-system-field="province">Tỉnh/thành</th>}
-                {visibleColumnSet.has('contact') && <th data-system-field="contact">Liên hệ</th>}
+                {visibleColumnSet.has('ward') && <th data-system-field="ward">Phường/xã</th>}
+                {visibleColumnSet.has('industrialPark') && <th data-system-field="industrialPark">Khu công nghiệp</th>}
+                {visibleColumnSet.has('address') && <th data-system-field="address">Địa chỉ doanh nghiệp</th>}
+                {visibleColumnSet.has('contact') && <th data-system-field="contact">Thông tin liên hệ (tóm tắt)</th>}
+                {visibleColumnSet.has('contactPerson') && <th data-system-field="contactPerson">Người liên hệ</th>}
+                {visibleColumnSet.has('contactPosition') && <th data-system-field="contactPosition">Chức vụ</th>}
+                {visibleColumnSet.has('phone') && <th data-system-field="phone">Điện thoại</th>}
+                {visibleColumnSet.has('email') && <th data-system-field="email">Email</th>}
+                {visibleColumnSet.has('source') && <th data-system-field="source">Nguồn tìm kiếm</th>}
+                {visibleColumnSet.has('sourceUrl') && <th data-system-field="sourceUrl">Đường dẫn nguồn</th>}
+                {visibleColumnSet.has('expectedProducts') && <th data-system-field="expectedProducts">Sản phẩm / nhu cầu quan tâm</th>}
+                {visibleColumnSet.has('note') && <th data-system-field="note">Ghi chú</th>}
+                {visibleColumnSet.has('status') && <th data-system-field="contactResult">Trạng thái</th>}
                 {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <th data-system-field="assignedSaleId">Sale phụ trách</th>}
                 {visibleColumnSet.has('potential') && <th data-system-field="potentialLevel">Mức độ tiềm năng</th>}
                 {visibleColumnSet.has('schedule') && <th data-system-field="nextContactAt">Lịch hẹn</th>}
@@ -1599,10 +1676,24 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
                   return (
                     <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
-                      {visibleColumnSet.has('status') && <td>{renderContactResult(candidate)}</td>}
                       {visibleColumnSet.has('company') && <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
+                      {visibleColumnSet.has('taxCode') && <td>{renderCandidateField(candidate.taxCode)}</td>}
+                      {visibleColumnSet.has('website') && <td>{renderCandidateField(candidate.website)}</td>}
+                      {visibleColumnSet.has('businessSector') && <td>{renderCandidateField(candidate.businessSector)}</td>}
                       {visibleColumnSet.has('province') && <td>{renderCompactValue(candidate.province || 'Chưa cập nhật', `${candidate.province || 'Chưa cập nhật'} · ${candidate.source || 'Chưa rõ nguồn'}`)}</td>}
+                      {visibleColumnSet.has('ward') && <td>{renderCandidateField(candidate.ward)}</td>}
+                      {visibleColumnSet.has('industrialPark') && <td>{renderCandidateField(candidate.industrialPark)}</td>}
+                      {visibleColumnSet.has('address') && <td>{renderCandidateField(candidate.address)}</td>}
                       {visibleColumnSet.has('contact') && <td>{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
+                      {visibleColumnSet.has('contactPerson') && <td>{renderCandidateField(candidate.contactPerson)}</td>}
+                      {visibleColumnSet.has('contactPosition') && <td>{renderCandidateField(candidate.contactPosition)}</td>}
+                      {visibleColumnSet.has('phone') && <td>{renderCandidateField(candidate.phone)}</td>}
+                      {visibleColumnSet.has('email') && <td>{renderCandidateField(candidate.email)}</td>}
+                      {visibleColumnSet.has('source') && <td>{renderCandidateField(candidate.source)}</td>}
+                      {visibleColumnSet.has('sourceUrl') && <td>{renderCandidateField(candidate.sourceUrl)}</td>}
+                      {visibleColumnSet.has('expectedProducts') && <td>{renderCandidateField(candidate.expectedProducts)}</td>}
+                      {visibleColumnSet.has('note') && <td>{renderCandidateField(candidate.note)}</td>}
+                      {visibleColumnSet.has('status') && <td>{renderContactResult(candidate)}</td>}
                       {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <td>{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
                       {visibleColumnSet.has('potential') && <td>{renderPotentialLevel(candidate)}</td>}
                       {visibleColumnSet.has('schedule') && <td>{candidate.nextContactAt
@@ -1629,7 +1720,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               </tbody>
             </ConfiguredSystemTable>
           ) : (
-            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact">
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150)}px` }}>
               <thead>
                 <tr>
                   {visibleColumnSet.has('select') && <th className="lead-candidate-select-column">
@@ -1642,8 +1733,22 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     />
                   </th>}
                   {visibleColumnSet.has('company') && <th data-system-field="companyName">Doanh nghiệp</th>}
+                  {visibleColumnSet.has('taxCode') && <th data-system-field="taxCode">Mã số thuế</th>}
+                  {visibleColumnSet.has('website') && <th data-system-field="website">Website</th>}
+                  {visibleColumnSet.has('businessSector') && <th data-system-field="businessSector">Lĩnh vực hoạt động</th>}
                   {visibleColumnSet.has('province') && <th data-system-field="province">Tỉnh/thành</th>}
-                  {visibleColumnSet.has('contact') && <th data-system-field="contact">Thông tin liên hệ</th>}
+                  {visibleColumnSet.has('ward') && <th data-system-field="ward">Phường/xã</th>}
+                  {visibleColumnSet.has('industrialPark') && <th data-system-field="industrialPark">Khu công nghiệp</th>}
+                  {visibleColumnSet.has('address') && <th data-system-field="address">Địa chỉ doanh nghiệp</th>}
+                  {visibleColumnSet.has('contact') && <th data-system-field="contact">Thông tin liên hệ (tóm tắt)</th>}
+                  {visibleColumnSet.has('contactPerson') && <th data-system-field="contactPerson">Người liên hệ</th>}
+                  {visibleColumnSet.has('contactPosition') && <th data-system-field="contactPosition">Chức vụ</th>}
+                  {visibleColumnSet.has('phone') && <th data-system-field="phone">Điện thoại</th>}
+                  {visibleColumnSet.has('email') && <th data-system-field="email">Email</th>}
+                  {visibleColumnSet.has('source') && <th data-system-field="source">Nguồn tìm kiếm</th>}
+                  {visibleColumnSet.has('sourceUrl') && <th data-system-field="sourceUrl">Đường dẫn nguồn</th>}
+                  {visibleColumnSet.has('expectedProducts') && <th data-system-field="expectedProducts">Sản phẩm / nhu cầu quan tâm</th>}
+                  {visibleColumnSet.has('note') && <th data-system-field="note">Ghi chú</th>}
                   {visibleColumnSet.has('assignee') && <th data-system-field="assignedSaleId">Sale phụ trách</th>}
                   {visibleColumnSet.has('processing') && <th data-system-field="processing">Sale đang xử lý</th>}
                   {visibleColumnSet.has('potential') && <th data-system-field="potentialLevel">Mức độ tiềm năng</th>}
@@ -1688,8 +1793,22 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           </button>
                         </div>
                       </td>}
+                      {visibleColumnSet.has('taxCode') && <td>{renderCandidateField(candidate.taxCode)}</td>}
+                      {visibleColumnSet.has('website') && <td>{renderCandidateField(candidate.website)}</td>}
+                      {visibleColumnSet.has('businessSector') && <td>{renderCandidateField(candidate.businessSector)}</td>}
                       {visibleColumnSet.has('province') && <td>{renderCompactValue(candidate.province || 'Chưa cập nhật', [candidate.province, candidate.address].filter(Boolean).join(' · ') || 'Chưa cập nhật')}</td>}
+                      {visibleColumnSet.has('ward') && <td>{renderCandidateField(candidate.ward)}</td>}
+                      {visibleColumnSet.has('industrialPark') && <td>{renderCandidateField(candidate.industrialPark)}</td>}
+                      {visibleColumnSet.has('address') && <td>{renderCandidateField(candidate.address)}</td>}
                       {visibleColumnSet.has('contact') && <td>{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
+                      {visibleColumnSet.has('contactPerson') && <td>{renderCandidateField(candidate.contactPerson)}</td>}
+                      {visibleColumnSet.has('contactPosition') && <td>{renderCandidateField(candidate.contactPosition)}</td>}
+                      {visibleColumnSet.has('phone') && <td>{renderCandidateField(candidate.phone)}</td>}
+                      {visibleColumnSet.has('email') && <td>{renderCandidateField(candidate.email)}</td>}
+                      {visibleColumnSet.has('source') && <td>{renderCandidateField(candidate.source)}</td>}
+                      {visibleColumnSet.has('sourceUrl') && <td>{renderCandidateField(candidate.sourceUrl)}</td>}
+                      {visibleColumnSet.has('expectedProducts') && <td>{renderCandidateField(candidate.expectedProducts)}</td>}
+                      {visibleColumnSet.has('note') && <td>{renderCandidateField(candidate.note)}</td>}
                       {visibleColumnSet.has('assignee') && <td>{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
                       {visibleColumnSet.has('processing') && <td>
                         {isAlreadyInQueue

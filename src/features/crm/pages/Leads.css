@@ -2168,6 +2168,34 @@
 .lead-table--classified th:nth-child(6) { width: 18%; }
 .lead-table--classified th:nth-child(7) { width: 7%; }
 
+.lead-table--classified.has-dynamic-columns th {
+  width: 150px;
+  min-width: 150px;
+}
+
+.lead-table--classified.has-dynamic-columns th:first-child {
+  width: 220px;
+  min-width: 220px;
+}
+
+.lead-table--classified.has-dynamic-columns th:last-child {
+  width: 72px;
+  min-width: 72px;
+}
+
+.lead-table-text {
+  display: block;
+  overflow: hidden;
+  color: #334155 !important;
+  font-size: 12px !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-table-text.is-muted {
+  color: #94a3b8 !important;
+}
+
 .lead-tag-list {
   flex-wrap: wrap;
   gap: 4px;

@@ -6,6 +6,8 @@ export interface TableColumnOption {
   id: string;
   label: string;
   required?: boolean;
+  group?: string;
+  defaultVisible?: boolean;
 }
 
 interface TableColumnCustomizerProps {
@@ -16,7 +18,7 @@ interface TableColumnCustomizerProps {
   onSave: (selectedIds: string[]) => void;
 }
 
-export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = ({
+const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
   open,
   columns,
   selectedIds,
@@ -25,7 +27,10 @@ export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [draftIds, setDraftIds] = useState(() => Array.from(new Set(selectedIds)));
-  const defaultIds = useMemo(() => columns.map(column => column.id), [columns]);
+  const defaultIds = useMemo(
+    () => columns.filter(column => column.required || column.defaultVisible !== false).map(column => column.id),
+    [columns]
+  );
   const selectedSet = useMemo(() => new Set(draftIds), [draftIds]);
   const visibleColumns = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
@@ -33,6 +38,15 @@ export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = ({
       ? columns.filter(column => column.label.toLocaleLowerCase('vi-VN').includes(normalizedQuery))
       : columns;
   }, [columns, query]);
+  const groupedVisibleColumns = useMemo(() => {
+    const groups = new Map<string, TableColumnOption[]>();
+    visibleColumns.forEach(column => {
+      const group = column.group || 'Thông tin trên bảng';
+      groups.set(group, [...(groups.get(group) || []), column]);
+    });
+    return Array.from(groups, ([label, items]) => ({ label, items }))
+      .sort((left, right) => Number(left.label === 'Điều khiển bảng') - Number(right.label === 'Điều khiển bảng'));
+  }, [visibleColumns]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -74,17 +88,22 @@ export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = ({
             </label>
             <h3>Chọn trường</h3>
             <div className="table-column-customizer__options">
-              {visibleColumns.map(column => (
-                <label key={column.id} className={column.required ? 'is-required' : ''}>
-                  <input
-                    type="checkbox"
-                    checked={selectedSet.has(column.id)}
-                    disabled={column.required}
-                    onChange={() => toggleColumn(column)}
-                  />
-                  <span>{column.label}</span>
-                  {column.required && <small>Bắt buộc</small>}
-                </label>
+              {groupedVisibleColumns.map(group => (
+                <section key={group.label} className="table-column-customizer__group">
+                  <h4>{group.label}</h4>
+                  {group.items.map(column => (
+                    <label key={column.id} className={column.required ? 'is-required' : ''}>
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(column.id)}
+                        disabled={column.required}
+                        onChange={() => toggleColumn(column)}
+                      />
+                      <span>{column.label}</span>
+                      {column.required && <small>Bắt buộc</small>}
+                    </label>
+                  ))}
+                </section>
               ))}
               {visibleColumns.length === 0 && <p className="table-column-customizer__empty">Không tìm thấy cột phù hợp.</p>}
             </div>
@@ -117,3 +136,9 @@ export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = ({
     </div>
   );
 };
+
+export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = props => (
+  props.open
+    ? <TableColumnCustomizerDialog key={JSON.stringify(props.selectedIds)} {...props} />
+    : null
+);
