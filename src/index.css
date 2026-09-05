@@ -414,8 +414,8 @@ body {
   flex: 0 0 var(--header-height);
   padding: 0 10px;
   border-bottom: 1px solid #243b69;
-  /* Keep the supplied brand wordmark crisp while the navigation rail remains navy. */
-  background-color: #ffffff;
+  /* A pale blue surface keeps the navy wordmark legible. */
+  background-color: #eaf3ff;
   overflow: hidden;
 }
 
@@ -478,10 +478,10 @@ body {
   width: 100%;
   min-height: 35px;
   padding: 6px 13px;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.25;
-  color: #f0f5ff;
+  color: #ffffff;
   text-align: left;
   border: none;
   background: none;
@@ -520,7 +520,7 @@ body {
   width: 15px;
   height: 15px;
   flex: 0 0 auto;
-  color: #cfdbf2;
+  color: #e2ebff;
 }
 
 .sidebar-item:hover .sidebar-item-content svg,
