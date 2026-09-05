@@ -79,6 +79,7 @@ body {
 }
 
 #root {
+  height: 100vh;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -92,8 +93,10 @@ body {
   grid-template-areas: 
     "header header"
     "sidebar main";
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   width: 100%;
+  overflow: hidden;
 }
 
 /* Header */
@@ -619,6 +622,7 @@ body {
 /* Main Area */
 .app-main {
   grid-area: main;
+  min-height: 0;
   padding: 24px;
   overflow-y: auto;
   display: flex;
