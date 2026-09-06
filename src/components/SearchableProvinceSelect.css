@@ -1,0 +1,55 @@
+.searchable-province-select {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.searchable-province-select > input {
+  width: 100%;
+  padding-right: 12px;
+}
+
+.searchable-province-select__dropdown {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--erp-border-color, #d9e1ec);
+  border-radius: var(--erp-control-radius, 5px);
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgb(15 23 42 / 12%);
+}
+
+.searchable-province-select__dropdown button {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 0 !important;
+  background: #ffffff;
+  color: #334155;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.searchable-province-select__dropdown button:hover,
+.searchable-province-select__dropdown button.is-active {
+  background: #f1f5f9;
+}
+
+.searchable-province-select__dropdown button.is-selected {
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.searchable-province-select__dropdown p {
+  margin: 0;
+  padding: 12px;
+  color: #64748b;
+  font-size: 13px;
+}

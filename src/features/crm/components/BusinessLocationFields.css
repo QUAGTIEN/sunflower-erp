@@ -9,7 +9,8 @@
   min-width: 0;
 }
 
-.business-location-fields .form-group > span {
+.business-location-fields .form-group > span,
+.business-location-fields .form-group > label {
   display: block;
   margin-bottom: 6px;
   color: var(--color-text-main);

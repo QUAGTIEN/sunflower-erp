@@ -1,4 +1,5 @@
 import type { PODiscountType } from '@/domain/poFinancials';
+import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
 
 export const CRM_SCHEMA_VERSION = 3;
@@ -167,6 +168,7 @@ export interface CustomerRecord extends UnknownRecord {
   phone: string;
   email: string;
   address: string;
+  provinceId: string;
   province: string;
   ward: string;
   industrialPark: string;
@@ -275,6 +277,7 @@ export interface LeadRecord extends UnknownRecord {
   stage: LeadStage;
   companySize: LeadCompanySize;
   source: string;
+  provinceId: string;
   province: string;
   ward: string;
   industrialPark: string;
@@ -552,6 +555,7 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
   const products = asArray(source.products).map(normalizeCustomerProduct);
   const documents = asArray(source.documents).map(normalizeCustomerDocument);
   const id = asText(source.id);
+  const canonicalProvince = canonicalizeVietnamProvince(source.province, source.provinceId);
 
   return {
     ...source,
@@ -564,7 +568,8 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     phone: asText(source.phone),
     email: asText(source.email),
     address: asText(source.address),
-    province: asText(source.province),
+    provinceId: canonicalProvince.provinceId,
+    province: canonicalProvince.province,
     ward: asText(source.ward),
     industrialPark: asText(source.industrialPark),
     taxCode: asText(source.taxCode),
@@ -635,6 +640,7 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
   const source = asRecord(value);
   const name = asText(source.companyName ?? source.name);
   const reminderTime = asText(source.reminderTime ?? source.nextFollowUpAt);
+  const canonicalProvince = canonicalizeVietnamProvince(source.province, source.provinceId);
 
   return {
     ...source,
@@ -651,7 +657,8 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     stage: normalizeLeadStage(source.stage),
     companySize: normalizeLeadCompanySize(source.companySize),
     source: asText(source.source),
-    province: asText(source.province),
+    provinceId: canonicalProvince.provinceId,
+    province: canonicalProvince.province,
     ward: asText(source.ward),
     industrialPark: asText(source.industrialPark),
     address: asText(source.address),

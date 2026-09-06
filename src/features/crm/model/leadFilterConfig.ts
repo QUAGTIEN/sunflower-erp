@@ -1,5 +1,6 @@
 import type { LeadFilterDefinition, LeadFilterOption, LeadRecord, LeadStage } from './crmModels';
 import { VIETNAM_ADMINISTRATIVE_UNITS } from '@/data/vietnamAdministrativeUnits';
+import { resolveVietnamProvince } from '@/data/vietnamProvinceCatalog';
 
 const OPTION_COLORS = ['#2563eb', '#7c3aed', '#0891b2', '#059669', '#d97706', '#dc2626', '#4f46e5', '#64748b'];
 
@@ -253,7 +254,7 @@ export const getLeadFilterValues = (
   const companySizeValues = existingValues[LEAD_FILTER_IDS.companySize]
     || (lead.companySize ? [lead.companySize] : []);
   const rawProvinceValues = existingValues[LEAD_FILTER_IDS.province]
-    || [findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)].filter(Boolean);
+    || [lead.provinceId || findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)].filter(Boolean);
   const deepestProvinceValue = [...rawProvinceValues].reverse().find(value => (
     findLeadFilterOptionPath(definitions, LEAD_FILTER_IDS.province, value).length > 0
   ));
@@ -261,6 +262,7 @@ export const getLeadFilterValues = (
     ? findLeadFilterOptionPath(definitions, LEAD_FILTER_IDS.province, deepestProvinceValue)
     : [];
   const provinceValues = [resolvedProvincePath[0]?.id
+    || lead.provinceId
     || findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)]
     .filter(Boolean);
   const industrialParkValues = existingValues[LEAD_FILTER_IDS.industrialPark]
@@ -380,18 +382,16 @@ const mergeIndustrialParkFilterOptions = (
   storedOptions: LeadFilterOption[],
   legacyProvinceOptions: LeadFilterOption[]
 ): LeadFilterOption[] => SYSTEM_INDUSTRIAL_PARK_OPTIONS.map(systemProvince => {
-  const storedProvince = storedOptions.find(candidate => (
+  const belongsToSystemProvince = (candidate: LeadFilterOption) => (
     candidate.id === systemProvince.id
-    || slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemProvince.label)
-  ));
-  const legacyProvince = legacyProvinceOptions.find(candidate => (
-    candidate.id === systemProvince.id
-    || slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemProvince.label)
-  ));
-  const storedParks = (storedProvince?.children || []).flatMap(child => (
+    || resolveVietnamProvince(candidate.label, candidate.id)?.id === systemProvince.id
+  );
+  const matchingStoredProvinces = storedOptions.filter(belongsToSystemProvince);
+  const matchingLegacyProvinces = legacyProvinceOptions.filter(belongsToSystemProvince);
+  const storedParks = matchingStoredProvinces.flatMap(province => province.children || []).flatMap(child => (
     child.kind === 'ward' ? child.children || [] : [child]
   ));
-  const legacyParks = (legacyProvince?.children || []).flatMap(child => (
+  const legacyParks = matchingLegacyProvinces.flatMap(province => province.children || []).flatMap(child => (
     child.kind === 'ward' ? child.children || [] : child.kind === 'region' ? [child] : []
   ));
   const parksByLabel = new Map<string, LeadFilterOption>();
@@ -406,7 +406,7 @@ const mergeIndustrialParkFilterOptions = (
   });
   return {
     ...systemProvince,
-    ...storedProvince,
+    ...matchingStoredProvinces.find(province => province.id === systemProvince.id),
     id: systemProvince.id,
     label: systemProvince.label,
     kind: 'province',

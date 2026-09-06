@@ -22,7 +22,9 @@ import {
   deleteLocalDocument,
   initializeLocalStorage,
   normalizeCollectionRecords,
+  normalizeCollectionUpdate,
   readLocalCollection,
+  readRawLocalCollection,
   subscribeLocalCollection,
   updateLocalDocument,
   upsertLocalDocument
@@ -48,6 +50,20 @@ export const isDocumentAlreadyExistsError = (error: unknown): boolean => (
 // DB SERVICE WRAPPER (Firestore or Mock DB)
 // ----------------------------------------------------
 export const dbService = {
+  async getRawCollection(colName: string): Promise<any[]> {
+    const database = await getFirebaseDatabase(`reading raw collection ${colName}`);
+    if (database) {
+      try {
+        const snap = await getDocs(collection(database, colName));
+        return snap.docs.map(document => ({ id: document.id, ...document.data() }));
+      } catch (error) {
+        reportFirebaseFailure(`reading raw collection ${colName}`, error);
+        throw error;
+      }
+    }
+    return readRawLocalCollection(colName);
+  },
+
   async getCollection(colName: string): Promise<any[]> {
     const database = await getFirebaseDatabase(`reading collection ${colName}`);
     if (database) {
@@ -173,10 +189,10 @@ export const dbService = {
   },
 
   async updateDocument(colName: string, docId: string, updatedFields: any): Promise<boolean> {
-    const finalUpdatedFields = {
+    const finalUpdatedFields = normalizeCollectionUpdate(colName, {
       ...updatedFields,
       updatedAt: new Date().toISOString()
-    };
+    });
 
     const database = await getFirebaseDatabase(`updating document ${colName}/${docId}`);
     if (database) {
@@ -190,6 +206,20 @@ export const dbService = {
     }
 
     return updateLocalDocument(colName, docId, finalUpdatedFields);
+  },
+
+  async synchronizeDocumentFields(colName: string, docId: string, fields: Record<string, unknown>): Promise<boolean> {
+    const database = await getFirebaseDatabase(`synchronizing document ${colName}/${docId}`);
+    if (database) {
+      try {
+        await updateDoc(doc(database, colName, docId), fields);
+        return true;
+      } catch (error) {
+        reportFirebaseFailure(`synchronizing document ${colName}/${docId}`, error);
+        throw error;
+      }
+    }
+    return updateLocalDocument(colName, docId, fields);
   },
 
   async deleteDocument(colName: string, docId: string): Promise<boolean> {

@@ -3,6 +3,7 @@ import { normalizeLeadCandidateRecords } from '@/features/crm/model/leadCandidat
 import { normalizeNotificationRecords } from '@/domain/notificationModels';
 import { normalizeProcurementRequests, normalizeSupplierRecords } from '@/features/procurement/model/purchaseModels';
 import { normalizeWorkScheduleRecords } from '@/features/work-schedule/model/workScheduleModels';
+import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import {
   DEFAULT_CHANNELS,
   DEFAULT_CUSTOMERS,
@@ -125,6 +126,17 @@ export const normalizeCollectionRecords = <T,>(colName: string, data: T[]): T[] 
   return data;
 };
 
+const PROVINCE_COLLECTIONS = new Set(['customers', 'leads', 'lead_candidates', 'suppliers']);
+
+export const normalizeCollectionUpdate = <T extends Record<string, unknown>>(colName: string, fields: T): T => {
+  if (!PROVINCE_COLLECTIONS.has(colName) || (!('province' in fields) && !('provinceId' in fields))) return fields;
+  const canonicalProvince = canonicalizeVietnamProvince(fields.province, fields.provinceId);
+  return {
+    ...fields,
+    ...canonicalProvince
+  };
+};
+
 export const readLocalCollection = (colName: string): any[] => {
   try {
     const data = localStorage.getItem(`erp_${colName}`);
@@ -132,6 +144,17 @@ export const readLocalCollection = (colName: string): any[] => {
     return Array.isArray(parsed) ? normalizeCollectionRecords(colName, parsed) : [];
   } catch (error) {
     console.warn(`[Local data] Could not read collection ${colName}.`, error);
+    return [];
+  }
+};
+
+export const readRawLocalCollection = (colName: string): any[] => {
+  try {
+    const data = localStorage.getItem(`erp_${colName}`);
+    const parsed = data ? JSON.parse(data) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn(`[Local data] Could not read raw collection ${colName}.`, error);
     return [];
   }
 };

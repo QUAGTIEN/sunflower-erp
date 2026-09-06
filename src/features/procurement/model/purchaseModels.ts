@@ -1,3 +1,5 @@
+import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
+
 export type SourcingType = 'finished_good' | 'raw_material' | 'subcontract';
 
 export type ProcurementStatus =
@@ -48,6 +50,7 @@ export interface SupplierRecord extends UnknownRecord {
   phone: string;
   email: string;
   address: string;
+  provinceId: string;
   province: string;
   categories: string[];
   serviceTypes: SourcingType[];
@@ -168,6 +171,7 @@ export const getProcurementRequestCode = (poCode: string, itemIndex: number): st
 
 export const normalizeSupplierRecord = (value: unknown): SupplierRecord => {
   const source = asRecord(value);
+  const canonicalProvince = canonicalizeVietnamProvince(source.province, source.provinceId);
   const contactPerson = asText(source.contactPerson);
   const phone = asText(source.phone);
   const email = asText(source.email);
@@ -204,7 +208,8 @@ export const normalizeSupplierRecord = (value: unknown): SupplierRecord => {
     phone,
     email,
     address: asText(source.address),
-    province: asText(source.province),
+    provinceId: canonicalProvince.provinceId,
+    province: canonicalProvince.province,
     categories: asArray(source.categories).map(asText).filter(Boolean),
     serviceTypes: asArray(source.serviceTypes).map(normalizeSourcingType),
     paymentTerms: asText(source.paymentTerms),

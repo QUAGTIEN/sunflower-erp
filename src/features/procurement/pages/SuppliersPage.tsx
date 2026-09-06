@@ -26,6 +26,7 @@ import {
   type SupplierDocumentRecord,
   type SupplierRecord
 } from '@/features/procurement/model/purchaseModels';
+import { SearchableProvinceSelect } from '@/components/SearchableProvinceSelect';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import './Purchase.css';
@@ -448,7 +449,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
               <div className="form-group"><label>{t('Người liên hệ chính')}</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
               <div className="form-group"><label>{t('Điện thoại')}</label><input value={form.phone} onChange={event => updateForm('phone', event.target.value)} /></div>
               <div className="form-group"><label>Email</label><input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} /></div>
-              <div className="form-group"><label>{t('Tỉnh / thành')}</label><input value={form.province} onChange={event => updateForm('province', event.target.value)} /></div>
+              <div className="form-group"><label htmlFor="supplier-province">{t('Tỉnh / thành')}</label><SearchableProvinceSelect inputId="supplier-province" value={form.province} onChange={value => updateForm('province', value)} /></div>
               <div className="form-group supplier-form-wide"><label>{t('Địa chỉ')}</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
               <div className="form-group supplier-form-wide"><label>{t('Nhóm hàng / năng lực cung cấp')}</label><input value={form.categoriesText} onChange={event => updateForm('categoriesText', event.target.value)} placeholder={t('Ví dụ: decal giấy, mực in, gia công flexo')} /></div>
               <div className="form-group supplier-form-wide"><label>{t('Loại hình cung ứng')}</label><div className="supplier-checkboxes">{(['finished_good', 'raw_material', 'subcontract'] as SourcingType[]).map(type => <label key={type}><input type="checkbox" checked={form.serviceTypes.includes(type)} onChange={() => toggleServiceType(type)} /> {getSourcingTypeLabel(type)}</label>)}</div></div>

@@ -1,6 +1,7 @@
 import { isActiveLeadRecord, type CustomerRecord, type LeadRecord } from './crmModels';
 import { normalizeTaxCode } from './taxCodeUniqueness';
 import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
+import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
 
 export const LEAD_CANDIDATE_SCHEMA_VERSION = 10;
 
@@ -48,6 +49,7 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   email: string;
   taxCode: string;
   address: string;
+  provinceId: string;
   province: string;
   ward: string;
   industrialPark: string;
@@ -253,6 +255,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     : contactLogs.find(log => log.eventType === 'schedule');
   const lastContactAt = asText(source.lastContactAt);
   const lastContactOutcome = normalizeContactOutcome(source.lastContactOutcome);
+  const canonicalProvince = canonicalizeVietnamProvince(source.province, source.provinceId);
   return {
     ...source,
     id: asText(source.id),
@@ -264,7 +267,8 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     email: asText(source.email),
     taxCode: normalizeTaxCode(source.taxCode),
     address: asText(source.address),
-    province: asText(source.province),
+    provinceId: canonicalProvince.provinceId,
+    province: canonicalProvince.province,
     ward: asText(source.ward),
     industrialPark: asText(source.industrialPark),
     website: asText(source.website),

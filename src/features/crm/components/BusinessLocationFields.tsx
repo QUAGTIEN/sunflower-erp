@@ -3,6 +3,8 @@ import { SystemFieldContext } from '@/components/systemFieldContext';
 import type { LeadFilterDefinition, LeadFilterOption } from '@/features/crm/model/crmModels';
 import { LEAD_FILTER_IDS, mergeLeadFilterDefinitions } from '@/features/crm/model/leadFilterConfig';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
+import { SearchableProvinceSelect } from '@/components/SearchableProvinceSelect';
+import { resolveVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import './BusinessLocationFields.css';
 
 interface BusinessLocationValue {
@@ -43,23 +45,22 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
   const industrialParkProvinceOptions = definitions
     .find(definition => definition.id === LEAD_FILTER_IDS.industrialPark)
     ?.options.filter(option => option.active !== false) || [];
-  const selectedProvince = provinceOptions.find(option => option.label === province);
+  const canonicalProvince = resolveVietnamProvince(province);
+  const selectedProvince = provinceOptions.find(option => option.id === canonicalProvince?.id);
   const wardOptions = activeChildren(selectedProvince).filter(option => option.kind === 'ward');
-  const selectedIndustrialParkProvince = industrialParkProvinceOptions.find(option => option.label === province);
+  const selectedIndustrialParkProvince = industrialParkProvinceOptions.find(option => option.id === canonicalProvince?.id);
   const industrialParkOptions = activeChildren(selectedIndustrialParkProvince).filter(option => option.kind === 'region');
 
   return (
     <div className={`business-location-fields ${className}`.trim()}>
-      {isVisible('province') && <label className="form-group">
-        <span>{label('province', 'Tỉnh / thành')}</span>
-        <select
+      {isVisible('province') && <div className="form-group">
+        <label htmlFor="business-province">{label('province', 'Tỉnh / thành')}</label>
+        <SearchableProvinceSelect
+          inputId="business-province"
           value={province}
-          onChange={event => onChange({ province: event.target.value, ward: '', industrialPark: '' })}
-        >
-          <option value="">Chọn tỉnh/thành</option>
-          {provinceOptions.map(option => <option key={option.id} value={option.label}>{option.label}</option>)}
-        </select>
-      </label>}
+          onChange={provinceName => onChange({ province: provinceName, ward: '', industrialPark: '' })}
+        />
+      </div>}
       {isVisible('ward') && <label className="form-group">
         <span>{label('ward', 'Phường / xã')}</span>
         <select

@@ -46,6 +46,7 @@ import {
   markNotificationRead,
   synchronizeWorkflowNotifications
 } from '@/services/notificationService';
+import { synchronizeProvinceData } from '@/features/crm/api/provinceDataSynchronization';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -139,6 +140,25 @@ function AppShell() {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const notificationCenterRef = useRef<HTMLDivElement>(null);
   const lastNotificationPageReadRef = useRef('');
+  const provinceSynchronizationStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (user?.role !== 'admin' || provinceSynchronizationStartedRef.current) return;
+    const synchronizationKey = `erp:province-catalog-synchronized:v1:${user.uid}`;
+    if (localStorage.getItem(synchronizationKey) === 'complete') return;
+    provinceSynchronizationStartedRef.current = true;
+    void synchronizeProvinceData()
+      .then(result => {
+        localStorage.setItem(synchronizationKey, 'complete');
+        if (result.updated > 0 || result.unresolved > 0) {
+          console.info('[Province synchronization] Completed.', result);
+        }
+      })
+      .catch(error => {
+        provinceSynchronizationStartedRef.current = false;
+        console.warn('[Province synchronization] Could not complete.', error);
+      });
+  }, [user]);
 
   // Navigation state links
   const [selectedPoId, setSelectedPoId] = useState<string>('');

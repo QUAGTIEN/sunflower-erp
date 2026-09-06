@@ -2,7 +2,10 @@ import { isActiveLeadRecord, type CustomerRecord, type LeadRecord } from '@/feat
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import type { CompatiblePORecord } from '@/domain/poCompatibility';
 import type { UserProfile } from '@/shared/types';
-import { VIETNAM_ADMINISTRATIVE_UNITS } from '@/data/vietnamAdministrativeUnits';
+import {
+  normalizeVietnameseLocationText,
+  resolveVietnamProvinceFromText
+} from '@/data/vietnamProvinceCatalog';
 
 export type CommercialMapLayer = 'all' | 'customers' | 'leads' | 'processing' | 'unassigned';
 export type CommercialMapRecordType = 'customer' | 'lead' | 'candidate';
@@ -40,68 +43,13 @@ export interface CommercialProvinceSummary {
   orderCount: number;
 }
 
-const LEGACY_PROVINCE_ALIASES: Record<string, string> = {
-  'bac giang': 'bac_ninh',
-  'bac kan': 'thai_nguyen',
-  'binh duong': 'tp_ho_chi_minh',
-  'ba ria vung tau': 'tp_ho_chi_minh',
-  'binh dinh': 'gia_lai',
-  'binh phuoc': 'dong_nai',
-  'binh thuan': 'lam_dong',
-  'ben tre': 'vinh_long',
-  'hau giang': 'can_tho',
-  'hai duong': 'hai_phong',
-  'hoa binh': 'phu_tho',
-  'kien giang': 'an_giang',
-  'kon tum': 'quang_ngai',
-  'long an': 'tay_ninh',
-  'nam dinh': 'ninh_binh',
-  'ninh thuan': 'khanh_hoa',
-  'phu yen': 'dak_lak',
-  'quang nam': 'da_nang',
-  'quang binh': 'quang_tri',
-  'soc trang': 'can_tho',
-  'thai binh': 'hung_yen',
-  'tra vinh': 'vinh_long',
-  'tuyen quang': 'tuyen_quang',
-  'yen bai': 'lao_cai'
-};
-
-export const normalizeVietnameseText = (value: string): string => value
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .replace(/đ/g, 'd')
-  .replace(/Đ/g, 'D')
-  .toLocaleLowerCase('vi-VN')
-  .replace(/\b(tinh|thanh pho|tp|city)\b/g, ' ')
-  .replace(/[^a-z0-9]+/g, ' ')
-  .trim();
-
-const PROVINCE_SEARCH_ENTRIES = VIETNAM_ADMINISTRATIVE_UNITS.map(province => ({
-  id: province.id,
-  name: province.label,
-  normalizedName: normalizeVietnameseText(province.label)
-}));
+export const normalizeVietnameseText = normalizeVietnameseLocationText;
 
 export const resolveCommercialProvince = (...values: Array<string | null | undefined>) => {
-  const source = normalizeVietnameseText(values.filter(Boolean).join(' '));
-  if (!source) return { id: 'unknown', name: 'Chưa xác định' };
-
-  const direct = PROVINCE_SEARCH_ENTRIES.find(province => (
-    source === province.normalizedName
-    || source.includes(` ${province.normalizedName} `)
-    || source.startsWith(`${province.normalizedName} `)
-    || source.endsWith(` ${province.normalizedName}`)
-  ));
-  if (direct) return { id: direct.id, name: direct.name };
-
-  const alias = Object.entries(LEGACY_PROVINCE_ALIASES)
-    .find(([legacyName]) => source.includes(legacyName));
-  if (alias) {
-    const province = PROVINCE_SEARCH_ENTRIES.find(entry => entry.id === alias[1]);
-    if (province) return { id: province.id, name: province.name };
-  }
-  return { id: 'unknown', name: 'Chưa xác định' };
+  const resolved = resolveVietnamProvinceFromText(...values);
+  return resolved
+    ? { id: resolved.id, name: resolved.label }
+    : { id: 'unknown', name: 'Chưa xác định' };
 };
 
 const text = (value: unknown): string => typeof value === 'string' ? value : '';
