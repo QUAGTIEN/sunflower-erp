@@ -361,10 +361,6 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
       && (!overviewIndustrialPark || normalizeVietnameseText(record.industrialPark) === normalizeVietnameseText(overviewIndustrialPark))
     ));
   }, [accessibleRecords, overviewIndustrialPark, overviewProvince, overviewWard]);
-  const overviewSales = useMemo(() => {
-    const saleIds = new Set(overviewProvinceRecords.map(record => record.assignedSaleId).filter(Boolean));
-    return activeSales.filter(user => saleIds.has(user.uid));
-  }, [activeSales, overviewProvinceRecords]);
   const overviewDeliveries = useMemo(() => {
     if (!overviewProvince) return [];
     const activeStatuses = new Set(['planning', 'approved', 'loading', 'delivering']);
@@ -642,7 +638,6 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                 {overviewParks.map(park => <option key={park.id} value={park.label}>{park.label}</option>)}
               </select>
             </label>
-            {currentUser.role === 'admin' && overviewProvince && <button type="button" className="btn btn-outline" onClick={() => setShowParkManagement(previous => !previous)}>{showParkManagement ? 'Đóng quản lý KCN' : 'Quản lý KCN'}</button>}
             {(overviewProvinceName || overviewWard || overviewIndustrialPark) && <button type="button" className="btn btn-outline" onClick={() => { setOverviewProvinceName(''); setOverviewWard(''); setOverviewIndustrialPark(''); setShowParkManagement(false); }}>Đặt lại</button>}
           </div>
 
@@ -653,6 +648,23 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
             </div>
           ) : (
             <>
+              <div className="commercial-metric-grid">
+                <article><span>Hồ sơ tại địa bàn</span><strong>{overviewSummary.total}</strong><small>{overviewSummary.customers} hợp tác · {overviewSummary.leads} tiềm năng · {overviewSummary.candidates} thô</small></article>
+                <article><span>Giá trị thương mại</span><strong>{formatCurrency(overviewSummary.revenue)}</strong><small>{overviewSummary.orders} PO phát sinh</small></article>
+                <article><span>Sale phụ trách chính</span><strong>{salePerformance[0]?.name || 'Chưa phân công'}</strong><small>{salePerformance[0] ? `${salePerformance[0].customers + salePerformance[0].leads + salePerformance[0].candidates} hồ sơ đang phụ trách` : 'Chưa có dữ liệu phân công'}</small></article>
+                <article><span>Độ phủ vận hành</span><strong>{overviewParks.length} KCN</strong><small>{overviewDeliveries.length} chuyến đang hoạt động</small></article>
+              </div>
+
+              <div className="commercial-overview__content">
+                <section className="commercial-data-panel">
+                  <header><div><h2>Hiệu quả theo khu vực / KCN</h2><p>{overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}</p></div>{currentUser.role === 'admin' && <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowParkManagement(previous => !previous)}>{showParkManagement ? 'Đóng quản lý KCN' : 'Quản lý KCN'}</button>}</header>
+                  <div className="table-container"><table><thead><tr><th>Khu vực / KCN</th><th>Sale chính</th><th>Hợp tác</th><th>Tiềm năng</th><th>Dữ liệu thô</th><th>PO</th><th>Giá trị</th></tr></thead><tbody>
+                    {territoryPerformance.map(row => <tr key={row.label}><td title={row.label}>{row.label}</td><td>{row.primarySale}</td><td>{row.customers}</td><td>{row.leads}</td><td>{row.candidates}</td><td>{row.orders}</td><td>{formatCurrency(row.revenue)}</td></tr>)}
+                    {territoryPerformance.length === 0 && <tr><td colSpan={7} className="commercial-table-empty">Chưa có số liệu tại địa bàn đang chọn.</td></tr>}
+                  </tbody></table></div>
+                </section>
+              </div>
+
               {showParkManagement && currentUser.role === 'admin' && (
                 <section className="commercial-park-manager">
                   <header><div><h2>Quản lý KCN tại {overviewProvince.label}</h2><p>KCN mới sẽ dùng chung trong các biểu mẫu khách hàng. Ngừng sử dụng không xóa dữ liệu lịch sử.</p></div></header>
@@ -668,41 +680,16 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                 </section>
               )}
 
-              <div className="commercial-metric-grid">
-                <article><span>Khách hàng hợp tác</span><strong>{overviewSummary.customers}</strong></article>
-                <article><span>Khách hàng tiềm năng</span><strong>{overviewSummary.leads}</strong></article>
-                <article><span>Dữ liệu thô</span><strong>{overviewSummary.candidates}</strong></article>
-                <article><span>Sale đang xử lý</span><strong>{overviewSummary.processing}</strong></article>
-                <article><span>Sale phụ trách</span><strong>{overviewSales.length}</strong></article>
-                <article><span>Đơn hàng</span><strong>{overviewSummary.orders}</strong></article>
-                <article><span>Chuyến đang hoạt động</span><strong>{overviewDeliveries.length}</strong></article>
-                <article><span>Khu công nghiệp</span><strong>{overviewParks.length}</strong></article>
-              </div>
-
-              <div className="commercial-overview__content">
-                <div className="commercial-analysis-tables">
-                  <section className="commercial-data-panel">
-                    <header><div><h2>Hiệu quả theo khu vực / KCN</h2><p>{overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}</p></div></header>
-                    <div className="table-container"><table><thead><tr><th>Khu vực / KCN</th><th>Sale chính</th><th>Hợp tác</th><th>Tiềm năng</th><th>Dữ liệu thô</th><th>PO</th><th>Giá trị</th></tr></thead><tbody>
-                      {territoryPerformance.map(row => <tr key={row.label}><td title={row.label}>{row.label}</td><td>{row.primarySale}</td><td>{row.customers}</td><td>{row.leads}</td><td>{row.candidates}</td><td>{row.orders}</td><td>{formatCurrency(row.revenue)}</td></tr>)}
-                      {territoryPerformance.length === 0 && <tr><td colSpan={7} className="commercial-table-empty">Chưa có số liệu tại địa bàn đang chọn.</td></tr>}
-                    </tbody></table></div>
-                  </section>
-
-                  <section className="commercial-data-panel">
-                    <header><div><h2>Phân bổ Sale</h2><p>Sale đảm nhận chủ yếu được xác định theo số hồ sơ và giá trị PO trong địa bàn.</p></div></header>
-                    <div className="table-container"><table><thead><tr><th>Sale phụ trách</th><th>Hợp tác</th><th>Tiềm năng</th><th>Dữ liệu thô</th><th>PO</th><th>Giá trị</th></tr></thead><tbody>
-                      {salePerformance.map(row => <tr key={row.id}><td>{row.name}</td><td>{row.customers}</td><td>{row.leads}</td><td>{row.candidates}</td><td>{row.orders}</td><td>{formatCurrency(row.revenue)}</td></tr>)}
-                      {salePerformance.length === 0 && <tr><td colSpan={6} className="commercial-table-empty">Chưa có Sale phụ trách địa bàn này.</td></tr>}
-                    </tbody></table></div>
-                  </section>
-                </div>
-
-                <aside className="commercial-summary-panel">
-                  <section><h2>Sale đảm nhận chủ yếu</h2>{salePerformance.slice(0, 5).map((sale, index) => <div className="commercial-summary-row" key={sale.id}><span>{index + 1}. {sale.name}</span><strong>{sale.customers + sale.leads + sale.candidates} hồ sơ</strong></div>)}{salePerformance.length === 0 && <p>Chưa có Sale phụ trách địa bàn này.</p>}</section>
-                  <section><h2>Chuyến đang hoạt động</h2>{overviewDeliveries.slice(0, 8).map((delivery, index) => <div className="commercial-summary-row" key={String(delivery.id || index)}><span>{String(delivery.delCode || `Chuyến ${index + 1}`)}</span><strong>{String(delivery.deliveryDate || '').slice(0, 10) || 'Chưa có ngày'}</strong></div>)}{overviewDeliveries.length === 0 && <p>Không có chuyến đang hoạt động.</p>}</section>
-                </aside>
-              </div>
+              {(salePerformance.length > 1 || overviewDeliveries.length > 0) && <div className="commercial-secondary-grid">
+                {salePerformance.length > 1 && <section className="commercial-data-panel">
+                  <header><div><h2>Phân bổ Sale</h2><p>So sánh khối lượng hồ sơ và giá trị phụ trách trong địa bàn.</p></div></header>
+                  <div className="table-container"><table><thead><tr><th>Sale phụ trách</th><th>Hợp tác</th><th>Tiềm năng</th><th>Dữ liệu thô</th><th>PO</th><th>Giá trị</th></tr></thead><tbody>{salePerformance.map(row => <tr key={row.id}><td>{row.name}</td><td>{row.customers}</td><td>{row.leads}</td><td>{row.candidates}</td><td>{row.orders}</td><td>{formatCurrency(row.revenue)}</td></tr>)}</tbody></table></div>
+                </section>}
+                {overviewDeliveries.length > 0 && <section className="commercial-data-panel">
+                  <header><div><h2>Chuyến đang hoạt động</h2><p>{overviewDeliveries.length} chuyến phù hợp với địa bàn đang chọn.</p></div></header>
+                  <div className="table-container"><table><thead><tr><th>Mã chuyến</th><th>Ngày giao</th><th>Trạng thái</th></tr></thead><tbody>{overviewDeliveries.slice(0, 8).map((delivery, index) => <tr key={String(delivery.id || index)}><td>{String(delivery.delCode || `Chuyến ${index + 1}`)}</td><td>{String(delivery.deliveryDate || '').slice(0, 10) || 'Chưa có ngày'}</td><td>{String(delivery.status || 'Đang hoạt động')}</td></tr>)}</tbody></table></div>
+                </section>}
+              </div>}
             </>
           )}
         </section>

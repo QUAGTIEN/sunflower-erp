@@ -97,20 +97,24 @@
 
 .commercial-metric-grid {
   display: grid;
-  grid-template-columns: repeat(8, minmax(120px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--erp-border-color);
   margin-top: 12px;
-  overflow-x: auto;
+  background: #fff;
 }
 
 .commercial-metric-grid article {
   display: flex;
-  min-height: 78px;
+  min-width: 0;
+  min-height: 86px;
   justify-content: space-between;
   flex-direction: column;
-  border: 1px solid var(--erp-border-color);
-  padding: 12px;
-  background: #fff;
+  border-right: 1px solid var(--erp-border-color);
+  padding: 12px 16px;
+}
+
+.commercial-metric-grid article:last-child {
+  border-right: 0;
 }
 
 .commercial-metric-grid span {
@@ -120,23 +124,33 @@
 }
 
 .commercial-metric-grid strong {
+  overflow: hidden;
   color: #172554;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commercial-metric-grid small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .commercial-overview__content {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 12px;
+  display: block;
   margin-top: 12px;
 }
 
-.commercial-analysis-tables {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
+.commercial-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
   gap: 12px;
+  margin-top: 12px;
 }
 
 .commercial-park-manager {
@@ -169,15 +183,13 @@
   border-bottom: 1px solid var(--erp-border-color);
 }
 
-.commercial-data-panel,
-.commercial-summary-panel > section {
+.commercial-data-panel {
   min-width: 0;
   border: 1px solid var(--erp-border-color);
   background: #fff;
 }
 
-.commercial-data-panel > header,
-.commercial-summary-panel > section > h2 {
+.commercial-data-panel > header {
   margin: 0;
   border-bottom: 1px solid var(--erp-border-color);
   padding: 12px;
@@ -192,7 +204,6 @@
 }
 
 .commercial-data-panel h2,
-.commercial-summary-panel h2,
 .commercial-parks__intro h2 {
   margin: 0;
   color: #172554;
@@ -201,7 +212,6 @@
 }
 
 .commercial-data-panel p,
-.commercial-summary-panel p,
 .commercial-parks__intro p {
   margin: 4px 0 0;
   color: #64748b;
@@ -209,52 +219,13 @@
 }
 
 .commercial-data-panel tbody tr {
-  cursor: pointer;
+  cursor: default;
 }
 
 .commercial-table-empty {
   height: 92px !important;
   color: #64748b !important;
   text-align: center !important;
-}
-
-.commercial-summary-panel {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.commercial-summary-panel > section {
-  padding-bottom: 8px;
-}
-
-.commercial-summary-row {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 12px;
-  border-bottom: 1px solid #e7edf5;
-  color: #334155;
-  font-size: 12px;
-}
-
-.commercial-summary-row span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.commercial-summary-row strong {
-  flex: 0 0 auto;
-  color: #172554;
-  font-size: 11px;
-}
-
-.commercial-summary-panel > section > p {
-  padding: 4px 12px 8px;
 }
 
 .commercial-parks__intro {
@@ -977,16 +948,15 @@
 
 @media (max-width: 1050px) {
   .commercial-metric-grid {
-    grid-template-columns: repeat(4, minmax(140px, 1fr));
-  }
-
-  .commercial-overview__content {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .commercial-summary-panel {
-    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commercial-metric-grid article:nth-child(2) {
+    border-right: 0;
+  }
+
+  .commercial-metric-grid article:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--erp-border-color);
   }
 
   .commercial-map-focus-workspace {
@@ -1044,10 +1014,20 @@
   }
 
   .commercial-metric-grid {
-    grid-template-columns: repeat(2, minmax(130px, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .commercial-summary-panel {
+  .commercial-metric-grid article,
+  .commercial-metric-grid article:nth-child(2) {
+    border-right: 0;
+    border-bottom: 1px solid var(--erp-border-color);
+  }
+
+  .commercial-metric-grid article:last-child {
+    border-bottom: 0;
+  }
+
+  .commercial-secondary-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
