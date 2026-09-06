@@ -2067,6 +2067,23 @@
   color: #1e40af;
 }
 
+.customer-rank-text {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.customer-rank-text.has-rank {
+  color: #1d4ed8;
+}
+
+.crm-business-result .crm-business-result__value {
+  color: #047857;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .waiting-days-badge.is-overdue {
   border-color: #fed7aa;
   color: #c2410c;

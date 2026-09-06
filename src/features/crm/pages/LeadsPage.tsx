@@ -406,12 +406,12 @@ export const Leads: React.FC<LeadsProps> = ({
       systemColumn('businessSector', 'businessSector', 'Lĩnh vực hoạt động', sectionLabels.company),
       systemColumn('address', 'address', 'Địa chỉ doanh nghiệp', sectionLabels.company),
       systemColumn('companySize', 'companySize', 'Quy mô', sectionLabels.classification),
-      { id: 'source', label: t('Nguồn / khu vực (tóm tắt)'), group: sectionLabels.classification },
+      { id: 'source', label: t('Khu vực'), group: sectionLabels.classification },
       systemColumn('sourceValue', 'source', 'Nguồn tìm kiếm', sectionLabels.classification),
       systemColumn('province', 'province', 'Tỉnh/thành', sectionLabels.classification),
       systemColumn('ward', 'ward', 'Phường/xã', sectionLabels.classification),
       systemColumn('industrialPark', 'industrialPark', 'Khu công nghiệp', sectionLabels.classification),
-      { id: 'contact', label: t('Liên hệ (tóm tắt)'), group: sectionLabels.contact },
+      { id: 'contact', label: t('Liên hệ'), group: sectionLabels.contact },
       systemColumn('contactPerson', 'contactPerson', 'Người liên hệ', sectionLabels.contact),
       systemColumn('contactPosition', 'contactPosition', 'Chức vụ', sectionLabels.contact),
       systemColumn('phone', 'phone', 'Điện thoại', sectionLabels.contact),
@@ -1974,12 +1974,12 @@ export const Leads: React.FC<LeadsProps> = ({
                   {visibleLeadColumnIds.has('businessSector') && <th data-system-field="businessSector">{t('Lĩnh vực hoạt động')}</th>}
                   {visibleLeadColumnIds.has('address') && <th data-system-field="address">{t('Địa chỉ doanh nghiệp')}</th>}
                   {visibleLeadColumnIds.has('companySize') && <th data-system-field="companySize">{t('Quy mô')}</th>}
-                  {visibleLeadColumnIds.has('source') && <th data-system-field="source">{t('Nguồn / khu vực (tóm tắt)')}</th>}
+                  {visibleLeadColumnIds.has('source') && <th data-system-field="source">{t('Khu vực')}</th>}
                   {visibleLeadColumnIds.has('sourceValue') && <th data-system-field="sourceValue">{t('Nguồn tìm kiếm')}</th>}
                   {visibleLeadColumnIds.has('province') && <th data-system-field="province">{t('Tỉnh/thành')}</th>}
                   {visibleLeadColumnIds.has('ward') && <th data-system-field="ward">{t('Phường/xã')}</th>}
                   {visibleLeadColumnIds.has('industrialPark') && <th data-system-field="industrialPark">{t('Khu công nghiệp')}</th>}
-                  {visibleLeadColumnIds.has('contact') && <th data-system-field="contact">{t('Liên hệ (tóm tắt)')}</th>}
+                  {visibleLeadColumnIds.has('contact') && <th data-system-field="contact">{t('Liên hệ')}</th>}
                   {visibleLeadColumnIds.has('contactPerson') && <th data-system-field="contactPerson">{t('Người liên hệ')}</th>}
                   {visibleLeadColumnIds.has('contactPosition') && <th data-system-field="contactPosition">{t('Chức vụ')}</th>}
                   {visibleLeadColumnIds.has('phone') && <th data-system-field="phone">{t('Điện thoại')}</th>}
@@ -2003,12 +2003,12 @@ export const Leads: React.FC<LeadsProps> = ({
                       {visibleLeadColumnIds.has('businessSector') && <td>{renderLeadText(lead.businessSector)}</td>}
                       {visibleLeadColumnIds.has('address') && <td>{renderLeadText(lead.address)}</td>}
                       {visibleLeadColumnIds.has('companySize') && <td>{renderLeadText(COMPANY_SIZE_LABELS[lead.companySize])}</td>}
-                      {visibleLeadColumnIds.has('source') && <td><strong>{getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || '—')}</strong><span>{getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || 'Chưa xác định')}</span></td>}
+                      {visibleLeadColumnIds.has('source') && <td>{renderLeadText([lead.province, lead.ward, lead.industrialPark].filter(Boolean).join(' · '))}</td>}
                       {visibleLeadColumnIds.has('sourceValue') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || ''))}</td>}
                       {visibleLeadColumnIds.has('province') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || ''))}</td>}
                       {visibleLeadColumnIds.has('ward') && <td>{renderLeadText(lead.ward)}</td>}
                       {visibleLeadColumnIds.has('industrialPark') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.industrialPark, lead.industrialPark || ''))}</td>}
-                      {visibleLeadColumnIds.has('contact') && <td><strong>{lead.contactPerson || '—'}</strong><span>{lead.phone || lead.email || 'Chưa có liên hệ'}</span></td>}
+                      {visibleLeadColumnIds.has('contact') && <td>{renderLeadText(lead.contactPerson)}</td>}
                       {visibleLeadColumnIds.has('contactPerson') && <td>{renderLeadText(lead.contactPerson)}</td>}
                       {visibleLeadColumnIds.has('contactPosition') && <td>{renderLeadText(lead.contactPosition)}</td>}
                       {visibleLeadColumnIds.has('phone') && <td>{renderLeadText(lead.phone)}</td>}

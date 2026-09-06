@@ -2906,7 +2906,7 @@ export const Crm: React.FC<CrmProps> = ({
                             <tr onClick={() => openCustomerDetail(customer)}>
                               <td><div className="crm-customer-identity" title={`${customer.companyName} · ${customer.contactPerson || t('Chưa có người liên hệ')}`}><strong className="erp-company-name">{customer.companyName}</strong>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div></td>
                               {visibleCustomerColumnIds.has('customerCode') && <td><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>}
-                              {visibleCustomerColumnIds.has('rank') && <td><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>}
+                              {visibleCustomerColumnIds.has('rank') && <td><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-text ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>}
                               {visibleCustomerColumnIds.has('taxCode') && <td><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>}
                               {visibleCustomerColumnIds.has('assignedSale') && <td><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>}
                               {visibleCustomerColumnIds.has('province') && <td>{renderCustomerText(customer.province)}</td>}
@@ -2924,7 +2924,7 @@ export const Crm: React.FC<CrmProps> = ({
                               {visibleCustomerColumnIds.has('paymentTerms') && <td>{renderCustomerText(customer.paymentTerms)}</td>}
                               {visibleCustomerColumnIds.has('bankAccount') && <td>{renderCustomerText(customer.bankAccount)}</td>}
                               {visibleCustomerColumnIds.has('note') && <td>{renderCustomerText(customer.note)}</td>}
-                              {visibleCustomerColumnIds.has('businessResult') && <td><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')} · {orderValue.toLocaleString('vi-VN')} đ</strong></div></td>}
+                              {visibleCustomerColumnIds.has('businessResult') && <td><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')}</strong><span className="crm-business-result__value">· {orderValue.toLocaleString('vi-VN')} đ</span></div></td>}
                               {visibleCustomerCustomFields.map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id])}</td>)}
                               <td>
                                 <RowActionMenu
