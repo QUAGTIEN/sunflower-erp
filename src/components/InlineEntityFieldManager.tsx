@@ -41,7 +41,7 @@ const ALL_ROLES = ENTITY_FIELD_ROLES.map(role => role.id);
 
 const createEmptyDraft = (): FieldDraft => ({
   id: '', expectedUpdatedAt: '', name: '', description: '', type: 'text', optionText: '', required: false,
-  active: true, defaultVisible: false, searchable: false, filterable: false,
+  active: true, defaultVisible: false, searchable: false, filterable: true,
   viewRoles: [...ALL_ROLES], editRoles: ['admin', 'sale']
 });
 
@@ -56,7 +56,7 @@ const toDraft = (definition: EntityFieldDefinition): FieldDraft => ({
   active: definition.active,
   defaultVisible: definition.defaultVisible,
   searchable: definition.searchable,
-  filterable: definition.filterable,
+  filterable: true,
   viewRoles: [...definition.viewRoles],
   editRoles: [...definition.editRoles]
 });
@@ -170,7 +170,7 @@ export const InlineEntityFieldManager: React.FC<{
       active: draft.active,
       defaultVisible: draft.defaultVisible,
       searchable: draft.searchable,
-      filterable: draft.filterable,
+      filterable: true,
       viewRoles: draft.viewRoles,
       editRoles: draft.editRoles.filter(role => draft.viewRoles.includes(role)),
       order: existing?.order ?? Math.max(0, ...definitions.filter(item => item.table === table).map(item => item.order)) + 10,
@@ -316,7 +316,6 @@ export const InlineEntityFieldManager: React.FC<{
             <label><input type="checkbox" checked={draft.required} onChange={event => setDraft({ ...draft, required: event.target.checked })} /> Bắt buộc nhập</label>
             <label><input type="checkbox" checked={draft.defaultVisible} onChange={event => setDraft({ ...draft, defaultVisible: event.target.checked })} /> Hiện thành cột mặc định</label>
             <label><input type="checkbox" checked={draft.searchable} onChange={event => setDraft({ ...draft, searchable: event.target.checked })} /> Cho phép tìm kiếm</label>
-            <label><input type="checkbox" checked={draft.filterable} onChange={event => setDraft({ ...draft, filterable: event.target.checked })} /> Cho phép lọc</label>
             <label><input type="checkbox" checked={draft.active} onChange={event => setDraft({ ...draft, active: event.target.checked })} /> Đang sử dụng</label>
           </div></fieldset>
           {error && <p className="inline-field-editor__error" role="alert">{error}</p>}

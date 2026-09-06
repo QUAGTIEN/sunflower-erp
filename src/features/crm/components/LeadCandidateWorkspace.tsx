@@ -524,7 +524,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   )).sort((left, right) => left.localeCompare(right, 'vi-VN')), [accessibleCandidates]);
 
   const customFilterOptions = useMemo(() => Object.fromEntries(
-    customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => [
+    customFieldDefinitions.filter(definition => definition.active).map(definition => [
       definition.id,
       Array.from(new Set(accessibleCandidates.flatMap(candidate => getEntityCustomFieldFilterTokens(definition, candidate.customFieldValues?.[definition.id]))))
         .map(value => ({ value, label: getEntityCustomFieldFilterLabel(definition, value) }))
@@ -602,7 +602,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     const matchesIndustrialPark = !industrialParkFilterEnabled || industrialParkFilters.length === 0 || industrialParkFilters.includes(candidate.industrialPark);
     const matchesContactResult = !contactResultFilterEnabled || contactResultFilters.length === 0 || contactResultFilters.includes(candidate.contactResult);
     const matchesPotential = !potentialFilterEnabled || potentialFilters.length === 0 || potentialFilters.includes(candidate.potentialLevel);
-    const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active && definition.filterable).every(definition => {
+    const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active).every(definition => {
       const selected = customFieldFilters[definition.id] || [];
       if (selected.length === 0) return true;
       const tokens = getEntityCustomFieldFilterTokens(definition, candidate.customFieldValues?.[definition.id]);
@@ -689,7 +689,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       onRemove: () => setSaleFilters(previous => previous.filter(item => item !== value))
     })) : []),
     ...(pinnedFilterEnabled && pinnedOnly ? [{ id: 'pinned', label: configuredFilterName('pinned', 'Đã ghim'), onRemove: () => setPinnedOnly(false) }] : []),
-    ...customFieldDefinitions.filter(definition => definition.active && definition.filterable).flatMap(definition => (customFieldFilters[definition.id] || []).map(value => ({
+    ...customFieldDefinitions.filter(definition => definition.active).flatMap(definition => (customFieldFilters[definition.id] || []).map(value => ({
       id: `custom-${definition.id}-${value}`,
       label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
       onRemove: () => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: (previous[definition.id] || []).filter(item => item !== value) }))
@@ -1649,7 +1649,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <Star size={14} fill={pinnedOnly ? 'currentColor' : 'none'} /> Chỉ hiển thị dữ liệu đã ghim
           </button>
         </DataFilterSection>}
-        {customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => (
+        {customFieldDefinitions.filter(definition => definition.active).map(definition => (
           <DataFilterSection key={definition.id} title={definition.name} description={definition.description || 'Lọc theo trường tùy chỉnh.'} selectedCount={(customFieldFilters[definition.id] || []).length}>
             <DataFilterCheckboxGroup
               options={customFilterOptions[definition.id] || []}

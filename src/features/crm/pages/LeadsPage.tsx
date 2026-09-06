@@ -121,7 +121,6 @@ interface LeadsProps {
   currentUser: UserProfile;
   onNavigateToCrm: () => void;
   onNavigateToCustomerData: () => void;
-  onNavigateToSystemConfiguration: () => void;
   onConvertLead: (lead: LeadRecord) => void;
   initialCandidate?: LeadCandidateRecord | null;
   onInitialCandidateConsumed?: () => void;
@@ -273,7 +272,6 @@ export const Leads: React.FC<LeadsProps> = ({
   currentUser,
   onNavigateToCrm,
   onNavigateToCustomerData,
-  onNavigateToSystemConfiguration,
   onConvertLead,
   initialCandidate = null,
   onInitialCandidateConsumed
@@ -464,7 +462,7 @@ export const Leads: React.FC<LeadsProps> = ({
   }), [currentUser.role, currentUser.uid, leads]);
 
   const customFilterOptions = useMemo(() => Object.fromEntries(
-    customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => [
+    customFieldDefinitions.filter(definition => definition.active).map(definition => [
       definition.id,
       Array.from(new Set(accessibleLeads.flatMap(lead => getEntityCustomFieldFilterTokens(definition, lead.customFieldValues?.[definition.id]))))
         .map(value => ({ value, label: getEntityCustomFieldFilterLabel(definition, value) }))
@@ -607,7 +605,7 @@ export const Leads: React.FC<LeadsProps> = ({
         [fieldId]: (previous[fieldId] || []).filter(item => item !== value)
       }))
     }));
-  }).concat(customFieldDefinitions.filter(definition => definition.active && definition.filterable).flatMap(definition => (
+  }).concat(customFieldDefinitions.filter(definition => definition.active).flatMap(definition => (
     (customFieldFilters[definition.id] || []).map(value => ({
       id: `custom-${definition.id}-${value}`,
       label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
@@ -670,7 +668,7 @@ export const Leads: React.FC<LeadsProps> = ({
           const currentValues = leadFilterValues[fieldId] || [];
           return selectedValues.some(value => currentValues.includes(value));
         });
-      const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active && definition.filterable).every(definition => {
+      const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active).every(definition => {
         const selected = customFieldFilters[definition.id] || [];
         if (selected.length === 0) return true;
         const tokens = getEntityCustomFieldFilterTokens(definition, lead.customFieldValues?.[definition.id]);
@@ -1904,11 +1902,6 @@ export const Leads: React.FC<LeadsProps> = ({
             activeCount={leadQuickFilterCount}
             onClose={() => setShowLeadFilters(false)}
             onReset={clearFilters}
-            headerAction={currentUser.role === 'admin' ? (
-              <button type="button" className="btn btn-outline" onClick={() => { setShowLeadFilters(false); onNavigateToSystemConfiguration(); }}>
-                <Settings2 size={14} /> Mở cấu hình hệ thống
-              </button>
-            ) : undefined}
           >
             {visibleFilterDefinitions.map(field => {
               const fieldOptions = quickFilterOptionsByField[field.id] || [];
@@ -1939,7 +1932,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 </DataFilterSection>
               );
             })}
-            {customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => (
+            {customFieldDefinitions.filter(definition => definition.active).map(definition => (
               <DataFilterSection key={definition.id} title={definition.name} description={definition.description || 'Lọc theo trường tùy chỉnh.'} selectedCount={(customFieldFilters[definition.id] || []).length}>
                 <DataFilterCheckboxGroup
                   options={customFilterOptions[definition.id] || []}

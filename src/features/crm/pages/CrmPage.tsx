@@ -201,7 +201,6 @@ interface CrmProps {
   onPreparedOrderCreated?: (customerId: string) => void;
   initialLead?: LeadRecord | null;
   onLeadOnboardingClosed?: () => void;
-  onNavigateToSystemConfiguration: () => void;
 }
 
 const loadSpecsToFields = (productType: string, specifications: any = {}) => {
@@ -262,7 +261,6 @@ export const Crm: React.FC<CrmProps> = ({
   onPreparedOrderCreated,
   initialLead = null,
   onLeadOnboardingClosed,
-  onNavigateToSystemConfiguration
 }) => {
   const { t } = useLanguage();
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
@@ -1961,7 +1959,7 @@ export const Crm: React.FC<CrmProps> = ({
   ));
   const accessibleCustomerIds = new Set(accessibleCustomers.map(customer => customer.id));
   const customFilterOptions = Object.fromEntries(
-    customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => [
+    customFieldDefinitions.filter(definition => definition.active).map(definition => [
       definition.id,
       Array.from(new Set(accessibleCustomers.flatMap(customer => getEntityCustomFieldFilterTokens(definition, customer.customFieldValues?.[definition.id]))))
         .map(value => ({ value, label: getEntityCustomFieldFilterLabel(definition, value) }))
@@ -2240,7 +2238,7 @@ export const Crm: React.FC<CrmProps> = ({
       label: `${productFilterCopy.name}: ${productFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setProductFilters(previous => previous.filter(item => item !== value))
     })) : []),
-    ...customFieldDefinitions.filter(definition => definition.active && definition.filterable).flatMap(definition => (customFieldFilters[definition.id] || []).map(value => ({
+    ...customFieldDefinitions.filter(definition => definition.active).flatMap(definition => (customFieldFilters[definition.id] || []).map(value => ({
       id: `custom-${definition.id}-${value}`,
       label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
       onRemove: () => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: (previous[definition.id] || []).filter(item => item !== value) }))
@@ -2293,7 +2291,7 @@ export const Crm: React.FC<CrmProps> = ({
     ));
     const customerProductKeys = productKeysByCustomerId.get(customer.id) || new Set<string>();
     const matchesProduct = !productFilterEnabled || productFilters.length === 0 || productFilters.some(value => customerProductKeys.has(value));
-    const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active && definition.filterable).every(definition => {
+    const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active).every(definition => {
       const selected = customFieldFilters[definition.id] || [];
       if (selected.length === 0) return true;
       const tokens = getEntityCustomFieldFilterTokens(definition, customer.customFieldValues?.[definition.id]);
@@ -2807,11 +2805,6 @@ export const Crm: React.FC<CrmProps> = ({
                   activeCount={quickFilterCount}
                   onClose={() => setShowListFilters(false)}
                   onReset={resetCrmListFilters}
-                  headerAction={currentUser.role === 'admin' ? (
-                    <button type="button" className="btn btn-outline" onClick={() => { setShowListFilters(false); onNavigateToSystemConfiguration(); }}>
-                      <Settings2 size={14} /> Mở cấu hình hệ thống
-                    </button>
-                  ) : undefined}
                 >
                   {saleFilterEnabled && (
                     <DataFilterSection title={saleFilterCopy.name} description={saleFilterCopy.description} selectedCount={saleFilters.length}>
@@ -2843,7 +2836,7 @@ export const Crm: React.FC<CrmProps> = ({
                       <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={values => { setProductFilters(values); setCustomerPage(1); }} searchable />
                     </DataFilterSection>
                   )}
-                  {customFieldDefinitions.filter(definition => definition.active && definition.filterable).map(definition => (
+                  {customFieldDefinitions.filter(definition => definition.active).map(definition => (
                     <DataFilterSection key={definition.id} title={definition.name} description={definition.description || 'Lọc theo trường tùy chỉnh.'} selectedCount={(customFieldFilters[definition.id] || []).length}>
                       <DataFilterCheckboxGroup
                         options={customFilterOptions[definition.id] || []}

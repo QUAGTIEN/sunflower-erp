@@ -22,8 +22,6 @@ export const canAccessPage = (
   pageId: string
 ): boolean => {
   if (!user) return false;
-  if (pageId === 'system_configuration') return user.role === 'admin';
-
   const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
   if (pageId === 'work_schedule') return user.active !== false;
   if (pageId === 'leads') return allowed.includes('leads') || allowed.includes('crm');

@@ -33,8 +33,7 @@ export const AUDIT_PAGE_LABELS: Record<string, string> = {
   delivery: 'Kế hoạch giao hàng',
   accounting: 'Kế toán',
   users: 'Quản lý tài khoản',
-  recycle_bin: 'Thùng rác',
-  system_configuration: 'Cấu hình hệ thống'
+  recycle_bin: 'Thùng rác'
 };
 
 export const NOTIFICATION_MODULE_LABELS: Record<NotificationModule, string> = {

@@ -10,7 +10,7 @@ import { Inventory } from '@/features/inventory';
 import { Production } from '@/features/production';
 import { Delivery } from '@/features/delivery';
 import { Accounting } from '@/features/accounting';
-import { RecycleBin, SystemConfiguration, UserManagement } from '@/features/administration';
+import { RecycleBin, UserManagement } from '@/features/administration';
 import { ChatPage } from '@/features/chat';
 import { useLanguage } from '@/context/LanguageContext';
 import { PageContextProvider } from '@/context/PageContext';
@@ -67,7 +67,6 @@ import {
   Target,
   Bell,
   CheckCheck,
-  SlidersHorizontal,
   MapPinned,
   CalendarDays
 } from 'lucide-react';
@@ -90,7 +89,6 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   delivery: { section: 'Giao hàng', current: 'Bảng điều phối' },
   accounting: { section: 'Kế toán', current: 'Công nợ phải thu & phải trả' },
   recycle_bin: { section: 'Thùng rác' },
-  system_configuration: { section: 'Cấu hình', current: 'Tiêu chí bộ lọc' },
   users: { section: 'Tài khoản', current: 'Danh sách người dùng' }
 };
 
@@ -515,7 +513,6 @@ function AppShell() {
             onPreparedOrderCreated={handlePreparedOrderCreated}
             initialLead={leadOnboarding}
             onLeadOnboardingClosed={() => setLeadOnboarding(null)}
-            onNavigateToSystemConfiguration={() => setActivePage('system_configuration')}
           />
         );
       case 'leads':
@@ -527,7 +524,6 @@ function AppShell() {
             currentUser={user}
             onNavigateToCrm={() => setActivePage('crm')}
             onNavigateToCustomerData={() => setActivePage('customer_data')}
-            onNavigateToSystemConfiguration={() => setActivePage('system_configuration')}
             onConvertLead={handleLeadConversionRequest}
             initialCandidate={candidateLeadConversion}
             onInitialCandidateConsumed={handleCandidateLeadConversionConsumed}
@@ -637,9 +633,6 @@ function AppShell() {
       case 'recycle_bin':
         if (!isPageAllowed('recycle_bin')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
         return <RecycleBin currentUser={user} onRefresh={refreshData} />;
-      case 'system_configuration':
-        if (!isPageAllowed('system_configuration')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
-        return <SystemConfiguration currentUser={user} />;
       case 'users':
         if (!isPageAllowed('users')) {
           setTimeout(() => setActivePage('dashboard'), 0);
@@ -1056,19 +1049,6 @@ function AppShell() {
               <div className="sidebar-item-content sidebar-item-content-danger">
                 <Trash2 size={16} />
                 <span className="sidebar-item-label">Thùng rác</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('system_configuration') && (
-            <button
-              className={`sidebar-item ${activePage === 'system_configuration' ? 'active' : ''}`}
-              onClick={() => { setActivePage('system_configuration'); setIsSidebarOpen(false); }}
-              title={t('Cấu Hình Hệ Thống')}
-            >
-              <div className="sidebar-item-content">
-                <SlidersHorizontal size={16} />
-                <span className="sidebar-item-label">Cấu hình</span>
               </div>
             </button>
           )}
