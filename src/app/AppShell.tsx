@@ -76,7 +76,7 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   dashboard: { section: 'Tổng quan' },
   chat: { section: 'Kênh chat' },
   work_schedule: { section: 'Lịch làm việc', current: 'Hôm nay' },
-  commercial_map: { section: 'Bản đồ' },
+  commercial_map: { section: 'Thương mại', current: 'Tỉnh thành' },
   customer_data: { section: 'Dữ liệu thô', current: 'Tất cả dữ liệu' },
   leads: { section: 'Tiềm năng', current: 'Danh sách Lead' },
   crm: { section: 'Khách hàng', current: 'Tất cả' },
@@ -570,6 +570,7 @@ function AppShell() {
             customers={customers}
             leads={leads}
             orders={pos}
+            deliveries={deliveries}
             users={users}
             currentUser={user}
             onNavigateToCrm={() => setActivePage('crm')}
@@ -887,11 +888,11 @@ function AppShell() {
             <button
               className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
               onClick={() => { setActivePage('commercial_map'); setIsSidebarOpen(false); }}
-              title={t('Bản Đồ Thương Mại')}
+              title={t('Thương mại')}
             >
               <div className="sidebar-item-content">
                 <MapPinned size={16} />
-                <span className="sidebar-item-label">Bản đồ</span>
+                <span className="sidebar-item-label">Thương mại</span>
               </div>
             </button>
           )}

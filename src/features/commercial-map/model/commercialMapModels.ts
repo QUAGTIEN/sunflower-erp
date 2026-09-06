@@ -18,6 +18,8 @@ export interface CommercialMapRecord {
   taxCode: string;
   provinceId: string;
   provinceName: string;
+  ward: string;
+  industrialPark: string;
   address: string;
   contactPerson: string;
   phone: string;
@@ -108,6 +110,8 @@ export const buildCommercialMapRecords = ({
       taxCode: customer.taxCode,
       provinceId: province.id,
       provinceName: province.name,
+      ward: customer.ward,
+      industrialPark: customer.industrialPark,
       address: [customer.address, customer.industrialPark, customer.ward, customer.province].filter(Boolean).join(', '),
       contactPerson: customer.contactPerson,
       phone: customer.phone,
@@ -131,6 +135,8 @@ export const buildCommercialMapRecords = ({
       taxCode: lead.taxCode,
       provinceId: province.id,
       provinceName: province.name,
+      ward: lead.ward,
+      industrialPark: lead.industrialPark,
       address: [lead.address, lead.industrialPark, lead.ward, lead.province].filter(Boolean).join(', '),
       contactPerson: lead.contactPerson,
       phone: lead.phone,
@@ -155,6 +161,8 @@ export const buildCommercialMapRecords = ({
         taxCode: candidate.taxCode,
         provinceId: province.id,
         provinceName: province.name,
+        ward: candidate.ward,
+        industrialPark: candidate.industrialPark,
         address: [candidate.address, candidate.industrialPark, candidate.ward, candidate.province].filter(Boolean).join(', '),
         contactPerson: candidate.contactPerson,
         phone: candidate.phone,

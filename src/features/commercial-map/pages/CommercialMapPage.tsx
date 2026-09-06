@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Building2,
   ChevronLeft,
-  Database,
   ExternalLink,
   Layers3,
   LoaderCircle,
@@ -16,9 +15,19 @@ import {
 } from 'lucide-react';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
+import type { LeadFilterDefinition, LeadFilterOption } from '@/features/crm/model/crmModels';
 import type { CompatiblePORecord } from '@/domain/poCompatibility';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
+import { SearchableProvinceSelect } from '@/components/SearchableProvinceSelect';
+import { PageContextHeader } from '@/components/PageContextHeader';
+import { VIETNAM_ADMINISTRATIVE_UNITS } from '@/data/vietnamAdministrativeUnits';
+import {
+  compactLeadFilterDefinitionForStorage,
+  LEAD_FILTER_IDS,
+  mergeLeadFilterDefinitions,
+  slugifyLeadFilterId
+} from '@/features/crm/model/leadFilterConfig';
 import {
   buildCommercialMapRecords,
   filterCommercialMapRecords,
@@ -34,11 +43,14 @@ interface CommercialMapProps {
   customers: CustomerRecord[];
   leads: LeadRecord[];
   orders: CompatiblePORecord[];
+  deliveries: Array<Record<string, unknown>>;
   users: UserProfile[];
   currentUser: UserProfile;
   onNavigateToCrm: () => void;
   onNavigateToLeads: () => void;
 }
+
+type CommercialTab = 'provinces' | 'industrial_parks' | 'map';
 
 type Coordinate = [number, number];
 type PolygonCollection = Coordinate[][];
@@ -137,6 +149,22 @@ const zoomViewBox = (viewBox: ViewBoxState, factor: number): ViewBoxState => {
 };
 
 const formatNumber = (value: number): string => value.toLocaleString('vi-VN');
+const formatCurrency = (value: number): string => `${formatNumber(Math.round(value))} đ`;
+
+const activeChildren = (option: LeadFilterOption | undefined): LeadFilterOption[] => (
+  (option?.children || []).filter(child => child.active !== false)
+);
+
+const createParkId = (provinceId: string, label: string, existingIds: Set<string>): string => {
+  const base = `${provinceId}__industrial_park_${slugifyLeadFilterId(label) || 'kcn'}`;
+  let candidate = base;
+  let suffix = 2;
+  while (existingIds.has(candidate)) {
+    candidate = `${base}_${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+};
 
 const normalizeWardSearch = (value: string): string => normalizeVietnameseText(value)
   .replace(/\b(phuong|xa|thi tran|dac khu)\b/g, ' ')
@@ -191,12 +219,22 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   customers,
   leads,
   orders,
+  deliveries,
   users,
   currentUser,
   onNavigateToCrm,
   onNavigateToLeads
 }) => {
+  const [activeTab, setActiveTab] = useState<CommercialTab>('provinces');
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
+  const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
+  const [overviewProvinceName, setOverviewProvinceName] = useState('');
+  const [overviewWard, setOverviewWard] = useState('');
+  const [parkProvinceName, setParkProvinceName] = useState('');
+  const [parkDraft, setParkDraft] = useState<Record<string, string>>({});
+  const [newParkName, setNewParkName] = useState('');
+  const [parkSaving, setParkSaving] = useState(false);
+  const [parkMessage, setParkMessage] = useState('');
   const [activeLayer, setActiveLayer] = useState<CommercialMapLayer>('all');
   const [saleFilter, setSaleFilter] = useState('all');
   const [provinceData, setProvinceData] = useState<ProvinceGeometry[]>([]);
@@ -215,6 +253,10 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
 
   useEffect(() => dbService.subscribeCollection('lead_candidates', data => {
     setCandidates(data as LeadCandidateRecord[]);
+  }), []);
+
+  useEffect(() => dbService.subscribeCollection('lead_filter_definitions', data => {
+    setStoredFilterDefinitions(data as LeadFilterDefinition[]);
   }), []);
 
   useEffect(() => {
@@ -298,6 +340,154 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     [users]
   );
 
+  const filterDefinitions = useMemo(
+    () => mergeLeadFilterDefinitions(storedFilterDefinitions),
+    [storedFilterDefinitions]
+  );
+  const industrialParkDefinition = useMemo(
+    () => filterDefinitions.find(definition => definition.id === LEAD_FILTER_IDS.industrialPark),
+    [filterDefinitions]
+  );
+  const overviewProvince = useMemo(
+    () => VIETNAM_ADMINISTRATIVE_UNITS.find(province => province.label === overviewProvinceName),
+    [overviewProvinceName]
+  );
+  const overviewProvinceRecords = useMemo(() => {
+    if (!overviewProvince) return [];
+    return accessibleRecords.filter(record => (
+      record.provinceId === overviewProvince.id
+      && (!overviewWard || normalizeWardSearch(record.ward) === normalizeWardSearch(overviewWard))
+    ));
+  }, [accessibleRecords, overviewProvince, overviewWard]);
+  const overviewSales = useMemo(() => {
+    const saleIds = new Set(overviewProvinceRecords.map(record => record.assignedSaleId).filter(Boolean));
+    return activeSales.filter(user => saleIds.has(user.uid));
+  }, [activeSales, overviewProvinceRecords]);
+  const overviewDeliveries = useMemo(() => {
+    if (!overviewProvince) return [];
+    const activeStatuses = new Set(['planning', 'approved', 'loading', 'delivering']);
+    return deliveries.filter(delivery => {
+      if (currentUser.role !== 'admin' && delivery.assignedSaleId !== currentUser.uid) return false;
+      if (!activeStatuses.has(String(delivery.status || ''))) return false;
+      const resolved = resolveCommercialProvince(
+        String(delivery.region || ''),
+        JSON.stringify(delivery.orders || []),
+        String(delivery.deliveryAddress || '')
+      );
+      if (resolved.id !== overviewProvince.id) return false;
+      if (!overviewWard) return true;
+      return normalizeWardSearch(JSON.stringify(delivery)).includes(normalizeWardSearch(overviewWard));
+    });
+  }, [currentUser, deliveries, overviewProvince, overviewWard]);
+  const overviewParks = useMemo(() => {
+    if (!overviewProvince) return [];
+    return activeChildren(industrialParkDefinition?.options.find(option => option.id === overviewProvince.id));
+  }, [industrialParkDefinition, overviewProvince]);
+  const overviewSummary = useMemo(() => ({
+    total: overviewProvinceRecords.length,
+    customers: overviewProvinceRecords.filter(record => record.type === 'customer').length,
+    leads: overviewProvinceRecords.filter(record => record.type === 'lead').length,
+    candidates: overviewProvinceRecords.filter(record => record.type === 'candidate').length,
+    processing: overviewProvinceRecords.filter(record => record.statusLabel === 'Đang được Sale xử lý').length,
+    revenue: overviewProvinceRecords.reduce((sum, record) => sum + record.revenue, 0),
+    orders: overviewProvinceRecords.reduce((sum, record) => sum + record.orderCount, 0)
+  }), [overviewProvinceRecords]);
+
+  const parkProvince = useMemo(
+    () => VIETNAM_ADMINISTRATIVE_UNITS.find(province => province.label === parkProvinceName),
+    [parkProvinceName]
+  );
+  const parkProvinceOption = industrialParkDefinition?.options.find(option => option.id === parkProvince?.id);
+  const parkRows = activeChildren(parkProvinceOption);
+
+  const saveIndustrialParkDefinition = async (nextDefinition: LeadFilterDefinition, message: string) => {
+    setParkSaving(true);
+    setParkMessage('');
+    try {
+      const savedDefinition = {
+        ...compactLeadFilterDefinitionForStorage(nextDefinition),
+        updatedBy: currentUser.displayName,
+        updatedAt: new Date().toISOString()
+      };
+      await dbService.addDocument('lead_filter_definitions', savedDefinition);
+      setStoredFilterDefinitions(previous => [
+        ...previous.filter(definition => definition.id !== savedDefinition.id),
+        savedDefinition
+      ]);
+      setParkMessage(message);
+    } catch {
+      setParkMessage('Không thể lưu danh mục KCN lúc này. Vui lòng thử lại.');
+    } finally {
+      setParkSaving(false);
+    }
+  };
+
+  const addIndustrialPark = async () => {
+    const label = newParkName.trim();
+    if (!industrialParkDefinition || !parkProvince || !label) {
+      setParkMessage(!parkProvince ? 'Vui lòng chọn tỉnh/thành trước khi thêm KCN.' : 'Vui lòng nhập tên KCN.');
+      return;
+    }
+    if (parkRows.some(park => normalizeVietnameseText(park.label) === normalizeVietnameseText(label))) {
+      setParkMessage('KCN này đã tồn tại trong tỉnh/thành đã chọn.');
+      return;
+    }
+    const existingProvince = industrialParkDefinition.options.find(option => option.id === parkProvince.id);
+    const newPark: LeadFilterOption = {
+      id: createParkId(parkProvince.id, label, new Set((existingProvince?.children || []).map(item => item.id))),
+      label,
+      color: existingProvince?.color || '#2563eb',
+      active: true,
+      kind: 'region',
+      system: false
+    };
+    const provinceOption: LeadFilterOption = existingProvince || {
+      id: parkProvince.id,
+      label: parkProvince.label,
+      color: '#2563eb',
+      active: true,
+      kind: 'province',
+      system: true,
+      children: []
+    };
+    const nextOptions = existingProvince
+      ? industrialParkDefinition.options.map(option => option.id === parkProvince.id
+        ? { ...option, children: [...(option.children || []), newPark] }
+        : option)
+      : [...industrialParkDefinition.options, { ...provinceOption, children: [newPark] }];
+    await saveIndustrialParkDefinition({ ...industrialParkDefinition, options: nextOptions }, `Đã thêm ${label}.`);
+    setNewParkName('');
+  };
+
+  const updateIndustrialPark = async (park: LeadFilterOption) => {
+    const label = (parkDraft[park.id] ?? park.label).trim();
+    if (!industrialParkDefinition || !parkProvinceOption || !label) {
+      setParkMessage('Tên KCN không được để trống.');
+      return;
+    }
+    const duplicated = parkRows.some(item => item.id !== park.id && normalizeVietnameseText(item.label) === normalizeVietnameseText(label));
+    if (duplicated) {
+      setParkMessage('Tên KCN này đã tồn tại trong tỉnh/thành đã chọn.');
+      return;
+    }
+    const nextOptions = industrialParkDefinition.options.map(option => option.id !== parkProvinceOption.id ? option : {
+      ...option,
+      children: (option.children || []).map(item => item.id === park.id ? { ...item, label } : item)
+    });
+    await saveIndustrialParkDefinition({ ...industrialParkDefinition, options: nextOptions }, `Đã cập nhật ${label}.`);
+    setParkDraft(previous => { const next = { ...previous }; delete next[park.id]; return next; });
+  };
+
+  const archiveIndustrialPark = async (park: LeadFilterOption) => {
+    if (!industrialParkDefinition || !parkProvinceOption) return;
+    if (!window.confirm(`Ngừng sử dụng KCN “${park.label}”? Dữ liệu doanh nghiệp cũ vẫn được giữ nguyên.`)) return;
+    const nextOptions = industrialParkDefinition.options.map(option => option.id !== parkProvinceOption.id ? option : {
+      ...option,
+      children: (option.children || []).map(item => item.id === park.id ? { ...item, active: false } : item)
+    });
+    await saveIndustrialParkDefinition({ ...industrialParkDefinition, options: nextOptions }, `Đã ngừng sử dụng ${park.label}.`);
+  };
+
   const loadProvince = useCallback(async (province: ProvinceGeometry) => {
     setSelectedProvince(province);
     setSelectedWard(null);
@@ -376,15 +566,114 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
 
   return (
     <div className="commercial-map-view commercial-map-view--focused">
+      <PageContextHeader section="Thương mại" current={activeTab === 'provinces' ? 'Tỉnh thành' : activeTab === 'industrial_parks' ? 'Khu công nghiệp' : 'Bản đồ'} />
       <header className="commercial-map-header commercial-map-header--compact">
-        <div>
-          <div className="commercial-map-heading"><MapPinned size={21} /><h1>Bản đồ</h1></div>
-          <p>Quan sát độ phủ khách hàng và công việc Sale theo từng địa bàn.</p>
-        </div>
-        <span className="commercial-map-source"><Database size={14} /> Dữ liệu nội bộ Sunflower</span>
+        <div className="commercial-map-heading"><h1>Thương mại</h1></div>
       </header>
 
-      <section className="commercial-map-focus-workspace">
+      <nav className="commercial-tabs content-tabs" role="tablist" aria-label="Dữ liệu thương mại theo địa bàn">
+        <button type="button" role="tab" aria-selected={activeTab === 'provinces'} className={activeTab === 'provinces' ? 'is-active' : ''} onClick={() => setActiveTab('provinces')}>Tỉnh thành</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'industrial_parks'} className={activeTab === 'industrial_parks' ? 'is-active' : ''} onClick={() => setActiveTab('industrial_parks')}>Khu công nghiệp</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'map'} className={activeTab === 'map' ? 'is-active' : ''} onClick={() => setActiveTab('map')}>Bản đồ</button>
+      </nav>
+
+      {activeTab === 'provinces' && (
+        <section className="commercial-overview">
+          <div className="commercial-overview__toolbar">
+            <label>
+              <span>Tỉnh/thành</span>
+              <SearchableProvinceSelect
+                value={overviewProvinceName}
+                onChange={value => { setOverviewProvinceName(value); setOverviewWard(''); }}
+                placeholder="Chọn hoặc gõ để tìm tỉnh/thành"
+              />
+            </label>
+            <label>
+              <span>Phường/xã</span>
+              <select value={overviewWard} disabled={!overviewProvince} onChange={event => setOverviewWard(event.target.value)}>
+                <option value="">Tất cả phường/xã</option>
+                {(overviewProvince?.wards || []).map(ward => <option key={ward.id} value={ward.label}>{ward.label}</option>)}
+              </select>
+            </label>
+            {(overviewProvinceName || overviewWard) && <button type="button" className="btn btn-outline" onClick={() => { setOverviewProvinceName(''); setOverviewWard(''); }}>Đặt lại</button>}
+          </div>
+
+          {!overviewProvince ? (
+            <div className="commercial-empty-state">
+              <strong>Chọn tỉnh/thành để xem số liệu thương mại</strong>
+              <p>Có thể gõ tên không dấu để tìm nhanh trong danh mục tỉnh/thành thống nhất của hệ thống.</p>
+            </div>
+          ) : (
+            <>
+              <div className="commercial-metric-grid">
+                <article><span>Khách hàng hợp tác</span><strong>{overviewSummary.customers}</strong></article>
+                <article><span>Khách hàng tiềm năng</span><strong>{overviewSummary.leads}</strong></article>
+                <article><span>Dữ liệu thô</span><strong>{overviewSummary.candidates}</strong></article>
+                <article><span>Sale đang xử lý</span><strong>{overviewSummary.processing}</strong></article>
+                <article><span>Sale phụ trách</span><strong>{overviewSales.length}</strong></article>
+                <article><span>Đơn hàng</span><strong>{overviewSummary.orders}</strong></article>
+                <article><span>Chuyến đang hoạt động</span><strong>{overviewDeliveries.length}</strong></article>
+                <article><span>Khu công nghiệp</span><strong>{overviewParks.length}</strong></article>
+              </div>
+
+              <div className="commercial-overview__content">
+                <section className="commercial-data-panel">
+                  <header><div><h2>Doanh nghiệp tại {overviewWard || overviewProvince.label}</h2><p>{overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}</p></div></header>
+                  <div className="table-container">
+                    <table>
+                      <thead><tr><th>Doanh nghiệp</th><th>Phân loại</th><th>Phường/xã</th><th>Khu công nghiệp</th><th>Sale phụ trách</th><th>Trạng thái</th></tr></thead>
+                      <tbody>
+                        {overviewProvinceRecords.map(record => (
+                          <tr key={record.key} onClick={() => record.type === 'customer' ? onNavigateToCrm() : onNavigateToLeads()} tabIndex={0} onKeyDown={event => { if (event.key === 'Enter') record.type === 'customer' ? onNavigateToCrm() : onNavigateToLeads(); }}>
+                            <td className="erp-company-name" title={record.companyName}>{record.companyName}</td>
+                            <td>{record.type === 'customer' ? 'Khách hàng' : record.type === 'lead' ? 'Tiềm năng' : 'Dữ liệu thô'}</td>
+                            <td>{record.ward || '—'}</td><td>{record.industrialPark || '—'}</td><td>{record.assignedSaleName}</td><td>{record.statusLabel}</td>
+                          </tr>
+                        ))}
+                        {overviewProvinceRecords.length === 0 && <tr><td colSpan={6} className="commercial-table-empty">Chưa có hồ sơ phù hợp tại địa bàn này.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <aside className="commercial-summary-panel">
+                  <section><h2>Sale phụ trách</h2>{overviewSales.map(sale => <div className="commercial-summary-row" key={sale.uid}><span>{sale.displayName}</span><strong>{overviewProvinceRecords.filter(record => record.assignedSaleId === sale.uid).length} hồ sơ</strong></div>)}{overviewSales.length === 0 && <p>Chưa có Sale phụ trách địa bàn này.</p>}</section>
+                  <section><h2>Chuyến đang hoạt động</h2>{overviewDeliveries.slice(0, 6).map((delivery, index) => <div className="commercial-summary-row" key={String(delivery.id || index)}><span>{String(delivery.delCode || `Chuyến ${index + 1}`)}</span><strong>{String(delivery.deliveryDate || '').slice(0, 10) || 'Chưa có ngày'}</strong></div>)}{overviewDeliveries.length === 0 && <p>Không có chuyến đang hoạt động.</p>}</section>
+                </aside>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'industrial_parks' && (
+        <section className="commercial-parks">
+          <div className="commercial-parks__intro">
+            <div><h2>Danh mục khu công nghiệp</h2><p>KCN được quản lý theo tỉnh/thành và dùng chung cho Dữ liệu thô, Tiềm năng và Khách hàng.</p></div>
+            <label><span>Tỉnh/thành</span><SearchableProvinceSelect value={parkProvinceName} onChange={value => { setParkProvinceName(value); setNewParkName(''); setParkDraft({}); setParkMessage(''); }} placeholder="Chọn tỉnh/thành trước" /></label>
+          </div>
+
+          {parkProvince && currentUser.role === 'admin' && (
+            <div className="commercial-parks__add">
+              <label><span>Tên khu công nghiệp mới</span><input value={newParkName} onChange={event => setNewParkName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void addIndustrialPark(); } }} placeholder={`Nhập KCN thuộc ${parkProvince.label}`} /></label>
+              <button type="button" className="btn btn-primary" disabled={parkSaving || !newParkName.trim()} onClick={() => void addIndustrialPark()}>{parkSaving ? 'Đang lưu...' : 'Thêm KCN'}</button>
+            </div>
+          )}
+
+          {parkMessage && <div className="commercial-parks__message" role="status">{parkMessage}</div>}
+          {!parkProvince ? <div className="commercial-empty-state"><strong>Chọn tỉnh/thành trước</strong><p>Sau khi chọn tỉnh, hệ thống sẽ hiển thị toàn bộ KCN đang được sử dụng tại địa bàn đó.</p></div> : (
+            <div className="commercial-data-panel commercial-parks__table">
+              <header><div><h2>Khu công nghiệp tại {parkProvince.label}</h2><p>{parkRows.length} KCN đang sử dụng</p></div>{currentUser.role !== 'admin' && <span>Chỉ Admin được chỉnh sửa</span>}</header>
+              <div className="table-container"><table><thead><tr><th style={{ width: 72 }}>STT</th><th>Tên khu công nghiệp</th><th style={{ width: 220 }}>Trạng thái</th>{currentUser.role === 'admin' && <th style={{ width: 190 }}>Thao tác</th>}</tr></thead><tbody>
+                {parkRows.map((park, index) => <tr key={park.id}><td>{index + 1}</td><td>{currentUser.role === 'admin' ? <input aria-label={`Tên ${park.label}`} value={parkDraft[park.id] ?? park.label} onChange={event => setParkDraft(previous => ({ ...previous, [park.id]: event.target.value }))} /> : park.label}</td><td><span className="commercial-active-text">Đang sử dụng</span></td>{currentUser.role === 'admin' && <td><div className="commercial-row-actions"><button type="button" className="btn btn-outline btn-sm" disabled={parkSaving || (parkDraft[park.id] ?? park.label).trim() === park.label} onClick={() => void updateIndustrialPark(park)}>Lưu</button><button type="button" className="btn btn-danger btn-sm" disabled={parkSaving} onClick={() => void archiveIndustrialPark(park)}>Ngừng dùng</button></div></td>}</tr>)}
+                {parkRows.length === 0 && <tr><td colSpan={currentUser.role === 'admin' ? 4 : 3} className="commercial-table-empty">Tỉnh/thành này chưa có KCN được cấu hình.</td></tr>}
+              </tbody></table></div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'map' && <section className="commercial-map-focus-workspace">
         <aside className="commercial-map-sidebar">
           <div className="commercial-map-panel-title">
             <strong><Layers3 size={15} /> Lớp dữ liệu</strong>
@@ -601,7 +890,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
             </>
           )}
         </aside>
-      </section>
+      </section>}
     </div>
   );
 };

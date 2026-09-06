@@ -21,7 +21,7 @@ export const AUDIT_PAGE_LABELS: Record<string, string> = {
   crm: 'Khách hàng hợp tác',
   leads: 'Khách hàng tiềm năng',
   customer_data: 'Dữ liệu thô',
-  commercial_map: 'Bản đồ thương mại',
+  commercial_map: 'Thương mại',
   work_schedule: 'Lịch làm việc',
   sales: 'Tạo đơn hàng',
   design: 'Yêu cầu thiết kế',
