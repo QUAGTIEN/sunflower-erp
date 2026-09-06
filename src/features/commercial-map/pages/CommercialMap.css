@@ -132,6 +132,43 @@
   margin-top: 12px;
 }
 
+.commercial-analysis-tables {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.commercial-park-manager {
+  margin-top: 12px;
+  border: 1px solid var(--erp-border-color);
+  background: #fff;
+}
+
+.commercial-park-manager > header {
+  border-bottom: 1px solid var(--erp-border-color);
+  padding: 12px;
+}
+
+.commercial-park-manager h2 {
+  margin: 0;
+  color: #172554;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.commercial-park-manager p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.commercial-park-manager .commercial-parks__add {
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--erp-border-color);
+}
+
 .commercial-data-panel,
 .commercial-summary-panel > section {
   min-width: 0;
@@ -589,6 +626,32 @@
   stroke: #173f86;
   stroke-width: 1.5;
   fill-opacity: .55 !important;
+}
+
+.commercial-map-area-labels {
+  pointer-events: none;
+}
+
+.commercial-map-area-labels text {
+  paint-order: stroke fill;
+  stroke: rgba(255, 255, 255, .94);
+  stroke-linejoin: round;
+  stroke-width: .22em;
+  fill: #163765;
+  font-family: var(--font-sans);
+  font-weight: 650;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.commercial-map-area-labels.ward-level text {
+  fill: #294d78;
+  font-weight: 600;
+}
+
+.commercial-map-area-labels text.selected {
+  fill: #0f2f68;
+  font-weight: 750;
 }
 
 .commercial-map-business-marker {
