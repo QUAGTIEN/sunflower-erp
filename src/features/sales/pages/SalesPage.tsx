@@ -852,14 +852,11 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                 : t('Tìm mã khách hàng, công ty, người liên hệ...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ maxWidth: '400px', flex: 1 }}
+              style={{ flex: 1 }}
             />
-            <button className="btn btn-outline" onClick={() => setSearchTerm('')}>
-              {t('Xóa tìm kiếm')}
-            </button>
             {activeListView === 'orders' && !selectedOrderCustomer && <>
               <DataFilterButton activeCount={salesActiveFilterCount} open={showSalesFilters} onClick={() => setShowSalesFilters(true)} />
-              <button type="button" className="btn btn-outline erp-icon-button" onClick={() => setShowSalesColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
+              <button type="button" className="data-filter-button" onClick={() => setShowSalesColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
             </>}
           </div>
 

@@ -556,8 +556,7 @@ export const Design: React.FC<DesignProps> = ({
             />
           </div>
           <DataFilterButton activeCount={designActiveFilterCount} open={showDesignFilters} onClick={() => setShowDesignFilters(true)} />
-          <button type="button" className="btn btn-outline design-column-button" onClick={() => setShowDesignColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
-          <span className="design-request-result-count">{filteredRequests.length} {t('yêu cầu')}</span>
+          <button type="button" className="data-filter-button" onClick={() => setShowDesignColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
         </div>
 
         <DataFilterChipBar

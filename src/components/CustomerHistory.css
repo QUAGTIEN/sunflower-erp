@@ -1882,17 +1882,6 @@
   margin-bottom: 16px;
 }
 
-.sales-list-toolbar select {
-  width: auto;
-  min-width: 160px;
-}
-
-.sales-list-toolbar .erp-icon-button {
-  width: 38px;
-  min-width: 38px;
-  padding: 0;
-}
-
 .sales-customer-po-header {
   display: flex;
   min-height: 48px;

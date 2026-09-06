@@ -103,16 +103,10 @@
   border-bottom: 1px solid #dfe6f1;
 }
 
-.design-column-button {
-  width: 38px;
-  min-width: 38px;
-  padding: 0;
-}
-
 .design-request-search {
   position: relative;
   flex: 1 1 420px;
-  max-width: 600px;
+  max-width: none;
 }
 
 .design-request-search svg {
