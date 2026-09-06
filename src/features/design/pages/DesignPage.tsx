@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import {
   AlertCircle,
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
   ListChecks,
   Plus,
   Search,
+  Settings2,
   UserRound,
   XCircle
 } from 'lucide-react';
@@ -50,6 +52,17 @@ const PRIORITY_LABELS: Record<string, string> = {
   normal: 'Bình thường',
   low: 'Thong thả'
 };
+
+const DESIGN_LIST_COLUMNS: TableColumnOption[] = [
+  { id: 'request', label: 'Mã yêu cầu', required: true, group: 'Thông tin yêu cầu' },
+  { id: 'po', label: 'Mã PO', defaultVisible: true, group: 'Thông tin yêu cầu' },
+  { id: 'product', label: 'Mặt hàng cần thiết kế', defaultVisible: true, group: 'Thông tin sản phẩm' },
+  { id: 'specification', label: 'Quy cách / Chất liệu', defaultVisible: true, group: 'Thông tin sản phẩm' },
+  { id: 'dueDate', label: 'Hạn xử lý', defaultVisible: true, group: 'Tiến độ' },
+  { id: 'designer', label: 'Người phụ trách', defaultVisible: true, group: 'Tiến độ' },
+  { id: 'status', label: 'Tiến độ thiết kế', defaultVisible: true, group: 'Tiến độ' },
+  { id: 'actions', label: 'Thao tác', required: true, group: 'Điều khiển bảng' }
+];
 
 const formatDate = (value?: string) => {
   if (!value) return '—';
@@ -95,6 +108,23 @@ export const Design: React.FC<DesignProps> = ({
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | DesignWorkStatus>('all');
+  const [showDesignColumnCustomizer, setShowDesignColumnCustomizer] = useState(false);
+  const [designVisibleColumns, setDesignVisibleColumns] = useState<string[]>(() => {
+    try {
+      const stored = window.localStorage.getItem(`sunflower:design-columns:${currentUser.uid}`);
+      const parsed = stored ? JSON.parse(stored) : null;
+      if (Array.isArray(parsed)) return Array.from(new Set(['request', 'actions', ...parsed.filter((id): id is string => typeof id === 'string')]));
+    } catch { /* Keep defaults when storage is unavailable. */ }
+    return DESIGN_LIST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id);
+  });
+  const designVisibleColumnSet = new Set(designVisibleColumns);
+  const designVisibleColumnCount = DESIGN_LIST_COLUMNS.filter(column => designVisibleColumnSet.has(column.id)).length;
+  const saveDesignVisibleColumns = (selectedIds: string[]) => {
+    const next = Array.from(new Set(['request', 'actions', ...selectedIds]));
+    setDesignVisibleColumns(next);
+    try { window.localStorage.setItem(`sunflower:design-columns:${currentUser.uid}`, JSON.stringify(next)); } catch { /* State remains active. */ }
+    setShowDesignColumnCustomizer(false);
+  };
   const [statusNote, setStatusNote] = useState('');
   const [nextWorkStatus, setNextWorkStatus] = useState<DesignWorkStatus>('unreviewed');
   const [showVersionModal, setShowVersionModal] = useState(false);
@@ -516,6 +546,7 @@ export const Design: React.FC<DesignProps> = ({
             <option value="all">{t('Tất cả tiến độ')}</option>
             {DESIGN_WORK_STATUSES.map(status => <option key={status.value} value={status.value}>{t(status.label)}</option>)}
           </select>
+          <button type="button" className="btn btn-outline design-column-button" onClick={() => setShowDesignColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
           <span className="design-request-result-count">{filteredRequests.length} {t('yêu cầu')}</span>
         </div>
 
@@ -524,12 +555,12 @@ export const Design: React.FC<DesignProps> = ({
             <thead>
               <tr>
                 <th>{t('Mã yêu cầu')}</th>
-                <th>{t('Mã PO')}</th>
-                <th>{t('Mặt hàng cần thiết kế')}</th>
-                <th>{t('Quy cách / Chất liệu')}</th>
-                <th>{t('Hạn xử lý')}</th>
-                <th>{t('Người phụ trách')}</th>
-                <th>{t('Tiến độ thiết kế')}</th>
+                {designVisibleColumnSet.has('po') && <th>{t('Mã PO')}</th>}
+                {designVisibleColumnSet.has('product') && <th>{t('Mặt hàng cần thiết kế')}</th>}
+                {designVisibleColumnSet.has('specification') && <th>{t('Quy cách / Chất liệu')}</th>}
+                {designVisibleColumnSet.has('dueDate') && <th>{t('Hạn xử lý')}</th>}
+                {designVisibleColumnSet.has('designer') && <th>{t('Người phụ trách')}</th>}
+                {designVisibleColumnSet.has('status') && <th>{t('Tiến độ thiết kế')}</th>}
                 <th>{t('Thao Tác')}</th>
               </tr>
             </thead>
@@ -545,28 +576,28 @@ export const Design: React.FC<DesignProps> = ({
                       <strong className="design-request-code">{request.requestCode}</strong>
                       <span className={`design-priority design-priority--${request.priority || 'normal'}`}>{t(PRIORITY_LABELS[request.priority] || 'Bình thường')}</span>
                     </td>
-                    <td>
+                    {designVisibleColumnSet.has('po') && <td>
                       <strong>{request.customerReferenceCode || request.poCode}</strong>
                       <span className="design-secondary-text">{request.poCode}</span>
-                    </td>
-                    <td>
+                    </td>}
+                    {designVisibleColumnSet.has('product') && <td>
                       <strong>{request.productName || t('Chưa đặt tên')}</strong>
                       <span className="design-secondary-text">{request.productCode || t('Chưa có mã hàng')}</span>
-                    </td>
-                    <td>
+                    </td>}
+                    {designVisibleColumnSet.has('specification') && <td>
                       <span>{request.size || '—'}</span>
                       <span className="design-secondary-text">{request.material || '—'}</span>
-                    </td>
-                    <td>
+                    </td>}
+                    {designVisibleColumnSet.has('dueDate') && <td>
                       <span className={overdue ? 'design-overdue-text' : ''}>{formatDate(request.dueDate)}</span>
                       <span className="design-secondary-text">{ageDays === null ? '—' : `${ageDays} ${t(request.workStatus === 'completed' ? 'ngày xử lý' : 'ngày chờ')}`}</span>
-                    </td>
-                    <td>{designer?.displayName || t('Chưa phân công')}</td>
-                    <td>
+                    </td>}
+                    {designVisibleColumnSet.has('designer') && <td>{designer?.displayName || t('Chưa phân công')}</td>}
+                    {designVisibleColumnSet.has('status') && <td>
                       <span className="design-progress-text" style={{ color: status.color }}>
                         {t(status.label)}
                       </span>
-                    </td>
+                    </td>}
                     <td>
                       <button className="btn btn-sm btn-outline" onClick={event => { event.stopPropagation(); openRequest(request); }}>
                         {t('Mở công việc')}
@@ -576,7 +607,7 @@ export const Design: React.FC<DesignProps> = ({
                 );
               })}
               {filteredRequests.length === 0 && (
-                <tr><td colSpan={8} className="design-empty-row">{t('Không có yêu cầu thiết kế phù hợp.')}</td></tr>
+                <tr><td colSpan={designVisibleColumnCount} className="design-empty-row">{t('Không có yêu cầu thiết kế phù hợp.')}</td></tr>
               )}
             </tbody>
           </table>
@@ -584,6 +615,8 @@ export const Design: React.FC<DesignProps> = ({
       </div>
       </>
       )}
+
+      <TableColumnCustomizer open={showDesignColumnCustomizer} columns={DESIGN_LIST_COLUMNS} selectedIds={designVisibleColumns} onClose={() => setShowDesignColumnCustomizer(false)} onSave={saveDesignVisibleColumns} />
 
       {selectedRequest && (
         <div className="design-task-page">

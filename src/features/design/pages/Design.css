@@ -103,6 +103,12 @@
   border-bottom: 1px solid #dfe6f1;
 }
 
+.design-column-button {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+
 .design-request-search {
   position: relative;
   flex: 1 1 420px;
@@ -224,6 +230,18 @@
   max-width: none;
   overflow: visible;
   text-overflow: clip;
+  white-space: nowrap;
+}
+
+.design-request-view .design-request-table td > strong,
+.design-request-view .design-request-table td > span {
+  display: inline;
+  margin: 0 6px 0 0;
+}
+
+.design-request-view .design-request-table .design-priority {
+  display: inline-flex;
+  margin: 0;
 }
 
 .design-request-view .design-request-table td:last-child {

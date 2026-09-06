@@ -5,6 +5,7 @@ import { FloatingChat } from '@/components/FloatingChat';
 import POFormFullScreen from '@/features/sales/components/POFormFullScreen';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ensureReceivableInvoice } from '@/features/sales/api/poWorkflowService';
 import { syncDesignRequestsForPO } from '@/features/design/api/designRequestService';
 import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/procurementService';
@@ -35,6 +36,7 @@ import {
   Copy,
   Folder,
   FileText,
+  Settings2,
 } from 'lucide-react';
 
 interface SalesProps {
@@ -52,6 +54,18 @@ interface SalesProps {
 }
 
 type SalesListView = 'orders' | 'waiting-customers';
+
+const SALES_CUSTOMER_COLUMNS: TableColumnOption[] = [
+  { id: 'customer', label: 'Khách hàng', required: true, group: 'Thông tin khách hàng' },
+  { id: 'code', label: 'Mã KH', defaultVisible: true, group: 'Thông tin khách hàng' },
+  { id: 'contact', label: 'Người liên hệ', defaultVisible: true, group: 'Thông tin khách hàng' },
+  { id: 'sale', label: 'Sale phụ trách', defaultVisible: true, group: 'Phụ trách' },
+  { id: 'count', label: 'Số PO', defaultVisible: true, group: 'Kết quả đơn hàng' },
+  { id: 'latest', label: 'PO gần nhất', defaultVisible: true, group: 'Kết quả đơn hàng' },
+  { id: 'value', label: 'Tổng giá trị', defaultVisible: true, group: 'Kết quả đơn hàng' },
+  { id: 'status', label: 'Trạng thái gần nhất', defaultVisible: true, group: 'Kết quả đơn hàng' },
+  { id: 'actions', label: 'Thao tác', required: true, group: 'Điều khiển bảng' }
+];
 
 const getCustomerCode = (customer: any) => (
   customer.customerCode || customer.code || customer.id || ''
@@ -78,6 +92,25 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
   const [activeListView, setActiveListView] = useState<SalesListView>('orders');
   const [initialCustomerId, setInitialCustomerId] = useState('');
   const [selectedOrderCustomerId, setSelectedOrderCustomerId] = useState('');
+  const [salesStatusFilter, setSalesStatusFilter] = useState('all');
+  const [salesOwnerFilter, setSalesOwnerFilter] = useState('all');
+  const [showSalesColumnCustomizer, setShowSalesColumnCustomizer] = useState(false);
+  const [salesVisibleColumns, setSalesVisibleColumns] = useState<string[]>(() => {
+    try {
+      const stored = window.localStorage.getItem(`sunflower:sales-customer-columns:${currentUser.uid}`);
+      const parsed = stored ? JSON.parse(stored) : null;
+      if (Array.isArray(parsed)) return Array.from(new Set(['customer', 'actions', ...parsed.filter((id): id is string => typeof id === 'string')]));
+    } catch { /* Keep defaults when storage is unavailable. */ }
+    return SALES_CUSTOMER_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id);
+  });
+  const salesVisibleColumnSet = new Set(salesVisibleColumns);
+  const salesVisibleColumnCount = SALES_CUSTOMER_COLUMNS.filter(column => salesVisibleColumnSet.has(column.id)).length;
+  const saveSalesVisibleColumns = (selectedIds: string[]) => {
+    const next = Array.from(new Set(['customer', 'actions', ...selectedIds]));
+    setSalesVisibleColumns(next);
+    try { window.localStorage.setItem(`sunflower:sales-customer-columns:${currentUser.uid}`, JSON.stringify(next)); } catch { /* State remains active. */ }
+    setShowSalesColumnCustomizer(false);
+  };
 
   // Auto-select PO when initialSelectedPoId changes
   useEffect(() => {
@@ -683,6 +716,10 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
   ));
   const orderCustomers = accessibleCustomers
     .filter(customer => {
+      const latestPO = getCustomerPOs(customer)[0];
+      if (salesOwnerFilter !== 'all' && customer.assignedSaleId !== salesOwnerFilter) return false;
+      if (salesStatusFilter === 'without_po' && latestPO) return false;
+      if (salesStatusFilter !== 'all' && salesStatusFilter !== 'without_po' && (!latestPO || getPOQueueStatus(latestPO) !== salesStatusFilter)) return false;
       if (!normalizedSearchTerm) return true;
       return [
         getCustomerCode(customer),
@@ -807,6 +844,18 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             <button className="btn btn-outline" onClick={() => setSearchTerm('')}>
               {t('Xóa tìm kiếm')}
             </button>
+            {activeListView === 'orders' && !selectedOrderCustomer && <>
+              <select value={salesStatusFilter} onChange={event => setSalesStatusFilter(event.target.value)} aria-label={t('Lọc theo trạng thái')}>
+                <option value="all">{t('Tất cả trạng thái')}</option>
+                <option value="without_po">{t('Chưa có PO')}</option>
+                {PO_QUEUE_STATES.map(status => <option key={status.value} value={status.value}>{t(status.label)}</option>)}
+              </select>
+              <select value={salesOwnerFilter} onChange={event => setSalesOwnerFilter(event.target.value)} aria-label={t('Lọc theo Sale phụ trách')}>
+                <option value="all">{t('Tất cả Sale')}</option>
+                {users.filter(user => user.role === 'sale').map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
+              </select>
+              <button type="button" className="btn btn-outline erp-icon-button" onClick={() => setShowSalesColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
+            </>}
           </div>
 
           {activeListView === 'orders' ? (
@@ -878,13 +927,13 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                   <thead>
                     <tr>
                       <th>{t('Khách hàng')}</th>
-                      <th>{t('Mã KH')}</th>
-                      <th>{t('Người liên hệ')}</th>
-                      <th>{t('Sale phụ trách')}</th>
-                      <th>{t('Số PO')}</th>
-                      <th>{t('PO gần nhất')}</th>
-                      <th>{t('Tổng giá trị')}</th>
-                      <th>{t('Trạng thái gần nhất')}</th>
+                      {salesVisibleColumnSet.has('code') && <th>{t('Mã KH')}</th>}
+                      {salesVisibleColumnSet.has('contact') && <th>{t('Người liên hệ')}</th>}
+                      {salesVisibleColumnSet.has('sale') && <th>{t('Sale phụ trách')}</th>}
+                      {salesVisibleColumnSet.has('count') && <th>{t('Số PO')}</th>}
+                      {salesVisibleColumnSet.has('latest') && <th>{t('PO gần nhất')}</th>}
+                      {salesVisibleColumnSet.has('value') && <th>{t('Tổng giá trị')}</th>}
+                      {salesVisibleColumnSet.has('status') && <th>{t('Trạng thái gần nhất')}</th>}
                       <th>{t('Thao tác')}</th>
                     </tr>
                   </thead>
@@ -897,19 +946,19 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                       return (
                         <tr key={customer.id} className="sales-customer-row" onClick={() => { setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>
                           <td><strong className="erp-company-name" title={customer.companyName}>{customer.companyName}</strong></td>
-                          <td><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>
-                          <td><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong><span className="sales-table-secondary">{customer.phone || customer.email || ''}</span></td>
-                          <td>{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>
-                          <td>{customerOrders.length.toLocaleString('vi-VN')}</td>
-                          <td>{latestPO ? <><strong>{latestPO.poCode}</strong><span className="sales-table-secondary">{formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN'))}</span></> : '—'}</td>
-                          <td>{totalValue.toLocaleString('vi-VN')} đ</td>
-                          <td>{latestPO ? <span className={`sales-status-label sales-status-label--${getPOQueueStatus(latestPO)}`}>{t(getPOQueueLabel(latestPO))}</span> : t('Chưa có PO')}</td>
+                          {salesVisibleColumnSet.has('code') && <td><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>}
+                          {salesVisibleColumnSet.has('contact') && <td><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong></td>}
+                          {salesVisibleColumnSet.has('sale') && <td>{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>}
+                          {salesVisibleColumnSet.has('count') && <td>{customerOrders.length.toLocaleString('vi-VN')}</td>}
+                          {salesVisibleColumnSet.has('latest') && <td>{latestPO ? formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN')) : '—'}</td>}
+                          {salesVisibleColumnSet.has('value') && <td>{totalValue.toLocaleString('vi-VN')} đ</td>}
+                          {salesVisibleColumnSet.has('status') && <td>{latestPO ? <span className={`sales-status-label sales-status-label--${getPOQueueStatus(latestPO)}`}>{t(getPOQueueLabel(latestPO))}</span> : t('Chưa có PO')}</td>}
                           <td><button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>{t('Xem PO')}</button></td>
                         </tr>
                       );
                     })}
                     {orderCustomers.length === 0 && (
-                      <tr><td colSpan={9} className="sales-table-empty">{t('Không tìm thấy khách hàng phù hợp.')}</td></tr>
+                      <tr><td colSpan={salesVisibleColumnCount} className="sales-table-empty">{t('Không tìm thấy khách hàng phù hợp.')}</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1564,6 +1613,14 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
           users={users}
         />
       )}
+
+      <TableColumnCustomizer
+        open={showSalesColumnCustomizer}
+        columns={SALES_CUSTOMER_COLUMNS}
+        selectedIds={salesVisibleColumns}
+        onClose={() => setShowSalesColumnCustomizer(false)}
+        onSave={saveSalesVisibleColumns}
+      />
 
       {/* Image Preview Zoom Modal */}
       {previewImage && (
