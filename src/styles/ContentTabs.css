@@ -8,15 +8,15 @@
   /* Match the ERP's navy primary instead of the previous pale blue accent. */
   --content-tab-accent: #1e3a8a;
   --content-tab-text: #475569;
-  --content-tab-divider: #d9e1ea;
+  --content-tab-divider: #c3cedd;
   display: flex;
   width: 100%;
   max-width: 100%;
-  min-height: 36px;
+  min-height: 32px;
   align-items: stretch;
   gap: 4px;
   margin: 0;
-  padding: 0 8px;
+  padding: 0 4px;
   overflow-x: auto;
   overflow-y: hidden;
   border: 0;
@@ -36,12 +36,12 @@
   display: inline-flex;
   width: auto;
   min-width: 0;
-  min-height: 36px;
+  min-height: 32px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 12px;
+  padding: 0 11px;
   border: 0;
   border-radius: 0;
   color: var(--content-tab-text);
@@ -61,7 +61,7 @@
   right: 10px;
   bottom: -1px;
   left: 10px;
-  height: 3px;
+  height: 4px;
   border-radius: 2px 2px 0 0;
   background: var(--content-tab-accent);
   content: '';
@@ -134,17 +134,32 @@
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
-  min-height: 36px;
+  min-height: 32px;
   padding-right: 8px;
   padding-left: 8px;
 }
 
 .content-tabs.content-tabs--compact > button,
 .content-tabs.content-tabs--commandbar > button {
-  min-height: 36px;
+  min-height: 32px;
   padding-right: 12px;
   padding-left: 12px;
   font-size: 13px;
+}
+
+/* Pull only the primary page navigation toward the fixed top bar. */
+.sales-view > .sales-list-tabs,
+.purchase-page > .purchase-list-tabs,
+.inventory-view > .inventory-view-tabs,
+.accounting-view > .content-tabs,
+.production-view > .production-tabs,
+.delivery-view > .delivery-tabs,
+.work-schedule-page > .work-schedule-tabs,
+.system-config-view > .system-config-tabs,
+.lead-candidate-workspace > .lead-candidate-commandbar,
+.leads-page > .lead-page-navigation,
+.crm-view:not(.crm-view--detail) > .crm-data-workspace {
+  margin-top: -8px;
 }
 
 .content-tabs.content-tabs--header {

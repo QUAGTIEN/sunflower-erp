@@ -2169,12 +2169,14 @@ tr:hover td {
 }
 
 .chat-channel-btn {
+  --chat-channel-color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   padding: 10px 12px;
   border: 1px solid transparent;
+  border-left: 3px solid var(--chat-channel-color);
   background: transparent;
   color: var(--color-text-muted);
   font-size: 13.5px;
@@ -2187,11 +2189,12 @@ tr:hover td {
 
 .chat-channel-btn:hover {
   background-color: var(--color-primary-light);
-  color: var(--color-primary);
+  color: var(--chat-channel-color);
 }
 
 .chat-channel-btn.active {
-  background-color: var(--color-primary);
+  border-color: var(--chat-channel-color);
+  background-color: var(--chat-channel-color);
   color: #ffffff;
   font-weight: 600;
 }

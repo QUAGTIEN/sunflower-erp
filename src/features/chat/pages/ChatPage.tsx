@@ -36,6 +36,17 @@ const isSafeAttachmentUrl = (url: string) => (
   /^https:\/\//i.test(url) || /^data:/i.test(url)
 );
 
+const CHAT_CHANNEL_COLORS = [
+  '#1e40af',
+  '#0f766e',
+  '#7c3aed',
+  '#b45309',
+  '#be123c',
+  '#0369a1',
+  '#4338ca',
+  '#166534'
+];
+
 interface ChatPageProps {
   currentUser: UserProfile;
   messages: any[];
@@ -497,12 +508,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               <Plus size={12} />
             </button>
           </div>
-          {availableChannels.map(ch => {
+          {availableChannels.map((ch, channelIndex) => {
             const count = getUnreadCount(ch.id);
             return (
               <button
                 key={ch.id}
                 className={`chat-channel-btn ${activeChannelId === ch.id ? 'active' : ''}`}
+                style={{ '--chat-channel-color': CHAT_CHANNEL_COLORS[channelIndex % CHAT_CHANNEL_COLORS.length] } as React.CSSProperties}
                 onClick={() => {
                   clearPendingAttachments();
                   setReplyingTo(null);
