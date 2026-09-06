@@ -55,16 +55,11 @@ export const DataFilterPanel: React.FC<{
   title: string;
   description?: string;
   activeCount: number;
-  advancedActiveCount?: number;
   onClose: () => void;
   onReset: () => void;
   headerAction?: React.ReactNode;
-  advancedContent?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ open, title, description, activeCount, advancedActiveCount = 0, onClose, onReset, headerAction, advancedContent, children }) => {
-  const [mode, setMode] = useState<'quick' | 'advanced'>('quick');
-  const totalActiveCount = activeCount + advancedActiveCount;
-
+}> = ({ open, title, description, activeCount, onClose, onReset, headerAction, children }) => {
   useEffect(() => {
     if (!open) return undefined;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -88,23 +83,13 @@ export const DataFilterPanel: React.FC<{
           <button type="button" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
         </header>
         {headerAction && <div className="data-filter-panel__admin-action">{headerAction}</div>}
-        {advancedContent && (
-          <div className="data-filter-panel__tabs" role="tablist" aria-label="Loại bộ lọc">
-            <button type="button" role="tab" aria-selected={mode === 'quick'} className={mode === 'quick' ? 'is-active' : ''} onClick={() => setMode('quick')}>
-              Bộ lọc nhanh {activeCount > 0 && <span>{activeCount}</span>}
-            </button>
-            <button type="button" role="tab" aria-selected={mode === 'advanced'} className={mode === 'advanced' ? 'is-active' : ''} onClick={() => setMode('advanced')}>
-              Nâng cao {advancedActiveCount > 0 && <span>{advancedActiveCount}</span>}
-            </button>
-          </div>
-        )}
-        <div className="data-filter-panel__body">{mode === 'advanced' && advancedContent ? advancedContent : children}</div>
+        <div className="data-filter-panel__body">{children}</div>
         <footer>
-          <button type="button" className="btn btn-outline" onClick={onReset} disabled={totalActiveCount === 0}>
+          <button type="button" className="btn btn-outline" onClick={onReset} disabled={activeCount === 0}>
             <RotateCcw size={14} /> Đặt lại
           </button>
           <button type="button" className="btn btn-primary" onClick={onClose}>
-            <Check size={14} /> Áp dụng {totalActiveCount > 0 ? `(${totalActiveCount})` : ''}
+            <Check size={14} /> Áp dụng {activeCount > 0 ? `(${activeCount})` : ''}
           </button>
         </footer>
       </aside>

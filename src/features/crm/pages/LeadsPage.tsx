@@ -1902,7 +1902,6 @@ export const Leads: React.FC<LeadsProps> = ({
             title="Lọc danh sách Lead"
             description="Chọn nhiều tiêu chí để thu hẹp danh sách khách hàng tiềm năng."
             activeCount={leadQuickFilterCount}
-            advancedActiveCount={leadAdvancedFilterCount}
             onClose={() => setShowLeadFilters(false)}
             onReset={clearFilters}
             headerAction={currentUser.role === 'admin' ? (
@@ -1910,13 +1909,6 @@ export const Leads: React.FC<LeadsProps> = ({
                 <Settings2 size={14} /> Mở cấu hình hệ thống
               </button>
             ) : undefined}
-            advancedContent={(
-              <AdvancedDataFilters
-                fields={advancedFilterFields}
-                filters={advancedFilters}
-                onChange={filters => { setAdvancedFilters(filters); setLeadCurrentPage(1); }}
-              />
-            )}
           >
             {visibleFilterDefinitions.map(field => {
               const fieldOptions = quickFilterOptionsByField[field.id] || [];

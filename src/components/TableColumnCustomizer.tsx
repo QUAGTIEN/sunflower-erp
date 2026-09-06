@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import './TableColumnCustomizer.css';
 
 export interface TableColumnOption {
@@ -86,7 +86,10 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
               <Search size={15} />
               <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm kiếm cột" autoFocus />
             </label>
-            <h3>Chọn trường</h3>
+            <div className="table-column-customizer__selection-heading">
+              <h3>Chọn trường <span>({selectedColumns.length})</span></h3>
+              <button type="button" onClick={() => setDraftIds(columns.filter(column => column.required).map(column => column.id))}>Bỏ chọn cột tùy chọn</button>
+            </div>
             <div className="table-column-customizer__options">
               {groupedVisibleColumns.map(group => (
                 <section key={group.label} className="table-column-customizer__group">
@@ -106,23 +109,6 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
                 </section>
               ))}
               {visibleColumns.length === 0 && <p className="table-column-customizer__empty">Không tìm thấy cột phù hợp.</p>}
-            </div>
-          </section>
-
-          <section className="table-column-customizer__selected">
-            <div className="table-column-customizer__selected-heading">
-              <h3>Đã chọn ({selectedColumns.length})</h3>
-              <button type="button" onClick={() => setDraftIds(columns.filter(column => column.required).map(column => column.id))}>Xóa cột tùy chọn</button>
-            </div>
-            <div className="table-column-customizer__selected-list">
-              {selectedColumns.map(column => (
-                <div key={column.id}>
-                  <span><Check size={13} /> {column.label}</span>
-                  {column.required
-                    ? <small>Bắt buộc</small>
-                    : <button type="button" onClick={() => toggleColumn(column)} aria-label={`Ẩn cột ${column.label}`}><X size={15} /></button>}
-                </div>
-              ))}
             </div>
           </section>
         </div>

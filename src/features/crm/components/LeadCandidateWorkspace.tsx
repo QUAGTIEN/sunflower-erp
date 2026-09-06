@@ -1594,16 +1594,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           ? 'Tập trung vào đúng nhóm công việc, lịch hẹn và Sale cần giám sát.'
           : 'Kết hợp khu vực, nguồn, trạng thái và người phụ trách.'}
         activeCount={quickFilterCount}
-        advancedActiveCount={advancedFilterCount}
         onClose={() => setShowDataFilters(false)}
         onReset={clearDataFilters}
-        advancedContent={(
-          <AdvancedDataFilters
-            fields={advancedFilterFields}
-            filters={advancedFilters}
-            onChange={filters => { setAdvancedFilters(filters); setCurrentPage(1); }}
-          />
-        )}
       >
         {provinceFilterEnabled && <DataFilterSection title={configuredFilterName(LEAD_FILTER_IDS.province, 'Tỉnh/thành')} description={configuredFilterDescription(LEAD_FILTER_IDS.province, 'Có thể chọn đồng thời nhiều tỉnh/thành.')} selectedCount={provinceFilters.length}>
           <DataFilterCheckboxGroup

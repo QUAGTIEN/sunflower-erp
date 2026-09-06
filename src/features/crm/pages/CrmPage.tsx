@@ -2805,7 +2805,6 @@ export const Crm: React.FC<CrmProps> = ({
                   title="Lọc danh sách khách hàng"
                   description="Kết hợp nhiều tiêu chí để tạo đúng danh sách cần theo dõi."
                   activeCount={quickFilterCount}
-                  advancedActiveCount={advancedFilterCount}
                   onClose={() => setShowListFilters(false)}
                   onReset={resetCrmListFilters}
                   headerAction={currentUser.role === 'admin' ? (
@@ -2813,13 +2812,6 @@ export const Crm: React.FC<CrmProps> = ({
                       <Settings2 size={14} /> Mở cấu hình hệ thống
                     </button>
                   ) : undefined}
-                  advancedContent={(
-                    <AdvancedDataFilters
-                      fields={advancedFilterFields}
-                      filters={advancedFilters}
-                      onChange={filters => { setAdvancedFilters(filters); setCustomerPage(1); }}
-                    />
-                  )}
                 >
                   {saleFilterEnabled && (
                     <DataFilterSection title={saleFilterCopy.name} description={saleFilterCopy.description} selectedCount={saleFilters.length}>
