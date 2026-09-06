@@ -6,6 +6,13 @@ import POFormFullScreen from '@/features/sales/components/POFormFullScreen';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '@/components/DataWorkspaceFilters';
 import { ensureReceivableInvoice } from '@/features/sales/api/poWorkflowService';
 import { syncDesignRequestsForPO } from '@/features/design/api/designRequestService';
 import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/procurementService';
@@ -59,6 +66,8 @@ const SALES_CUSTOMER_COLUMNS: TableColumnOption[] = [
   { id: 'customer', label: 'Khách hàng', required: true, group: 'Thông tin khách hàng' },
   { id: 'code', label: 'Mã KH', defaultVisible: true, group: 'Thông tin khách hàng' },
   { id: 'contact', label: 'Người liên hệ', defaultVisible: true, group: 'Thông tin khách hàng' },
+  { id: 'phone', label: 'Số điện thoại', defaultVisible: false, group: 'Thông tin khách hàng' },
+  { id: 'email', label: 'Email', defaultVisible: false, group: 'Thông tin khách hàng' },
   { id: 'sale', label: 'Sale phụ trách', defaultVisible: true, group: 'Phụ trách' },
   { id: 'count', label: 'Số PO', defaultVisible: true, group: 'Kết quả đơn hàng' },
   { id: 'latest', label: 'PO gần nhất', defaultVisible: true, group: 'Kết quả đơn hàng' },
@@ -92,8 +101,9 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
   const [activeListView, setActiveListView] = useState<SalesListView>('orders');
   const [initialCustomerId, setInitialCustomerId] = useState('');
   const [selectedOrderCustomerId, setSelectedOrderCustomerId] = useState('');
-  const [salesStatusFilter, setSalesStatusFilter] = useState('all');
-  const [salesOwnerFilter, setSalesOwnerFilter] = useState('all');
+  const [salesStatusFilters, setSalesStatusFilters] = useState<string[]>([]);
+  const [salesOwnerFilters, setSalesOwnerFilters] = useState<string[]>([]);
+  const [showSalesFilters, setShowSalesFilters] = useState(false);
   const [showSalesColumnCustomizer, setShowSalesColumnCustomizer] = useState(false);
   const [salesVisibleColumns, setSalesVisibleColumns] = useState<string[]>(() => {
     try {
@@ -105,6 +115,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
   });
   const salesVisibleColumnSet = new Set(salesVisibleColumns);
   const salesVisibleColumnCount = SALES_CUSTOMER_COLUMNS.filter(column => salesVisibleColumnSet.has(column.id)).length;
+  const salesActiveFilterCount = salesStatusFilters.length + salesOwnerFilters.length;
   const saveSalesVisibleColumns = (selectedIds: string[]) => {
     const next = Array.from(new Set(['customer', 'actions', ...selectedIds]));
     setSalesVisibleColumns(next);
@@ -717,9 +728,11 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
   const orderCustomers = accessibleCustomers
     .filter(customer => {
       const latestPO = getCustomerPOs(customer)[0];
-      if (salesOwnerFilter !== 'all' && customer.assignedSaleId !== salesOwnerFilter) return false;
-      if (salesStatusFilter === 'without_po' && latestPO) return false;
-      if (salesStatusFilter !== 'all' && salesStatusFilter !== 'without_po' && (!latestPO || getPOQueueStatus(latestPO) !== salesStatusFilter)) return false;
+      if (salesOwnerFilters.length > 0 && !salesOwnerFilters.includes(customer.assignedSaleId || 'unassigned')) return false;
+      if (salesStatusFilters.length > 0) {
+        const latestStatus = latestPO ? getPOQueueStatus(latestPO) : 'without_po';
+        if (!salesStatusFilters.includes(latestStatus)) return false;
+      }
       if (!normalizedSearchTerm) return true;
       return [
         getCustomerCode(customer),
@@ -845,18 +858,18 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
               {t('Xóa tìm kiếm')}
             </button>
             {activeListView === 'orders' && !selectedOrderCustomer && <>
-              <select value={salesStatusFilter} onChange={event => setSalesStatusFilter(event.target.value)} aria-label={t('Lọc theo trạng thái')}>
-                <option value="all">{t('Tất cả trạng thái')}</option>
-                <option value="without_po">{t('Chưa có PO')}</option>
-                {PO_QUEUE_STATES.map(status => <option key={status.value} value={status.value}>{t(status.label)}</option>)}
-              </select>
-              <select value={salesOwnerFilter} onChange={event => setSalesOwnerFilter(event.target.value)} aria-label={t('Lọc theo Sale phụ trách')}>
-                <option value="all">{t('Tất cả Sale')}</option>
-                {users.filter(user => user.role === 'sale').map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
-              </select>
+              <DataFilterButton activeCount={salesActiveFilterCount} open={showSalesFilters} onClick={() => setShowSalesFilters(true)} />
               <button type="button" className="btn btn-outline erp-icon-button" onClick={() => setShowSalesColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
             </>}
           </div>
+
+          {activeListView === 'orders' && !selectedOrderCustomer && <DataFilterChipBar
+            chips={[
+              ...salesStatusFilters.map(value => ({ id: `status:${value}`, label: t(value === 'without_po' ? 'Chưa có PO' : PO_QUEUE_STATES.find(status => status.value === value)?.label || value), onRemove: () => setSalesStatusFilters(current => current.filter(item => item !== value)) })),
+              ...salesOwnerFilters.map(value => ({ id: `owner:${value}`, label: value === 'unassigned' ? t('Chưa phân công') : users.find(user => user.uid === value)?.displayName || value, onRemove: () => setSalesOwnerFilters(current => current.filter(item => item !== value)) }))
+            ]}
+            onClear={() => { setSalesStatusFilters([]); setSalesOwnerFilters([]); }}
+          />}
 
           {activeListView === 'orders' ? (
             selectedOrderCustomer ? (
@@ -929,6 +942,8 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                       <th>{t('Khách hàng')}</th>
                       {salesVisibleColumnSet.has('code') && <th>{t('Mã KH')}</th>}
                       {salesVisibleColumnSet.has('contact') && <th>{t('Người liên hệ')}</th>}
+                      {salesVisibleColumnSet.has('phone') && <th>{t('Số điện thoại')}</th>}
+                      {salesVisibleColumnSet.has('email') && <th>{t('Email')}</th>}
                       {salesVisibleColumnSet.has('sale') && <th>{t('Sale phụ trách')}</th>}
                       {salesVisibleColumnSet.has('count') && <th>{t('Số PO')}</th>}
                       {salesVisibleColumnSet.has('latest') && <th>{t('PO gần nhất')}</th>}
@@ -948,6 +963,8 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                           <td><strong className="erp-company-name" title={customer.companyName}>{customer.companyName}</strong></td>
                           {salesVisibleColumnSet.has('code') && <td><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>}
                           {salesVisibleColumnSet.has('contact') && <td><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong></td>}
+                          {salesVisibleColumnSet.has('phone') && <td>{customer.phone || t('Chưa cập nhật')}</td>}
+                          {salesVisibleColumnSet.has('email') && <td>{customer.email || t('Chưa cập nhật')}</td>}
                           {salesVisibleColumnSet.has('sale') && <td>{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>}
                           {salesVisibleColumnSet.has('count') && <td>{customerOrders.length.toLocaleString('vi-VN')}</td>}
                           {salesVisibleColumnSet.has('latest') && <td>{latestPO ? formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN')) : '—'}</td>}
@@ -1621,6 +1638,30 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
         onClose={() => setShowSalesColumnCustomizer(false)}
         onSave={saveSalesVisibleColumns}
       />
+      <DataFilterPanel
+        open={showSalesFilters}
+        title={t('Lọc danh sách tạo đơn hàng')}
+        description={t('Lọc khách hàng theo trạng thái PO gần nhất và Sale phụ trách.')}
+        activeCount={salesActiveFilterCount}
+        onClose={() => setShowSalesFilters(false)}
+        onReset={() => { setSalesStatusFilters([]); setSalesOwnerFilters([]); }}
+      >
+        <DataFilterSection title={t('Trạng thái PO gần nhất')} selectedCount={salesStatusFilters.length} defaultExpanded>
+          <DataFilterCheckboxGroup
+            options={[{ value: 'without_po', label: t('Chưa có PO') }, ...PO_QUEUE_STATES.map(status => ({ value: status.value, label: t(status.label) }))]}
+            selectedValues={salesStatusFilters}
+            onChange={setSalesStatusFilters}
+          />
+        </DataFilterSection>
+        <DataFilterSection title={t('Sale phụ trách')} selectedCount={salesOwnerFilters.length}>
+          <DataFilterCheckboxGroup
+            options={[{ value: 'unassigned', label: t('Chưa phân công') }, ...users.filter(user => user.role === 'sale').map(user => ({ value: user.uid, label: user.displayName }))]}
+            selectedValues={salesOwnerFilters}
+            onChange={setSalesOwnerFilters}
+            searchable
+          />
+        </DataFilterSection>
+      </DataFilterPanel>
 
       {/* Image Preview Zoom Modal */}
       {previewImage && (

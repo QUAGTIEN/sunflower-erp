@@ -2,6 +2,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '@/components/DataWorkspaceFilters';
+import {
   AlertCircle,
   CheckCircle2,
   Clock3,
@@ -107,7 +114,10 @@ export const Design: React.FC<DesignProps> = ({
   const [selectedRequestId, setSelectedRequestId] = useState('');
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | DesignWorkStatus>('all');
+  const [statusFilters, setStatusFilters] = useState<DesignWorkStatus[]>([]);
+  const [designerFilters, setDesignerFilters] = useState<string[]>([]);
+  const [priorityFilters, setPriorityFilters] = useState<string[]>([]);
+  const [showDesignFilters, setShowDesignFilters] = useState(false);
   const [showDesignColumnCustomizer, setShowDesignColumnCustomizer] = useState(false);
   const [designVisibleColumns, setDesignVisibleColumns] = useState<string[]>(() => {
     try {
@@ -119,6 +129,7 @@ export const Design: React.FC<DesignProps> = ({
   });
   const designVisibleColumnSet = new Set(designVisibleColumns);
   const designVisibleColumnCount = DESIGN_LIST_COLUMNS.filter(column => designVisibleColumnSet.has(column.id)).length;
+  const designActiveFilterCount = statusFilters.length + designerFilters.length + priorityFilters.length;
   const saveDesignVisibleColumns = (selectedIds: string[]) => {
     const next = Array.from(new Set(['request', 'actions', ...selectedIds]));
     setDesignVisibleColumns(next);
@@ -159,7 +170,9 @@ export const Design: React.FC<DesignProps> = ({
   const filteredRequests = useMemo(() => {
     const search = searchTerm.trim().toLocaleLowerCase('vi-VN');
     return sortNewestFirst(visibleRequests
-      .filter(request => statusFilter === 'all' || getDesignWorkStatus(request.workStatus) === statusFilter)
+      .filter(request => statusFilters.length === 0 || statusFilters.includes(getDesignWorkStatus(request.workStatus)))
+      .filter(request => designerFilters.length === 0 || designerFilters.includes(request.assignedDesignerId || 'unassigned'))
+      .filter(request => priorityFilters.length === 0 || priorityFilters.includes(request.priority || 'normal'))
       .filter(request => !search || [
         request.requestCode,
         request.poCode,
@@ -171,7 +184,7 @@ export const Design: React.FC<DesignProps> = ({
       ].some(value => String(value || '').toLocaleLowerCase('vi-VN').includes(search))),
       request => [request.createdAt]
     );
-  }, [searchTerm, statusFilter, visibleRequests]);
+  }, [designerFilters, priorityFilters, searchTerm, statusFilters, visibleRequests]);
 
   const selectedRequest = designRequests.find(request => request.id === selectedRequestId) || null;
   const selectedDesign = selectedRequest ? resolveDesignForRequest(designs, selectedRequest) : null;
@@ -523,8 +536,8 @@ export const Design: React.FC<DesignProps> = ({
           <button
             type="button"
             key={status.value}
-            className={`design-status-metric ${statusFilter === status.value ? 'is-active' : ''}`}
-            onClick={() => setStatusFilter(current => current === status.value ? 'all' : status.value)}
+            className={`design-status-metric ${statusFilters.length === 1 && statusFilters[0] === status.value ? 'is-active' : ''}`}
+            onClick={() => setStatusFilters(current => current.length === 1 && current[0] === status.value ? [] : [status.value])}
           >
             <strong>{status.count}</strong>
             <span>{t(status.label)}</span>
@@ -542,13 +555,19 @@ export const Design: React.FC<DesignProps> = ({
               placeholder={t('Tìm mã yêu cầu, mã PO, mã hàng hoặc sản phẩm...')}
             />
           </div>
-          <select value={statusFilter} onChange={event => setStatusFilter(event.target.value as 'all' | DesignWorkStatus)}>
-            <option value="all">{t('Tất cả tiến độ')}</option>
-            {DESIGN_WORK_STATUSES.map(status => <option key={status.value} value={status.value}>{t(status.label)}</option>)}
-          </select>
+          <DataFilterButton activeCount={designActiveFilterCount} open={showDesignFilters} onClick={() => setShowDesignFilters(true)} />
           <button type="button" className="btn btn-outline design-column-button" onClick={() => setShowDesignColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
           <span className="design-request-result-count">{filteredRequests.length} {t('yêu cầu')}</span>
         </div>
+
+        <DataFilterChipBar
+          chips={[
+            ...statusFilters.map(value => ({ id: `status:${value}`, label: t(DESIGN_WORK_STATUSES.find(status => status.value === value)?.label || value), onRemove: () => setStatusFilters(current => current.filter(item => item !== value)) })),
+            ...designerFilters.map(value => ({ id: `designer:${value}`, label: value === 'unassigned' ? t('Chưa phân công') : users.find(user => user.uid === value)?.displayName || value, onRemove: () => setDesignerFilters(current => current.filter(item => item !== value)) })),
+            ...priorityFilters.map(value => ({ id: `priority:${value}`, label: t(PRIORITY_LABELS[value] || value), onRemove: () => setPriorityFilters(current => current.filter(item => item !== value)) }))
+          ]}
+          onClear={() => { setStatusFilters([]); setDesignerFilters([]); setPriorityFilters([]); }}
+        />
 
         <div className="table-container design-request-table">
           <table>
@@ -617,6 +636,37 @@ export const Design: React.FC<DesignProps> = ({
       )}
 
       <TableColumnCustomizer open={showDesignColumnCustomizer} columns={DESIGN_LIST_COLUMNS} selectedIds={designVisibleColumns} onClose={() => setShowDesignColumnCustomizer(false)} onSave={saveDesignVisibleColumns} />
+      <DataFilterPanel
+        open={showDesignFilters}
+        title={t('Lọc danh sách thiết kế')}
+        description={t('Lọc theo tiến độ, người phụ trách và mức độ ưu tiên.')}
+        activeCount={designActiveFilterCount}
+        onClose={() => setShowDesignFilters(false)}
+        onReset={() => { setStatusFilters([]); setDesignerFilters([]); setPriorityFilters([]); }}
+      >
+        <DataFilterSection title={t('Tiến độ thiết kế')} selectedCount={statusFilters.length} defaultExpanded>
+          <DataFilterCheckboxGroup
+            options={DESIGN_WORK_STATUSES.map(status => ({ value: status.value, label: t(status.label) }))}
+            selectedValues={statusFilters}
+            onChange={values => setStatusFilters(values as DesignWorkStatus[])}
+          />
+        </DataFilterSection>
+        <DataFilterSection title={t('Người phụ trách')} selectedCount={designerFilters.length}>
+          <DataFilterCheckboxGroup
+            options={[{ value: 'unassigned', label: t('Chưa phân công') }, ...users.filter(user => user.role === 'designer').map(user => ({ value: user.uid, label: user.displayName }))]}
+            selectedValues={designerFilters}
+            onChange={setDesignerFilters}
+            searchable
+          />
+        </DataFilterSection>
+        <DataFilterSection title={t('Mức độ ưu tiên')} selectedCount={priorityFilters.length}>
+          <DataFilterCheckboxGroup
+            options={Object.entries(PRIORITY_LABELS).map(([value, label]) => ({ value, label: t(label) }))}
+            selectedValues={priorityFilters}
+            onChange={setPriorityFilters}
+          />
+        </DataFilterSection>
+      </DataFilterPanel>
 
       {selectedRequest && (
         <div className="design-task-page">
