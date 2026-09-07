@@ -280,46 +280,6 @@
   box-shadow: none !important;
 }
 
-/* Wide data tables keep their rows in the page flow while exposing a synced
-   horizontal scrollbar at the bottom edge of the viewport. */
-.sticky-table-scroll-region {
-  position: relative;
-  min-width: 0;
-}
-
-.sticky-table-scrollbar {
-  position: fixed;
-  bottom: 0;
-  z-index: 90;
-  height: 16px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  background: var(--color-surface, #fff);
-  border-top: 1px solid var(--color-border, #d8e1ef);
-  box-shadow: 0 -3px 10px rgb(15 36 80 / 10%);
-  scrollbar-color: #a9b8cc #edf2f8;
-}
-
-.sticky-table-scrollbar::-webkit-scrollbar {
-  height: 12px;
-}
-
-.sticky-table-scrollbar::-webkit-scrollbar-track {
-  background: #edf2f8;
-}
-
-.sticky-table-scrollbar::-webkit-scrollbar-thumb {
-  background: #a9b8cc;
-  border: 2px solid #edf2f8;
-  border-radius: 999px;
-}
-
-@media print {
-  .sticky-table-scrollbar {
-    display: none;
-  }
-}
-
 .card:has(> .table-container),
 .card:has(.table-container),
 .purchase-panel:has(.table-container),

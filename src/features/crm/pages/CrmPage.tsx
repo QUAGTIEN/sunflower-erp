@@ -33,7 +33,6 @@ import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
-import { StickyTableScrollbar } from '@/components/StickyTableScrollbar';
 import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
@@ -2850,7 +2849,7 @@ export const Crm: React.FC<CrmProps> = ({
                 </DataFilterPanel>
 
                 <div className="crm-customer-grid">
-                  <StickyTableScrollbar className="table-container crm-customer-table-wrap" ariaLabel={t('Cuộn ngang danh sách khách hàng')}>
+                  <div className="table-container crm-customer-table-wrap">
                   <ConfiguredSystemTable
                     table="customers"
                     className="crm-customer-table is-compact has-dynamic-columns"
@@ -2938,7 +2937,7 @@ export const Crm: React.FC<CrmProps> = ({
                       {filteredCustomers.length === 0 && <tr><td colSpan={visibleCustomerColumnCount} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
                     </tbody>
                   </ConfiguredSystemTable>
-                  </StickyTableScrollbar>
+                  </div>
                   {filteredCustomers.length > 0 && <footer className="crm-customer-pagination">
                     <label>{t('Hiển thị')} <select value={customerPageSize} onChange={event => { setCustomerPageSize(Number(event.target.value)); setCustomerPage(1); }}><option value={25}>25 {t('dòng')}</option><option value={50}>50 {t('dòng')}</option><option value={100}>100 {t('dòng')}</option></select></label>
                     <span>{(safeCustomerPage - 1) * customerPageSize + 1}–{Math.min(safeCustomerPage * customerPageSize, filteredCustomers.length)} / {filteredCustomers.length}</span>
