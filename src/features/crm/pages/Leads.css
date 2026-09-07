@@ -565,9 +565,9 @@
 }
 
 .lead-form-page__footer {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
+  position: relative;
+  flex: 0 0 auto;
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -575,9 +575,8 @@
   padding: 12px 16px;
   border: 1px solid #dbe3ef;
   border-radius: 9px;
-  background: rgb(255 255 255 / 96%);
+  background: #fff;
   box-shadow: 0 -4px 14px rgb(15 23 42 / 5%);
-  backdrop-filter: blur(8px);
 }
 
 .lead-form-page__footer > span {
