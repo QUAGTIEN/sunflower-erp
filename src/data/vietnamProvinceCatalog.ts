@@ -10,6 +10,7 @@ export interface ResolvedVietnamProvince {
 // in one catalog prevents CRM lists, filters and the commercial map from
 // applying different province mappings.
 export const LEGACY_VIETNAM_PROVINCE_ALIASES: Record<string, string> = {
+  'bac lieu': 'ca_mau',
   'bac giang': 'bac_ninh',
   'bac kan': 'thai_nguyen',
   'binh duong': 'tp_ho_chi_minh',
@@ -17,10 +18,14 @@ export const LEGACY_VIETNAM_PROVINCE_ALIASES: Record<string, string> = {
   'binh dinh': 'gia_lai',
   'binh phuoc': 'dong_nai',
   'binh thuan': 'lam_dong',
+  'dak nong': 'lam_dong',
   'ben tre': 'vinh_long',
   'hau giang': 'can_tho',
   'hai duong': 'hai_phong',
   'hoa binh': 'phu_tho',
+  'ha giang': 'tuyen_quang',
+  'ha nam': 'ninh_binh',
+  'ha tay': 'ha_noi',
   'kien giang': 'an_giang',
   'kon tum': 'quang_ngai',
   'long an': 'tay_ninh',
@@ -31,7 +36,10 @@ export const LEGACY_VIETNAM_PROVINCE_ALIASES: Record<string, string> = {
   'quang binh': 'quang_tri',
   'soc trang': 'can_tho',
   'thai binh': 'hung_yen',
+  'thua thien hue': 'hue',
+  'tien giang': 'dong_thap',
   'tra vinh': 'vinh_long',
+  'vinh phuc': 'phu_tho',
   'yen bai': 'lao_cai'
 };
 

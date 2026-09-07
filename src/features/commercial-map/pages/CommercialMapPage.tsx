@@ -21,7 +21,8 @@ import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { SearchableProvinceSelect } from '@/components/SearchableProvinceSelect';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { VIETNAM_ADMINISTRATIVE_UNITS } from '@/data/vietnamAdministrativeUnits';
+import { resolveVietnamProvince } from '@/data/vietnamProvinceCatalog';
+import { COMMERCIAL_PROVINCES_64 } from '@/features/commercial-map/model/commercialProvinceCatalog';
 import {
   compactLeadFilterDefinitionForStorage,
   LEAD_FILTER_IDS,
@@ -66,16 +67,8 @@ interface ProvinceGeometry {
   polygons: PolygonCollection;
 }
 
-type WardGeometry = ProvinceGeometry;
-
 interface ProvinceMapData {
   provinces: ProvinceGeometry[];
-}
-
-interface WardMapData {
-  provinceId: string;
-  provinceName: string;
-  wards: WardGeometry[];
 }
 
 interface ViewBoxState {
@@ -94,7 +87,6 @@ interface DragState {
 interface CommercialMapMarker {
   record: CommercialMapRecord;
   point: Coordinate;
-  matchedWardName: string;
 }
 
 const MAP_SCALE = 50;
@@ -166,11 +158,6 @@ const createParkId = (provinceId: string, label: string, existingIds: Set<string
   return candidate;
 };
 
-const normalizeWardSearch = (value: string): string => normalizeVietnameseText(value)
-  .replace(/\b(phuong|xa|thi tran|dac khu)\b/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim();
-
 const stableHash = (value: string): number => {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -229,7 +216,6 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
   const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
   const [overviewProvinceName, setOverviewProvinceName] = useState('');
-  const [overviewWard, setOverviewWard] = useState('');
   const [overviewIndustrialPark, setOverviewIndustrialPark] = useState('');
   const [showParkManagement, setShowParkManagement] = useState(false);
   const [parkDraft, setParkDraft] = useState<Record<string, string>>({});
@@ -240,14 +226,11 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   const [saleFilter, setSaleFilter] = useState('all');
   const [provinceData, setProvinceData] = useState<ProvinceGeometry[]>([]);
   const [selectedProvince, setSelectedProvince] = useState<ProvinceGeometry | null>(null);
-  const [wardData, setWardData] = useState<WardGeometry[]>([]);
-  const [selectedWard, setSelectedWard] = useState<WardGeometry | null>(null);
   const [hoveredArea, setHoveredArea] = useState<{ name: string; total: number } | null>(null);
   const [hoveredMarker, setHoveredMarker] = useState<CommercialMapRecord | null>(null);
   const [locationSearch, setLocationSearch] = useState('');
   const [viewBox, setViewBox] = useState<ViewBoxState>(NATIONAL_VIEW);
   const [loadingMap, setLoadingMap] = useState(true);
-  const [loadingWards, setLoadingWards] = useState(false);
   const [mapError, setMapError] = useState('');
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -321,20 +304,11 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
 
   const recordMarkers = useMemo<CommercialMapMarker[]>(() => {
     if (!selectedProvince) return [];
-    return selectedRecords.map(record => {
-      const normalizedLocation = normalizeWardSearch(`${record.address} ${record.provinceName}`);
-      const matchedWard = wardData.find(ward => {
-        const normalizedWard = normalizeWardSearch(ward.name);
-        return normalizedWard.length > 2 && normalizedLocation.includes(normalizedWard);
-      });
-      const targetGeometry = matchedWard || selectedProvince;
-      return {
-        record,
-        point: markerPointWithinGeometry(targetGeometry, record.key),
-        matchedWardName: matchedWard?.name || ''
-      };
-    });
-  }, [selectedProvince, selectedRecords, wardData]);
+    return selectedRecords.map(record => ({
+      record,
+      point: markerPointWithinGeometry(selectedProvince, record.key)
+    }));
+  }, [selectedProvince, selectedRecords]);
 
   const activeSales = useMemo(
     () => users.filter(user => user.role === 'sale' && user.active !== false),
@@ -350,17 +324,16 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     [filterDefinitions]
   );
   const overviewProvince = useMemo(
-    () => VIETNAM_ADMINISTRATIVE_UNITS.find(province => province.label === overviewProvinceName),
+    () => resolveVietnamProvince(overviewProvinceName)?.province,
     [overviewProvinceName]
   );
   const overviewProvinceRecords = useMemo(() => {
     if (!overviewProvince) return [];
     return accessibleRecords.filter(record => (
       record.provinceId === overviewProvince.id
-      && (!overviewWard || normalizeWardSearch(record.ward) === normalizeWardSearch(overviewWard))
       && (!overviewIndustrialPark || normalizeVietnameseText(record.industrialPark) === normalizeVietnameseText(overviewIndustrialPark))
     ));
-  }, [accessibleRecords, overviewIndustrialPark, overviewProvince, overviewWard]);
+  }, [accessibleRecords, overviewIndustrialPark, overviewProvince]);
   const overviewDeliveries = useMemo(() => {
     if (!overviewProvince) return [];
     const activeStatuses = new Set(['planning', 'approved', 'loading', 'delivering']);
@@ -374,11 +347,10 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
       );
       if (resolved.id !== overviewProvince.id) return false;
       const deliveryText = JSON.stringify(delivery);
-      if (overviewWard && !normalizeWardSearch(deliveryText).includes(normalizeWardSearch(overviewWard))) return false;
       if (overviewIndustrialPark && !normalizeVietnameseText(deliveryText).includes(normalizeVietnameseText(overviewIndustrialPark))) return false;
       return true;
     });
-  }, [currentUser, deliveries, overviewIndustrialPark, overviewProvince, overviewWard]);
+  }, [currentUser, deliveries, overviewIndustrialPark, overviewProvince]);
   const overviewParks = useMemo(() => {
     if (!overviewProvince) return [];
     return activeChildren(industrialParkDefinition?.options.find(option => option.id === overviewProvince.id));
@@ -398,7 +370,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
       label: string; customers: number; leads: number; candidates: number; orders: number; revenue: number; saleCounts: Map<string, number>;
     }>();
     overviewProvinceRecords.forEach(record => {
-      const label = record.industrialPark || record.ward || 'Ngoài KCN / chưa xác định';
+      const label = record.industrialPark || 'Ngoài KCN / chưa xác định';
       const current = groups.get(label) || { label, customers: 0, leads: 0, candidates: 0, orders: 0, revenue: 0, saleCounts: new Map<string, number>() };
       current.customers += record.type === 'customer' ? 1 : 0;
       current.leads += record.type === 'lead' ? 1 : 0;
@@ -528,54 +500,31 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     }
   };
 
-  const loadProvince = useCallback(async (province: ProvinceGeometry) => {
+  const loadProvince = useCallback((province: ProvinceGeometry) => {
     setSelectedProvince(province);
-    setSelectedWard(null);
-    setWardData([]);
     setLocationSearch('');
     setViewBox(geometryBounds(province.polygons, 36));
-    setLoadingWards(true);
     setMapError('');
-    try {
-      const response = await fetch(`/map-data/wards/${province.id}.json`);
-      if (!response.ok) throw new Error('Chưa tải được ranh giới xã/phường của địa bàn này.');
-      const data = await response.json() as WardMapData;
-      setWardData(data.wards);
-    } catch (error) {
-      setMapError(error instanceof Error ? error.message : 'Không thể tải địa bàn chi tiết.');
-    } finally {
-      setLoadingWards(false);
-    }
   }, []);
 
   const returnToNational = () => {
     setSelectedProvince(null);
-    setSelectedWard(null);
-    setWardData([]);
     setLocationSearch('');
     setViewBox(NATIONAL_VIEW);
     setMapError('');
   };
 
-  const selectWard = (ward: WardGeometry) => {
-    setSelectedWard(ward);
-    setLocationSearch(ward.name);
-    setViewBox(geometryBounds(ward.polygons, 4, 12));
-  };
-
-  const locationOptions = selectedProvince ? wardData : provinceData;
+  const locationOptions = provinceData;
   const findLocation = () => {
     const keyword = normalizeVietnameseText(locationSearch);
     if (!keyword) return;
     const match = locationOptions.find(area => normalizeVietnameseText(area.name).includes(keyword));
     if (!match) return;
-    if (selectedProvince) selectWard(match as WardGeometry);
-    else void loadProvince(match as ProvinceGeometry);
+    loadProvince(match);
   };
 
   const resetCurrentView = () => {
-    if (selectedWard) setViewBox(geometryBounds(selectedWard.polygons, 4, 12));
-    else if (selectedProvince) setViewBox(geometryBounds(selectedProvince.polygons, 36));
+    if (selectedProvince) setViewBox(geometryBounds(selectedProvince.polygons, 36));
     else setViewBox(NATIONAL_VIEW);
   };
 
@@ -601,8 +550,8 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
-  const mapAreas = selectedProvince ? wardData : provinceData;
-  const mapLevelLabel = selectedProvince ? 'Xã/phường' : 'Tỉnh/thành phố';
+  const mapAreas = provinceData;
+  const mapLevelLabel = 'Tỉnh/thành phố';
 
   return (
     <div className="commercial-map-view commercial-map-view--focused">
@@ -620,16 +569,10 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
               <span>Tỉnh/thành</span>
               <SearchableProvinceSelect
                 value={overviewProvinceName}
-                onChange={value => { setOverviewProvinceName(value); setOverviewWard(''); setOverviewIndustrialPark(''); setShowParkManagement(false); setParkMessage(''); }}
+                options={COMMERCIAL_PROVINCES_64}
+                onChange={value => { setOverviewProvinceName(value); setOverviewIndustrialPark(''); setShowParkManagement(false); setParkMessage(''); }}
                 placeholder="Chọn hoặc gõ để tìm tỉnh/thành"
               />
-            </label>
-            <label>
-              <span>Phường/xã</span>
-              <select value={overviewWard} disabled={!overviewProvince} onChange={event => setOverviewWard(event.target.value)}>
-                <option value="">Tất cả phường/xã</option>
-                {(overviewProvince?.wards || []).map(ward => <option key={ward.id} value={ward.label}>{ward.label}</option>)}
-              </select>
             </label>
             <label>
               <span>Khu công nghiệp</span>
@@ -638,7 +581,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                 {overviewParks.map(park => <option key={park.id} value={park.label}>{park.label}</option>)}
               </select>
             </label>
-            {(overviewProvinceName || overviewWard || overviewIndustrialPark) && <button type="button" className="btn btn-outline" onClick={() => { setOverviewProvinceName(''); setOverviewWard(''); setOverviewIndustrialPark(''); setShowParkManagement(false); }}>Đặt lại</button>}
+            {(overviewProvinceName || overviewIndustrialPark) && <button type="button" className="btn btn-outline" onClick={() => { setOverviewProvinceName(''); setOverviewIndustrialPark(''); setShowParkManagement(false); }}>Đặt lại</button>}
           </div>
 
           {!overviewProvince ? (
@@ -730,8 +673,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
             <strong>Cách sử dụng</strong>
             <ol>
               <li>Chọn lớp dữ liệu cần phân tích.</li>
-              <li>Bấm vào một tỉnh để phóng lớn.</li>
-              <li>Chọn xã/phường để xem sâu hơn.</li>
+              <li>Bấm vào một tỉnh để xem dữ liệu.</li>
               <li>Kéo hoặc cuộn để di chuyển và zoom.</li>
             </ol>
           </div>
@@ -741,8 +683,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
           <div className="commercial-map-toolbar">
             <div className="commercial-map-breadcrumb">
               <button type="button" onClick={returnToNational}>Toàn quốc</button>
-              {selectedProvince && <><span>/</span><button type="button" onClick={() => { setSelectedWard(null); setLocationSearch(''); setViewBox(geometryBounds(selectedProvince.polygons, 36)); }}>{selectedProvince.name}</button></>}
-              {selectedWard && <><span>/</span><strong>{selectedWard.name}</strong></>}
+              {selectedProvince && <><span>/</span><strong>{selectedProvince.name}</strong></>}
             </div>
             <div className="commercial-map-location-search">
               <Search size={15} />
@@ -783,13 +724,13 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                     <feDropShadow dx="0" dy="1" stdDeviation="1.8" floodColor="#12356f" floodOpacity="0.18" />
                   </filter>
                 </defs>
-                <g className={`commercial-map-geography ${selectedProvince ? 'ward-level' : 'province-level'}`}>
+                <g className="commercial-map-geography province-level">
                   {mapAreas.map(area => {
                     const provinceId = selectedProvinceId || resolveCommercialProvince(area.name).id;
                     const summary = summaryByProvince.get(provinceId);
                     const total = summary?.total || 0;
                     const intensity = total > 0 ? 0.22 + (total / maximumProvinceTotal) * 0.7 : 0.08;
-                    const active = selectedWard?.id === area.id;
+                    const active = selectedProvince?.id === area.id;
                     return (
                       <path
                         key={area.id}
@@ -797,22 +738,21 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                         className={active ? 'selected' : ''}
                         style={{
                           fill: active ? activeLayerDefinition.color : activeLayerDefinition.color,
-                          fillOpacity: active ? 0.88 : selectedProvince ? 0.14 : intensity
+                          fillOpacity: active ? 0.88 : intensity
                         }}
                         onClick={event => {
                           event.stopPropagation();
-                          if (selectedProvince) selectWard(area as WardGeometry);
-                          else void loadProvince(area as ProvinceGeometry);
+                          loadProvince(area);
                         }}
                         onPointerEnter={() => setHoveredArea({ name: area.name, total })}
                         onPointerLeave={() => setHoveredArea(null)}
                       >
-                        <title>{area.name}{selectedProvince ? '' : ` · ${total} doanh nghiệp`}</title>
+                        <title>{area.name} · {total} doanh nghiệp</title>
                       </path>
                     );
                   })}
                 </g>
-                <g className={`commercial-map-area-labels ${selectedProvince ? 'ward-level' : 'province-level'}`} aria-hidden="true">
+                <g className="commercial-map-area-labels province-level" aria-hidden="true">
                   {mapAreas.map(area => {
                     const [labelX, labelY] = projectCoordinate(area.center);
                     return (
@@ -820,7 +760,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                         key={`label-${area.id}`}
                         x={labelX}
                         y={labelY}
-                        className={selectedWard?.id === area.id ? 'selected' : ''}
+                        className={selectedProvince?.id === area.id ? 'selected' : ''}
                         style={{ fontSize: `${Math.max(0.9, viewBox.width / 100)}px` }}
                       >
                         {area.name}
@@ -856,7 +796,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                           onPointerLeave={() => setHoveredMarker(null)}
                         >
                           <circle className="commercial-map-marker-dot" r={markerRadius} />
-                          <title>{marker.record.companyName} · {marker.matchedWardName || 'Vị trí tương đối trong tỉnh'}</title>
+                          <title>{marker.record.companyName} · Vị trí tương đối trong tỉnh</title>
                         </g>
                       );
                     })}
@@ -865,7 +805,6 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
               </svg>
             )}
 
-            {loadingWards && <div className="commercial-map-ward-loading"><LoaderCircle className="spin" /> Đang tải xã/phường…</div>}
             {(hoveredMarker || hoveredArea) && (
               <div className="commercial-map-hover-card">
                 <strong>{hoveredMarker?.companyName || hoveredArea?.name}</strong>
@@ -895,15 +834,14 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
             <div className="commercial-map-empty-insight">
               <MapPinned size={31} />
               <strong>Chọn một tỉnh/thành</strong>
-              <p>Bấm trực tiếp vào bản đồ để xem ranh giới xã/phường và dữ liệu kinh doanh của địa bàn.</p>
-              <span>{provinceData.length || 34} tỉnh/thành phố</span>
+              <p>Bấm trực tiếp vào bản đồ để xem dữ liệu kinh doanh của địa bàn.</p>
             </div>
           ) : (
             <>
               <button type="button" className="commercial-map-back" onClick={returnToNational}><ChevronLeft size={15} /> Toàn quốc</button>
               <div className="commercial-map-panel-title">
-                <strong>{selectedWard?.name || selectedProvince.name}</strong>
-                <span>{selectedWard ? `${selectedWard.type} · ${selectedProvince.name}` : 'Tỉnh/thành đang xem'}</span>
+                <strong>{selectedProvince.name}</strong>
+                <span>Tỉnh/thành đang xem</span>
               </div>
               <dl>
                 <div><dt>Doanh nghiệp</dt><dd>{selectedProvinceSummary?.total || 0}</dd></div>
@@ -911,7 +849,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                 <div><dt>Lead</dt><dd>{selectedProvinceSummary?.leads || 0}</dd></div>
                 <div><dt>Sale đang xử lý</dt><dd>{selectedProvinceSummary?.processing || 0}</dd></div>
                 <div><dt>Chưa phân công</dt><dd>{selectedProvinceSummary?.unassigned || 0}</dd></div>
-                <div><dt>Diện tích địa bàn</dt><dd>{formatNumber(Math.round((selectedWard || selectedProvince).area))} km²</dd></div>
+                <div><dt>Diện tích địa bàn</dt><dd>{formatNumber(Math.round(selectedProvince.area))} km²</dd></div>
               </dl>
 
               <div className="commercial-map-local-records">
