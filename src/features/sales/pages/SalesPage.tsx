@@ -935,7 +935,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
               <div className="table-container sales-order-customer-table">
                 <table
                   className="has-dynamic-columns"
-                  style={{ minWidth: `${Math.max(1180, salesVisibleColumnCount * 150 + 130)}px` }}
+                  style={{ minWidth: `${Math.max(1680, salesVisibleColumnCount * 180 + 280)}px` }}
                 >
                   <thead>
                     <tr>
