@@ -410,6 +410,7 @@ body {
   height: calc(100vh - var(--header-height));
   position: sticky;
   top: var(--header-height);
+  overflow: hidden;
   transition: transform var(--transition-normal), width var(--transition-normal), border-color var(--transition-normal);
 }
 
@@ -418,7 +419,7 @@ body {
   right: 0;
   bottom: 49px;
   left: 0;
-  height: 56%;
+  height: clamp(120px, 32vh, 300px);
   z-index: 0;
   background-image: linear-gradient(rgb(23 37 84 / 28%), rgb(23 37 84 / 8%)), url('./assets/sidebar-machinery-watermark.png');
   background-position: center bottom;
@@ -584,7 +585,17 @@ body {
 
 @media (max-height: 720px) {
   .app-sidebar::after {
-    display: none;
+    height: clamp(92px, 22vh, 150px);
+    opacity: 0.09;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 12%) 14%, #000 56%);
+    mask-image: linear-gradient(to bottom, transparent 0%, rgb(0 0 0 / 12%) 14%, #000 56%);
+  }
+}
+
+@media (max-height: 600px) {
+  .app-sidebar::after {
+    height: clamp(72px, 17vh, 102px);
+    opacity: 0.07;
   }
 }
 
