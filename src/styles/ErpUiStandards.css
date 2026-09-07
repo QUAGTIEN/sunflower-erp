@@ -1,6 +1,7 @@
 /* Shared MISA-inspired visual standard for page headings and data grids. */
 :root {
   --erp-page-title-size: 20px;
+  --erp-entity-title-size: 18px;
   --erp-page-title-color: #111827;
   --erp-page-gap: 12px;
   --erp-section-gap: 16px;
@@ -171,6 +172,12 @@
 .commercial-map-header > div > p,
 .system-config-header > div > p {
   display: none !important;
+}
+
+/* Record names sit one level below page titles to keep detail headers compact. */
+.lead-detail-title h1,
+.customer-detail-heading__title h1 {
+  font-size: var(--erp-entity-title-size) !important;
 }
 
 .customer-data-page__icon,
