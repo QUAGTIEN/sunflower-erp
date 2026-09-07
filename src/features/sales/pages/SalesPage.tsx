@@ -6,6 +6,7 @@ import POFormFullScreen from '@/features/sales/components/POFormFullScreen';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { StickyTableScrollbar } from '@/components/StickyTableScrollbar';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -870,7 +871,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
 
           {activeListView === 'orders' ? (
             selectedOrderCustomer ? (
-              <div className="table-container customer-po-list-table">
+              <StickyTableScrollbar className="table-container customer-po-list-table" ariaLabel={t('Cuộn ngang danh sách PO')}>
                 <table>
                   <thead>
                     <tr>
@@ -930,9 +931,9 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                     )}
                   </tbody>
                 </table>
-              </div>
+              </StickyTableScrollbar>
             ) : (
-              <div className="table-container sales-order-customer-table">
+              <StickyTableScrollbar className="table-container sales-order-customer-table" ariaLabel={t('Cuộn ngang danh sách tạo đơn hàng')}>
                 <table
                   className="has-dynamic-columns"
                   style={{ minWidth: `${Math.max(1680, salesVisibleColumnCount * 180 + 280)}px` }}
@@ -979,10 +980,10 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                     )}
                   </tbody>
                 </table>
-              </div>
+              </StickyTableScrollbar>
             )
           ) : (
-            <div className="table-container waiting-customer-table">
+            <StickyTableScrollbar className="table-container waiting-customer-table" ariaLabel={t('Cuộn ngang danh sách khách hàng chờ lên đơn')}>
               <table>
                 <thead>
                   <tr>
@@ -1053,7 +1054,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                   )}
                 </tbody>
               </table>
-            </div>
+            </StickyTableScrollbar>
           )}
         </div>
         </>

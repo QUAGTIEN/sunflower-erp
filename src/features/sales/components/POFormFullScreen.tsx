@@ -16,9 +16,10 @@ import '@/components/CustomerHistory.css';
 import { formatDate, toDateInputValue } from '@/shared/utils/dateFormatting';
 
 const PO_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-const PO_GRID_ZOOM_LEVELS = [75, 85, 100, 110, 125] as const;
 const PO_GRID_DEFAULT_ZOOM = 100;
-const PO_GRID_BASE_WIDTH = 1620;
+const PO_GRID_MIN_ZOOM = 75;
+const PO_GRID_MAX_ZOOM = 125;
+const PO_GRID_ZOOM_STEP = 5;
 const PO_GRID_ZOOM_STORAGE_KEY = 'sunflower:po-grid-zoom';
 
 const getDraftSafeLink = (value: unknown) => {
@@ -84,19 +85,17 @@ export default function POFormFullScreen({
   const [showAttachments, setShowAttachments] = useState(false);
   const [expandedItemIds, setExpandedItemIds] = useState<string[]>([]);
   const [isTableFocusMode, setIsTableFocusMode] = useState(false);
-  const [isCustomerPanelCollapsed, setIsCustomerPanelCollapsed] = useState(false);
   const [tableZoom, setTableZoom] = useState<number>(() => {
     if (typeof window === 'undefined') return PO_GRID_DEFAULT_ZOOM;
     try {
       const storedZoom = Number(window.localStorage.getItem(PO_GRID_ZOOM_STORAGE_KEY));
-      return PO_GRID_ZOOM_LEVELS.includes(storedZoom as typeof PO_GRID_ZOOM_LEVELS[number])
-        ? storedZoom
-        : PO_GRID_DEFAULT_ZOOM;
+      if (!Number.isFinite(storedZoom)) return PO_GRID_DEFAULT_ZOOM;
+      const normalizedZoom = Math.round(storedZoom / PO_GRID_ZOOM_STEP) * PO_GRID_ZOOM_STEP;
+      return Math.min(PO_GRID_MAX_ZOOM, Math.max(PO_GRID_MIN_ZOOM, normalizedZoom));
     } catch {
       return PO_GRID_DEFAULT_ZOOM;
     }
   });
-  const tableViewportRef = useRef<HTMLDivElement>(null);
 
   // Search popup state for history/catalog
   const [searchPopupOpen, setSearchPopupOpen] = useState(false);
@@ -715,7 +714,6 @@ export default function POFormFullScreen({
       if (!shouldClose) return;
     }
     setIsTableFocusMode(false);
-    setIsCustomerPanelCollapsed(false);
     onClose();
   };
 
@@ -841,7 +839,6 @@ export default function POFormFullScreen({
       await onSave(poData);
       if (draftKey) window.localStorage.removeItem(draftKey);
       setIsTableFocusMode(false);
-      setIsCustomerPanelCollapsed(false);
     } catch (error) {
       console.error('Error saving PO:', error);
       setSaveError('Không thể lưu đơn hàng. Vui lòng kiểm tra kết nối và thử lại.');
@@ -901,24 +898,6 @@ export default function POFormFullScreen({
     { value: 'admin', label: t('Ban Giám Đốc (ADMIN)') }
   ];
 
-  const changeTableZoom = (direction: -1 | 1) => {
-    const currentIndex = PO_GRID_ZOOM_LEVELS.findIndex(level => level === tableZoom);
-    const nextIndex = Math.min(
-      PO_GRID_ZOOM_LEVELS.length - 1,
-      Math.max(0, currentIndex + direction)
-    );
-    setTableZoom(PO_GRID_ZOOM_LEVELS[nextIndex]);
-  };
-
-  const fitTableToViewport = () => {
-    const availableWidth = tableViewportRef.current?.clientWidth || PO_GRID_BASE_WIDTH;
-    const fittedZoom = Math.floor(Math.min(125, Math.max(75, (availableWidth / PO_GRID_BASE_WIDTH) * 100)) / 5) * 5;
-    const closestZoom = PO_GRID_ZOOM_LEVELS.reduce((closest, level) => (
-      Math.abs(level - fittedZoom) < Math.abs(closest - fittedZoom) ? level : closest
-    ), PO_GRID_DEFAULT_ZOOM);
-    setTableZoom(closestZoom);
-  };
-
   return (
     <div className="modal-overlay-fullscreen">
       <div className="modal-content-fullscreen po-form-workspace">
@@ -975,9 +954,9 @@ export default function POFormFullScreen({
         <div style={{
           flex: 1,
           display: 'grid',
-          gridTemplateColumns: isCustomerPanelCollapsed ? 'minmax(0, 1fr)' : '300px minmax(0, 1fr)',
+          gridTemplateColumns: '300px minmax(0, 1fr)',
           overflowY: 'auto'
-        }} className={`po-form-body-container ${isCustomerPanelCollapsed ? 'is-sidebar-collapsed' : ''}`}>
+        }} className="po-form-body-container">
 
           {/* LEFT SIDEBAR PANEL: Info, Files */}
           <div className="po-order-sidebar" style={{
@@ -1191,45 +1170,19 @@ export default function POFormFullScreen({
                   <span>{poItems.length} {t('mã hàng')} · {currentCustomer?.companyName || t('Chưa chọn khách hàng')}</span>
                 </div>
                 <div className="po-items-card-actions">
-                  {!isTableFocusMode && (
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={() => setIsCustomerPanelCollapsed(current => !current)}
-                      aria-pressed={isCustomerPanelCollapsed}
-                    >
-                      {isCustomerPanelCollapsed ? t('Mở thông tin đơn') : t('Gập thông tin đơn')}
-                    </button>
-                  )}
-                  <div className="po-grid-zoom-controls" role="group" aria-label={t('Thu phóng bảng mã hàng')}>
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={() => changeTableZoom(-1)}
-                      disabled={tableZoom === PO_GRID_ZOOM_LEVELS[0]}
-                    >
-                      {t('Thu nhỏ')}
-                    </button>
-                    <select
+                  <div className="po-grid-zoom-control" role="group" aria-label={t('Thu phóng bảng mã hàng')}>
+                    <label htmlFor="po-grid-zoom">{t('Thu phóng')}</label>
+                    <input
+                      id="po-grid-zoom"
+                      type="range"
+                      min={PO_GRID_MIN_ZOOM}
+                      max={PO_GRID_MAX_ZOOM}
+                      step={PO_GRID_ZOOM_STEP}
                       value={tableZoom}
                       onChange={event => setTableZoom(Number(event.target.value))}
                       aria-label={t('Tỷ lệ hiển thị bảng')}
-                    >
-                      {PO_GRID_ZOOM_LEVELS.map(level => (
-                        <option key={level} value={level}>{level}%</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={() => changeTableZoom(1)}
-                      disabled={tableZoom === PO_GRID_ZOOM_LEVELS[PO_GRID_ZOOM_LEVELS.length - 1]}
-                    >
-                      {t('Phóng to')}
-                    </button>
-                    <button type="button" className="btn btn-outline" onClick={fitTableToViewport}>
-                      {t('Vừa màn hình')}
-                    </button>
+                    />
+                    <output htmlFor="po-grid-zoom">{tableZoom}%</output>
                   </div>
                   <button
                     type="button"
@@ -1237,26 +1190,15 @@ export default function POFormFullScreen({
                     onClick={() => setIsTableFocusMode(current => !current)}
                     aria-pressed={isTableFocusMode}
                   >
-                    {isTableFocusMode ? t('Thu gọn') : t('Toàn màn hình bảng')}
+                    {isTableFocusMode ? t('Thu gọn') : t('Mở toàn màn hình')}
                   </button>
-                  {isTableFocusMode && (
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={handleSubmit}
-                      disabled={isSaving}
-                      aria-busy={isSaving}
-                    >
-                      {isSaving ? t('Đang lưu...') : t('Lưu đơn hàng')}
-                    </button>
-                  )}
                   <button type="button" className="btn btn-outline" onClick={handleAddRow}>
                     {t('Thêm mã hàng')}
                   </button>
                 </div>
               </div>
 
-              {(isCustomerPanelCollapsed || isTableFocusMode) && (
+              {isTableFocusMode && (
                 <div className="po-order-context-summary" aria-label={t('Tóm tắt đơn hàng')}>
                   <span><strong>{t('Khách hàng')}:</strong> {currentCustomer?.companyName || t('Chưa chọn')}</span>
                   <span><strong>{t('Hạng')}:</strong> {customerRank || '—'}</span>
@@ -1269,7 +1211,7 @@ export default function POFormFullScreen({
                 <div className="po-save-error" role="alert">{saveError}</div>
               )}
 
-              <div className="po-inline-grid-container" ref={tableViewportRef}>
+              <div className="po-inline-grid-container">
                 <table className="po-inline-grid po-items-overview-table" style={{ zoom: tableZoom / 100 }}>
                   <thead>
                     <tr>

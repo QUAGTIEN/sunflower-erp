@@ -1110,9 +1110,10 @@
 
 .crm-data-workspace .crm-customer-table-wrap {
   min-height: 0;
-  max-height: max(240px, calc(100dvh - 300px));
-  flex: 0 1 auto;
-  overflow: auto;
+  max-height: none;
+  flex: 0 0 auto;
+  overflow-x: auto;
+  overflow-y: visible;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -1741,7 +1742,7 @@
   }
 
   .crm-data-workspace .crm-customer-table-wrap {
-    max-height: 60dvh;
+    max-height: none;
   }
 
   .customer-detail-header {
@@ -1942,8 +1943,9 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  max-height: max(240px, calc(100dvh - 300px));
-  overflow: auto;
+  max-height: none;
+  overflow-x: auto;
+  overflow-y: visible;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
@@ -2432,7 +2434,8 @@
 .po-draft-notice,
 .po-save-error {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 11px 14px;
   border: 1px solid #bfdbfe;
@@ -2447,6 +2450,7 @@
   flex: 1;
   flex-direction: column;
   gap: 2px;
+  min-width: 220px;
 }
 
 .po-draft-notice span {
@@ -2514,7 +2518,7 @@
 
 .po-form-header-actions,
 .po-items-card-actions,
-.po-grid-zoom-controls {
+.po-grid-zoom-control {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2532,10 +2536,6 @@
 .po-form-body-container {
   align-items: start;
   background: #f5f7fb;
-}
-
-.po-form-body-container.is-sidebar-collapsed .po-order-sidebar {
-  display: none;
 }
 
 .po-order-sidebar {
@@ -2694,35 +2694,33 @@
   scrollbar-gutter: stable;
 }
 
-.po-grid-zoom-controls {
-  padding: 3px;
+.po-grid-zoom-control {
+  min-height: 36px;
+  padding: 4px 9px;
   border: 1px solid #d9e1ec;
-  border-radius: 5px;
+  border-radius: 6px;
   background: #f8fafc;
 }
 
-.po-grid-zoom-controls .btn {
-  min-height: 30px;
-  padding: 0 9px;
-  border: 0;
-  background: transparent;
-}
-
-.po-grid-zoom-controls .btn:hover:not(:disabled) {
-  background: #e8eef8;
-}
-
-.po-grid-zoom-controls select {
-  width: 72px;
-  min-height: 30px;
-  padding: 0 7px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #172554;
+.po-grid-zoom-control label,
+.po-grid-zoom-control output {
+  color: #475569;
   font-size: 12px;
   font-weight: 600;
-  text-align: center;
+  white-space: nowrap;
+}
+
+.po-grid-zoom-control input[type='range'] {
+  width: 110px;
+  min-width: 80px;
+  accent-color: #1e3a8a;
+  cursor: pointer;
+}
+
+.po-grid-zoom-control output {
+  min-width: 38px;
+  color: #172554;
+  text-align: right;
 }
 
 .po-order-context-summary {
@@ -3339,9 +3337,12 @@
     flex-direction: column;
   }
 
-  .po-grid-zoom-controls {
+  .po-grid-zoom-control {
     width: 100%;
-    flex-wrap: wrap;
+  }
+
+  .po-grid-zoom-control input[type='range'] {
+    flex: 1 1 auto;
   }
 
   .po-total-summary-card {
