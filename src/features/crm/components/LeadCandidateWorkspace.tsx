@@ -1723,7 +1723,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         </div>
         <div className="table-container">
           {workspaceView === 'tasks' ? (
-            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150)}px` }}>
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact has-dynamic-columns" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150 + 130)}px` }}>
               <thead><tr>
                 {visibleColumnSet.has('company') && <th data-system-field="companyName">Doanh nghiệp</th>}
                 {visibleColumnSet.has('taxCode') && <th data-system-field="taxCode">Mã số thuế</th>}
@@ -1805,7 +1805,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               </tbody>
             </ConfiguredSystemTable>
           ) : (
-            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150)}px` }}>
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact has-dynamic-columns" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150 + 130)}px` }}>
               <thead>
                 <tr>
                   {visibleColumnSet.has('select') && <th className="lead-candidate-select-column">

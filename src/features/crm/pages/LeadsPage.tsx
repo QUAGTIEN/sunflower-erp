@@ -1950,7 +1950,7 @@ export const Leads: React.FC<LeadsProps> = ({
               <ConfiguredSystemTable
                 table="leads"
                 className="lead-table lead-table--classified has-dynamic-columns"
-                style={{ minWidth: `${Math.max(1180, visibleLeadColumnCount * 150)}px` }}
+                style={{ minWidth: `${Math.max(1180, visibleLeadColumnCount * 150 + 130)}px` }}
               >
                 <thead><tr>
                   <th data-system-field="companyName">{t('Doanh nghiệp')}</th>

@@ -933,10 +933,10 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
               </div>
             ) : (
               <div className="table-container sales-order-customer-table">
-                <table>
+                <table className="has-dynamic-columns">
                   <thead>
                     <tr>
-                      <th>{t('Khách hàng')}</th>
+                      <th data-system-field="companyName">{t('Khách hàng')}</th>
                       {salesVisibleColumnSet.has('code') && <th>{t('Mã KH')}</th>}
                       {salesVisibleColumnSet.has('contact') && <th>{t('Người liên hệ')}</th>}
                       {salesVisibleColumnSet.has('phone') && <th>{t('Số điện thoại')}</th>}

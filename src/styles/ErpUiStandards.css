@@ -9,6 +9,9 @@
   --erp-table-header-bg: #e7ebf1;
   --erp-table-header-border: #c5cfdd;
   --erp-table-row-height: 44px;
+  --erp-entity-column-width: 280px;
+  --erp-data-column-width: 150px;
+  --erp-action-column-width: 72px;
   --erp-table-text: #334155;
   --erp-table-secondary-text: #64748b;
   --erp-table-link: #1d4ed8;
@@ -465,6 +468,22 @@ input[type='checkbox']:disabled {
   font-size: 13px;
   font-weight: 550 !important;
   text-align: left;
+}
+
+/* Dynamic entity grids reserve the most space for the business identity. */
+.app-main table.has-dynamic-columns th {
+  width: var(--erp-data-column-width) !important;
+  min-width: var(--erp-data-column-width) !important;
+}
+
+.app-main table.has-dynamic-columns th[data-system-field='companyName'] {
+  width: var(--erp-entity-column-width) !important;
+  min-width: var(--erp-entity-column-width) !important;
+}
+
+.app-main table.has-dynamic-columns th:last-child {
+  width: var(--erp-action-column-width) !important;
+  min-width: var(--erp-action-column-width) !important;
 }
 
 .app-main table td {

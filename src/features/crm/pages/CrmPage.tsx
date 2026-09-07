@@ -2853,7 +2853,7 @@ export const Crm: React.FC<CrmProps> = ({
                   <ConfiguredSystemTable
                     table="customers"
                     className="crm-customer-table is-compact has-dynamic-columns"
-                    style={{ minWidth: `${Math.max(1180, visibleCustomerColumnCount * 150)}px` }}
+                    style={{ minWidth: `${Math.max(1180, visibleCustomerColumnCount * 150 + 130)}px` }}
                   >
                     <thead><tr>
                       <th data-system-field="companyName">{t('Khách hàng')}</th>
