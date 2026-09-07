@@ -1930,6 +1930,30 @@
   min-width: 1180px;
 }
 
+.sales-view > .card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sales-order-customer-table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sales-order-customer-table table.has-dynamic-columns th:last-child {
+  width: 100px !important;
+  min-width: 100px !important;
+}
+
 /* Sales list rows prioritize a compact scan rhythm while keeping controls usable. */
 .sales-order-customer-table th,
 .sales-order-customer-table td,
