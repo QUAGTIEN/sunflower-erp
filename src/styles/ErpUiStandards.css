@@ -20,6 +20,7 @@
   --erp-status-radius: 999px;
   --erp-border-color: #d9e1ec;
   --erp-row-divider: #e3e8f0;
+  --erp-column-divider: #d8dee9;
   --erp-row-hover: #f5f8fc;
   --erp-focus-ring: rgb(37 99 235 / 12%);
 }
@@ -444,9 +445,37 @@ input[type='checkbox']:disabled {
   text-overflow: ellipsis;
   vertical-align: middle !important;
   white-space: nowrap !important;
-  border-right: 0 !important;
+  border-right: 1px solid var(--erp-column-divider) !important;
   border-left: 0 !important;
   border-radius: 0 !important;
+}
+
+.app-main table tr > :last-child {
+  border-right: 0 !important;
+}
+
+.reorderable-table-header.is-movable {
+  cursor: grab;
+  user-select: none;
+}
+
+.reorderable-table-header.is-movable:active {
+  cursor: grabbing;
+}
+
+.reorderable-table-header.is-movable:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid #6687c7;
+  outline-offset: -2px;
+}
+
+.reorderable-table-header.is-dragging {
+  opacity: 0.5;
+}
+
+.reorderable-table-header.is-drop-target {
+  box-shadow: inset 3px 0 0 #2563eb;
 }
 
 .app-main table thead tr {

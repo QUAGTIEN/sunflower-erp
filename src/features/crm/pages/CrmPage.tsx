@@ -33,6 +33,8 @@ import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
 import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
@@ -394,6 +396,17 @@ export const Crm: React.FC<CrmProps> = ({
     }
     setShowColumnCustomizer(false);
   };
+  const {
+    orderedColumnIds: orderedCustomerColumnIds,
+    getHeaderProps: getCustomerHeaderProps
+  } = useReorderableTableColumns({
+    columns: customerColumnOptions,
+    selectedIds: storedVisibleColumnIds || Array.from(visibleCustomerColumnIds),
+    onOrderChange: saveVisibleCustomerColumns,
+    lockedStartIds: ['company'],
+    lockedEndIds: ['actions']
+  });
+  const customerColumnLabels = Object.fromEntries(customerColumnOptions.map(column => [column.id, column.label]));
 
   useEffect(() => {
     const unsubClass = dbService.subscribeCollection('product_classifications', setProductClassifications);
@@ -2856,29 +2869,31 @@ export const Crm: React.FC<CrmProps> = ({
                     style={{ minWidth: `${Math.max(1180, visibleCustomerColumnCount * 150 + 130)}px` }}
                   >
                     <thead><tr>
-                      <th data-system-field="companyName">{t('Khách hàng')}</th>
-                      {visibleCustomerColumnIds.has('customerCode') && <th data-system-field="customerCode">{t('Mã KH')}</th>}
-                      {visibleCustomerColumnIds.has('rank') && <th data-system-field="customerRank">{t('Phân loại')}</th>}
-                      {visibleCustomerColumnIds.has('taxCode') && <th data-system-field="taxCode">{t('Mã số thuế')}</th>}
-                      {visibleCustomerColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}
-                      {visibleCustomerColumnIds.has('province') && <th data-system-field="province">{t('Tỉnh / thành')}</th>}
-                      {visibleCustomerColumnIds.has('ward') && <th data-system-field="ward">{t('Phường / xã')}</th>}
-                      {visibleCustomerColumnIds.has('industrialPark') && <th data-system-field="industrialPark">{t('Khu công nghiệp')}</th>}
-                      {visibleCustomerColumnIds.has('address') && <th data-system-field="address">{t('Địa chỉ chi tiết / giao hàng')}</th>}
-                      {visibleCustomerColumnIds.has('contactPerson') && <th data-system-field="contactPerson">{t('Người liên hệ')}</th>}
-                      {visibleCustomerColumnIds.has('phone') && <th data-system-field="phone">{t('SĐT')}</th>}
-                      {visibleCustomerColumnIds.has('procurementPhone') && <th data-system-field="procurementPhone">{t('SĐT thu mua')}</th>}
-                      {visibleCustomerColumnIds.has('warehousePhone') && <th data-system-field="warehousePhone">{t('SĐT nhận hàng / kho')}</th>}
-                      {visibleCustomerColumnIds.has('email') && <th data-system-field="email">{t('Mail')}</th>}
-                      {visibleCustomerColumnIds.has('discountType') && <th data-system-field="discountType">{t('Hình thức chiết khấu')}</th>}
-                      {visibleCustomerColumnIds.has('discountValue') && <th>{t('Chiết khấu mặc định')}</th>}
-                      {visibleCustomerColumnIds.has('debtLimit') && <th data-system-field="debtLimit">{t('Hạn mức công nợ')}</th>}
-                      {visibleCustomerColumnIds.has('paymentTerms') && <th data-system-field="paymentTerms">{t('Điều khoản thanh toán')}</th>}
-                      {visibleCustomerColumnIds.has('bankAccount') && <th data-system-field="bankAccount">{t('Tài khoản ngân hàng')}</th>}
-                      {visibleCustomerColumnIds.has('note') && <th data-system-field="note">{t('Ghi chú yêu cầu riêng')}</th>}
-                      {visibleCustomerColumnIds.has('businessResult') && <th data-system-field="businessResult">{t('Kết quả kinh doanh')}</th>}
-                      {visibleCustomerCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}
-                      <th>{t('Thao tác')}</th>
+                      <ReorderableTableCells order={orderedCustomerColumnIds} getHeaderProps={getCustomerHeaderProps} labels={customerColumnLabels}>
+                        <th key="company" data-system-field="companyName">{t('Khách hàng')}</th>
+                        {visibleCustomerColumnIds.has('customerCode') && <th key="customerCode" data-system-field="customerCode">{t('Mã KH')}</th>}
+                        {visibleCustomerColumnIds.has('rank') && <th key="rank" data-system-field="customerRank">{t('Phân loại')}</th>}
+                        {visibleCustomerColumnIds.has('taxCode') && <th key="taxCode" data-system-field="taxCode">{t('Mã số thuế')}</th>}
+                        {visibleCustomerColumnIds.has('assignedSale') && <th key="assignedSale" data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}
+                        {visibleCustomerColumnIds.has('province') && <th key="province" data-system-field="province">{t('Tỉnh / thành')}</th>}
+                        {visibleCustomerColumnIds.has('ward') && <th key="ward" data-system-field="ward">{t('Phường / xã')}</th>}
+                        {visibleCustomerColumnIds.has('industrialPark') && <th key="industrialPark" data-system-field="industrialPark">{t('Khu công nghiệp')}</th>}
+                        {visibleCustomerColumnIds.has('address') && <th key="address" data-system-field="address">{t('Địa chỉ chi tiết / giao hàng')}</th>}
+                        {visibleCustomerColumnIds.has('contactPerson') && <th key="contactPerson" data-system-field="contactPerson">{t('Người liên hệ')}</th>}
+                        {visibleCustomerColumnIds.has('phone') && <th key="phone" data-system-field="phone">{t('SĐT')}</th>}
+                        {visibleCustomerColumnIds.has('procurementPhone') && <th key="procurementPhone" data-system-field="procurementPhone">{t('SĐT thu mua')}</th>}
+                        {visibleCustomerColumnIds.has('warehousePhone') && <th key="warehousePhone" data-system-field="warehousePhone">{t('SĐT nhận hàng / kho')}</th>}
+                        {visibleCustomerColumnIds.has('email') && <th key="email" data-system-field="email">{t('Mail')}</th>}
+                        {visibleCustomerColumnIds.has('discountType') && <th key="discountType" data-system-field="discountType">{t('Hình thức chiết khấu')}</th>}
+                        {visibleCustomerColumnIds.has('discountValue') && <th key="discountValue">{t('Chiết khấu mặc định')}</th>}
+                        {visibleCustomerColumnIds.has('debtLimit') && <th key="debtLimit" data-system-field="debtLimit">{t('Hạn mức công nợ')}</th>}
+                        {visibleCustomerColumnIds.has('paymentTerms') && <th key="paymentTerms" data-system-field="paymentTerms">{t('Điều khoản thanh toán')}</th>}
+                        {visibleCustomerColumnIds.has('bankAccount') && <th key="bankAccount" data-system-field="bankAccount">{t('Tài khoản ngân hàng')}</th>}
+                        {visibleCustomerColumnIds.has('note') && <th key="note" data-system-field="note">{t('Ghi chú yêu cầu riêng')}</th>}
+                        {visibleCustomerColumnIds.has('businessResult') && <th key="businessResult" data-system-field="businessResult">{t('Kết quả kinh doanh')}</th>}
+                        {visibleCustomerCustomFields.map(definition => <th key={`custom:${definition.id}`}>{definition.name}</th>)}
+                        <th key="actions">{t('Thao tác')}</th>
+                      </ReorderableTableCells>
                     </tr></thead>
                     <tbody>
                       {displayedCustomers.map(customer => {
@@ -2889,29 +2904,30 @@ export const Crm: React.FC<CrmProps> = ({
                         return (
                           <React.Fragment key={customer.id}>
                             <tr onClick={() => openCustomerDetail(customer)}>
-                              <td><div className="crm-customer-identity" title={`${customer.companyName} · ${customer.contactPerson || t('Chưa có người liên hệ')}`}><strong className="erp-company-name">{customer.companyName}</strong>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div></td>
-                              {visibleCustomerColumnIds.has('customerCode') && <td><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>}
-                              {visibleCustomerColumnIds.has('rank') && <td><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-text ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>}
-                              {visibleCustomerColumnIds.has('taxCode') && <td><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>}
-                              {visibleCustomerColumnIds.has('assignedSale') && <td><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>}
-                              {visibleCustomerColumnIds.has('province') && <td>{renderCustomerText(customer.province)}</td>}
-                              {visibleCustomerColumnIds.has('ward') && <td>{renderCustomerText(customer.ward)}</td>}
-                              {visibleCustomerColumnIds.has('industrialPark') && <td>{renderCustomerText(customer.industrialPark)}</td>}
-                              {visibleCustomerColumnIds.has('address') && <td>{renderCustomerText(customer.address)}</td>}
-                              {visibleCustomerColumnIds.has('contactPerson') && <td>{renderCustomerText(customer.contactPerson)}</td>}
-                              {visibleCustomerColumnIds.has('phone') && <td><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>}
-                              {visibleCustomerColumnIds.has('procurementPhone') && <td>{renderCustomerText(customer.procurementPhone)}</td>}
-                              {visibleCustomerColumnIds.has('warehousePhone') && <td>{renderCustomerText(customer.warehousePhone)}</td>}
-                              {visibleCustomerColumnIds.has('email') && <td><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>}
-                              {visibleCustomerColumnIds.has('discountType') && <td>{renderCustomerText(customer.discountType === 'amount' ? t('Theo tiền chênh') : t('Theo phần trăm'))}</td>}
-                              {visibleCustomerColumnIds.has('discountValue') && <td>{renderCustomerText(customer.discountType === 'amount' ? `${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${Number(customer.discountRate || 0).toLocaleString('vi-VN')}%`)}</td>}
-                              {visibleCustomerColumnIds.has('debtLimit') && <td>{renderCustomerText(`${Number(customer.debtLimit || 0).toLocaleString('vi-VN')} đ`)}</td>}
-                              {visibleCustomerColumnIds.has('paymentTerms') && <td>{renderCustomerText(customer.paymentTerms)}</td>}
-                              {visibleCustomerColumnIds.has('bankAccount') && <td>{renderCustomerText(customer.bankAccount)}</td>}
-                              {visibleCustomerColumnIds.has('note') && <td>{renderCustomerText(customer.note)}</td>}
-                              {visibleCustomerColumnIds.has('businessResult') && <td><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')}</strong><span className="crm-business-result__value">· {orderValue.toLocaleString('vi-VN')} đ</span></div></td>}
-                              {visibleCustomerCustomFields.map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id])}</td>)}
-                              <td>
+                              <ReorderableTableCells order={orderedCustomerColumnIds}>
+                              <td key="company"><div className="crm-customer-identity" title={`${customer.companyName} · ${customer.contactPerson || t('Chưa có người liên hệ')}`}><strong className="erp-company-name">{customer.companyName}</strong>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div></td>
+                              {visibleCustomerColumnIds.has('customerCode') && <td key="customerCode"><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>}
+                              {visibleCustomerColumnIds.has('rank') && <td key="rank"><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-text ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>}
+                              {visibleCustomerColumnIds.has('taxCode') && <td key="taxCode"><span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>{customer.taxCode || t('Chưa cập nhật')}</span></td>}
+                              {visibleCustomerColumnIds.has('assignedSale') && <td key="assignedSale"><strong className={customer.assignedSaleId ? '' : 'crm-text-muted'}>{saleName}</strong></td>}
+                              {visibleCustomerColumnIds.has('province') && <td key="province">{renderCustomerText(customer.province)}</td>}
+                              {visibleCustomerColumnIds.has('ward') && <td key="ward">{renderCustomerText(customer.ward)}</td>}
+                              {visibleCustomerColumnIds.has('industrialPark') && <td key="industrialPark">{renderCustomerText(customer.industrialPark)}</td>}
+                              {visibleCustomerColumnIds.has('address') && <td key="address">{renderCustomerText(customer.address)}</td>}
+                              {visibleCustomerColumnIds.has('contactPerson') && <td key="contactPerson">{renderCustomerText(customer.contactPerson)}</td>}
+                              {visibleCustomerColumnIds.has('phone') && <td key="phone"><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>}
+                              {visibleCustomerColumnIds.has('procurementPhone') && <td key="procurementPhone">{renderCustomerText(customer.procurementPhone)}</td>}
+                              {visibleCustomerColumnIds.has('warehousePhone') && <td key="warehousePhone">{renderCustomerText(customer.warehousePhone)}</td>}
+                              {visibleCustomerColumnIds.has('email') && <td key="email"><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>}
+                              {visibleCustomerColumnIds.has('discountType') && <td key="discountType">{renderCustomerText(customer.discountType === 'amount' ? t('Theo tiền chênh') : t('Theo phần trăm'))}</td>}
+                              {visibleCustomerColumnIds.has('discountValue') && <td key="discountValue">{renderCustomerText(customer.discountType === 'amount' ? `${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${Number(customer.discountRate || 0).toLocaleString('vi-VN')}%`)}</td>}
+                              {visibleCustomerColumnIds.has('debtLimit') && <td key="debtLimit">{renderCustomerText(`${Number(customer.debtLimit || 0).toLocaleString('vi-VN')} đ`)}</td>}
+                              {visibleCustomerColumnIds.has('paymentTerms') && <td key="paymentTerms">{renderCustomerText(customer.paymentTerms)}</td>}
+                              {visibleCustomerColumnIds.has('bankAccount') && <td key="bankAccount">{renderCustomerText(customer.bankAccount)}</td>}
+                              {visibleCustomerColumnIds.has('note') && <td key="note">{renderCustomerText(customer.note)}</td>}
+                              {visibleCustomerColumnIds.has('businessResult') && <td key="businessResult"><div className="crm-business-result" title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}><strong>{customerOrders.length} {t('đơn')}</strong><span className="crm-business-result__value">· {orderValue.toLocaleString('vi-VN')} đ</span></div></td>}
+                              {visibleCustomerCustomFields.map(definition => <td key={`custom:${definition.id}`}>{formatEntityCustomFieldValue(definition, customer.customFieldValues?.[definition.id])}</td>)}
+                              <td key="actions">
                                 <RowActionMenu
                                   label={`${t('Thao tác')} ${customer.companyName}`}
                                   actions={[
@@ -2930,6 +2946,7 @@ export const Crm: React.FC<CrmProps> = ({
                                   ]}
                                 />
                               </td>
+                              </ReorderableTableCells>
                             </tr>
                           </React.Fragment>
                         );

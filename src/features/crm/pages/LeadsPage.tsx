@@ -85,6 +85,8 @@ import {
 import { PageBackButton } from '@/components/PageBackButton';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
 import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
@@ -454,6 +456,17 @@ export const Leads: React.FC<LeadsProps> = ({
     }
     setShowColumnCustomizer(false);
   };
+  const {
+    orderedColumnIds: orderedLeadColumnIds,
+    getHeaderProps: getLeadHeaderProps
+  } = useReorderableTableColumns({
+    columns: leadColumnOptions,
+    selectedIds: storedVisibleColumnIds || Array.from(visibleLeadColumnIds),
+    onOrderChange: saveVisibleLeadColumns,
+    lockedStartIds: ['company'],
+    lockedEndIds: ['actions']
+  });
+  const leadColumnLabels = Object.fromEntries(leadColumnOptions.map(column => [column.id, column.label]));
 
   const accessibleLeads = useMemo(() => leads.filter(lead => {
     if (!isActiveLeadRecord(lead)) return false;
@@ -1953,60 +1966,63 @@ export const Leads: React.FC<LeadsProps> = ({
                 style={{ minWidth: `${Math.max(1180, visibleLeadColumnCount * 150 + 130)}px` }}
               >
                 <thead><tr>
-                  <th data-system-field="companyName">{t('Doanh nghiệp')}</th>
-                  {visibleLeadColumnIds.has('taxCode') && <th data-system-field="taxCode">{t('Mã số thuế')}</th>}
-                  {visibleLeadColumnIds.has('website') && <th data-system-field="website">Website</th>}
-                  {visibleLeadColumnIds.has('businessSector') && <th data-system-field="businessSector">{t('Lĩnh vực hoạt động')}</th>}
-                  {visibleLeadColumnIds.has('address') && <th data-system-field="address">{t('Địa chỉ doanh nghiệp')}</th>}
-                  {visibleLeadColumnIds.has('companySize') && <th data-system-field="companySize">{t('Quy mô')}</th>}
-                  {visibleLeadColumnIds.has('source') && <th data-system-field="source">{t('Khu vực')}</th>}
-                  {visibleLeadColumnIds.has('sourceValue') && <th data-system-field="sourceValue">{t('Nguồn tìm kiếm')}</th>}
-                  {visibleLeadColumnIds.has('province') && <th data-system-field="province">{t('Tỉnh/thành')}</th>}
-                  {visibleLeadColumnIds.has('ward') && <th data-system-field="ward">{t('Phường/xã')}</th>}
-                  {visibleLeadColumnIds.has('industrialPark') && <th data-system-field="industrialPark">{t('Khu công nghiệp')}</th>}
-                  {visibleLeadColumnIds.has('contact') && <th data-system-field="contact">{t('Liên hệ')}</th>}
-                  {visibleLeadColumnIds.has('contactPerson') && <th data-system-field="contactPerson">{t('Người liên hệ')}</th>}
-                  {visibleLeadColumnIds.has('contactPosition') && <th data-system-field="contactPosition">{t('Chức vụ')}</th>}
-                  {visibleLeadColumnIds.has('phone') && <th data-system-field="phone">{t('Điện thoại')}</th>}
-                  {visibleLeadColumnIds.has('email') && <th data-system-field="email">Email</th>}
-                  {visibleLeadColumnIds.has('expectedProducts') && <th data-system-field="expectedProducts">{t('Sản phẩm / nhu cầu quan tâm')}</th>}
-                  {visibleLeadColumnIds.has('potentialValue') && <th data-system-field="potentialValue">{t('Giá trị tiềm năng')}</th>}
-                  {visibleLeadColumnIds.has('stage') && <th data-system-field="stage">{t('Giai đoạn xử lý')}</th>}
-                  {visibleLeadColumnIds.has('note') && <th data-system-field="note">{t('Ghi chú')}</th>}
-                  {visibleLeadColumnIds.has('assignedSale') && <th data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}
-                  {visibleLeadColumnIds.has('discoveredBy') && <th data-system-field="discoveredById">{t('Sale tìm được Lead')}</th>}
-                  {visibleLeadColumnIds.has('nextFollowUpAt') && <th data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>}
-                  {visibleLeadCustomFields.map(definition => <th key={definition.id}>{definition.name}</th>)}
-                  <th>{t('Thao tác')}</th>
+                  <ReorderableTableCells order={orderedLeadColumnIds} getHeaderProps={getLeadHeaderProps} labels={leadColumnLabels}>
+                  <th key="company" data-system-field="companyName">{t('Doanh nghiệp')}</th>
+                  {visibleLeadColumnIds.has('taxCode') && <th key="taxCode" data-system-field="taxCode">{t('Mã số thuế')}</th>}
+                  {visibleLeadColumnIds.has('website') && <th key="website" data-system-field="website">Website</th>}
+                  {visibleLeadColumnIds.has('businessSector') && <th key="businessSector" data-system-field="businessSector">{t('Lĩnh vực hoạt động')}</th>}
+                  {visibleLeadColumnIds.has('address') && <th key="address" data-system-field="address">{t('Địa chỉ doanh nghiệp')}</th>}
+                  {visibleLeadColumnIds.has('companySize') && <th key="companySize" data-system-field="companySize">{t('Quy mô')}</th>}
+                  {visibleLeadColumnIds.has('source') && <th key="source" data-system-field="source">{t('Khu vực')}</th>}
+                  {visibleLeadColumnIds.has('sourceValue') && <th key="sourceValue" data-system-field="sourceValue">{t('Nguồn tìm kiếm')}</th>}
+                  {visibleLeadColumnIds.has('province') && <th key="province" data-system-field="province">{t('Tỉnh/thành')}</th>}
+                  {visibleLeadColumnIds.has('ward') && <th key="ward" data-system-field="ward">{t('Phường/xã')}</th>}
+                  {visibleLeadColumnIds.has('industrialPark') && <th key="industrialPark" data-system-field="industrialPark">{t('Khu công nghiệp')}</th>}
+                  {visibleLeadColumnIds.has('contact') && <th key="contact" data-system-field="contact">{t('Liên hệ')}</th>}
+                  {visibleLeadColumnIds.has('contactPerson') && <th key="contactPerson" data-system-field="contactPerson">{t('Người liên hệ')}</th>}
+                  {visibleLeadColumnIds.has('contactPosition') && <th key="contactPosition" data-system-field="contactPosition">{t('Chức vụ')}</th>}
+                  {visibleLeadColumnIds.has('phone') && <th key="phone" data-system-field="phone">{t('Điện thoại')}</th>}
+                  {visibleLeadColumnIds.has('email') && <th key="email" data-system-field="email">Email</th>}
+                  {visibleLeadColumnIds.has('expectedProducts') && <th key="expectedProducts" data-system-field="expectedProducts">{t('Sản phẩm / nhu cầu quan tâm')}</th>}
+                  {visibleLeadColumnIds.has('potentialValue') && <th key="potentialValue" data-system-field="potentialValue">{t('Giá trị tiềm năng')}</th>}
+                  {visibleLeadColumnIds.has('stage') && <th key="stage" data-system-field="stage">{t('Giai đoạn xử lý')}</th>}
+                  {visibleLeadColumnIds.has('note') && <th key="note" data-system-field="note">{t('Ghi chú')}</th>}
+                  {visibleLeadColumnIds.has('assignedSale') && <th key="assignedSale" data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}
+                  {visibleLeadColumnIds.has('discoveredBy') && <th key="discoveredBy" data-system-field="discoveredById">{t('Sale tìm được Lead')}</th>}
+                  {visibleLeadColumnIds.has('nextFollowUpAt') && <th key="nextFollowUpAt" data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>}
+                  {visibleLeadCustomFields.map(definition => <th key={`custom:${definition.id}`}>{definition.name}</th>)}
+                  <th key="actions">{t('Thao tác')}</th>
+                  </ReorderableTableCells>
                 </tr></thead>
                 <tbody>
                   {displayedLeads.map(lead => (
                     <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
-                      <td><strong className="erp-company-name" title={lead.companyName}>{lead.companyName}</strong></td>
-                      {visibleLeadColumnIds.has('taxCode') && <td>{renderLeadText(lead.taxCode)}</td>}
-                      {visibleLeadColumnIds.has('website') && <td>{renderLeadText(lead.website)}</td>}
-                      {visibleLeadColumnIds.has('businessSector') && <td>{renderLeadText(lead.businessSector)}</td>}
-                      {visibleLeadColumnIds.has('address') && <td>{renderLeadText(lead.address)}</td>}
-                      {visibleLeadColumnIds.has('companySize') && <td>{renderLeadText(COMPANY_SIZE_LABELS[lead.companySize])}</td>}
-                      {visibleLeadColumnIds.has('source') && <td>{renderLeadText([lead.province, lead.ward, lead.industrialPark].filter(Boolean).join(' · '))}</td>}
-                      {visibleLeadColumnIds.has('sourceValue') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || ''))}</td>}
-                      {visibleLeadColumnIds.has('province') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || ''))}</td>}
-                      {visibleLeadColumnIds.has('ward') && <td>{renderLeadText(lead.ward)}</td>}
-                      {visibleLeadColumnIds.has('industrialPark') && <td>{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.industrialPark, lead.industrialPark || ''))}</td>}
-                      {visibleLeadColumnIds.has('contact') && <td>{renderLeadText(lead.contactPerson)}</td>}
-                      {visibleLeadColumnIds.has('contactPerson') && <td>{renderLeadText(lead.contactPerson)}</td>}
-                      {visibleLeadColumnIds.has('contactPosition') && <td>{renderLeadText(lead.contactPosition)}</td>}
-                      {visibleLeadColumnIds.has('phone') && <td>{renderLeadText(lead.phone)}</td>}
-                      {visibleLeadColumnIds.has('email') && <td>{renderLeadText(lead.email)}</td>}
-                      {visibleLeadColumnIds.has('expectedProducts') && <td>{renderLeadText(lead.expectedProducts)}</td>}
-                      {visibleLeadColumnIds.has('potentialValue') && <td><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>}
-                      {visibleLeadColumnIds.has('stage') && <td>{renderLeadText(getStageLabel(lead.stage))}</td>}
-                      {visibleLeadColumnIds.has('note') && <td>{renderLeadText(lead.note)}</td>}
-                      {visibleLeadColumnIds.has('assignedSale') && <td>{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>}
-                      {visibleLeadColumnIds.has('discoveredBy') && <td>{renderLeadText(users.find(user => user.uid === lead.discoveredById)?.displayName || lead.discoveredByName)}</td>}
-                      {visibleLeadColumnIds.has('nextFollowUpAt') && <td>{renderFollowUp(lead)}</td>}
-                      {visibleLeadCustomFields.map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id])}</td>)}
-                      <td>
+                      <ReorderableTableCells order={orderedLeadColumnIds}>
+                      <td key="company"><strong className="erp-company-name" title={lead.companyName}>{lead.companyName}</strong></td>
+                      {visibleLeadColumnIds.has('taxCode') && <td key="taxCode">{renderLeadText(lead.taxCode)}</td>}
+                      {visibleLeadColumnIds.has('website') && <td key="website">{renderLeadText(lead.website)}</td>}
+                      {visibleLeadColumnIds.has('businessSector') && <td key="businessSector">{renderLeadText(lead.businessSector)}</td>}
+                      {visibleLeadColumnIds.has('address') && <td key="address">{renderLeadText(lead.address)}</td>}
+                      {visibleLeadColumnIds.has('companySize') && <td key="companySize">{renderLeadText(COMPANY_SIZE_LABELS[lead.companySize])}</td>}
+                      {visibleLeadColumnIds.has('source') && <td key="source">{renderLeadText([lead.province, lead.ward, lead.industrialPark].filter(Boolean).join(' · '))}</td>}
+                      {visibleLeadColumnIds.has('sourceValue') && <td key="sourceValue">{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || ''))}</td>}
+                      {visibleLeadColumnIds.has('province') && <td key="province">{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || ''))}</td>}
+                      {visibleLeadColumnIds.has('ward') && <td key="ward">{renderLeadText(lead.ward)}</td>}
+                      {visibleLeadColumnIds.has('industrialPark') && <td key="industrialPark">{renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.industrialPark, lead.industrialPark || ''))}</td>}
+                      {visibleLeadColumnIds.has('contact') && <td key="contact">{renderLeadText(lead.contactPerson)}</td>}
+                      {visibleLeadColumnIds.has('contactPerson') && <td key="contactPerson">{renderLeadText(lead.contactPerson)}</td>}
+                      {visibleLeadColumnIds.has('contactPosition') && <td key="contactPosition">{renderLeadText(lead.contactPosition)}</td>}
+                      {visibleLeadColumnIds.has('phone') && <td key="phone">{renderLeadText(lead.phone)}</td>}
+                      {visibleLeadColumnIds.has('email') && <td key="email">{renderLeadText(lead.email)}</td>}
+                      {visibleLeadColumnIds.has('expectedProducts') && <td key="expectedProducts">{renderLeadText(lead.expectedProducts)}</td>}
+                      {visibleLeadColumnIds.has('potentialValue') && <td key="potentialValue"><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>}
+                      {visibleLeadColumnIds.has('stage') && <td key="stage">{renderLeadText(getStageLabel(lead.stage))}</td>}
+                      {visibleLeadColumnIds.has('note') && <td key="note">{renderLeadText(lead.note)}</td>}
+                      {visibleLeadColumnIds.has('assignedSale') && <td key="assignedSale">{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>}
+                      {visibleLeadColumnIds.has('discoveredBy') && <td key="discoveredBy">{renderLeadText(users.find(user => user.uid === lead.discoveredById)?.displayName || lead.discoveredByName)}</td>}
+                      {visibleLeadColumnIds.has('nextFollowUpAt') && <td key="nextFollowUpAt">{renderFollowUp(lead)}</td>}
+                      {visibleLeadCustomFields.map(definition => <td key={`custom:${definition.id}`}>{formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id])}</td>)}
+                      <td key="actions">
                         <RowActionMenu
                           label={`${t('Thao tác')} ${lead.companyName}`}
                           actions={[
@@ -2032,6 +2048,7 @@ export const Leads: React.FC<LeadsProps> = ({
                           ]}
                         />
                       </td>
+                      </ReorderableTableCells>
                     </tr>
                   ))}
                   {filteredLeads.length === 0 && <tr><td colSpan={visibleLeadColumnCount} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}

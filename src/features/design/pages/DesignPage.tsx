@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -136,6 +138,17 @@ export const Design: React.FC<DesignProps> = ({
     try { window.localStorage.setItem(`sunflower:design-columns:${currentUser.uid}`, JSON.stringify(next)); } catch { /* State remains active. */ }
     setShowDesignColumnCustomizer(false);
   };
+  const {
+    orderedColumnIds: orderedDesignColumnIds,
+    getHeaderProps: getDesignHeaderProps
+  } = useReorderableTableColumns({
+    columns: DESIGN_LIST_COLUMNS,
+    selectedIds: designVisibleColumns,
+    onOrderChange: saveDesignVisibleColumns,
+    lockedStartIds: ['request'],
+    lockedEndIds: ['actions']
+  });
+  const designColumnLabels = Object.fromEntries(DESIGN_LIST_COLUMNS.map(column => [column.id, t(column.label)]));
   const [statusNote, setStatusNote] = useState('');
   const [nextWorkStatus, setNextWorkStatus] = useState<DesignWorkStatus>('unreviewed');
   const [showVersionModal, setShowVersionModal] = useState(false);
@@ -572,14 +585,16 @@ export const Design: React.FC<DesignProps> = ({
           <table>
             <thead>
               <tr>
-                <th>{t('Mã yêu cầu')}</th>
-                {designVisibleColumnSet.has('po') && <th>{t('Mã PO')}</th>}
-                {designVisibleColumnSet.has('product') && <th>{t('Mặt hàng cần thiết kế')}</th>}
-                {designVisibleColumnSet.has('specification') && <th>{t('Quy cách / Chất liệu')}</th>}
-                {designVisibleColumnSet.has('dueDate') && <th>{t('Hạn xử lý')}</th>}
-                {designVisibleColumnSet.has('designer') && <th>{t('Người phụ trách')}</th>}
-                {designVisibleColumnSet.has('status') && <th>{t('Tiến độ thiết kế')}</th>}
-                <th>{t('Thao Tác')}</th>
+                <ReorderableTableCells order={orderedDesignColumnIds} getHeaderProps={getDesignHeaderProps} labels={designColumnLabels}>
+                  <th key="request">{t('Mã yêu cầu')}</th>
+                  {designVisibleColumnSet.has('po') && <th key="po">{t('Mã PO')}</th>}
+                  {designVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng cần thiết kế')}</th>}
+                  {designVisibleColumnSet.has('specification') && <th key="specification">{t('Quy cách / Chất liệu')}</th>}
+                  {designVisibleColumnSet.has('dueDate') && <th key="dueDate">{t('Hạn xử lý')}</th>}
+                  {designVisibleColumnSet.has('designer') && <th key="designer">{t('Người phụ trách')}</th>}
+                  {designVisibleColumnSet.has('status') && <th key="status">{t('Tiến độ thiết kế')}</th>}
+                  <th key="actions">{t('Thao Tác')}</th>
+                </ReorderableTableCells>
               </tr>
             </thead>
             <tbody>
@@ -590,37 +605,39 @@ export const Design: React.FC<DesignProps> = ({
                 const overdue = isDesignRequestOverdue(request);
                 return (
                   <tr key={request.id} className={overdue ? 'is-overdue' : ''} onClick={() => openRequest(request)}>
-                    <td>
+                    <ReorderableTableCells order={orderedDesignColumnIds}>
+                    <td key="request">
                       <strong className="design-request-code">{request.requestCode}</strong>
                       <span className={`design-priority design-priority--${request.priority || 'normal'}`}>{t(PRIORITY_LABELS[request.priority] || 'Bình thường')}</span>
                     </td>
-                    {designVisibleColumnSet.has('po') && <td>
+                    {designVisibleColumnSet.has('po') && <td key="po">
                       <strong>{request.customerReferenceCode || request.poCode}</strong>
                       <span className="design-secondary-text">{request.poCode}</span>
                     </td>}
-                    {designVisibleColumnSet.has('product') && <td>
+                    {designVisibleColumnSet.has('product') && <td key="product">
                       <strong>{request.productName || t('Chưa đặt tên')}</strong>
                       <span className="design-secondary-text">{request.productCode || t('Chưa có mã hàng')}</span>
                     </td>}
-                    {designVisibleColumnSet.has('specification') && <td>
+                    {designVisibleColumnSet.has('specification') && <td key="specification">
                       <span>{request.size || '—'}</span>
                       <span className="design-secondary-text">{request.material || '—'}</span>
                     </td>}
-                    {designVisibleColumnSet.has('dueDate') && <td>
+                    {designVisibleColumnSet.has('dueDate') && <td key="dueDate">
                       <span className={overdue ? 'design-overdue-text' : ''}>{formatDate(request.dueDate)}</span>
                       <span className="design-secondary-text">{ageDays === null ? '—' : `${ageDays} ${t(request.workStatus === 'completed' ? 'ngày xử lý' : 'ngày chờ')}`}</span>
                     </td>}
-                    {designVisibleColumnSet.has('designer') && <td>{designer?.displayName || t('Chưa phân công')}</td>}
-                    {designVisibleColumnSet.has('status') && <td>
+                    {designVisibleColumnSet.has('designer') && <td key="designer">{designer?.displayName || t('Chưa phân công')}</td>}
+                    {designVisibleColumnSet.has('status') && <td key="status">
                       <span className="design-progress-text" style={{ color: status.color }}>
                         {t(status.label)}
                       </span>
                     </td>}
-                    <td>
+                    <td key="actions">
                       <button className="btn btn-sm btn-outline" onClick={event => { event.stopPropagation(); openRequest(request); }}>
                         {t('Mở công việc')}
                       </button>
                     </td>
+                    </ReorderableTableCells>
                   </tr>
                 );
               })}

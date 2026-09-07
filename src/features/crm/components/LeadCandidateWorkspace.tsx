@@ -63,6 +63,8 @@ import { PageBackButton } from '@/components/PageBackButton';
 import { BusinessLocationFields } from './BusinessLocationFields';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
 import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
@@ -501,6 +503,17 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     }
     setShowColumnCustomizer(false);
   };
+  const {
+    orderedColumnIds,
+    getHeaderProps
+  } = useReorderableTableColumns({
+    columns: availableColumnOptions,
+    selectedIds: Array.from(visibleColumnSet),
+    onOrderChange: saveVisibleColumns,
+    lockedStartIds: workspaceView === 'all' ? ['select', 'company'] : ['company'],
+    lockedEndIds: ['actions']
+  });
+  const candidateColumnLabels = Object.fromEntries(availableColumnOptions.map(column => [column.id, column.label]));
 
   const accessibleCandidates = useMemo(() => candidates.filter(candidate => (
     !candidate.archived
@@ -1725,30 +1738,32 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           {workspaceView === 'tasks' ? (
             <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact has-dynamic-columns" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150 + 130)}px` }}>
               <thead><tr>
-                {visibleColumnSet.has('company') && <th data-system-field="companyName">Doanh nghiệp</th>}
-                {visibleColumnSet.has('taxCode') && <th data-system-field="taxCode">Mã số thuế</th>}
-                {visibleColumnSet.has('website') && <th data-system-field="website">Website</th>}
-                {visibleColumnSet.has('businessSector') && <th data-system-field="businessSector">Lĩnh vực hoạt động</th>}
-                {visibleColumnSet.has('province') && <th data-system-field="province">Tỉnh/thành</th>}
-                {visibleColumnSet.has('ward') && <th data-system-field="ward">Phường/xã</th>}
-                {visibleColumnSet.has('industrialPark') && <th data-system-field="industrialPark">Khu công nghiệp</th>}
-                {visibleColumnSet.has('address') && <th data-system-field="address">Địa chỉ doanh nghiệp</th>}
-                {visibleColumnSet.has('contact') && <th data-system-field="contact">Thông tin liên hệ (tóm tắt)</th>}
-                {visibleColumnSet.has('contactPerson') && <th data-system-field="contactPerson">Người liên hệ</th>}
-                {visibleColumnSet.has('contactPosition') && <th data-system-field="contactPosition">Chức vụ</th>}
-                {visibleColumnSet.has('phone') && <th data-system-field="phone">Điện thoại</th>}
-                {visibleColumnSet.has('email') && <th data-system-field="email">Email</th>}
-                {visibleColumnSet.has('source') && <th data-system-field="source">Nguồn tìm kiếm</th>}
-                {visibleColumnSet.has('sourceUrl') && <th data-system-field="sourceUrl">Đường dẫn nguồn</th>}
-                {visibleColumnSet.has('expectedProducts') && <th data-system-field="expectedProducts">Sản phẩm / nhu cầu quan tâm</th>}
-                {visibleColumnSet.has('note') && <th data-system-field="note">Ghi chú</th>}
-                {visibleColumnSet.has('status') && <th data-system-field="contactResult">Trạng thái</th>}
-                {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <th data-system-field="assignedSaleId">Sale phụ trách</th>}
-                {visibleColumnSet.has('potential') && <th data-system-field="potentialLevel">Mức độ tiềm năng</th>}
-                {visibleColumnSet.has('schedule') && <th data-system-field="nextContactAt">Lịch hẹn</th>}
-                {visibleColumnSet.has('latest') && <th data-system-field="latest">Cập nhật gần nhất</th>}
-                {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={definition.id}>{definition.name}</th>)}
-                {visibleColumnSet.has('actions') && <th className="lead-candidate-actions-column">Thao tác</th>}
+                <ReorderableTableCells order={orderedColumnIds} getHeaderProps={getHeaderProps} labels={candidateColumnLabels}>
+                {visibleColumnSet.has('company') && <th key="company" data-system-field="companyName">Doanh nghiệp</th>}
+                {visibleColumnSet.has('taxCode') && <th key="taxCode" data-system-field="taxCode">Mã số thuế</th>}
+                {visibleColumnSet.has('website') && <th key="website" data-system-field="website">Website</th>}
+                {visibleColumnSet.has('businessSector') && <th key="businessSector" data-system-field="businessSector">Lĩnh vực hoạt động</th>}
+                {visibleColumnSet.has('province') && <th key="province" data-system-field="province">Tỉnh/thành</th>}
+                {visibleColumnSet.has('ward') && <th key="ward" data-system-field="ward">Phường/xã</th>}
+                {visibleColumnSet.has('industrialPark') && <th key="industrialPark" data-system-field="industrialPark">Khu công nghiệp</th>}
+                {visibleColumnSet.has('address') && <th key="address" data-system-field="address">Địa chỉ doanh nghiệp</th>}
+                {visibleColumnSet.has('contact') && <th key="contact" data-system-field="contact">Thông tin liên hệ (tóm tắt)</th>}
+                {visibleColumnSet.has('contactPerson') && <th key="contactPerson" data-system-field="contactPerson">Người liên hệ</th>}
+                {visibleColumnSet.has('contactPosition') && <th key="contactPosition" data-system-field="contactPosition">Chức vụ</th>}
+                {visibleColumnSet.has('phone') && <th key="phone" data-system-field="phone">Điện thoại</th>}
+                {visibleColumnSet.has('email') && <th key="email" data-system-field="email">Email</th>}
+                {visibleColumnSet.has('source') && <th key="source" data-system-field="source">Nguồn tìm kiếm</th>}
+                {visibleColumnSet.has('sourceUrl') && <th key="sourceUrl" data-system-field="sourceUrl">Đường dẫn nguồn</th>}
+                {visibleColumnSet.has('expectedProducts') && <th key="expectedProducts" data-system-field="expectedProducts">Sản phẩm / nhu cầu quan tâm</th>}
+                {visibleColumnSet.has('note') && <th key="note" data-system-field="note">Ghi chú</th>}
+                {visibleColumnSet.has('status') && <th key="status" data-system-field="contactResult">Trạng thái</th>}
+                {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <th key="assignee" data-system-field="assignedSaleId">Sale phụ trách</th>}
+                {visibleColumnSet.has('potential') && <th key="potential" data-system-field="potentialLevel">Mức độ tiềm năng</th>}
+                {visibleColumnSet.has('schedule') && <th key="schedule" data-system-field="nextContactAt">Lịch hẹn</th>}
+                {visibleColumnSet.has('latest') && <th key="latest" data-system-field="latest">Cập nhật gần nhất</th>}
+                {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={`custom:${definition.id}`}>{definition.name}</th>)}
+                {visibleColumnSet.has('actions') && <th key="actions" className="lead-candidate-actions-column">Thao tác</th>}
+                </ReorderableTableCells>
               </tr></thead>
               <tbody>
                 {displayedCandidates.map(candidate => {
@@ -1761,32 +1776,33 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
                   return (
                     <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
-                      {visibleColumnSet.has('company') && <td><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
-                      {visibleColumnSet.has('taxCode') && <td>{renderCandidateField(candidate.taxCode)}</td>}
-                      {visibleColumnSet.has('website') && <td>{renderCandidateField(candidate.website)}</td>}
-                      {visibleColumnSet.has('businessSector') && <td>{renderCandidateField(candidate.businessSector)}</td>}
-                      {visibleColumnSet.has('province') && <td>{renderCompactValue(candidate.province || 'Chưa cập nhật', `${candidate.province || 'Chưa cập nhật'} · ${candidate.source || 'Chưa rõ nguồn'}`)}</td>}
-                      {visibleColumnSet.has('ward') && <td>{renderCandidateField(candidate.ward)}</td>}
-                      {visibleColumnSet.has('industrialPark') && <td>{renderCandidateField(candidate.industrialPark)}</td>}
-                      {visibleColumnSet.has('address') && <td>{renderCandidateField(candidate.address)}</td>}
-                      {visibleColumnSet.has('contact') && <td>{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
-                      {visibleColumnSet.has('contactPerson') && <td>{renderCandidateField(candidate.contactPerson)}</td>}
-                      {visibleColumnSet.has('contactPosition') && <td>{renderCandidateField(candidate.contactPosition)}</td>}
-                      {visibleColumnSet.has('phone') && <td>{renderCandidateField(candidate.phone)}</td>}
-                      {visibleColumnSet.has('email') && <td>{renderCandidateField(candidate.email)}</td>}
-                      {visibleColumnSet.has('source') && <td>{renderCandidateField(candidate.source)}</td>}
-                      {visibleColumnSet.has('sourceUrl') && <td>{renderCandidateField(candidate.sourceUrl)}</td>}
-                      {visibleColumnSet.has('expectedProducts') && <td>{renderCandidateField(candidate.expectedProducts)}</td>}
-                      {visibleColumnSet.has('note') && <td>{renderCandidateField(candidate.note)}</td>}
-                      {visibleColumnSet.has('status') && <td>{renderContactResult(candidate)}</td>}
-                      {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <td>{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
-                      {visibleColumnSet.has('potential') && <td>{renderPotentialLevel(candidate)}</td>}
-                      {visibleColumnSet.has('schedule') && <td>{candidate.nextContactAt
+                      <ReorderableTableCells order={orderedColumnIds}>
+                      {visibleColumnSet.has('company') && <td key="company"><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
+                      {visibleColumnSet.has('taxCode') && <td key="taxCode">{renderCandidateField(candidate.taxCode)}</td>}
+                      {visibleColumnSet.has('website') && <td key="website">{renderCandidateField(candidate.website)}</td>}
+                      {visibleColumnSet.has('businessSector') && <td key="businessSector">{renderCandidateField(candidate.businessSector)}</td>}
+                      {visibleColumnSet.has('province') && <td key="province">{renderCompactValue(candidate.province || 'Chưa cập nhật', `${candidate.province || 'Chưa cập nhật'} · ${candidate.source || 'Chưa rõ nguồn'}`)}</td>}
+                      {visibleColumnSet.has('ward') && <td key="ward">{renderCandidateField(candidate.ward)}</td>}
+                      {visibleColumnSet.has('industrialPark') && <td key="industrialPark">{renderCandidateField(candidate.industrialPark)}</td>}
+                      {visibleColumnSet.has('address') && <td key="address">{renderCandidateField(candidate.address)}</td>}
+                      {visibleColumnSet.has('contact') && <td key="contact">{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
+                      {visibleColumnSet.has('contactPerson') && <td key="contactPerson">{renderCandidateField(candidate.contactPerson)}</td>}
+                      {visibleColumnSet.has('contactPosition') && <td key="contactPosition">{renderCandidateField(candidate.contactPosition)}</td>}
+                      {visibleColumnSet.has('phone') && <td key="phone">{renderCandidateField(candidate.phone)}</td>}
+                      {visibleColumnSet.has('email') && <td key="email">{renderCandidateField(candidate.email)}</td>}
+                      {visibleColumnSet.has('source') && <td key="source">{renderCandidateField(candidate.source)}</td>}
+                      {visibleColumnSet.has('sourceUrl') && <td key="sourceUrl">{renderCandidateField(candidate.sourceUrl)}</td>}
+                      {visibleColumnSet.has('expectedProducts') && <td key="expectedProducts">{renderCandidateField(candidate.expectedProducts)}</td>}
+                      {visibleColumnSet.has('note') && <td key="note">{renderCandidateField(candidate.note)}</td>}
+                      {visibleColumnSet.has('status') && <td key="status">{renderContactResult(candidate)}</td>}
+                      {currentUser.role === 'admin' && visibleColumnSet.has('assignee') && <td key="assignee">{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
+                      {visibleColumnSet.has('potential') && <td key="potential">{renderPotentialLevel(candidate)}</td>}
+                      {visibleColumnSet.has('schedule') && <td key="schedule">{candidate.nextContactAt
                         ? renderCompactValue(formatShortDateTime(candidate.nextContactAt), `${formatShortDateTime(candidate.nextContactAt)} · ${isOverdue ? 'Quá hạn' : isToday ? 'Hôm nay' : 'Sắp tới'}`, isOverdue ? 'lead-date-overdue' : '')
                         : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
-                      {visibleColumnSet.has('latest') && <td>{renderCompactLatestActivity(candidate)}</td>}
-                      {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id])}</td>)}
-                      {visibleColumnSet.has('actions') && <td className="lead-candidate-actions-column">
+                      {visibleColumnSet.has('latest') && <td key="latest">{renderCompactLatestActivity(candidate)}</td>}
+                      {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={`custom:${definition.id}`}>{formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id])}</td>)}
+                      {visibleColumnSet.has('actions') && <td key="actions" className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
@@ -1798,6 +1814,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           ]}
                         />
                       </td>}
+                      </ReorderableTableCells>
                     </tr>
                   );
                 })}
@@ -1808,7 +1825,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact has-dynamic-columns" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150 + 130)}px` }}>
               <thead>
                 <tr>
-                  {visibleColumnSet.has('select') && <th className="lead-candidate-select-column">
+                  <ReorderableTableCells order={orderedColumnIds} getHeaderProps={getHeaderProps} labels={candidateColumnLabels}>
+                  {visibleColumnSet.has('select') && <th key="select" className="lead-candidate-select-column">
                     <input
                       type="checkbox"
                       checked={allDisplayedQueueCandidatesSelected}
@@ -1817,30 +1835,31 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       aria-label="Chọn dữ liệu có thể đưa vào công việc trên trang này"
                     />
                   </th>}
-                  {visibleColumnSet.has('company') && <th data-system-field="companyName">Doanh nghiệp</th>}
-                  {visibleColumnSet.has('taxCode') && <th data-system-field="taxCode">Mã số thuế</th>}
-                  {visibleColumnSet.has('website') && <th data-system-field="website">Website</th>}
-                  {visibleColumnSet.has('businessSector') && <th data-system-field="businessSector">Lĩnh vực hoạt động</th>}
-                  {visibleColumnSet.has('province') && <th data-system-field="province">Tỉnh/thành</th>}
-                  {visibleColumnSet.has('ward') && <th data-system-field="ward">Phường/xã</th>}
-                  {visibleColumnSet.has('industrialPark') && <th data-system-field="industrialPark">Khu công nghiệp</th>}
-                  {visibleColumnSet.has('address') && <th data-system-field="address">Địa chỉ doanh nghiệp</th>}
-                  {visibleColumnSet.has('contact') && <th data-system-field="contact">Thông tin liên hệ (tóm tắt)</th>}
-                  {visibleColumnSet.has('contactPerson') && <th data-system-field="contactPerson">Người liên hệ</th>}
-                  {visibleColumnSet.has('contactPosition') && <th data-system-field="contactPosition">Chức vụ</th>}
-                  {visibleColumnSet.has('phone') && <th data-system-field="phone">Điện thoại</th>}
-                  {visibleColumnSet.has('email') && <th data-system-field="email">Email</th>}
-                  {visibleColumnSet.has('source') && <th data-system-field="source">Nguồn tìm kiếm</th>}
-                  {visibleColumnSet.has('sourceUrl') && <th data-system-field="sourceUrl">Đường dẫn nguồn</th>}
-                  {visibleColumnSet.has('expectedProducts') && <th data-system-field="expectedProducts">Sản phẩm / nhu cầu quan tâm</th>}
-                  {visibleColumnSet.has('note') && <th data-system-field="note">Ghi chú</th>}
-                  {visibleColumnSet.has('assignee') && <th data-system-field="assignedSaleId">Sale phụ trách</th>}
-                  {visibleColumnSet.has('processing') && <th data-system-field="processing">Sale đang xử lý</th>}
-                  {visibleColumnSet.has('potential') && <th data-system-field="potentialLevel">Mức độ tiềm năng</th>}
-                  {visibleColumnSet.has('schedule') && <th data-system-field="nextContactAt">Lịch tiếp theo</th>}
-                  {visibleColumnSet.has('latest') && <th data-system-field="latest">Cập nhật gần nhất</th>}
-                  {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={definition.id}>{definition.name}</th>)}
-                  {visibleColumnSet.has('actions') && <th className="lead-candidate-actions-column">Thao tác</th>}
+                  {visibleColumnSet.has('company') && <th key="company" data-system-field="companyName">Doanh nghiệp</th>}
+                  {visibleColumnSet.has('taxCode') && <th key="taxCode" data-system-field="taxCode">Mã số thuế</th>}
+                  {visibleColumnSet.has('website') && <th key="website" data-system-field="website">Website</th>}
+                  {visibleColumnSet.has('businessSector') && <th key="businessSector" data-system-field="businessSector">Lĩnh vực hoạt động</th>}
+                  {visibleColumnSet.has('province') && <th key="province" data-system-field="province">Tỉnh/thành</th>}
+                  {visibleColumnSet.has('ward') && <th key="ward" data-system-field="ward">Phường/xã</th>}
+                  {visibleColumnSet.has('industrialPark') && <th key="industrialPark" data-system-field="industrialPark">Khu công nghiệp</th>}
+                  {visibleColumnSet.has('address') && <th key="address" data-system-field="address">Địa chỉ doanh nghiệp</th>}
+                  {visibleColumnSet.has('contact') && <th key="contact" data-system-field="contact">Thông tin liên hệ (tóm tắt)</th>}
+                  {visibleColumnSet.has('contactPerson') && <th key="contactPerson" data-system-field="contactPerson">Người liên hệ</th>}
+                  {visibleColumnSet.has('contactPosition') && <th key="contactPosition" data-system-field="contactPosition">Chức vụ</th>}
+                  {visibleColumnSet.has('phone') && <th key="phone" data-system-field="phone">Điện thoại</th>}
+                  {visibleColumnSet.has('email') && <th key="email" data-system-field="email">Email</th>}
+                  {visibleColumnSet.has('source') && <th key="source" data-system-field="source">Nguồn tìm kiếm</th>}
+                  {visibleColumnSet.has('sourceUrl') && <th key="sourceUrl" data-system-field="sourceUrl">Đường dẫn nguồn</th>}
+                  {visibleColumnSet.has('expectedProducts') && <th key="expectedProducts" data-system-field="expectedProducts">Sản phẩm / nhu cầu quan tâm</th>}
+                  {visibleColumnSet.has('note') && <th key="note" data-system-field="note">Ghi chú</th>}
+                  {visibleColumnSet.has('assignee') && <th key="assignee" data-system-field="assignedSaleId">Sale phụ trách</th>}
+                  {visibleColumnSet.has('processing') && <th key="processing" data-system-field="processing">Sale đang xử lý</th>}
+                  {visibleColumnSet.has('potential') && <th key="potential" data-system-field="potentialLevel">Mức độ tiềm năng</th>}
+                  {visibleColumnSet.has('schedule') && <th key="schedule" data-system-field="nextContactAt">Lịch tiếp theo</th>}
+                  {visibleColumnSet.has('latest') && <th key="latest" data-system-field="latest">Cập nhật gần nhất</th>}
+                  {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={`custom:${definition.id}`}>{definition.name}</th>)}
+                  {visibleColumnSet.has('actions') && <th key="actions" className="lead-candidate-actions-column">Thao tác</th>}
+                  </ReorderableTableCells>
                 </tr>
               </thead>
               <tbody>
@@ -1851,7 +1870,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isSelectedForQueue = selectedQueueCandidateSet.has(candidate.id);
                   return (
                     <tr key={candidate.id} className={isSelectedForQueue ? 'is-selected' : ''}>
-                      {visibleColumnSet.has('select') && <td className="lead-candidate-select-column">
+                      <ReorderableTableCells order={orderedColumnIds}>
+                      {visibleColumnSet.has('select') && <td key="select" className="lead-candidate-select-column">
                         <input
                           type="checkbox"
                           checked={isSelectedForQueue}
@@ -1865,7 +1885,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           aria-label={`Chọn ${candidate.companyName}${isAlreadyInQueue ? ' (đã có trong Công việc cần xử lý)' : ''}`}
                         />
                       </td>}
-                      {visibleColumnSet.has('company') && <td>
+                      {visibleColumnSet.has('company') && <td key="company">
                         <div className="lead-candidate-company-cell">
                           {canManageCandidate(candidate) && <button
                             type="button"
@@ -1878,35 +1898,35 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           </button>
                         </div>
                       </td>}
-                      {visibleColumnSet.has('taxCode') && <td>{renderCandidateField(candidate.taxCode)}</td>}
-                      {visibleColumnSet.has('website') && <td>{renderCandidateField(candidate.website)}</td>}
-                      {visibleColumnSet.has('businessSector') && <td>{renderCandidateField(candidate.businessSector)}</td>}
-                      {visibleColumnSet.has('province') && <td>{renderCompactValue(candidate.province || 'Chưa cập nhật', [candidate.province, candidate.address].filter(Boolean).join(' · ') || 'Chưa cập nhật')}</td>}
-                      {visibleColumnSet.has('ward') && <td>{renderCandidateField(candidate.ward)}</td>}
-                      {visibleColumnSet.has('industrialPark') && <td>{renderCandidateField(candidate.industrialPark)}</td>}
-                      {visibleColumnSet.has('address') && <td>{renderCandidateField(candidate.address)}</td>}
-                      {visibleColumnSet.has('contact') && <td>{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
-                      {visibleColumnSet.has('contactPerson') && <td>{renderCandidateField(candidate.contactPerson)}</td>}
-                      {visibleColumnSet.has('contactPosition') && <td>{renderCandidateField(candidate.contactPosition)}</td>}
-                      {visibleColumnSet.has('phone') && <td>{renderCandidateField(candidate.phone)}</td>}
-                      {visibleColumnSet.has('email') && <td>{renderCandidateField(candidate.email)}</td>}
-                      {visibleColumnSet.has('source') && <td>{renderCandidateField(candidate.source)}</td>}
-                      {visibleColumnSet.has('sourceUrl') && <td>{renderCandidateField(candidate.sourceUrl)}</td>}
-                      {visibleColumnSet.has('expectedProducts') && <td>{renderCandidateField(candidate.expectedProducts)}</td>}
-                      {visibleColumnSet.has('note') && <td>{renderCandidateField(candidate.note)}</td>}
-                      {visibleColumnSet.has('assignee') && <td>{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
-                      {visibleColumnSet.has('processing') && <td>
+                      {visibleColumnSet.has('taxCode') && <td key="taxCode">{renderCandidateField(candidate.taxCode)}</td>}
+                      {visibleColumnSet.has('website') && <td key="website">{renderCandidateField(candidate.website)}</td>}
+                      {visibleColumnSet.has('businessSector') && <td key="businessSector">{renderCandidateField(candidate.businessSector)}</td>}
+                      {visibleColumnSet.has('province') && <td key="province">{renderCompactValue(candidate.province || 'Chưa cập nhật', [candidate.province, candidate.address].filter(Boolean).join(' · ') || 'Chưa cập nhật')}</td>}
+                      {visibleColumnSet.has('ward') && <td key="ward">{renderCandidateField(candidate.ward)}</td>}
+                      {visibleColumnSet.has('industrialPark') && <td key="industrialPark">{renderCandidateField(candidate.industrialPark)}</td>}
+                      {visibleColumnSet.has('address') && <td key="address">{renderCandidateField(candidate.address)}</td>}
+                      {visibleColumnSet.has('contact') && <td key="contact">{renderCompactValue(getContactSummary(candidate), [candidate.contactPerson, candidate.phone, candidate.email].filter(Boolean).join(' · ') || 'Chưa có thông tin liên hệ')}</td>}
+                      {visibleColumnSet.has('contactPerson') && <td key="contactPerson">{renderCandidateField(candidate.contactPerson)}</td>}
+                      {visibleColumnSet.has('contactPosition') && <td key="contactPosition">{renderCandidateField(candidate.contactPosition)}</td>}
+                      {visibleColumnSet.has('phone') && <td key="phone">{renderCandidateField(candidate.phone)}</td>}
+                      {visibleColumnSet.has('email') && <td key="email">{renderCandidateField(candidate.email)}</td>}
+                      {visibleColumnSet.has('source') && <td key="source">{renderCandidateField(candidate.source)}</td>}
+                      {visibleColumnSet.has('sourceUrl') && <td key="sourceUrl">{renderCandidateField(candidate.sourceUrl)}</td>}
+                      {visibleColumnSet.has('expectedProducts') && <td key="expectedProducts">{renderCandidateField(candidate.expectedProducts)}</td>}
+                      {visibleColumnSet.has('note') && <td key="note">{renderCandidateField(candidate.note)}</td>}
+                      {visibleColumnSet.has('assignee') && <td key="assignee">{renderCompactValue(candidate.assignedSaleName || 'Chưa phân công', candidate.discoveredByName ? `${candidate.assignedSaleName || 'Chưa phân công'} · Tìm bởi ${candidate.discoveredByName}` : candidate.assignedSaleName || 'Chưa phân công')}</td>}
+                      {visibleColumnSet.has('processing') && <td key="processing">
                         {isAlreadyInQueue
                           ? renderCompactValue(candidate.assignedSaleName || 'Chờ phân công')
                           : renderCompactValue('—', 'Chưa đưa vào xử lý', 'is-muted')}
                       </td>}
-                      {visibleColumnSet.has('potential') && <td>{renderPotentialLevel(candidate)}</td>}
-                      {visibleColumnSet.has('schedule') && <td>{candidate.nextContactAt
+                      {visibleColumnSet.has('potential') && <td key="potential">{renderPotentialLevel(candidate)}</td>}
+                      {visibleColumnSet.has('schedule') && <td key="schedule">{candidate.nextContactAt
                         ? renderCompactValue(formatShortDateTime(candidate.nextContactAt), `${formatShortDateTime(candidate.nextContactAt)} · ${new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}`, new Date(candidate.nextContactAt).getTime() < referenceTime ? 'lead-date-overdue' : '')
                         : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
-                      {visibleColumnSet.has('latest') && <td>{renderCompactLatestActivity(candidate)}</td>}
-                      {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={definition.id}>{formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id])}</td>)}
-                      {visibleColumnSet.has('actions') && <td className="lead-candidate-actions-column">
+                      {visibleColumnSet.has('latest') && <td key="latest">{renderCompactLatestActivity(candidate)}</td>}
+                      {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={`custom:${definition.id}`}>{formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id])}</td>)}
+                      {visibleColumnSet.has('actions') && <td key="actions" className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
@@ -1921,6 +1941,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           ]}
                         />
                       </td>}
+                      </ReorderableTableCells>
                     </tr>
                   );
                 })}

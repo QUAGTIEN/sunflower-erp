@@ -6,6 +6,8 @@ import POFormFullScreen from '@/features/sales/components/POFormFullScreen';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -122,6 +124,17 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     try { window.localStorage.setItem(`sunflower:sales-customer-columns:${currentUser.uid}`, JSON.stringify(next)); } catch { /* State remains active. */ }
     setShowSalesColumnCustomizer(false);
   };
+  const {
+    orderedColumnIds: orderedSalesColumnIds,
+    getHeaderProps: getSalesHeaderProps
+  } = useReorderableTableColumns({
+    columns: SALES_CUSTOMER_COLUMNS,
+    selectedIds: salesVisibleColumns,
+    onOrderChange: saveSalesVisibleColumns,
+    lockedStartIds: ['customer'],
+    lockedEndIds: ['actions']
+  });
+  const salesColumnLabels = Object.fromEntries(SALES_CUSTOMER_COLUMNS.map(column => [column.id, t(column.label)]));
 
   // Auto-select PO when initialSelectedPoId changes
   useEffect(() => {
@@ -939,17 +952,19 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                 >
                   <thead>
                     <tr>
-                      <th data-system-field="companyName">{t('Khách hàng')}</th>
-                      {salesVisibleColumnSet.has('code') && <th>{t('Mã KH')}</th>}
-                      {salesVisibleColumnSet.has('contact') && <th>{t('Người liên hệ')}</th>}
-                      {salesVisibleColumnSet.has('phone') && <th>{t('Số điện thoại')}</th>}
-                      {salesVisibleColumnSet.has('email') && <th>{t('Email')}</th>}
-                      {salesVisibleColumnSet.has('sale') && <th>{t('Sale phụ trách')}</th>}
-                      {salesVisibleColumnSet.has('count') && <th>{t('Số PO')}</th>}
-                      {salesVisibleColumnSet.has('latest') && <th>{t('PO gần nhất')}</th>}
-                      {salesVisibleColumnSet.has('value') && <th>{t('Tổng giá trị')}</th>}
-                      {salesVisibleColumnSet.has('status') && <th>{t('Trạng thái gần nhất')}</th>}
-                      <th>{t('Thao tác')}</th>
+                      <ReorderableTableCells order={orderedSalesColumnIds} getHeaderProps={getSalesHeaderProps} labels={salesColumnLabels}>
+                        <th key="customer" data-system-field="companyName">{t('Khách hàng')}</th>
+                        {salesVisibleColumnSet.has('code') && <th key="code">{t('Mã KH')}</th>}
+                        {salesVisibleColumnSet.has('contact') && <th key="contact">{t('Người liên hệ')}</th>}
+                        {salesVisibleColumnSet.has('phone') && <th key="phone">{t('Số điện thoại')}</th>}
+                        {salesVisibleColumnSet.has('email') && <th key="email">{t('Email')}</th>}
+                        {salesVisibleColumnSet.has('sale') && <th key="sale">{t('Sale phụ trách')}</th>}
+                        {salesVisibleColumnSet.has('count') && <th key="count">{t('Số PO')}</th>}
+                        {salesVisibleColumnSet.has('latest') && <th key="latest">{t('PO gần nhất')}</th>}
+                        {salesVisibleColumnSet.has('value') && <th key="value">{t('Tổng giá trị')}</th>}
+                        {salesVisibleColumnSet.has('status') && <th key="status">{t('Trạng thái gần nhất')}</th>}
+                        <th key="actions">{t('Thao tác')}</th>
+                      </ReorderableTableCells>
                     </tr>
                   </thead>
                   <tbody>
@@ -960,17 +975,19 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                       const assignedSale = users.find(user => user.uid === customer.assignedSaleId || (user as any).id === customer.assignedSaleId);
                       return (
                         <tr key={customer.id} className="sales-customer-row" onClick={() => { setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>
-                          <td><strong className="erp-company-name" title={customer.companyName}>{customer.companyName}</strong></td>
-                          {salesVisibleColumnSet.has('code') && <td><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>}
-                          {salesVisibleColumnSet.has('contact') && <td><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong></td>}
-                          {salesVisibleColumnSet.has('phone') && <td>{customer.phone || t('Chưa cập nhật')}</td>}
-                          {salesVisibleColumnSet.has('email') && <td>{customer.email || t('Chưa cập nhật')}</td>}
-                          {salesVisibleColumnSet.has('sale') && <td>{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>}
-                          {salesVisibleColumnSet.has('count') && <td>{customerOrders.length.toLocaleString('vi-VN')}</td>}
-                          {salesVisibleColumnSet.has('latest') && <td>{latestPO ? formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN')) : '—'}</td>}
-                          {salesVisibleColumnSet.has('value') && <td>{totalValue.toLocaleString('vi-VN')} đ</td>}
-                          {salesVisibleColumnSet.has('status') && <td>{latestPO ? <span className={`sales-status-label sales-status-label--${getPOQueueStatus(latestPO)}`}>{t(getPOQueueLabel(latestPO))}</span> : t('Chưa có PO')}</td>}
-                          <td><button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>{t('Xem PO')}</button></td>
+                          <ReorderableTableCells order={orderedSalesColumnIds}>
+                            <td key="customer"><strong className="erp-company-name" title={customer.companyName}>{customer.companyName}</strong></td>
+                            {salesVisibleColumnSet.has('code') && <td key="code"><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>}
+                            {salesVisibleColumnSet.has('contact') && <td key="contact"><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong></td>}
+                            {salesVisibleColumnSet.has('phone') && <td key="phone">{customer.phone || t('Chưa cập nhật')}</td>}
+                            {salesVisibleColumnSet.has('email') && <td key="email">{customer.email || t('Chưa cập nhật')}</td>}
+                            {salesVisibleColumnSet.has('sale') && <td key="sale">{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>}
+                            {salesVisibleColumnSet.has('count') && <td key="count">{customerOrders.length.toLocaleString('vi-VN')}</td>}
+                            {salesVisibleColumnSet.has('latest') && <td key="latest">{latestPO ? formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN')) : '—'}</td>}
+                            {salesVisibleColumnSet.has('value') && <td key="value">{totalValue.toLocaleString('vi-VN')} đ</td>}
+                            {salesVisibleColumnSet.has('status') && <td key="status">{latestPO ? <span className={`sales-status-label sales-status-label--${getPOQueueStatus(latestPO)}`}>{t(getPOQueueLabel(latestPO))}</span> : t('Chưa có PO')}</td>}
+                            <td key="actions"><button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>{t('Xem PO')}</button></td>
+                          </ReorderableTableCells>
                         </tr>
                       );
                     })}

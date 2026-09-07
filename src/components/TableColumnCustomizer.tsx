@@ -75,7 +75,7 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
         <header>
           <div>
             <h2 id="table-column-customizer-title">Tùy chỉnh cột</h2>
-            <p>Chọn thông tin cần hiển thị trong bảng.</p>
+            <p>Chọn cột cần hiển thị. Kéo tiêu đề trực tiếp trên bảng để đổi vị trí.</p>
           </div>
           <button type="button" className="table-column-customizer__close" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
         </header>
