@@ -218,7 +218,6 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   const [overviewProvinceName, setOverviewProvinceName] = useState('');
   const [overviewIndustrialPark, setOverviewIndustrialPark] = useState('');
   const [showParkManagement, setShowParkManagement] = useState(false);
-  const [parkDraft, setParkDraft] = useState<Record<string, string>>({});
   const [newParkNames, setNewParkNames] = useState('');
   const [parkSaving, setParkSaving] = useState(false);
   const [parkMessage, setParkMessage] = useState('');
@@ -320,8 +319,13 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     [storedFilterDefinitions]
   );
   const industrialParkDefinition = useMemo(
-    () => filterDefinitions.find(definition => definition.id === LEAD_FILTER_IDS.industrialPark),
-    [filterDefinitions]
+    () => storedFilterDefinitions.find(definition => definition.id === LEAD_FILTER_IDS.industrialPark)
+      || filterDefinitions.find(definition => definition.id === LEAD_FILTER_IDS.industrialPark),
+    [filterDefinitions, storedFilterDefinitions]
+  );
+  const overviewParkProvince = useMemo(
+    () => COMMERCIAL_PROVINCES_64.find(province => province.label === overviewProvinceName),
+    [overviewProvinceName]
   );
   const overviewProvince = useMemo(
     () => resolveVietnamProvince(overviewProvinceName)?.province,
@@ -352,9 +356,9 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     });
   }, [currentUser, deliveries, overviewIndustrialPark, overviewProvince]);
   const overviewParks = useMemo(() => {
-    if (!overviewProvince) return [];
-    return activeChildren(industrialParkDefinition?.options.find(option => option.id === overviewProvince.id));
-  }, [industrialParkDefinition, overviewProvince]);
+    if (!overviewParkProvince) return [];
+    return activeChildren(industrialParkDefinition?.options.find(option => option.id === overviewParkProvince.id));
+  }, [industrialParkDefinition, overviewParkProvince]);
   const overviewSummary = useMemo(() => ({
     total: overviewProvinceRecords.length,
     customers: overviewProvinceRecords.filter(record => record.type === 'customer').length,
@@ -401,9 +405,9 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     return Array.from(groups.values()).sort((left, right) => right.revenue - left.revenue || (right.customers + right.leads + right.candidates) - (left.customers + left.leads + left.candidates));
   }, [overviewProvinceRecords]);
 
-  const parkProvince = overviewProvince;
-  const parkProvinceOption = industrialParkDefinition?.options.find(option => option.id === overviewProvince?.id);
-  const parkRows = activeChildren(parkProvinceOption);
+  const parkProvince = overviewParkProvince;
+  const parkProvinceOption = industrialParkDefinition?.options.find(option => option.id === overviewParkProvince?.id);
+  const parkRows = parkProvinceOption?.children || [];
 
   const saveIndustrialParkDefinition = async (nextDefinition: LeadFilterDefinition, message: string) => {
     setParkSaving(true);
@@ -496,35 +500,14 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     }
   };
 
-  const updateIndustrialPark = async (park: LeadFilterOption) => {
-    const label = (parkDraft[park.id] ?? park.label).trim();
-    if (!industrialParkDefinition || !parkProvinceOption || !label) {
-      setParkMessage('Tên KCN không được để trống.');
-      return;
-    }
-    const duplicated = parkRows.some(item => item.id !== park.id && normalizeVietnameseText(item.label) === normalizeVietnameseText(label));
-    if (duplicated) {
-      setParkMessage('Tên KCN này đã tồn tại trong tỉnh/thành đã chọn.');
-      return;
-    }
-    const nextOptions = industrialParkDefinition.options.map(option => option.id !== parkProvinceOption.id ? option : {
-      ...option,
-      children: (option.children || []).map(item => item.id === park.id ? { ...item, label } : item)
-    });
-    if (await saveIndustrialParkDefinition({ ...industrialParkDefinition, options: nextOptions }, `Đã cập nhật ${label}.`)) {
-      if (overviewIndustrialPark === park.label) setOverviewIndustrialPark(label);
-      setParkDraft(previous => { const next = { ...previous }; delete next[park.id]; return next; });
-    }
-  };
-
-  const archiveIndustrialPark = async (park: LeadFilterOption) => {
+  const deleteIndustrialPark = async (park: LeadFilterOption) => {
     if (!industrialParkDefinition || !parkProvinceOption) return;
-    if (!window.confirm(`Ngừng sử dụng KCN “${park.label}”? Dữ liệu doanh nghiệp cũ vẫn được giữ nguyên.`)) return;
+    if (!window.confirm(`Xóa KCN “${park.label}” khỏi danh sách? Dữ liệu hồ sơ cũ vẫn được giữ nguyên.`)) return;
     const nextOptions = industrialParkDefinition.options.map(option => option.id !== parkProvinceOption.id ? option : {
       ...option,
-      children: (option.children || []).map(item => item.id === park.id ? { ...item, active: false } : item)
+      children: (option.children || []).filter(item => item.id !== park.id)
     });
-    if (await saveIndustrialParkDefinition({ ...industrialParkDefinition, options: nextOptions }, `Đã ngừng sử dụng ${park.label}.`)) {
+    if (await saveIndustrialParkDefinition({ ...industrialParkDefinition, options: nextOptions }, `Đã xóa ${park.label}.`)) {
       if (overviewIndustrialPark === park.label) setOverviewIndustrialPark('');
     }
   };
@@ -629,7 +612,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
 
               <div className="commercial-overview__content">
                 <section className="commercial-data-panel">
-                  <header><div><h2>Hiệu quả theo khu vực / KCN</h2><p>{overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}</p></div>{currentUser.role === 'admin' && <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowParkManagement(previous => !previous)}>{showParkManagement ? 'Đóng quản lý KCN' : 'Quản lý KCN'}</button>}</header>
+                  <header><div><h2>Hiệu quả theo khu vực / KCN</h2><p>{overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}</p></div>{currentUser.role === 'admin' && <button type="button" className="btn btn-outline btn-sm" aria-expanded={showParkManagement} aria-controls="commercial-park-manager" onClick={() => setShowParkManagement(previous => !previous)}>{showParkManagement ? 'Đóng quản lý KCN' : 'Quản lý KCN'}</button>}</header>
                   <div className="table-container"><table><thead><tr><th>Khu vực / KCN</th><th>Sale chính</th><th>Hợp tác</th><th>Tiềm năng</th><th>Dữ liệu thô</th><th>PO</th><th>Giá trị</th></tr></thead><tbody>
                     {territoryPerformance.map(row => <tr key={row.label}><td title={row.label}>{row.label}</td><td>{row.primarySale}</td><td>{row.customers}</td><td>{row.leads}</td><td>{row.candidates}</td><td>{row.orders}</td><td>{formatCurrency(row.revenue)}</td></tr>)}
                     {territoryPerformance.length === 0 && <tr><td colSpan={7} className="commercial-table-empty">Chưa có số liệu tại địa bàn đang chọn.</td></tr>}
@@ -638,16 +621,16 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
               </div>
 
               {showParkManagement && currentUser.role === 'admin' && (
-                <section className="commercial-park-manager">
-                  <header><div><h2>Quản lý KCN tại {overviewProvince.label}</h2></div></header>
+                <section id="commercial-park-manager" className="commercial-park-manager">
+                  <header><div><h2>Quản lý KCN tại {overviewParkProvince?.label}</h2></div></header>
                   <div className="commercial-parks__add">
                     <label><span>Dán danh sách KCN, mỗi dòng 1 tên</span><textarea value={newParkNames} onChange={event => setNewParkNames(event.target.value)} rows={4} /></label>
-                    <button type="button" className="btn btn-primary" disabled={parkSaving || !newParkNames.trim()} onClick={() => void addIndustrialPark()}>{parkSaving ? 'Đang lưu...' : 'Thêm danh sách'}</button>
+                    <button type="button" className="btn btn-primary" disabled={parkSaving || !newParkNames.trim()} onClick={() => void addIndustrialPark()}>{parkSaving ? 'Đang lưu...' : 'Lưu'}</button>
                   </div>
                   {parkMessage && <div className="commercial-parks__message" role="status">{parkMessage}</div>}
-                  <div className="table-container"><table><thead><tr><th style={{ width: 64 }}>STT</th><th>Tên khu công nghiệp</th><th style={{ width: 140 }}>Trạng thái</th><th style={{ width: 190 }}>Thao tác</th></tr></thead><tbody>
-                    {parkRows.map((park, index) => <tr key={park.id}><td>{index + 1}</td><td><input aria-label={`Tên ${park.label}`} value={parkDraft[park.id] ?? park.label} onChange={event => setParkDraft(previous => ({ ...previous, [park.id]: event.target.value }))} /></td><td><span className="commercial-active-text">Đang sử dụng</span></td><td><div className="commercial-row-actions"><button type="button" className="btn btn-outline btn-sm" disabled={parkSaving || (parkDraft[park.id] ?? park.label).trim() === park.label} onClick={() => void updateIndustrialPark(park)}>Lưu</button><button type="button" className="btn btn-danger btn-sm" disabled={parkSaving} onClick={() => void archiveIndustrialPark(park)}>Ngừng dùng</button></div></td></tr>)}
-                    {parkRows.length === 0 && <tr><td colSpan={4} className="commercial-table-empty">Tỉnh/thành này chưa có KCN được cấu hình.</td></tr>}
+                  <div className="table-container"><table><thead><tr><th style={{ width: 64 }}>STT</th><th>Tên khu công nghiệp</th><th style={{ width: 110 }}>Thao tác</th></tr></thead><tbody>
+                    {parkRows.map((park, index) => <tr key={park.id}><td>{index + 1}</td><td title={park.label}>{park.label}</td><td><div className="commercial-row-actions"><button type="button" className="btn btn-danger btn-sm" disabled={parkSaving} onClick={() => void deleteIndustrialPark(park)}>Xóa</button></div></td></tr>)}
+                    {parkRows.length === 0 && <tr><td colSpan={3} className="commercial-table-empty">Tỉnh/thành này chưa có KCN được cấu hình.</td></tr>}
                   </tbody></table></div>
                 </section>
               )}
