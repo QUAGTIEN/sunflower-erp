@@ -639,9 +639,9 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
 
               {showParkManagement && currentUser.role === 'admin' && (
                 <section className="commercial-park-manager">
-                  <header><div><h2>Quản lý KCN tại {overviewProvince.label}</h2><p>KCN mới sẽ dùng chung trong các biểu mẫu khách hàng. Ngừng sử dụng không xóa dữ liệu lịch sử.</p></div></header>
+                  <header><div><h2>Quản lý KCN tại {overviewProvince.label}</h2></div></header>
                   <div className="commercial-parks__add">
-                    <label><span>Danh sách khu công nghiệp mới</span><textarea value={newParkNames} onChange={event => setNewParkNames(event.target.value)} rows={4} placeholder={`Dán danh sách KCN thuộc ${overviewProvince.label}, mỗi dòng một tên`} /></label>
+                    <label><span>Dán danh sách KCN, mỗi dòng 1 tên</span><textarea value={newParkNames} onChange={event => setNewParkNames(event.target.value)} rows={4} /></label>
                     <button type="button" className="btn btn-primary" disabled={parkSaving || !newParkNames.trim()} onClick={() => void addIndustrialPark()}>{parkSaving ? 'Đang lưu...' : 'Thêm danh sách'}</button>
                   </div>
                   {parkMessage && <div className="commercial-parks__message" role="status">{parkMessage}</div>}
