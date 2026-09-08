@@ -69,8 +69,14 @@
 }
 
 .commercial-overview__toolbar select,
-.commercial-parks__add input {
+.commercial-parks__add input,
+.commercial-parks__add textarea {
   width: 100%;
+}
+
+.commercial-parks__add textarea {
+  min-height: 96px;
+  resize: vertical;
 }
 
 .commercial-empty-state {

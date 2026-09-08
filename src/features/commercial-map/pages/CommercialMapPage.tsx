@@ -219,7 +219,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   const [overviewIndustrialPark, setOverviewIndustrialPark] = useState('');
   const [showParkManagement, setShowParkManagement] = useState(false);
   const [parkDraft, setParkDraft] = useState<Record<string, string>>({});
-  const [newParkName, setNewParkName] = useState('');
+  const [newParkNames, setNewParkNames] = useState('');
   const [parkSaving, setParkSaving] = useState(false);
   const [parkMessage, setParkMessage] = useState('');
   const [activeLayer, setActiveLayer] = useState<CommercialMapLayer>('all');
@@ -430,24 +430,48 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   };
 
   const addIndustrialPark = async () => {
-    const label = newParkName.trim();
-    if (!industrialParkDefinition || !parkProvince || !label) {
-      setParkMessage(!parkProvince ? 'Vui lòng chọn tỉnh/thành trước khi thêm KCN.' : 'Vui lòng nhập tên KCN.');
-      return;
-    }
-    if (parkRows.some(park => normalizeVietnameseText(park.label) === normalizeVietnameseText(label))) {
-      setParkMessage('KCN này đã tồn tại trong tỉnh/thành đã chọn.');
+    const lines = newParkNames.split(/\r?\n/);
+    if (!industrialParkDefinition || !parkProvince || !newParkNames.trim()) {
+      setParkMessage(!parkProvince ? 'Vui lòng chọn tỉnh/thành trước khi thêm KCN.' : 'Vui lòng dán ít nhất một tên KCN.');
       return;
     }
     const existingProvince = industrialParkDefinition.options.find(option => option.id === parkProvince.id);
-    const newPark: LeadFilterOption = {
-      id: createParkId(parkProvince.id, label, new Set((existingProvince?.children || []).map(item => item.id))),
-      label,
-      color: existingProvince?.color || '#2563eb',
-      active: true,
-      kind: 'region',
-      system: false
-    };
+    const existingParks = existingProvince?.children || [];
+    const existingIds = new Set(existingParks.map(item => item.id));
+    const existingLabels = new Set(existingParks.map(park => normalizeVietnameseText(park.label)));
+    const seenLabels = new Set<string>();
+    let blankCount = 0;
+    let duplicateCount = 0;
+    const newParks: LeadFilterOption[] = [];
+
+    lines.forEach(line => {
+      const label = line.trim().replace(/\s+/g, ' ');
+      if (!label) {
+        blankCount += 1;
+        return;
+      }
+      const normalizedLabel = normalizeVietnameseText(label);
+      if (existingLabels.has(normalizedLabel) || seenLabels.has(normalizedLabel)) {
+        duplicateCount += 1;
+        return;
+      }
+      seenLabels.add(normalizedLabel);
+      const newPark: LeadFilterOption = {
+        id: createParkId(parkProvince.id, label, existingIds),
+        label,
+        color: existingProvince?.color || '#2563eb',
+        active: true,
+        kind: 'region',
+        system: false
+      };
+      existingIds.add(newPark.id);
+      newParks.push(newPark);
+    });
+
+    if (newParks.length === 0) {
+      setParkMessage('Không có KCN mới để thêm. Các dòng đã dán đều trống hoặc bị trùng.');
+      return;
+    }
     const provinceOption: LeadFilterOption = existingProvince || {
       id: parkProvince.id,
       label: parkProvince.label,
@@ -459,11 +483,16 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
     };
     const nextOptions = existingProvince
       ? industrialParkDefinition.options.map(option => option.id === parkProvince.id
-        ? { ...option, children: [...(option.children || []), newPark] }
+        ? { ...option, children: [...(option.children || []), ...newParks] }
         : option)
-      : [...industrialParkDefinition.options, { ...provinceOption, children: [newPark] }];
-    if (await saveIndustrialParkDefinition({ ...industrialParkDefinition, options: nextOptions }, `Đã thêm ${label}.`)) {
-      setNewParkName('');
+      : [...industrialParkDefinition.options, { ...provinceOption, children: newParks }];
+    const skippedParts = [
+      duplicateCount > 0 ? `${duplicateCount} dòng trùng` : '',
+      blankCount > 0 ? `${blankCount} dòng trống` : ''
+    ].filter(Boolean);
+    const message = `Đã thêm ${newParks.length} KCN${skippedParts.length > 0 ? `; bỏ qua ${skippedParts.join(' và ')}` : ''}.`;
+    if (await saveIndustrialParkDefinition({ ...industrialParkDefinition, options: nextOptions }, message)) {
+      setNewParkNames('');
     }
   };
 
@@ -612,8 +641,8 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                 <section className="commercial-park-manager">
                   <header><div><h2>Quản lý KCN tại {overviewProvince.label}</h2><p>KCN mới sẽ dùng chung trong các biểu mẫu khách hàng. Ngừng sử dụng không xóa dữ liệu lịch sử.</p></div></header>
                   <div className="commercial-parks__add">
-                    <label><span>Tên khu công nghiệp mới</span><input value={newParkName} onChange={event => setNewParkName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void addIndustrialPark(); } }} placeholder={`Nhập KCN thuộc ${overviewProvince.label}`} /></label>
-                    <button type="button" className="btn btn-primary" disabled={parkSaving || !newParkName.trim()} onClick={() => void addIndustrialPark()}>{parkSaving ? 'Đang lưu...' : 'Thêm KCN'}</button>
+                    <label><span>Danh sách khu công nghiệp mới</span><textarea value={newParkNames} onChange={event => setNewParkNames(event.target.value)} rows={4} placeholder={`Dán danh sách KCN thuộc ${overviewProvince.label}, mỗi dòng một tên`} /></label>
+                    <button type="button" className="btn btn-primary" disabled={parkSaving || !newParkNames.trim()} onClick={() => void addIndustrialPark()}>{parkSaving ? 'Đang lưu...' : 'Thêm danh sách'}</button>
                   </div>
                   {parkMessage && <div className="commercial-parks__message" role="status">{parkMessage}</div>}
                   <div className="table-container"><table><thead><tr><th style={{ width: 64 }}>STT</th><th>Tên khu công nghiệp</th><th style={{ width: 140 }}>Trạng thái</th><th style={{ width: 190 }}>Thao tác</th></tr></thead><tbody>
