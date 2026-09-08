@@ -14,6 +14,7 @@ export interface WorkScheduleRecord {
   id: string;
   title: string;
   description: string;
+  stage: string;
   assigneeId: string;
   assigneeName: string;
   department: string;
@@ -70,6 +71,7 @@ export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord 
     id: asText(source.id),
     title: asText(source.title),
     description: asText(source.description),
+    stage: asText(source.stage),
     assigneeId: asText(source.assigneeId),
     assigneeName: asText(source.assigneeName),
     department: asText(source.department),

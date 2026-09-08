@@ -1,9 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
-import { WORK_SCHEDULE_DEPARTMENT_LABELS, WORK_SCHEDULE_REFERENCE_LABELS, WORK_SCHEDULE_STATUS_LABELS, formatScheduleDate, formatScheduleTime, getWeekStart, isScheduleOnDate, normalizeWorkScheduleRecords, overlapsSchedule, parseDateKey, toDateKey, type WorkScheduleRecord, type WorkScheduleReferenceType, type WorkScheduleStatus } from '@/features/work-schedule/model/workScheduleModels';
+import {
+  WORK_SCHEDULE_DEPARTMENT_LABELS,
+  WORK_SCHEDULE_STATUS_LABELS,
+  formatScheduleTime,
+  getWeekStart,
+  isScheduleOnDate,
+  normalizeWorkScheduleRecords,
+  overlapsSchedule,
+  parseDateKey,
+  toDateKey,
+  type WorkScheduleRecord,
+  type WorkScheduleReferenceType,
+  type WorkScheduleStatus
+} from '@/features/work-schedule/model/workScheduleModels';
 import './WorkSchedule.css';
 
 interface WorkScheduleProps {
@@ -17,6 +29,7 @@ interface ScheduleFormState {
   date: string;
   startTime: string;
   endTime: string;
+  stage: string;
   referenceType: WorkScheduleReferenceType;
   referenceId: string;
   referenceLabel: string;
@@ -28,46 +41,46 @@ interface ScheduleFormState {
 
 const todayKey = toDateKey(new Date());
 
-const defaultForm = (assigneeId = ''): ScheduleFormState => ({
-  title: '',
-  assigneeId,
-  date: todayKey,
-  startTime: '08:00',
-  endTime: '09:00',
-  referenceType: 'none',
-  referenceId: '',
-  referenceLabel: '',
-  description: '',
-  progress: '0',
-  status: 'not_started',
-  notes: ''
+const defaultForm = (assigneeId = '', date = todayKey): ScheduleFormState => ({
+  title: '', assigneeId, date, startTime: '08:00', endTime: '09:00', stage: '',
+  referenceType: 'none', referenceId: '', referenceLabel: '', description: '',
+  progress: '0', status: 'not_started', notes: ''
 });
 
 const roleDepartment = (role: UserProfile['role']): string => WORK_SCHEDULE_DEPARTMENT_LABELS[role] || role;
-
 const formatDateTimeInput = (date: string, time: string): string => {
   const parsed = new Date(`${date}T${time}:00`);
   return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : '';
 };
-
 const getDayLabel = (date: Date): string => date.toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' });
+const getSelectedDateLabel = (date: Date): string => date.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+const getMonthLabel = (date: Date): string => date.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
+const getCalendarDates = (monthAnchor: Date): Date[] => {
+  const firstDay = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth(), 1);
+  const gridStart = getWeekStart(firstDay);
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(date.getDate() + index);
+    return date;
+  });
+};
 
 export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }) => {
   const isAdmin = currentUser.role === 'admin';
   const [items, setItems] = useState<WorkScheduleRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'today' | 'week'>('today');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'week'>('tasks');
   const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [monthAnchor, setMonthAnchor] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [weekAnchor, setWeekAnchor] = useState(() => getWeekStart(new Date()));
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<WorkScheduleRecord | null>(null);
-  const [form, setForm] = useState<ScheduleFormState>(() => defaultForm());
+  const [form, setForm] = useState<ScheduleFormState>(() => defaultForm(currentUser.uid));
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [conflictMessage, setConflictMessage] = useState('');
-  const [referenceTime, setReferenceTime] = useState(() => Date.now());
+  const [actionMessage, setActionMessage] = useState('');
 
   const loadItems = useCallback(async () => {
     setIsLoading(true);
@@ -76,9 +89,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
       const data = isAdmin
         ? await dbService.getCollection('work_schedule_items')
         : await dbService.getCollectionByField('work_schedule_items', 'assigneeId', currentUser.uid, {
-            orderByField: 'startAt',
-            direction: 'asc',
-            maxResults: 500
+            orderByField: 'startAt', direction: 'asc', maxResults: 500
           });
       setItems(normalizeWorkScheduleRecords(data).filter(item => !item.deleted));
     } catch (error) {
@@ -89,13 +100,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
     }
   }, [currentUser.uid, isAdmin]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadItems(); }, [loadItems]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setReferenceTime(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   const visibleUsers = useMemo(() => users
     .filter(user => user.active !== false)
@@ -103,128 +108,88 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
     .filter(user => departmentFilter === 'all' || user.role === departmentFilter)
     .filter(user => !searchTerm.trim() || user.displayName.toLocaleLowerCase('vi-VN').includes(searchTerm.trim().toLocaleLowerCase('vi-VN'))),
   [currentUser.uid, departmentFilter, isAdmin, searchTerm, users]);
-
-  const selectedDay = parseDateKey(selectedDate);
-  const dayItems = useMemo(() => items.filter(item => isScheduleOnDate(item, selectedDay)), [items, selectedDay]);
+  const visibleUserIds = useMemo(() => new Set(visibleUsers.map(user => user.uid)), [visibleUsers]);
+  const selectedDay = useMemo(() => parseDateKey(selectedDate), [selectedDate]);
+  const dayItems = useMemo(() => items
+    .filter(item => visibleUserIds.has(item.assigneeId) && isScheduleOnDate(item, selectedDay))
+    .sort((left, right) => left.startAt.localeCompare(right.startAt)), [items, selectedDay, visibleUserIds]);
+  const calendarDates = useMemo(() => getCalendarDates(monthAnchor), [monthAnchor]);
   const weekDates = useMemo(() => Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weekAnchor);
     date.setDate(date.getDate() + index);
     return date;
   }), [weekAnchor]);
+  const summary = useMemo(() => ({
+    total: dayItems.length,
+    inProgress: dayItems.filter(item => item.status === 'in_progress').length,
+    incomplete: dayItems.filter(item => item.status !== 'completed').length,
+    completed: dayItems.filter(item => item.status === 'completed').length
+  }), [dayItems]);
 
-  const getScheduleForUser = (userId: string, dateItems: WorkScheduleRecord[] = dayItems): WorkScheduleRecord | null => {
-    const now = referenceTime;
-    return dateItems
-      .filter(item => item.assigneeId === userId)
-      .sort((left, right) => {
-        const leftStart = new Date(left.startAt).getTime();
-        const rightStart = new Date(right.startAt).getTime();
-        const leftActive = leftStart <= now && new Date(left.endAt).getTime() > now && left.status !== 'completed';
-        const rightActive = rightStart <= now && new Date(right.endAt).getTime() > now && right.status !== 'completed';
-        return Number(rightActive) - Number(leftActive) || leftStart - rightStart;
-      })[0] || null;
-  };
-
-  const filteredUsers = visibleUsers.filter(user => {
-    if (!onlyAvailable) return true;
-    return !getScheduleForUser(user.uid);
-  });
-
-  const activeSchedule = (userId: string): WorkScheduleRecord | null => {
-    const now = referenceTime;
-    return items.find(item => item.assigneeId === userId
-      && item.status !== 'completed'
-      && new Date(item.startAt).getTime() <= now
-      && new Date(item.endAt).getTime() > now) || null;
-  };
-
-  const openCreateForm = (assigneeId = '') => {
+  const openCreateForm = (assigneeId = isAdmin ? '' : currentUser.uid, date = selectedDate) => {
     setEditingItem(null);
     setConflictMessage('');
-    setForm(defaultForm(assigneeId));
+    setForm(defaultForm(assigneeId, date));
     setIsFormOpen(true);
   };
 
   const openEditForm = (item: WorkScheduleRecord) => {
+    if (!isAdmin && item.assigneeId !== currentUser.uid) return;
     const start = new Date(item.startAt);
     const end = new Date(item.endAt);
     setEditingItem(item);
     setConflictMessage('');
     setForm({
-      title: item.title,
-      assigneeId: item.assigneeId,
-      date: toDateKey(start),
-      startTime: start.toTimeString().slice(0, 5),
-      endTime: end.toTimeString().slice(0, 5),
-      referenceType: item.referenceType,
-      referenceId: item.referenceId,
-      referenceLabel: item.referenceLabel,
-      description: item.description,
-      progress: String(item.progress),
-      status: item.status,
-      notes: item.notes
+      title: item.title, assigneeId: item.assigneeId, date: toDateKey(start),
+      startTime: start.toTimeString().slice(0, 5), endTime: end.toTimeString().slice(0, 5),
+      stage: item.stage, referenceType: item.referenceType, referenceId: item.referenceId,
+      referenceLabel: item.referenceLabel, description: item.description, progress: String(item.progress),
+      status: item.status, notes: item.notes
     });
     setIsFormOpen(true);
   };
 
   const notifyAssignee = async (item: WorkScheduleRecord, event: 'assigned' | 'updated' | 'cancelled') => {
-    if (item.assigneeId === currentUser.uid && event === 'assigned') return;
+    if (item.assigneeId === currentUser.uid) return;
     const labels = { assigned: 'Bạn được giao công việc', updated: 'Lịch làm việc được cập nhật', cancelled: 'Lịch làm việc đã được hủy' };
     await dbService.addDocument('notifications', {
-      id: `schedule-${item.id}-${event}-${Date.now()}`,
-      schemaVersion: 1,
-      recipientId: item.assigneeId,
-      module: 'system',
-      eventType: `work_schedule_${event}`,
-      eventKey: `work_schedule:${item.id}:${event}:${Date.now()}`,
-      entityId: item.id,
-      entityCode: item.title,
-      title: labels[event],
-      message: `${item.title} · ${formatScheduleDate(item.startAt)} ${formatScheduleTime(item.startAt)}–${formatScheduleTime(item.endAt)}`,
-      createdAt: new Date().toISOString(),
-      createdById: currentUser.uid,
-      source: 'manual',
-      readAt: null
+      id: `schedule-${item.id}-${event}-${Date.now()}`, schemaVersion: 1,
+      recipientId: item.assigneeId, module: 'system', eventType: `work_schedule_${event}`,
+      eventKey: `work_schedule:${item.id}:${event}:${Date.now()}`, entityId: item.id,
+      entityCode: item.title, title: labels[event],
+      message: `${item.title} · ${formatScheduleTime(item.startAt)}–${formatScheduleTime(item.endAt)}`,
+      createdAt: new Date().toISOString(), createdById: currentUser.uid, source: 'manual', readAt: null
     });
   };
 
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     setConflictMessage('');
-    const assignee = users.find(user => user.uid === form.assigneeId);
+    setActionMessage('');
+    const assigneeId = isAdmin ? form.assigneeId : currentUser.uid;
+    const assignee = users.find(user => user.uid === assigneeId);
     const startAt = formatDateTimeInput(form.date, form.startTime);
     const endAt = formatDateTimeInput(form.date, form.endTime);
     if (!form.title.trim() || !assignee || !startAt || !endAt || new Date(endAt).getTime() <= new Date(startAt).getTime()) {
       setConflictMessage('Vui lòng nhập đủ thông tin và bảo đảm giờ kết thúc sau giờ bắt đầu.');
       return;
     }
-    const candidate = { assigneeId: form.assigneeId, startAt, endAt };
-    const conflict = items.find(item => item.id !== editingItem?.id && overlapsSchedule(candidate, item));
+    const conflict = items.find(item => item.id !== editingItem?.id && overlapsSchedule({ assigneeId, startAt, endAt }, item));
     if (conflict) {
-      setConflictMessage(`Lịch bị trùng với “${conflict.title}” (${formatScheduleDate(conflict.startAt)} ${formatScheduleTime(conflict.startAt)}–${formatScheduleTime(conflict.endAt)}).`);
+      setConflictMessage(`Thời gian bị trùng với “${conflict.title}” (${formatScheduleTime(conflict.startAt)}–${formatScheduleTime(conflict.endAt)}).`);
       return;
     }
 
     const now = new Date().toISOString();
-    const progress = Number(form.progress) || 0;
+    const progress = form.status === 'completed' ? 100 : Math.min(99, Math.max(0, Number(form.progress) || 0));
     const payload = {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      assigneeId: assignee.uid,
-      assigneeName: assignee.displayName,
-      department: roleDepartment(assignee.role),
+      title: form.title.trim(), description: form.description.trim(), stage: form.stage.trim(),
+      assigneeId: assignee.uid, assigneeName: assignee.displayName, department: roleDepartment(assignee.role),
       assignedById: editingItem?.assignedById || currentUser.uid,
       assignedByName: editingItem?.assignedByName || currentUser.displayName,
-      startAt,
-      endAt,
-      status: form.status,
-      progress,
-      referenceType: form.referenceType,
-      referenceId: form.referenceId.trim(),
-      referenceLabel: form.referenceLabel.trim(),
-      notes: form.notes.trim(),
-      updatedAt: now,
-      completedAt: form.status === 'completed' ? (editingItem?.completedAt || now) : undefined,
+      startAt, endAt, status: form.status, progress, referenceType: form.referenceType,
+      referenceId: form.referenceId.trim(), referenceLabel: form.referenceLabel.trim(), notes: form.notes.trim(),
+      updatedAt: now, completedAt: form.status === 'completed' ? (editingItem?.completedAt || now) : null,
       deleted: false
     };
 
@@ -238,124 +203,140 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
         : [...previous, normalized]);
       await notifyAssignee(normalized, editingItem ? 'updated' : 'assigned');
       auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'system',
-        action: editingItem ? 'work_schedule_updated' : 'work_schedule_created',
-        summary: `${editingItem ? 'Cập nhật' : 'Tạo'} lịch làm việc “${normalized.title}” cho ${normalized.assigneeName}`,
-        targetType: 'work_schedule',
-        targetId: normalized.id,
-        targetLabel: normalized.title,
-        pageId: 'work_schedule'
+        category: 'business', module: 'system', action: editingItem ? 'work_schedule_updated' : 'work_schedule_created',
+        summary: `${editingItem ? 'Cập nhật' : 'Tạo'} công việc “${normalized.title}” cho ${normalized.assigneeName}`,
+        targetType: 'work_schedule', targetId: normalized.id, targetLabel: normalized.title, pageId: 'work_schedule'
       });
+      setSelectedDate(form.date);
+      setMonthAnchor(new Date(Number(form.date.slice(0, 4)), Number(form.date.slice(5, 7)) - 1, 1));
+      setActionMessage(editingItem ? 'Đã cập nhật công việc.' : 'Đã thêm công việc.');
       setIsFormOpen(false);
     } catch (error) {
       console.error('[WorkSchedule] Could not save schedule.', error);
-      setConflictMessage('Không thể lưu lịch làm việc. Vui lòng thử lại.');
+      setConflictMessage('Không thể lưu công việc. Vui lòng thử lại.');
     }
   };
 
-  const updateOwnSchedule = async (item: WorkScheduleRecord, fields: Pick<WorkScheduleRecord, 'status' | 'progress'>) => {
+  const updateTaskStatus = async (item: WorkScheduleRecord, completed: boolean) => {
+    const status: WorkScheduleStatus = completed ? 'completed' : 'not_started';
+    const progress = completed ? 100 : 0;
+    const now = new Date().toISOString();
     try {
-      const completedAt = fields.status === 'completed' ? new Date().toISOString() : undefined;
-      await dbService.updateDocument('work_schedule_items', item.id, { ...fields, completedAt });
-      setItems(previous => previous.map(current => current.id === item.id ? { ...current, ...fields, completedAt } : current));
+      await dbService.updateDocument('work_schedule_items', item.id, {
+        status, progress, completedAt: completed ? now : null, updatedAt: now
+      });
+      setItems(previous => previous.map(current => current.id === item.id
+        ? { ...current, status, progress, completedAt: completed ? now : undefined, updatedAt: now }
+        : current));
+      setActionMessage(completed ? 'Đã hoàn thành công việc.' : 'Đã chuyển về chưa hoàn thành.');
       auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'system',
-        action: 'work_schedule_progress_updated',
-        summary: `Cập nhật tiến độ “${item.title}”`,
-        targetType: 'work_schedule',
-        targetId: item.id,
-        targetLabel: item.title,
-        pageId: 'work_schedule'
+        category: 'business', module: 'system', action: 'work_schedule_progress_updated',
+        summary: `${completed ? 'Hoàn thành' : 'Mở lại'} công việc “${item.title}”`,
+        targetType: 'work_schedule', targetId: item.id, targetLabel: item.title, pageId: 'work_schedule'
       });
     } catch (error) {
       console.error('[WorkSchedule] Could not update schedule.', error);
+      setActionMessage('Không thể cập nhật trạng thái. Vui lòng thử lại.');
     }
   };
 
   const cancelSchedule = async (item: WorkScheduleRecord) => {
-    if (!window.confirm(`Hủy lịch “${item.title}”?`)) return;
+    if (!window.confirm(`Hủy công việc “${item.title}”?`)) return;
     try {
       await dbService.updateDocument('work_schedule_items', item.id, { deleted: true, deletedAt: new Date().toISOString() });
       setItems(previous => previous.filter(current => current.id !== item.id));
       await notifyAssignee(item, 'cancelled');
+      setActionMessage('Đã hủy công việc.');
       auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'system',
-        action: 'work_schedule_cancelled',
-        summary: `Hủy lịch làm việc “${item.title}”`,
-        targetType: 'work_schedule',
-        targetId: item.id,
-        targetLabel: item.title,
-        pageId: 'work_schedule'
+        category: 'business', module: 'system', action: 'work_schedule_cancelled', summary: `Hủy công việc “${item.title}”`,
+        targetType: 'work_schedule', targetId: item.id, targetLabel: item.title, pageId: 'work_schedule'
       });
     } catch (error) {
       console.error('[WorkSchedule] Could not cancel schedule.', error);
+      setActionMessage('Không thể hủy công việc. Vui lòng thử lại.');
     }
   };
 
-  const renderStatus = (item: WorkScheduleRecord | null) => {
-    if (!item) return <span className="work-schedule-muted">Đang rảnh</span>;
-    const canUpdate = item.assigneeId === currentUser.uid && !isAdmin;
-    if (canUpdate) {
-      return (
-        <div className="work-schedule-inline-controls">
-          <select value={item.status} onChange={event => void updateOwnSchedule(item, { status: event.target.value as WorkScheduleStatus, progress: item.progress })} aria-label="Trạng thái công việc">
-            {Object.entries(WORK_SCHEDULE_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-          <input type="number" min="0" max="100" value={item.progress} onChange={event => void updateOwnSchedule(item, { status: item.status, progress: Number(event.target.value) })} aria-label="Tiến độ phần trăm" />
-          <span>%</span>
-        </div>
-      );
+  const selectCalendarDate = (date: Date) => {
+    setSelectedDate(toDateKey(date));
+    if (date.getMonth() !== monthAnchor.getMonth() || date.getFullYear() !== monthAnchor.getFullYear()) {
+      setMonthAnchor(new Date(date.getFullYear(), date.getMonth(), 1));
     }
-    return <span>{WORK_SCHEDULE_STATUS_LABELS[item.status]}{item.status !== 'completed' ? ` · ${item.progress}%` : ''}</span>;
   };
 
   return (
     <div className="work-schedule-page">
-      <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Hôm nay'} />
-
+      <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Công việc'} />
       <div className="work-schedule-tabs content-tabs" role="tablist" aria-label="Chế độ xem lịch làm việc">
-          <button type="button" role="tab" aria-selected={activeTab === 'today'} className={activeTab === 'today' ? 'is-active' : ''} onClick={() => setActiveTab('today')}>Hôm nay</button>
-          <button type="button" role="tab" aria-selected={activeTab === 'week'} className={activeTab === 'week' ? 'is-active' : ''} onClick={() => setActiveTab('week')}>Lịch tuần</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'tasks'} className={activeTab === 'tasks' ? 'is-active' : ''} onClick={() => setActiveTab('tasks')}>Công việc</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'week'} className={activeTab === 'week' ? 'is-active' : ''} onClick={() => setActiveTab('week')}>Lịch tuần</button>
       </div>
 
       <section className="work-schedule-card">
         <div className="work-schedule-toolbar">
-          {activeTab === 'today' ? <input type="date" value={selectedDate} onChange={event => setSelectedDate(event.target.value)} aria-label="Ngày xem lịch" /> : <div className="work-schedule-week-nav"><button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() - 7))} aria-label="Tuần trước"><ChevronLeft size={16} /></button><span>{getDayLabel(weekDates[0])} – {getDayLabel(weekDates[6])}</span><button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() + 7))} aria-label="Tuần sau"><ChevronRight size={16} /></button></div>}
-          <select value={departmentFilter} onChange={event => setDepartmentFilter(event.target.value)} aria-label="Lọc bộ phận"><option value="all">Tất cả bộ phận</option>{Object.entries(WORK_SCHEDULE_DEPARTMENT_LABELS).filter(([role]) => role !== 'admin').map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select>
-          <label className="work-schedule-search"><Search size={15} /><input placeholder="Tìm nhân viên..." value={searchTerm} onChange={event => setSearchTerm(event.target.value)} /></label>
-          {activeTab === 'today' && <label className="work-schedule-check"><input type="checkbox" checked={onlyAvailable} onChange={event => setOnlyAvailable(event.target.checked)} /> Chỉ người rảnh</label>}
-          <button type="button" className="btn btn-outline" onClick={() => { setSelectedDate(todayKey); setWeekAnchor(getWeekStart(new Date())); }}>Hôm nay</button>
-          {isAdmin && <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}>Giao việc</button>}
+          {isAdmin && <select value={departmentFilter} onChange={event => setDepartmentFilter(event.target.value)} aria-label="Lọc bộ phận"><option value="all">Tất cả bộ phận</option>{Object.entries(WORK_SCHEDULE_DEPARTMENT_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select>}
+          {isAdmin && <label className="work-schedule-search"><span>Tìm</span><input placeholder="Tên nhân viên" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} /></label>}
+          <button type="button" className="btn btn-outline" onClick={() => { const today = new Date(); setSelectedDate(todayKey); setMonthAnchor(new Date(today.getFullYear(), today.getMonth(), 1)); setWeekAnchor(getWeekStart(today)); }}>Hôm nay</button>
+          <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}>{isAdmin ? 'Giao việc' : 'Thêm công việc'}</button>
         </div>
 
-        {errorMessage && <div className="work-schedule-message">{errorMessage}</div>}
-        {isLoading ? <div className="work-schedule-empty">Đang tải lịch làm việc...</div> : activeTab === 'today' ? (
-          <div className="work-schedule-table-wrap">
-            <table className="work-schedule-table"><thead><tr><th>Nhân viên</th><th>Bộ phận</th><th>Đang thực hiện</th><th>Công việc liên quan</th><th>Thời gian</th><th>Tiến độ</th><th>Thao tác</th></tr></thead><tbody>
-              {filteredUsers.map(user => {
-                const item = getScheduleForUser(user.uid);
-                const current = selectedDate === todayKey ? activeSchedule(user.uid) : null;
-                return <tr key={user.uid}>
-                  <td><strong>{user.displayName}</strong></td><td>{roleDepartment(user.role)}</td>
-                  <td>{current ? current.title : item ? (new Date(item.startAt).getTime() > referenceTime ? 'Có lịch sắp tới' : item.title) : <span className="work-schedule-muted">—</span>}</td>
-                  <td>{item?.referenceLabel || '—'}</td>
-                  <td>{item ? `${formatScheduleTime(item.startAt)}–${formatScheduleTime(item.endAt)}` : '—'}</td>
-                  <td>{renderStatus(item)}</td>
-                  <td className="work-schedule-actions">{isAdmin && item && <button type="button" className="btn btn-sm btn-outline" onClick={() => openEditForm(item)}>Sửa</button>}{isAdmin && <button type="button" className="btn btn-sm btn-outline" onClick={() => openCreateForm(user.uid)}>Giao việc</button>}{isAdmin && item && <button type="button" className="btn btn-sm btn-outline" onClick={() => void cancelSchedule(item)}>Hủy</button>}</td>
-                </tr>;
-              })}
-              {filteredUsers.length === 0 && <tr><td colSpan={7} className="work-schedule-empty">Không có nhân viên phù hợp.</td></tr>}
-            </tbody></table>
-          </div>
+        {errorMessage && <div className="work-schedule-message work-schedule-message--error">{errorMessage}</div>}
+        {actionMessage && <div className="work-schedule-message" role="status">{actionMessage}</div>}
+        {isLoading ? <div className="work-schedule-empty">Đang tải lịch làm việc...</div> : activeTab === 'tasks' ? (
+          <>
+            <div className="work-schedule-summary">
+              <article><span>Công việc trong ngày</span><strong>{summary.total}</strong></article>
+              <article><span>Đang thực hiện</span><strong>{summary.inProgress}</strong></article>
+              <article><span>Chưa hoàn thành</span><strong>{summary.incomplete}</strong></article>
+              <article><span>Đã hoàn thành</span><strong>{summary.completed}</strong></article>
+            </div>
+            <div className="work-schedule-workspace">
+              <aside className="work-schedule-calendar">
+                <header><button type="button" className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(previous => new Date(previous.getFullYear(), previous.getMonth() - 1, 1))}>Tháng trước</button><strong>{getMonthLabel(monthAnchor)}</strong><button type="button" className="btn btn-outline btn-sm" onClick={() => setMonthAnchor(previous => new Date(previous.getFullYear(), previous.getMonth() + 1, 1))}>Tháng sau</button></header>
+                <div className="work-schedule-calendar__weekdays"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div>
+                <div className="work-schedule-calendar__grid">
+                  {calendarDates.map(date => {
+                    const dateKey = toDateKey(date);
+                    const count = items.filter(item => visibleUserIds.has(item.assigneeId) && isScheduleOnDate(item, date)).length;
+                    const outsideMonth = date.getMonth() !== monthAnchor.getMonth();
+                    return <button key={dateKey} type="button" className={`${dateKey === selectedDate ? 'is-selected' : ''} ${dateKey === todayKey ? 'is-today' : ''} ${outsideMonth ? 'is-outside' : ''}`} aria-label={`${date.toLocaleDateString('vi-VN')}, ${count} công việc`} onClick={() => selectCalendarDate(date)}><span>{date.getDate()}</span>{count > 0 && <small>{count}</small>}</button>;
+                  })}
+                </div>
+              </aside>
+
+              <main className="work-schedule-day-panel">
+                <header><div><h2>{getSelectedDateLabel(selectedDay)}</h2><p>{summary.incomplete} việc chưa hoàn thành</p></div><button type="button" className="btn btn-primary" onClick={() => openCreateForm(isAdmin ? '' : currentUser.uid, selectedDate)}>{isAdmin ? 'Giao việc ngày này' : 'Thêm việc ngày này'}</button></header>
+                <div className="work-schedule-task-list">
+                  {dayItems.map(item => (
+                    <article key={item.id} className={`work-schedule-task ${item.status === 'completed' ? 'is-completed' : ''}`}>
+                      <div className="work-schedule-task__time"><strong>{formatScheduleTime(item.startAt)}</strong><span>{formatScheduleTime(item.endAt)}</span></div>
+                      <div className="work-schedule-task__body">
+                        <div className="work-schedule-task__heading"><strong title={item.title}>{item.title}</strong><span className={`work-schedule-status work-schedule-status--${item.status}`}>{WORK_SCHEDULE_STATUS_LABELS[item.status]}</span></div>
+                        <div className="work-schedule-task__meta"><span>{item.assigneeName}</span><span>{item.department}</span>{item.stage && <span>Công đoạn: {item.stage}</span>}</div>
+                        {(item.description || item.notes) && <p>{item.notes || item.description}</p>}
+                        <div className="work-schedule-progress"><div><span style={{ width: `${item.progress}%` }} /></div><small>{item.progress}%</small></div>
+                      </div>
+                      <div className="work-schedule-task__actions">
+                        <button type="button" className="btn btn-outline btn-sm" onClick={() => openEditForm(item)}>Cập nhật</button>
+                        <button type="button" className={`btn btn-sm ${item.status === 'completed' ? 'btn-outline' : 'btn-primary'}`} onClick={() => void updateTaskStatus(item, item.status !== 'completed')}>{item.status === 'completed' ? 'Chưa hoàn thành' : 'Hoàn thành'}</button>
+                        {isAdmin && <button type="button" className="btn btn-outline btn-sm" onClick={() => void cancelSchedule(item)}>Hủy</button>}
+                      </div>
+                    </article>
+                  ))}
+                  {dayItems.length === 0 && <div className="work-schedule-empty">Chưa có công việc trong ngày này.</div>}
+                </div>
+              </main>
+            </div>
+          </>
         ) : (
-          <div className="work-schedule-table-wrap"><table className="work-schedule-table work-schedule-week-table"><thead><tr><th>Nhân viên</th>{weekDates.map(date => <th key={toDateKey(date)}>{getDayLabel(date)}</th>)}</tr></thead><tbody>{visibleUsers.map(user => <tr key={user.uid}><td><strong>{user.displayName}</strong><small>{roleDepartment(user.role)}</small></td>{weekDates.map(date => { const schedule = items.filter(item => item.assigneeId === user.uid && isScheduleOnDate(item, date)).sort((left, right) => left.startAt.localeCompare(right.startAt))[0]; return <td key={`${user.uid}-${toDateKey(date)}`}><span title={schedule?.title}>{schedule ? `${formatScheduleTime(schedule.startAt)} ${schedule.title}` : 'Trống'}</span></td>; })}</tr>)}{visibleUsers.length === 0 && <tr><td colSpan={8} className="work-schedule-empty">Không có nhân viên phù hợp.</td></tr>}</tbody></table></div>
+          <div className="work-schedule-week-view">
+            <div className="work-schedule-week-nav"><button type="button" className="btn btn-outline btn-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() - 7))}>Tuần trước</button><strong>{getDayLabel(weekDates[0])} – {getDayLabel(weekDates[6])}</strong><button type="button" className="btn btn-outline btn-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() + 7))}>Tuần sau</button></div>
+            <div className="work-schedule-table-wrap"><table className="work-schedule-table work-schedule-week-table"><thead><tr><th>Nhân viên</th>{weekDates.map(date => <th key={toDateKey(date)}>{getDayLabel(date)}</th>)}</tr></thead><tbody>{visibleUsers.map(user => <tr key={user.uid}><td><strong>{user.displayName}</strong><small>{roleDepartment(user.role)}</small></td>{weekDates.map(date => { const schedules = items.filter(item => item.assigneeId === user.uid && isScheduleOnDate(item, date)); return <td key={`${user.uid}-${toDateKey(date)}`}><button type="button" className="work-schedule-week-cell" onClick={() => { setSelectedDate(toDateKey(date)); setMonthAnchor(new Date(date.getFullYear(), date.getMonth(), 1)); setActiveTab('tasks'); }}><strong>{schedules.length}</strong><span>{schedules.length ? 'công việc' : 'Trống'}</span></button></td>; })}</tr>)}{visibleUsers.length === 0 && <tr><td colSpan={8} className="work-schedule-empty">Không có nhân viên phù hợp.</td></tr>}</tbody></table></div>
+          </div>
         )}
       </section>
 
-      {isFormOpen && isAdmin && <div className="work-schedule-modal-overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setIsFormOpen(false); }}><form className="work-schedule-modal" onSubmit={handleSave}><header><div><strong>{editingItem ? 'Sửa lịch làm việc' : 'Giao việc'}</strong><span>Nhập thông tin ngắn gọn để theo dõi trong ngày.</span></div><button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setIsFormOpen(false)} aria-label="Đóng"><X size={16} /></button></header><div className="work-schedule-form-grid"><label>Công việc *<input value={form.title} onChange={event => setForm(previous => ({ ...previous, title: event.target.value }))} autoFocus /></label><label>Nhân viên *<select value={form.assigneeId} onChange={event => setForm(previous => ({ ...previous, assigneeId: event.target.value }))}><option value="">Chọn nhân viên</option>{users.filter(user => user.active !== false).map(user => <option key={user.uid} value={user.uid}>{user.displayName} · {roleDepartment(user.role)}</option>)}</select></label><label>Ngày *<input type="date" value={form.date} onChange={event => setForm(previous => ({ ...previous, date: event.target.value }))} /></label><label>Giờ bắt đầu *<input type="time" value={form.startTime} onChange={event => setForm(previous => ({ ...previous, startTime: event.target.value }))} /></label><label>Giờ kết thúc *<input type="time" value={form.endTime} onChange={event => setForm(previous => ({ ...previous, endTime: event.target.value }))} /></label><label>Loại liên kết<select value={form.referenceType} onChange={event => setForm(previous => ({ ...previous, referenceType: event.target.value as WorkScheduleReferenceType }))}>{Object.entries(WORK_SCHEDULE_REFERENCE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Mã liên kết<input value={form.referenceId} onChange={event => setForm(previous => ({ ...previous, referenceId: event.target.value }))} placeholder="ID khách hàng, PO..." /></label><label>Khách hàng/PO liên quan<input value={form.referenceLabel} onChange={event => setForm(previous => ({ ...previous, referenceLabel: event.target.value }))} placeholder="Ví dụ: Công ty ABC · PO-001" /></label><label className="work-schedule-form-wide">Trạng thái<select value={form.status} onChange={event => setForm(previous => ({ ...previous, status: event.target.value as WorkScheduleStatus }))}>{Object.entries(WORK_SCHEDULE_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Tiến độ (%)<input type="number" min="0" max="100" value={form.progress} onChange={event => setForm(previous => ({ ...previous, progress: event.target.value }))} /></label><label className="work-schedule-form-wide">Mô tả<textarea value={form.description} onChange={event => setForm(previous => ({ ...previous, description: event.target.value }))} rows={2} /></label><label className="work-schedule-form-wide">Ghi chú<textarea value={form.notes} onChange={event => setForm(previous => ({ ...previous, notes: event.target.value }))} rows={2} /></label></div>{conflictMessage && <div className="work-schedule-error">{conflictMessage}</div>}<footer><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)}>Hủy</button><button type="submit" className="btn btn-primary">Lưu lịch</button></footer></form></div>}
+      {isFormOpen && <div className="work-schedule-modal-overlay" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setIsFormOpen(false); }}><form className="work-schedule-modal" onSubmit={handleSave}><header><div><strong>{editingItem ? 'Cập nhật công việc' : isAdmin ? 'Giao việc' : 'Thêm công việc'}</strong><span>Lưu công việc, công đoạn và ghi chú trong một lần.</span></div><button type="button" className="btn btn-outline btn-sm" onClick={() => setIsFormOpen(false)}>Đóng</button></header><div className="work-schedule-form-grid"><label className="work-schedule-form-wide">Tên công việc *<input value={form.title} onChange={event => setForm(previous => ({ ...previous, title: event.target.value }))} autoFocus /></label>{isAdmin ? <label>Người phụ trách *<select value={form.assigneeId} onChange={event => setForm(previous => ({ ...previous, assigneeId: event.target.value }))}><option value="">Chọn nhân viên</option>{users.filter(user => user.active !== false).map(user => <option key={user.uid} value={user.uid}>{user.displayName} · {roleDepartment(user.role)}</option>)}</select></label> : <label>Người phụ trách<input value={currentUser.displayName} readOnly /></label>}<label>Ngày thực hiện *<input type="date" value={form.date} onChange={event => setForm(previous => ({ ...previous, date: event.target.value }))} /></label><label>Giờ bắt đầu *<input type="time" value={form.startTime} onChange={event => setForm(previous => ({ ...previous, startTime: event.target.value }))} /></label><label>Giờ kết thúc *<input type="time" value={form.endTime} onChange={event => setForm(previous => ({ ...previous, endTime: event.target.value }))} /></label><label className="work-schedule-form-wide">Công đoạn hiện tại<input value={form.stage} onChange={event => setForm(previous => ({ ...previous, stage: event.target.value }))} placeholder="Ví dụ: Đang duyệt báo giá" /></label><label>Trạng thái<select value={form.status} onChange={event => setForm(previous => ({ ...previous, status: event.target.value as WorkScheduleStatus, progress: event.target.value === 'completed' ? '100' : previous.progress }))}>{Object.entries(WORK_SCHEDULE_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Tiến độ (%)<input type="number" min="0" max="100" value={form.progress} disabled={form.status === 'completed'} onChange={event => setForm(previous => ({ ...previous, progress: event.target.value }))} /></label><label className="work-schedule-form-wide">Nội dung công việc<textarea value={form.description} onChange={event => setForm(previous => ({ ...previous, description: event.target.value }))} rows={2} /></label><label className="work-schedule-form-wide">Ghi chú<textarea value={form.notes} onChange={event => setForm(previous => ({ ...previous, notes: event.target.value }))} rows={3} /></label></div>{conflictMessage && <div className="work-schedule-error">{conflictMessage}</div>}<footer><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)}>Hủy</button><button type="submit" className="btn btn-primary">Lưu</button></footer></form></div>}
     </div>
   );
 };

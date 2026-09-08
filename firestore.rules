@@ -287,20 +287,23 @@ service cloud.firestore {
     }
 
     // Shared work calendar. Admin assigns and manages schedules; employees
-    // can only see their own assignments and update progress fields.
+    // can create and maintain their own tasks.
     match /work_schedule_items/{documentId} {
       allow read: if isAdmin()
         || (isActive() && resource.data.assigneeId == request.auth.uid);
-      allow create: if isAdmin();
+      allow create: if isAdmin()
+        || (isActive()
+          && request.resource.data.assigneeId == request.auth.uid
+          && request.resource.data.assignedById == request.auth.uid);
       allow update: if isAdmin()
         || (isActive()
           && resource.data.assigneeId == request.auth.uid
           && request.resource.data.assigneeId == resource.data.assigneeId
           && request.resource.data.assignedById == resource.data.assignedById
-          && request.resource.data.startAt == resource.data.startAt
-          && request.resource.data.endAt == resource.data.endAt
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'status', 'progress', 'notes', 'completedAt', 'updatedAt'
+            'title', 'description', 'stage', 'startAt', 'endAt',
+            'status', 'progress', 'referenceType', 'referenceId',
+            'referenceLabel', 'notes', 'completedAt', 'updatedAt'
           ]));
       allow delete: if isAdmin();
     }
