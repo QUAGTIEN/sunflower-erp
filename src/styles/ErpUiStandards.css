@@ -515,6 +515,26 @@ input[type='checkbox']:disabled {
   min-width: var(--erp-action-column-width) !important;
 }
 
+.app-main table.has-dynamic-columns th.erp-table-index-column,
+.app-main table.has-dynamic-columns td.erp-table-index-column {
+  width: 52px !important;
+  min-width: 52px !important;
+  max-width: 52px !important;
+  padding-right: 6px !important;
+  padding-left: 6px !important;
+  text-align: center;
+}
+
+.app-main table.has-dynamic-columns th.lead-candidate-select-column,
+.app-main table.has-dynamic-columns td.lead-candidate-select-column {
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  padding-right: 4px !important;
+  padding-left: 4px !important;
+  text-align: center;
+}
+
 .app-main table td {
   background: #ffffff;
   color: var(--erp-table-text);

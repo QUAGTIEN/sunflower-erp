@@ -341,6 +341,7 @@ export const Crm: React.FC<CrmProps> = ({
       return label ? { id, label, group, defaultVisible } : null;
     };
     return [
+      { id: 'index', label: 'STT', group: t('Điều khiển bảng'), required: true },
       { id: 'company', label: configuredField('companyName', 'Khách hàng') || t('Khách hàng'), group: sectionLabels.company, required: true },
       systemColumn('customerCode', 'customerCode', 'Mã KH', sectionLabels.company, true),
       systemColumn('rank', 'customerRank', 'Phân loại', sectionLabels.company, true),
@@ -403,7 +404,7 @@ export const Crm: React.FC<CrmProps> = ({
     columns: customerColumnOptions,
     selectedIds: storedVisibleColumnIds || Array.from(visibleCustomerColumnIds),
     onOrderChange: saveVisibleCustomerColumns,
-    lockedStartIds: ['company'],
+    lockedStartIds: ['index', 'company'],
     lockedEndIds: ['actions']
   });
   const customerColumnLabels = Object.fromEntries(customerColumnOptions.map(column => [column.id, column.label]));
@@ -2870,6 +2871,7 @@ export const Crm: React.FC<CrmProps> = ({
                   >
                     <thead><tr>
                       <ReorderableTableCells order={orderedCustomerColumnIds} getHeaderProps={getCustomerHeaderProps} labels={customerColumnLabels}>
+                        <th key="index" className="erp-table-index-column">STT</th>
                         <th key="company" data-system-field="companyName">{t('Khách hàng')}</th>
                         {visibleCustomerColumnIds.has('customerCode') && <th key="customerCode" data-system-field="customerCode">{t('Mã KH')}</th>}
                         {visibleCustomerColumnIds.has('rank') && <th key="rank" data-system-field="customerRank">{t('Phân loại')}</th>}
@@ -2896,7 +2898,7 @@ export const Crm: React.FC<CrmProps> = ({
                       </ReorderableTableCells>
                     </tr></thead>
                     <tbody>
-                      {displayedCustomers.map(customer => {
+                      {displayedCustomers.map((customer, customerIndex) => {
                         const customerOrders = getCustomerOrders(customer.id);
                         const orderValue = getCustomerOrderValue(customer.id);
                         const isNew = isNewCustomer(customer);
@@ -2905,6 +2907,7 @@ export const Crm: React.FC<CrmProps> = ({
                           <React.Fragment key={customer.id}>
                             <tr onClick={() => openCustomerDetail(customer)}>
                               <ReorderableTableCells order={orderedCustomerColumnIds}>
+                              <td key="index" className="erp-table-index-column">{(safeCustomerPage - 1) * customerPageSize + customerIndex + 1}</td>
                               <td key="company"><div className="crm-customer-identity" title={`${customer.companyName} · ${customer.contactPerson || t('Chưa có người liên hệ')}`}><strong className="erp-company-name">{customer.companyName}</strong>{isNew && <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}><span aria-hidden="true" />NEW</span>}</div></td>
                               {visibleCustomerColumnIds.has('customerCode') && <td key="customerCode"><span className="customer-code-badge">{customer.customerCode || customer.id}</span></td>}
                               {visibleCustomerColumnIds.has('rank') && <td key="rank"><div className="crm-customer-segment" title={customer.discountType === 'amount' ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`}><span className={`customer-rank-text ${customer.customerRank ? 'has-rank' : ''}`}>{customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}</span></div></td>}

@@ -400,6 +400,7 @@ export const Leads: React.FC<LeadsProps> = ({
       return label ? { id, label, group, defaultVisible } : null;
     };
     return [
+      { id: 'index', label: 'STT', group: t('Điều khiển bảng'), required: true },
       { id: 'company', label: configuredField('companyName', 'Doanh nghiệp') || t('Doanh nghiệp'), group: sectionLabels.company, required: true },
       systemColumn('taxCode', 'taxCode', 'Mã số thuế', sectionLabels.company),
       systemColumn('website', 'website', 'Website', sectionLabels.company),
@@ -463,7 +464,7 @@ export const Leads: React.FC<LeadsProps> = ({
     columns: leadColumnOptions,
     selectedIds: storedVisibleColumnIds || Array.from(visibleLeadColumnIds),
     onOrderChange: saveVisibleLeadColumns,
-    lockedStartIds: ['company'],
+    lockedStartIds: ['index', 'company'],
     lockedEndIds: ['actions']
   });
   const leadColumnLabels = Object.fromEntries(leadColumnOptions.map(column => [column.id, column.label]));
@@ -1967,6 +1968,7 @@ export const Leads: React.FC<LeadsProps> = ({
               >
                 <thead><tr>
                   <ReorderableTableCells order={orderedLeadColumnIds} getHeaderProps={getLeadHeaderProps} labels={leadColumnLabels}>
+                  <th key="index" className="erp-table-index-column">STT</th>
                   <th key="company" data-system-field="companyName">{t('Doanh nghiệp')}</th>
                   {visibleLeadColumnIds.has('taxCode') && <th key="taxCode" data-system-field="taxCode">{t('Mã số thuế')}</th>}
                   {visibleLeadColumnIds.has('website') && <th key="website" data-system-field="website">Website</th>}
@@ -1995,9 +1997,10 @@ export const Leads: React.FC<LeadsProps> = ({
                   </ReorderableTableCells>
                 </tr></thead>
                 <tbody>
-                  {displayedLeads.map(lead => (
+                  {displayedLeads.map((lead, leadIndex) => (
                     <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
                       <ReorderableTableCells order={orderedLeadColumnIds}>
+                      <td key="index" className="erp-table-index-column">{(safeLeadCurrentPage - 1) * leadPageSize + leadIndex + 1}</td>
                       <td key="company"><strong className="erp-company-name" title={lead.companyName}>{lead.companyName}</strong></td>
                       {visibleLeadColumnIds.has('taxCode') && <td key="taxCode">{renderLeadText(lead.taxCode)}</td>}
                       {visibleLeadColumnIds.has('website') && <td key="website">{renderLeadText(lead.website)}</td>}

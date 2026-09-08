@@ -171,6 +171,7 @@ const CANDIDATE_PROFILE_COLUMN_OPTIONS: CandidateColumnOption[] = [
 ];
 
 const TASK_COLUMN_OPTIONS: CandidateColumnOption[] = [
+  { id: 'index', label: 'STT', group: 'Điều khiển bảng', required: true },
   ...CANDIDATE_PROFILE_COLUMN_OPTIONS,
   { id: 'status', fieldKey: 'contactResult', label: 'Trạng thái', group: CANDIDATE_SECTION_LABELS.assignment },
   { id: 'assignee', fieldKey: 'assignedSaleId', label: 'Sale phụ trách', group: CANDIDATE_SECTION_LABELS.assignment, adminOnly: true },
@@ -182,6 +183,7 @@ const TASK_COLUMN_OPTIONS: CandidateColumnOption[] = [
 
 const ALL_COLUMN_OPTIONS: CandidateColumnOption[] = [
   { id: 'select', label: 'Chọn dữ liệu', group: 'Điều khiển bảng', required: true },
+  { id: 'index', label: 'STT', group: 'Điều khiển bảng', required: true },
   ...CANDIDATE_PROFILE_COLUMN_OPTIONS,
   { id: 'assignee', fieldKey: 'assignedSaleId', label: 'Sale phụ trách', group: CANDIDATE_SECTION_LABELS.assignment },
   { id: 'processing', fieldKey: 'processing', label: 'Sale đang xử lý', group: CANDIDATE_SECTION_LABELS.assignment },
@@ -510,7 +512,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     columns: availableColumnOptions,
     selectedIds: Array.from(visibleColumnSet),
     onOrderChange: saveVisibleColumns,
-    lockedStartIds: workspaceView === 'all' ? ['select', 'company'] : ['company'],
+    lockedStartIds: workspaceView === 'all' ? ['select', 'index', 'company'] : ['index', 'company'],
     lockedEndIds: ['actions']
   });
   const candidateColumnLabels = Object.fromEntries(availableColumnOptions.map(column => [column.id, column.label]));
@@ -1739,6 +1741,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact has-dynamic-columns" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150 + 130)}px` }}>
               <thead><tr>
                 <ReorderableTableCells order={orderedColumnIds} getHeaderProps={getHeaderProps} labels={candidateColumnLabels}>
+                {visibleColumnSet.has('index') && <th key="index" className="erp-table-index-column">STT</th>}
                 {visibleColumnSet.has('company') && <th key="company" data-system-field="companyName">Doanh nghiệp</th>}
                 {visibleColumnSet.has('taxCode') && <th key="taxCode" data-system-field="taxCode">Mã số thuế</th>}
                 {visibleColumnSet.has('website') && <th key="website" data-system-field="website">Website</th>}
@@ -1766,7 +1769,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 </ReorderableTableCells>
               </tr></thead>
               <tbody>
-                {displayedCandidates.map(candidate => {
+                {displayedCandidates.map((candidate, candidateIndex) => {
                   const scheduledTime = candidate.nextContactAt ? new Date(candidate.nextContactAt).getTime() : Number.NaN;
                   const endOfToday = new Date(referenceTime);
                   endOfToday.setHours(23, 59, 59, 999);
@@ -1777,6 +1780,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   return (
                     <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
                       <ReorderableTableCells order={orderedColumnIds}>
+                      {visibleColumnSet.has('index') && <td key="index" className="erp-table-index-column">{(safeCurrentPage - 1) * pageSize + candidateIndex + 1}</td>}
                       {visibleColumnSet.has('company') && <td key="company"><button type="button" className="lead-candidate-company-button" onClick={() => setSelectedCandidateId(candidate.id)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
                       {visibleColumnSet.has('taxCode') && <td key="taxCode">{renderCandidateField(candidate.taxCode)}</td>}
                       {visibleColumnSet.has('website') && <td key="website">{renderCandidateField(candidate.website)}</td>}
@@ -1835,6 +1839,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       aria-label="Chọn dữ liệu có thể đưa vào công việc trên trang này"
                     />
                   </th>}
+                  {visibleColumnSet.has('index') && <th key="index" className="erp-table-index-column">STT</th>}
                   {visibleColumnSet.has('company') && <th key="company" data-system-field="companyName">Doanh nghiệp</th>}
                   {visibleColumnSet.has('taxCode') && <th key="taxCode" data-system-field="taxCode">Mã số thuế</th>}
                   {visibleColumnSet.has('website') && <th key="website" data-system-field="website">Website</th>}
@@ -1863,7 +1868,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {displayedCandidates.map(candidate => {
+                {displayedCandidates.map((candidate, candidateIndex) => {
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
                   const canSelectForQueue = isActive && canManageCandidate(candidate);
                   const isAlreadyInQueue = !candidate.workQueueHidden && isActive;
@@ -1885,6 +1890,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           aria-label={`Chọn ${candidate.companyName}${isAlreadyInQueue ? ' (đã có trong Công việc cần xử lý)' : ''}`}
                         />
                       </td>}
+                      {visibleColumnSet.has('index') && <td key="index" className="erp-table-index-column">{(safeCurrentPage - 1) * pageSize + candidateIndex + 1}</td>}
                       {visibleColumnSet.has('company') && <td key="company">
                         <div className="lead-candidate-company-cell">
                           {canManageCandidate(candidate) && <button
