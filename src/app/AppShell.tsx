@@ -272,7 +272,15 @@ function AppShell() {
       setInvoices(sortNewestFirst(data, invoice => [invoice.createdAt]));
     });
     const unsubInventory = dbService.subscribeCollection('inventory', setInventory);
-    const unsubMessages = dbService.subscribeCollection('messages', setMessages);
+    const unsubMessages = dbService.subscribeCollection('messages', (data) => {
+      setMessages([...data].sort((left, right) => (
+        String(left.createdAt || '').localeCompare(String(right.createdAt || ''))
+      )));
+    }, {
+      orderByField: 'createdAt',
+      orderDirection: 'desc',
+      maxResults: 250
+    });
     const unsubChannels = dbService.subscribeCollection('channels', setChannels);
     const unsubDesignRequests = dbService.subscribeCollection('design_requests', (data) => {
       setDesignRequests(sortNewestFirst(
@@ -285,6 +293,11 @@ function AppShell() {
         data as UserNotificationRecord[],
         notification => [notification.createdAt]
       ));
+      setNotificationsLoadedForUserId(user.uid);
+    }, {
+      fieldName: 'recipientId',
+      fieldValue: user.uid,
+      onError: () => setNotificationsLoadedForUserId(user.uid)
     });
 
     return () => {
@@ -306,25 +319,6 @@ function AppShell() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
-    let active = true;
-    void dbService.getCollection('notifications').then(data => {
-      if (!active) return;
-      setNotifications(sortNewestFirst(
-        data as UserNotificationRecord[],
-        notification => [notification.createdAt]
-      ));
-      setNotificationsLoadedForUserId(user.uid);
-    }).catch(error => {
-      console.error('Unable to load notifications:', error);
-      if (active) setNotificationsLoadedForUserId(user.uid);
-    });
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
-  useEffect(() => {
     if (
       !user
       || users.length === 0
@@ -332,6 +326,7 @@ function AppShell() {
     ) return;
     const syncTimer = window.setTimeout(() => {
       void synchronizeWorkflowNotifications({
+        recipientId: user.uid,
         users,
         customers,
         leads,

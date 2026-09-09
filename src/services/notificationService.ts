@@ -24,6 +24,7 @@ interface NotificationCandidate {
 }
 
 interface WorkflowNotificationInput {
+  recipientId?: string;
   users: UserProfile[];
   customers: CustomerRecord[];
   leads: LeadRecord[];
@@ -327,8 +328,14 @@ export const synchronizeWorkflowNotifications = async (
   input: WorkflowNotificationInput
 ): Promise<void> => {
   const candidates = buildWorkflowNotificationCandidates(input);
-  const activeIdentities = new Set(candidates.map(getNotificationIdentity));
-  const existingIdentities = new Set(input.notifications.map(getNotificationIdentity));
+  const relevantCandidates = input.recipientId
+    ? candidates.filter(candidate => candidate.recipientId === input.recipientId)
+    : candidates;
+  const relevantNotifications = input.recipientId
+    ? input.notifications.filter(notification => notification.recipientId === input.recipientId)
+    : input.notifications;
+  const activeIdentities = new Set(relevantCandidates.map(getNotificationIdentity));
+  const existingIdentities = new Set(relevantNotifications.map(getNotificationIdentity));
   const knownEntityIds: Record<NotificationModule, Set<string>> = {
     dashboard: new Set(input.productionCommands.map(getEntityId).filter(Boolean)),
     crm: new Set(input.customers.map(customer => customer.id)),
@@ -347,7 +354,7 @@ export const synchronizeWorkflowNotifications = async (
   };
   const now = new Date().toISOString();
 
-  const createOperations = candidates
+  const createOperations = relevantCandidates
     .filter(candidate => !existingIdentities.has(getNotificationIdentity(candidate)))
     .map(candidate => dbService.addDocument('notifications', {
       ...candidate,
@@ -357,7 +364,7 @@ export const synchronizeWorkflowNotifications = async (
       readAt: null
     }));
 
-  const closeOperations = input.notifications
+  const closeOperations = relevantNotifications
     .filter(notification => (
       notification.source === 'workflow'
       && notification.readAt === null

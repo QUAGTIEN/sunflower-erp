@@ -109,6 +109,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         .sort((left, right) => String(right.occurredAt || right.createdAt).localeCompare(String(left.occurredAt || left.createdAt)))
         .slice(0, 10);
       setActivityFeed(recentBusinessEvents);
+    }, {
+      orderByField: 'occurredAt',
+      orderDirection: 'desc',
+      maxResults: 100
     });
   }, [user.role]);
 

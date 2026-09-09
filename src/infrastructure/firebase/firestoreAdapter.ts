@@ -11,7 +11,8 @@ import {
   runTransaction,
   setDoc,
   updateDoc,
-  where
+  where,
+  type QueryConstraint
 } from 'firebase/firestore';
 import {
   getFirebaseDatabase,
@@ -38,6 +39,15 @@ const createDocumentAlreadyExistsError = (existingDocument: unknown) => Object.a
   new Error('Document already exists.'),
   { code: 'document-already-exists', existingDocument }
 );
+
+interface CollectionSubscriptionOptions {
+  onError?: (error: unknown) => void;
+  fieldName?: string;
+  fieldValue?: unknown;
+  orderByField?: string;
+  orderDirection?: 'asc' | 'desc';
+  maxResults?: number;
+}
 
 export const isDocumentAlreadyExistsError = (error: unknown): boolean => (
   typeof error === 'object'
@@ -237,7 +247,7 @@ export const dbService = {
     return deleteLocalDocument(colName, docId);
   },
 
-  subscribeCollection(colName: string, callback: (data: any[]) => void, options?: { onError: (error: unknown) => void }): () => void {
+  subscribeCollection(colName: string, callback: (data: any[]) => void, options?: CollectionSubscriptionOptions): () => void {
     if (isFirebaseRuntimeEnabled) {
       if (!options) callback([]);
 
@@ -249,19 +259,33 @@ export const dbService = {
           const database = await getFirebaseDatabase(`subscribing to ${colName}`);
           if (!database || !active) return;
 
-          unsubscribeRemote = onSnapshot(collection(database, colName), (snapshot) => {
+          const constraints: QueryConstraint[] = [];
+          if (options?.fieldName) {
+            constraints.push(where(options.fieldName, '==', options.fieldValue));
+          }
+          if (options?.orderByField) {
+            constraints.push(orderBy(options.orderByField, options.orderDirection || 'asc'));
+          }
+          if (options?.maxResults && options.maxResults > 0) {
+            constraints.push(limit(options.maxResults));
+          }
+          const collectionQuery = constraints.length > 0
+            ? query(collection(database, colName), ...constraints)
+            : collection(database, colName);
+
+          unsubscribeRemote = onSnapshot(collectionQuery, (snapshot) => {
             if (!active) return;
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             callback(normalizeCollectionRecords(colName, data));
           }, (error) => {
             if (!active) return;
             reportFirebaseFailure(`subscribing to ${colName}`, error);
-            if (options) options.onError(error); else callback([]);
+            if (options?.onError) options.onError(error); else callback([]);
           });
         } catch (error) {
           if (!active) return;
           reportFirebaseFailure(`subscribing to ${colName}`, error);
-          if (options) options.onError(error); else callback([]);
+          if (options?.onError) options.onError(error); else callback([]);
         }
       })();
 
