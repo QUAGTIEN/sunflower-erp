@@ -80,6 +80,7 @@ export const useReorderableTableColumns = ({
   );
   const lockedStartSet = useMemo(() => new Set(lockedStartIds), [lockedStartIds]);
   const lockedEndSet = useMemo(() => new Set(lockedEndIds), [lockedEndIds]);
+  const resizedTableWidth = columnWidths.__tableWidth;
 
   const moveColumn = (sourceId: string, targetId: string) => {
     if (!sourceId || sourceId === targetId || lockedStartSet.has(sourceId) || lockedEndSet.has(sourceId)) return;
@@ -136,14 +137,20 @@ export const useReorderableTableColumns = ({
         resizeActiveRef.current = true;
         const startX = event.clientX;
         const startWidth = bounds.width;
+        const table = header.closest('table');
+        const startTableWidth = table?.getBoundingClientRect().width || 0;
         let finalWidth = startWidth;
+        let finalTableWidth = startTableWidth;
         const onPointerMove = (moveEvent: PointerEvent) => {
           finalWidth = Math.max(64, Math.round(startWidth + moveEvent.clientX - startX));
+          finalTableWidth = Math.max(orderedColumnIds.length * 64, Math.round(startTableWidth + finalWidth - startWidth));
+          table?.style.setProperty('--erp-table-resized-width', `${finalTableWidth}px`);
           setColumnWidthsByKey(previous => ({
             ...previous,
             [activeWidthKey]: {
               ...(previous[activeWidthKey] || columnWidths),
-              [columnId]: finalWidth
+              [columnId]: finalWidth,
+              __tableWidth: finalTableWidth
             }
           }));
         };
@@ -153,7 +160,7 @@ export const useReorderableTableColumns = ({
           resizeActiveRef.current = false;
           if (!widthStorageKey) return;
           try {
-            const next = { ...columnWidths, [columnId]: finalWidth };
+            const next = { ...columnWidths, [columnId]: finalWidth, __tableWidth: finalTableWidth };
             window.localStorage.setItem(widthStorageKey, JSON.stringify(next));
           } catch {
             // The resized width remains active for the current page session.
@@ -199,5 +206,5 @@ export const useReorderableTableColumns = ({
     };
   };
 
-  return { orderedColumnIds, getHeaderProps };
+  return { orderedColumnIds, getHeaderProps, resizedTableWidth };
 };

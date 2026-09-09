@@ -466,8 +466,8 @@ input[type='checkbox']:disabled {
 /* Resizable grids grow by the sum of their columns, like a spreadsheet. */
 .app-main table:has(th.is-resizable),
 .app-main table:has(th.erp-generic-resizable-header) {
-  width: max-content !important;
-  min-width: 100%;
+  width: var(--erp-table-resized-width, 100%) !important;
+  min-width: var(--erp-table-resized-width, 100%) !important;
   max-width: none !important;
 }
 

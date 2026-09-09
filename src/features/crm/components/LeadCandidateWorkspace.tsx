@@ -579,8 +579,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       ? customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => `custom:${definition.id}`)
       : [])
   ]);
-  const visibleColumnCount = availableColumnOptions.filter(column => visibleColumnSet.has(column.id)).length;
-
   const saveVisibleColumns = (selectedIds: string[]) => {
     const availableIds = new Set(availableColumnOptions.map(column => column.id));
     const requiredIds = availableColumnOptions.filter(column => column.required).map(column => column.id);
@@ -600,16 +598,27 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   };
   const {
     orderedColumnIds,
-    getHeaderProps
+    getHeaderProps,
+    resizedTableWidth
   } = useReorderableTableColumns({
     columns: availableColumnOptions,
     selectedIds: Array.from(visibleColumnSet),
     onOrderChange: saveVisibleColumns,
-    widthStorageKey: `sunflower:lead-candidate-column-widths:${currentUser.uid}:${workspaceView}`,
+    widthStorageKey: `sunflower:lead-candidate-column-widths:v2:${currentUser.uid}:${workspaceView}`,
     lockedStartIds: workspaceView === 'all' ? ['select', 'index', 'company'] : ['index', 'company'],
     lockedEndIds: ['actions']
   });
   const candidateColumnLabels = Object.fromEntries(availableColumnOptions.map(column => [column.id, column.label]));
+  const candidateTableDefaultWidth = Math.max(1180, orderedColumnIds.reduce((total, columnId) => {
+    if (columnId === 'select') return total + 36;
+    if (columnId === 'index') return total + 52;
+    if (columnId === 'company') return total + 280;
+    if (columnId === 'actions') return total + 72;
+    return total + 150;
+  }, 0));
+  const candidateTableStyle = {
+    '--erp-table-resized-width': `${resizedTableWidth || candidateTableDefaultWidth}px`
+  } as React.CSSProperties;
 
   const accessibleCandidates = useMemo(() => candidates.filter(candidate => (
     !candidate.archived
@@ -2064,7 +2073,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         </div>
         <div className="table-container">
           {workspaceView === 'tasks' ? (
-            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact has-dynamic-columns" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150 + 130)}px` }}>
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table lead-candidate-task-table is-compact has-dynamic-columns" style={candidateTableStyle}>
               <thead><tr>
                 <ReorderableTableCells order={orderedColumnIds} getHeaderProps={getHeaderProps} labels={candidateColumnLabels}>
                 {visibleColumnSet.has('index') && <th key="index" className="erp-table-index-column">STT</th>}
@@ -2150,7 +2159,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               </tbody>
             </ConfiguredSystemTable>
           ) : (
-            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact has-dynamic-columns" style={{ minWidth: `${Math.max(1180, visibleColumnCount * 150 + 130)}px` }}>
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact has-dynamic-columns" style={candidateTableStyle}>
               <thead>
                 <tr>
                   <ReorderableTableCells order={orderedColumnIds} getHeaderProps={getHeaderProps} labels={candidateColumnLabels}>

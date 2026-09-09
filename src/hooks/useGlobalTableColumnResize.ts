@@ -27,14 +27,18 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         const widths = readWidths(storageKey);
         const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>('thead th:not(.is-resizable)'));
         const measuredWidths = headers.map(header => Math.round(header.getBoundingClientRect().width));
+        const resolvedWidths = measuredWidths.map((width, columnIndex) => widths[String(columnIndex)] || width);
         headers.forEach((header, columnIndex) => {
           header.classList.add('erp-generic-resizable-header');
           header.dataset.resizeStorageKey = storageKey;
           header.dataset.resizeColumnIndex = String(columnIndex);
           if (!header.title) header.title = header.textContent?.trim() || '';
-          const width = widths[String(columnIndex)] || measuredWidths[columnIndex];
+          const width = resolvedWidths[columnIndex];
           if (width) header.style.setProperty('--erp-column-resized-width', `${width}px`);
         });
+        const minimumTableWidth = table.parentElement?.clientWidth || 0;
+        const tableWidth = widths.__tableWidth || resolvedWidths.reduce((total, width) => total + width, 0);
+        table.style.setProperty('--erp-table-resized-width', `${Math.max(minimumTableWidth, tableWidth)}px`);
       });
     };
 
@@ -53,10 +57,15 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
       event.stopPropagation();
       const startX = event.clientX;
       const startWidth = bounds.width;
+      const table = header.closest('table');
+      const startTableWidth = table?.getBoundingClientRect().width || 0;
       let finalWidth = startWidth;
+      let finalTableWidth = startTableWidth;
       const onPointerMove = (moveEvent: PointerEvent) => {
         finalWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(startWidth + moveEvent.clientX - startX));
+        finalTableWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(startTableWidth + finalWidth - startWidth));
         header.style.setProperty('--erp-column-resized-width', `${finalWidth}px`);
+        table?.style.setProperty('--erp-table-resized-width', `${finalTableWidth}px`);
       };
       const onPointerUp = () => {
         window.removeEventListener('pointermove', onPointerMove);
@@ -67,7 +76,8 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         try {
           window.localStorage.setItem(storageKey, JSON.stringify({
             ...readWidths(storageKey),
-            [columnIndex]: finalWidth
+            [columnIndex]: finalWidth,
+            __tableWidth: finalTableWidth
           }));
         } catch {
           // The resized width remains active for the current page session.
