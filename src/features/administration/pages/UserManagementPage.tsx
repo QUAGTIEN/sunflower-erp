@@ -408,11 +408,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                   </tr>
                 );
               })}
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '24px' }}>{t('Không tìm thấy tài khoản người dùng nào.')}</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

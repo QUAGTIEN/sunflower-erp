@@ -359,11 +359,6 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                     </tr>
                   );
                 })}
-                {filteredInventory.length === 0 && (
-                  <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '24px' }}>{t('Không tìm thấy nguyên vật liệu nào.')}</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -407,13 +402,6 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                     </tr>
                   );
                 })}
-                {exportSlips.length === 0 && (
-                  <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                      {t('Chưa ghi nhận phiếu xuất kho vật tư nào.')}
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -471,11 +459,6 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                     </tr>
                   );
                 })}
-                {inventoryList.length === 0 && (
-                  <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '24px' }}>{t('Chưa có danh mục vật tư nào để tạo báo cáo.')}</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>

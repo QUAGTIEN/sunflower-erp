@@ -220,7 +220,6 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
         <td>{ENTITY_FIELD_TYPE_LABELS[definition.type]}</td><td>{definition.defaultVisible ? 'Có' : 'Không'}</td><td>{definition.searchable ? 'Có' : 'Không'}</td><td><span className={`custom-field-status ${definition.active ? 'is-active' : ''}`}>{definition.removed ? 'Đã xóa' : definition.active ? 'Đang sử dụng' : 'Ngừng sử dụng'}</span></td><td><small>{definition.updatedByName || definition.createdByName || '—'}</small></td>
         <td><div className="custom-field-actions"><button type="button" title="Chỉnh sửa" disabled={saving || !!definition.removed} onClick={() => { setDraft(toDraft(definition)); setError(''); }}><Pencil size={14} /></button><button type="button" title="Nhân bản" disabled={saving || !!definition.removed} onClick={() => duplicateDefinition(definition)}><Copy size={14} /></button><button type="button" title={definition.active ? 'Ngừng sử dụng' : 'Khôi phục'} disabled={saving} onClick={() => void changeDefinition(definition, definition.active ? 'archive' : 'restore')}>{definition.active ? <Archive size={14} /> : <RotateCcw size={14} />}</button>{!definition.active && !definition.removed && <button type="button" disabled={saving} onClick={() => void changeDefinition(definition, 'remove')}>Xóa</button>}</div></td>
       </tr>)}
-      {tableDefinitions.length === 0 && <tr><td colSpan={8} className="custom-field-empty">Chưa có trường tùy chỉnh phù hợp.</td></tr>}
     </tbody></table></div>
     </>}
 

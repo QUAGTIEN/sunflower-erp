@@ -2954,7 +2954,6 @@ export const Crm: React.FC<CrmProps> = ({
                           </React.Fragment>
                         );
                       })}
-                      {filteredCustomers.length === 0 && <tr><td colSpan={visibleCustomerColumnCount} className="crm-empty-state">{t('Không tìm thấy khách hàng phù hợp với bộ lọc.')}</td></tr>}
                     </tbody>
                   </ConfiguredSystemTable>
                   </div>
@@ -3174,9 +3173,6 @@ export const Crm: React.FC<CrmProps> = ({
                         </td>
                       </tr>
                     ))}
-                    {getCustomerOrders(selectedCustomer.id).length === 0 && (
-                      <tr><td colSpan={5} className="customer-history-empty">{t('Chưa phát sinh đơn hàng nào.')}</td></tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -3224,9 +3220,6 @@ export const Crm: React.FC<CrmProps> = ({
                         </td>
                       </tr>
                     ))}
-                    {selectedCustomerProducts.length === 0 && (
-                      <tr><td colSpan={5} className="customer-history-empty">{t('Chưa có sản phẩm nào trong lịch sử đặt hàng.')}</td></tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -3398,9 +3391,6 @@ export const Crm: React.FC<CrmProps> = ({
                           </tr>
                         );
                       })}
-                      {activeRepositoryFiles.length === 0 && activeRepositoryContracts.length === 0 && activeRepositoryDocuments.length === 0 && (
-                        <tr><td colSpan={5} className="customer-history-empty">{t('Thư mục chưa có tài liệu.')}</td></tr>
-                      )}
                     </tbody>
                   </table>
                 </div>
@@ -3460,11 +3450,6 @@ export const Crm: React.FC<CrmProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {(selectedCustomer.contracts || []).length === 0 && (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '16px' }}>{t('Chưa có hợp đồng nào được lưu trữ.')}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -4535,11 +4520,6 @@ export const Crm: React.FC<CrmProps> = ({
                         <td>{history.updatedBy || t('Hệ thống')}</td>
                       </tr>
                     ))}
-                    {(!priceHistoryProduct.priceHistory || priceHistoryProduct.priceHistory.length === 0) && (
-                      <tr>
-                        <td colSpan={4} style={{ textAlign: 'center' }}>{t('Chưa có lịch sử thay đổi giá.')}</td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>

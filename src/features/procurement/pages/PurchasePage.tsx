@@ -395,7 +395,6 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     {request.purchaseOrderCode && <span>{request.purchaseOrderCode}</span>}
                   </div></td>
                 </tr>)}
-                {filteredRequests.length === 0 && <tr><td colSpan={9} className="purchase-empty">{t('Không có yêu cầu mua hàng phù hợp.')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -410,7 +409,6 @@ export const Purchase: React.FC<PurchaseProps> = ({
                   <td><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td><td>{formatDate(asText(order.expectedReceiveDate), 'vi-VN', '—')}</td>
                   <td>{asText(order.status) !== 'received' && <button type="button" className="btn btn-sm btn-outline" onClick={() => handleReceiveOrder(order)}><Truck size={14} /> {t('Xác nhận nhận hàng')}</button>}</td>
                 </tr>)}
-                {filteredPurchaseOrders.length === 0 && <tr><td colSpan={7} className="purchase-empty">{t('Chưa có đơn mua phù hợp.')}</td></tr>}
               </tbody>
             </table>
           </div>

@@ -783,11 +783,6 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                       </td>
                     </tr>
                   ))}
-                  {activeCommands.length === 0 && (
-                    <tr>
-                      <td colSpan={10} style={{ textAlign: 'center', padding: '24px' }}>{t('Không có lệnh sản xuất nào được ghi nhận.')}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>

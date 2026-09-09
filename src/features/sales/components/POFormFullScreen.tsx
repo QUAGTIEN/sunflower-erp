@@ -1514,14 +1514,6 @@ export default function POFormFullScreen({
                       );
                     })}
 
-                    {/* EMPTY PO ITEMS ROW */}
-                    {poItems.length === 0 && (
-                      <tr>
-                        <td colSpan={13} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                          {t('Chưa có mã hàng nào được thêm. Hãy chọn mã cũ từ 🔍 hoặc bấm "+ Thêm Dòng Mới"')}
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>

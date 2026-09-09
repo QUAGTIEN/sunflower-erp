@@ -533,11 +533,6 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                     </tr>
                   );
                 })}
-                {filteredInvoices.length === 0 && (
-                  <tr>
-                    <td colSpan={10} style={{ textAlign: 'center', padding: '24px' }}>{t('Không có hóa đơn kế toán nào.')}</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>

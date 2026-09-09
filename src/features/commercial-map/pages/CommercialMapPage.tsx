@@ -615,7 +615,6 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                   <header><div><h2>Hiệu quả theo khu vực / KCN</h2><p>{overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}</p></div>{currentUser.role === 'admin' && <button type="button" className="btn btn-outline btn-sm" aria-expanded={showParkManagement} aria-controls="commercial-park-manager" onClick={() => setShowParkManagement(previous => !previous)}>{showParkManagement ? 'Đóng quản lý KCN' : 'Quản lý KCN'}</button>}</header>
                   <div className="table-container"><table><thead><tr><th>Khu vực / KCN</th><th>Sale chính</th><th>Hợp tác</th><th>Tiềm năng</th><th>Dữ liệu thô</th><th>PO</th><th>Giá trị</th></tr></thead><tbody>
                     {territoryPerformance.map(row => <tr key={row.label}><td title={row.label}>{row.label}</td><td>{row.primarySale}</td><td>{row.customers}</td><td>{row.leads}</td><td>{row.candidates}</td><td>{row.orders}</td><td>{formatCurrency(row.revenue)}</td></tr>)}
-                    {territoryPerformance.length === 0 && <tr><td colSpan={7} className="commercial-table-empty">Chưa có số liệu tại địa bàn đang chọn.</td></tr>}
                   </tbody></table></div>
                 </section>
               </div>
@@ -630,7 +629,6 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                   {parkMessage && <div className="commercial-parks__message" role="status">{parkMessage}</div>}
                   <div className="table-container"><table><thead><tr><th style={{ width: 64 }}>STT</th><th>Tên khu công nghiệp</th><th style={{ width: 110 }}>Thao tác</th></tr></thead><tbody>
                     {parkRows.map((park, index) => <tr key={park.id}><td>{index + 1}</td><td title={park.label}>{park.label}</td><td><div className="commercial-row-actions"><button type="button" className="btn btn-danger btn-sm" disabled={parkSaving} onClick={() => void deleteIndustrialPark(park)}>Xóa</button></div></td></tr>)}
-                    {parkRows.length === 0 && <tr><td colSpan={3} className="commercial-table-empty">Tỉnh/thành này chưa có KCN được cấu hình.</td></tr>}
                   </tbody></table></div>
                 </section>
               )}

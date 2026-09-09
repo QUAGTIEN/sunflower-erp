@@ -402,7 +402,6 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                   <td>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</td>
                   <td>{formatDate(asText(order.createdAt))}</td>
                 </tr>)}
-                {visibleOrders.length === 0 && <tr><td colSpan={5} className="purchase-empty">{t('Chưa có giao dịch trong khoảng thời gian này.')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -503,7 +502,6 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                   <td>{supplier.rating ? `${supplier.rating}/5` : '—'}</td>
                 </tr>;
               })}
-              {filteredSuppliers.length === 0 && <tr><td colSpan={8} className="purchase-empty">{t('Không tìm thấy nhà cung cấp phù hợp.')}</td></tr>}
             </tbody>
           </table>
         </div>

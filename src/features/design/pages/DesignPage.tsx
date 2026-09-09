@@ -641,9 +641,6 @@ export const Design: React.FC<DesignProps> = ({
                   </tr>
                 );
               })}
-              {filteredRequests.length === 0 && (
-                <tr><td colSpan={designVisibleColumnCount} className="design-empty-row">{t('Không có yêu cầu thiết kế phù hợp.')}</td></tr>
-              )}
             </tbody>
           </table>
         </div>

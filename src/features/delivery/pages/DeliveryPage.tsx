@@ -1086,9 +1086,6 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                       </tr>
                     );
                   })}
-                  {unplannedOrders.length === 0 && (
-                    <tr><td colSpan={7}><div className="delivery-empty-state">Không có đơn chờ xếp chuyến.</div></td></tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -1134,9 +1131,6 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                       <td><button type="button" className="btn btn-sm btn-outline" onClick={() => setSelectedTrip(trip)}>Chi tiết</button></td>
                     </tr>
                   ))}
-                  {deliveries.length === 0 && (
-                    <tr><td colSpan={9}><div className="delivery-empty-state">Chưa có chuyến giao hàng nào.</div></td></tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -1251,9 +1245,6 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                     </td>
                   </tr>
                 ))}
-                {!fleetLoading && vehicles.length === 0 && (
-                  <tr><td colSpan={8}><div className="delivery-empty-state">Chưa có xe trong danh mục.</div></td></tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -1285,9 +1276,6 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                       <td><span className={`delivery-status ${row.status === 'success' ? 'completed' : row.tripStatus}`}>{row.status === 'success' ? 'Đã giao' : TRIP_STATUS_LABELS[row.tripStatus] || 'Chờ giao'}</span></td>
                     </tr>
                   ))}
-                  {proofRows.length === 0 && (
-                    <tr><td colSpan={7}><div className="delivery-empty-state">Chưa phát sinh chứng từ giao hàng.</div></td></tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -1315,14 +1303,6 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                       </tr>
                     );
                   })}
-                  {pos.filter(po => (
-                    isPOInQueue(po, 'waiting_delivery') && (
-                      ['partial', 'delivering'].includes(po.deliveryProgress) ||
-                      ['partially_delivered', 'delivering'].includes(po.status)
-                    )
-                  )).length === 0 && (
-                    <tr><td colSpan={7}><div className="delivery-empty-state">Không có đơn giao dở dang.</div></td></tr>
-                  )}
                 </tbody>
               </table>
             </div>

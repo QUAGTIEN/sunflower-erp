@@ -934,13 +934,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                         </tr>
                       );
                     })}
-                    {filteredPOs.length === 0 && (
-                      <tr>
-                        <td colSpan={10} className="sales-table-empty">
-                          {normalizedSearchTerm ? t('Không tìm thấy PO phù hợp.') : t('Khách hàng chưa có PO. Bạn có thể tạo PO mới ngay tại đây.')}
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -991,9 +984,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                         </tr>
                       );
                     })}
-                    {orderCustomers.length === 0 && (
-                      <tr><td colSpan={salesVisibleColumnCount} className="sales-table-empty">{t('Không tìm thấy khách hàng phù hợp.')}</td></tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -1059,15 +1049,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                       </tr>
                     );
                   })}
-                  {waitingCustomers.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="waiting-customer-empty">
-                        {normalizedSearchTerm
-                          ? t('Không tìm thấy khách hàng chờ lên đơn phù hợp.')
-                          : t('Không có khách hàng nào đang chờ lên đơn.')}
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>

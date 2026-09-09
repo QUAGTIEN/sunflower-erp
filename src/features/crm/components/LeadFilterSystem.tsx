@@ -738,7 +738,6 @@ export const LeadSalesWorkspace: React.FC<{
                 </td>
               </tr>
             ))}
-            {saleLeads.length === 0 && <tr><td colSpan={7} className="lead-empty">Sale này chưa có khách hàng tiềm năng trong kỳ đã chọn.</td></tr>}
           </tbody>
         </table>
       </div>

@@ -260,9 +260,6 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
                     </td>
                   </tr>
                 ))}
-                {machineRows.length === 0 && (
-                  <tr><td colSpan={6} className="machine-table-empty">Chưa có máy nào trong danh mục.</td></tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -330,9 +327,6 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
                   )}
                 </tr>
               ))}
-              {machineRows.length === 0 && (
-                <tr><td colSpan={canManage ? 9 : 8} className="machine-table-empty">Chưa có máy nào trong danh mục.</td></tr>
-              )}
             </tbody>
           </table>
         </div>

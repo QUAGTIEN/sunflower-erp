@@ -46,7 +46,6 @@ export function SystemFieldConfiguration({ table, currentUser, searchTerm = '', 
             setDraft({ ...field }); setRevision(updatedAt); setSaveError(''); setSuccess(''); onEditingChange(true);
           }}>Thiết lập</button></td></tr>;
         })}
-        {filteredFields.length === 0 && <tr><td colSpan={5} className="custom-field-empty">Không có trường phù hợp.</td></tr>}
       </tbody></table></div>
       {draft && spec && <form className="system-field-editor" onSubmit={event => { event.preventDefault(); void save(); }}>
         <h3>Thiết lập {spec.label}</h3>

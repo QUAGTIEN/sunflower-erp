@@ -522,13 +522,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   );
                 })}
 
-                {categoryPOs.length === 0 && (
-                  <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
-                      {t('Không có đơn hàng PO nào thuộc nhóm tiến độ này.')}
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -798,8 +791,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDeliveries.length > 0 ? (
-                      filteredDeliveries.slice(0, 5).map(del => (
+                    {filteredDeliveries.slice(0, 5).map(del => (
                         <tr key={del.id}>
                           <td style={{ fontWeight: 600 }}>{del.delCode}</td>
                           <td>{del.region}</td>
@@ -810,12 +802,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             </span>
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} style={{ textAlign: 'center', padding: '16px' }}>{t('Không có lịch giao hàng sắp tới.')}</td>
-                      </tr>
-                    )}
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -947,11 +934,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <td style={{ color: 'var(--color-text-muted)' }}>{request.designBrief || t('Chưa có ghi chú')}</td>
                     </tr>
                   ))}
-                  {activeDesignRequests.filter(request => request.workStatus !== 'completed').length === 0 && (
-                    <tr>
-                      <td colSpan={4} style={{ textAlign: 'center', padding: '16px' }}>{t('Tất cả các đơn đã hoàn thành thiết kế!')}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -1115,11 +1097,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </td>
                     </tr>
                   ))}
-                  {filteredProductionCommands.length === 0 && (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '16px' }}>{t('Hiện tại không có lệnh sản xuất nào đang chạy.')}</td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
