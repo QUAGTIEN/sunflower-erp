@@ -83,7 +83,6 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
-import { AdvancedDataFilters } from '@/components/AdvancedDataFilters';
 import {
   countAdvancedFilters,
   getAdvancedFilterKindForFieldType,
@@ -133,6 +132,8 @@ const CANDIDATE_SOURCES = ['Google Maps', 'Facebook', 'Mạng xã hội', 'Websi
 type CandidateWorkspaceView = 'management' | 'tasks' | 'all';
 type CandidateSort = 'priority' | 'updated_desc' | 'company_asc' | 'next_contact_asc';
 type CandidateColumnId = string;
+type EmployeeActivityRange = 'today' | '7days' | 'all';
+type EmployeeActivityGroup = 'all' | 'call' | 'data' | 'schedule' | 'task';
 
 interface CandidateColumnOption extends TableColumnOption {
   id: CandidateColumnId;
@@ -271,6 +272,65 @@ const CONTACT_RESULT_OUTCOMES: Record<LeadCandidateContactResult, LeadCandidateC
   called: 'connected',
   messaged: 'connected',
   callback: 'call_back'
+};
+
+const RAW_DATA_EMPLOYEE_ACTIONS = new Set([
+  'candidate_phone_called',
+  'candidate_opened',
+  'candidate_added_to_work_queue',
+  'candidate_assigned_to_sale',
+  'candidate_updated',
+  'candidate_created',
+  'follow_up_scheduled',
+  'candidate_pin_toggled',
+  'contact_status_updated',
+  'potential_updated',
+  'candidate_task_dismissed',
+  'candidate_archived'
+]);
+
+const EMPLOYEE_ACTION_LABELS: Record<string, string> = {
+  candidate_phone_called: 'Đã bấm gọi',
+  candidate_opened: 'Đã mở hồ sơ',
+  candidate_added_to_work_queue: 'Đưa vào danh sách cần xử lý',
+  candidate_assigned_to_sale: 'Bàn giao dữ liệu',
+  candidate_updated: 'Cập nhật dữ liệu',
+  candidate_created: 'Tạo dữ liệu mới',
+  follow_up_scheduled: 'Đặt lịch liên hệ',
+  candidate_pin_toggled: 'Cập nhật ghim',
+  contact_status_updated: 'Cập nhật trạng thái liên hệ',
+  potential_updated: 'Cập nhật đánh giá',
+  candidate_task_dismissed: 'Đóng công việc cần xử lý',
+  candidate_archived: 'Xóa dữ liệu'
+};
+
+const getEmployeeActivityGroup = (action: string): Exclude<EmployeeActivityGroup, 'all'> => {
+  if (action === 'candidate_phone_called') return 'call';
+  if (action === 'follow_up_scheduled') return 'schedule';
+  if (['candidate_added_to_work_queue', 'candidate_assigned_to_sale', 'candidate_task_dismissed'].includes(action)) return 'task';
+  return 'data';
+};
+
+const getEmployeeActionLabel = (event: AuditEvent) => {
+  if (event.action === 'contact_status_updated') {
+    const value = event.changes?.find(change => change.field === 'contactResult')?.after;
+    return value ? `Liên hệ: ${value}` : EMPLOYEE_ACTION_LABELS[event.action];
+  }
+  if (event.action === 'potential_updated') {
+    const value = event.changes?.find(change => change.field === 'potentialLevel')?.after;
+    return value ? `Đánh giá: ${value}` : EMPLOYEE_ACTION_LABELS[event.action];
+  }
+  if (event.action === 'candidate_pin_toggled') return event.summary.startsWith('Bỏ ghim') ? 'Bỏ ghim dữ liệu' : 'Ghim dữ liệu';
+  return EMPLOYEE_ACTION_LABELS[event.action] || 'Cập nhật dữ liệu';
+};
+
+const formatActivityTime = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { time: '--:--', date: '' };
+  return {
+    time: date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+  };
 };
 
 const toDateTimeLocal = (value: string) => {
@@ -466,12 +526,18 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [employeeActivityEvents, setEmployeeActivityEvents] = useState<AuditEvent[]>([]);
   const [employeePresences, setEmployeePresences] = useState<UserPresence[]>([]);
   const [selectedManagedSaleId, setSelectedManagedSaleId] = useState('');
+  const [employeeActivityRange, setEmployeeActivityRange] = useState<EmployeeActivityRange>('today');
+  const [employeeActivityGroup, setEmployeeActivityGroup] = useState<EmployeeActivityGroup>('all');
 
   useEffect(() => {
     if (workspaceView !== 'management' || currentUser.role !== 'admin') return undefined;
     const unsubscribeEvents = dbService.subscribeCollection('audit_events', data => {
       setEmployeeActivityEvents((data as AuditEvent[])
-        .filter(event => event.module === 'lead_candidates' && event.category === 'business')
+        .filter(event => (
+          event.module === 'lead_candidates'
+          && event.category === 'business'
+          && RAW_DATA_EMPLOYEE_ACTIONS.has(event.action)
+        ))
         .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)));
     }, {
       orderByField: 'occurredAt',
@@ -567,9 +633,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       const lastSeenAt = presence?.lastSeenAt || '';
       const lastSeenTime = lastSeenAt ? new Date(lastSeenAt).getTime() : 0;
       const minutesSinceSeen = lastSeenTime ? Math.max(0, Math.floor((now - lastSeenTime) / 60_000)) : Number.MAX_SAFE_INTEGER;
-      const presenceStatus: 'active' | 'idle' | 'offline' = presence?.status === 'online' && minutesSinceSeen <= 3
+      const isInRawData = presence?.lastPageId === 'customer_data';
+      const presenceStatus: 'active' | 'idle' | 'offline' = isInRawData && presence?.status === 'online' && minutesSinceSeen <= 3
         ? 'active'
-        : presence?.status === 'online' && minutesSinceSeen <= 15 ? 'idle' : 'offline';
+        : isInRawData && presence?.status === 'online' && minutesSinceSeen <= 15 ? 'idle' : 'offline';
       const activities = employeeActivityEvents.filter(event => event.actorId === sale.uid);
       const todayActivities = activities.filter(event => (
         new Date(event.occurredAt).toLocaleDateString('vi-VN') === today
@@ -586,7 +653,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         todayActivities,
         currentCandidate: assignedCandidates[0] || null,
         assignedCount: assignedCandidates.length,
-        callCount: todayActivities.filter(event => event.action === 'candidate_phone_called').length
+        touchedCount: new Set(todayActivities.map(event => event.targetId).filter(Boolean)).size,
+        callCount: todayActivities.filter(event => event.action === 'candidate_phone_called').length,
+        scheduleCount: todayActivities.filter(event => event.action === 'follow_up_scheduled').length
       };
     }).sort((left, right) => {
       const statusOrder = { active: 0, idle: 1, offline: 2 } as const;
@@ -596,6 +665,18 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   }, [accessibleCandidates, employeeActivityEvents, employeePresences, referenceTime, saleUsers]);
 
   const selectedEmployeeCard = employeeCards.find(card => card.sale.uid === selectedManagedSaleId) || null;
+  const selectedEmployeeActivities = useMemo(() => {
+    if (!selectedEmployeeCard) return [];
+    const startOfToday = new Date(referenceTime);
+    startOfToday.setHours(0, 0, 0, 0);
+    const rangeStart = employeeActivityRange === 'today'
+      ? startOfToday.getTime()
+      : employeeActivityRange === '7days' ? referenceTime - 7 * 24 * 60 * 60 * 1000 : 0;
+    return selectedEmployeeCard.activities.filter(event => (
+      new Date(event.occurredAt).getTime() >= rangeStart
+      && (employeeActivityGroup === 'all' || getEmployeeActivityGroup(event.action) === employeeActivityGroup)
+    )).slice(0, 50);
+  }, [employeeActivityGroup, employeeActivityRange, referenceTime, selectedEmployeeCard]);
 
   const provinceOptions = useMemo(() => Array.from(new Set(
     accessibleCandidates.map(candidate => candidate.province.trim()).filter(Boolean)
@@ -1881,9 +1962,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               <p>Trạng thái và thao tác gần nhất của đội Sale.</p>
             </div>
             <div className="employee-monitor__summary">
-              <span><strong>{employeeCards.filter(card => card.presenceStatus === 'active').length}</strong> đang hoạt động</span>
-              <span><strong>{employeeCards.filter(card => card.presenceStatus === 'idle').length}</strong> đang rảnh</span>
-              <span><strong>{employeeCards.filter(card => card.presenceStatus === 'offline').length}</strong> ngoại tuyến</span>
+              <span><strong>{employeeCards.filter(card => card.presenceStatus === 'active').length}</strong> đang thao tác</span>
+              <span><strong>{employeeCards.filter(card => card.presenceStatus === 'idle').length}</strong> tạm rảnh</span>
+              <span><strong>{employeeCards.filter(card => card.presenceStatus === 'offline').length}</strong> chưa thao tác</span>
             </div>
           </header>
 
@@ -1892,8 +1973,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               {employeeCards.map(card => {
                 const latestEvent = card.activities[0];
                 const statusLabel = card.presenceStatus === 'active'
-                  ? 'Đang hoạt động'
-                  : card.presenceStatus === 'idle' ? 'Đang rảnh' : 'Ngoại tuyến';
+                  ? 'Đang thao tác'
+                  : card.presenceStatus === 'idle' ? `Rảnh ${card.minutesSinceSeen} phút` : 'Chưa thao tác';
                 return (
                   <button
                     key={card.sale.uid}
@@ -1907,18 +1988,19 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                       <em className={`is-${card.presenceStatus}`}><i />{statusLabel}</em>
                     </div>
                     <div className="employee-monitor-card__current">
-                      <span>Khách hàng đang xử lý</span>
+                      <span>Đang phụ trách</span>
                       <strong>{card.currentCandidate?.companyName || 'Chưa có công việc'}</strong>
                     </div>
                     <div className="employee-monitor-card__metrics">
-                      <span><strong>{card.todayActivities.length}</strong> thao tác hôm nay</span>
-                      <span><strong>{card.callCount}</strong> lần bấm gọi</span>
-                      <span><strong>{card.assignedCount}</strong> việc đang nhận</span>
+                      <span><strong>{card.touchedCount}</strong> khách đã xử lý</span>
+                      <span><strong>{card.callCount}</strong> cuộc gọi</span>
+                      <span><strong>{card.scheduleCount}</strong> lịch hẹn</span>
+                      <span><strong>{card.assignedCount}</strong> cần xử lý</span>
                     </div>
                     <div className="employee-monitor-card__latest">
-                      <span>Gần nhất</span>
-                      <strong>{latestEvent?.summary || 'Chưa có thao tác tại Dữ liệu thô'}</strong>
-                      <small>{latestEvent ? formatShortDateTime(latestEvent.occurredAt) : card.presence?.lastSeenAt ? `Hoạt động ${formatShortDateTime(card.presence.lastSeenAt)}` : 'Chưa ghi nhận phiên làm việc'}</small>
+                      <span>Thao tác gần nhất</span>
+                      <strong>{latestEvent ? getEmployeeActionLabel(latestEvent) : 'Chưa có thao tác'}</strong>
+                      <small>{latestEvent ? `${latestEvent.targetLabel || 'Dữ liệu thô'} · ${formatShortDateTime(latestEvent.occurredAt)}` : 'Chưa ghi nhận tại Dữ liệu thô'}</small>
                     </div>
                   </button>
                 );
@@ -1933,17 +2015,33 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   <button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setSelectedManagedSaleId('')} aria-label="Đóng"><X size={14} /></button>
                 </header>
                 <div className="employee-monitor-detail__facts">
-                  <span>Trang gần nhất<strong>{selectedEmployeeCard.presence?.lastPageId === 'customer_data' ? 'Dữ liệu thô' : selectedEmployeeCard.presence?.lastPageId || 'Chưa xác định'}</strong></span>
-                  <span>Lần hoạt động<strong>{selectedEmployeeCard.presence?.lastSeenAt ? formatShortDateTime(selectedEmployeeCard.presence.lastSeenAt) : 'Chưa ghi nhận'}</strong></span>
+                  <span>Trạng thái<strong>{selectedEmployeeCard.presenceStatus === 'active' ? 'Đang thao tác' : selectedEmployeeCard.presenceStatus === 'idle' ? 'Tạm rảnh' : 'Chưa thao tác'}</strong></span>
+                  <span>Thao tác gần nhất<strong>{selectedEmployeeCard.activities[0] ? formatShortDateTime(selectedEmployeeCard.activities[0].occurredAt) : 'Chưa ghi nhận'}</strong></span>
+                </div>
+                <div className="employee-monitor-detail__filters">
+                  <select value={employeeActivityRange} onChange={event => setEmployeeActivityRange(event.target.value as EmployeeActivityRange)} aria-label="Khoảng thời gian">
+                    <option value="today">Hôm nay</option>
+                    <option value="7days">7 ngày</option>
+                    <option value="all">Tất cả</option>
+                  </select>
+                  <select value={employeeActivityGroup} onChange={event => setEmployeeActivityGroup(event.target.value as EmployeeActivityGroup)} aria-label="Loại thao tác">
+                    <option value="all">Mọi thao tác</option>
+                    <option value="call">Cuộc gọi</option>
+                    <option value="data">Dữ liệu</option>
+                    <option value="schedule">Lịch hẹn</option>
+                    <option value="task">Công việc</option>
+                  </select>
                 </div>
                 <ol className="employee-monitor-detail__timeline">
-                  {selectedEmployeeCard.activities.slice(0, 50).map(event => (
-                    <li key={event.id}>
+                  {selectedEmployeeActivities.map(event => {
+                    const eventTime = formatActivityTime(event.occurredAt);
+                    return <li key={event.id}>
                       <i />
-                      <div><strong>{event.summary}</strong><span>{event.targetLabel || 'Dữ liệu thô'} · {formatShortDateTime(event.occurredAt)}</span></div>
-                    </li>
-                  ))}
-                  {selectedEmployeeCard.activities.length === 0 && <li className="is-empty">Chưa có thao tác nào tại Dữ liệu thô.</li>}
+                      <time><strong>{eventTime.time}</strong><span>{eventTime.date}</span></time>
+                      <div><strong>{getEmployeeActionLabel(event)}</strong><span>{event.targetLabel || 'Dữ liệu thô'}</span></div>
+                    </li>;
+                  })}
+                  {selectedEmployeeActivities.length === 0 && <li className="is-empty">Không có thao tác Dữ liệu thô trong bộ lọc này.</li>}
                 </ol>
               </aside>
             )}
