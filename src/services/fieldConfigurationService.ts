@@ -2,23 +2,71 @@ import { authService, dbService, isFirebaseRuntimeEnabled, type UserProfile } fr
 import { isEntityCustomFieldValueEmpty } from '@/features/crm/model/entityFieldConfig';
 import { SYSTEM_FIELD_CATALOG, validateSystemFieldOverrides } from '@/features/crm/model/systemFieldConfig';
 import type { EntityFieldTable } from '@/features/crm/model/entityFieldConfig';
+import { auditService } from '@/services/auditService';
+
+async function saveSystemFieldConfigurationDirectly(
+  user: UserProfile,
+  body: Record<string, unknown>
+) {
+  const table = body.table as EntityFieldTable;
+  const fields = validateSystemFieldOverrides(table, body.fields);
+  const current = await dbService.getDocument('entity_system_field_overrides', table);
+  if (String(current?.updatedAt || '') !== String(body.expectedUpdatedAt || '')) {
+    throw new Error('Cấu hình vừa được người khác cập nhật. Hãy tải lại trước khi lưu.');
+  }
+
+  const customFields = (await dbService.getCollection('entity_field_definitions'))
+    .filter(field => field.table === table && !field.removed);
+  const configuredLabels = new Set(
+    Object.values(fields).map(field => field.label.toLocaleLowerCase('vi-VN'))
+  );
+  if (customFields.some(field => configuredLabels.has(String(field.name || '').trim().toLocaleLowerCase('vi-VN')))) {
+    throw new Error('Tên hiển thị bị trùng với một trường tùy chỉnh.');
+  }
+
+  const updatedAt = new Date().toISOString();
+  await dbService.addDocument('entity_system_field_overrides', {
+    id: table,
+    table,
+    fields,
+    updatedAt,
+    updatedById: user.uid,
+    updatedByName: user.displayName
+  });
+  auditService.recordSafely(user, {
+    category: 'administration',
+    module: 'system',
+    action: 'field_system',
+    summary: `Cấu hình trường hệ thống (${table})`,
+    targetType: 'field_configuration',
+    targetId: table,
+    targetLabel: 'Trường hệ thống'
+  });
+}
 
 export async function manageFieldConfiguration(user: UserProfile, body: Record<string, unknown>) {
   if (user.role !== 'admin' || !user.active) throw new Error('Chỉ Giám đốc/Admin được cấu hình trường.');
   if (isFirebaseRuntimeEnabled) {
-    const token = await authService.getIdToken();
-    const response = await fetch('/api/fields/manage', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    let result;
-    try { result = await response.json(); }
-    catch { throw new Error('API cấu hình chưa sẵn sàng. Cần triển khai code API cùng giao diện.'); }
-    if (!response.ok) throw new Error(result.error || 'Không thể lưu cấu hình.');
+    try {
+      const token = await authService.getIdToken();
+      const response = await fetch('/api/fields/manage', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const result = await response.json().catch(() => null);
+      if (response.ok) return;
+      if (body.action !== 'system' || (response.status !== 404 && response.status < 500)) {
+        throw new Error(result?.error || 'Không thể lưu cấu hình.');
+      }
+    } catch (error) {
+      if (body.action !== 'system') throw error;
+    }
+
+    await saveSystemFieldConfigurationDirectly(user, body);
     return;
   }
   // Explicit local demo only. Failed production requests must never fall back to local storage.
   const table = body.table as EntityFieldTable;
   const actor = { updatedAt: new Date().toISOString(), updatedById: user.uid, updatedByName: user.displayName };
   if (body.action === 'system') {
-    await dbService.addDocument('entity_system_field_overrides', { id: table, table, fields: validateSystemFieldOverrides(table, body.fields), ...actor });
+    await saveSystemFieldConfigurationDirectly(user, body);
     return;
   }
   if (body.action === 'purge_system') {

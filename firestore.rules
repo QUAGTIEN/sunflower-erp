@@ -197,7 +197,8 @@ service cloud.firestore {
 
     match /entity_system_field_overrides/{documentId} {
       allow read: if isActive();
-      allow write: if false;
+      allow create, update: if isAdmin();
+      allow delete: if false;
     }
 
     // Sale PO is shared by all downstream departments because every team
