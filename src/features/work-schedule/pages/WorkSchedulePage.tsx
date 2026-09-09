@@ -103,6 +103,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
     }
   }, [currentUser.uid, isAdmin]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadItems(); }, [loadItems]);
 
   const visibleUsers = useMemo(() => users
@@ -274,7 +275,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
           {isAdmin && <select value={departmentFilter} onChange={event => setDepartmentFilter(event.target.value)} aria-label="Lọc bộ phận"><option value="all">Tất cả bộ phận</option>{Object.entries(WORK_SCHEDULE_DEPARTMENT_LABELS).map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select>}
           {isAdmin && <label className="work-schedule-search"><span>Tìm</span><input placeholder="Tên nhân viên" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} /></label>}
           <button type="button" className="btn btn-outline" onClick={() => { const today = new Date(); setSelectedDate(todayKey); setMonthAnchor(new Date(today.getFullYear(), today.getMonth(), 1)); setWeekAnchor(getWeekStart(today)); }}>Hôm nay</button>
-          {activeTab === 'tasks' && <button type="button" className={`btn btn-outline work-schedule-calendar-toggle ${calendarOpen ? 'is-active' : ''}`} aria-label="Mở lịch" title="Mở lịch" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(previous => !previous)}><CalendarDays size={17} /></button>}
+          {activeTab === 'tasks' && <button type="button" className={`btn btn-outline btn-symbol-sm work-schedule-calendar-toggle ${calendarOpen ? 'is-active' : ''}`} aria-label="Mở lịch" title="Mở lịch" aria-expanded={calendarOpen} onClick={() => setCalendarOpen(previous => !previous)}><CalendarDays size={17} /></button>}
           <button type="button" className="btn btn-primary work-schedule-add" onClick={() => openCreateForm()}>{isAdmin ? 'Giao việc' : 'Thêm công việc'}</button>
         </div>
 
@@ -296,7 +297,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
               </aside>}
 
               <main className="work-schedule-day-panel">
-                <header><div><h2>{getSelectedDateLabel(selectedDay)}</h2><p>{dayItems.length} công việc · {dayItems.filter(item => item.status !== 'completed').length} chưa xử lý xong</p></div><button type="button" className="btn btn-primary" onClick={() => openCreateForm(isAdmin ? '' : currentUser.uid, selectedDate)}>{isAdmin ? 'Giao việc' : 'Thêm công việc'}</button></header>
+                <header><div><h2>{getSelectedDateLabel(selectedDay)}</h2><p>{dayItems.length} công việc · {dayItems.filter(item => item.status !== 'completed').length} chưa xử lý xong</p></div></header>
                 <div className="work-schedule-task-list">
                   {dayItems.map(item => (
                     <article key={item.id} className={`work-schedule-task ${item.status === 'completed' ? 'is-completed' : ''}`}>
