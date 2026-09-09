@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Language = 'vi' | 'en';
 
@@ -14,6 +14,10 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [language, setLanguage] = useState<Language>(() => {
     return (localStorage.getItem('erp_lang') as Language) || 'vi';
   });
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const changeLanguage = (lang: Language) => {
     setLanguage(lang);
