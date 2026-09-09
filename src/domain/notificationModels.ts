@@ -2,6 +2,7 @@ export const NOTIFICATION_SCHEMA_VERSION = 1;
 
 export type NotificationModule =
   | 'dashboard'
+  | 'customer_data'
   | 'crm'
   | 'leads'
   | 'sales'
@@ -49,6 +50,7 @@ const asArray = (value: unknown): unknown[] => (
 const normalizeModule = (value: unknown): NotificationModule => {
   const modules: NotificationModule[] = [
     'dashboard',
+    'customer_data',
     'crm',
     'leads',
     'sales',

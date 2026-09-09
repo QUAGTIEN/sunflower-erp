@@ -38,6 +38,7 @@ export const AUDIT_PAGE_LABELS: Record<string, string> = {
 
 export const NOTIFICATION_MODULE_LABELS: Record<NotificationModule, string> = {
   dashboard: 'Tổng quan',
+  customer_data: 'Dữ liệu thô',
   crm: 'Khách hàng',
   leads: 'Khách hàng tiềm năng',
   sales: 'Đơn hàng Sale',

@@ -32,6 +32,7 @@ import {
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -113,6 +114,7 @@ import {
   ChevronLeft,
   ChevronRight,
   MapPinned,
+  LifeBuoy,
   Settings2
 } from 'lucide-react';
 
@@ -203,6 +205,8 @@ interface CrmProps {
   onPreparedOrderCreated?: (customerId: string) => void;
   initialLead?: LeadRecord | null;
   onLeadOnboardingClosed?: () => void;
+  initialCustomerId?: string;
+  onInitialCustomerOpened?: () => void;
 }
 
 const loadSpecsToFields = (productType: string, specifications: any = {}) => {
@@ -263,6 +267,8 @@ export const Crm: React.FC<CrmProps> = ({
   onPreparedOrderCreated,
   initialLead = null,
   onLeadOnboardingClosed,
+  initialCustomerId = '',
+  onInitialCustomerOpened,
 }) => {
   const { t } = useLanguage();
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
@@ -283,6 +289,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [customerPage, setCustomerPage] = useState(1);
   const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'products'>('po');
   const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(false);
   const [customerNoteDraft, setCustomerNoteDraft] = useState('');
@@ -1997,6 +2004,17 @@ export const Crm: React.FC<CrmProps> = ({
     setSelectedCustomer(customer);
   };
 
+  useEffect(() => {
+    if (!initialCustomerId) return;
+    const customer = customers.find(item => item.id === initialCustomerId);
+    if (!customer) return;
+    const timer = window.setTimeout(() => {
+      openCustomerDetail(customer);
+      onInitialCustomerOpened?.();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [customers, initialCustomerId, onInitialCustomerOpened]);
+
   const closeCustomerDetail = () => {
     const savedNoteHtml = selectedCustomer
       ? sanitizeCustomerNoteHtml(selectedCustomer.noteHtml || plainTextToNoteHtml(String(selectedCustomer.note || ''))).trim()
@@ -2937,6 +2955,7 @@ export const Crm: React.FC<CrmProps> = ({
                                   actions={[
                                     ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [{ label: t('Tạo PO'), icon: <ClipboardPlus size={14} />, onSelect: () => onPreparedOrderCreated?.(customer.id) }] : []),
                                     { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => openCustomerDetail(customer) },
+                                    ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: customer.id, label: customer.companyName, module: 'crm' }) }] : []),
                                     ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [
                                       { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditModal(customer) },
                                       {
@@ -4584,6 +4603,10 @@ export const Crm: React.FC<CrmProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {supportTarget && (
+        <SupportRequestDialog currentUser={currentUser} users={users} target={supportTarget} onClose={() => setSupportTarget(null)} />
       )}
 
     </SystemFieldSurface>

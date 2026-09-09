@@ -338,6 +338,7 @@ export const synchronizeWorkflowNotifications = async (
   const existingIdentities = new Set(relevantNotifications.map(getNotificationIdentity));
   const knownEntityIds: Record<NotificationModule, Set<string>> = {
     dashboard: new Set(input.productionCommands.map(getEntityId).filter(Boolean)),
+    customer_data: new Set(),
     crm: new Set(input.customers.map(customer => customer.id)),
     leads: new Set(input.leads.map(lead => lead.id)),
     sales: new Set(input.pos.map(getEntityId).filter(Boolean)),

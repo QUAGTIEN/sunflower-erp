@@ -11,6 +11,7 @@ import {
   Eye,
   FileText,
   List,
+  LifeBuoy,
   Paperclip,
   Pencil,
   Plus,
@@ -84,6 +85,7 @@ import {
 } from '@/features/crm/model/leadProfileConfig';
 import { PageBackButton } from '@/components/PageBackButton';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -127,6 +129,8 @@ interface LeadsProps {
   onConvertLead: (lead: LeadRecord) => void;
   initialCandidate?: LeadCandidateRecord | null;
   onInitialCandidateConsumed?: () => void;
+  initialLeadId?: string;
+  onInitialLeadOpened?: () => void;
 }
 
 interface LeadFormState {
@@ -278,7 +282,9 @@ export const Leads: React.FC<LeadsProps> = ({
   onNavigateToCustomerData,
   onConvertLead,
   initialCandidate = null,
-  onInitialCandidateConsumed
+  onInitialCandidateConsumed,
+  initialLeadId = '',
+  onInitialLeadOpened
 }) => {
   const { t } = useLanguage();
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('leads', currentUser.role);
@@ -296,6 +302,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [showLeadFilters, setShowLeadFilters] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
+  const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [editingLeadId, setEditingLeadId] = useState('');
   const [convertingCandidateId, setConvertingCandidateId] = useState('');
@@ -721,6 +728,15 @@ export const Leads: React.FC<LeadsProps> = ({
   const selectedLead = selectedLeadId
     ? leads.find(lead => lead.id === selectedLeadId) || null
     : null;
+
+  useEffect(() => {
+    if (!initialLeadId || !leads.some(lead => lead.id === initialLeadId)) return;
+    const timer = window.setTimeout(() => {
+      setSelectedLeadId(initialLeadId);
+      onInitialLeadOpened?.();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [initialLeadId, leads, onInitialLeadOpened]);
 
   const scheduleLead = scheduleLeadId
     ? leads.find(lead => lead.id === scheduleLeadId) || null
@@ -2026,6 +2042,7 @@ export const Leads: React.FC<LeadsProps> = ({
                             { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => setSelectedLeadId(lead.id) },
                             { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) },
                             { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) },
+                            ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
                             {
                               label: returningLeadId === lead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô'),
                               icon: <Undo2 size={14} />,
@@ -2099,6 +2116,10 @@ export const Leads: React.FC<LeadsProps> = ({
             </div>
           </form>
         </div>
+      )}
+
+      {supportTarget && (
+        <SupportRequestDialog currentUser={currentUser} users={users} target={supportTarget} onClose={() => setSupportTarget(null)} />
       )}
 
     </SystemFieldSurface>

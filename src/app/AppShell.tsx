@@ -22,8 +22,7 @@ import {
   AUDIT_PAGE_LABELS,
   formatNotificationTime,
   getInitials,
-  NOTIFICATION_MODULE_LABELS,
-  PAGE_NOTIFICATION_MODULES
+  NOTIFICATION_MODULE_LABELS
 } from '@/app/config/appConfig';
 import { canAccessPage, getDefaultPagesForRole } from '@/app/navigation/accessControl';
 import '@/styles/ErpUiStandards.css';
@@ -36,16 +35,10 @@ import { normalizePORecords } from '@/domain/poCompatibility';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import type { ProcurementRequestRecord } from '@/features/procurement/model/purchaseModels';
-import {
-  isUnreadNotificationForUser,
-  type NotificationModule,
-  type UserNotificationRecord
-} from '@/domain/notificationModels';
+import type { UserNotificationRecord } from '@/domain/notificationModels';
 import {
   markAllNotificationsRead,
-  markModuleNotificationsRead,
-  markNotificationRead,
-  synchronizeWorkflowNotifications
+  markNotificationRead
 } from '@/services/notificationService';
 import { synchronizeProvinceData } from '@/features/crm/api/provinceDataSynchronization';
 import {
@@ -138,10 +131,8 @@ function AppShell() {
   const [messages, setMessages] = useState<any[]>([]);
   const [designRequests, setDesignRequests] = useState<DesignRequest[]>([]);
   const [notifications, setNotifications] = useState<UserNotificationRecord[]>([]);
-  const [notificationsLoadedForUserId, setNotificationsLoadedForUserId] = useState('');
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const notificationCenterRef = useRef<HTMLDivElement>(null);
-  const lastNotificationPageReadRef = useRef('');
   const provinceSynchronizationStartedRef = useRef(false);
   const businessSubscriptionsRef = useRef<Map<string, () => void>>(new Map());
   const businessSubscriptionUserIdRef = useRef('');
@@ -171,6 +162,7 @@ function AppShell() {
   const [preparedCustomerId, setPreparedCustomerId] = useState<string>('');
   const [leadOnboarding, setLeadOnboarding] = useState<LeadRecord | null>(null);
   const [candidateLeadConversion, setCandidateLeadConversion] = useState<LeadCandidateRecord | null>(null);
+  const [supportNavigationTarget, setSupportNavigationTarget] = useState<{ module: 'customer_data' | 'leads' | 'crm'; entityId: string } | null>(null);
 
   const handleRepeatOrderRequest = (poId: string) => {
     setSelectedPoId('');
@@ -258,17 +250,22 @@ function AppShell() {
       maxResults: 250
     });
     const unsubChannels = dbService.subscribeCollection('channels', setChannels);
-    const unsubNotifications = dbService.subscribeCollection('notifications', (data) => {
-      setNotifications(sortNewestFirst(
-        data as UserNotificationRecord[],
-        notification => [notification.createdAt]
-      ));
-      setNotificationsLoadedForUserId(user.uid);
-    }, {
-      fieldName: 'recipientId',
-      fieldValue: user.uid,
-      onError: () => setNotificationsLoadedForUserId(user.uid)
-    });
+    let unsubNotifications: () => void = () => undefined;
+    if (user.role === 'admin') {
+      unsubNotifications = dbService.subscribeCollection('notifications', (data) => {
+        setNotifications(sortNewestFirst(
+          (data as UserNotificationRecord[]).filter(notification => notification.recipientId === user.uid),
+          notification => [notification.createdAt]
+        ));
+      }, {
+        fieldName: 'eventType',
+        fieldValue: 'support_request',
+        maxResults: 100,
+        onError: () => setNotifications([])
+      });
+    } else {
+      window.setTimeout(() => setNotifications([]), 0);
+    }
 
     return () => {
       unsubUsers();
@@ -391,64 +388,6 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
-    if (
-      !user
-      || users.length === 0
-      || notificationsLoadedForUserId !== user.uid
-    ) return;
-    const syncTimer = window.setTimeout(() => {
-      void synchronizeWorkflowNotifications({
-        recipientId: user.uid,
-        users,
-        customers,
-        leads,
-        pos,
-        procurementRequests,
-        designRequests,
-        inventory,
-        productionCommands,
-        deliveries,
-        invoices,
-        notifications
-      }).catch(error => {
-        console.error('Unable to synchronize workflow notifications:', error);
-      });
-    }, 80);
-    return () => window.clearTimeout(syncTimer);
-  }, [
-    user,
-    notificationsLoadedForUserId,
-    users,
-    customers,
-    leads,
-    pos,
-    procurementRequests,
-    designRequests,
-    inventory,
-    productionCommands,
-    deliveries,
-    invoices,
-    notifications
-  ]);
-
-  useEffect(() => {
-    if (!user) return;
-    const module = PAGE_NOTIFICATION_MODULES[activePage];
-    if (!module) return;
-    const pageReadKey = `${user.uid}:${activePage}`;
-    if (lastNotificationPageReadRef.current === pageReadKey) return;
-    lastNotificationPageReadRef.current = pageReadKey;
-    const hasUnread = notifications.some(notification => (
-      notification.module === module
-      && isUnreadNotificationForUser(notification, user.uid)
-    ));
-    if (!hasUnread) return;
-    void markModuleNotificationsRead(notifications, user.uid, module).catch(error => {
-      console.error(`Unable to mark ${module} notifications as read:`, error);
-    });
-  }, [activePage, notifications, user]);
-
-  useEffect(() => {
     if (!isNotificationPanelOpen) return;
     const closeWhenOutside = (event: MouseEvent) => {
       if (!notificationCenterRef.current?.contains(event.target as Node)) {
@@ -544,14 +483,6 @@ function AppShell() {
     return total;
   };
 
-  const getUnreadNotificationCount = (module: NotificationModule) => {
-    if (!user) return 0;
-    return notifications.filter(notification => (
-      notification.module === module
-      && isUnreadNotificationForUser(notification, user.uid)
-    )).length;
-  };
-
   const allUserNotifications = user
     ? notifications.filter(notification => notification.recipientId === user.uid)
     : [];
@@ -565,6 +496,12 @@ function AppShell() {
       console.error('Unable to mark notification as read:', error);
     });
     const targetPage = notification.module === 'system' ? 'dashboard' : notification.module;
+    if (
+      notification.eventType === 'support_request'
+      && (notification.module === 'customer_data' || notification.module === 'leads' || notification.module === 'crm')
+    ) {
+      setSupportNavigationTarget({ module: notification.module, entityId: notification.entityId });
+    }
     if (isPageAllowed(targetPage)) setActivePage(targetPage);
   };
 
@@ -600,6 +537,8 @@ function AppShell() {
             onPreparedOrderCreated={handlePreparedOrderCreated}
             initialLead={leadOnboarding}
             onLeadOnboardingClosed={() => setLeadOnboarding(null)}
+            initialCustomerId={supportNavigationTarget?.module === 'crm' ? supportNavigationTarget.entityId : ''}
+            onInitialCustomerOpened={() => setSupportNavigationTarget(null)}
           />
         );
       case 'leads':
@@ -615,6 +554,8 @@ function AppShell() {
             onConvertLead={handleLeadConversionRequest}
             initialCandidate={candidateLeadConversion}
             onInitialCandidateConsumed={handleCandidateLeadConversionConsumed}
+            initialLeadId={supportNavigationTarget?.module === 'leads' ? supportNavigationTarget.entityId : ''}
+            onInitialLeadOpened={() => setSupportNavigationTarget(null)}
           />
         );
       case 'customer_data':
@@ -625,6 +566,8 @@ function AppShell() {
             leads={leads}
             users={users}
             currentUser={user}
+            initialCandidateId={supportNavigationTarget?.module === 'customer_data' ? supportNavigationTarget.entityId : ''}
+            onInitialCandidateOpened={() => setSupportNavigationTarget(null)}
             onStartConversion={candidate => {
               setCandidateLeadConversion(candidate);
               setActivePage('leads');
@@ -921,7 +864,6 @@ function AppShell() {
                 <LayoutDashboard size={16} />
                 <span className="sidebar-item-label">Tổng quan</span>
               </div>
-              {getUnreadNotificationCount('dashboard') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('dashboard')}</span>}
             </button>
           )}
 
@@ -988,7 +930,6 @@ function AppShell() {
                 <Target size={16} />
                 <span className="sidebar-item-label">Tiềm năng</span>
               </div>
-              {getUnreadNotificationCount('leads') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('leads')}</span>}
             </button>
           )}
 
@@ -1002,7 +943,6 @@ function AppShell() {
                 <Users size={16} />
                 <span className="sidebar-item-label">Khách hàng</span>
               </div>
-              {getUnreadNotificationCount('crm') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('crm')}</span>}
             </button>
           )}
 
@@ -1016,7 +956,6 @@ function AppShell() {
                 <FileText size={16} />
                 <span className="sidebar-item-label">Tạo đơn hàng</span>
               </div>
-              {getUnreadNotificationCount('sales') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('sales')}</span>}
             </button>
           )}
 
@@ -1031,7 +970,6 @@ function AppShell() {
                   <Palette size={16} />
                   <span className="sidebar-item-label">Thiết kế</span>
                 </div>
-                {getUnreadNotificationCount('design') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('design')}</span>}
               </button>
               <button
                 className={`sidebar-item ${activePage === 'design_library' ? 'active' : ''}`}
@@ -1056,7 +994,6 @@ function AppShell() {
                 <ShoppingBag size={16} />
                 <span className="sidebar-item-label">Mua hàng</span>
               </div>
-              {getUnreadNotificationCount('purchase') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('purchase')}</span>}
             </button>
           )}
 
@@ -1083,7 +1020,6 @@ function AppShell() {
                 <Archive size={16} />
                 <span className="sidebar-item-label">Vật liệu</span>
               </div>
-              {getUnreadNotificationCount('inventory') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('inventory')}</span>}
             </button>
           )}
 
@@ -1097,7 +1033,6 @@ function AppShell() {
                 <Settings size={16} />
                 <span className="sidebar-item-label">Sản xuất</span>
               </div>
-              {getUnreadNotificationCount('production') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('production')}</span>}
             </button>
           )}
 
@@ -1111,7 +1046,6 @@ function AppShell() {
                 <Truck size={16} />
                 <span className="sidebar-item-label">Giao hàng</span>
               </div>
-              {getUnreadNotificationCount('delivery') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('delivery')}</span>}
             </button>
           )}
 
@@ -1125,7 +1059,6 @@ function AppShell() {
                 <DollarSign size={16} />
                 <span className="sidebar-item-label">Kế toán</span>
               </div>
-              {getUnreadNotificationCount('accounting') > 0 && <span className="sidebar-badge">{getUnreadNotificationCount('accounting')}</span>}
             </button>
           )}
 
@@ -1291,7 +1224,7 @@ function AppShell() {
                     <div className="header-notification-empty">
                       <Bell size={24} />
                       <strong>Chưa có thông báo</strong>
-                      <span>Các công việc mới và thay đổi quan trọng sẽ xuất hiện tại đây.</span>
+                      <span>Yêu cầu hỗ trợ từ Sale sẽ xuất hiện tại đây.</span>
                     </div>
                   )}
                 </div>
