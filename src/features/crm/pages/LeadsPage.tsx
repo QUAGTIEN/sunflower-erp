@@ -469,11 +469,10 @@ export const Leads: React.FC<LeadsProps> = ({
   });
   const leadColumnLabels = Object.fromEntries(leadColumnOptions.map(column => [column.id, column.label]));
 
-  const accessibleLeads = useMemo(() => leads.filter(lead => {
-    if (!isActiveLeadRecord(lead)) return false;
-    if (currentUser.role === 'admin') return true;
-    return lead.assignedSaleId === currentUser.uid;
-  }), [currentUser.role, currentUser.uid, leads]);
+  const accessibleLeads = useMemo(
+    () => leads.filter(isActiveLeadRecord),
+    [leads]
+  );
 
   const customFilterOptions = useMemo(() => Object.fromEntries(
     customFieldDefinitions.filter(definition => definition.active).map(definition => [
