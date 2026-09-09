@@ -13505,7 +13505,37 @@ const POST_2025_ADMINISTRATIVE_UNITS: VietnamAdministrativeProvince[] = [
 
 const POST_2025_BY_ID = new Map(POST_2025_ADMINISTRATIVE_UNITS.map(province => [province.id, province]));
 const COMPATIBLE_WARD_SOURCE_IDS: Record<string, string> = {
-  thua_thien_hue: 'hue'
+  ba_ria_vung_tau: 'tp_ho_chi_minh',
+  bac_giang: 'bac_ninh',
+  bac_kan: 'thai_nguyen',
+  bac_lieu: 'ca_mau',
+  ben_tre: 'vinh_long',
+  binh_dinh: 'gia_lai',
+  binh_duong: 'tp_ho_chi_minh',
+  binh_phuoc: 'dong_nai',
+  binh_thuan: 'lam_dong',
+  dak_nong: 'lam_dong',
+  ha_giang: 'tuyen_quang',
+  ha_nam: 'ninh_binh',
+  ha_tay: 'ha_noi',
+  hau_giang: 'can_tho',
+  hai_duong: 'hai_phong',
+  hoa_binh: 'phu_tho',
+  kien_giang: 'an_giang',
+  kon_tum: 'quang_ngai',
+  long_an: 'tay_ninh',
+  nam_dinh: 'ninh_binh',
+  ninh_thuan: 'khanh_hoa',
+  phu_yen: 'dak_lak',
+  quang_binh: 'quang_tri',
+  quang_nam: 'da_nang',
+  soc_trang: 'can_tho',
+  thai_binh: 'hung_yen',
+  thua_thien_hue: 'hue',
+  tien_giang: 'dong_thap',
+  tra_vinh: 'vinh_long',
+  vinh_phuc: 'phu_tho',
+  yen_bai: 'lao_cai'
 };
 
 export const VIETNAM_ADMINISTRATIVE_UNITS: VietnamAdministrativeProvince[] = VIETNAM_PROVINCES_64.map(province => ({
