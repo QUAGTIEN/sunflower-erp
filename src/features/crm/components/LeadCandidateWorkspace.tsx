@@ -59,7 +59,6 @@ import {
 } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService, type AuditEvent, type UserPresence } from '@/services/auditService';
 import { PageBackButton } from '@/components/PageBackButton';
-import { ExpandableTableText } from '@/components/ExpandableTableText';
 import { BusinessLocationFields } from './BusinessLocationFields';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
@@ -1458,24 +1457,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     }
   };
 
-  const togglePinned = async (candidate: LeadCandidateRecord) => {
-    if (!canManageCandidate(candidate)) return;
-    setActionError('');
-    try {
-      await dbService.updateDocument('lead_candidates', candidate.id, {
-        pinned: !candidate.pinned,
-        updatedBy: currentUser.displayName
-      });
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'lead_candidates', action: 'candidate_pin_toggled',
-        summary: `${candidate.pinned ? 'Bỏ ghim' : 'Ghim'} dữ liệu khách hàng ${candidate.companyName}`,
-        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
-      });
-    } catch {
-      setActionError('Không thể cập nhật dữ liệu. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    }
-  };
-
   const updateContactResult = async (candidate: LeadCandidateRecord, contactResult: LeadCandidateContactResult) => {
     if (!canManageCandidate(candidate) || candidate.contactResult === contactResult) return;
     if (contactResult === 'callback') {
@@ -1648,7 +1629,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   };
 
   const renderCompactValue = (value: string, title = value, className = '') => (
-    <ExpandableTableText className={`lead-candidate-compact-value ${className}`.trim()} fullText={title}>{value}</ExpandableTableText>
+    <span className={`lead-candidate-compact-value ${className}`.trim()} title={title}>{value}</span>
   );
 
   const renderCandidateField = (value?: string) => (
@@ -1901,7 +1882,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         )}
         {pinnedFilterEnabled && <DataFilterSection title={configuredFilterName('pinned', 'Dữ liệu đã ghim')} description={configuredFilterDescription('pinned')} selectedCount={pinnedOnly ? 1 : 0}>
           <button type="button" className={`lead-candidate-pinned-filter ${pinnedOnly ? 'is-active' : ''}`} onClick={() => { setPinnedOnly(previous => !previous); setCurrentPage(1); }}>
-            <Star size={14} fill={pinnedOnly ? 'currentColor' : 'none'} /> Chỉ hiển thị dữ liệu đã ghim
+            Chỉ hiển thị dữ liệu ưu tiên
           </button>
         </DataFilterSection>}
         {customFieldDefinitions.filter(definition => definition.active).map(definition => (
@@ -2114,7 +2095,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isActive = candidate.status === 'new' || candidate.status === 'retry';
                   return (
                     <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
-                      <ReorderableTableCells order={orderedColumnIds}>
+                      <ReorderableTableCells order={orderedColumnIds} expandOverflowText={false}>
                       {visibleColumnSet.has('index') && <td key="index" className="erp-table-index-column">{(safeCurrentPage - 1) * pageSize + candidateIndex + 1}</td>}
                       {visibleColumnSet.has('company') && <td key="company"><button type="button" className="lead-candidate-company-button" onClick={() => openCandidateProfile(candidate)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
                       {visibleColumnSet.has('taxCode') && <td key="taxCode">{renderCandidateField(candidate.taxCode)}</td>}
@@ -2208,7 +2189,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   const isSelectedForQueue = selectedQueueCandidateSet.has(candidate.id);
                   return (
                     <tr key={candidate.id} className={isSelectedForQueue ? 'is-selected' : ''}>
-                      <ReorderableTableCells order={orderedColumnIds}>
+                      <ReorderableTableCells order={orderedColumnIds} expandOverflowText={false}>
                       {visibleColumnSet.has('select') && <td key="select" className="lead-candidate-select-column">
                         <input
                           type="checkbox"
@@ -2224,19 +2205,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                         />
                       </td>}
                       {visibleColumnSet.has('index') && <td key="index" className="erp-table-index-column">{(safeCurrentPage - 1) * pageSize + candidateIndex + 1}</td>}
-                      {visibleColumnSet.has('company') && <td key="company">
-                        <div className="lead-candidate-company-cell">
-                          {canManageCandidate(candidate) && <button
-                            type="button"
-                            className={`lead-candidate-pin ${candidate.pinned ? 'is-active' : ''}`}
-                            title={candidate.pinned ? 'Bỏ ghim' : 'Ghim ưu tiên'}
-                            onClick={() => togglePinned(candidate)}
-                          ><Star size={14} fill={candidate.pinned ? 'currentColor' : 'none'} /></button>}
-                          <button type="button" className="lead-candidate-company-button" onClick={() => openCandidateProfile(candidate)} title={`${candidate.companyName} · ${candidate.source || 'Chưa rõ nguồn'}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}>
-                            <strong className="erp-company-name">{candidate.companyName}</strong>
-                          </button>
-                        </div>
-                      </td>}
+                      {visibleColumnSet.has('company') && <td key="company"><button type="button" className="lead-candidate-company-button" onClick={() => openCandidateProfile(candidate)} title={`${candidate.companyName} · ${candidate.source || 'Chưa rõ nguồn'}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
                       {visibleColumnSet.has('taxCode') && <td key="taxCode">{renderCandidateField(candidate.taxCode)}</td>}
                       {visibleColumnSet.has('website') && <td key="website">{renderCandidateField(candidate.website)}</td>}
                       {visibleColumnSet.has('businessSector') && <td key="businessSector">{renderCandidateField(candidate.businessSector)}</td>}

@@ -7,6 +7,7 @@ interface ReorderableTableCellsProps {
   children: React.ReactNode;
   getHeaderProps?: (columnId: string, label: string, currentClassName?: string, currentStyle?: React.CSSProperties) => HeaderInteractionProps;
   labels?: Record<string, string>;
+  expandOverflowText?: boolean;
 }
 
 const collectKeyedElements = (node: React.ReactNode, result: Map<string, React.ReactElement>) => {
@@ -22,7 +23,8 @@ export const ReorderableTableCells: React.FC<ReorderableTableCellsProps> = ({
   order,
   children,
   getHeaderProps,
-  labels = {}
+  labels = {},
+  expandOverflowText = true
 }) => {
   const cells = new Map<string, React.ReactElement>();
   collectKeyedElements(children, cells);
@@ -39,7 +41,9 @@ export const ReorderableTableCells: React.FC<ReorderableTableCellsProps> = ({
             typeof child === 'string' || typeof child === 'number'
           ));
           if (!containsTextOnly) return cell;
-          return React.cloneElement(cell, {}, <ExpandableTableText>{bodyProps.children}</ExpandableTableText>);
+          return React.cloneElement(cell, {}, expandOverflowText
+            ? <ExpandableTableText>{bodyProps.children}</ExpandableTableText>
+            : <span className="erp-table-cell-text">{bodyProps.children}</span>);
         }
         const props = cell.props as { className?: string; children?: React.ReactNode; style?: React.CSSProperties };
         const label = labels[columnId] || (typeof props.children === 'string' ? props.children : columnId);

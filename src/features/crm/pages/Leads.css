@@ -1123,11 +1123,13 @@
 }
 
 .lead-candidate-table.is-compact tbody tr {
-  height: 44px;
+  height: var(--erp-table-row-height) !important;
+  max-height: var(--erp-table-row-height) !important;
 }
 
 .lead-candidate-table.is-compact tbody td {
-  height: 44px;
+  height: var(--erp-table-row-height) !important;
+  max-height: var(--erp-table-row-height) !important;
   max-width: 240px;
   padding: 5px 10px;
   overflow: hidden;
@@ -1159,7 +1161,7 @@
 }
 
 .lead-candidate-compact-value {
-  display: flex !important;
+  display: block !important;
   max-width: 100%;
   overflow: hidden;
   margin: 0 !important;
