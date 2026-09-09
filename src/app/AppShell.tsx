@@ -141,6 +141,8 @@ function AppShell() {
   const notificationCenterRef = useRef<HTMLDivElement>(null);
   const lastNotificationPageReadRef = useRef('');
   const provinceSynchronizationStartedRef = useRef(false);
+  const businessSubscriptionsRef = useRef<Map<string, () => void>>(new Map());
+  const businessSubscriptionUserIdRef = useRef('');
 
   useEffect(() => {
     if (user?.role !== 'admin' || provinceSynchronizationStartedRef.current) return;
@@ -239,40 +241,12 @@ function AppShell() {
     };
   }, [activePage, user]);
 
-  // Set up real-time database subscriptions
+  // Keep only session-wide data live for the whole authenticated session.
   useEffect(() => {
     if (!user) return;
 
     const unsubUsers = dbService.subscribeCollection('users', (data) => setUsers(data as UserProfile[]));
-    const unsubCustomers = dbService.subscribeCollection('customers', (data) => {
-      setCustomers(data as CustomerRecord[]);
-    });
-    const unsubLeads = dbService.subscribeCollection('leads', (data) => {
-      setLeads(sortNewestFirst(data as LeadRecord[], lead => [lead.createdAt, lead.updatedAt]));
-    });
-    const unsubPOs = dbService.subscribeCollection('pos', (data) => {
-      setPOs(sortNewestFirst(normalizePORecords(data), po => [po.createdAt, po.orderDate]));
-    });
-    const unsubPurchases = dbService.subscribeCollection('purchase_orders', (data) => {
-      setPurchaseOrders(sortNewestFirst(data, purchaseOrder => [purchaseOrder.createdAt]));
-    });
-    const unsubProcurementRequests = dbService.subscribeCollection('procurement_requests', (data) => {
-      setProcurementRequests(sortNewestFirst(
-        data as ProcurementRequestRecord[],
-        request => [request.createdAt, request.updatedAt]
-      ));
-    });
-    const unsubProduction = dbService.subscribeCollection('production_commands', (data) => {
-      setProductionCommands(sortNewestFirst(data, command => [command.createdAt, command.startedAt]));
-    });
-    const unsubDeliveries = dbService.subscribeCollection('deliveries', (data) => {
-      setDeliveries(sortNewestFirst(data, delivery => [delivery.createdAt]));
-    });
-    const unsubInvoices = dbService.subscribeCollection('invoices', (data) => {
-      setInvoices(sortNewestFirst(data, invoice => [invoice.createdAt]));
-    });
-    const unsubInventory = dbService.subscribeCollection('inventory', setInventory);
-    const unsubMessages = dbService.subscribeCollection('messages', (data) => {
+    const unsubMessages = dbService.subscribeCollection('messages', data => {
       setMessages([...data].sort((left, right) => (
         String(left.createdAt || '').localeCompare(String(right.createdAt || ''))
       )));
@@ -282,12 +256,6 @@ function AppShell() {
       maxResults: 250
     });
     const unsubChannels = dbService.subscribeCollection('channels', setChannels);
-    const unsubDesignRequests = dbService.subscribeCollection('design_requests', (data) => {
-      setDesignRequests(sortNewestFirst(
-        data as DesignRequest[],
-        request => [request.createdAt]
-      ));
-    });
     const unsubNotifications = dbService.subscribeCollection('notifications', (data) => {
       setNotifications(sortNewestFirst(
         data as UserNotificationRecord[],
@@ -302,21 +270,123 @@ function AppShell() {
 
     return () => {
       unsubUsers();
-      unsubCustomers();
-      unsubLeads();
-      unsubPOs();
-      unsubPurchases();
-      unsubProcurementRequests();
-      unsubProduction();
-      unsubDeliveries();
-      unsubInvoices();
-      unsubInventory();
       unsubMessages();
       unsubChannels();
-      unsubDesignRequests();
       unsubNotifications();
     };
   }, [user]);
+
+  // Business collections are live only while the current page needs them.
+  useEffect(() => {
+    const stopAllBusinessSubscriptions = () => {
+      businessSubscriptionsRef.current.forEach(unsubscribe => unsubscribe());
+      businessSubscriptionsRef.current.clear();
+    };
+    if (!user) {
+      stopAllBusinessSubscriptions();
+      businessSubscriptionUserIdRef.current = '';
+      return;
+    }
+    if (businessSubscriptionUserIdRef.current !== user.uid) {
+      stopAllBusinessSubscriptions();
+      businessSubscriptionUserIdRef.current = user.uid;
+    }
+
+    const pageNeeds = (...pages: string[]) => pages.includes(activePage);
+    const syncSubscription = (
+      collectionName: string,
+      needed: boolean,
+      subscribe: () => () => void
+    ) => {
+      const existing = businessSubscriptionsRef.current.get(collectionName);
+      if (needed && !existing) {
+        businessSubscriptionsRef.current.set(collectionName, subscribe());
+      } else if (!needed && existing) {
+        existing();
+        businessSubscriptionsRef.current.delete(collectionName);
+      }
+    };
+
+    syncSubscription(
+      'customers',
+      pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
+      () => dbService.subscribeCollection('customers', data => {
+        setCustomers(data as CustomerRecord[]);
+      })
+    );
+    syncSubscription(
+      'leads',
+      pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map'),
+      () => dbService.subscribeCollection('leads', data => {
+        setLeads(sortNewestFirst(data as LeadRecord[], lead => [lead.createdAt, lead.updatedAt]));
+      })
+    );
+    syncSubscription(
+      'pos',
+      pageNeeds('dashboard', 'crm', 'commercial_map', 'sales', 'design', 'design_library', 'purchase', 'production', 'delivery', 'accounting', 'chat'),
+      () => dbService.subscribeCollection('pos', data => {
+        setPOs(sortNewestFirst(normalizePORecords(data), po => [po.createdAt, po.orderDate]));
+      })
+    );
+    syncSubscription(
+      'purchase_orders',
+      pageNeeds('dashboard', 'purchase', 'suppliers'),
+      () => dbService.subscribeCollection('purchase_orders', data => {
+        setPurchaseOrders(sortNewestFirst(data, purchaseOrder => [purchaseOrder.createdAt]));
+      })
+    );
+    syncSubscription(
+      'procurement_requests',
+      pageNeeds('dashboard', 'purchase'),
+      () => dbService.subscribeCollection('procurement_requests', data => {
+        setProcurementRequests(sortNewestFirst(
+          data as ProcurementRequestRecord[],
+          request => [request.createdAt, request.updatedAt]
+        ));
+      })
+    );
+    syncSubscription(
+      'production_commands',
+      pageNeeds('dashboard', 'production', 'chat'),
+      () => dbService.subscribeCollection('production_commands', data => {
+        setProductionCommands(sortNewestFirst(data, command => [command.createdAt, command.startedAt]));
+      })
+    );
+    syncSubscription(
+      'deliveries',
+      pageNeeds('dashboard', 'commercial_map'),
+      () => dbService.subscribeCollection('deliveries', data => {
+        setDeliveries(sortNewestFirst(data, delivery => [delivery.createdAt]));
+      })
+    );
+    syncSubscription(
+      'invoices',
+      pageNeeds('dashboard', 'crm'),
+      () => dbService.subscribeCollection('invoices', data => {
+        setInvoices(sortNewestFirst(data, invoice => [invoice.createdAt]));
+      })
+    );
+    syncSubscription(
+      'inventory',
+      pageNeeds('dashboard'),
+      () => dbService.subscribeCollection('inventory', setInventory)
+    );
+    syncSubscription(
+      'design_requests',
+      pageNeeds('dashboard', 'design'),
+      () => dbService.subscribeCollection('design_requests', data => {
+        setDesignRequests(sortNewestFirst(
+          data as DesignRequest[],
+          request => [request.createdAt]
+        ));
+      })
+    );
+  }, [activePage, user]);
+
+  useEffect(() => () => {
+    businessSubscriptionsRef.current.forEach(unsubscribe => unsubscribe());
+    businessSubscriptionsRef.current.clear();
+  }, []);
 
   useEffect(() => {
     if (
@@ -535,6 +605,7 @@ function AppShell() {
         return (
           <Leads
             customers={customers}
+            leads={leads}
             users={users}
             currentUser={user}
             onNavigateToCrm={() => setActivePage('crm')}

@@ -119,6 +119,7 @@ import './Leads.css';
 
 interface LeadsProps {
   customers: CustomerRecord[];
+  leads: LeadRecord[];
   users: UserProfile[];
   currentUser: UserProfile;
   onNavigateToCrm: () => void;
@@ -270,6 +271,7 @@ const createEmptyForm = (currentUser: UserProfile, saleUsers: UserProfile[]): Le
 
 export const Leads: React.FC<LeadsProps> = ({
   customers,
+  leads,
   users,
   currentUser,
   onNavigateToCrm,
@@ -282,7 +284,6 @@ export const Leads: React.FC<LeadsProps> = ({
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('leads', currentUser.role);
   const inlineSystemFieldConfiguration = useSystemFieldConfiguration('leads');
   const saleUsers = useMemo(() => users.filter(user => user.role === 'sale'), [users]);
-  const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [leadPageSize, setLeadPageSize] = useState(25);
   const [leadCurrentPage, setLeadCurrentPage] = useState(1);
@@ -331,13 +332,6 @@ export const Leads: React.FC<LeadsProps> = ({
     ...previous,
     [fieldKey]: typeof (previous as unknown as Record<string, unknown>)[fieldKey] === 'number' ? 0 : ''
   }));
-
-  useEffect(() => {
-    const unsubscribe = dbService.subscribeCollection('leads', data => {
-      setLeads(sortNewestFirst(data as LeadRecord[], lead => [lead.createdAt, lead.updatedAt]));
-    });
-    return unsubscribe;
-  }, []);
 
   useEffect(() => {
     const unsubscribe = dbService.subscribeCollection('lead_candidates', data => {
