@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 
 const MIN_COLUMN_WIDTH = 64;
-const MAX_COLUMN_WIDTH = 520;
 
 const readWidths = (storageKey: string): Record<string, number> => {
   try {
@@ -26,12 +25,14 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         const tableKey = table.dataset.resizeKey || `table-${tableIndex}`;
         const storageKey = `sunflower:table-column-widths:${userId}:${pageId}:${tableKey}`;
         const widths = readWidths(storageKey);
-        table.querySelectorAll<HTMLTableCellElement>('thead th:not(.is-resizable)').forEach((header, columnIndex) => {
+        const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>('thead th:not(.is-resizable)'));
+        const measuredWidths = headers.map(header => Math.round(header.getBoundingClientRect().width));
+        headers.forEach((header, columnIndex) => {
           header.classList.add('erp-generic-resizable-header');
           header.dataset.resizeStorageKey = storageKey;
           header.dataset.resizeColumnIndex = String(columnIndex);
           if (!header.title) header.title = header.textContent?.trim() || '';
-          const width = widths[String(columnIndex)];
+          const width = widths[String(columnIndex)] || measuredWidths[columnIndex];
           if (width) header.style.setProperty('--erp-column-resized-width', `${width}px`);
         });
       });
@@ -54,7 +55,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
       const startWidth = bounds.width;
       let finalWidth = startWidth;
       const onPointerMove = (moveEvent: PointerEvent) => {
-        finalWidth = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, Math.round(startWidth + moveEvent.clientX - startX)));
+        finalWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(startWidth + moveEvent.clientX - startX));
         header.style.setProperty('--erp-column-resized-width', `${finalWidth}px`);
       };
       const onPointerUp = () => {

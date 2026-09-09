@@ -59,6 +59,7 @@ import {
 } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService, type AuditEvent, type UserPresence } from '@/services/auditService';
 import { PageBackButton } from '@/components/PageBackButton';
+import { ExpandableTableText } from '@/components/ExpandableTableText';
 import { BusinessLocationFields } from './BusinessLocationFields';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
@@ -1638,7 +1639,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   };
 
   const renderCompactValue = (value: string, title = value, className = '') => (
-    <span className={`lead-candidate-compact-value ${className}`.trim()} title={title}>{value}</span>
+    <ExpandableTableText className={`lead-candidate-compact-value ${className}`.trim()} fullText={title}>{value}</ExpandableTableText>
   );
 
   const renderCandidateField = (value?: string) => (

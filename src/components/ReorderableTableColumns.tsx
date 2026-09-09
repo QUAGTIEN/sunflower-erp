@@ -1,5 +1,6 @@
 import React from 'react';
 import type { HeaderInteractionProps } from '@/hooks/useReorderableTableColumns';
+import { ExpandableTableText } from '@/components/ExpandableTableText';
 
 interface ReorderableTableCellsProps {
   order: string[];
@@ -38,7 +39,7 @@ export const ReorderableTableCells: React.FC<ReorderableTableCellsProps> = ({
             typeof child === 'string' || typeof child === 'number'
           ));
           if (!containsTextOnly) return cell;
-          return React.cloneElement(cell, {}, <span className="erp-table-cell-text">{bodyProps.children}</span>);
+          return React.cloneElement(cell, {}, <ExpandableTableText>{bodyProps.children}</ExpandableTableText>);
         }
         const props = cell.props as { className?: string; children?: React.ReactNode; style?: React.CSSProperties };
         const label = labels[columnId] || (typeof props.children === 'string' ? props.children : columnId);

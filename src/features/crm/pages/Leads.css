@@ -1159,8 +1159,8 @@
 }
 
 .lead-candidate-compact-value {
-  display: block !important;
-  max-width: 220px;
+  display: flex !important;
+  max-width: 100%;
   overflow: hidden;
   margin: 0 !important;
   color: #334155 !important;
@@ -1310,7 +1310,7 @@
 
 .lead-candidate-table.is-compact .lead-candidate-company-button {
   display: block;
-  max-width: 190px;
+  max-width: 100%;
   overflow: hidden;
   line-height: 1.35;
   text-overflow: ellipsis;

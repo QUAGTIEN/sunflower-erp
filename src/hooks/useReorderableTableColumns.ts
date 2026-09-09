@@ -138,7 +138,7 @@ export const useReorderableTableColumns = ({
         const startWidth = bounds.width;
         let finalWidth = startWidth;
         const onPointerMove = (moveEvent: PointerEvent) => {
-          finalWidth = Math.min(520, Math.max(64, Math.round(startWidth + moveEvent.clientX - startX)));
+          finalWidth = Math.max(64, Math.round(startWidth + moveEvent.clientX - startX));
           setColumnWidthsByKey(previous => ({
             ...previous,
             [activeWidthKey]: {
