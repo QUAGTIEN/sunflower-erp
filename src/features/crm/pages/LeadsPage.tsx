@@ -458,6 +458,7 @@ export const Leads: React.FC<LeadsProps> = ({
     columns: leadColumnOptions,
     selectedIds: storedVisibleColumnIds || Array.from(visibleLeadColumnIds),
     onOrderChange: saveVisibleLeadColumns,
+    widthStorageKey: `sunflower:lead-column-widths:${currentUser.uid}`,
     lockedStartIds: ['index', 'company'],
     lockedEndIds: ['actions']
   });

@@ -145,6 +145,7 @@ export const Design: React.FC<DesignProps> = ({
     columns: DESIGN_LIST_COLUMNS,
     selectedIds: designVisibleColumns,
     onOrderChange: saveDesignVisibleColumns,
+    widthStorageKey: `sunflower:design-column-widths:${currentUser.uid}`,
     lockedStartIds: ['request'],
     lockedEndIds: ['actions']
   });

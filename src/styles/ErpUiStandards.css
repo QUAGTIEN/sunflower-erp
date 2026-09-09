@@ -8,7 +8,7 @@
   --erp-control-height: 36px;
   --erp-table-header-bg: #e7ebf1;
   --erp-table-header-border: #c5cfdd;
-  --erp-table-row-height: 44px;
+  --erp-table-row-height: 52px;
   --erp-entity-column-width: 280px;
   --erp-data-column-width: 150px;
   --erp-action-column-width: 72px;
@@ -427,7 +427,7 @@ input[type='checkbox']:disabled {
 
 .app-main table thead tr,
 .app-main table thead th {
-  height: 40px;
+  height: 48px;
 }
 
 .app-main table tbody tr,
@@ -442,9 +442,9 @@ input[type='checkbox']:disabled {
   padding: 8px 12px !important;
   overflow: hidden;
   line-height: 1.25;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   vertical-align: middle !important;
-  white-space: nowrap !important;
+  white-space: normal !important;
   border-right: 1px solid var(--erp-column-divider) !important;
   border-left: 0 !important;
   border-radius: 0 !important;
@@ -457,6 +457,95 @@ input[type='checkbox']:disabled {
 .reorderable-table-header.is-movable {
   cursor: grab;
   user-select: none;
+}
+
+.app-main table th {
+  overflow-wrap: break-word;
+}
+
+.reorderable-table-header.is-resizable {
+  position: relative;
+  width: var(--erp-column-resized-width, auto) !important;
+  min-width: var(--erp-column-resized-width, 64px) !important;
+  max-width: var(--erp-column-resized-width, 520px) !important;
+}
+
+.erp-generic-resizable-header {
+  position: relative;
+  width: var(--erp-column-resized-width, auto) !important;
+  min-width: var(--erp-column-resized-width, 64px) !important;
+  max-width: var(--erp-column-resized-width, 520px) !important;
+}
+
+.erp-generic-resizable-header::after {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  z-index: 3;
+  width: 9px;
+  content: '';
+  cursor: col-resize;
+}
+
+.erp-generic-resizable-header:hover::after {
+  border-right: 2px solid #6687c7;
+}
+
+.reorderable-table-header.is-resizable::after {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  z-index: 3;
+  width: 9px;
+  content: '';
+  cursor: col-resize;
+}
+
+.reorderable-table-header.is-resizable:hover::after {
+  border-right: 2px solid #6687c7;
+}
+
+.app-main table tbody td > span:not(.badge):not([class*='status']),
+.app-main table tbody td > strong,
+.app-main table tbody td > a,
+.app-main table tbody td > div:not([class*='action']):not([class*='menu']):not([class*='control']) {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}
+
+.app-main table .erp-table-cell-text {
+  display: -webkit-box;
+  max-height: 32.5px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+/* Primary data grids reserve exactly two text lines without growing individual rows. */
+.app-main table:has(th.reorderable-table-header) thead tr,
+.app-main table:has(th.reorderable-table-header) thead th {
+  height: 48px !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+
+.app-main table:has(th.reorderable-table-header) tbody tr,
+.app-main table:has(th.reorderable-table-header) tbody td {
+  height: var(--erp-table-row-height) !important;
+  max-height: var(--erp-table-row-height) !important;
+}
+
+.app-main table:has(th.reorderable-table-header) tbody td {
+  text-overflow: clip !important;
+  white-space: normal !important;
 }
 
 .reorderable-table-header.is-movable:active {
@@ -501,18 +590,19 @@ input[type='checkbox']:disabled {
 
 /* Dynamic entity grids reserve the most space for the business identity. */
 .app-main table.has-dynamic-columns th {
-  width: var(--erp-data-column-width) !important;
-  min-width: var(--erp-data-column-width) !important;
+  width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
+  min-width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
+  max-width: var(--erp-column-resized-width, 520px) !important;
 }
 
 .app-main table.has-dynamic-columns th[data-system-field='companyName'] {
-  width: var(--erp-entity-column-width) !important;
-  min-width: var(--erp-entity-column-width) !important;
+  width: var(--erp-column-resized-width, var(--erp-entity-column-width)) !important;
+  min-width: var(--erp-column-resized-width, var(--erp-entity-column-width)) !important;
 }
 
 .app-main table.has-dynamic-columns th:last-child {
-  width: var(--erp-action-column-width) !important;
-  min-width: var(--erp-action-column-width) !important;
+  width: var(--erp-column-resized-width, var(--erp-action-column-width)) !important;
+  min-width: var(--erp-column-resized-width, var(--erp-action-column-width)) !important;
 }
 
 .app-main table.has-dynamic-columns th.erp-table-index-column,

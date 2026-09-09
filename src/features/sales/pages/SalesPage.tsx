@@ -131,6 +131,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     columns: SALES_CUSTOMER_COLUMNS,
     selectedIds: salesVisibleColumns,
     onOrderChange: saveSalesVisibleColumns,
+    widthStorageKey: `sunflower:sales-customer-column-widths:${currentUser.uid}`,
     lockedStartIds: ['customer'],
     lockedEndIds: ['actions']
   });

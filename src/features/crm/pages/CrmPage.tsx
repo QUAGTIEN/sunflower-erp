@@ -404,6 +404,7 @@ export const Crm: React.FC<CrmProps> = ({
     columns: customerColumnOptions,
     selectedIds: storedVisibleColumnIds || Array.from(visibleCustomerColumnIds),
     onOrderChange: saveVisibleCustomerColumns,
+    widthStorageKey: `sunflower:customer-column-widths:${currentUser.uid}`,
     lockedStartIds: ['index', 'company'],
     lockedEndIds: ['actions']
   });

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import type { TableColumnOption } from '@/components/TableColumnCustomizer';
 
@@ -6,6 +6,7 @@ interface UseReorderableTableColumnsOptions {
   columns: TableColumnOption[];
   selectedIds: string[];
   onOrderChange: (orderedIds: string[]) => void;
+  widthStorageKey?: string;
   lockedStartIds?: string[];
   lockedEndIds?: string[];
 }
@@ -20,10 +21,25 @@ export interface HeaderInteractionProps {
   onDrop?: React.DragEventHandler<HTMLTableCellElement>;
   onDragEnd?: React.DragEventHandler<HTMLTableCellElement>;
   onKeyDown?: React.KeyboardEventHandler<HTMLTableCellElement>;
+  onPointerDown?: React.PointerEventHandler<HTMLTableCellElement>;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const unique = (ids: string[]) => Array.from(new Set(ids));
+
+const readStoredColumnWidths = (storageKey?: string): Record<string, number> => {
+  if (!storageKey) return {};
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) || '{}');
+    if (!parsed || typeof parsed !== 'object') return {};
+    return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, number] => (
+      typeof entry[1] === 'number' && Number.isFinite(entry[1])
+    )));
+  } catch {
+    return {};
+  }
+};
 
 export const normalizeTableColumnOrder = (
   columns: TableColumnOption[],
@@ -48,11 +64,16 @@ export const useReorderableTableColumns = ({
   columns,
   selectedIds,
   onOrderChange,
+  widthStorageKey,
   lockedStartIds = [],
   lockedEndIds = []
 }: UseReorderableTableColumnsOptions) => {
   const [draggingId, setDraggingId] = useState('');
   const [dropTargetId, setDropTargetId] = useState('');
+  const [columnWidthsByKey, setColumnWidthsByKey] = useState<Record<string, Record<string, number>>>({});
+  const resizeActiveRef = useRef(false);
+  const activeWidthKey = widthStorageKey || '__session__';
+  const columnWidths = columnWidthsByKey[activeWidthKey] || readStoredColumnWidths(widthStorageKey);
   const orderedColumnIds = useMemo(
     () => normalizeTableColumnOrder(columns, selectedIds, lockedStartIds, lockedEndIds),
     [columns, lockedEndIds, lockedStartIds, selectedIds]
@@ -87,17 +108,69 @@ export const useReorderableTableColumns = ({
     onOrderChange(next);
   };
 
-  const getHeaderProps = (columnId: string, label: string, currentClassName = ''): HeaderInteractionProps => {
+  const getHeaderProps = (
+    columnId: string,
+    label: string,
+    currentClassName = '',
+    currentStyle: React.CSSProperties = {}
+  ): HeaderInteractionProps => {
     const movable = !lockedStartSet.has(columnId) && !lockedEndSet.has(columnId);
-    const className = [currentClassName, 'reorderable-table-header', movable ? 'is-movable' : 'is-locked', draggingId === columnId ? 'is-dragging' : '', dropTargetId === columnId ? 'is-drop-target' : ''].filter(Boolean).join(' ');
-    if (!movable) return { draggable: false, className };
-    return {
-      draggable: true,
+    const savedWidth = columnWidths[columnId];
+    const className = [currentClassName, 'reorderable-table-header', 'is-resizable', movable ? 'is-movable' : 'is-locked', draggingId === columnId ? 'is-dragging' : '', dropTargetId === columnId ? 'is-drop-target' : ''].filter(Boolean).join(' ');
+    const style = savedWidth
+      ? { ...currentStyle, '--erp-column-resized-width': `${savedWidth}px` } as React.CSSProperties
+      : currentStyle;
+    const sharedProps: HeaderInteractionProps = {
+      draggable: movable,
       tabIndex: 0,
-      title: `${label} — kéo để đổi vị trí; Alt + phím mũi tên để di chuyển`,
-      'aria-label': `${label}. Có thể kéo để đổi vị trí cột`,
+      title: `${label} — kéo mép phải để đổi độ rộng${movable ? '; kéo tiêu đề để đổi vị trí' : ''}`,
+      'aria-label': `${label}. Có thể kéo mép phải để đổi độ rộng cột`,
       className,
+      style,
+      onPointerDown: event => {
+        const header = event.currentTarget;
+        const bounds = header.getBoundingClientRect();
+        if (bounds.right - event.clientX > 9) return;
+        event.preventDefault();
+        event.stopPropagation();
+        resizeActiveRef.current = true;
+        const startX = event.clientX;
+        const startWidth = bounds.width;
+        let finalWidth = startWidth;
+        const onPointerMove = (moveEvent: PointerEvent) => {
+          finalWidth = Math.min(520, Math.max(64, Math.round(startWidth + moveEvent.clientX - startX)));
+          setColumnWidthsByKey(previous => ({
+            ...previous,
+            [activeWidthKey]: {
+              ...(previous[activeWidthKey] || columnWidths),
+              [columnId]: finalWidth
+            }
+          }));
+        };
+        const onPointerUp = () => {
+          window.removeEventListener('pointermove', onPointerMove);
+          window.removeEventListener('pointerup', onPointerUp);
+          resizeActiveRef.current = false;
+          if (!widthStorageKey) return;
+          try {
+            const next = { ...columnWidths, [columnId]: finalWidth };
+            window.localStorage.setItem(widthStorageKey, JSON.stringify(next));
+          } catch {
+            // The resized width remains active for the current page session.
+          }
+        };
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp, { once: true });
+      }
+    };
+    if (!movable) return sharedProps;
+    return {
+      ...sharedProps,
       onDragStart: event => {
+        if (resizeActiveRef.current) {
+          event.preventDefault();
+          return;
+        }
         setDraggingId(columnId);
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', columnId);

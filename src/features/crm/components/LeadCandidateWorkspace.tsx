@@ -512,6 +512,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     columns: availableColumnOptions,
     selectedIds: Array.from(visibleColumnSet),
     onOrderChange: saveVisibleColumns,
+    widthStorageKey: `sunflower:lead-candidate-column-widths:${currentUser.uid}:${workspaceView}`,
     lockedStartIds: workspaceView === 'all' ? ['select', 'index', 'company'] : ['index', 'company'],
     lockedEndIds: ['actions']
   });
