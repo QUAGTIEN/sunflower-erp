@@ -2053,7 +2053,6 @@ export const Leads: React.FC<LeadsProps> = ({
                       </ReorderableTableCells>
                     </tr>
                   ))}
-                  {filteredLeads.length === 0 && <tr><td colSpan={visibleLeadColumnCount} className="lead-empty">{t('Không có Lead phù hợp với bộ lọc.')}</td></tr>}
                 </tbody>
               </ConfiguredSystemTable>
             </div>

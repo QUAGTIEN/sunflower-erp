@@ -1822,7 +1822,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={visibleColumnCount} className="lead-empty">Không có công việc phù hợp. Công việc chỉ biến mất khi được chọn “Tắt công việc”.</td></tr>}
               </tbody>
             </ConfiguredSystemTable>
           ) : (
@@ -1951,7 +1950,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     </tr>
                   );
                 })}
-                {filteredCandidates.length === 0 && <tr><td colSpan={visibleColumnCount} className="lead-empty">Không có dữ liệu phù hợp với điều kiện lọc.</td></tr>}
               </tbody>
             </ConfiguredSystemTable>
           )}
