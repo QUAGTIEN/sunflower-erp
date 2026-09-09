@@ -303,7 +303,8 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'title', 'description', 'stage', 'startAt', 'endAt',
             'status', 'progress', 'referenceType', 'referenceId',
-            'referenceLabel', 'notes', 'completedAt', 'updatedAt'
+            'referenceLabel', 'notes', 'completedAt', 'updatedAt',
+            'deleted', 'deletedAt'
           ]));
       allow delete: if isAdmin();
     }

@@ -55,7 +55,9 @@ const asNumber = (value: unknown, fallback = 0): number => {
 };
 
 const asStatus = (value: unknown): WorkScheduleStatus => (
-  STATUS_VALUES.includes(value as WorkScheduleStatus) ? value as WorkScheduleStatus : 'not_started'
+  value === 'paused'
+    ? 'in_progress'
+    : STATUS_VALUES.includes(value as WorkScheduleStatus) ? value as WorkScheduleStatus : 'not_started'
 );
 
 const asReferenceType = (value: unknown): WorkScheduleReferenceType => (
@@ -100,10 +102,10 @@ export const normalizeWorkScheduleRecords = (values: unknown): WorkScheduleRecor
 );
 
 export const WORK_SCHEDULE_STATUS_LABELS: Record<WorkScheduleStatus, string> = {
-  not_started: 'Chưa bắt đầu',
-  in_progress: 'Đang thực hiện',
-  paused: 'Tạm dừng',
-  completed: 'Hoàn thành'
+  not_started: 'Chưa xử lý',
+  in_progress: 'Đang xử lý',
+  paused: 'Đang xử lý',
+  completed: 'Đã xử lý'
 };
 
 export const WORK_SCHEDULE_REFERENCE_LABELS: Record<WorkScheduleReferenceType, string> = {
@@ -168,10 +170,3 @@ export const isScheduleOnDate = (item: WorkScheduleRecord, date: Date): boolean 
   const end = new Date(item.endAt).getTime();
   return Number.isFinite(start) && Number.isFinite(end) && start < dayEnd.getTime() && end > dayStart.getTime();
 };
-
-export const overlapsSchedule = (candidate: Pick<WorkScheduleRecord, 'assigneeId' | 'startAt' | 'endAt'>, existing: WorkScheduleRecord): boolean => (
-  !existing.deleted
-  && candidate.assigneeId === existing.assigneeId
-  && new Date(candidate.startAt).getTime() < new Date(existing.endAt).getTime()
-  && new Date(candidate.endAt).getTime() > new Date(existing.startAt).getTime()
-);
