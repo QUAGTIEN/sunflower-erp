@@ -66,6 +66,8 @@ const asReferenceType = (value: unknown): WorkScheduleReferenceType => (
 
 export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord => {
   const source = typeof value === 'object' && value !== null ? value as Record<string, unknown> : {};
+  const completedAt = asText(source.completedAt);
+  const deletedAt = asText(source.deletedAt);
   return {
     ...source,
     id: asText(source.id),
@@ -87,9 +89,9 @@ export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord 
     notes: asText(source.notes),
     createdAt: asText(source.createdAt),
     updatedAt: asText(source.updatedAt),
-    completedAt: asText(source.completedAt) || undefined,
     deleted: source.deleted === true,
-    deletedAt: asText(source.deletedAt) || undefined
+    ...(completedAt ? { completedAt } : {}),
+    ...(deletedAt ? { deletedAt } : {})
   };
 };
 
