@@ -88,9 +88,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users }
     try {
       const data = isAdmin
         ? await dbService.getCollection('work_schedule_items')
-        : await dbService.getCollectionByField('work_schedule_items', 'assigneeId', currentUser.uid, {
-            orderByField: 'startAt', direction: 'asc', maxResults: 500
-          });
+        : await dbService.getCollectionByField('work_schedule_items', 'assigneeId', currentUser.uid);
       setItems(normalizeWorkScheduleRecords(data).filter(item => !item.deleted));
     } catch (error) {
       console.error('[WorkSchedule] Could not load schedules.', error);
