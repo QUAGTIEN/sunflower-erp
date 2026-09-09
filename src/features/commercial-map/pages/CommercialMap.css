@@ -51,6 +51,7 @@
 }
 
 .commercial-overview__toolbar > label,
+.commercial-overview__toolbar > .commercial-overview__field,
 .commercial-parks__intro > label,
 .commercial-parks__add > label {
   display: flex;
@@ -61,6 +62,7 @@
 }
 
 .commercial-overview__toolbar > label > span,
+.commercial-overview__toolbar > .commercial-overview__field > span,
 .commercial-parks__intro label > span,
 .commercial-parks__add label > span {
   color: #334155;
@@ -1011,6 +1013,7 @@
   }
 
   .commercial-overview__toolbar > label,
+  .commercial-overview__toolbar > .commercial-overview__field,
   .commercial-parks__intro > label,
   .commercial-parks__add > label {
     width: 100%;

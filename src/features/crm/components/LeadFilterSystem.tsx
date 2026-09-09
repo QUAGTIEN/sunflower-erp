@@ -15,6 +15,7 @@ import {
 } from '@/features/crm/model/leadFilterConfig';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { SearchableLocationSelect as SearchableValueSelect } from '@/components/SearchableProvinceSelect';
 
 const FIELD_TYPE_LABELS: Record<LeadCustomFieldType, string> = {
   multi_select: 'Chọn nhiều',
@@ -177,20 +178,14 @@ export const LeadDynamicFields: React.FC<{
             <div key={field.id} className="lead-compact-filter-row lead-compact-filter-row--province">
               <span>{field.name}</span>
               <div className="lead-province-selects">
-                <label>
+                <div className="lead-compact-filter-field">
                   <span>Tỉnh/Thành phố</span>
-                  <select value={selectedProvince?.id || ''} disabled={disabled} onChange={event => onChange(field, event.target.value)}>
-                    <option value="">Chọn tỉnh/thành phố</option>
-                    {activeOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label>
+                  <SearchableValueSelect value={selectedProvince?.id || ''} valueKey="id" options={activeOptions} disabled={disabled} ariaLabel="Tỉnh/Thành phố" placeholder="Chọn hoặc gõ để tìm tỉnh/thành" emptyMessage="Không tìm thấy tỉnh/thành phù hợp." onChange={value => onChange(field, value)} />
+                </div>
+                <div className="lead-compact-filter-field">
                   <span>Phường/Xã</span>
-                  <select value={selectedWard?.id || ''} disabled={disabled || !selectedProvince} onChange={event => onChange(field, event.target.value || selectedProvince?.id || '')}>
-                    <option value="">{selectedProvince ? 'Chọn phường/xã' : 'Chọn tỉnh/thành phố trước'}</option>
-                    {activeWards.map(ward => <option key={ward.id} value={ward.id}>{ward.label}</option>)}
-                  </select>
-                </label>
+                  <SearchableValueSelect value={selectedWard?.id || ''} valueKey="id" options={activeWards} disabled={disabled || !selectedProvince} ariaLabel="Phường/Xã" placeholder={selectedProvince ? 'Chọn hoặc gõ để tìm phường/xã' : 'Chọn tỉnh/thành trước'} emptyMessage="Không tìm thấy phường/xã phù hợp." onChange={value => onChange(field, value || selectedProvince?.id || '')} />
+                </div>
               </div>
             </div>
           );
@@ -203,17 +198,19 @@ export const LeadDynamicFields: React.FC<{
           const selectedIndustrialPark = activeIndustrialParks.find(park => fieldValues.includes(park.id));
 
           return (
-            <label key={field.id} className="lead-compact-filter-row">
+            <div key={field.id} className="lead-compact-filter-row">
               <span>{field.name}</span>
-              <select
+              <SearchableValueSelect
                 value={selectedIndustrialPark?.id || ''}
+                valueKey="id"
+                options={activeIndustrialParks}
                 disabled={disabled || !selectedProvince || activeIndustrialParks.length === 0}
-                onChange={event => onChange(field, event.target.value)}
-              >
-                <option value="">{!selectedProvince ? 'Chọn tỉnh/thành trước' : activeIndustrialParks.length > 0 ? 'Chọn khu công nghiệp' : 'Chưa cấu hình KCN cho tỉnh/thành này'}</option>
-                {activeIndustrialParks.map(park => <option key={park.id} value={park.id}>{park.label}</option>)}
-              </select>
-            </label>
+                ariaLabel={field.name}
+                placeholder={!selectedProvince ? 'Chọn tỉnh/thành trước' : activeIndustrialParks.length > 0 ? 'Chọn hoặc gõ để tìm KCN' : 'Chưa cấu hình KCN cho tỉnh/thành này'}
+                emptyMessage="Không tìm thấy KCN phù hợp."
+                onChange={value => onChange(field, value)}
+              />
+            </div>
           );
         }
 

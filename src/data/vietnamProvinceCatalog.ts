@@ -6,43 +6,6 @@ export interface ResolvedVietnamProvince {
   province: VietnamAdministrativeProvince;
 }
 
-// Names used before the 2025 administrative consolidation. Keeping the aliases
-// in one catalog prevents CRM lists, filters and the commercial map from
-// applying different province mappings.
-export const LEGACY_VIETNAM_PROVINCE_ALIASES: Record<string, string> = {
-  'bac lieu': 'ca_mau',
-  'bac giang': 'bac_ninh',
-  'bac kan': 'thai_nguyen',
-  'binh duong': 'tp_ho_chi_minh',
-  'ba ria vung tau': 'tp_ho_chi_minh',
-  'binh dinh': 'gia_lai',
-  'binh phuoc': 'dong_nai',
-  'binh thuan': 'lam_dong',
-  'dak nong': 'lam_dong',
-  'ben tre': 'vinh_long',
-  'hau giang': 'can_tho',
-  'hai duong': 'hai_phong',
-  'hoa binh': 'phu_tho',
-  'ha giang': 'tuyen_quang',
-  'ha nam': 'ninh_binh',
-  'ha tay': 'ha_noi',
-  'kien giang': 'an_giang',
-  'kon tum': 'quang_ngai',
-  'long an': 'tay_ninh',
-  'nam dinh': 'ninh_binh',
-  'ninh thuan': 'khanh_hoa',
-  'phu yen': 'dak_lak',
-  'quang nam': 'da_nang',
-  'quang binh': 'quang_tri',
-  'soc trang': 'can_tho',
-  'thai binh': 'hung_yen',
-  'thua thien hue': 'hue',
-  'tien giang': 'dong_thap',
-  'tra vinh': 'vinh_long',
-  'vinh phuc': 'phu_tho',
-  'yen bai': 'lao_cai'
-};
-
 export const normalizeVietnameseLocationText = (value: string): string => value
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
@@ -60,6 +23,10 @@ const PROVINCES_BY_ID = new Map(
 const PROVINCES_BY_NORMALIZED_LABEL = new Map(
   VIETNAM_ADMINISTRATIVE_UNITS.map(province => [normalizeVietnameseLocationText(province.label), province])
 );
+
+const COMPATIBLE_PROVINCE_IDS: Record<string, string> = {
+  hue: 'thua_thien_hue'
+};
 
 export const getVietnamProvinceById = (provinceId: string): VietnamAdministrativeProvince | undefined => (
   PROVINCES_BY_ID.get(provinceId.trim())
@@ -81,9 +48,8 @@ export const resolveVietnamProvince = (
     || getVietnamProvinceById(normalized.replace(/ /g, '_'));
   if (direct) return { id: direct.id, label: direct.label, province: direct };
 
-  const aliasedId = LEGACY_VIETNAM_PROVINCE_ALIASES[normalized];
-  const aliased = aliasedId ? getVietnamProvinceById(aliasedId) : undefined;
-  return aliased ? { id: aliased.id, label: aliased.label, province: aliased } : null;
+  const compatible = getVietnamProvinceById(COMPATIBLE_PROVINCE_IDS[normalized] || '');
+  return compatible ? { id: compatible.id, label: compatible.label, province: compatible } : null;
 };
 
 export const resolveVietnamProvinceFromText = (...values: Array<unknown>): ResolvedVietnamProvince | null => {
@@ -101,12 +67,10 @@ export const resolveVietnamProvinceFromText = (...values: Array<unknown>): Resol
   });
   if (direct) return { id: direct.id, label: direct.label, province: direct };
 
-  const alias = Object.entries(LEGACY_VIETNAM_PROVINCE_ALIASES)
-    .find(([legacyName]) => source === legacyName
-      || source.includes(` ${legacyName} `)
-      || source.startsWith(`${legacyName} `)
-      || source.endsWith(` ${legacyName}`));
-  return alias ? resolveVietnamProvince('', alias[1]) : null;
+  const compatibleName = Object.keys(COMPATIBLE_PROVINCE_IDS).find(name => (
+    source === name || source.startsWith(`${name} `) || source.endsWith(` ${name}`) || source.includes(` ${name} `)
+  ));
+  return compatibleName ? resolveVietnamProvince('', COMPATIBLE_PROVINCE_IDS[compatibleName]) : null;
 };
 
 export const canonicalizeVietnamProvince = (value: unknown, provinceId: unknown = '') => {

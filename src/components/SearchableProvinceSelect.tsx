@@ -1,70 +1,68 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { VIETNAM_ADMINISTRATIVE_UNITS } from '@/data/vietnamAdministrativeUnits';
-import {
-  normalizeVietnameseLocationText,
-  resolveVietnamProvince
-} from '@/data/vietnamProvinceCatalog';
+import { normalizeVietnameseLocationText, resolveVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import './SearchableProvinceSelect.css';
 
-interface SearchableProvinceSelectProps {
-  value: string;
-  onChange: (provinceName: string) => void;
-  disabled?: boolean;
-  inputId?: string;
-  ariaLabel?: string;
-  placeholder?: string;
-  options?: Array<{ id: string; label: string }>;
+export interface SearchableLocationOption {
+  id: string;
+  label: string;
 }
 
-export const SearchableProvinceSelect: React.FC<SearchableProvinceSelectProps> = ({
-  value,
-  onChange,
-  disabled = false,
-  inputId,
-  ariaLabel = 'Tỉnh / thành',
-  placeholder = 'Chọn hoặc gõ để tìm tỉnh/thành',
-  options: suppliedOptions
+interface SearchableLocationSelectProps {
+  value: string;
+  options: SearchableLocationOption[];
+  onChange: (value: string) => void;
+  valueKey?: 'id' | 'label';
+  disabled?: boolean;
+  inputId?: string;
+  ariaLabel: string;
+  placeholder: string;
+  emptyMessage: string;
+}
+
+export const SearchableLocationSelect: React.FC<SearchableLocationSelectProps> = ({
+  value, options, onChange, valueKey = 'label', disabled = false, inputId,
+  ariaLabel, placeholder, emptyMessage
 }) => {
-  const provinceOptions = suppliedOptions || VIETNAM_ADMINISTRATIVE_UNITS;
-  const exactValue = provinceOptions.find(province => province.label === value)?.label;
-  const canonicalValue = exactValue || resolveVietnamProvince(value)?.label || value;
-  const [query, setQuery] = useState(canonicalValue);
-  const [lastCanonicalValue, setLastCanonicalValue] = useState(canonicalValue);
+  const selectedOption = options.find(option => option[valueKey] === value);
+  const displayValue = selectedOption?.label || '';
+  const [query, setQuery] = useState(displayValue);
+  const [lastValue, setLastValue] = useState(value);
+  const [lastDisplayValue, setLastDisplayValue] = useState(displayValue);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const generatedId = useId().replace(/:/g, '');
-  const resolvedInputId = inputId || `province-${generatedId}`;
+  const resolvedInputId = inputId || `location-${generatedId}`;
   const listboxId = `${resolvedInputId}-options`;
 
-  if (canonicalValue !== lastCanonicalValue) {
-    setLastCanonicalValue(canonicalValue);
-    setQuery(canonicalValue);
+  if (value !== lastValue || displayValue !== lastDisplayValue) {
+    setLastValue(value);
+    setLastDisplayValue(displayValue);
+    setQuery(displayValue);
   }
 
   const filteredOptions = useMemo(() => {
     const normalizedQuery = normalizeVietnameseLocationText(query);
-    if (!normalizedQuery || query === canonicalValue) return provinceOptions;
-    return provinceOptions.filter(province => (
-      normalizeVietnameseLocationText(province.label).includes(normalizedQuery)
-    ));
-  }, [canonicalValue, provinceOptions, query]);
+    if (!normalizedQuery || query === displayValue) return options;
+    return options.filter(option => normalizeVietnameseLocationText(option.label).includes(normalizedQuery));
+  }, [displayValue, options, query]);
 
   useEffect(() => {
     if (!open) return;
     const closeOnOutsideClick = (event: PointerEvent) => {
       if (event.target instanceof Node && !rootRef.current?.contains(event.target)) {
         setOpen(false);
-        setQuery(canonicalValue);
+        setQuery(displayValue);
       }
     };
     document.addEventListener('pointerdown', closeOnOutsideClick);
     return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
-  }, [canonicalValue, open]);
+  }, [displayValue, open]);
 
-  const selectProvince = (provinceName: string) => {
-    onChange(provinceName);
-    setQuery(provinceName);
+  const selectOption = (option: SearchableLocationOption) => {
+    onChange(option[valueKey]);
+    setQuery(option.label);
     setOpen(false);
   };
 
@@ -102,35 +100,49 @@ export const SearchableProvinceSelect: React.FC<SearchableProvinceSelectProps> =
             setActiveIndex(index => Math.max(index - 1, 0));
           } else if (event.key === 'Enter' && open && filteredOptions[activeIndex]) {
             event.preventDefault();
-            selectProvince(filteredOptions[activeIndex].label);
-          } else if (event.key === 'Escape') {
+            selectOption(filteredOptions[activeIndex]);
+          } else if (event.key === 'Escape' || event.key === 'Tab') {
             setOpen(false);
-            setQuery(canonicalValue);
-          } else if (event.key === 'Tab') {
-            setOpen(false);
-            setQuery(canonicalValue);
+            setQuery(displayValue);
           }
         }}
       />
       {open && !disabled && (
-        <div className="searchable-province-select__dropdown" id={listboxId} role="listbox" aria-label="Danh sách tỉnh/thành">
-          {filteredOptions.map((province, index) => (
+        <div className="searchable-province-select__dropdown" id={listboxId} role="listbox" aria-label={ariaLabel}>
+          {filteredOptions.map((option, index) => (
             <button
-              id={`${listboxId}-${province.id}`}
-              key={province.id}
+              id={`${listboxId}-${option.id}`}
+              key={option.id}
               type="button"
               role="option"
-              aria-selected={province.label === canonicalValue}
-              className={`${province.label === canonicalValue ? 'is-selected' : ''} ${index === activeIndex ? 'is-active' : ''}`.trim()}
+              aria-selected={option[valueKey] === value}
+              className={`${option[valueKey] === value ? 'is-selected' : ''} ${index === activeIndex ? 'is-active' : ''}`.trim()}
               onPointerMove={() => setActiveIndex(index)}
-              onClick={() => selectProvince(province.label)}
-            >
-              {province.label}
-            </button>
+              onClick={() => selectOption(option)}
+            >{option.label}</button>
           ))}
-          {filteredOptions.length === 0 && <p>Không tìm thấy tỉnh/thành phù hợp.</p>}
+          {filteredOptions.length === 0 && <p>{emptyMessage}</p>}
         </div>
       )}
     </div>
   );
+};
+
+interface SearchableProvinceSelectProps {
+  value: string;
+  onChange: (provinceName: string) => void;
+  disabled?: boolean;
+  inputId?: string;
+  ariaLabel?: string;
+  placeholder?: string;
+  options?: SearchableLocationOption[];
+}
+
+export const SearchableProvinceSelect: React.FC<SearchableProvinceSelectProps> = ({
+  value, onChange, disabled = false, inputId, ariaLabel = 'Tỉnh / thành',
+  placeholder = 'Chọn hoặc gõ để tìm tỉnh/thành', options = VIETNAM_ADMINISTRATIVE_UNITS
+}) => {
+  const exactValue = options.find(province => province.label === value)?.label;
+  const canonicalValue = exactValue || resolveVietnamProvince(value)?.label || value;
+  return <SearchableLocationSelect value={canonicalValue} options={options} onChange={onChange} disabled={disabled} inputId={inputId} ariaLabel={ariaLabel} placeholder={placeholder} emptyMessage="Không tìm thấy tỉnh/thành phù hợp." />;
 };

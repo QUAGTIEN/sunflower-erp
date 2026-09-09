@@ -2407,13 +2407,15 @@
   gap: 8px;
 }
 
-.lead-province-selects label {
+.lead-province-selects label,
+.lead-province-selects .lead-compact-filter-field {
   display: grid;
   min-width: 0;
   gap: 5px;
 }
 
-.lead-province-selects label > span {
+.lead-province-selects label > span,
+.lead-province-selects .lead-compact-filter-field > span {
   color: #64748b;
   font-size: 10.5px;
   font-weight: 650;
@@ -2428,6 +2430,16 @@
   color: #334155;
   background: #fff;
   font-size: 12px;
+}
+
+.lead-compact-filter-row > .searchable-province-select,
+.lead-province-selects .searchable-province-select {
+  min-width: 0;
+}
+
+.lead-compact-filter-row > .searchable-province-select input,
+.lead-province-selects .searchable-province-select input {
+  min-height: 32px;
 }
 
 .lead-sales-workspace {

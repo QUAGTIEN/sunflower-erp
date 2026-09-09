@@ -3,7 +3,7 @@ import { SystemFieldContext } from '@/components/systemFieldContext';
 import type { LeadFilterDefinition, LeadFilterOption } from '@/features/crm/model/crmModels';
 import { LEAD_FILTER_IDS, mergeLeadFilterDefinitions } from '@/features/crm/model/leadFilterConfig';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
-import { SearchableProvinceSelect } from '@/components/SearchableProvinceSelect';
+import { SearchableLocationSelect, SearchableProvinceSelect } from '@/components/SearchableProvinceSelect';
 import { resolveVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import './BusinessLocationFields.css';
 
@@ -61,28 +61,32 @@ export const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
           onChange={provinceName => onChange({ province: provinceName, ward: '', industrialPark: '' })}
         />
       </div>}
-      {isVisible('ward') && <label className="form-group">
-        <span>{label('ward', 'Phường / xã')}</span>
-        <select
+      {isVisible('ward') && <div className="form-group">
+        <label htmlFor="business-ward">{label('ward', 'Phường / xã')}</label>
+        <SearchableLocationSelect
+          inputId="business-ward"
           value={ward}
+          options={wardOptions}
           disabled={!selectedProvince}
-          onChange={event => onChange({ province, ward: event.target.value, industrialPark: '' })}
-        >
-          <option value="">{selectedProvince ? 'Chọn phường/xã' : 'Chọn tỉnh/thành trước'}</option>
-          {wardOptions.map(option => <option key={option.id} value={option.label}>{option.label}</option>)}
-        </select>
-      </label>}
-      {isVisible('industrialPark') && <label className="form-group">
-        <span>{label('industrialPark', 'Khu công nghiệp')}</span>
-        <select
+          ariaLabel={label('ward', 'Phường / xã')}
+          placeholder={selectedProvince ? 'Chọn hoặc gõ để tìm phường/xã' : 'Chọn tỉnh/thành trước'}
+          emptyMessage="Không tìm thấy phường/xã phù hợp."
+          onChange={value => onChange({ province, ward: value, industrialPark: '' })}
+        />
+      </div>}
+      {isVisible('industrialPark') && <div className="form-group">
+        <label htmlFor="business-industrial-park">{label('industrialPark', 'Khu công nghiệp')}</label>
+        <SearchableLocationSelect
+          inputId="business-industrial-park"
           value={industrialPark}
+          options={industrialParkOptions}
           disabled={!selectedProvince || industrialParkOptions.length === 0}
-          onChange={event => onChange({ province, ward, industrialPark: event.target.value })}
-        >
-          <option value="">{!selectedProvince ? 'Chọn tỉnh/thành trước' : industrialParkOptions.length > 0 ? 'Chọn KCN' : 'Chưa cấu hình KCN cho tỉnh/thành này'}</option>
-          {industrialParkOptions.map(option => <option key={option.id} value={option.label}>{option.label}</option>)}
-        </select>
-      </label>}
+          ariaLabel={label('industrialPark', 'Khu công nghiệp')}
+          placeholder={!selectedProvince ? 'Chọn tỉnh/thành trước' : industrialParkOptions.length > 0 ? 'Chọn hoặc gõ để tìm KCN' : 'Chưa cấu hình KCN cho tỉnh/thành này'}
+          emptyMessage="Không tìm thấy KCN phù hợp."
+          onChange={value => onChange({ province, ward, industrialPark: value })}
+        />
+      </div>}
     </div>
   );
 };

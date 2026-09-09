@@ -1,5 +1,6 @@
-// Generated from Quyết định 19/2025/QĐ-TTg (34 provinces, 3,321 wards) via vietnam-address-database v1.0.0.
-// Do not edit province or ward entries manually.
+import { VIETNAM_PROVINCES_64 } from './vietnamProvinceOptions';
+
+// Dữ liệu phường/xã được giữ để tương thích dữ liệu đã có.
 export interface VietnamAdministrativeWard {
   id: string;
   label: string;
@@ -11,7 +12,7 @@ export interface VietnamAdministrativeProvince {
   wards: VietnamAdministrativeWard[];
 }
 
-export const VIETNAM_ADMINISTRATIVE_UNITS: VietnamAdministrativeProvince[] = [
+const POST_2025_ADMINISTRATIVE_UNITS: VietnamAdministrativeProvince[] = [
   {
     "id": "an_giang",
     "label": "An Giang",
@@ -13501,3 +13502,15 @@ export const VIETNAM_ADMINISTRATIVE_UNITS: VietnamAdministrativeProvince[] = [
     ]
   }
 ];
+
+const POST_2025_BY_ID = new Map(POST_2025_ADMINISTRATIVE_UNITS.map(province => [province.id, province]));
+const COMPATIBLE_WARD_SOURCE_IDS: Record<string, string> = {
+  thua_thien_hue: 'hue'
+};
+
+export const VIETNAM_ADMINISTRATIVE_UNITS: VietnamAdministrativeProvince[] = VIETNAM_PROVINCES_64.map(province => ({
+  ...province,
+  wards: POST_2025_BY_ID.get(province.id)?.wards
+    || POST_2025_BY_ID.get(COMPATIBLE_WARD_SOURCE_IDS[province.id])?.wards
+    || []
+}));

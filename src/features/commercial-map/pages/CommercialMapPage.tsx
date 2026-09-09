@@ -19,7 +19,7 @@ import type { LeadFilterDefinition, LeadFilterOption } from '@/features/crm/mode
 import type { CompatiblePORecord } from '@/domain/poCompatibility';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
-import { SearchableProvinceSelect } from '@/components/SearchableProvinceSelect';
+import { SearchableLocationSelect, SearchableProvinceSelect } from '@/components/SearchableProvinceSelect';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { resolveVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import { COMMERCIAL_PROVINCES_64 } from '@/features/commercial-map/model/commercialProvinceCatalog';
@@ -586,13 +586,10 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                 placeholder="Chọn hoặc gõ để tìm tỉnh/thành"
               />
             </label>
-            <label>
+            <div className="commercial-overview__field">
               <span>Khu công nghiệp</span>
-              <select value={overviewIndustrialPark} disabled={!overviewProvince} onChange={event => setOverviewIndustrialPark(event.target.value)}>
-                <option value="">Tất cả khu công nghiệp</option>
-                {overviewParks.map(park => <option key={park.id} value={park.label}>{park.label}</option>)}
-              </select>
-            </label>
+              <SearchableLocationSelect value={overviewIndustrialPark} options={overviewParks} disabled={!overviewProvince} ariaLabel="Khu công nghiệp" placeholder={overviewProvince ? 'Tất cả hoặc gõ để tìm KCN' : 'Chọn tỉnh/thành trước'} emptyMessage="Không tìm thấy KCN phù hợp." onChange={setOverviewIndustrialPark} />
+            </div>
             {(overviewProvinceName || overviewIndustrialPark) && <button type="button" className="btn btn-outline" onClick={() => { setOverviewProvinceName(''); setOverviewIndustrialPark(''); setShowParkManagement(false); }}>Đặt lại</button>}
           </div>
 

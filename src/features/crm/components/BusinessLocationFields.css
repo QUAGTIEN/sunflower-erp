@@ -18,11 +18,13 @@
   font-weight: 600;
 }
 
-.business-location-fields select {
+.business-location-fields select,
+.business-location-fields input {
   width: 100%;
 }
 
-.business-location-fields select:disabled {
+.business-location-fields select:disabled,
+.business-location-fields input:disabled {
   color: #94a3b8;
   background: #f8fafc;
 }

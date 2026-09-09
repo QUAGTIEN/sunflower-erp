@@ -22,7 +22,9 @@ export function slugifyLeadFilterId(value: string) {
     .replace(/^_+|_+$/g, '');
 }
 
-export const VIETNAM_PROVINCES_2026 = VIETNAM_ADMINISTRATIVE_UNITS.map(province => province.label);
+export const VIETNAM_PROVINCES_64 = VIETNAM_ADMINISTRATIVE_UNITS.map(province => province.label);
+// Giữ tên export cũ để các màn hình hiện tại không bị gián đoạn khi nâng cấp dữ liệu.
+export const VIETNAM_PROVINCES_2026 = VIETNAM_PROVINCES_64;
 
 const SYSTEM_PROVINCE_OPTIONS: LeadFilterOption[] = VIETNAM_ADMINISTRATIVE_UNITS.map((province, provinceIndex) => ({
   ...option(province.id, province.label, provinceIndex),
