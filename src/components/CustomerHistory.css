@@ -1001,11 +1001,11 @@
 }
 
 .crm-customer-table.is-compact tbody tr:not(.crm-material-history-row) {
-  height: 44px;
+  height: var(--erp-table-row-height);
 }
 
 .crm-customer-table.is-compact tbody tr:not(.crm-material-history-row) > td {
-  height: 44px;
+  height: var(--erp-table-row-height);
   max-width: 240px;
   padding: 5px 10px;
   overflow: hidden;

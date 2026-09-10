@@ -8,7 +8,7 @@
   --erp-control-height: 36px;
   --erp-table-header-bg: #e7ebf1;
   --erp-table-header-border: #c5cfdd;
-  --erp-table-row-height: 52px;
+  --erp-table-row-height: 40px;
   --erp-entity-column-width: 280px;
   --erp-data-column-width: 150px;
   --erp-action-column-width: 72px;
@@ -447,7 +447,7 @@ input[type='checkbox']:disabled {
 
 .app-main table thead tr,
 .app-main table thead th {
-  height: 48px;
+  height: 40px;
 }
 
 .app-main table tbody tr,
@@ -459,7 +459,7 @@ input[type='checkbox']:disabled {
 .app-main table td {
   box-sizing: border-box;
   max-width: 360px;
-  padding: 8px 12px !important;
+  padding: 5px 10px !important;
   overflow: hidden;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -566,7 +566,7 @@ input[type='checkbox']:disabled {
 /* Primary data grids keep a fixed, single-line row height. */
 .app-main table:has(th.reorderable-table-header) thead tr,
 .app-main table:has(th.reorderable-table-header) thead th {
-  height: 48px !important;
+  height: 40px !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
 }
@@ -811,7 +811,7 @@ input[type='checkbox']:disabled {
 .app-main table input,
 .app-main table select,
 .app-main table button:not(.row-action-menu__trigger) {
-  min-height: 32px;
+  min-height: 28px;
   border-radius: var(--erp-control-radius) !important;
 }
 
