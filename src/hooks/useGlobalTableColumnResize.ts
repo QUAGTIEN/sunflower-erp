@@ -20,6 +20,40 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
     const root = document.querySelector<HTMLElement>('.app-main');
     if (!root) return;
 
+    const prepareTableViewports = () => {
+      const rootBottom = root.getBoundingClientRect().bottom;
+      root.querySelectorAll<HTMLElement>([
+        '.table-container',
+        '.work-schedule-table-wrap',
+        '.custom-field-config__table-wrap',
+        '.customer-data-table-wrap',
+        '.customer-onboarding-items__table-wrap'
+      ].join(', ')).forEach(container => {
+        if (container.closest('.modal-overlay, .header-notification-panel')) return;
+        const table = container.querySelector(':scope > table');
+        if (!table) return;
+
+        const pagination = container.nextElementSibling instanceof HTMLElement
+          && /pagination/i.test(container.nextElementSibling.className)
+          ? container.nextElementSibling
+          : null;
+        const reservedHeight = pagination?.getBoundingClientRect().height || 0;
+        const availableHeight = Math.max(180, Math.floor(rootBottom - container.getBoundingClientRect().top - reservedHeight - 8));
+        container.style.setProperty('--erp-table-viewport-height', `${availableHeight}px`);
+        container.classList.add('erp-viewport-table-scroll');
+
+        const isKnownPrimaryWorkspaceTable = container.matches(
+          '.lead-data-workspace > .lead-table-card > .table-container, '
+          + '.lead-candidate-workspace > .lead-table-card > .table-container, '
+          + '.crm-data-workspace .crm-customer-table-wrap'
+        );
+        const isWidePageTable = container.clientWidth >= root.clientWidth * 0.72
+          && !container.closest('.dashboard-view, .crm-view--detail, .modal-content');
+        const isPrimaryWorkspaceTable = isKnownPrimaryWorkspaceTable || isWidePageTable;
+        container.classList.toggle('erp-viewport-table-scroll--fill', isPrimaryWorkspaceTable);
+      });
+    };
+
     const prepareTables = () => {
       root.querySelectorAll<HTMLTableElement>('table').forEach((table, tableIndex) => {
         const tableKey = table.dataset.resizeKey || `table-${tableIndex}`;
@@ -40,11 +74,21 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         const tableWidth = widths.__tableWidth || resolvedWidths.reduce((total, width) => total + width, 0);
         table.style.setProperty('--erp-table-resized-width', `${Math.max(minimumTableWidth, tableWidth)}px`);
       });
+      prepareTableViewports();
     };
 
     prepareTables();
-    const observer = new MutationObserver(prepareTables);
+    let animationFrame = 0;
+    const schedulePrepare = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(prepareTables);
+    };
+    const observer = new MutationObserver(schedulePrepare);
     observer.observe(root, { childList: true, subtree: true });
+    const resizeObserver = new ResizeObserver(schedulePrepare);
+    resizeObserver.observe(root);
+    root.addEventListener('scroll', schedulePrepare, { passive: true });
+    window.addEventListener('resize', schedulePrepare);
 
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -89,7 +133,11 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
 
     root.addEventListener('pointerdown', onPointerDown);
     return () => {
+      window.cancelAnimationFrame(animationFrame);
       observer.disconnect();
+      resizeObserver.disconnect();
+      root.removeEventListener('scroll', schedulePrepare);
+      window.removeEventListener('resize', schedulePrepare);
       root.removeEventListener('pointerdown', onPointerDown);
     };
   }, [pageId, userId]);

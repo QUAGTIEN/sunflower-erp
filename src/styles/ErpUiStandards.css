@@ -281,6 +281,26 @@
   box-shadow: none !important;
 }
 
+/* Keep horizontal table scrolling inside the visible work area on every page. */
+.app-main .erp-viewport-table-scroll {
+  max-height: var(--erp-table-viewport-height) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.app-main .erp-viewport-table-scroll--fill {
+  height: var(--erp-table-viewport-height) !important;
+  min-height: min(240px, var(--erp-table-viewport-height)) !important;
+  flex: 1 1 auto !important;
+}
+
+.app-main .erp-viewport-table-scroll > table > thead > tr > th {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+}
+
 .card:has(> .table-container),
 .card:has(.table-container),
 .purchase-panel:has(.table-container),
