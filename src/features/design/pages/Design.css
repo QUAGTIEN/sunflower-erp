@@ -1,6 +1,7 @@
 .design-request-view,
 .design-library-view {
   display: flex;
+  min-height: 100%;
   flex-direction: column;
   gap: 20px;
   min-width: 0;
@@ -90,6 +91,8 @@
 }
 
 .design-request-list-card {
+  min-height: 0;
+  flex: 1 1 auto;
   padding: 0;
   overflow: hidden;
 }
@@ -140,7 +143,7 @@
 }
 
 .design-request-table {
-  max-height: 430px;
+  max-height: none;
   overflow: auto;
 }
 

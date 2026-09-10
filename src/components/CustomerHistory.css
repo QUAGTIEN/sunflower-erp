@@ -1931,10 +1931,15 @@
   min-width: 1180px;
 }
 
+.sales-view {
+  min-height: 100%;
+}
+
 .sales-view > .card {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
 }
 

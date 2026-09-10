@@ -2,6 +2,16 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
+import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '@/components/DataWorkspaceFilters';
 import {
   Building2,
   CalendarDays,
@@ -15,6 +25,7 @@ import {
   Plus,
   ReceiptText,
   Search,
+  Settings2,
   Star,
   X
 } from 'lucide-react';
@@ -99,13 +110,40 @@ const parseCategories = (value: string): string[] => Array.from(new Set(
   value.split(/[,;\n]+/).map(item => item.trim()).filter(Boolean)
 ));
 
+const SUPPLIER_LIST_COLUMNS: TableColumnOption[] = [
+  { id: 'supplier', label: 'Nhà cung cấp', required: true, group: 'Thông tin nhà cung cấp' },
+  { id: 'contact', label: 'Liên hệ', defaultVisible: true, group: 'Thông tin nhà cung cấp' },
+  { id: 'categories', label: 'Nhóm hàng', defaultVisible: true, group: 'Năng lực cung ứng' },
+  { id: 'orderCount', label: 'Số đơn', defaultVisible: true, group: 'Lịch sử mua hàng' },
+  { id: 'totalSpend', label: 'Tổng mua', defaultVisible: true, group: 'Lịch sử mua hàng' },
+  { id: 'latestOrder', label: 'Lần mua gần nhất', defaultVisible: true, group: 'Lịch sử mua hàng' },
+  { id: 'debt', label: 'Công nợ', defaultVisible: true, group: 'Tài chính' },
+  { id: 'rating', label: 'Đánh giá', defaultVisible: true, group: 'Đánh giá' }
+];
+
+const readSupplierVisibleColumns = (storageKey: string): string[] => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
+    if (Array.isArray(parsed)) {
+      const availableIds = new Set(SUPPLIER_LIST_COLUMNS.map(column => column.id));
+      return Array.from(new Set([
+        'supplier',
+        ...parsed.filter((id): id is string => typeof id === 'string' && availableIds.has(id))
+      ]));
+    }
+  } catch { /* Keep defaults when storage is unavailable. */ }
+  return SUPPLIER_LIST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id);
+};
+
 export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUser, users }) => {
   const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
   const [invoices, setInvoices] = useState<UnknownRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [monthFilter, setMonthFilter] = useState('all');
+  const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
+  const [monthFilters, setMonthFilters] = useState<string[]>([]);
+  const [showSupplierFilters, setShowSupplierFilters] = useState(false);
+  const [showSupplierColumnCustomizer, setShowSupplierColumnCustomizer] = useState(false);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingSupplierId, setEditingSupplierId] = useState('');
@@ -113,6 +151,27 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
   const [activityNote, setActivityNote] = useState('');
   const [contactDraft, setContactDraft] = useState({ name: '', role: '', phone: '', email: '' });
   const [historyMonth, setHistoryMonth] = useState('all');
+  const supplierColumnsStorageKey = `sunflower:supplier-columns:${currentUser.uid}`;
+  const [supplierVisibleColumns, setSupplierVisibleColumns] = useState<string[]>(() => readSupplierVisibleColumns(supplierColumnsStorageKey));
+  const supplierVisibleColumnSet = new Set(supplierVisibleColumns);
+  const saveSupplierVisibleColumns = (selectedIds: string[]) => {
+    const next = Array.from(new Set(['supplier', ...selectedIds]));
+    setSupplierVisibleColumns(next);
+    try { window.localStorage.setItem(supplierColumnsStorageKey, JSON.stringify(next)); } catch { /* State remains active. */ }
+    setShowSupplierColumnCustomizer(false);
+  };
+  const {
+    orderedColumnIds: orderedSupplierColumnIds,
+    getHeaderProps: getSupplierHeaderProps
+  } = useReorderableTableColumns({
+    columns: SUPPLIER_LIST_COLUMNS,
+    selectedIds: supplierVisibleColumns,
+    onOrderChange: saveSupplierVisibleColumns,
+    widthStorageKey: `sunflower:supplier-column-widths:v3:${currentUser.uid}`,
+    lockedStartIds: ['supplier']
+  });
+  const supplierColumnLabels = Object.fromEntries(SUPPLIER_LIST_COLUMNS.map(column => [column.id, t(column.label)]));
+  const supplierActiveFilterCount = categoryFilters.length + monthFilters.length;
 
   useEffect(() => {
     const unsubscribeSuppliers = dbService.subscribeCollection('suppliers', data => {
@@ -157,10 +216,10 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
       supplier.note,
       orders.map(order => [order.purCode, order.linkedPoCode, asArray(order.items).map(item => item.materialName)])
     ]);
-    const matchesCategory = categoryFilter === 'all' || supplier.categories.includes(categoryFilter);
-    const matchesMonth = monthFilter === 'all' || orders.some(order => asText(order.createdAt).startsWith(monthFilter));
+    const matchesCategory = categoryFilters.length === 0 || categoryFilters.some(category => supplier.categories.includes(category));
+    const matchesMonth = monthFilters.length === 0 || monthFilters.some(month => orders.some(order => asText(order.createdAt).startsWith(month)));
     return matchesSearch && matchesCategory && matchesMonth;
-  }), [categoryFilter, getSupplierOrders, monthFilter, searchTerm, suppliers]);
+  }), [categoryFilters, getSupplierOrders, monthFilters, searchTerm, suppliers]);
   const supplierPagination = useDataTablePagination(filteredSuppliers);
 
   const openCreateForm = () => {
@@ -322,9 +381,6 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     event.target.value = '';
   };
 
-  const totalSpend = purchaseOrders.reduce((sum, order) => sum + (order.deleted === true ? 0 : asNumber(order.totalPrice)), 0);
-  const supplierWithOrdersCount = suppliers.filter(supplier => getSupplierOrders(supplier.id).length > 0).length;
-
   if (selectedSupplier) {
     const supplierOrders = getSupplierOrders(selectedSupplier.id);
     const visibleOrders = historyMonth === 'all'
@@ -473,36 +529,49 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     <div className="suppliers-page">
       <PageContextHeader section={t('Nhà cung cấp')} current={t('Danh sách nhà cung cấp')} />
 
-      <div className="supplier-kpi-grid">
-        <div><Building2 size={18} /><strong>{suppliers.length}</strong><span>{t('Tổng NCC')}</span></div>
-        <div><ReceiptText size={18} /><strong>{supplierWithOrdersCount}</strong><span>{t('Đã phát sinh đơn')}</span></div>
-        <div><FileText size={18} /><strong>{totalSpend.toLocaleString('vi-VN')} đ</strong><span>{t('Tổng giá trị mua')}</span></div>
-      </div>
-
       <section className="supplier-toolbar">
         <div className="purchase-search"><Search size={16} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm NCC, MST, liên hệ, mặt hàng, mã PO hoặc đơn mua...')} /></div>
-        <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="all">{t('Tất cả nhóm hàng')}</option>{categories.map(category => <option key={category}>{category}</option>)}</select>
-        <select value={monthFilter} onChange={event => setMonthFilter(event.target.value)}><option value="all">{t('Tất cả tháng')}</option>{months.map(month => <option key={month}>{month}</option>)}</select>
+        <DataFilterButton activeCount={supplierActiveFilterCount} open={showSupplierFilters} onClick={() => setShowSupplierFilters(true)} />
+        <button type="button" className="data-filter-button" onClick={() => setShowSupplierColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
         <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm NCC')}</button>
       </section>
 
-      <section className="purchase-panel">
+      <DataFilterChipBar
+        chips={[
+          ...categoryFilters.map(value => ({ id: `category:${value}`, label: value, onRemove: () => setCategoryFilters(current => current.filter(item => item !== value)) })),
+          ...monthFilters.map(value => ({ id: `month:${value}`, label: value, onRemove: () => setMonthFilters(current => current.filter(item => item !== value)) }))
+        ]}
+        onClear={() => { setCategoryFilters([]); setMonthFilters([]); }}
+      />
+
+      <section className="purchase-panel supplier-list-panel">
         <div className="table-container erp-primary-data-table">
           <table className="supplier-table" data-resize-key="suppliers">
-            <thead><tr><th>{t('Nhà cung cấp')}</th><th>{t('Liên hệ')}</th><th>{t('Nhóm hàng')}</th><th>{t('Số đơn')}</th><th>{t('Tổng mua')}</th><th>{t('Lần mua gần nhất')}</th><th>{t('Công nợ')}</th><th>{t('Đánh giá')}</th></tr></thead>
+            <thead><tr><ReorderableTableCells order={orderedSupplierColumnIds} getHeaderProps={getSupplierHeaderProps} labels={supplierColumnLabels}>
+              <th key="supplier">{t('Nhà cung cấp')}</th>
+              {supplierVisibleColumnSet.has('contact') && <th key="contact">{t('Liên hệ')}</th>}
+              {supplierVisibleColumnSet.has('categories') && <th key="categories">{t('Nhóm hàng')}</th>}
+              {supplierVisibleColumnSet.has('orderCount') && <th key="orderCount">{t('Số đơn')}</th>}
+              {supplierVisibleColumnSet.has('totalSpend') && <th key="totalSpend">{t('Tổng mua')}</th>}
+              {supplierVisibleColumnSet.has('latestOrder') && <th key="latestOrder">{t('Lần mua gần nhất')}</th>}
+              {supplierVisibleColumnSet.has('debt') && <th key="debt">{t('Công nợ')}</th>}
+              {supplierVisibleColumnSet.has('rating') && <th key="rating">{t('Đánh giá')}</th>}
+            </ReorderableTableCells></tr></thead>
             <tbody>
               {supplierPagination.rows.map(supplier => {
                 const orders = getSupplierOrders(supplier.id);
                 const spend = orders.reduce((sum, order) => sum + asNumber(order.totalPrice), 0);
                 return <tr key={supplier.id} onClick={() => setSelectedSupplierId(supplier.id)}>
-                  <td><strong className="erp-company-name" title={supplier.supplierName}>{supplier.supplierName}</strong><span>{supplier.supplierCode || supplier.id}</span></td>
-                  <td><strong>{supplier.contactPerson || '—'}</strong><span>{supplier.phone || supplier.email || '—'}</span></td>
-                  <td>{supplier.categories.join(', ') || '—'}</td>
-                  <td><strong>{orders.length}</strong></td>
-                  <td><strong>{spend.toLocaleString('vi-VN')} đ</strong></td>
-                  <td>{formatDate(asText(orders[0]?.createdAt), 'vi-VN', '—')}</td>
-                  <td>{getSupplierDebt(supplier.id).toLocaleString('vi-VN')} đ</td>
-                  <td>{supplier.rating ? `${supplier.rating}/5` : '—'}</td>
+                  <ReorderableTableCells order={orderedSupplierColumnIds} expandOverflowText={false}>
+                    <td key="supplier"><strong className="erp-company-name" title={supplier.supplierName}>{supplier.supplierName}</strong><span>{supplier.supplierCode || supplier.id}</span></td>
+                    {supplierVisibleColumnSet.has('contact') && <td key="contact"><strong>{supplier.contactPerson || '—'}</strong><span>{supplier.phone || supplier.email || '—'}</span></td>}
+                    {supplierVisibleColumnSet.has('categories') && <td key="categories">{supplier.categories.join(', ') || '—'}</td>}
+                    {supplierVisibleColumnSet.has('orderCount') && <td key="orderCount"><strong>{orders.length}</strong></td>}
+                    {supplierVisibleColumnSet.has('totalSpend') && <td key="totalSpend"><strong>{spend.toLocaleString('vi-VN')} đ</strong></td>}
+                    {supplierVisibleColumnSet.has('latestOrder') && <td key="latestOrder">{formatDate(asText(orders[0]?.createdAt), 'vi-VN', '—')}</td>}
+                    {supplierVisibleColumnSet.has('debt') && <td key="debt">{getSupplierDebt(supplier.id).toLocaleString('vi-VN')} đ</td>}
+                    {supplierVisibleColumnSet.has('rating') && <td key="rating">{supplier.rating ? `${supplier.rating}/5` : '—'}</td>}
+                  </ReorderableTableCells>
                 </tr>;
               })}
             </tbody>
@@ -510,6 +579,22 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
         </div>
         <DataTablePagination {...supplierPagination.paginationProps} />
       </section>
+      <TableColumnCustomizer open={showSupplierColumnCustomizer} columns={SUPPLIER_LIST_COLUMNS} selectedIds={supplierVisibleColumns} onClose={() => setShowSupplierColumnCustomizer(false)} onSave={saveSupplierVisibleColumns} />
+      <DataFilterPanel
+        open={showSupplierFilters}
+        title={t('Lọc danh sách nhà cung cấp')}
+        description={t('Lọc theo nhóm hàng và tháng phát sinh đơn mua.')}
+        activeCount={supplierActiveFilterCount}
+        onClose={() => setShowSupplierFilters(false)}
+        onReset={() => { setCategoryFilters([]); setMonthFilters([]); }}
+      >
+        <DataFilterSection title={t('Nhóm hàng')} selectedCount={categoryFilters.length} defaultExpanded>
+          <DataFilterCheckboxGroup options={categories.map(category => ({ value: category, label: category }))} selectedValues={categoryFilters} onChange={setCategoryFilters} searchable />
+        </DataFilterSection>
+        <DataFilterSection title={t('Tháng phát sinh đơn mua')} selectedCount={monthFilters.length}>
+          <DataFilterCheckboxGroup options={months.map(month => ({ value: month, label: month }))} selectedValues={monthFilters} onChange={setMonthFilters} />
+        </DataFilterSection>
+      </DataFilterPanel>
       {showForm && renderSupplierForm()}
     </div>
   );

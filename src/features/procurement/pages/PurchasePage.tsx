@@ -3,9 +3,20 @@ import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
+import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '@/components/DataWorkspaceFilters';
 import {
   ClipboardList,
   Search,
+  Settings2,
   ShoppingBag,
   X
 } from 'lucide-react';
@@ -53,6 +64,43 @@ const matchesEveryTerm = (search: string, values: unknown[]): boolean => {
 
 const ACTIVE_STATUSES: ProcurementStatus[] = ['new', 'reviewing', 'quoting', 'supplier_selected'];
 const PURCHASE_PAGE_REFERENCE_TIME = Date.now();
+const SOURCING_TYPES: SourcingType[] = ['finished_good', 'raw_material', 'subcontract'];
+
+const PURCHASE_REQUEST_COLUMNS: TableColumnOption[] = [
+  { id: 'request', label: 'Yêu cầu / PO', required: true, group: 'Thông tin yêu cầu' },
+  { id: 'customer', label: 'Khách hàng', defaultVisible: true, group: 'Thông tin yêu cầu' },
+  { id: 'product', label: 'Mặt hàng', defaultVisible: true, group: 'Thông tin hàng hóa' },
+  { id: 'sourcing', label: 'Phương án cung ứng', defaultVisible: true, group: 'Thông tin hàng hóa' },
+  { id: 'quantity', label: 'Số lượng', defaultVisible: true, group: 'Thông tin hàng hóa' },
+  { id: 'requiredDate', label: 'Ngày cần', defaultVisible: true, group: 'Tiến độ' },
+  { id: 'purchaser', label: 'Mua hàng phụ trách', defaultVisible: true, group: 'Phân công' },
+  { id: 'supplier', label: 'NCC', defaultVisible: true, group: 'Phân công' },
+  { id: 'actions', label: 'Thao tác', required: true, group: 'Điều khiển bảng' }
+];
+
+const PURCHASE_ORDER_COLUMNS: TableColumnOption[] = [
+  { id: 'order', label: 'Mã đơn mua', required: true, group: 'Thông tin đơn mua' },
+  { id: 'supplier', label: 'Nhà cung cấp', defaultVisible: true, group: 'Thông tin đơn mua' },
+  { id: 'po', label: 'PO khách hàng', defaultVisible: true, group: 'Thông tin đơn mua' },
+  { id: 'product', label: 'Mặt hàng', defaultVisible: true, group: 'Thông tin hàng hóa' },
+  { id: 'value', label: 'Giá trị', defaultVisible: true, group: 'Thông tin hàng hóa' },
+  { id: 'expectedDate', label: 'Ngày nhận dự kiến', defaultVisible: true, group: 'Tiến độ' },
+  { id: 'actions', label: 'Thao tác', required: true, group: 'Điều khiển bảng' }
+];
+
+const readVisibleColumns = (storageKey: string, columns: TableColumnOption[]): string[] => {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
+    if (Array.isArray(parsed)) {
+      const availableIds = new Set(columns.map(column => column.id));
+      return Array.from(new Set([
+        ...columns.filter(column => column.required).map(column => column.id),
+        ...parsed.filter((id): id is string => typeof id === 'string' && availableIds.has(id))
+      ]));
+    }
+  } catch { /* Keep defaults when storage is unavailable. */ }
+  return columns.filter(column => column.required || column.defaultVisible).map(column => column.id);
+};
 
 export const Purchase: React.FC<PurchaseProps> = ({
   pos,
@@ -66,8 +114,10 @@ export const Purchase: React.FC<PurchaseProps> = ({
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
   const [invoices, setInvoices] = useState<UnknownRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sourcingFilter, setSourcingFilter] = useState<'all' | SourcingType>('all');
-  const [monthFilter, setMonthFilter] = useState('all');
+  const [sourcingFilters, setSourcingFilters] = useState<SourcingType[]>([]);
+  const [monthFilters, setMonthFilters] = useState<string[]>([]);
+  const [showPurchaseFilters, setShowPurchaseFilters] = useState(false);
+  const [showPurchaseColumnCustomizer, setShowPurchaseColumnCustomizer] = useState(false);
   const [activeListView, setActiveListView] = useState<'requests' | 'orders'>('requests');
   const [selectedRequestId, setSelectedRequestId] = useState('');
   const [supplierId, setSupplierId] = useState('');
@@ -76,6 +126,50 @@ export const Purchase: React.FC<PurchaseProps> = ({
   const [assignedPurchaserId, setAssignedPurchaserId] = useState('');
   const [sourcingType, setSourcingType] = useState<SourcingType>('subcontract');
   const [isSaving, setIsSaving] = useState(false);
+  const requestColumnsStorageKey = `sunflower:purchase-request-columns:${currentUser.uid}`;
+  const orderColumnsStorageKey = `sunflower:purchase-order-columns:${currentUser.uid}`;
+  const [requestVisibleColumns, setRequestVisibleColumns] = useState<string[]>(() => readVisibleColumns(requestColumnsStorageKey, PURCHASE_REQUEST_COLUMNS));
+  const [orderVisibleColumns, setOrderVisibleColumns] = useState<string[]>(() => readVisibleColumns(orderColumnsStorageKey, PURCHASE_ORDER_COLUMNS));
+
+  const saveRequestVisibleColumns = (selectedIds: string[]) => {
+    const next = Array.from(new Set(['request', 'actions', ...selectedIds]));
+    setRequestVisibleColumns(next);
+    try { window.localStorage.setItem(requestColumnsStorageKey, JSON.stringify(next)); } catch { /* State remains active. */ }
+    setShowPurchaseColumnCustomizer(false);
+  };
+  const saveOrderVisibleColumns = (selectedIds: string[]) => {
+    const next = Array.from(new Set(['order', 'actions', ...selectedIds]));
+    setOrderVisibleColumns(next);
+    try { window.localStorage.setItem(orderColumnsStorageKey, JSON.stringify(next)); } catch { /* State remains active. */ }
+    setShowPurchaseColumnCustomizer(false);
+  };
+  const requestVisibleColumnSet = new Set(requestVisibleColumns);
+  const orderVisibleColumnSet = new Set(orderVisibleColumns);
+  const {
+    orderedColumnIds: orderedRequestColumnIds,
+    getHeaderProps: getRequestHeaderProps
+  } = useReorderableTableColumns({
+    columns: PURCHASE_REQUEST_COLUMNS,
+    selectedIds: requestVisibleColumns,
+    onOrderChange: saveRequestVisibleColumns,
+    widthStorageKey: `sunflower:purchase-request-column-widths:v3:${currentUser.uid}`,
+    lockedStartIds: ['request'],
+    lockedEndIds: ['actions']
+  });
+  const {
+    orderedColumnIds: orderedOrderColumnIds,
+    getHeaderProps: getOrderHeaderProps
+  } = useReorderableTableColumns({
+    columns: PURCHASE_ORDER_COLUMNS,
+    selectedIds: orderVisibleColumns,
+    onOrderChange: saveOrderVisibleColumns,
+    widthStorageKey: `sunflower:purchase-order-column-widths:v3:${currentUser.uid}`,
+    lockedStartIds: ['order'],
+    lockedEndIds: ['actions']
+  });
+  const requestColumnLabels = Object.fromEntries(PURCHASE_REQUEST_COLUMNS.map(column => [column.id, t(column.label)]));
+  const orderColumnLabels = Object.fromEntries(PURCHASE_ORDER_COLUMNS.map(column => [column.id, t(column.label)]));
+  const purchaseActiveFilterCount = sourcingFilters.length + monthFilters.length;
 
   useEffect(() => {
     const unsubscribeSuppliers = dbService.subscribeCollection('suppliers', data => {
@@ -108,8 +202,8 @@ export const Purchase: React.FC<PurchaseProps> = ({
   }), [currentUser.role, currentUser.uid, procurementRequests]);
 
   const filteredRequests = useMemo(() => accessibleRequests.filter(request => {
-    const matchesSourcing = sourcingFilter === 'all' || request.sourcingType === sourcingFilter;
-    const matchesMonth = monthFilter === 'all' || request.createdAt.startsWith(monthFilter);
+    const matchesSourcing = sourcingFilters.length === 0 || sourcingFilters.includes(request.sourcingType);
+    const matchesMonth = monthFilters.length === 0 || monthFilters.some(month => request.createdAt.startsWith(month));
     const matchesSearch = matchesEveryTerm(searchTerm, [
       request.requestCode,
       request.poCode,
@@ -123,12 +217,12 @@ export const Purchase: React.FC<PurchaseProps> = ({
       getSourcingTypeLabel(request.sourcingType)
     ]);
     return ACTIVE_STATUSES.includes(request.status) && matchesSourcing && matchesMonth && matchesSearch;
-  }), [accessibleRequests, monthFilter, searchTerm, sourcingFilter]);
+  }), [accessibleRequests, monthFilters, searchTerm, sourcingFilters]);
 
   const filteredPurchaseOrders = useMemo(() => purchaseOrders.filter(order => {
     if (order.deleted === true) return false;
-    const matchesSourcing = sourcingFilter === 'all' || asText(order.sourcingType) === sourcingFilter;
-    const matchesMonth = monthFilter === 'all' || asText(order.createdAt).startsWith(monthFilter);
+    const matchesSourcing = sourcingFilters.length === 0 || sourcingFilters.includes(asText(order.sourcingType) as SourcingType);
+    const matchesMonth = monthFilters.length === 0 || monthFilters.some(month => asText(order.createdAt).startsWith(month));
     const matchesSearch = matchesEveryTerm(searchTerm, [
       order.purCode,
       order.supplierName,
@@ -142,7 +236,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
       ])
     ]);
     return matchesSourcing && matchesMonth && matchesSearch;
-  }), [monthFilter, purchaseOrders, searchTerm, sourcingFilter]);
+  }), [monthFilters, purchaseOrders, searchTerm, sourcingFilters]);
   const requestPagination = useDataTablePagination(filteredRequests);
   const orderPagination = useDataTablePagination(filteredPurchaseOrders);
 
@@ -375,31 +469,51 @@ export const Purchase: React.FC<PurchaseProps> = ({
       <section className="purchase-panel purchase-list-card">
         <div className="purchase-toolbar">
           <div className="purchase-search"><Search size={16} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={activeListView === 'requests' ? t('Tìm mã PO, khách hàng, mã hàng, vật liệu hoặc NCC...') : t('Tìm mã đơn mua, NCC, PO khách hàng hoặc mặt hàng...')} /></div>
-          <select value={sourcingFilter} onChange={event => setSourcingFilter(event.target.value as typeof sourcingFilter)}><option value="all">{t('Tất cả phương án')}</option>{(['finished_good', 'raw_material', 'subcontract'] as SourcingType[]).map(type => <option key={type} value={type}>{getSourcingTypeLabel(type)}</option>)}</select>
-          <select value={monthFilter} onChange={event => setMonthFilter(event.target.value)}><option value="all">{t('Tất cả tháng')}</option>{months.map(month => <option key={month}>{month}</option>)}</select>
+          <DataFilterButton activeCount={purchaseActiveFilterCount} open={showPurchaseFilters} onClick={() => setShowPurchaseFilters(true)} />
+          <button type="button" className="data-filter-button" onClick={() => setShowPurchaseColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
         </div>
+
+        <DataFilterChipBar
+          chips={[
+            ...sourcingFilters.map(value => ({ id: `sourcing:${value}`, label: getSourcingTypeLabel(value), onRemove: () => setSourcingFilters(current => current.filter(item => item !== value)) })),
+            ...monthFilters.map(value => ({ id: `month:${value}`, label: value, onRemove: () => setMonthFilters(current => current.filter(item => item !== value)) }))
+          ]}
+          onClear={() => { setSourcingFilters([]); setMonthFilters([]); }}
+        />
 
         {activeListView === 'requests' ? (
           <div className="table-container erp-primary-data-table">
             <table className="purchase-request-table" data-resize-key="purchase-requests">
-              <thead><tr><th>{t('Yêu cầu / PO')}</th><th>{t('Khách hàng')}</th><th>{t('Mặt hàng')}</th><th>{t('Phương án cung ứng')}</th><th>{t('Số lượng')}</th><th>{t('Ngày cần')}</th><th>{t('Mua hàng phụ trách')}</th><th>{t('NCC')}</th><th>{t('Thao tác')}</th></tr></thead>
+              <thead><tr><ReorderableTableCells order={orderedRequestColumnIds} getHeaderProps={getRequestHeaderProps} labels={requestColumnLabels}>
+                <th key="request">{t('Yêu cầu / PO')}</th>
+                {requestVisibleColumnSet.has('customer') && <th key="customer">{t('Khách hàng')}</th>}
+                {requestVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng')}</th>}
+                {requestVisibleColumnSet.has('sourcing') && <th key="sourcing">{t('Phương án cung ứng')}</th>}
+                {requestVisibleColumnSet.has('quantity') && <th key="quantity">{t('Số lượng')}</th>}
+                {requestVisibleColumnSet.has('requiredDate') && <th key="requiredDate">{t('Ngày cần')}</th>}
+                {requestVisibleColumnSet.has('purchaser') && <th key="purchaser">{t('Mua hàng phụ trách')}</th>}
+                {requestVisibleColumnSet.has('supplier') && <th key="supplier">{t('NCC')}</th>}
+                <th key="actions">{t('Thao tác')}</th>
+              </ReorderableTableCells></tr></thead>
               <tbody>
                 {requestPagination.rows.map(request => <tr key={request.id}>
-                  <td><strong className="purchase-request-code">{request.requestCode}{request.status === 'new' && <span className="purchase-new-tag"><i />NEW</span>}</strong><span>{request.poCode}</span></td>
-                  <td><strong>{request.customerName || '—'}</strong></td>
-                  <td><strong>{request.productName}</strong><span>{[request.productCode, request.material, request.size].filter(Boolean).join(' · ')}</span></td>
-                  <td><span className={`sourcing-badge sourcing-badge--${request.sourcingType}`}>{getSourcingTypeLabel(request.sourcingType)}</span></td>
-                  <td><strong>{request.quantity.toLocaleString('vi-VN')} {request.unit}</strong></td>
-                  <td><span className={request.requiredDate && Date.parse(request.requiredDate) < PURCHASE_PAGE_REFERENCE_TIME && request.status !== 'received' ? 'purchase-date-overdue' : ''}>{formatDate(request.requiredDate, 'vi-VN', '—')}</span></td>
-                  <td>{request.assignedPurchaserName || t('Chưa phân công')}</td>
-                  <td>{request.selectedSupplierName || '—'}</td>
-                  <td><RowActionMenu
-                    label={`${t('Thao tác')} ${request.requestCode}`}
-                    actions={[
-                      ...(request.status === 'new' ? [{ label: t('Tiếp nhận'), onSelect: () => handleUpdateRequestStatus(request, 'reviewing') }] : []),
-                      ...(ACTIVE_STATUSES.includes(request.status) ? [{ label: t('Chọn NCC'), onSelect: () => openRequest(request) }] : [])
-                    ]}
-                  /></td>
+                  <ReorderableTableCells order={orderedRequestColumnIds} expandOverflowText={false}>
+                    <td key="request"><strong className="purchase-request-code">{request.requestCode}{request.status === 'new' && <span className="purchase-new-tag"><i />NEW</span>}</strong><span>{request.poCode}</span></td>
+                    {requestVisibleColumnSet.has('customer') && <td key="customer"><strong>{request.customerName || '—'}</strong></td>}
+                    {requestVisibleColumnSet.has('product') && <td key="product"><strong>{request.productName}</strong><span>{[request.productCode, request.material, request.size].filter(Boolean).join(' · ')}</span></td>}
+                    {requestVisibleColumnSet.has('sourcing') && <td key="sourcing"><span className={`sourcing-text sourcing-text--${request.sourcingType}`}>{getSourcingTypeLabel(request.sourcingType)}</span></td>}
+                    {requestVisibleColumnSet.has('quantity') && <td key="quantity"><strong>{request.quantity.toLocaleString('vi-VN')} {request.unit}</strong></td>}
+                    {requestVisibleColumnSet.has('requiredDate') && <td key="requiredDate"><span className={request.requiredDate && Date.parse(request.requiredDate) < PURCHASE_PAGE_REFERENCE_TIME && request.status !== 'received' ? 'purchase-date-overdue' : ''}>{formatDate(request.requiredDate, 'vi-VN', '—')}</span></td>}
+                    {requestVisibleColumnSet.has('purchaser') && <td key="purchaser">{request.assignedPurchaserName || t('Chưa phân công')}</td>}
+                    {requestVisibleColumnSet.has('supplier') && <td key="supplier">{request.selectedSupplierName || '—'}</td>}
+                    <td key="actions"><RowActionMenu
+                      label={`${t('Thao tác')} ${request.requestCode}`}
+                      actions={[
+                        ...(request.status === 'new' ? [{ label: t('Tiếp nhận'), onSelect: () => handleUpdateRequestStatus(request, 'reviewing') }] : []),
+                        ...(ACTIVE_STATUSES.includes(request.status) ? [{ label: t('Chọn NCC'), onSelect: () => openRequest(request) }] : [])
+                      ]}
+                    /></td>
+                  </ReorderableTableCells>
                 </tr>)}
               </tbody>
             </table>
@@ -407,15 +521,28 @@ export const Purchase: React.FC<PurchaseProps> = ({
         ) : (
           <div className="table-container erp-primary-data-table">
             <table className="purchase-table" data-resize-key="purchase-orders">
-              <thead><tr><th>{t('Mã đơn mua')}</th><th>{t('Nhà cung cấp')}</th><th>{t('PO khách hàng')}</th><th>{t('Mặt hàng')}</th><th>{t('Giá trị')}</th><th>{t('Ngày nhận dự kiến')}</th><th>{t('Thao tác')}</th></tr></thead>
+              <thead><tr><ReorderableTableCells order={orderedOrderColumnIds} getHeaderProps={getOrderHeaderProps} labels={orderColumnLabels}>
+                <th key="order">{t('Mã đơn mua')}</th>
+                {orderVisibleColumnSet.has('supplier') && <th key="supplier">{t('Nhà cung cấp')}</th>}
+                {orderVisibleColumnSet.has('po') && <th key="po">{t('PO khách hàng')}</th>}
+                {orderVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng')}</th>}
+                {orderVisibleColumnSet.has('value') && <th key="value">{t('Giá trị')}</th>}
+                {orderVisibleColumnSet.has('expectedDate') && <th key="expectedDate">{t('Ngày nhận dự kiến')}</th>}
+                <th key="actions">{t('Thao tác')}</th>
+              </ReorderableTableCells></tr></thead>
               <tbody>
                 {orderPagination.rows.map(order => <tr key={asText(order.id)}>
-                  <td><strong>{asText(order.purCode)}</strong></td><td>{asText(order.supplierName)}</td><td>{asText(order.linkedPoCode) || '—'}</td>
-                  <td>{asArray(order.items).map(item => `${asText(item.materialName ?? item.productName)} (${asNumber(item.quantity).toLocaleString('vi-VN')} ${asText(item.unit)})`).join(', ')}</td>
-                  <td><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td><td>{formatDate(asText(order.expectedReceiveDate), 'vi-VN', '—')}</td>
-                  <td>{asText(order.status) !== 'received'
-                    ? <RowActionMenu label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t('Xác nhận nhận hàng'), onSelect: () => handleReceiveOrder(order) }]} />
-                    : '—'}</td>
+                  <ReorderableTableCells order={orderedOrderColumnIds} expandOverflowText={false}>
+                    <td key="order"><strong>{asText(order.purCode)}</strong></td>
+                    {orderVisibleColumnSet.has('supplier') && <td key="supplier">{asText(order.supplierName)}</td>}
+                    {orderVisibleColumnSet.has('po') && <td key="po">{asText(order.linkedPoCode) || '—'}</td>}
+                    {orderVisibleColumnSet.has('product') && <td key="product">{asArray(order.items).map(item => `${asText(item.materialName ?? item.productName)} (${asNumber(item.quantity).toLocaleString('vi-VN')} ${asText(item.unit)})`).join(', ')}</td>}
+                    {orderVisibleColumnSet.has('value') && <td key="value"><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td>}
+                    {orderVisibleColumnSet.has('expectedDate') && <td key="expectedDate">{formatDate(asText(order.expectedReceiveDate), 'vi-VN', '—')}</td>}
+                    <td key="actions">{asText(order.status) !== 'received'
+                      ? <RowActionMenu label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t('Xác nhận nhận hàng'), onSelect: () => handleReceiveOrder(order) }]} />
+                      : '—'}</td>
+                  </ReorderableTableCells>
                 </tr>)}
               </tbody>
             </table>
@@ -423,6 +550,33 @@ export const Purchase: React.FC<PurchaseProps> = ({
         )}
         <DataTablePagination {...(activeListView === 'requests' ? requestPagination.paginationProps : orderPagination.paginationProps)} />
       </section>
+
+      <TableColumnCustomizer
+        open={showPurchaseColumnCustomizer}
+        columns={activeListView === 'requests' ? PURCHASE_REQUEST_COLUMNS : PURCHASE_ORDER_COLUMNS}
+        selectedIds={activeListView === 'requests' ? requestVisibleColumns : orderVisibleColumns}
+        onClose={() => setShowPurchaseColumnCustomizer(false)}
+        onSave={activeListView === 'requests' ? saveRequestVisibleColumns : saveOrderVisibleColumns}
+      />
+      <DataFilterPanel
+        open={showPurchaseFilters}
+        title={t('Lọc danh sách mua hàng')}
+        description={t('Lọc theo phương án cung ứng và tháng phát sinh.')}
+        activeCount={purchaseActiveFilterCount}
+        onClose={() => setShowPurchaseFilters(false)}
+        onReset={() => { setSourcingFilters([]); setMonthFilters([]); }}
+      >
+        <DataFilterSection title={t('Phương án cung ứng')} selectedCount={sourcingFilters.length} defaultExpanded>
+          <DataFilterCheckboxGroup
+            options={SOURCING_TYPES.map(type => ({ value: type, label: getSourcingTypeLabel(type) }))}
+            selectedValues={sourcingFilters}
+            onChange={values => setSourcingFilters(values as SourcingType[])}
+          />
+        </DataFilterSection>
+        <DataFilterSection title={t('Tháng phát sinh')} selectedCount={monthFilters.length}>
+          <DataFilterCheckboxGroup options={months.map(month => ({ value: month, label: month }))} selectedValues={monthFilters} onChange={setMonthFilters} />
+        </DataFilterSection>
+      </DataFilterPanel>
 
       {selectedRequest && (
         <div className="modal-overlay">

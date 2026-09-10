@@ -133,7 +133,6 @@ export const Design: React.FC<DesignProps> = ({
     return DESIGN_LIST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id);
   });
   const designVisibleColumnSet = new Set(designVisibleColumns);
-  const designVisibleColumnCount = DESIGN_LIST_COLUMNS.filter(column => designVisibleColumnSet.has(column.id)).length;
   const designActiveFilterCount = statusFilters.length + designerFilters.length + priorityFilters.length;
   const saveDesignVisibleColumns = (selectedIds: string[]) => {
     const next = Array.from(new Set(['request', 'actions', ...selectedIds]));
@@ -538,30 +537,11 @@ export const Design: React.FC<DesignProps> = ({
     }
   };
 
-  const metrics = DESIGN_WORK_STATUSES.map(status => ({
-    ...status,
-    count: visibleRequests.filter(request => getDesignWorkStatus(request.workStatus) === status.value).length
-  }));
-
   return (
     <div className="design-request-view">
       {!selectedRequest && (
       <>
       <PageContextHeader section={t('Thiết kế')} current={t('Danh sách yêu cầu thiết kế')} />
-
-      <div className="design-request-metrics">
-        {metrics.map(status => (
-          <button
-            type="button"
-            key={status.value}
-            className={`design-status-metric ${statusFilters.length === 1 && statusFilters[0] === status.value ? 'is-active' : ''}`}
-            onClick={() => setStatusFilters(current => current.length === 1 && current[0] === status.value ? [] : [status.value])}
-          >
-            <strong>{status.count}</strong>
-            <span>{t(status.label)}</span>
-          </button>
-        ))}
-      </div>
 
       <div className="card design-request-list-card">
         <div className="design-request-toolbar">

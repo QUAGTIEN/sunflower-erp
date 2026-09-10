@@ -1,6 +1,7 @@
 .purchase-page,
 .suppliers-page {
   display: flex;
+  min-height: 100%;
   flex-direction: column;
   gap: 16px;
 }
@@ -42,17 +43,13 @@
 
 .purchase-toolbar,
 .supplier-toolbar {
-  display: grid;
-  grid-template-columns: minmax(320px, 1fr) repeat(2, minmax(150px, auto));
+  display: flex;
+  align-items: center;
   gap: 8px;
   padding: 11px;
   border: 1px solid #dbe3ef;
   border-radius: 8px;
   background: #fff;
-}
-
-.supplier-toolbar {
-  grid-template-columns: minmax(320px, 1fr) repeat(2, minmax(150px, auto)) auto;
 }
 
 .purchase-toolbar select,
@@ -65,6 +62,8 @@
 
 .purchase-search {
   position: relative;
+  min-width: 0;
+  flex: 1 1 320px;
 }
 
 .purchase-search svg {
@@ -100,7 +99,18 @@
 }
 
 .purchase-list-card {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
   padding-top: 10px;
+}
+
+.supplier-list-panel {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
 
 .purchase-list-tabs {
@@ -288,30 +298,20 @@
   font-size: 12px;
 }
 
-.sourcing-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 23px;
-  padding: 3px 8px;
-  border: 1px solid #bfdbfe;
-  border-radius: 999px;
+.purchase-request-table td > .sourcing-text {
+  display: inline;
   color: #1d4ed8;
-  background: #eff6ff;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.sourcing-badge--raw_material {
-  border-color: #bae6fd;
+.purchase-request-table td > .sourcing-text--raw_material {
   color: #0369a1;
-  background: #f0f9ff;
 }
 
-.sourcing-badge--subcontract {
-  border-color: #ddd6fe;
+.purchase-request-table td > .sourcing-text--subcontract {
   color: #6d28d9;
-  background: #f5f3ff;
 }
 
 .purchase-date-overdue {
@@ -717,14 +717,6 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .purchase-toolbar,
-  .supplier-toolbar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .purchase-search {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 760px) {
@@ -754,6 +746,16 @@
   .purchase-search,
   .supplier-form-wide {
     grid-column: auto;
+  }
+
+  .purchase-toolbar,
+  .supplier-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .purchase-toolbar .purchase-search,
+  .supplier-toolbar .purchase-search {
+    flex-basis: 100%;
   }
 
   .supplier-detail-header .btn {
