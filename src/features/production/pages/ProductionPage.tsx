@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
+import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
@@ -712,10 +713,13 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                           <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{cmd.proposedOperatorName}</td>
                           <td>{cmd.transferReason}</td>
                           <td>
-                            <div className="btn-group">
-                              <button className="btn btn-sm btn-success" onClick={() => handleApproveTransfer(cmd)}>{t('Duyệt')}</button>
-                              <button className="btn btn-sm btn-danger" onClick={() => handleRejectTransfer(cmd)}>{t('Từ Chối')}</button>
-                            </div>
+                            <RowActionMenu
+                              label={`${t('Thao tác')} ${cmd.lsxCode}`}
+                              actions={[
+                                { label: t('Duyệt'), onSelect: () => handleApproveTransfer(cmd) },
+                                { label: t('Từ Chối'), onSelect: () => handleRejectTransfer(cmd), danger: true }
+                              ]}
+                            />
                           </td>
                         </tr>
                       ))}
@@ -766,23 +770,14 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                         </span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
-                          {cmd.status !== 'completed' && (currentUser.role === 'admin' || currentUser.role === 'producer') ? (
-                            <>
-                              <button className="btn btn-sm btn-success" onClick={() => setSelectedLsx(cmd)}>
-                                {t('Báo Cáo Hoàn Thành')}
-                              </button>
-                              <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => handleOpenEditLsx(cmd)} title={t('Sửa')}>
-                                <Pencil size={14} />
-                              </button>
-                              <button className="btn btn-sm btn-danger btn-symbol-sm" onClick={() => handleDeleteLsx(cmd.id)} title={t('Xóa')}>
-                                <Trash2 size={14} />
-                              </button>
-                            </>
-                          ) : (
-                            <button className="btn btn-sm btn-outline" onClick={() => setSelectedLsx(cmd)}>{t('Chi Tiết')}</button>
-                          )}
-                        </div>
+                        <RowActionMenu
+                          label={`${t('Thao tác')} ${cmd.lsxCode}`}
+                          actions={cmd.status !== 'completed' && (currentUser.role === 'admin' || currentUser.role === 'producer') ? [
+                            { label: t('Báo Cáo Hoàn Thành'), onSelect: () => setSelectedLsx(cmd) },
+                            { label: t('Sửa'), onSelect: () => handleOpenEditLsx(cmd) },
+                            { label: t('Xóa'), onSelect: () => handleDeleteLsx(cmd.id), danger: true }
+                          ] : [{ label: t('Chi Tiết'), onSelect: () => setSelectedLsx(cmd) }]}
+                        />
                       </td>
                     </tr>
                   ))}

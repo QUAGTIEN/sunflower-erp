@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 
 const MIN_COLUMN_WIDTH = 64;
-const TABLE_WIDTH_STORAGE_VERSION = 'v2';
+const TABLE_WIDTH_STORAGE_VERSION = 'v3';
 
 const getInitialColumnWidth = (header: HTMLTableCellElement, measuredWidth: number) => {
   const label = header.textContent?.trim() || '';
   const labelWidth = Math.min(240, Math.max(80, label.length * 7.5 + 30));
-  if (/thao tác|hành động|action/i.test(label)) return Math.max(180, measuredWidth, labelWidth);
+  if (/thao tác|hành động|action/i.test(label)) return Math.max(96, measuredWidth, labelWidth);
   if (/trạng thái|phương án|tiến độ/i.test(label)) return Math.max(150, measuredWidth, labelWidth);
   if (/doanh nghiệp|khách hàng|nhà cung cấp|mặt hàng|sản phẩm|tên tem|tên vật tư/i.test(label)) return Math.max(220, measuredWidth, labelWidth);
   return Math.max(measuredWidth, labelWidth);

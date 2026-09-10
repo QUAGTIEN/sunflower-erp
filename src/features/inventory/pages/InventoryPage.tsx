@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
+import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
-import { Trash2, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
 import './Inventory.css';
 
@@ -342,24 +343,17 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                         )}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button className="btn btn-sm btn-outline" onClick={() => { setSelectedItem(item); setShowDetailsModal(true); }}>
-                            {t('Chi Tiết')}
-                          </button>
-                          {(currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
-                            <>
-                              <button className="btn btn-sm btn-outline" onClick={() => handleOpenAdjust(item)}>
-                                {t('Cập Nhật Tồn Kho')}
-                              </button>
-                              <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => handleOpenEdit(item)} title={t('Sửa')}>
-                                <Pencil size={14} />
-                              </button>
-                              <button className="btn btn-sm btn-danger btn-symbol-sm" onClick={() => handleDeleteItem(item.id)} title={t('Xóa')}>
-                                <Trash2 size={14} />
-                              </button>
-                            </>
-                          )}
-                        </div>
+                        <RowActionMenu
+                          label={`${t('Thao tác')} ${item.materialName}`}
+                          actions={[
+                            { label: t('Chi Tiết'), onSelect: () => { setSelectedItem(item); setShowDetailsModal(true); } },
+                            ...((currentUser.role === 'admin' || currentUser.role === 'purchaser') ? [
+                              { label: t('Cập Nhật Tồn Kho'), onSelect: () => handleOpenAdjust(item) },
+                              { label: t('Sửa'), onSelect: () => handleOpenEdit(item) },
+                              { label: t('Xóa'), onSelect: () => handleDeleteItem(item.id), danger: true }
+                            ] : [])
+                          ]}
+                        />
                       </td>
                     </tr>
                   );

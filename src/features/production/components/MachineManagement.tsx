@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { DataTablePagination } from '@/components/DataTablePagination';
+import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import {
   getMachineCommands,
@@ -317,16 +318,13 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
                   <td><span className={statusClassName(runtimeStatus)}>{getMachineStatusLabel(runtimeStatus)}</span></td>
                   {canManage && (
                     <td>
-                      <div className="machine-actions">
-                        <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => openEditModal(machine)} title="Chỉnh sửa máy">
-                          <Pencil size={14} />
-                        </button>
-                        {machine.status !== 'inactive' && (
-                          <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => handleDeactivate(machine)} title="Ngừng sử dụng">
-                            <Power size={14} />
-                          </button>
-                        )}
-                      </div>
+                      <RowActionMenu
+                        label={`Thao tác ${machine.name}`}
+                        actions={[
+                          { label: 'Chỉnh sửa máy', icon: <Pencil size={14} />, onSelect: () => openEditModal(machine) },
+                          ...(machine.status !== 'inactive' ? [{ label: 'Ngừng sử dụng', icon: <Power size={14} />, onSelect: () => handleDeactivate(machine), danger: true }] : [])
+                        ]}
+                      />
                     </td>
                   )}
                 </tr>

@@ -23,7 +23,7 @@
 
 .inventory-view .inventory-stock-table th:last-child,
 .inventory-view .inventory-stock-table td:last-child {
-  min-width: 310px;
+  min-width: 96px;
   white-space: nowrap !important;
 }
 

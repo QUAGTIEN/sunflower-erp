@@ -243,7 +243,7 @@
 .production-view .production-approval-table td:last-child,
 .production-view .production-command-table th:last-child,
 .production-view .production-command-table td:last-child {
-  min-width: 250px;
+  min-width: 104px;
   white-space: nowrap !important;
 }
 

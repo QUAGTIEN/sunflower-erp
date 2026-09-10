@@ -242,8 +242,8 @@
 }
 
 .design-request-view .design-request-table th:last-child {
-  width: 180px !important;
-  min-width: 180px !important;
+  width: 96px !important;
+  min-width: 96px !important;
 }
 
 .design-request-view .design-request-table td:last-child {

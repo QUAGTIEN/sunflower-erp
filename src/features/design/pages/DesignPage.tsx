@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
+import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
@@ -147,7 +148,7 @@ export const Design: React.FC<DesignProps> = ({
     columns: DESIGN_LIST_COLUMNS,
     selectedIds: designVisibleColumns,
     onOrderChange: saveDesignVisibleColumns,
-    widthStorageKey: `sunflower:design-column-widths:v2:${currentUser.uid}`,
+    widthStorageKey: `sunflower:design-column-widths:v3:${currentUser.uid}`,
     lockedStartIds: ['request'],
     lockedEndIds: ['actions']
   });
@@ -637,9 +638,10 @@ export const Design: React.FC<DesignProps> = ({
                       </span>
                     </td>}
                     <td key="actions">
-                      <button className="btn btn-sm btn-outline" onClick={event => { event.stopPropagation(); openRequest(request); }}>
-                        {t('Mở công việc')}
-                      </button>
+                      <RowActionMenu
+                        label={`${t('Thao tác')} ${request.requestCode}`}
+                        actions={[{ label: t('Mở công việc'), onSelect: () => openRequest(request) }]}
+                      />
                     </td>
                     </ReorderableTableCells>
                   </tr>

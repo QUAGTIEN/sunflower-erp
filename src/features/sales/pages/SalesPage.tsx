@@ -6,6 +6,7 @@ import POFormFullScreen from '@/features/sales/components/POFormFullScreen';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
+import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
@@ -133,7 +134,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     columns: SALES_CUSTOMER_COLUMNS,
     selectedIds: salesVisibleColumns,
     onOrderChange: saveSalesVisibleColumns,
-    widthStorageKey: `sunflower:sales-customer-column-widths:v2:${currentUser.uid}`,
+    widthStorageKey: `sunflower:sales-customer-column-widths:v3:${currentUser.uid}`,
     lockedStartIds: ['customer'],
     lockedEndIds: ['actions']
   });
@@ -930,12 +931,15 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                           <td>{po.createdBy || '—'}</td>
                           <td>{formatDateTime(po.updatedAt || po.createdAt, t('vi-VN'), '—')}</td>
                           <td>
-                            <div className="customer-po-row-actions">
-                              <button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); setSelectedPO(po); }}>{t('Chi tiết')}</button>
-                              {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
-                                <button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); handleOpenRepeatOrder(po); }}>{t('Đặt lại')}</button>
-                              )}
-                            </div>
+                            <RowActionMenu
+                              label={`${t('Thao tác')} ${po.poCode}`}
+                              actions={[
+                                { label: t('Chi tiết'), onSelect: () => setSelectedPO(po) },
+                                ...((currentUser.role === 'admin' || currentUser.role === 'sale')
+                                  ? [{ label: t('Đặt lại'), onSelect: () => handleOpenRepeatOrder(po) }]
+                                  : [])
+                              ]}
+                            />
                           </td>
                         </tr>
                       );
@@ -986,7 +990,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                             {salesVisibleColumnSet.has('latest') && <td key="latest">{latestPO ? formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN')) : '—'}</td>}
                             {salesVisibleColumnSet.has('value') && <td key="value">{totalValue.toLocaleString('vi-VN')} đ</td>}
                             {salesVisibleColumnSet.has('status') && <td key="status">{latestPO ? <span className={`sales-status-label sales-status-label--${getPOQueueStatus(latestPO)}`}>{t(getPOQueueLabel(latestPO))}</span> : t('Chưa có PO')}</td>}
-                            <td key="actions"><button className="btn btn-sm btn-outline" onClick={(event) => { event.stopPropagation(); setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>{t('Xem PO')}</button></td>
+                            <td key="actions"><RowActionMenu label={`${t('Thao tác')} ${customer.companyName}`} actions={[{ label: t('Xem PO'), onSelect: () => { setSelectedOrderCustomerId(customer.id); setSearchTerm(''); } }]} /></td>
                           </ReorderableTableCells>
                         </tr>
                       );
@@ -1047,10 +1051,10 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                         </td>
                         <td>
                           {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
-                            <button className="btn btn-sm btn-primary waiting-customer-action" onClick={() => handleOpenCreatePO(customer.id)}>
-                              <Plus size={14} />
-                              <span>{customer.pendingOrderDraft ? 'Phân công & phát hành PO' : t('Tạo PO')}</span>
-                            </button>
+                            <RowActionMenu
+                              label={`${t('Thao tác')} ${customer.companyName}`}
+                              actions={[{ label: customer.pendingOrderDraft ? 'Phân công & phát hành PO' : t('Tạo PO'), onSelect: () => handleOpenCreatePO(customer.id) }]}
+                            />
                           )}
                         </td>
                       </tr>

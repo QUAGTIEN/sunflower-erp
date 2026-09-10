@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
+import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import {
   ClipboardList,
   Search,
   ShoppingBag,
-  Truck,
   X
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -393,11 +393,13 @@ export const Purchase: React.FC<PurchaseProps> = ({
                   <td><span className={request.requiredDate && Date.parse(request.requiredDate) < PURCHASE_PAGE_REFERENCE_TIME && request.status !== 'received' ? 'purchase-date-overdue' : ''}>{formatDate(request.requiredDate, 'vi-VN', '—')}</span></td>
                   <td>{request.assignedPurchaserName || t('Chưa phân công')}</td>
                   <td>{request.selectedSupplierName || '—'}</td>
-                  <td><div className="purchase-row-actions">
-                    {request.status === 'new' && <button type="button" className="btn btn-sm btn-outline" onClick={() => handleUpdateRequestStatus(request, 'reviewing')}>{t('Tiếp nhận')}</button>}
-                    {ACTIVE_STATUSES.includes(request.status) && <button type="button" className="btn btn-sm btn-primary" onClick={() => openRequest(request)}>{t('Chọn NCC')}</button>}
-                    {request.purchaseOrderCode && <span>{request.purchaseOrderCode}</span>}
-                  </div></td>
+                  <td><RowActionMenu
+                    label={`${t('Thao tác')} ${request.requestCode}`}
+                    actions={[
+                      ...(request.status === 'new' ? [{ label: t('Tiếp nhận'), onSelect: () => handleUpdateRequestStatus(request, 'reviewing') }] : []),
+                      ...(ACTIVE_STATUSES.includes(request.status) ? [{ label: t('Chọn NCC'), onSelect: () => openRequest(request) }] : [])
+                    ]}
+                  /></td>
                 </tr>)}
               </tbody>
             </table>
@@ -411,7 +413,9 @@ export const Purchase: React.FC<PurchaseProps> = ({
                   <td><strong>{asText(order.purCode)}</strong></td><td>{asText(order.supplierName)}</td><td>{asText(order.linkedPoCode) || '—'}</td>
                   <td>{asArray(order.items).map(item => `${asText(item.materialName ?? item.productName)} (${asNumber(item.quantity).toLocaleString('vi-VN')} ${asText(item.unit)})`).join(', ')}</td>
                   <td><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td><td>{formatDate(asText(order.expectedReceiveDate), 'vi-VN', '—')}</td>
-                  <td>{asText(order.status) !== 'received' && <button type="button" className="btn btn-sm btn-outline" onClick={() => handleReceiveOrder(order)}><Truck size={14} /> {t('Xác nhận nhận hàng')}</button>}</td>
+                  <td>{asText(order.status) !== 'received'
+                    ? <RowActionMenu label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t('Xác nhận nhận hàng'), onSelect: () => handleReceiveOrder(order) }]} />
+                    : '—'}</td>
                 </tr>)}
               </tbody>
             </table>
