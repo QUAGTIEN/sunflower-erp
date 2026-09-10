@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { Trash2, Pencil } from 'lucide-react';
@@ -257,6 +259,9 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+  const stockPagination = useDataTablePagination(filteredInventory);
+  const exportPagination = useDataTablePagination(exportSlips);
+  const summaryPagination = useDataTablePagination(inventoryList);
 
   return (
     <div className="inventory-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -299,7 +304,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
           </div>
 
           <div className="table-container erp-primary-data-table">
-            <table className="inventory-stock-table">
+            <table className="inventory-stock-table" data-resize-key="inventory-stock">
               <thead>
                 <tr>
                   <th>{t('Tên Vật Tư')}</th>
@@ -314,7 +319,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                 </tr>
               </thead>
               <tbody>
-                {filteredInventory.map(item => {
+                {stockPagination.rows.map(item => {
                   const isLowStock = item.qtyInStock < item.minQtyAlert;
                   const netAvailable = item.qtyInStock - (item.qtyReserved || 0);
 
@@ -362,6 +367,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
               </tbody>
             </table>
           </div>
+          <DataTablePagination {...stockPagination.paginationProps} />
         </div>
       )}
 
@@ -375,7 +381,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
           </div>
 
           <div className="table-container erp-primary-data-table">
-            <table className="inventory-export-table">
+            <table className="inventory-export-table" data-resize-key="inventory-exports">
               <thead>
                 <tr>
                   <th>{t('Số Phiếu')}</th>
@@ -388,7 +394,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                 </tr>
               </thead>
               <tbody>
-                {exportSlips.map(slip => {
+                {exportPagination.rows.map(slip => {
                   const slipItem = slip.items?.[0] || {};
                   return (
                     <tr key={slip.id}>
@@ -405,6 +411,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
               </tbody>
             </table>
           </div>
+          <DataTablePagination {...exportPagination.paginationProps} />
         </div>
       )}
 
@@ -416,7 +423,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
           </p>
 
           <div className="table-container erp-primary-data-table">
-            <table className="inventory-summary-table">
+            <table className="inventory-summary-table" data-resize-key="inventory-summary">
               <thead>
                 <tr>
                   <th>{t('Tên Vật Tư')}</th>
@@ -429,7 +436,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                 </tr>
               </thead>
               <tbody>
-                {inventoryList.map(item => {
+                {summaryPagination.rows.map(item => {
                   // Calculate dynamic Nhập
                   const totalImported = purchaseOrders
                     .filter(po => po.status === 'received')
@@ -462,6 +469,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
               </tbody>
             </table>
           </div>
+          <DataTablePagination {...summaryPagination.paginationProps} />
         </div>
       )}
 

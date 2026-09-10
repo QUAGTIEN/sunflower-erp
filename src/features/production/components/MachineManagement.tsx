@@ -12,6 +12,8 @@ import {
   X
 } from 'lucide-react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import {
   getMachineCommands,
   getMachineForAssignment,
@@ -86,6 +88,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
       runtimeStatus: getMachineRuntimeStatus(machine, activeCommands)
     };
   }), [machines, activeCommands]);
+  const machinePagination = useDataTablePagination(machineRows);
 
   const unassignedCommands = useMemo(
     () => activeCommands.filter(command => !getMachineForAssignment(machines, command.machineId)),
@@ -217,7 +220,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
             </div>
           </div>
           <div className="table-container erp-primary-data-table">
-            <table>
+            <table data-resize-key="production-machine-schedule">
               <thead>
                 <tr>
                   <th>Máy sản xuất</th>
@@ -229,7 +232,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {machineRows.map(({ machine, commands, runtimeStatus }) => (
+                {machinePagination.rows.map(({ machine, commands, runtimeStatus }) => (
                   <tr key={machine.id}>
                     <td>
                       <strong>{machine.code}</strong>
@@ -263,6 +266,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
               </tbody>
             </table>
           </div>
+          <DataTablePagination {...machinePagination.paginationProps} />
         </div>
       </div>
     );
@@ -283,7 +287,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
           )}
         </div>
         <div className="table-container erp-primary-data-table">
-          <table>
+          <table data-resize-key="production-machine-catalog">
             <thead>
               <tr>
                 <th>Mã máy</th>
@@ -298,7 +302,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
               </tr>
             </thead>
             <tbody>
-              {machineRows.map(({ machine, runtimeStatus }) => (
+              {machinePagination.rows.map(({ machine, runtimeStatus }) => (
                 <tr key={machine.id}>
                   <td><strong>{machine.code}</strong></td>
                   <td>
@@ -330,6 +334,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
             </tbody>
           </table>
         </div>
+        <DataTablePagination {...machinePagination.paginationProps} />
       </div>
 
       {showModal && (

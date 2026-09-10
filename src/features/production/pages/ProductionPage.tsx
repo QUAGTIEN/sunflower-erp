@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { FloatingChat } from '@/components/FloatingChat';
@@ -306,6 +308,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
     (productionCommands || []).filter(cmd => !cmd.deleted),
     command => [command.createdAt, command.startedAt]
   );
+  const productionPagination = useDataTablePagination(activeCommands);
   const selectedPoForCreate = pos.find(po => po.id === linkedPoId);
   const requiredColorsForCreate = getRequiredColorCount(selectedPoForCreate);
   const createMachineOptions = sortMachinesForAssignment(machineCatalog, activeCommands, requiredColorsForCreate)
@@ -689,7 +692,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                 {t('Yêu Cầu Phê Duyệt Bàn Giao Lệnh')}
               </span>
               <div className="table-container production-approval-table-wrap">
-                <table className="production-approval-table">
+              <table className="production-approval-table" data-resize-key="production-approvals">
                   <thead>
                     <tr>
                       <th>{t('Mã LSX')}</th>
@@ -727,7 +730,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
               <span className="card-title" style={{ margin: 0 }}>{t('Danh Sách Lệnh Sản Xuất Đang Chạy và Đã Xong')}</span>
             </div>
             <div className="table-container production-command-table-wrap erp-primary-data-table">
-              <table className="production-command-table">
+              <table className="production-command-table" data-resize-key="production-commands">
                 <thead>
                   <tr>
                     <th>{t('Mã LSX')}</th>
@@ -743,7 +746,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                   </tr>
                 </thead>
                 <tbody>
-                  {activeCommands.map(cmd => (
+                  {productionPagination.rows.map(cmd => (
                     <tr key={cmd.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedLsx(cmd)}>
                       <td style={{ fontWeight: 600 }}>{cmd.lsxCode}</td>
                       <td>{cmd.poCode}</td>
@@ -786,6 +789,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                 </tbody>
               </table>
             </div>
+            <DataTablePagination {...productionPagination.paginationProps} />
           </div>
         </div>
       )}

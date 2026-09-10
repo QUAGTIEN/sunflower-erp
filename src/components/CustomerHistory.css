@@ -1952,8 +1952,8 @@
 }
 
 .sales-order-customer-table table.has-dynamic-columns th:last-child {
-  width: 100px !important;
-  min-width: 100px !important;
+  width: 180px !important;
+  min-width: 180px !important;
 }
 
 /* Sales list rows prioritize a compact scan rhythm while keeping controls usable. */

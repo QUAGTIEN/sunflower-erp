@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -145,7 +147,7 @@ export const Design: React.FC<DesignProps> = ({
     columns: DESIGN_LIST_COLUMNS,
     selectedIds: designVisibleColumns,
     onOrderChange: saveDesignVisibleColumns,
-    widthStorageKey: `sunflower:design-column-widths:${currentUser.uid}`,
+    widthStorageKey: `sunflower:design-column-widths:v2:${currentUser.uid}`,
     lockedStartIds: ['request'],
     lockedEndIds: ['actions']
   });
@@ -199,6 +201,7 @@ export const Design: React.FC<DesignProps> = ({
       request => [request.createdAt]
     );
   }, [designerFilters, priorityFilters, searchTerm, statusFilters, visibleRequests]);
+  const designPagination = useDataTablePagination(filteredRequests);
 
   const selectedRequest = designRequests.find(request => request.id === selectedRequestId) || null;
   const selectedDesign = selectedRequest ? resolveDesignForRequest(designs, selectedRequest) : null;
@@ -583,7 +586,7 @@ export const Design: React.FC<DesignProps> = ({
         />
 
         <div className="table-container design-request-table erp-primary-data-table">
-          <table>
+          <table data-resize-key="design-requests">
             <thead>
               <tr>
                 <ReorderableTableCells order={orderedDesignColumnIds} getHeaderProps={getDesignHeaderProps} labels={designColumnLabels}>
@@ -599,14 +602,14 @@ export const Design: React.FC<DesignProps> = ({
               </tr>
             </thead>
             <tbody>
-              {filteredRequests.map(request => {
+              {designPagination.rows.map(request => {
                 const status = getDesignWorkStatusDefinition(request.workStatus);
                 const designer = users.find(user => user.uid === request.assignedDesignerId);
                 const ageDays = getDesignRequestAgeDays(request);
                 const overdue = isDesignRequestOverdue(request);
                 return (
                   <tr key={request.id} className={overdue ? 'is-overdue' : ''} onClick={() => openRequest(request)}>
-                    <ReorderableTableCells order={orderedDesignColumnIds}>
+                    <ReorderableTableCells order={orderedDesignColumnIds} expandOverflowText={false}>
                     <td key="request">
                       <strong className="design-request-code">{request.requestCode}</strong>
                       <span className={`design-priority design-priority--${request.priority || 'normal'}`}>{t(PRIORITY_LABELS[request.priority] || 'Bình thường')}</span>
@@ -645,6 +648,7 @@ export const Design: React.FC<DesignProps> = ({
             </tbody>
           </table>
         </div>
+        <DataTablePagination {...designPagination.paginationProps} />
       </div>
       </>
       )}

@@ -5,6 +5,8 @@ import { FloatingChat } from '@/components/FloatingChat';
 import POFormFullScreen from '@/features/sales/components/POFormFullScreen';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -131,7 +133,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     columns: SALES_CUSTOMER_COLUMNS,
     selectedIds: salesVisibleColumns,
     onOrderChange: saveSalesVisibleColumns,
-    widthStorageKey: `sunflower:sales-customer-column-widths:${currentUser.uid}`,
+    widthStorageKey: `sunflower:sales-customer-column-widths:v2:${currentUser.uid}`,
     lockedStartIds: ['customer'],
     lockedEndIds: ['actions']
   });
@@ -791,6 +793,9 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     if (customer.deleted === true || customerIdsWithOrders.has(customer.id)) return false;
     return currentUser.role !== 'sale' || !customer.assignedSaleId || customer.assignedSaleId === currentUser.uid;
   }).length;
+  const customerPoPagination = useDataTablePagination(filteredPOs);
+  const orderCustomerPagination = useDataTablePagination(orderCustomers);
+  const waitingCustomerPagination = useDataTablePagination(waitingCustomers);
 
   const selectedPOTotalWithVat = selectedPO?.items?.length
     ? selectedPO.items.reduce((total: number, item: any) => (
@@ -885,7 +890,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
           {activeListView === 'orders' ? (
             selectedOrderCustomer ? (
               <div className="table-container customer-po-list-table erp-primary-data-table">
-                <table>
+                <table data-resize-key="sales-po-list">
                   <thead>
                     <tr>
                       <th>{t('Mã PO')}</th>
@@ -901,7 +906,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPOs.map(po => {
+                    {customerPoPagination.rows.map(po => {
                       const items = Array.isArray(po.items) ? po.items : [];
                       const firstItem = items[0] || {};
                       const productSummary = firstItem.productName
@@ -942,6 +947,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
               <div className="table-container sales-order-customer-table erp-primary-data-table">
                 <table
                   className="has-dynamic-columns"
+                  data-resize-key="sales-customer-orders"
                   style={{ minWidth: `${Math.max(1680, salesVisibleColumnCount * 180 + 280)}px` }}
                 >
                   <thead>
@@ -962,14 +968,14 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                     </tr>
                   </thead>
                   <tbody>
-                    {orderCustomers.map(customer => {
+                    {orderCustomerPagination.rows.map(customer => {
                       const customerOrders = getCustomerPOs(customer);
                       const latestPO = customerOrders[0];
                       const totalValue = customerOrders.reduce((total, po) => total + Number(po.netAmount || po.totalAmount || 0), 0);
                       const assignedSale = users.find(user => user.uid === customer.assignedSaleId || (user as any).id === customer.assignedSaleId);
                       return (
                         <tr key={customer.id} className="sales-customer-row" onClick={() => { setSelectedOrderCustomerId(customer.id); setSearchTerm(''); }}>
-                          <ReorderableTableCells order={orderedSalesColumnIds}>
+                          <ReorderableTableCells order={orderedSalesColumnIds} expandOverflowText={false}>
                             <td key="customer"><strong className="erp-company-name" title={customer.companyName}>{customer.companyName}</strong></td>
                             {salesVisibleColumnSet.has('code') && <td key="code"><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>}
                             {salesVisibleColumnSet.has('contact') && <td key="contact"><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong></td>}
@@ -991,7 +997,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             )
           ) : (
             <div className="table-container waiting-customer-table erp-primary-data-table">
-              <table>
+              <table data-resize-key="sales-waiting-customers">
                 <thead>
                   <tr>
                     <th>{t('Mã khách hàng')}</th>
@@ -1005,7 +1011,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                   </tr>
                 </thead>
                 <tbody>
-                  {waitingCustomers.map(customer => {
+                  {waitingCustomerPagination.rows.map(customer => {
                     const assignedSale = users.find(user => (
                       user.uid === customer.assignedSaleId || (user as any).id === customer.assignedSaleId
                     ));
@@ -1054,6 +1060,13 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
               </table>
             </div>
           )}
+          <DataTablePagination {...(
+            activeListView === 'waiting-customers'
+              ? waitingCustomerPagination.paginationProps
+              : selectedOrderCustomer
+                ? customerPoPagination.paginationProps
+                : orderCustomerPagination.paginationProps
+          )} />
         </div>
         </>
       )}

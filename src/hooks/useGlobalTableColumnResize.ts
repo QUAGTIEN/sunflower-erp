@@ -1,6 +1,16 @@
 import { useEffect } from 'react';
 
 const MIN_COLUMN_WIDTH = 64;
+const TABLE_WIDTH_STORAGE_VERSION = 'v2';
+
+const getInitialColumnWidth = (header: HTMLTableCellElement, measuredWidth: number) => {
+  const label = header.textContent?.trim() || '';
+  const labelWidth = Math.min(240, Math.max(80, label.length * 7.5 + 30));
+  if (/thao tác|hành động|action/i.test(label)) return Math.max(180, measuredWidth, labelWidth);
+  if (/trạng thái|phương án|tiến độ/i.test(label)) return Math.max(150, measuredWidth, labelWidth);
+  if (/doanh nghiệp|khách hàng|nhà cung cấp|mặt hàng|sản phẩm|tên tem|tên vật tư/i.test(label)) return Math.max(220, measuredWidth, labelWidth);
+  return Math.max(measuredWidth, labelWidth);
+};
 
 const readWidths = (storageKey: string): Record<string, number> => {
   try {
@@ -21,7 +31,9 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
     if (!root) return;
 
     const prepareTableViewports = () => {
+      const rootStyle = window.getComputedStyle(root);
       const rootBottom = root.getBoundingClientRect().bottom;
+      const rootContentBottom = rootBottom - (Number.parseFloat(rootStyle.paddingBottom) || 0);
       root.querySelectorAll<HTMLElement>([
         '.table-container',
         '.work-schedule-table-wrap',
@@ -38,7 +50,15 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
           ? container.nextElementSibling
           : null;
         const reservedHeight = pagination?.getBoundingClientRect().height || 0;
-        const availableHeight = Math.max(180, Math.floor(rootBottom - container.getBoundingClientRect().top - reservedHeight - 8));
+        const parentStyle = container.parentElement ? window.getComputedStyle(container.parentElement) : null;
+        const parentBottomInset = parentStyle
+          ? (Number.parseFloat(parentStyle.paddingBottom) || 0) + (Number.parseFloat(parentStyle.borderBottomWidth) || 0)
+          : 0;
+        const footerGap = pagination && parentStyle ? Number.parseFloat(parentStyle.rowGap) || 0 : 0;
+        const viewportBottom = container.matches('.erp-primary-data-table') ? rootContentBottom : rootBottom;
+        const availableHeight = Math.max(180, Math.floor(
+          viewportBottom - container.getBoundingClientRect().top - reservedHeight - parentBottomInset - footerGap - 8
+        ));
         container.style.setProperty('--erp-table-viewport-height', `${availableHeight}px`);
         container.classList.add('erp-viewport-table-scroll');
 
@@ -58,10 +78,15 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
     const prepareTables = () => {
       root.querySelectorAll<HTMLTableElement>('table').forEach((table, tableIndex) => {
         const tableKey = table.dataset.resizeKey || `table-${tableIndex}`;
-        const storageKey = `sunflower:table-column-widths:${userId}:${pageId}:${tableKey}`;
+        const isPrimaryDataTable = Boolean(table.closest('.erp-primary-data-table'));
+        const storageVersion = isPrimaryDataTable ? `${TABLE_WIDTH_STORAGE_VERSION}:` : '';
+        const storageKey = `sunflower:table-column-widths:${storageVersion}${userId}:${pageId}:${tableKey}`;
         const widths = readWidths(storageKey);
         const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>('thead th:not(.is-resizable)'));
-        const measuredWidths = headers.map(header => Math.round(header.getBoundingClientRect().width));
+        const measuredWidths = headers.map(header => {
+          const measuredWidth = Math.round(header.getBoundingClientRect().width);
+          return isPrimaryDataTable ? getInitialColumnWidth(header, measuredWidth) : measuredWidth;
+        });
         const resolvedWidths = measuredWidths.map((width, columnIndex) => widths[String(columnIndex)] || width);
         headers.forEach((header, columnIndex) => {
           header.classList.add('erp-generic-resizable-header');
@@ -70,6 +95,11 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
           if (!header.title) header.title = header.textContent?.trim() || '';
           const width = resolvedWidths[columnIndex];
           if (width) header.style.setProperty('--erp-column-resized-width', `${width}px`);
+        });
+        if (isPrimaryDataTable) table.querySelectorAll<HTMLTableCellElement>('tbody td').forEach(cell => {
+          if (cell.title || cell.querySelector('button, input, select, textarea')) return;
+          const label = cell.textContent?.replace(/\s+/g, ' ').trim();
+          if (label) cell.title = label;
         });
         const minimumTableWidth = table.parentElement?.clientWidth || 0;
         const tableWidth = widths.__tableWidth || resolvedWidths.reduce((total, width) => total + width, 0);

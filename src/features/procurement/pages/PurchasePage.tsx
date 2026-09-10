@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import {
   ClipboardList,
   Search,
@@ -141,6 +143,8 @@ export const Purchase: React.FC<PurchaseProps> = ({
     ]);
     return matchesSourcing && matchesMonth && matchesSearch;
   }), [monthFilter, purchaseOrders, searchTerm, sourcingFilter]);
+  const requestPagination = useDataTablePagination(filteredRequests);
+  const orderPagination = useDataTablePagination(filteredPurchaseOrders);
 
   const selectedRequest = accessibleRequests.find(request => request.id === selectedRequestId) || null;
   const recommendations = useMemo(() => selectedRequest
@@ -377,10 +381,10 @@ export const Purchase: React.FC<PurchaseProps> = ({
 
         {activeListView === 'requests' ? (
           <div className="table-container erp-primary-data-table">
-            <table className="purchase-request-table">
+            <table className="purchase-request-table" data-resize-key="purchase-requests">
               <thead><tr><th>{t('Yêu cầu / PO')}</th><th>{t('Khách hàng')}</th><th>{t('Mặt hàng')}</th><th>{t('Phương án cung ứng')}</th><th>{t('Số lượng')}</th><th>{t('Ngày cần')}</th><th>{t('Mua hàng phụ trách')}</th><th>{t('NCC')}</th><th>{t('Thao tác')}</th></tr></thead>
               <tbody>
-                {filteredRequests.map(request => <tr key={request.id}>
+                {requestPagination.rows.map(request => <tr key={request.id}>
                   <td><strong className="purchase-request-code">{request.requestCode}{request.status === 'new' && <span className="purchase-new-tag"><i />NEW</span>}</strong><span>{request.poCode}</span></td>
                   <td><strong>{request.customerName || '—'}</strong></td>
                   <td><strong>{request.productName}</strong><span>{[request.productCode, request.material, request.size].filter(Boolean).join(' · ')}</span></td>
@@ -400,10 +404,10 @@ export const Purchase: React.FC<PurchaseProps> = ({
           </div>
         ) : (
           <div className="table-container erp-primary-data-table">
-            <table className="purchase-table">
+            <table className="purchase-table" data-resize-key="purchase-orders">
               <thead><tr><th>{t('Mã đơn mua')}</th><th>{t('Nhà cung cấp')}</th><th>{t('PO khách hàng')}</th><th>{t('Mặt hàng')}</th><th>{t('Giá trị')}</th><th>{t('Ngày nhận dự kiến')}</th><th>{t('Thao tác')}</th></tr></thead>
               <tbody>
-                {filteredPurchaseOrders.map(order => <tr key={asText(order.id)}>
+                {orderPagination.rows.map(order => <tr key={asText(order.id)}>
                   <td><strong>{asText(order.purCode)}</strong></td><td>{asText(order.supplierName)}</td><td>{asText(order.linkedPoCode) || '—'}</td>
                   <td>{asArray(order.items).map(item => `${asText(item.materialName ?? item.productName)} (${asNumber(item.quantity).toLocaleString('vi-VN')} ${asText(item.unit)})`).join(', ')}</td>
                   <td><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td><td>{formatDate(asText(order.expectedReceiveDate), 'vi-VN', '—')}</td>
@@ -413,6 +417,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
             </table>
           </div>
         )}
+        <DataTablePagination {...(activeListView === 'requests' ? requestPagination.paginationProps : orderPagination.paginationProps)} />
       </section>
 
       {selectedRequest && (

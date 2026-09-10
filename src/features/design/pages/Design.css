@@ -234,7 +234,16 @@
 
 .design-request-view .design-request-table .design-priority {
   display: inline-flex;
-  margin: 0;
+  margin: 0 0 0 6px;
+}
+
+.design-request-view .design-request-table .design-request-code {
+  display: inline !important;
+}
+
+.design-request-view .design-request-table th:last-child {
+  width: 180px !important;
+  min-width: 180px !important;
 }
 
 .design-request-view .design-request-table td:last-child {

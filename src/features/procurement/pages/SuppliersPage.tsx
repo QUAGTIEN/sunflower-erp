@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import {
   Building2,
   CalendarDays,
@@ -159,6 +161,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     const matchesMonth = monthFilter === 'all' || orders.some(order => asText(order.createdAt).startsWith(monthFilter));
     return matchesSearch && matchesCategory && matchesMonth;
   }), [categoryFilter, getSupplierOrders, monthFilter, searchTerm, suppliers]);
+  const supplierPagination = useDataTablePagination(filteredSuppliers);
 
   const openCreateForm = () => {
     setEditingSupplierId('');
@@ -485,10 +488,10 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
 
       <section className="purchase-panel">
         <div className="table-container erp-primary-data-table">
-          <table className="supplier-table">
+          <table className="supplier-table" data-resize-key="suppliers">
             <thead><tr><th>{t('Nhà cung cấp')}</th><th>{t('Liên hệ')}</th><th>{t('Nhóm hàng')}</th><th>{t('Số đơn')}</th><th>{t('Tổng mua')}</th><th>{t('Lần mua gần nhất')}</th><th>{t('Công nợ')}</th><th>{t('Đánh giá')}</th></tr></thead>
             <tbody>
-              {filteredSuppliers.map(supplier => {
+              {supplierPagination.rows.map(supplier => {
                 const orders = getSupplierOrders(supplier.id);
                 const spend = orders.reduce((sum, order) => sum + asNumber(order.totalPrice), 0);
                 return <tr key={supplier.id} onClick={() => setSelectedSupplierId(supplier.id)}>
@@ -505,6 +508,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
             </tbody>
           </table>
         </div>
+        <DataTablePagination {...supplierPagination.paginationProps} />
       </section>
       {showForm && renderSupplierForm()}
     </div>

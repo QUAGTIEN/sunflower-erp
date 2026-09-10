@@ -516,10 +516,52 @@ input[type='checkbox']:disabled {
   white-space: nowrap !important;
 }
 
-.app-main .erp-primary-data-table > table td > strong,
-.app-main .erp-primary-data-table > table td > span:not(.badge):not([class*='status']) {
-  display: inline !important;
-  margin-top: 0 !important;
+.app-main .erp-primary-data-table > table td > strong + span:not(.badge):not([class*='status']):not([class*='priority']) {
+  display: none !important;
+}
+
+.erp-data-table-pagination {
+  display: flex;
+  min-height: 48px;
+  flex: 0 0 48px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--erp-border-color);
+  background: #fff;
+  color: var(--erp-table-secondary-text);
+  font-size: 12px;
+}
+
+.erp-data-table-pagination label,
+.erp-data-table-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.erp-data-table-pagination select {
+  width: 120px;
+  min-height: 34px !important;
+}
+
+.erp-data-table-pagination button {
+  min-width: 34px !important;
+  min-height: 34px !important;
+}
+
+.erp-data-table-pagination button:disabled {
+  cursor: default;
+  opacity: .45;
+}
+
+.card > .erp-primary-data-table + .erp-data-table-pagination {
+  margin-top: -16px;
+}
+
+.app-main .erp-primary-data-table .sales-table-secondary {
+  display: none !important;
 }
 
 .reorderable-table-header.is-resizable {
