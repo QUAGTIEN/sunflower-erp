@@ -43,7 +43,8 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         container.classList.add('erp-viewport-table-scroll');
 
         const isKnownPrimaryWorkspaceTable = container.matches(
-          '.lead-data-workspace > .lead-table-card > .table-container, '
+          '.erp-primary-data-table, '
+          + '.lead-data-workspace > .lead-table-card > .table-container, '
           + '.lead-candidate-workspace > .lead-table-card > .table-container, '
           + '.crm-data-workspace .crm-customer-table-wrap'
         );

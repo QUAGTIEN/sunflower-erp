@@ -582,7 +582,7 @@ export const Design: React.FC<DesignProps> = ({
           onClear={() => { setStatusFilters([]); setDesignerFilters([]); setPriorityFilters([]); }}
         />
 
-        <div className="table-container design-request-table">
+        <div className="table-container design-request-table erp-primary-data-table">
           <table>
             <thead>
               <tr>

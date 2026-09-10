@@ -216,7 +216,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
               <p>Theo dõi máy đang chạy, người vận hành và hạn giao của từng LSX.</p>
             </div>
           </div>
-          <div className="table-container">
+          <div className="table-container erp-primary-data-table">
             <table>
               <thead>
                 <tr>
@@ -282,7 +282,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
             </button>
           )}
         </div>
-        <div className="table-container">
+        <div className="table-container erp-primary-data-table">
           <table>
             <thead>
               <tr>

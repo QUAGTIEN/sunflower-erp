@@ -726,7 +726,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
             <div style={{ marginBottom: '16px' }}>
               <span className="card-title" style={{ margin: 0 }}>{t('Danh Sách Lệnh Sản Xuất Đang Chạy và Đã Xong')}</span>
             </div>
-            <div className="table-container production-command-table-wrap">
+            <div className="table-container production-command-table-wrap erp-primary-data-table">
               <table className="production-command-table">
                 <thead>
                   <tr>

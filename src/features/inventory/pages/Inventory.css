@@ -2,12 +2,11 @@
   overflow-x: auto;
 }
 
-/* Keep the material lists readable at narrow widths without allowing the
-   global fixed-grid rule to clip status and action labels. */
+/* Material lists use the same fixed, resizable grid as the other workspaces. */
 .inventory-view .inventory-stock-table,
 .inventory-view .inventory-export-table,
 .inventory-view .inventory-summary-table {
-  table-layout: auto;
+  table-layout: fixed;
   min-width: 1080px;
 }
 
@@ -17,10 +16,9 @@
 .inventory-view .inventory-export-table td,
 .inventory-view .inventory-summary-table th,
 .inventory-view .inventory-summary-table td {
-  max-width: none;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
 }
 
 .inventory-view .inventory-stock-table th:last-child,

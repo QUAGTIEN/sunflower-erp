@@ -376,7 +376,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
         </div>
 
         {activeListView === 'requests' ? (
-          <div className="table-container">
+          <div className="table-container erp-primary-data-table">
             <table className="purchase-request-table">
               <thead><tr><th>{t('Yêu cầu / PO')}</th><th>{t('Khách hàng')}</th><th>{t('Mặt hàng')}</th><th>{t('Phương án cung ứng')}</th><th>{t('Số lượng')}</th><th>{t('Ngày cần')}</th><th>{t('Mua hàng phụ trách')}</th><th>{t('NCC')}</th><th>{t('Thao tác')}</th></tr></thead>
               <tbody>
@@ -399,7 +399,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
             </table>
           </div>
         ) : (
-          <div className="table-container">
+          <div className="table-container erp-primary-data-table">
             <table className="purchase-table">
               <thead><tr><th>{t('Mã đơn mua')}</th><th>{t('Nhà cung cấp')}</th><th>{t('PO khách hàng')}</th><th>{t('Mặt hàng')}</th><th>{t('Giá trị')}</th><th>{t('Ngày nhận dự kiến')}</th><th>{t('Thao tác')}</th></tr></thead>
               <tbody>

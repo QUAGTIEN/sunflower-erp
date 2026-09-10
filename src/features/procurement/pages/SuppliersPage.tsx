@@ -484,7 +484,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
       </section>
 
       <section className="purchase-panel">
-        <div className="table-container">
+        <div className="table-container erp-primary-data-table">
           <table className="supplier-table">
             <thead><tr><th>{t('Nhà cung cấp')}</th><th>{t('Liên hệ')}</th><th>{t('Nhóm hàng')}</th><th>{t('Số đơn')}</th><th>{t('Tổng mua')}</th><th>{t('Lần mua gần nhất')}</th><th>{t('Công nợ')}</th><th>{t('Đánh giá')}</th></tr></thead>
             <tbody>

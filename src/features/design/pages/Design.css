@@ -215,15 +215,14 @@
 }
 
 .design-request-view .design-request-table table {
-  table-layout: auto;
+  table-layout: fixed;
   min-width: 1180px;
 }
 
 .design-request-view .design-request-table th,
 .design-request-view .design-request-table td {
-  max-width: none;
-  overflow: visible;
-  text-overflow: clip;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

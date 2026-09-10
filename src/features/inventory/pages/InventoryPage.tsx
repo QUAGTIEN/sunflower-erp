@@ -298,7 +298,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
             </div>
           </div>
 
-          <div className="table-container">
+          <div className="table-container erp-primary-data-table">
             <table className="inventory-stock-table">
               <thead>
                 <tr>
@@ -374,7 +374,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
             )}
           </div>
 
-          <div className="table-container">
+          <div className="table-container erp-primary-data-table">
             <table className="inventory-export-table">
               <thead>
                 <tr>
@@ -415,7 +415,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
             {t('* Tồn đầu kỳ được tính tự động từ tồn cuối kỳ (tồn thực tế) cộng tổng lượng xuất trừ tổng lượng nhập.')}
           </p>
 
-          <div className="table-container">
+          <div className="table-container erp-primary-data-table">
             <table className="inventory-summary-table">
               <thead>
                 <tr>

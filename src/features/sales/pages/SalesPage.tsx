@@ -884,7 +884,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
 
           {activeListView === 'orders' ? (
             selectedOrderCustomer ? (
-              <div className="table-container customer-po-list-table">
+              <div className="table-container customer-po-list-table erp-primary-data-table">
                 <table>
                   <thead>
                     <tr>
@@ -939,7 +939,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                 </table>
               </div>
             ) : (
-              <div className="table-container sales-order-customer-table">
+              <div className="table-container sales-order-customer-table erp-primary-data-table">
                 <table
                   className="has-dynamic-columns"
                   style={{ minWidth: `${Math.max(1680, salesVisibleColumnCount * 180 + 280)}px` }}
@@ -990,7 +990,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
               </div>
             )
           ) : (
-            <div className="table-container waiting-customer-table">
+            <div className="table-container waiting-customer-table erp-primary-data-table">
               <table>
                 <thead>
                   <tr>

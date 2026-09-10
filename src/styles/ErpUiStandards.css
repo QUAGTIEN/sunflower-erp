@@ -499,6 +499,29 @@ input[type='checkbox']:disabled {
   white-space: nowrap !important;
 }
 
+/* Main operational lists share the same compact, spreadsheet-like grid. */
+.app-main .erp-primary-data-table > table {
+  table-layout: fixed !important;
+}
+
+.app-main .erp-primary-data-table > table th,
+.app-main .erp-primary-data-table > table td {
+  height: var(--erp-table-row-height) !important;
+  max-height: var(--erp-table-row-height) !important;
+  padding: 5px 10px !important;
+  overflow: hidden !important;
+  line-height: 1.25 !important;
+  text-overflow: ellipsis !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+
+.app-main .erp-primary-data-table > table td > strong,
+.app-main .erp-primary-data-table > table td > span:not(.badge):not([class*='status']) {
+  display: inline !important;
+  margin-top: 0 !important;
+}
+
 .reorderable-table-header.is-resizable {
   position: relative;
   width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;

@@ -223,12 +223,10 @@
   gap: 5px;
 }
 
-/* The production lists are wider than the shared fixed table grid. Keep the
-   full action labels available and let the table surface scroll horizontally
-   on smaller screens instead of clipping the rightmost cells. */
+/* Production lists follow the shared fixed, resizable table grid. */
 .production-view .production-approval-table,
 .production-view .production-command-table {
-  table-layout: auto;
+  table-layout: fixed;
   min-width: 1120px;
 }
 
@@ -236,10 +234,9 @@
 .production-view .production-approval-table td,
 .production-view .production-command-table th,
 .production-view .production-command-table td {
-  max-width: none;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
 }
 
 .production-view .production-approval-table th:last-child,
