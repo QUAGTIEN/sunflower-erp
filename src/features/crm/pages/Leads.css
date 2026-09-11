@@ -1352,15 +1352,17 @@
 
 .lead-candidate-pagination {
   display: flex;
-  min-height: 48px;
+  min-height: 38px;
+  flex: 0 0 38px;
   align-items: center;
   justify-content: flex-end;
-  gap: 18px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 3px 8px;
   border-top: 1px solid #e2e8f0;
   color: #64748b;
   background: #fff;
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .lead-candidate-actions-column {
@@ -1406,19 +1408,21 @@
 .lead-candidate-pagination > div {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
 
 .lead-candidate-pagination select {
-  height: 30px;
-  padding: 4px 26px 4px 8px;
+  width: 94px;
+  height: 28px;
+  min-height: 28px;
+  padding: 2px 24px 2px 7px;
   font-size: 12px;
 }
 
 .lead-candidate-pagination button {
   display: inline-flex;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border: 1px solid #cbd5e1;

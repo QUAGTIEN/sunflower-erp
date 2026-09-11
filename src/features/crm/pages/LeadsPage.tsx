@@ -2078,7 +2078,7 @@ export const Leads: React.FC<LeadsProps> = ({
                     <option value={100}>100 dòng</option>
                   </select>
                 </label>
-                <span>{(safeLeadCurrentPage - 1) * leadPageSize + 1}–{Math.min(safeLeadCurrentPage * leadPageSize, filteredLeads.length)} trong {filteredLeads.length}</span>
+                <span>{(safeLeadCurrentPage - 1) * leadPageSize + 1}–{Math.min(safeLeadCurrentPage * leadPageSize, filteredLeads.length)} / {filteredLeads.length}</span>
                 <div>
                   <button type="button" onClick={() => setLeadCurrentPage(page => Math.max(1, page - 1))} disabled={safeLeadCurrentPage === 1} aria-label="Trang trước"><ChevronLeft size={15} /></button>
                   <strong>{safeLeadCurrentPage} / {leadTotalPages}</strong>

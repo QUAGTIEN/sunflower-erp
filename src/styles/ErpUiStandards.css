@@ -522,33 +522,40 @@ input[type='checkbox']:disabled {
 
 .erp-data-table-pagination {
   display: flex;
-  min-height: 48px;
-  flex: 0 0 48px;
+  min-height: 38px;
+  flex: 0 0 38px;
   align-items: center;
   justify-content: flex-end;
-  gap: 18px;
-  padding: 6px 10px;
+  gap: 10px;
+  padding: 3px 8px;
   border-top: 1px solid var(--erp-border-color);
   background: #fff;
   color: var(--erp-table-secondary-text);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .erp-data-table-pagination label,
 .erp-data-table-pagination > div {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .erp-data-table-pagination select {
-  width: 120px;
-  min-height: 34px !important;
+  width: 94px;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 2px 24px 2px 7px;
+  font-size: 12px;
 }
 
 .erp-data-table-pagination button {
-  min-width: 34px !important;
-  min-height: 34px !important;
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
 }
 
 .erp-data-table-pagination button:disabled {
