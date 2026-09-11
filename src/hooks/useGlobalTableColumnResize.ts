@@ -63,7 +63,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         if (pagination && container.parentElement) {
           const frame = container.parentElement;
           const frameHeight = Math.max(160, Math.floor(
-            rootContentBottom - frame.getBoundingClientRect().top - 8
+            rootBottom - frame.getBoundingClientRect().top
           ));
           frame.classList.add('erp-data-table-frame');
           frame.style.setProperty('--erp-table-frame-height', `${frameHeight}px`);
@@ -93,6 +93,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         frame.classList.remove('erp-data-table-frame');
         frame.style.removeProperty('--erp-table-frame-height');
       });
+      root.classList.toggle('erp-data-table-page', activeFrames.size > 0);
     };
 
     const prepareTables = () => {
@@ -187,6 +188,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
       window.cancelAnimationFrame(animationFrame);
       observer.disconnect();
       resizeObserver.disconnect();
+      root.classList.remove('erp-data-table-page');
       root.removeEventListener('scroll', schedulePrepare);
       window.removeEventListener('resize', schedulePrepare);
       root.removeEventListener('pointerdown', onPointerDown);

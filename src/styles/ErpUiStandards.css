@@ -233,6 +233,11 @@
   max-width: 100%;
 }
 
+.app-main.erp-data-table-page {
+  padding-bottom: 0 !important;
+  overflow-y: hidden;
+}
+
 .lead-detail-header > :nth-child(2),
 .customer-detail-heading,
 .design-task-page-header > div,
