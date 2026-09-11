@@ -1352,17 +1352,17 @@
 
 .lead-candidate-pagination {
   display: flex;
-  min-height: 38px;
-  flex: 0 0 38px;
+  min-height: 50px;
+  flex: 0 0 50px;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 3px 8px;
+  gap: 14px;
+  padding: 7px 12px;
   border-top: 1px solid #e2e8f0;
   border-radius: 0 0 7px 7px;
   color: #475569;
   background: #f8fafc;
-  font-size: 12px;
+  font-size: 12.5px;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   overflow: visible;
@@ -1417,7 +1417,7 @@
 
 .lead-candidate-pagination label {
   margin-left: auto;
-  padding: 0 10px 0 0;
+  padding: 0 12px 0 0;
   color: #334155;
   font-weight: 600;
 }
@@ -1426,13 +1426,13 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 0 10px;
+  padding: 0 12px;
   color: #334155;
 }
 
 .lead-candidate-pagination > div {
-  gap: 4px;
-  padding-left: 12px;
+  gap: 6px;
+  padding-left: 14px;
   border-left: 1px solid #dbe3ec;
 }
 
@@ -1443,7 +1443,7 @@
 
 .lead-candidate-pagination > div > strong {
   display: inline-flex;
-  min-width: 38px;
+  min-width: 42px;
   align-items: center;
   justify-content: center;
   color: #334155;
@@ -1451,26 +1451,26 @@
 }
 
 .lead-candidate-pagination select {
-  width: 94px;
-  min-width: 94px !important;
-  max-width: 94px;
-  height: 28px !important;
-  min-height: 28px !important;
-  padding: 2px 24px 2px 7px;
+  width: 100px;
+  min-width: 100px !important;
+  max-width: 100px;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 4px 26px 4px 9px;
   border-color: #cbd5e1;
   border-radius: 6px;
   background-color: #fff;
   color: #172554;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 500;
 }
 
 .lead-candidate-pagination button {
   display: inline-flex;
-  width: 28px !important;
-  min-width: 28px !important;
-  height: 28px !important;
-  min-height: 28px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
   align-items: center;
   justify-content: center;
   padding: 0 !important;
