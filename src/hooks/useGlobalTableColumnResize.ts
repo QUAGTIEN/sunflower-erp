@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 const MIN_COLUMN_WIDTH = 64;
 const TABLE_WIDTH_STORAGE_VERSION = 'v3';
+const TABLE_FRAME_BOTTOM_GAP = 10;
 
 const getInitialColumnWidth = (header: HTMLTableCellElement, measuredWidth: number) => {
   const label = header.textContent?.trim() || '';
@@ -63,7 +64,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         if (pagination && container.parentElement) {
           const frame = container.parentElement;
           const frameHeight = Math.max(160, Math.floor(
-            rootBottom - frame.getBoundingClientRect().top
+            rootBottom - frame.getBoundingClientRect().top - TABLE_FRAME_BOTTOM_GAP
           ));
           frame.classList.add('erp-data-table-frame');
           frame.style.setProperty('--erp-table-frame-height', `${frameHeight}px`);
