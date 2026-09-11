@@ -31,6 +31,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
     if (!root) return;
 
     const prepareTableViewports = () => {
+      const activeFrames = new Set<HTMLElement>();
       const rootStyle = window.getComputedStyle(root);
       const rootBottom = root.getBoundingClientRect().bottom;
       const rootContentBottom = rootBottom - (Number.parseFloat(rootStyle.paddingBottom) || 0);
@@ -39,9 +40,11 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         '.work-schedule-table-wrap',
         '.custom-field-config__table-wrap',
         '.customer-data-table-wrap',
-        '.customer-onboarding-items__table-wrap'
+        '.customer-onboarding-items__table-wrap',
+        '.crm-customer-table-wrap'
       ].join(', ')).forEach(container => {
         if (container.closest('.modal-overlay, .header-notification-panel')) return;
+        if (container.offsetParent === null) return;
         const table = container.querySelector(':scope > table');
         if (!table) return;
 
@@ -56,6 +59,17 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
           : 0;
         const footerGap = pagination && parentStyle ? Number.parseFloat(parentStyle.rowGap) || 0 : 0;
         const viewportBottom = container.matches('.erp-primary-data-table') ? rootContentBottom : rootBottom;
+
+        if (pagination && container.parentElement) {
+          const frame = container.parentElement;
+          const frameHeight = Math.max(160, Math.floor(
+            rootContentBottom - frame.getBoundingClientRect().top - 8
+          ));
+          frame.classList.add('erp-data-table-frame');
+          frame.style.setProperty('--erp-table-frame-height', `${frameHeight}px`);
+          activeFrames.add(frame);
+        }
+
         const availableHeight = Math.max(180, Math.floor(
           viewportBottom - container.getBoundingClientRect().top - reservedHeight - parentBottomInset - footerGap - 8
         ));
@@ -72,6 +86,12 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
           && !container.closest('.dashboard-view, .crm-view--detail, .modal-content');
         const isPrimaryWorkspaceTable = isKnownPrimaryWorkspaceTable || isWidePageTable;
         container.classList.toggle('erp-viewport-table-scroll--fill', isPrimaryWorkspaceTable);
+      });
+
+      root.querySelectorAll<HTMLElement>('.erp-data-table-frame').forEach(frame => {
+        if (activeFrames.has(frame)) return;
+        frame.classList.remove('erp-data-table-frame');
+        frame.style.removeProperty('--erp-table-frame-height');
       });
     };
 

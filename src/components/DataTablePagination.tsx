@@ -8,19 +8,17 @@ export const DataTablePagination = ({
   pageSize,
   totalPages,
   totalItems,
-  startItem,
-  endItem,
   setPage,
   setPageSize
 }: DataTablePaginationProps) => (
   <footer className="erp-data-table-pagination">
+    <span>Tổng số: <strong>{totalItems}</strong> bản ghi</span>
     <label>
       <span>Hiển thị</span>
       <select value={pageSize} onChange={event => setPageSize(Number(event.target.value))}>
         {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} dòng</option>)}
       </select>
     </label>
-    <span>{startItem}–{endItem} / {totalItems}</span>
     <div>
       <button type="button" className="btn btn-outline btn-symbol-sm" disabled={page <= 1} onClick={() => setPage(page - 1)} aria-label="Trang trước"><ChevronLeft size={15} /></button>
       <strong>{page} / {totalPages}</strong>

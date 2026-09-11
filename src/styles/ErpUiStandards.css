@@ -295,6 +295,35 @@
   flex: 1 1 auto !important;
 }
 
+/* The table frame stays inside the workspace; only its grid viewport scrolls. */
+.app-main .erp-data-table-frame {
+  display: flex !important;
+  height: var(--erp-table-frame-height) !important;
+  max-height: var(--erp-table-frame-height) !important;
+  min-height: min(220px, var(--erp-table-frame-height)) !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+
+.app-main .erp-data-table-frame > .erp-viewport-table-scroll {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: auto !important;
+}
+
+.app-main .erp-data-table-frame > :is(
+  .erp-data-table-pagination,
+  .lead-candidate-pagination,
+  .crm-customer-pagination
+) {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0 !important;
+}
+
 .app-main .erp-viewport-table-scroll > table > thead > tr > th {
   position: sticky;
   z-index: 3;
@@ -525,8 +554,8 @@ input[type='checkbox']:disabled {
   min-height: 38px;
   flex: 0 0 38px;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0;
+  justify-content: space-between;
+  gap: 12px;
   padding: 3px 8px;
   border-top: 1px solid var(--erp-border-color);
   border-radius: 0 0 var(--erp-surface-radius) var(--erp-surface-radius);
@@ -534,6 +563,8 @@ input[type='checkbox']:disabled {
   color: #475569;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  overflow: visible;
   white-space: nowrap;
 }
 
@@ -545,14 +576,18 @@ input[type='checkbox']:disabled {
 }
 
 .erp-data-table-pagination label {
-  padding: 0 12px;
+  margin-left: auto;
+  padding: 0 10px 0 0;
   color: #334155;
   font-weight: 600;
 }
 
 .erp-data-table-pagination > span {
-  padding: 0 12px;
-  border-left: 1px solid #dbe3ec;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 10px;
+  color: #334155;
 }
 
 .erp-data-table-pagination > div {
@@ -561,7 +596,12 @@ input[type='checkbox']:disabled {
   border-left: 1px solid #dbe3ec;
 }
 
-.erp-data-table-pagination strong {
+.erp-data-table-pagination > span strong {
+  color: #172554;
+  font-weight: 700;
+}
+
+.erp-data-table-pagination > div > strong {
   display: inline-flex;
   min-width: 38px;
   align-items: center;

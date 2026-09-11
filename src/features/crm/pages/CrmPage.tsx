@@ -2978,8 +2978,8 @@ export const Crm: React.FC<CrmProps> = ({
                   </ConfiguredSystemTable>
                   </div>
                   {filteredCustomers.length > 0 && <footer className="crm-customer-pagination">
+                    <span>{t('Tổng số')}: <strong>{filteredCustomers.length}</strong> {t('bản ghi')}</span>
                     <label>{t('Hiển thị')} <select value={customerPageSize} onChange={event => { setCustomerPageSize(Number(event.target.value)); setCustomerPage(1); }}><option value={25}>25 {t('dòng')}</option><option value={50}>50 {t('dòng')}</option><option value={100}>100 {t('dòng')}</option></select></label>
-                    <span>{(safeCustomerPage - 1) * customerPageSize + 1}–{Math.min(safeCustomerPage * customerPageSize, filteredCustomers.length)} / {filteredCustomers.length}</span>
                     <div><button type="button" onClick={() => setCustomerPage(page => Math.max(1, page - 1))} disabled={safeCustomerPage === 1} aria-label={t('Trang trước')}><ChevronLeft size={15} /></button><strong>{safeCustomerPage} / {customerTotalPages}</strong><button type="button" onClick={() => setCustomerPage(page => Math.min(customerTotalPages, page + 1))} disabled={safeCustomerPage === customerTotalPages} aria-label={t('Trang sau')}><ChevronRight size={15} /></button></div>
                   </footer>}
                 </div>

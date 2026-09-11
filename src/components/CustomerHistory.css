@@ -1301,8 +1301,8 @@
   min-height: 38px;
   flex: 0 0 38px;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0;
+  justify-content: space-between;
+  gap: 12px;
   padding: 3px 8px;
   border-top: 1px solid #cbd5e1;
   border-radius: 0 0 7px 7px;
@@ -1310,6 +1310,8 @@
   background: #f8fafc;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  overflow: visible;
   white-space: nowrap;
 }
 
@@ -1321,14 +1323,18 @@
 }
 
 .crm-customer-pagination label {
-  padding: 0 12px;
+  margin-left: auto;
+  padding: 0 10px 0 0;
   color: #334155;
   font-weight: 600;
 }
 
 .crm-customer-pagination > span {
-  padding: 0 12px;
-  border-left: 1px solid #dbe3ec;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 10px;
+  color: #334155;
 }
 
 .crm-customer-pagination > div {
@@ -1337,7 +1343,12 @@
   border-left: 1px solid #dbe3ec;
 }
 
-.crm-customer-pagination strong {
+.crm-customer-pagination > span strong {
+  color: #172554;
+  font-weight: 700;
+}
+
+.crm-customer-pagination > div > strong {
   display: inline-flex;
   min-width: 38px;
   align-items: center;
