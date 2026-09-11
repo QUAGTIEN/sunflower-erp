@@ -526,12 +526,14 @@ input[type='checkbox']:disabled {
   flex: 0 0 38px;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 0;
   padding: 3px 8px;
   border-top: 1px solid var(--erp-border-color);
-  background: #fff;
-  color: var(--erp-table-secondary-text);
+  border-radius: 0 0 var(--erp-surface-radius) var(--erp-surface-radius);
+  background: #f8fafc;
+  color: #475569;
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -542,12 +544,45 @@ input[type='checkbox']:disabled {
   gap: 6px;
 }
 
+.erp-data-table-pagination label {
+  padding: 0 12px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.erp-data-table-pagination > span {
+  padding: 0 12px;
+  border-left: 1px solid #dbe3ec;
+}
+
+.erp-data-table-pagination > div {
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 1px solid #dbe3ec;
+}
+
+.erp-data-table-pagination strong {
+  display: inline-flex;
+  min-width: 38px;
+  align-items: center;
+  justify-content: center;
+  color: #334155;
+  font-weight: 650;
+}
+
 .erp-data-table-pagination select {
   width: 94px;
+  min-width: 94px !important;
+  max-width: 94px;
   height: 28px !important;
   min-height: 28px !important;
   padding: 2px 24px 2px 7px;
+  border-color: #cbd5e1;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #172554;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .erp-data-table-pagination button {
@@ -556,11 +591,23 @@ input[type='checkbox']:disabled {
   height: 28px !important;
   min-height: 28px !important;
   padding: 0 !important;
+  border-color: #cbd5e1 !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  color: #475569 !important;
+}
+
+.erp-data-table-pagination button:not(:disabled):hover {
+  border-color: #93c5fd !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
 }
 
 .erp-data-table-pagination button:disabled {
   cursor: default;
-  opacity: .45;
+  background: #f1f5f9 !important;
+  color: #b8c4d3 !important;
+  opacity: 1;
 }
 
 .card > .erp-primary-data-table + .erp-data-table-pagination {

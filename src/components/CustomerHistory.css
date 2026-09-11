@@ -1302,12 +1302,14 @@
   flex: 0 0 38px;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 0;
   padding: 3px 8px;
   border-top: 1px solid #cbd5e1;
-  color: #64748b;
-  background: #fff;
+  border-radius: 0 0 7px 7px;
+  color: #475569;
+  background: #f8fafc;
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -1318,20 +1320,56 @@
   gap: 6px;
 }
 
+.crm-customer-pagination label {
+  padding: 0 12px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.crm-customer-pagination > span {
+  padding: 0 12px;
+  border-left: 1px solid #dbe3ec;
+}
+
+.crm-customer-pagination > div {
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 1px solid #dbe3ec;
+}
+
+.crm-customer-pagination strong {
+  display: inline-flex;
+  min-width: 38px;
+  align-items: center;
+  justify-content: center;
+  color: #334155;
+  font-weight: 650;
+}
+
 .crm-customer-pagination select {
   width: 94px;
-  height: 28px;
-  min-height: 28px;
+  min-width: 94px !important;
+  max-width: 94px;
+  height: 28px !important;
+  min-height: 28px !important;
   padding: 2px 24px 2px 7px;
+  border-color: #cbd5e1;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #172554;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .crm-customer-pagination button {
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
   align-items: center;
   justify-content: center;
+  padding: 0 !important;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   color: #334155;
@@ -1339,9 +1377,15 @@
   cursor: pointer;
 }
 
+.crm-customer-pagination button:not(:disabled):hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
 .crm-customer-pagination button:disabled {
-  color: #cbd5e1;
-  background: #f8fafc;
+  color: #b8c4d3;
+  background: #f1f5f9;
   cursor: default;
 }
 
