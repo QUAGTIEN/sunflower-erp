@@ -302,7 +302,7 @@
 
 /* The table frame stays inside the workspace; only its grid viewport scrolls. */
 .app-main .erp-data-table-frame {
-  display: flex !important;
+  display: flex;
   height: var(--erp-table-frame-height) !important;
   max-height: var(--erp-table-frame-height) !important;
   min-height: min(220px, var(--erp-table-frame-height)) !important;

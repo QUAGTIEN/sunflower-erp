@@ -2058,7 +2058,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         </section>
       )}
 
-      <section className="lead-table-card" style={{ display: workspaceView === 'management' ? 'none' : undefined }}>
+      {workspaceView !== 'management' && (
+      <section className="lead-table-card">
         <div className="lead-table-result">
           {workspaceView === 'tasks' ? <>
             <span><strong>{filteredCandidates.length}</strong> công việc thuộc Sale đang phụ trách</span>
@@ -2284,6 +2285,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           </footer>
         )}
       </section>
+      )}
 
       {selectedCandidate && (
         <>
