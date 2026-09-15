@@ -2001,6 +2001,14 @@
   overflow: hidden;
 }
 
+.sales-view > .sales-list-card {
+  padding: 12px 12px 0;
+}
+
+.sales-list-card > .sales-list-toolbar {
+  margin-bottom: 0;
+}
+
 .sales-order-customer-table {
   display: block;
   width: 100%;

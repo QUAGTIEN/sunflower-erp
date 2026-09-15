@@ -85,6 +85,29 @@ const getCustomerCode = (customer: any) => (
   customer.customerCode || customer.code || customer.id || ''
 );
 
+const normalizeCustomerIdentity = (value: unknown) => String(value || '')
+  .normalize('NFKC')
+  .trim()
+  .replace(/\s+/g, ' ')
+  .toLocaleLowerCase('vi-VN');
+
+const getCustomerIdentityKey = (customer: CustomerRecord) => {
+  const companyName = normalizeCustomerIdentity(customer.companyName);
+  if (companyName) return `company:${companyName}`;
+  const taxCode = normalizeCustomerIdentity(customer.taxCode);
+  return taxCode ? `tax:${taxCode}` : `id:${customer.id}`;
+};
+
+const getCustomerProfileScore = (customer: CustomerRecord) => [
+  customer.customerCode,
+  customer.taxCode,
+  customer.contactPerson,
+  customer.phone,
+  customer.email,
+  customer.assignedSaleId,
+  customer.address
+].filter(Boolean).length;
+
 const getWaitingDays = (createdAt: unknown) => {
   if (typeof createdAt !== 'string') return null;
   const createdTime = Date.parse(createdAt);
@@ -724,14 +747,37 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
     if (customer.deleted === true) return false;
     return currentUser.role !== 'sale' || !customer.assignedSaleId || customer.assignedSaleId === currentUser.uid;
   });
+
+  const customerById = new Map(customers.map(customer => [customer.id, customer]));
+  const representativeCustomerByKey = new Map<string, CustomerRecord>();
+  accessibleCustomers.forEach(customer => {
+    const key = getCustomerIdentityKey(customer);
+    const current = representativeCustomerByKey.get(key);
+    if (!current || getCustomerProfileScore(customer) > getCustomerProfileScore(current)) {
+      representativeCustomerByKey.set(key, customer);
+    }
+  });
+
+  const customerOrdersByKey = new Map<string, any[]>();
+  visiblePOs.forEach(po => {
+    const matchedCustomer = customerById.get(po.customerId);
+    const companyName = normalizeCustomerIdentity(matchedCustomer?.companyName || po.customerName);
+    const key = matchedCustomer
+      ? getCustomerIdentityKey(matchedCustomer)
+      : companyName ? `company:${companyName}` : '';
+    if (!key || !representativeCustomerByKey.has(key)) return;
+    const current = customerOrdersByKey.get(key) || [];
+    current.push(po);
+    customerOrdersByKey.set(key, current);
+  });
+
   const getCustomerPOs = (customer: CustomerRecord) => sortNewestFirst(
-    visiblePOs.filter(po => (
-      po.customerId === customer.id
-      || (!po.customerId && po.customerName === customer.companyName)
-    )),
+    customerOrdersByKey.get(getCustomerIdentityKey(customer)) || [],
     po => [po.createdAt, po.orderDate]
   );
-  const selectedOrderCustomer = accessibleCustomers.find(customer => customer.id === selectedOrderCustomerId) || null;
+  const customersWithOrders = Array.from(representativeCustomerByKey.values())
+    .filter(customer => getCustomerPOs(customer).length > 0);
+  const selectedOrderCustomer = customersWithOrders.find(customer => customer.id === selectedOrderCustomerId) || null;
   const customerPOs = selectedOrderCustomer ? getCustomerPOs(selectedOrderCustomer) : [];
   const filteredPOs = customerPOs.filter(po => (
     !normalizedSearchTerm
@@ -742,12 +788,12 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
       String(item.productName || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm)
     )))
   ));
-  const orderCustomers = accessibleCustomers
+  const orderCustomers = customersWithOrders
     .filter(customer => {
       const latestPO = getCustomerPOs(customer)[0];
       if (salesOwnerFilters.length > 0 && !salesOwnerFilters.includes(customer.assignedSaleId || 'unassigned')) return false;
       if (salesStatusFilters.length > 0) {
-        const latestStatus = latestPO ? getPOQueueStatus(latestPO) : 'without_po';
+        const latestStatus = getPOQueueStatus(latestPO);
         if (!salesStatusFilters.includes(latestStatus)) return false;
       }
       if (!normalizedSearchTerm) return true;
@@ -806,7 +852,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
 
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Tạo đơn hàng')} current={!selectedPO ? (selectedOrderCustomer?.companyName || (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Danh sách PO'))) : undefined} />
+      <PageContextHeader section={t('Tạo đơn hàng')} current={!selectedPO ? (selectedOrderCustomer?.companyName || (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Khách hàng có PO'))) : undefined} />
 
       {!selectedPO && (
         <>
@@ -819,8 +865,8 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
               aria-selected={activeListView === 'orders'}
             >
               <FileText size={16} />
-              <span>{t('Danh sách PO')}</span>
-              <span className="sales-list-tab__count">{accessibleCustomers.length}</span>
+              <span>{t('Khách hàng có PO')}</span>
+              <span className="sales-list-tab__count">{customersWithOrders.length}</span>
             </button>
             <button
               type="button"
@@ -835,7 +881,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
             </button>
           </div>
 
-        <div className="card">
+        <div className="card sales-list-card">
 
           {activeListView === 'waiting-customers' && (
             <div className="waiting-customer-intro">
@@ -882,7 +928,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
 
           {activeListView === 'orders' && !selectedOrderCustomer && <DataFilterChipBar
             chips={[
-              ...salesStatusFilters.map(value => ({ id: `status:${value}`, label: t(value === 'without_po' ? 'Chưa có PO' : PO_QUEUE_STATES.find(status => status.value === value)?.label || value), onRemove: () => setSalesStatusFilters(current => current.filter(item => item !== value)) })),
+              ...salesStatusFilters.map(value => ({ id: `status:${value}`, label: t(PO_QUEUE_STATES.find(status => status.value === value)?.label || value), onRemove: () => setSalesStatusFilters(current => current.filter(item => item !== value)) })),
               ...salesOwnerFilters.map(value => ({ id: `owner:${value}`, label: value === 'unassigned' ? t('Chưa phân công') : users.find(user => user.uid === value)?.displayName || value, onRemove: () => setSalesOwnerFilters(current => current.filter(item => item !== value)) }))
             ]}
             onClear={() => { setSalesStatusFilters([]); setSalesOwnerFilters([]); }}
@@ -1664,7 +1710,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
       >
         <DataFilterSection title={t('Trạng thái PO gần nhất')} selectedCount={salesStatusFilters.length} defaultExpanded>
           <DataFilterCheckboxGroup
-            options={[{ value: 'without_po', label: t('Chưa có PO') }, ...PO_QUEUE_STATES.map(status => ({ value: status.value, label: t(status.label) }))]}
+            options={PO_QUEUE_STATES.map(status => ({ value: status.value, label: t(status.label) }))}
             selectedValues={salesStatusFilters}
             onChange={setSalesStatusFilters}
           />
