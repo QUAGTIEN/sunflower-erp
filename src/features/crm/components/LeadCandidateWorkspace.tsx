@@ -2160,7 +2160,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               </tbody>
             </ConfiguredSystemTable>
           ) : (
-            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact has-dynamic-columns" style={candidateTableStyle}>
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact is-two-line-preview has-dynamic-columns" style={candidateTableStyle}>
               <thead>
                 <tr>
                   <ReorderableTableCells order={orderedColumnIds} getHeaderProps={getHeaderProps} labels={candidateColumnLabels}>
@@ -2253,7 +2253,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                         ? renderCompactValue(formatShortDateTime(candidate.nextContactAt), `${formatShortDateTime(candidate.nextContactAt)} · ${new Date(candidate.nextContactAt).getTime() < referenceTime ? 'Quá hạn' : 'Đã lên lịch'}`, new Date(candidate.nextContactAt).getTime() < referenceTime ? 'lead-date-overdue' : '')
                         : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
                       {visibleColumnSet.has('latest') && <td key="latest">{renderCompactLatestActivity(candidate)}</td>}
-                      {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={`custom:${definition.id}`}>{formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id])}</td>)}
+                      {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={`custom:${definition.id}`}>{renderCompactValue(formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id]))}</td>)}
                       {visibleColumnSet.has('actions') && <td key="actions" className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}

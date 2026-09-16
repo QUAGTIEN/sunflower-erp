@@ -1479,6 +1479,30 @@
   white-space: nowrap;
 }
 
+/* Trial layout for Tất cả dữ liệu only: two readable lines inside the existing 40px row. */
+.app-main .lead-candidate-table.is-two-line-preview tbody td {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+.app-main .lead-candidate-table.is-two-line-preview .lead-candidate-company-button {
+  min-height: 0 !important;
+  white-space: normal !important;
+}
+
+.app-main .lead-candidate-table.is-two-line-preview .lead-candidate-compact-value,
+.app-main .lead-candidate-table.is-two-line-preview .lead-candidate-company-button strong {
+  display: -webkit-box !important;
+  max-height: 2.5em;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.25 !important;
+  text-overflow: ellipsis;
+  white-space: normal !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .lead-candidate-company-button strong {
   color: #172554;
   font-size: 12.5px;
