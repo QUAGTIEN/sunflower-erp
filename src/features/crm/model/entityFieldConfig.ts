@@ -54,7 +54,7 @@ export interface EntityFieldDefinition extends Record<string, unknown> {
 
 export const ENTITY_FIELD_TABLE_LABELS: Record<EntityFieldTable, string> = {
   lead_candidates: 'Tất cả Dữ liệu thô',
-  leads: 'Danh sách Lead',
+  leads: 'Danh sách KH tiềm năng',
   customers: 'Tất cả Khách hàng'
 };
 

@@ -72,7 +72,7 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   work_schedule: { section: 'Lịch làm việc', current: 'Hôm nay' },
   commercial_map: { section: 'Thương mại', current: 'Tỉnh thành' },
   customer_data: { section: 'Dữ liệu thô', current: 'Tất cả dữ liệu' },
-  leads: { section: 'Tiềm năng', current: 'Danh sách Lead' },
+  leads: { section: 'Tiềm năng', current: 'Tổng quan' },
   crm: { section: 'Khách hàng', current: 'Tất cả' },
   sales: { section: 'Tạo đơn hàng', current: 'Danh sách PO' },
   design: { section: 'Thiết kế', current: 'Danh sách yêu cầu thiết kế' },

@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   Eye,
   FileText,
-  List,
   LifeBuoy,
   Paperclip,
   Pencil,
@@ -21,7 +20,6 @@ import {
   Trash2,
   Undo2,
   UserCheck,
-  Users,
   X
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -132,6 +130,30 @@ interface LeadsProps {
   initialLeadId?: string;
   onInitialLeadOpened?: () => void;
 }
+
+type LeadOverviewSelection = 'quoted' | 'pending' | 'won' | 'lost' | 'converted';
+
+const LEAD_OVERVIEW_LABELS: Record<LeadOverviewSelection, string> = {
+  quoted: 'Đã gửi báo giá',
+  pending: 'Đang chờ chốt',
+  won: 'Đã chốt',
+  lost: 'Không thành công',
+  converted: 'Đã thành khách hàng'
+};
+
+const matchesLeadOverviewSelection = (
+  lead: LeadRecord,
+  selection: LeadOverviewSelection,
+  definitions: LeadFilterDefinition[]
+) => {
+  if (selection === 'quoted') {
+    const progress = getLeadFilterValues(lead, definitions)[LEAD_FILTER_IDS.progress] || [];
+    return progress.includes('quote_sent') || lead.stage === 'quoted' || lead.stage === 'negotiating';
+  }
+  if (selection === 'pending') return lead.stage === 'quoted' || lead.stage === 'negotiating';
+  if (selection === 'converted') return lead.stage === 'converted' || Boolean(lead.convertedCustomerId);
+  return lead.stage === selection;
+};
 
 interface LeadFormState {
   companyName: string;
@@ -293,7 +315,8 @@ export const Leads: React.FC<LeadsProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [leadPageSize, setLeadPageSize] = useState(25);
   const [leadCurrentPage, setLeadCurrentPage] = useState(1);
-  const [workspaceTab, setWorkspaceTab] = useState<'list' | 'performance'>('list');
+  const [workspaceTab, setWorkspaceTab] = useState<'overview' | 'list' | 'performance'>('overview');
+  const [overviewSelection, setOverviewSelection] = useState<LeadOverviewSelection | null>(null);
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
   const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
   const [profileDefinitions, setProfileDefinitions] = useState<LeadProfileFieldDefinition[]>([]);
@@ -476,6 +499,30 @@ export const Leads: React.FC<LeadsProps> = ({
     [leads]
   );
 
+  const leadOverview = useMemo(() => {
+    const count = (selection: LeadOverviewSelection) => accessibleLeads.filter(lead => (
+      matchesLeadOverviewSelection(lead, selection, filterDefinitions)
+    )).length;
+    const stageCounts = Object.fromEntries(LEAD_STAGES.map(stage => [
+      stage.id,
+      accessibleLeads.filter(lead => lead.stage === stage.id).length
+    ])) as Record<LeadStage, number>;
+    const followUps = accessibleLeads
+      .filter(lead => !['won', 'lost', 'converted'].includes(lead.stage) && Number.isFinite(getLeadScheduleTime(lead)))
+      .sort((left, right) => getLeadScheduleTime(left) - getLeadScheduleTime(right))
+      .slice(0, 5);
+    return {
+      total: accessibleLeads.length,
+      quoted: count('quoted'),
+      pending: count('pending'),
+      won: count('won'),
+      lost: count('lost'),
+      converted: count('converted'),
+      stageCounts,
+      followUps
+    };
+  }, [accessibleLeads, filterDefinitions]);
+
   const customFilterOptions = useMemo(() => Object.fromEntries(
     customFieldDefinitions.filter(definition => definition.active).map(definition => [
       definition.id,
@@ -606,7 +653,7 @@ export const Leads: React.FC<LeadsProps> = ({
     .reduce((total, [, values]) => total + values.length, 0)
     + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
   const leadAdvancedFilterCount = countAdvancedFilters(advancedFilters);
-  const leadActiveFilterCount = leadQuickFilterCount + leadAdvancedFilterCount;
+  const leadActiveFilterCount = leadQuickFilterCount + leadAdvancedFilterCount + (overviewSelection ? 1 : 0);
   const leadFilterChips = Object.entries(dynamicFilters).flatMap(([fieldId, values]) => {
     if (!visibleFilterIds.has(fieldId)) return [];
     const field = filterDefinitions.find(definition => definition.id === fieldId);
@@ -635,7 +682,11 @@ export const Leads: React.FC<LeadsProps> = ({
       setLeadCurrentPage(1);
       return next;
     })
-  })));
+  }))).concat(overviewSelection ? [{
+    id: `overview-${overviewSelection}`,
+    label: LEAD_OVERVIEW_LABELS[overviewSelection],
+    onRemove: () => setOverviewSelection(null)
+  }] : []);
 
   const isOverdue = (lead: LeadRecord) => {
     if (!lead.nextFollowUpAt || ['won', 'lost', 'converted'].includes(lead.stage)) return false;
@@ -690,6 +741,7 @@ export const Leads: React.FC<LeadsProps> = ({
         return selected.some(value => tokens.includes(value));
       });
       return matchesSearch
+        && (!overviewSelection || matchesLeadOverviewSelection(lead, overviewSelection, filterDefinitions))
         && matchesClassifications
         && matchesCustomFields
         && matchesAdvancedFilters(lead, advancedFilterFields, advancedFilters);
@@ -705,6 +757,7 @@ export const Leads: React.FC<LeadsProps> = ({
     advancedFilters,
     dynamicFilters,
     filterDefinitions,
+    overviewSelection,
     searchTerm,
     users,
     customProfileDefinitions,
@@ -1564,8 +1617,24 @@ export const Leads: React.FC<LeadsProps> = ({
     setDynamicFilters({});
     setCustomFieldFilters({});
     setAdvancedFilters({});
+    setOverviewSelection(null);
     setLeadCurrentPage(1);
   };
+
+  const openOverviewList = (selection: LeadOverviewSelection | null) => {
+    clearFilters();
+    setOverviewSelection(selection);
+    setWorkspaceTab('list');
+  };
+
+  const overviewCards: Array<{ key: LeadOverviewSelection | null; label: string; count: number; detail: string }> = [
+    { key: null, label: 'Tổng KH tiềm năng', count: leadOverview.total, detail: 'Hồ sơ đang lưu trong phân hệ' },
+    { key: 'quoted', label: 'Đã gửi báo giá', count: leadOverview.quoted, detail: 'Có tiến độ gửi báo giá hoặc đang đàm phán' },
+    { key: 'pending', label: 'Đang chờ chốt', count: leadOverview.pending, detail: 'Đã báo giá hoặc đang đàm phán' },
+    { key: 'won', label: 'Đã chốt', count: leadOverview.won, detail: 'Giai đoạn thành công' },
+    { key: 'lost', label: 'Không thành công', count: leadOverview.lost, detail: 'Giai đoạn không thành công' },
+    { key: 'converted', label: 'Đã thành khách hàng', count: leadOverview.converted, detail: 'Đã chuyển sang hồ sơ khách hàng' }
+  ];
 
   const getClassificationLabel = (lead: LeadRecord, fieldId: string, fallback = '—') => {
     const optionIds = getLeadFilterValues(lead, filterDefinitions)[fieldId] || [];
@@ -1883,13 +1952,14 @@ export const Leads: React.FC<LeadsProps> = ({
     <SystemFieldSurface table="leads" className="leads-page">
       <PageContextHeader
         section={t('Tiềm năng')}
-        current={workspaceTab === 'performance' ? t('Khách hàng của Sale') : t('Danh sách Lead')}
+        current={workspaceTab === 'overview' ? 'Tổng quan' : workspaceTab === 'performance' ? t('Khách hàng của Sale') : 'Danh sách KH tiềm năng'}
       />
 
       <div className="lead-page-navigation lead-candidate-commandbar">
-        <div className="lead-workspace-tabs content-tabs content-tabs--compact" role="tablist" aria-label="Không gian quản lý Lead">
-          <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => setWorkspaceTab('list')}><List size={16} /> Danh sách Lead <span>{accessibleLeads.length}</span></button>
-          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}><Users size={16} /> Khách hàng của Sale</button>}
+        <div className="lead-workspace-tabs content-tabs content-tabs--compact" role="tablist" aria-label="Không gian quản lý khách hàng tiềm năng">
+          <button type="button" role="tab" aria-selected={workspaceTab === 'overview'} className={workspaceTab === 'overview' ? 'is-active' : ''} onClick={() => setWorkspaceTab('overview')}>Tổng quan</button>
+          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}>Khách hàng của Sale</button>}
+          <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => { setOverviewSelection(null); setWorkspaceTab('list'); }}>Danh sách KH tiềm năng <span>{accessibleLeads.length}</span></button>
         </div>
         {workspaceTab === 'list' && (
           <section className="lead-page-navigation__tools lead-candidate-toolbar">
@@ -1907,7 +1977,39 @@ export const Leads: React.FC<LeadsProps> = ({
         )}
       </div>
 
-      {workspaceTab === 'performance' && currentUser.role === 'admin' ? (
+      {workspaceTab === 'overview' ? (
+        <section className="lead-overview" aria-label="Tổng quan khách hàng tiềm năng">
+          <div className="lead-overview__intro">
+            <div><h2>Tình hình khách hàng tiềm năng</h2><p>Số liệu từ hồ sơ đang lưu trong phân hệ Tiềm năng. Các chỉ số báo giá và chờ chốt có thể giao nhau.</p></div>
+          </div>
+          <div className="lead-overview__metrics">
+            {overviewCards.map(card => (
+              <button key={card.label} type="button" className="lead-overview__metric" onClick={() => openOverviewList(card.key)} aria-label={`Xem ${card.count} khách hàng: ${card.label}`}>
+                <span>{card.label}</span><strong>{card.count.toLocaleString('vi-VN')}</strong><small>{card.detail}</small>
+              </button>
+            ))}
+          </div>
+          <div className="lead-overview__details">
+            <section className="lead-overview__panel">
+              <h3>Phân bổ theo giai đoạn</h3>
+              <p>Mỗi hồ sơ được tính một lần theo giai đoạn hiện tại.</p>
+              <div className="lead-overview__stages">
+                {LEAD_STAGES.map(stage => {
+                  const count = leadOverview.stageCounts[stage.id];
+                  return <div key={stage.id} className="lead-overview__stage"><span>{stage.label}</span><div className="lead-overview__track"><i style={{ width: `${leadOverview.total ? count / leadOverview.total * 100 : 0}%` }} /></div><strong>{count}</strong></div>;
+                })}
+              </div>
+            </section>
+            <section className="lead-overview__panel">
+              <h3>Lịch chăm sóc gần nhất</h3>
+              <p>Khách còn đang xử lý, gồm cả lịch đã quá hạn.</p>
+              {leadOverview.followUps.length > 0 ? <div className="lead-overview__followups">
+                {leadOverview.followUps.map(lead => <button key={lead.id} type="button" onClick={() => setSelectedLeadId(lead.id)}><strong title={lead.companyName}>{lead.companyName}</strong><span>{isOverdue(lead) ? 'Quá hạn · ' : ''}{formatDateTime(lead.nextFollowUpAt)} · {getStageLabel(lead.stage)}</span></button>)}
+              </div> : <div className="lead-overview__empty">Chưa có lịch chăm sóc.</div>}
+            </section>
+          </div>
+        </section>
+      ) : workspaceTab === 'performance' && currentUser.role === 'admin' ? (
         <LeadSalesWorkspace
           leads={leads}
           candidates={candidates}
@@ -1921,7 +2023,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
           <DataFilterPanel
             open={showLeadFilters}
-            title="Lọc danh sách Lead"
+            title="Lọc danh sách KH tiềm năng"
             description="Chọn nhiều tiêu chí để thu hẹp danh sách khách hàng tiềm năng."
             activeCount={leadQuickFilterCount}
             onClose={() => setShowLeadFilters(false)}
