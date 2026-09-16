@@ -608,27 +608,28 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
               </div>
 
               <div className="commercial-overview__content">
-                <section className="commercial-data-panel">
-                  <header><div><h2>Hiệu quả theo khu vực / KCN</h2><p>{overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}</p></div>{currentUser.role === 'admin' && <button type="button" className="btn btn-outline btn-sm" aria-expanded={showParkManagement} aria-controls="commercial-park-manager" onClick={() => setShowParkManagement(previous => !previous)}>{showParkManagement ? 'Đóng quản lý KCN' : 'Quản lý KCN'}</button>}</header>
-                  <div className="table-container"><table><thead><tr><th>Khu vực / KCN</th><th>Sale chính</th><th>Hợp tác</th><th>Tiềm năng</th><th>Dữ liệu thô</th><th>PO</th><th>Giá trị</th></tr></thead><tbody>
-                    {territoryPerformance.map(row => <tr key={row.label}><td title={row.label}>{row.label}</td><td>{row.primarySale}</td><td>{row.customers}</td><td>{row.leads}</td><td>{row.candidates}</td><td>{row.orders}</td><td>{formatCurrency(row.revenue)}</td></tr>)}
-                  </tbody></table></div>
-                </section>
+                {showParkManagement && currentUser.role === 'admin' ? (
+                  <section id="commercial-park-manager" className="commercial-park-manager">
+                    <header><div><h2>Quản lý KCN tại {overviewParkProvince?.label}</h2></div><button type="button" className="btn btn-outline btn-sm" onClick={() => setShowParkManagement(false)}>Đóng quản lý KCN</button></header>
+                    <div className="commercial-parks__add">
+                      <label><span>Dán danh sách KCN, mỗi dòng 1 tên</span><textarea value={newParkNames} onChange={event => setNewParkNames(event.target.value)} rows={4} /></label>
+                      <button type="button" className="btn btn-primary" disabled={parkSaving || !newParkNames.trim()} onClick={() => void addIndustrialPark()}>{parkSaving ? 'Đang lưu...' : 'Lưu'}</button>
+                    </div>
+                    {parkMessage && <div className="commercial-parks__message" role="status">{parkMessage}</div>}
+                    <div className="table-container"><table><thead><tr><th style={{ width: 64 }}>STT</th><th>Tên khu công nghiệp</th><th style={{ width: 110 }}>Thao tác</th></tr></thead><tbody>
+                      {parkRows.map((park, index) => <tr key={park.id}><td>{index + 1}</td><td title={park.label}>{park.label}</td><td><div className="commercial-row-actions"><button type="button" className="btn btn-danger btn-sm" disabled={parkSaving} onClick={() => void deleteIndustrialPark(park)}>Xóa</button></div></td></tr>)}
+                      {parkRows.length === 0 && <tr><td colSpan={3} className="commercial-table-empty">Tỉnh/thành này chưa có KCN. Dán tên KCN ở trên để thêm.</td></tr>}
+                    </tbody></table></div>
+                  </section>
+                ) : (
+                  <section className="commercial-data-panel">
+                    <header><div><h2>Hiệu quả theo khu vực / KCN</h2><p>{overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}</p></div>{currentUser.role === 'admin' && <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowParkManagement(true)}>Quản lý KCN</button>}</header>
+                    <div className="table-container"><table><thead><tr><th>Khu vực / KCN</th><th>Sale chính</th><th>Hợp tác</th><th>Tiềm năng</th><th>Dữ liệu thô</th><th>PO</th><th>Giá trị</th></tr></thead><tbody>
+                      {territoryPerformance.map(row => <tr key={row.label}><td title={row.label}>{row.label}</td><td>{row.primarySale}</td><td>{row.customers}</td><td>{row.leads}</td><td>{row.candidates}</td><td>{row.orders}</td><td>{formatCurrency(row.revenue)}</td></tr>)}
+                    </tbody></table></div>
+                  </section>
+                )}
               </div>
-
-              {showParkManagement && currentUser.role === 'admin' && (
-                <section id="commercial-park-manager" className="commercial-park-manager">
-                  <header><div><h2>Quản lý KCN tại {overviewParkProvince?.label}</h2></div></header>
-                  <div className="commercial-parks__add">
-                    <label><span>Dán danh sách KCN, mỗi dòng 1 tên</span><textarea value={newParkNames} onChange={event => setNewParkNames(event.target.value)} rows={4} /></label>
-                    <button type="button" className="btn btn-primary" disabled={parkSaving || !newParkNames.trim()} onClick={() => void addIndustrialPark()}>{parkSaving ? 'Đang lưu...' : 'Lưu'}</button>
-                  </div>
-                  {parkMessage && <div className="commercial-parks__message" role="status">{parkMessage}</div>}
-                  <div className="table-container"><table><thead><tr><th style={{ width: 64 }}>STT</th><th>Tên khu công nghiệp</th><th style={{ width: 110 }}>Thao tác</th></tr></thead><tbody>
-                    {parkRows.map((park, index) => <tr key={park.id}><td>{index + 1}</td><td title={park.label}>{park.label}</td><td><div className="commercial-row-actions"><button type="button" className="btn btn-danger btn-sm" disabled={parkSaving} onClick={() => void deleteIndustrialPark(park)}>Xóa</button></div></td></tr>)}
-                  </tbody></table></div>
-                </section>
-              )}
 
               {(salePerformance.length > 1 || overviewDeliveries.length > 0) && <div className="commercial-secondary-grid">
                 {salePerformance.length > 1 && <section className="commercial-data-panel">

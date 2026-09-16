@@ -162,12 +162,15 @@
 }
 
 .commercial-park-manager {
-  margin-top: 12px;
   border: 1px solid var(--erp-border-color);
   background: #fff;
 }
 
 .commercial-park-manager > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-bottom: 1px solid var(--erp-border-color);
   padding: 12px;
 }
