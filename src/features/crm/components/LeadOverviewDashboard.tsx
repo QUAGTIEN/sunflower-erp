@@ -6,6 +6,7 @@ import './LeadOverviewDashboard.css';
 
 type OverviewMetric = { key: string | null; label: string; count: number };
 type LeadGroup = { label: string; leads: LeadRecord[]; color: string };
+type ProvinceStatus = 'total' | 'negotiating' | 'quoted' | 'sample' | 'discussing' | 'new' | 'won' | 'lost' | 'converted';
 
 const STAGES: Array<{ id: LeadStage; label: string; color: string }> = [
   { id: 'new', label: 'Mới tiếp nhận', color: '#8096c8' },
@@ -18,9 +19,31 @@ const STAGES: Array<{ id: LeadStage; label: string; color: string }> = [
 ];
 
 const OPPORTUNITY_COLORS = ['#e66b5b', '#f2a842', '#7768c9', '#38a8b8', '#a3adbd'];
-const PROVINCE_COLORS = ['#3157c8', '#137584', '#955b18', '#6250a3', '#287257', '#a34e42', '#536680'];
+const PROVINCE_STATUSES: Array<{ id: ProvinceStatus; label: string; color: string }> = [
+  { id: 'total', label: 'Tất cả', color: '#3157c8' },
+  { id: 'negotiating', label: 'Đang đàm phán', color: '#d96454' },
+  { id: 'quoted', label: 'Đã gửi báo giá', color: '#d99832' },
+  { id: 'sample', label: 'Đang làm mẫu', color: '#7768c9' },
+  { id: 'discussing', label: 'Đang trao đổi', color: '#2594a5' },
+  { id: 'new', label: 'Chưa có tín hiệu', color: '#8797af' },
+  { id: 'won', label: 'Thành công', color: '#35a779' },
+  { id: 'lost', label: 'Không thành công', color: '#8b99a9' },
+  { id: 'converted', label: 'Đã chuyển đổi', color: '#6250a3' }
+];
 const DASHBOARD_REFERENCE_TIME = Date.now();
 const isOpen = (lead: LeadRecord) => !['won', 'lost', 'converted'].includes(lead.stage) && !lead.convertedCustomerId;
+
+const getProvinceStatus = (lead: LeadRecord, definitions: LeadFilterDefinition[]): ProvinceStatus => {
+  if (lead.stage === 'converted' || lead.convertedCustomerId) return 'converted';
+  if (lead.stage === 'won') return 'won';
+  if (lead.stage === 'lost') return 'lost';
+  const progress = getLeadFilterValues(lead, definitions)[LEAD_FILTER_IDS.progress] || [];
+  if (lead.stage === 'negotiating' || progress.includes('negotiating')) return 'negotiating';
+  if (lead.stage === 'quoted' || progress.includes('quote_sent') || progress.includes('waiting_feedback')) return 'quoted';
+  if (progress.includes('sample_in_progress')) return 'sample';
+  if (lead.stage === 'contacted' || progress.some(value => ['contacted', 'discussing', 'preparing_quote'].includes(value))) return 'discussing';
+  return 'new';
+};
 
 const donutBackground = (groups: LeadGroup[]) => {
   const total = groups.reduce((sum, group) => sum + group.leads.length, 0);
@@ -47,7 +70,15 @@ interface Props {
 export function LeadOverviewDashboard({
   leads, saleUsers, currentUser, definitions, metrics, onMetricClick, onGroupClick, onOpenLead
 }: Props) {
-  const [provinceMode, setProvinceMode] = useState<'all' | 'opportunity'>('all');
+  const [selectedProvinceStatuses, setSelectedProvinceStatuses] = useState<ProvinceStatus[]>(['total']);
+  const toggleProvinceStatus = (status: ProvinceStatus) => {
+    setSelectedProvinceStatuses(previous => {
+      if (status === 'total') return ['total'];
+      const selected = previous.filter(value => value !== 'total');
+      const next = selected.includes(status) ? selected.filter(value => value !== status) : [...selected, status];
+      return next.length ? next : ['total'];
+    });
+  };
   const { stages, opportunities, saleRows, provinces } = useMemo(() => {
     const stages: LeadGroup[] = STAGES.map(stage => ({
       label: stage.label,
@@ -102,31 +133,26 @@ export function LeadOverviewDashboard({
       entry.leads.push(lead);
       provinceMap.set(key, entry);
     });
-    const clearOpportunityIds = new Set(opportunityBuckets.slice(0, 3).flatMap(bucket => bucket.leads.map(lead => lead.id)));
-    const sortedProvinces = Array.from(provinceMap.values())
-      .map(group => ({ ...group, leads: provinceMode === 'all'
-        ? group.leads
-        : group.leads.filter(lead => clearOpportunityIds.has(lead.id)) }))
-      .filter(group => group.leads.length)
-      .sort((a, b) => b.leads.length - a.leads.length);
-    const provinces = sortedProvinces.length > 7
-      ? [...sortedProvinces.slice(0, 6), { label: 'Tỉnh/thành khác', leads: sortedProvinces.slice(6).flatMap(group => group.leads) }]
-      : sortedProvinces;
+    const provinces = Array.from(provinceMap.values());
     return { stages, opportunities: opportunityBuckets, saleRows, provinces };
-  }, [leads, saleUsers, currentUser.role, currentUser.uid, definitions, provinceMode]);
+  }, [leads, saleUsers, currentUser.role, currentUser.uid, definitions]);
 
   const donut = donutBackground(stages);
   const maxOpportunity = Math.max(1, ...opportunities.slice(0, 4).map(group => group.leads.length));
   const maxSale = Math.max(1, ...saleRows.map(row => row.active.length + row.won.length));
-  const provinceTotal = provinces.reduce((sum, group) => sum + group.leads.length, 0);
-  const splitIndex = provinces.reduce((result, group, index) => {
-    if (result.index >= 0) return result;
-    const next = result.total + group.leads.length;
-    return next >= provinceTotal / 2 ? { index: index + 1, total: next } : { index: -1, total: next };
-  }, { index: -1, total: 0 }).index;
-  const provinceRows = provinces.length > 1
-    ? [provinces.slice(0, Math.min(splitIndex, provinces.length - 1)), provinces.slice(Math.min(splitIndex, provinces.length - 1))]
-    : provinces.length ? [provinces] : [];
+  const provinceSeries = useMemo(() => PROVINCE_STATUSES.filter(status => selectedProvinceStatuses.includes(status.id)), [selectedProvinceStatuses]);
+  const provinceColumns = useMemo(() => {
+    const statusByLead = new Map(leads.map(lead => [lead.id, getProvinceStatus(lead, definitions)]));
+    return provinces.map(province => ({
+      ...province,
+      series: provinceSeries.map(status => ({
+        ...status,
+        leads: status.id === 'total' ? province.leads : province.leads.filter(lead => statusByLead.get(lead.id) === status.id)
+      }))
+    })).filter(province => province.series.some(series => series.leads.length))
+      .sort((a, b) => b.series.reduce((sum, series) => sum + series.leads.length, 0) - a.series.reduce((sum, series) => sum + series.leads.length, 0));
+  }, [leads, provinces, provinceSeries, definitions]);
+  const provinceMax = Math.max(1, ...provinceColumns.flatMap(province => province.series.map(series => series.leads.length)));
 
   return (
     <section className="lead-insights" aria-label="Tổng quan khách hàng tiềm năng">
@@ -183,16 +209,27 @@ export function LeadOverviewDashboard({
       </section>
 
       <section className="lead-insights__panel" aria-labelledby="lead-insights-province">
-        <div className="lead-insights__panel-heading"><h2 id="lead-insights-province">Tỉnh thành</h2><div className="lead-insights__mode" role="group" aria-label="Chỉ số tỉnh thành"><button type="button" className={provinceMode === 'all' ? 'is-selected' : ''} aria-pressed={provinceMode === 'all'} onClick={() => setProvinceMode('all')}>Tất cả</button><button type="button" className={provinceMode === 'opportunity' ? 'is-selected' : ''} aria-pressed={provinceMode === 'opportunity'} onClick={() => setProvinceMode('opportunity')}>Cơ hội rõ</button></div></div>
-        <div className="lead-insights__province-summary"><strong>{provinces.length}</strong> khu vực có dữ liệu</div>
-        <div className="lead-insights__treemap">
-          {provinceRows.map((row, rowIndex) => <div key={rowIndex} className="lead-insights__treemap-row" style={{ flex: row.reduce((sum, group) => sum + group.leads.length, 0) || 1 }}>
-            {row.map((group, index) => <button key={group.label} type="button" style={{ flex: group.leads.length, background: PROVINCE_COLORS[rowIndex * 4 + index] || PROVINCE_COLORS.at(-1) }} onClick={() => onGroupClick(group.label, group.leads)} title={`${group.label}: ${group.leads.length} khách`}>
-              <span>{group.label}</span><strong>{group.leads.length}</strong>
-            </button>)}
-          </div>)}
-          {!provinces.length && <p className="lead-insights__empty">Chưa có dữ liệu tỉnh thành.</p>}
+        <h2 id="lead-insights-province">Tỉnh thành</h2>
+        <div className="lead-insights__province-filters" role="group" aria-label="Chọn trạng thái để so sánh theo tỉnh thành">
+          {PROVINCE_STATUSES.map(status => <label key={status.id} className={selectedProvinceStatuses.includes(status.id) ? 'is-selected' : ''}>
+            <input type="checkbox" checked={selectedProvinceStatuses.includes(status.id)} onChange={() => toggleProvinceStatus(status.id)} />
+            <i style={{ background: status.color }} /><span>{status.label}</span>
+          </label>)}
         </div>
+        {provinceColumns.length ? <div className="lead-insights__province-chart">
+          <div className="lead-insights__province-axis" aria-hidden="true"><span>{provinceMax}</span><span>{(provinceMax / 2).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span><span>0</span></div>
+          <div className="lead-insights__province-scroll">
+            <div className="lead-insights__province-columns">
+              <div className="lead-insights__province-grid" aria-hidden="true"><i /><i /><i /></div>
+              {provinceColumns.map(province => <div key={province.label} className="lead-insights__province-group" style={{ minWidth: `${Math.max(92, provinceSeries.length * 30 + 20)}px` }}>
+                <div className="lead-insights__province-bars">
+                  {province.series.map(series => series.leads.length ? <button key={series.id} type="button" className="lead-insights__province-bar" style={{ height: `${series.leads.length / provinceMax * 100}%`, background: series.color }} onClick={() => onGroupClick(`${province.label} · ${series.label}`, series.leads)} title={`${province.label} · ${series.label}: ${series.leads.length} khách`} aria-label={`${province.label}, ${series.label}: ${series.leads.length} khách`}><strong>{series.leads.length}</strong></button> : <span key={series.id} className="lead-insights__province-zero" title={`${province.label} · ${series.label}: 0 khách`} />)}
+                </div>
+                <span className="lead-insights__province-name" title={province.label}>{province.label}</span>
+              </div>)}
+            </div>
+          </div>
+        </div> : <p className="lead-insights__empty">Không có khách ở trạng thái đã chọn.</p>}
       </section>
     </section>
   );
