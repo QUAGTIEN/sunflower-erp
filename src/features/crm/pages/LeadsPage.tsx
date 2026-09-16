@@ -1627,13 +1627,13 @@ export const Leads: React.FC<LeadsProps> = ({
     setWorkspaceTab('list');
   };
 
-  const overviewCards: Array<{ key: LeadOverviewSelection | null; label: string; count: number; detail: string }> = [
-    { key: null, label: 'Tổng KH tiềm năng', count: leadOverview.total, detail: 'Hồ sơ đang lưu trong phân hệ' },
-    { key: 'quoted', label: 'Đã gửi báo giá', count: leadOverview.quoted, detail: 'Có tiến độ gửi báo giá hoặc đang đàm phán' },
-    { key: 'pending', label: 'Đang chờ chốt', count: leadOverview.pending, detail: 'Đã báo giá hoặc đang đàm phán' },
-    { key: 'won', label: 'Đã chốt', count: leadOverview.won, detail: 'Giai đoạn thành công' },
-    { key: 'lost', label: 'Không thành công', count: leadOverview.lost, detail: 'Giai đoạn không thành công' },
-    { key: 'converted', label: 'Đã thành khách hàng', count: leadOverview.converted, detail: 'Đã chuyển sang hồ sơ khách hàng' }
+  const overviewCards: Array<{ key: LeadOverviewSelection | null; label: string; count: number }> = [
+    { key: null, label: 'Tổng KH tiềm năng', count: leadOverview.total },
+    { key: 'quoted', label: 'Đã gửi báo giá', count: leadOverview.quoted },
+    { key: 'pending', label: 'Đang chờ chốt', count: leadOverview.pending },
+    { key: 'won', label: 'Đã chốt', count: leadOverview.won },
+    { key: 'lost', label: 'Không thành công', count: leadOverview.lost },
+    { key: 'converted', label: 'Đã thành khách hàng', count: leadOverview.converted }
   ];
 
   const getClassificationLabel = (lead: LeadRecord, fieldId: string, fallback = '—') => {
@@ -1980,19 +1980,18 @@ export const Leads: React.FC<LeadsProps> = ({
       {workspaceTab === 'overview' ? (
         <section className="lead-overview" aria-label="Tổng quan khách hàng tiềm năng">
           <div className="lead-overview__intro">
-            <div><h2>Tình hình khách hàng tiềm năng</h2><p>Số liệu từ hồ sơ đang lưu trong phân hệ Tiềm năng. Các chỉ số báo giá và chờ chốt có thể giao nhau.</p></div>
+            <h2>Tình hình khách hàng tiềm năng</h2>
           </div>
           <div className="lead-overview__metrics">
             {overviewCards.map(card => (
               <button key={card.label} type="button" className="lead-overview__metric" onClick={() => openOverviewList(card.key)} aria-label={`Xem ${card.count} khách hàng: ${card.label}`}>
-                <span>{card.label}</span><strong>{card.count.toLocaleString('vi-VN')}</strong><small>{card.detail}</small>
+                <span>{card.label}</span><strong>{card.count.toLocaleString('vi-VN')}</strong>
               </button>
             ))}
           </div>
           <div className="lead-overview__details">
             <section className="lead-overview__panel">
               <h3>Phân bổ theo giai đoạn</h3>
-              <p>Mỗi hồ sơ được tính một lần theo giai đoạn hiện tại.</p>
               <div className="lead-overview__stages">
                 {LEAD_STAGES.map(stage => {
                   const count = leadOverview.stageCounts[stage.id];
@@ -2002,7 +2001,6 @@ export const Leads: React.FC<LeadsProps> = ({
             </section>
             <section className="lead-overview__panel">
               <h3>Lịch chăm sóc gần nhất</h3>
-              <p>Khách còn đang xử lý, gồm cả lịch đã quá hạn.</p>
               {leadOverview.followUps.length > 0 ? <div className="lead-overview__followups">
                 {leadOverview.followUps.map(lead => <button key={lead.id} type="button" onClick={() => setSelectedLeadId(lead.id)}><strong title={lead.companyName}>{lead.companyName}</strong><span>{isOverdue(lead) ? 'Quá hạn · ' : ''}{formatDateTime(lead.nextFollowUpAt)} · {getStageLabel(lead.stage)}</span></button>)}
               </div> : <div className="lead-overview__empty">Chưa có lịch chăm sóc.</div>}
