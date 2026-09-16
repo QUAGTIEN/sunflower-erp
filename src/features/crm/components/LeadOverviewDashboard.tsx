@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import type { LeadFilterDefinition, LeadRecord, LeadStage } from '@/features/crm/model/crmModels';
 import { findLeadFilterOption, getLeadFilterValues, LEAD_FILTER_IDS } from '@/features/crm/model/leadFilterConfig';
@@ -71,6 +71,26 @@ export function LeadOverviewDashboard({
   leads, saleUsers, currentUser, definitions, metrics, onMetricClick, onGroupClick, onOpenLead
 }: Props) {
   const [selectedProvinceStatuses, setSelectedProvinceStatuses] = useState<ProvinceStatus[]>(['total']);
+  const [provinceFilterOpen, setProvinceFilterOpen] = useState(false);
+  const provinceFilterRef = useRef<HTMLDivElement>(null);
+  const provinceFilterTriggerRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!provinceFilterOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (event.target instanceof Node && !provinceFilterRef.current?.contains(event.target)) setProvinceFilterOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setProvinceFilterOpen(false);
+      provinceFilterTriggerRef.current?.focus();
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [provinceFilterOpen]);
   const toggleProvinceStatus = (status: ProvinceStatus) => {
     setSelectedProvinceStatuses(previous => {
       if (status === 'total') return ['total'];
@@ -141,6 +161,7 @@ export function LeadOverviewDashboard({
   const maxOpportunity = Math.max(1, ...opportunities.slice(0, 4).map(group => group.leads.length));
   const maxSale = Math.max(1, ...saleRows.map(row => row.active.length + row.won.length));
   const provinceSeries = useMemo(() => PROVINCE_STATUSES.filter(status => selectedProvinceStatuses.includes(status.id)), [selectedProvinceStatuses]);
+  const provinceFilterSummary = provinceSeries.length === 1 ? provinceSeries[0].label : `${provinceSeries.length} trạng thái`;
   const provinceColumns = useMemo(() => {
     const statusByLead = new Map(leads.map(lead => [lead.id, getProvinceStatus(lead, definitions)]));
     return provinces.map(province => ({
@@ -209,12 +230,27 @@ export function LeadOverviewDashboard({
       </section>
 
       <section className="lead-insights__panel" aria-labelledby="lead-insights-province">
-        <h2 id="lead-insights-province">Tỉnh thành</h2>
-        <div className="lead-insights__province-filters" role="group" aria-label="Chọn trạng thái để so sánh theo tỉnh thành">
-          {PROVINCE_STATUSES.map(status => <label key={status.id} className={selectedProvinceStatuses.includes(status.id) ? 'is-selected' : ''}>
-            <input type="checkbox" checked={selectedProvinceStatuses.includes(status.id)} onChange={() => toggleProvinceStatus(status.id)} />
-            <i style={{ background: status.color }} /><span>{status.label}</span>
-          </label>)}
+        <div className="lead-insights__province-heading">
+          <h2 id="lead-insights-province">Tỉnh thành</h2>
+          <div className="lead-insights__province-filter" ref={provinceFilterRef}>
+            <button
+              ref={provinceFilterTriggerRef}
+              type="button"
+              className="lead-insights__province-filter-trigger"
+              aria-label={`Chọn trạng thái theo tỉnh thành: ${provinceFilterSummary}`}
+              aria-expanded={provinceFilterOpen}
+              aria-controls="lead-insights-province-filter-options"
+              onClick={() => setProvinceFilterOpen(previous => !previous)}
+            >
+              <span>{provinceFilterSummary}</span>
+            </button>
+            {provinceFilterOpen && <div id="lead-insights-province-filter-options" className="lead-insights__province-filters" role="group" aria-label="Chọn trạng thái để so sánh theo tỉnh thành">
+              {PROVINCE_STATUSES.map(status => <label key={status.id} className={selectedProvinceStatuses.includes(status.id) ? 'is-selected' : ''}>
+                <input type="checkbox" checked={selectedProvinceStatuses.includes(status.id)} onChange={() => toggleProvinceStatus(status.id)} />
+                <i style={{ background: status.color }} /><span>{status.label}</span>
+              </label>)}
+            </div>}
+          </div>
         </div>
         {provinceColumns.length ? <div className="lead-insights__province-chart">
           <div className="lead-insights__province-axis" aria-hidden="true"><span>{provinceMax}</span><span>{(provinceMax / 2).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}</span><span>0</span></div>
