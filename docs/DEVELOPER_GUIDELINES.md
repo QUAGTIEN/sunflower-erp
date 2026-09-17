@@ -275,4 +275,3 @@ Các giá trị này thay thế baseline của Taste Skill khi làm màn hình E
 - [ ] Desktop hoạt động hiệu quả; màn hình hẹp không tràn, chồng lấp hoặc che chức năng quan trọng.
 - [ ] Không phát sinh dependency, thay đổi dữ liệu hoặc thay đổi quyền ngoài phạm vi.
 - [ ] Chạy lint/build hoặc kiểm tra tương ứng với mức rủi ro của thay đổi.
-- [ ] Sau khi sửa code, chạy `graphify update .` theo `AGENTS.md`.

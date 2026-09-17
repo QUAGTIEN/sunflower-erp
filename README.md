@@ -46,7 +46,6 @@ Xem [kiến trúc source](docs/ARCHITECTURE.md) và [quy tắc phát triển](do
 - `.agents/skills/sunflower-erp-ui/SKILL.md`: hướng dẫn UI dành riêng cho ERP.
 - `.agents/skills/design-taste-frontend/SKILL.md`: tham chiếu anti-slop phụ trợ.
 - `skills-lock.json`: nguồn và phiên bản của skill được cài đặt.
-- `.codex/hooks.json`: hook Graphify.
 
 ## Script bảo trì
 
