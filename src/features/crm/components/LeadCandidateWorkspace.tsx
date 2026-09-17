@@ -141,6 +141,13 @@ type CandidateSort = 'priority' | 'updated_desc' | 'company_asc' | 'next_contact
 type CandidateColumnId = string;
 type EmployeeActivityRange = 'today' | '7days' | 'all';
 type EmployeeActivityGroup = 'all' | 'call' | 'data' | 'schedule' | 'task';
+type SalesReportPeriod = 'week' | 'month' | 'quarter' | 'custom';
+
+interface SalesReportWindow {
+  startAt: number;
+  endAt: number;
+  label: string;
+}
 
 interface CandidateColumnOption extends TableColumnOption {
   id: CandidateColumnId;
@@ -322,6 +329,47 @@ const getEmployeeActivityGroup = (action: string): Exclude<EmployeeActivityGroup
   if (action === 'follow_up_scheduled') return 'schedule';
   if (['candidate_added_to_work_queue', 'candidate_assigned_to_sale', 'candidate_task_dismissed'].includes(action)) return 'task';
   return 'data';
+};
+
+const REPORT_WORK_ACTIONS = new Set([
+  'phone_call_started', 'phone_call_manual_recorded', 'candidate_phone_called',
+  'candidate_updated', 'follow_up_scheduled', 'contact_status_updated',
+  'potential_updated', 'candidate_task_dismissed', 'candidate_converted_to_lead'
+]);
+
+const toDateInputValue = (value: Date) => {
+  const adjusted = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+  return adjusted.toISOString().slice(0, 10);
+};
+
+const getSalesReportWindow = (
+  period: SalesReportPeriod,
+  referenceTime: number,
+  customStart: string,
+  customEnd: string
+): SalesReportWindow | null => {
+  const end = new Date(referenceTime);
+  end.setHours(23, 59, 59, 999);
+  const start = new Date(referenceTime);
+  start.setHours(0, 0, 0, 0);
+  if (period === 'week') {
+    const day = start.getDay() || 7;
+    start.setDate(start.getDate() - day + 1);
+    return { startAt: start.getTime(), endAt: end.getTime(), label: 'Tuần này' };
+  }
+  if (period === 'month') {
+    start.setDate(1);
+    return { startAt: start.getTime(), endAt: end.getTime(), label: 'Tháng này' };
+  }
+  if (period === 'quarter') {
+    start.setMonth(Math.floor(start.getMonth() / 3) * 3, 1);
+    return { startAt: start.getTime(), endAt: end.getTime(), label: 'Quý này' };
+  }
+  if (!customStart || !customEnd) return null;
+  const selectedStart = new Date(`${customStart}T00:00:00`);
+  const selectedEnd = new Date(`${customEnd}T23:59:59.999`);
+  if (Number.isNaN(selectedStart.getTime()) || Number.isNaN(selectedEnd.getTime()) || selectedStart > selectedEnd) return null;
+  return { startAt: selectedStart.getTime(), endAt: selectedEnd.getTime(), label: `${customStart} đến ${customEnd}` };
 };
 
 const getEmployeeActionLabel = (event: AuditEvent) => {
@@ -545,6 +593,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [employeeActivityRange, setEmployeeActivityRange] = useState<EmployeeActivityRange>('today');
   const [employeeActivityGroup, setEmployeeActivityGroup] = useState<EmployeeActivityGroup>('all');
+  const [salesReportPeriod, setSalesReportPeriod] = useState<SalesReportPeriod>('week');
+  const [salesReportStart, setSalesReportStart] = useState(() => toDateInputValue(new Date(referenceTime - 6 * 24 * 60 * 60 * 1000)));
+  const [salesReportEnd, setSalesReportEnd] = useState(() => toDateInputValue(new Date(referenceTime)));
+  const [salesReportEvents, setSalesReportEvents] = useState<AuditEvent[]>([]);
+  const [salesReportLoading, setSalesReportLoading] = useState(false);
+  const [salesReportError, setSalesReportError] = useState('');
 
   useEffect(() => {
     if (workspaceView !== 'management' || currentUser.role !== 'admin') return undefined;
@@ -691,6 +745,81 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   }, [accessibleCandidates, employeeActivityEvents, employeePresences, referenceTime, saleUsers]);
 
   const selectedEmployeeCard = employeeCards.find(card => card.sale.uid === selectedManagedSaleId) || null;
+  const salesReportWindow = useMemo(() => getSalesReportWindow(
+    salesReportPeriod, referenceTime, salesReportStart, salesReportEnd
+  ), [referenceTime, salesReportEnd, salesReportPeriod, salesReportStart]);
+
+  useEffect(() => {
+    if (workspaceView !== 'management' || currentUser.role !== 'admin' || !selectedManagedSaleId) return undefined;
+    let active = true;
+    void Promise.resolve().then(async () => {
+      if (!active) return;
+      setSalesReportLoading(true);
+      setSalesReportError('');
+      try {
+        const data = await dbService.getCollectionByField('audit_events', 'actorId', selectedManagedSaleId, {
+          orderByField: 'occurredAt', direction: 'desc', maxResults: 5000
+        });
+        if (!active) return;
+        setSalesReportEvents((data as AuditEvent[]).filter(event => (
+          event.module === 'lead_candidates'
+          && event.category === 'business'
+          && RAW_DATA_EMPLOYEE_ACTIONS.has(event.action)
+        )));
+      } catch {
+        if (active) setSalesReportError('Không tải được dữ liệu báo cáo. Vui lòng thử lại.');
+      } finally {
+        if (active) setSalesReportLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, [currentUser.role, selectedManagedSaleId, workspaceView]);
+
+  const selectedSalesReport = useMemo(() => {
+    if (!salesReportWindow) return null;
+    const events = salesReportEvents.filter(event => {
+      const occurredAt = new Date(event.occurredAt).getTime();
+      return occurredAt >= salesReportWindow.startAt && occurredAt <= salesReportWindow.endAt;
+    });
+    const calls = events.filter(event => ['phone_call_started', 'phone_call_manual_recorded', 'candidate_phone_called'].includes(event.action));
+    const confirmedCalls = events.filter(event => event.action === 'phone_call_confirmed');
+    const processedCandidateIds = new Set(events
+      .filter(event => REPORT_WORK_ACTIONS.has(event.action))
+      .map(event => event.targetId)
+      .filter(Boolean));
+    const convertedCandidateIds = new Set(events
+      .filter(event => event.action === 'candidate_converted_to_lead')
+      .map(event => event.targetId)
+      .filter(Boolean));
+    const scheduled = events.filter(event => event.action === 'follow_up_scheduled');
+    const created = events.filter(event => event.action === 'candidate_created');
+    const activityByDate = new Map<string, AuditEvent[]>();
+    events.forEach(event => {
+      const key = new Date(event.occurredAt).toLocaleDateString('vi-VN');
+      activityByDate.set(key, [...(activityByDate.get(key) || []), event]);
+    });
+    return {
+      events,
+      calls,
+      confirmedCalls,
+      processedCandidateIds,
+      convertedCandidateIds,
+      scheduled,
+      created,
+      activityByDate: Array.from(activityByDate.entries()).map(([date, dailyEvents]) => ({
+        date,
+        processed: new Set(dailyEvents.filter(event => REPORT_WORK_ACTIONS.has(event.action)).map(event => event.targetId).filter(Boolean)).size,
+        calls: dailyEvents.filter(event => ['phone_call_started', 'phone_call_manual_recorded', 'candidate_phone_called'].includes(event.action)).length,
+        schedules: dailyEvents.filter(event => event.action === 'follow_up_scheduled').length,
+        converted: new Set(dailyEvents.filter(event => event.action === 'candidate_converted_to_lead').map(event => event.targetId).filter(Boolean)).size
+      })).sort((left, right) => {
+        const [leftDay, leftMonth, leftYear] = left.date.split('/').map(Number);
+        const [rightDay, rightMonth, rightYear] = right.date.split('/').map(Number);
+        return new Date(rightYear, rightMonth - 1, rightDay).getTime() - new Date(leftYear, leftMonth - 1, leftDay).getTime();
+      })
+    };
+  }, [salesReportEvents, salesReportWindow]);
+
   const selectedEmployeeActivities = useMemo(() => {
     if (!selectedEmployeeCard) return [];
     const startOfToday = new Date(referenceTime);
@@ -2002,6 +2131,47 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   <span>Trạng thái<strong>{selectedEmployeeCard.presenceStatus === 'active' ? 'Đang thao tác' : selectedEmployeeCard.presenceStatus === 'idle' ? 'Tạm rảnh' : 'Chưa thao tác'}</strong></span>
                   <span>Thao tác gần nhất<strong>{selectedEmployeeCard.activities[0] ? formatShortDateTime(selectedEmployeeCard.activities[0].occurredAt) : 'Chưa ghi nhận'}</strong></span>
                 </div>
+                <section className="employee-sales-report" aria-label={`Báo cáo năng suất ${selectedEmployeeCard.sale.displayName}`}>
+                  <header>
+                    <div><h4>Báo cáo năng suất dữ liệu thô</h4><span>{salesReportWindow?.label || 'Chọn khoảng thời gian hợp lệ'}</span></div>
+                    <select value={salesReportPeriod} onChange={event => setSalesReportPeriod(event.target.value as SalesReportPeriod)} aria-label="Kỳ báo cáo">
+                      <option value="week">Tuần này</option>
+                      <option value="month">Tháng này</option>
+                      <option value="quarter">Quý này</option>
+                      <option value="custom">Tùy chọn</option>
+                    </select>
+                  </header>
+                  {salesReportPeriod === 'custom' && <div className="employee-sales-report__dates">
+                    <label>Từ ngày<input type="date" value={salesReportStart} max={salesReportEnd} onChange={event => setSalesReportStart(event.target.value)} /></label>
+                    <label>Đến ngày<input type="date" value={salesReportEnd} min={salesReportStart} max={toDateInputValue(new Date(referenceTime))} onChange={event => setSalesReportEnd(event.target.value)} /></label>
+                  </div>}
+                  {salesReportLoading && <p className="employee-sales-report__state">Đang tải báo cáo...</p>}
+                  {!salesReportLoading && salesReportError && <p className="employee-sales-report__state is-error">{salesReportError}</p>}
+                  {!salesReportLoading && !salesReportError && !selectedSalesReport && <p className="employee-sales-report__state is-error">Khoảng thời gian không hợp lệ.</p>}
+                  {!salesReportLoading && !salesReportError && selectedSalesReport && <>
+                    <div className="employee-sales-report__metrics">
+                      <span><small>Dữ liệu mới</small><strong>{selectedSalesReport.created.length}</strong></span>
+                      <span><small>Khách đã xử lý</small><strong>{selectedSalesReport.processedCandidateIds.size}</strong></span>
+                      <span><small>Lần gọi ghi nhận</small><strong>{selectedSalesReport.calls.length}</strong></span>
+                      <span><small>Kết quả gọi xác nhận</small><strong>{selectedSalesReport.confirmedCalls.length}</strong></span>
+                      <span><small>Lịch chăm sóc</small><strong>{selectedSalesReport.scheduled.length}</strong></span>
+                      <span><small>Chuyển thành Lead</small><strong>{selectedSalesReport.convertedCandidateIds.size}</strong></span>
+                    </div>
+                    <div className="employee-sales-report__summary">
+                      <span><strong>{selectedSalesReport.events.length}</strong> thao tác hệ thống được ghi nhận</span>
+                      <span><strong>{selectedSalesReport.processedCandidateIds.size ? Math.round(selectedSalesReport.convertedCandidateIds.size / selectedSalesReport.processedCandidateIds.size * 100) : 0}%</strong> khách xử lý đã chuyển thành Lead</span>
+                    </div>
+                    <div className="employee-sales-report__table-wrap">
+                      <table>
+                        <thead><tr><th>Ngày</th><th>Khách xử lý</th><th>Gọi</th><th>Lịch hẹn</th><th>Chuyển Lead</th></tr></thead>
+                        <tbody>
+                          {selectedSalesReport.activityByDate.map(row => <tr key={row.date}><td>{row.date}</td><td>{row.processed}</td><td>{row.calls}</td><td>{row.schedules}</td><td>{row.converted}</td></tr>)}
+                          {selectedSalesReport.activityByDate.length === 0 && <tr><td colSpan={5}>Chưa có thao tác dữ liệu thô trong kỳ này.</td></tr>}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>}
+                </section>
                 <div className="employee-monitor-detail__filters">
                   <select value={employeeActivityRange} onChange={event => setEmployeeActivityRange(event.target.value as EmployeeActivityRange)} aria-label="Khoảng thời gian">
                     <option value="today">Hôm nay</option>
