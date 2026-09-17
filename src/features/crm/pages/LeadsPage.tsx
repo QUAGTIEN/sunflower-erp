@@ -117,6 +117,8 @@ import {
 } from '@/components/advancedDataFilterModel';
 import { LeadOverviewDashboard } from '@/features/crm/components/LeadOverviewDashboard';
 import './Leads.css';
+import { PhoneCallCell } from '@/components/PhoneCallCell';
+import { leadCallHistoryKeys, leadCallSubjectKey } from '@/features/crm/model/callHistory';
 
 interface LeadsProps {
   customers: CustomerRecord[];
@@ -2113,7 +2115,12 @@ export const Leads: React.FC<LeadsProps> = ({
                       {visibleLeadColumnIds.has('contact') && <td key="contact">{renderLeadText(lead.contactPerson)}</td>}
                       {visibleLeadColumnIds.has('contactPerson') && <td key="contactPerson">{renderLeadText(lead.contactPerson)}</td>}
                       {visibleLeadColumnIds.has('contactPosition') && <td key="contactPosition">{renderLeadText(lead.contactPosition)}</td>}
-                      {visibleLeadColumnIds.has('phone') && <td key="phone">{renderLeadText(lead.phone)}</td>}
+                      {visibleLeadColumnIds.has('phone') && <td key="phone"><PhoneCallCell
+                        phone={lead.phone} companyName={lead.companyName} subjectKey={leadCallSubjectKey(lead)} historyKeys={leadCallHistoryKeys(lead)}
+                        currentUser={currentUser}
+                        auditModule="leads" targetType="lead" targetId={lead.id}
+                        canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && lead.assignedSaleId === currentUser.uid)}
+                      /></td>}
                       {visibleLeadColumnIds.has('email') && <td key="email">{renderLeadText(lead.email)}</td>}
                       {visibleLeadColumnIds.has('expectedProducts') && <td key="expectedProducts">{renderLeadText(lead.expectedProducts)}</td>}
                       {visibleLeadColumnIds.has('potentialValue') && <td key="potentialValue"><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>}

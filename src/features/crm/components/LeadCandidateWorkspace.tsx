@@ -59,6 +59,8 @@ import {
   type UserProfile
 } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService, type AuditEvent, type UserPresence } from '@/services/auditService';
+import { PhoneCallCell } from '@/components/PhoneCallCell';
+import { candidateCallSubjectKey } from '@/features/crm/model/callHistory';
 import { PageBackButton } from '@/components/PageBackButton';
 import { BusinessLocationFields } from './BusinessLocationFields';
 import { RowActionMenu } from '@/components/RowActionMenu';
@@ -281,6 +283,8 @@ const CONTACT_RESULT_OUTCOMES: Record<LeadCandidateContactResult, LeadCandidateC
 
 const RAW_DATA_EMPLOYEE_ACTIONS = new Set([
   'candidate_phone_called',
+  'phone_call_started',
+  'phone_call_confirmed',
   'candidate_opened',
   'candidate_added_to_work_queue',
   'candidate_assigned_to_sale',
@@ -296,6 +300,8 @@ const RAW_DATA_EMPLOYEE_ACTIONS = new Set([
 
 const EMPLOYEE_ACTION_LABELS: Record<string, string> = {
   candidate_phone_called: 'Đã bấm gọi',
+  phone_call_started: 'Đã bấm gọi',
+  phone_call_confirmed: 'Đã xác nhận kết quả gọi',
   candidate_opened: 'Đã mở hồ sơ',
   candidate_added_to_work_queue: 'Đưa vào danh sách cần xử lý',
   candidate_assigned_to_sale: 'Bàn giao dữ liệu',
@@ -310,7 +316,7 @@ const EMPLOYEE_ACTION_LABELS: Record<string, string> = {
 };
 
 const getEmployeeActivityGroup = (action: string): Exclude<EmployeeActivityGroup, 'all'> => {
-  if (action === 'candidate_phone_called') return 'call';
+  if (['candidate_phone_called', 'phone_call_started', 'phone_call_confirmed'].includes(action)) return 'call';
   if (action === 'follow_up_scheduled') return 'schedule';
   if (['candidate_added_to_work_queue', 'candidate_assigned_to_sale', 'candidate_task_dismissed'].includes(action)) return 'task';
   return 'data';
@@ -672,7 +678,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         currentCandidate: assignedCandidates[0] || null,
         assignedCount: assignedCandidates.length,
         touchedCount: new Set(todayActivities.map(event => event.targetId).filter(Boolean)).size,
-        callCount: todayActivities.filter(event => event.action === 'candidate_phone_called').length,
+        callCount: todayActivities.filter(event => event.action === 'candidate_phone_called' || event.action === 'phone_call_started').length,
         scheduleCount: todayActivities.filter(event => event.action === 'follow_up_scheduled').length
       };
     }).sort((left, right) => {
@@ -936,57 +942,24 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   const recordPhoneCall = async (candidate: LeadCandidateRecord) => {
     if (!candidate.phone || !canManageCandidate(candidate)) return;
-    const log = buildCandidateLog(candidate, {
-      eventType: 'activity',
-      activityType: 'call',
-      outcome: 'connected',
-      contactResult: 'called',
-      description: `Đã gọi ${candidate.companyName}`
-    });
     try {
       await dbService.updateDocument('lead_candidates', candidate.id, {
-        contactResult: 'called',
-        lastContactAt: log.occurredAt,
-        lastContactOutcome: 'connected',
         contactAttempts: candidate.contactAttempts + 1,
-        workStatus: 'completed',
-        contactLogs: prependCandidateLog(candidate, log),
-        updatedAt: log.occurredAt,
         updatedBy: currentUser.displayName
       });
-      auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'lead_candidates',
-        action: 'candidate_phone_called',
-        summary: `Đã gọi ${candidate.companyName} · ${candidate.phone}`,
-        targetType: 'lead_candidate',
-        targetId: candidate.id,
-        targetLabel: candidate.companyName,
-        changes: [{
-          field: 'contactResult',
-          label: 'Trạng thái liên hệ',
-          before: CONTACT_STATUS_LABELS[candidate.contactResult],
-          after: CONTACT_STATUS_LABELS.called
-        }]
-      });
     } catch {
-      setActionError('Đã mở trình gọi nhưng không thể ghi nhận thao tác vào hệ thống.');
+      setActionError('Đã ghi lịch sử gọi nhưng không thể cập nhật số lần liên hệ.');
     }
   };
 
   const renderPhoneLink = (candidate: LeadCandidateRecord) => {
     if (!candidate.phone) return renderCandidateField(candidate.phone);
-    if (!canManageCandidate(candidate)) return renderCandidateField(candidate.phone);
-    const dialNumber = candidate.phone.replace(/[^+\d]/g, '');
     return (
-      <a
-        className="lead-candidate-phone-link"
-        href={`tel:${dialNumber}`}
-        title={`Gọi ${candidate.phone}`}
-        onClick={() => { void recordPhoneCall(candidate); }}
-      >
-        <Phone size={13} /><span className="erp-adaptive-table-value">{candidate.phone}</span>
-      </a>
+      <PhoneCallCell phone={candidate.phone} companyName={candidate.companyName}
+        subjectKey={candidateCallSubjectKey(candidate)} currentUser={currentUser}
+        auditModule="lead_candidates" targetType="lead_candidate" targetId={candidate.id}
+        canRecord={canManageCandidate(candidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
+        onCallStarted={() => recordPhoneCall(candidate)} />
     );
   };
 

@@ -317,7 +317,7 @@ function AppShell() {
     );
     syncSubscription(
       'leads',
-      pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map'),
+      pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
       () => dbService.subscribeCollection('leads', data => {
         setLeads(sortNewestFirst(data as LeadRecord[], lead => [lead.createdAt, lead.updatedAt]));
       })
@@ -599,6 +599,7 @@ function AppShell() {
           <Sales
             pos={pos}
             customers={customers}
+            leads={leads}
             currentUser={user}
             onRefresh={refreshData}
             initialSelectedPoId={selectedPoId}

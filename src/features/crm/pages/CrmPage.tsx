@@ -32,6 +32,8 @@ import {
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { PhoneCallCell } from '@/components/PhoneCallCell';
+import { customerCallHistoryKeys, customerCallSubjectKey } from '@/features/crm/model/callHistory';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
@@ -2937,9 +2939,9 @@ export const Crm: React.FC<CrmProps> = ({
                               {visibleCustomerColumnIds.has('industrialPark') && <td key="industrialPark">{renderCustomerText(customer.industrialPark)}</td>}
                               {visibleCustomerColumnIds.has('address') && <td key="address">{renderCustomerText(customer.address)}</td>}
                               {visibleCustomerColumnIds.has('contactPerson') && <td key="contactPerson">{renderCustomerText(customer.contactPerson)}</td>}
-                              {visibleCustomerColumnIds.has('phone') && <td key="phone"><span className={customer.phone ? 'crm-contact-value' : 'crm-text-muted'}>{customer.phone || t('Chưa cập nhật')}</span></td>}
-                              {visibleCustomerColumnIds.has('procurementPhone') && <td key="procurementPhone">{renderCustomerText(customer.procurementPhone)}</td>}
-                              {visibleCustomerColumnIds.has('warehousePhone') && <td key="warehousePhone">{renderCustomerText(customer.warehousePhone)}</td>}
+                              {visibleCustomerColumnIds.has('phone') && <td key="phone"><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></td>}
+                              {visibleCustomerColumnIds.has('procurementPhone') && <td key="procurementPhone"><PhoneCallCell phone={customer.procurementPhone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></td>}
+                              {visibleCustomerColumnIds.has('warehousePhone') && <td key="warehousePhone"><PhoneCallCell phone={customer.warehousePhone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></td>}
                               {visibleCustomerColumnIds.has('email') && <td key="email"><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>}
                               {visibleCustomerColumnIds.has('discountType') && <td key="discountType">{renderCustomerText(customer.discountType === 'amount' ? t('Theo tiền chênh') : t('Theo phần trăm'))}</td>}
                               {visibleCustomerColumnIds.has('discountValue') && <td key="discountValue">{renderCustomerText(customer.discountType === 'amount' ? `${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${Number(customer.discountRate || 0).toLocaleString('vi-VN')}%`)}</td>}

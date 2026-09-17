@@ -7,6 +7,8 @@ import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { PhoneCallCell } from '@/components/PhoneCallCell';
+import { customerCallHistoryKeys, customerCallSubjectKey } from '@/features/crm/model/callHistory';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
@@ -38,7 +40,7 @@ import {
 } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
-import type { CustomerRecord } from '@/features/crm/model/crmModels';
+import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import '@/components/CustomerHistory.css';
 import {
   Plus,
@@ -54,6 +56,7 @@ import {
 interface SalesProps {
   pos: any[];
   customers: CustomerRecord[];
+  leads: LeadRecord[];
   currentUser: UserProfile;
   onRefresh: () => void;
   initialSelectedPoId?: string;
@@ -115,7 +118,7 @@ const getWaitingDays = (createdAt: unknown) => {
   return Math.max(0, Math.floor((Date.now() - createdTime) / (24 * 60 * 60 * 1000)));
 };
 
-export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRefresh, initialSelectedPoId, initialRepeatPoId, initialPreparedCustomerId, onRepeatOrderOpened, onPreparedOrderOpened, messages, users }) => {
+export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser, onRefresh, initialSelectedPoId, initialRepeatPoId, initialPreparedCustomerId, onRepeatOrderOpened, onPreparedOrderOpened, messages, users }) => {
   const { t } = useLanguage();
   const isFull = currentUser.role === 'admin' || currentUser.role === 'accountant';
   const isSaleOnly = currentUser.role === 'sale' || currentUser.role === 'designer';
@@ -1029,7 +1032,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                             <td key="customer"><strong className="erp-company-name" title={customer.companyName}>{customer.companyName}</strong></td>
                             {salesVisibleColumnSet.has('code') && <td key="code"><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>}
                             {salesVisibleColumnSet.has('contact') && <td key="contact"><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong></td>}
-                            {salesVisibleColumnSet.has('phone') && <td key="phone">{customer.phone || t('Chưa cập nhật')}</td>}
+                            {salesVisibleColumnSet.has('phone') && <td key="phone"><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></td>}
                             {salesVisibleColumnSet.has('email') && <td key="email">{customer.email || t('Chưa cập nhật')}</td>}
                             {salesVisibleColumnSet.has('sale') && <td key="sale">{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>}
                             {salesVisibleColumnSet.has('count') && <td key="count">{customerOrders.length.toLocaleString('vi-VN')}</td>}
@@ -1074,7 +1077,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, currentUser, onRef
                         <td><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>
                         <td>
                           <strong className="waiting-customer-name">{customer.companyName || t('Chưa cung cấp')}</strong>
-                          {customer.phone && <span className="waiting-customer-secondary">{customer.phone}</span>}
+                          {customer.phone && <div><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></div>}
                           {customer.pendingOrderDraft && (
                             <span className="prepared-order-badge">Đã chuẩn bị thông tin đơn</span>
                           )}

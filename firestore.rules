@@ -287,6 +287,35 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Each click to call is an independent event. Only its caller (or an admin)
+    // may later confirm the result; the original call identity remains immutable.
+    match /call_history/{documentId} {
+      allow read: if isActive() && (hasPage('customer_data') || canUseCrm());
+      allow create: if isActive()
+        && (hasPage('customer_data') || canUseCrm())
+        && (isAdmin() || userProfile().role == 'sale')
+        && request.resource.data.createdById == request.auth.uid
+        && request.resource.data.result == 'pending'
+        && request.resource.data.note == ''
+        && request.resource.data.subjectKey is string
+        && request.resource.data.companyName is string
+        && request.resource.data.phone is string
+        && request.resource.data.startedAt is string;
+      allow update: if isActive()
+        && (isAdmin() || resource.data.createdById == request.auth.uid)
+        && resource.data.result == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'result', 'note', 'confirmedAt', 'confirmedById', 'confirmedByName', 'updatedAt'
+        ])
+        && request.resource.data.result in [
+          'discussed', 'no_answer', 'busy', 'callback', 'wrong_number', 'not_interested'
+        ]
+        && request.resource.data.confirmedById == request.auth.uid
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 500;
+      allow delete: if false;
+    }
+
     // Shared work calendar. Admin assigns and manages schedules; employees
     // can create and maintain their own tasks.
     match /work_schedule_items/{documentId} {
