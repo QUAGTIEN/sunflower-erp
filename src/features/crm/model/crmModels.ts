@@ -259,8 +259,13 @@ export interface LeadActivityRecord extends UnknownRecord {
 export interface LeadFileRecord extends UnknownRecord {
   id: string;
   name: string;
+  folderId: string;
+  folder: string;
   url: string;
   data: string;
+  createdAt: string;
+  createdById: string;
+  createdBy: string;
 }
 
 export interface LeadRecord extends UnknownRecord {
@@ -313,6 +318,7 @@ export interface LeadRecord extends UnknownRecord {
   deletedByName: string;
   activities: LeadActivityRecord[];
   files: LeadFileRecord[];
+  fileFolders: CustomerRepositoryFolder[];
   createdAt: string;
   createdById: string;
   updatedAt: string;
@@ -631,8 +637,13 @@ const normalizeLeadFile = (value: unknown, index = 0): LeadFileRecord => {
     ...source,
     id: asText(source.id, `lead-file-${index + 1}`),
     name: asText(source.name ?? source.fileName),
+    folderId: asText(source.folderId),
+    folder: asText(source.folder),
     url: asText(source.url ?? source.fileUrl),
-    data: asText(source.data)
+    data: asText(source.data ?? source.base64),
+    createdAt: asText(source.createdAt),
+    createdById: asText(source.createdById),
+    createdBy: asText(source.createdBy)
   };
 };
 
@@ -703,6 +714,7 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     deletedByName: asText(source.deletedByName),
     activities: asArray(source.activities).map(normalizeLeadActivity),
     files: asArray(source.files).map(normalizeLeadFile),
+    fileFolders: asArray(source.fileFolders).map(normalizeCustomerRepositoryFolder),
     createdAt: asText(source.createdAt),
     createdById: asText(source.createdById),
     updatedAt: asText(source.updatedAt),

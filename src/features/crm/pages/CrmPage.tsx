@@ -834,6 +834,14 @@ export const Crm: React.FC<CrmProps> = ({
     products: CustomerProductRecord[] = []
   ) => {
     const now = new Date().toISOString();
+    const sourceLeadFolders = onboardingSourceLead
+      ? getCustomerRepositoryFolders(onboardingSourceLead)
+      : DEFAULT_CUSTOMER_REPOSITORY_FOLDERS.map(folder => ({ ...folder }));
+    const customerFolders = sourceLeadFolders.map(folder => ({
+      ...folder,
+      createdAt: folder.createdAt || now,
+      createdById: folder.createdById || currentUser.uid
+    }));
     return ({
       customerCode: customerCode.trim() || generateCustomerCode(),
       customerRank,
@@ -864,30 +872,14 @@ export const Crm: React.FC<CrmProps> = ({
       products,
       documents: [],
       contracts: [],
-      fileFolders: [
-        ...DEFAULT_CUSTOMER_REPOSITORY_FOLDERS.map(folder => ({
-          ...folder,
-          createdAt: now,
-          createdById: currentUser.uid
-        })),
-        ...((onboardingSourceLead?.files || []).length > 0 ? [{
-          id: 'lead-documents',
-          name: 'Tài liệu từ Lead',
-          parentId: null,
-          order: 80,
-          active: true,
-          createdAt: now,
-          createdById: currentUser.uid,
-          updatedAt: '',
-          updatedById: ''
-        }] : [])
-      ],
+      fileFolders: customerFolders,
       files: (onboardingSourceLead?.files || []).map(file => ({
         ...file,
-        folderId: 'lead-documents',
-        folder: 'Tài liệu từ Lead',
-        createdAt: now,
-        createdById: currentUser.uid
+        folderId: resolveCustomerFileFolderId(file, customerFolders),
+        folder: customerFolders.find(folder => folder.id === resolveCustomerFileFolderId(file, customerFolders))?.name || 'Tài liệu khác',
+        createdAt: file.createdAt || now,
+        createdById: file.createdById || currentUser.uid,
+        createdBy: file.createdBy || currentUser.displayName
       })),
       pendingOrderDraft,
       lastOrderAt: null,

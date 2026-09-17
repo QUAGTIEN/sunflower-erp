@@ -281,7 +281,7 @@
 
 .lead-detail-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.25fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
   gap: 10px;
 }
@@ -292,6 +292,25 @@
 
 .lead-panel--wide {
   grid-column: 1 / -1;
+}
+
+.lead-detail-layout > .customer-file-repository-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.lead-detail-layout > .customer-file-repository-card .customer-file-repository-header {
+  min-height: 0;
+  padding: 13px;
+  border-bottom: 1px solid #dbe3ef;
+}
+
+.lead-file-repository-empty {
+  height: 84px !important;
+  color: #64748b !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  text-align: center;
 }
 
 .lead-panel__title {

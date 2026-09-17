@@ -9,7 +9,6 @@ import {
   ChevronRight,
   CheckCircle2,
   Eye,
-  FileText,
   LifeBuoy,
   Paperclip,
   Pencil,
@@ -26,6 +25,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import {
   isActiveLeadRecord,
   type CustomerRecord,
+  type CustomerRepositoryFolder,
   type LeadCompanySize,
   type LeadFileRecord,
   type LeadFilterDefinition,
@@ -33,6 +33,11 @@ import {
   type LeadRecord,
   type LeadStage
 } from '@/features/crm/model/crmModels';
+import {
+  createCustomerFolderId,
+  getCustomerRepositoryFolders,
+  resolveCustomerFileFolderId
+} from '@/features/crm/model/customerRepository';
 import {
   createCandidateDocumentIdFromTaxCode,
   findCandidateDuplicate,
@@ -119,6 +124,7 @@ import { LeadOverviewDashboard } from '@/features/crm/components/LeadOverviewDas
 import './Leads.css';
 import { PhoneCallCell } from '@/components/PhoneCallCell';
 import { leadCallHistoryKeys, leadCallSubjectKey } from '@/features/crm/model/callHistory';
+import '@/components/CustomerHistory.css';
 
 interface LeadsProps {
   customers: CustomerRecord[];
@@ -338,6 +344,13 @@ export const Leads: React.FC<LeadsProps> = ({
   const [formProfileValues, setFormProfileValues] = useState<Record<string, string[]>>({});
   const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   const [uploadingFiles, setUploadingFiles] = useState<LeadFileRecord[]>([]);
+  const [activeLeadFolderId, setActiveLeadFolderId] = useState('contracts');
+  const [newLeadFolderName, setNewLeadFolderName] = useState('');
+  const [renamingLeadFolderId, setRenamingLeadFolderId] = useState('');
+  const [leadFolderNameDraft, setLeadFolderNameDraft] = useState('');
+  const [leadRepositoryFile, setLeadRepositoryFile] = useState('');
+  const [leadRepositoryFileName, setLeadRepositoryFileName] = useState('');
+  const [leadRepositoryFileLink, setLeadRepositoryFileLink] = useState('');
   const [taxCodeSaveError, setTaxCodeSaveError] = useState('');
   const [scheduleLeadId, setScheduleLeadId] = useState('');
   const [scheduleForm, setScheduleForm] = useState<LeadScheduleFormState>({
@@ -784,6 +797,27 @@ export const Leads: React.FC<LeadsProps> = ({
     ? leads.find(lead => lead.id === selectedLeadId) || null
     : null;
 
+  const leadRepositoryFolders = selectedLead
+    ? getCustomerRepositoryFolders(selectedLead).filter(folder => folder.active !== false)
+    : [];
+  const activeLeadRepositoryFolder = leadRepositoryFolders.find(folder => folder.id === activeLeadFolderId)
+    || leadRepositoryFolders[0];
+  const activeLeadRepositoryFiles = selectedLead && activeLeadRepositoryFolder
+    ? selectedLead.files.filter(file => resolveCustomerFileFolderId(file, leadRepositoryFolders) === activeLeadRepositoryFolder.id)
+    : [];
+
+  useEffect(() => {
+    if (!selectedLead) return;
+    const folders = getCustomerRepositoryFolders(selectedLead).filter(folder => folder.active !== false);
+    const defaultFolderId = folders.find(folder => folder.id === 'contracts')?.id || folders[0]?.id || '';
+    setActiveLeadFolderId(defaultFolderId);
+    setNewLeadFolderName('');
+    setRenamingLeadFolderId('');
+    setLeadRepositoryFile('');
+    setLeadRepositoryFileName('');
+    setLeadRepositoryFileLink('');
+  }, [selectedLeadId]);
+
   useEffect(() => {
     if (!initialLeadId || !leads.some(lead => lead.id === initialLeadId)) return;
     const timer = window.setTimeout(() => {
@@ -1054,18 +1088,166 @@ export const Leads: React.FC<LeadsProps> = ({
 
   const handleLeadFilesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
+    const oversizedFile = files.find(file => file.size > 900_000);
+    if (oversizedFile) {
+      window.alert(t('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.'));
+      event.target.value = '';
+      return;
+    }
     const nextFiles = await Promise.all(files.map(file => new Promise<LeadFileRecord>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve({
         id: `lead-file-${file.lastModified}-${file.name}`,
         name: file.name,
+        folderId: 'other',
+        folder: 'Tài liệu khác',
         url: '',
-        data: String(reader.result || '')
+        data: String(reader.result || ''),
+        createdAt: new Date().toISOString(),
+        createdById: currentUser.uid,
+        createdBy: currentUser.displayName
       });
       reader.onerror = reject;
       reader.readAsDataURL(file);
     })));
     setUploadingFiles(previous => [...previous, ...nextFiles]);
+  };
+
+  const handleLeadRepositoryFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 900_000) {
+      window.alert(t('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.'));
+      event.target.value = '';
+      return;
+    }
+    setLeadRepositoryFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = loadEvent => setLeadRepositoryFile(String(loadEvent.target?.result || ''));
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddLeadRepositoryFolder = async () => {
+    if (!selectedLead || currentUser.role !== 'admin') return;
+    const name = newLeadFolderName.trim();
+    if (!name) return;
+    const folders = getCustomerRepositoryFolders(selectedLead);
+    if (folders.some(folder => folder.name.trim().toLocaleLowerCase('vi-VN') === name.toLocaleLowerCase('vi-VN'))) {
+      window.alert(t('Thư mục này đã tồn tại.'));
+      return;
+    }
+    const now = new Date().toISOString();
+    const newFolder: CustomerRepositoryFolder = {
+      id: createCustomerFolderId(name, folders.map(folder => folder.id)),
+      name,
+      parentId: null,
+      order: Math.max(0, ...folders.map(folder => Number(folder.order) || 0)) + 10,
+      active: true,
+      createdAt: now,
+      createdById: currentUser.uid,
+      updatedAt: '',
+      updatedById: ''
+    };
+    await dbService.updateDocument('leads', selectedLead.id, {
+      fileFolders: [...folders, newFolder],
+      updatedAt: now,
+      updatedBy: currentUser.displayName
+    });
+    setNewLeadFolderName('');
+    setActiveLeadFolderId(newFolder.id);
+  };
+
+  const handleRenameLeadRepositoryFolder = async (folderId: string) => {
+    if (!selectedLead || currentUser.role !== 'admin') return;
+    const name = leadFolderNameDraft.trim();
+    if (!name) return;
+    const folders = getCustomerRepositoryFolders(selectedLead);
+    if (folders.some(folder => folder.id !== folderId && folder.name.trim().toLocaleLowerCase('vi-VN') === name.toLocaleLowerCase('vi-VN'))) {
+      window.alert(t('Tên thư mục này đã tồn tại.'));
+      return;
+    }
+    const now = new Date().toISOString();
+    const nextFolders = folders.map(folder => folder.id === folderId ? {
+      ...folder,
+      name,
+      updatedAt: now,
+      updatedById: currentUser.uid
+    } : folder);
+    await dbService.updateDocument('leads', selectedLead.id, {
+      fileFolders: nextFolders,
+      updatedAt: now,
+      updatedBy: currentUser.displayName
+    });
+    setRenamingLeadFolderId('');
+    setLeadFolderNameDraft('');
+  };
+
+  const handleUploadLeadRepositoryFile = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedLead || !activeLeadRepositoryFolder) return;
+    const link = leadRepositoryFileLink.trim();
+    if ((!leadRepositoryFile && !link) || !leadRepositoryFileName.trim()) {
+      window.alert(t('Vui lòng nhập tên và chọn tệp hoặc đường dẫn chia sẻ.'));
+      return;
+    }
+    if (link && !/^https?:\/\//i.test(link)) {
+      window.alert(t('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.'));
+      return;
+    }
+    const now = new Date().toISOString();
+    const file: LeadFileRecord = {
+      id: `lead-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: leadRepositoryFileName.trim(),
+      folderId: activeLeadRepositoryFolder.id,
+      folder: activeLeadRepositoryFolder.name,
+      url: link,
+      data: leadRepositoryFile,
+      createdAt: now,
+      createdById: currentUser.uid,
+      createdBy: currentUser.displayName
+    };
+    await dbService.updateDocument('leads', selectedLead.id, {
+      files: [...selectedLead.files, file],
+      fileFolders: getCustomerRepositoryFolders(selectedLead),
+      updatedAt: now,
+      updatedBy: currentUser.displayName
+    });
+    setLeadRepositoryFile('');
+    setLeadRepositoryFileName('');
+    setLeadRepositoryFileLink('');
+  };
+
+  const handleDeleteLeadRepositoryFile = async (fileId: string) => {
+    if (!selectedLead || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
+    if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) return;
+    await dbService.updateDocument('leads', selectedLead.id, {
+      files: selectedLead.files.filter(file => file.id !== fileId),
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser.displayName
+    });
+  };
+
+  const handleDeleteLeadRepositoryFolder = async (folderId: string) => {
+    if (!selectedLead || currentUser.role !== 'admin') return;
+    const folders = getCustomerRepositoryFolders(selectedLead);
+    const folder = folders.find(item => item.id === folderId);
+    if (!folder) return;
+    if (selectedLead.files.some(file => resolveCustomerFileFolderId(file, folders) === folderId)) {
+      window.alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
+      return;
+    }
+    if (folders.length === 1) {
+      window.alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
+      return;
+    }
+    if (!window.confirm(`${t('Xóa thư mục')} “${folder.name}”?`)) return;
+    const nextFolders = folders.filter(item => item.id !== folderId);
+    await dbService.updateDocument('leads', selectedLead.id, {
+      fileFolders: nextFolders,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser.displayName
+    });
+    setActiveLeadFolderId(nextFolders[0]?.id || '');
   };
 
   const handleSaveLead = async (event: React.FormEvent) => {
@@ -1770,18 +1952,6 @@ export const Leads: React.FC<LeadsProps> = ({
               <p>{selectedLead.note || t('Chưa có ghi chú.')}</p>
             </div>
             <EntityCustomFieldsReadOnly definitions={customFieldDefinitions} values={selectedLead.customFieldValues} />
-            {(selectedLead.files || []).length > 0 && (
-              <div className="lead-profile-files">
-                <strong><Paperclip size={13} /> {t('Tài liệu đính kèm')}</strong>
-                <div className="lead-files">
-                  {(selectedLead.files || []).map(file => (
-                    <a key={file.id} href={file.data || file.url} download={file.name} className="lead-file">
-                      <FileText size={14} /><span>{file.name}</span>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
           </section>
 
           <section className="lead-panel lead-classification-panel">
@@ -1793,6 +1963,144 @@ export const Leads: React.FC<LeadsProps> = ({
               canEditAll={currentUser.role === 'admin'}
               onChange={(field, value, checked) => handleLeadFilterValueChange(selectedLead, field, value, checked)}
             />
+          </section>
+
+          <section className="lead-panel lead-panel--wide customer-file-repository-card" aria-label={t('File liên quan')}>
+            <div className="card-header customer-file-repository-header">
+              <div>
+                <span className="card-title">{t('File liên quan')}</span>
+                <small>{t('File thiết kế, báo giá và tài liệu sẽ được giữ nguyên khi chuyển thành khách hàng.')}</small>
+              </div>
+            </div>
+
+            <div className="customer-drive-layout">
+              <aside className="customer-drive-sidebar" aria-label={t('Danh sách thư mục file liên quan')}>
+                {currentUser.role === 'admin' && (
+                  <div className="customer-drive-new-folder">
+                    <input
+                      type="text"
+                      value={newLeadFolderName}
+                      onChange={event => setNewLeadFolderName(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void handleAddLeadRepositoryFolder();
+                        }
+                      }}
+                      placeholder={t('Tên thư mục mới')}
+                      aria-label={t('Tên thư mục mới')}
+                    />
+                    <button type="button" className="btn btn-primary" onClick={() => void handleAddLeadRepositoryFolder()} disabled={!newLeadFolderName.trim()}>{t('Tạo thư mục')}</button>
+                  </div>
+                )}
+
+                <div className="customer-drive-folder-list">
+                  {leadRepositoryFolders.map(folder => {
+                    const fileCount = selectedLead.files.filter(file => resolveCustomerFileFolderId(file, leadRepositoryFolders) === folder.id).length;
+                    return (
+                      <div key={folder.id} className={`customer-drive-folder ${activeLeadRepositoryFolder?.id === folder.id ? 'is-active' : ''}`}>
+                        {renamingLeadFolderId === folder.id ? (
+                          <div className="customer-drive-folder-rename">
+                            <input
+                              autoFocus
+                              value={leadFolderNameDraft}
+                              onChange={event => setLeadFolderNameDraft(event.target.value)}
+                              onKeyDown={event => {
+                                if (event.key === 'Enter') void handleRenameLeadRepositoryFolder(folder.id);
+                                if (event.key === 'Escape') setRenamingLeadFolderId('');
+                              }}
+                              aria-label={t('Tên thư mục')}
+                            />
+                            <button type="button" onClick={() => void handleRenameLeadRepositoryFolder(folder.id)}>{t('Lưu')}</button>
+                            <button type="button" onClick={() => setRenamingLeadFolderId('')}>{t('Hủy')}</button>
+                          </div>
+                        ) : (
+                          <>
+                            <button type="button" className="customer-drive-folder-select" onClick={() => setActiveLeadFolderId(folder.id)}>
+                              <span title={folder.name}>{folder.name}</span>
+                              <small>{fileCount}</small>
+                            </button>
+                            {currentUser.role === 'admin' && (
+                              <div className="customer-drive-folder-actions">
+                                <button type="button" onClick={() => { setRenamingLeadFolderId(folder.id); setLeadFolderNameDraft(folder.name); }}>{t('Đổi tên')}</button>
+                                <button type="button" onClick={() => void handleDeleteLeadRepositoryFolder(folder.id)}>{t('Xóa')}</button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </aside>
+
+              <div className="customer-drive-content">
+                <div className="customer-drive-path">
+                  <span>{t('File liên quan')}</span>
+                  <strong>/ {activeLeadRepositoryFolder?.name || t('Chưa chọn thư mục')}</strong>
+                </div>
+
+                {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeLeadRepositoryFolder && (
+                  <details className="customer-drive-upload-panel">
+                    <summary>{t('Thêm tài liệu vào thư mục này')}</summary>
+                    <form onSubmit={event => void handleUploadLeadRepositoryFile(event)}>
+                      <label>
+                        <span>{t('Tên tài liệu')} *</span>
+                        <input value={leadRepositoryFileName} onChange={event => setLeadRepositoryFileName(event.target.value)} required placeholder={t('Ví dụ: File thiết kế nhãn chai')} />
+                      </label>
+                      <label>
+                        <span>{t('Chọn tệp dưới 900 KB')}</span>
+                        <input type="file" onChange={handleLeadRepositoryFileChange} />
+                      </label>
+                      <label>
+                        <span>{t('Hoặc đường dẫn Drive/OneDrive')}</span>
+                        <input type="url" value={leadRepositoryFileLink} onChange={event => setLeadRepositoryFileLink(event.target.value)} placeholder="https://..." />
+                      </label>
+                      <button type="submit" className="btn btn-primary">{t('Lưu tài liệu')}</button>
+                    </form>
+                  </details>
+                )}
+
+                <div className="table-container customer-drive-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>{t('Tên tài liệu')}</th>
+                        <th>{t('Loại')}</th>
+                        <th>{t('Ngày cập nhật')}</th>
+                        <th>{t('Người cập nhật')}</th>
+                        <th>{t('Thao tác')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeLeadRepositoryFiles.map(file => {
+                        const source = file.data || file.url;
+                        const isImage = source.startsWith('data:image/');
+                        return (
+                          <tr key={file.id}>
+                            <td><strong title={file.name}>{file.name}</strong></td>
+                            <td>{isImage ? t('Hình ảnh') : file.url ? t('Đường dẫn') : t('Tệp tài liệu')}</td>
+                            <td>{formatDateTime(file.createdAt)}</td>
+                            <td>{file.createdBy || users.find(user => user.uid === file.createdById)?.displayName || '—'}</td>
+                            <td>
+                              <div className="customer-drive-file-actions">
+                                {file.url
+                                  ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a>
+                                  : source && <a href={source} download={file.name}>{t('Tải xuống')}</a>}
+                                {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" onClick={() => void handleDeleteLeadRepositoryFile(file.id)}>{t('Xóa')}</button>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {activeLeadRepositoryFiles.length === 0 && (
+                        <tr><td colSpan={5} className="lead-file-repository-empty">{t('Chưa có tài liệu trong thư mục này.')}</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </section>
         </div>
       </div>
