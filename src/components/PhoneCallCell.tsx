@@ -20,6 +20,8 @@ interface PhoneCallCellProps {
 }
 
 const RESULT_OPTIONS = (Object.keys(CALL_RESULT_LABELS) as CallResult[]).filter(result => result !== 'pending');
+const isPermissionError = (error: unknown) => typeof error === 'object' && error !== null
+  && 'code' in error && error.code === 'permission-denied';
 const localDateTime = () => {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -32,7 +34,7 @@ const formatCallTime = (value: string) => {
 };
 
 export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = [], auditModule, targetType, targetId, currentUser, canRecord, onCallStarted }: PhoneCallCellProps) => {
-  const [dialog, setDialog] = useState<'history' | 'manual' | null>(null);
+  const [dialog, setDialog] = useState<'history' | 'manual' | 'call-error' | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const phoneRef = useRef<HTMLButtonElement>(null);
@@ -65,7 +67,13 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
       if (pendingKeys.size === 0) setLoading(false);
     }, {
       fieldName: 'subjectKey', fieldValue: key,
-      onError: () => { setHistoryError('Không tải được lịch sử cuộc gọi. Vui lòng thử lại hoặc báo quản trị viên.'); pendingKeys.delete(key); setLoading(false); }
+      onError: error => {
+        setHistoryError(isPermissionError(error)
+          ? 'Tài khoản chưa được cấp quyền xem lịch sử cuộc gọi. Vui lòng báo quản trị viên.'
+          : 'Không tải được lịch sử cuộc gọi. Vui lòng thử lại hoặc báo quản trị viên.');
+        pendingKeys.delete(key);
+        setLoading(false);
+      }
     }));
     const candidateKey = keys.find(key => key.startsWith('candidate:'));
     if (candidateKey) {
@@ -168,9 +176,11 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
         changes: [{ field: 'callId', label: 'Mã cuộc gọi', after: call.id }]
       });
       await onCallStarted?.();
-    } catch {
-      openManual();
-      setActionError('Không lưu được lần gọi. Vui lòng thử lại hoặc báo quản trị viên.');
+    } catch (error) {
+      setActionError(isPermissionError(error)
+        ? 'Tài khoản chưa được cấp quyền ghi nhận cuộc gọi. Ứng dụng gọi điện chưa được mở; vui lòng báo quản trị viên.'
+        : 'Không lưu được lần gọi nên ứng dụng gọi điện chưa được mở. Vui lòng thử lại.');
+      setDialog('call-error');
       return;
     } finally {
       setBusy(false);
@@ -208,8 +218,10 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
       await onCallStarted?.();
       openHistory();
       setSuccessMessage('Đã lưu cuộc gọi.');
-    } catch {
-      setActionError('Không lưu được cuộc gọi. Vui lòng thử lại hoặc báo quản trị viên.');
+    } catch (error) {
+      setActionError(isPermissionError(error)
+        ? 'Tài khoản chưa được cấp quyền ghi nhận cuộc gọi. Vui lòng báo quản trị viên.'
+        : 'Không lưu được cuộc gọi. Vui lòng thử lại hoặc báo quản trị viên.');
     } finally {
       setBusy(false);
     }
@@ -265,14 +277,14 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
       )}
       {dialog && createPortal(
         <div className="phone-call-dialog-backdrop" onMouseDown={() => { if (!busy) setDialog(null); }}>
-          <section ref={dialogRef} className="phone-call-dialog" role="dialog" aria-modal="true"
-            aria-label={`${dialog === 'history' ? 'Lịch sử' : 'Ghi nhận'} cuộc gọi ${companyName}`}
+          <section ref={dialogRef} className={`phone-call-dialog${dialog === 'manual' ? ' phone-call-dialog--manual' : ''}${dialog === 'call-error' ? ' phone-call-dialog--error' : ''}`} role="dialog" aria-modal="true"
+            aria-label={`${dialog === 'history' ? 'Lịch sử' : dialog === 'manual' ? 'Ghi nhận' : 'Lỗi ghi nhận'} cuộc gọi ${companyName}`}
             onMouseDown={event => event.stopPropagation()}>
             <header className="phone-call-dialog__header">
-              <div><strong>{dialog === 'history' ? 'Lịch sử cuộc gọi' : 'Ghi nhận cuộc gọi'}</strong><span>{companyName} · {phone}</span></div>
+              <div><strong>{dialog === 'history' ? 'Lịch sử cuộc gọi' : dialog === 'manual' ? 'Ghi nhận cuộc gọi' : 'Không thể bắt đầu cuộc gọi'}</strong><span>{companyName} · {phone}</span></div>
               <button type="button" disabled={busy} onClick={() => setDialog(null)}>Đóng</button>
             </header>
-            {dialog === 'manual' ? (
+            {dialog === 'call-error' ? <p className="phone-call-dialog__error" role="alert">{actionError}</p> : dialog === 'manual' ? (
               <form className="phone-call-dialog__form" onSubmit={event => { event.preventDefault(); void saveManualCall(); }}>
                 {actionError && <p className="phone-call-dialog__error" role="alert">{actionError}</p>}
                 <label>Thời gian gọi *<input type="datetime-local" value={manualAt} max={localDateTime()}
