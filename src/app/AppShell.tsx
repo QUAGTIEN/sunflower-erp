@@ -31,6 +31,7 @@ import '@/styles/ContentTabs.css';
 import { DesignRequest } from '@/features/design/model/designWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { useGlobalTableColumnResize } from '@/hooks/useGlobalTableColumnResize';
+import { useAdaptiveTableText } from '@/hooks/useAdaptiveTableText';
 import { normalizePORecords } from '@/domain/poCompatibility';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
@@ -113,6 +114,7 @@ function AppShell() {
 
   const isPageAllowed = (pageId: string): boolean => canAccessPage(user, pageId);
   useGlobalTableColumnResize(activePage, user?.uid || '');
+  useAdaptiveTableText(activePage, user?.uid || '');
 
   // Dynamic channels state
   const [channels, setChannels] = useState<any[]>([]);

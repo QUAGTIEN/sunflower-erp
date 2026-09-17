@@ -2160,7 +2160,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               </tbody>
             </ConfiguredSystemTable>
           ) : (
-            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact is-two-line-preview has-dynamic-columns" style={candidateTableStyle}>
+            <ConfiguredSystemTable table="lead_candidates" className="lead-candidate-table is-compact has-dynamic-columns" style={candidateTableStyle}>
               <thead>
                 <tr>
                   <ReorderableTableCells order={orderedColumnIds} getHeaderProps={getHeaderProps} labels={candidateColumnLabels}>

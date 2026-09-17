@@ -20,7 +20,9 @@ export const ExpandableTableText: React.FC<ExpandableTableTextProps> = ({
   useEffect(() => {
     const element = textRef.current;
     if (!element) return undefined;
-    const measure = () => setIsOverflowing(element.scrollWidth > element.clientWidth + 1);
+    const measure = () => setIsOverflowing(
+      element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1
+    );
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
     const observer = new ResizeObserver(measure);

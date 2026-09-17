@@ -292,6 +292,13 @@
   overflow: auto !important;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  box-sizing: border-box;
+  border-right: 1px solid var(--erp-border-color) !important;
+  border-bottom: 1px solid var(--erp-border-color) !important;
+}
+
+.app-main .erp-data-table-frame > .erp-viewport-table-scroll {
+  border-bottom: 0 !important;
 }
 
 .app-main .erp-viewport-table-scroll--fill {
@@ -744,6 +751,43 @@ input[type='checkbox']:disabled {
 .app-main table:has(th.reorderable-table-header) tbody td {
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
+}
+
+/* Text-only grid cells use two lines without changing the fixed row height. */
+.app-main .erp-viewport-table-scroll table tbody td.erp-adaptive-table-cell {
+  padding-top: 2px !important;
+  padding-bottom: 2px !important;
+}
+
+.app-main .erp-viewport-table-scroll table tbody td.erp-adaptive-table-direct {
+  overflow-wrap: anywhere;
+  white-space: normal !important;
+}
+
+.app-main .erp-viewport-table-scroll table tbody td.erp-adaptive-table-direct.is-over-two-lines {
+  white-space: nowrap !important;
+}
+
+.app-main .erp-viewport-table-scroll table tbody td .erp-adaptive-table-text {
+  display: -webkit-box !important;
+  max-height: 2.5em;
+  overflow: hidden !important;
+  overflow-wrap: anywhere;
+  line-height: 1.25 !important;
+  text-overflow: ellipsis;
+  white-space: normal !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.app-main .erp-viewport-table-scroll table tbody td .erp-adaptive-table-text.is-two-line,
+.app-main .erp-viewport-table-scroll table tbody td.erp-adaptive-table-direct.is-two-line {
+  font-size: 11.5px !important;
+}
+
+.app-main .erp-viewport-table-scroll table tbody td .lead-candidate-company-button:has(.erp-adaptive-table-text) {
+  min-height: 0 !important;
+  white-space: normal !important;
 }
 
 .reorderable-table-header.is-movable:active {
