@@ -3810,8 +3810,8 @@
 }
 
 .employee-monitor-detail > header span {
-  color: #64748b;
-  font-size: 10px;
+  color: #475569;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: .05em;
 }
@@ -3833,20 +3833,24 @@
 .employee-monitor-detail__facts span {
   display: flex;
   flex-direction: column;
-  color: #64748b;
-  font-size: 10px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .employee-monitor-detail__facts strong {
   margin-top: 3px;
   color: #172554;
   font-size: 12px;
+  font-weight: 600;
 }
 
 .employee-sales-report {
   padding: 12px;
   border-bottom: 1px solid #e2e8f0;
   background: #f8fafc;
+  color: #1e293b;
+  font-weight: 500;
 }
 
 .employee-sales-report > header {
@@ -3870,8 +3874,8 @@
 .employee-sales-report header span {
   display: block;
   margin-top: 3px;
-  color: #64748b;
-  font-size: 11px;
+  color: #475569;
+  font-size: 12px;
 }
 
 .employee-sales-report select,
@@ -3883,6 +3887,7 @@
   color: #172554;
   font: inherit;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .employee-sales-report select {
@@ -3900,7 +3905,7 @@
 .employee-sales-report__dates label {
   display: grid;
   gap: 4px;
-  color: #64748b;
+  color: #475569;
   font-size: 11px;
 }
 
@@ -3937,15 +3942,16 @@
 }
 
 .employee-sales-report__metrics small {
-  color: #64748b;
-  font-size: 10px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 500;
   line-height: 1.25;
 }
 
 .employee-sales-report__metrics strong {
   color: #172554;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -3954,7 +3960,7 @@
   gap: 4px;
   margin-top: 10px;
   color: #475569;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .employee-sales-report__summary strong { color: #172554; }
@@ -3969,9 +3975,9 @@
 
 .employee-sales-report table {
   width: 100%;
-  min-width: 430px;
+  min-width: 520px;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .employee-sales-report th,
@@ -3989,6 +3995,8 @@
   color: #334155;
   font-weight: 600;
 }
+
+.app-main .employee-sales-report td { font-weight: 500 !important; }
 
 .employee-sales-report th:first-child,
 .employee-sales-report td:first-child { text-align: left; }
@@ -4013,7 +4021,8 @@
   background: #fff;
   color: #172554;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .employee-monitor-detail__timeline {
@@ -4053,7 +4062,7 @@
   display: flex;
   flex-direction: column;
   color: #172554;
-  font-size: 11px;
+  font-size: 12px;
   font-style: normal;
 }
 
@@ -4063,8 +4072,8 @@
 
 .employee-monitor-detail__timeline li time span {
   margin-top: 2px;
-  color: #94a3b8;
-  font-size: 9px;
+  color: #64748b;
+  font-size: 11px;
 }
 
 .employee-monitor-detail__timeline li strong {
@@ -4075,8 +4084,8 @@
 .employee-monitor-detail__timeline li span,
 .employee-monitor-detail__timeline li.is-empty,
 .employee-monitor__empty {
-  color: #64748b;
-  font-size: 11px;
+  color: #475569;
+  font-size: 12px;
 }
 
 .employee-monitor-detail__timeline li.is-empty {
