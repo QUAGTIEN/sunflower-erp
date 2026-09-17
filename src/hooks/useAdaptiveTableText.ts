@@ -4,8 +4,11 @@ const TEXT_CLASS = 'erp-adaptive-table-text';
 const DIRECT_CLASS = 'erp-adaptive-table-direct';
 const WRAPPED_CLASS = 'is-two-line';
 const OVERFLOW_CLASS = 'is-over-two-lines';
+const EXPLICIT_TEXT_CLASS = 'erp-adaptive-table-value';
 
 const getTextTarget = (cell: HTMLTableCellElement): HTMLElement | null => {
+  const explicitText = cell.querySelector<HTMLElement>(`.${EXPLICIT_TEXT_CLASS}`);
+  if (explicitText) return explicitText;
   if (!cell.textContent?.trim() || cell.querySelector('input, select, textarea, svg, img, .badge')) return null;
   if (!cell.children.length) return cell;
   if (cell.children.length !== 1) return null;
@@ -22,14 +25,25 @@ const getTextTarget = (cell: HTMLTableCellElement): HTMLElement | null => {
   return target;
 };
 
+const isWiderThanOneLine = (element: HTMLElement, context: CanvasRenderingContext2D) => {
+  const style = window.getComputedStyle(element);
+  const availableWidth = element.clientWidth
+    - Number.parseFloat(style.paddingLeft || '0')
+    - Number.parseFloat(style.paddingRight || '0');
+  if (availableWidth <= 0) return false;
+  context.font = style.font;
+  const label = element.textContent?.replace(/\s+/g, ' ').trim() || '';
+  const letterSpacing = Number.parseFloat(style.letterSpacing);
+  const spacingWidth = Number.isFinite(letterSpacing) ? letterSpacing * Math.max(0, label.length - 1) : 0;
+  return context.measureText(label).width + spacingWidth > availableWidth + 1;
+};
+
 const countTextLines = (element: HTMLElement) => {
   const range = document.createRange();
   range.selectNodeContents(element);
-  const lineTops = new Set<number>();
-  for (const rect of Array.from(range.getClientRects())) {
-    if (rect.width > 0 && rect.height > 0) lineTops.add(Math.round(rect.top));
-  }
-  return lineTops.size;
+  return new Set(Array.from(range.getClientRects())
+    .filter(rect => rect.width > 0 && rect.height > 0)
+    .map(rect => Math.round(rect.top))).size;
 };
 
 /** Keep the normal font on one-line values, including after a column is widened. */
@@ -38,6 +52,8 @@ export const useAdaptiveTableText = (pageId: string, userId: string) => {
     if (!userId) return;
     const root = document.querySelector<HTMLElement>('.app-main');
     if (!root) return;
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) return;
     const measured = new WeakMap<HTMLElement, string>();
     let frame = 0;
 
@@ -50,17 +66,17 @@ export const useAdaptiveTableText = (pageId: string, userId: string) => {
           const direct = target === cell;
           cell.classList.add('erp-adaptive-table-cell');
           target.classList.add(direct ? DIRECT_CLASS : TEXT_CLASS);
-          const key = `${target.clientWidth}:${target.textContent}`;
+          const key = `${cell.clientWidth}:${target.textContent}`;
           if (measured.get(target) === key) return;
 
           target.classList.remove(WRAPPED_CLASS, OVERFLOW_CLASS);
-          const normalLines = countTextLines(target);
-          if (normalLines > 1) target.classList.add(WRAPPED_CLASS);
+          const needsTwoLines = isWiderThanOneLine(target, context);
+          if (needsTwoLines) target.classList.add(WRAPPED_CLASS);
           if (direct && countTextLines(target) > 2) {
             target.classList.remove(WRAPPED_CLASS);
             target.classList.add(OVERFLOW_CLASS);
           }
-          if (normalLines > 1 && !target.title && !cell.title) {
+          if (needsTwoLines && !target.title && !cell.title) {
             target.title = target.textContent?.trim() || '';
           }
           measured.set(target, key);

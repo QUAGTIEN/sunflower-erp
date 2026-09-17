@@ -3580,11 +3580,22 @@
 
 .lead-candidate-phone-link {
   display: inline-flex !important;
+  max-width: 100%;
+  min-width: 0;
   align-items: center;
   gap: 5px;
   color: #1d4ed8 !important;
   font-weight: 650 !important;
   text-decoration: none;
+}
+
+.lead-candidate-phone-link svg {
+  flex: 0 0 auto;
+}
+
+.lead-candidate-phone-link .erp-adaptive-table-value {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .lead-candidate-phone-link:hover {

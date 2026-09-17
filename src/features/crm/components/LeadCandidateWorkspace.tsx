@@ -985,7 +985,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         title={`Gọi ${candidate.phone}`}
         onClick={() => { void recordPhoneCall(candidate); }}
       >
-        <Phone size={13} /> {candidate.phone}
+        <Phone size={13} /><span className="erp-adaptive-table-value">{candidate.phone}</span>
       </a>
     );
   };
