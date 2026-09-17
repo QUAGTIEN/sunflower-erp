@@ -295,8 +295,20 @@ service cloud.firestore {
         && (hasPage('customer_data') || canUseCrm())
         && (isAdmin() || userProfile().role == 'sale')
         && request.resource.data.createdById == request.auth.uid
-        && request.resource.data.result == 'pending'
-        && request.resource.data.note == ''
+        && request.resource.data.source in ['dial', 'manual']
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 500
+        && ((request.resource.data.source == 'dial'
+            && request.resource.data.result == 'pending'
+            && request.resource.data.note == ''
+            && request.resource.data.confirmedAt == ''
+            && request.resource.data.confirmedById == '')
+          || (request.resource.data.source == 'manual'
+            && request.resource.data.result in [
+              'discussed', 'no_answer', 'busy', 'callback', 'wrong_number', 'not_interested'
+            ]
+            && request.resource.data.confirmedAt is string
+            && request.resource.data.confirmedById == request.auth.uid))
         && request.resource.data.subjectKey is string
         && request.resource.data.companyName is string
         && request.resource.data.phone is string

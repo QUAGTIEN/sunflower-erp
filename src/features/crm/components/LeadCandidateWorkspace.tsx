@@ -285,6 +285,7 @@ const RAW_DATA_EMPLOYEE_ACTIONS = new Set([
   'candidate_phone_called',
   'phone_call_started',
   'phone_call_confirmed',
+  'phone_call_manual_recorded',
   'candidate_opened',
   'candidate_added_to_work_queue',
   'candidate_assigned_to_sale',
@@ -302,6 +303,7 @@ const EMPLOYEE_ACTION_LABELS: Record<string, string> = {
   candidate_phone_called: 'Đã bấm gọi',
   phone_call_started: 'Đã bấm gọi',
   phone_call_confirmed: 'Đã xác nhận kết quả gọi',
+  phone_call_manual_recorded: 'Đã ghi nhận cuộc gọi',
   candidate_opened: 'Đã mở hồ sơ',
   candidate_added_to_work_queue: 'Đưa vào danh sách cần xử lý',
   candidate_assigned_to_sale: 'Bàn giao dữ liệu',
@@ -316,7 +318,7 @@ const EMPLOYEE_ACTION_LABELS: Record<string, string> = {
 };
 
 const getEmployeeActivityGroup = (action: string): Exclude<EmployeeActivityGroup, 'all'> => {
-  if (['candidate_phone_called', 'phone_call_started', 'phone_call_confirmed'].includes(action)) return 'call';
+  if (['candidate_phone_called', 'phone_call_started', 'phone_call_confirmed', 'phone_call_manual_recorded'].includes(action)) return 'call';
   if (action === 'follow_up_scheduled') return 'schedule';
   if (['candidate_added_to_work_queue', 'candidate_assigned_to_sale', 'candidate_task_dismissed'].includes(action)) return 'task';
   return 'data';
@@ -678,7 +680,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         currentCandidate: assignedCandidates[0] || null,
         assignedCount: assignedCandidates.length,
         touchedCount: new Set(todayActivities.map(event => event.targetId).filter(Boolean)).size,
-        callCount: todayActivities.filter(event => event.action === 'candidate_phone_called' || event.action === 'phone_call_started').length,
+        callCount: todayActivities.filter(event => ['candidate_phone_called', 'phone_call_started', 'phone_call_manual_recorded'].includes(event.action)).length,
         scheduleCount: todayActivities.filter(event => event.action === 'follow_up_scheduled').length
       };
     }).sort((left, right) => {

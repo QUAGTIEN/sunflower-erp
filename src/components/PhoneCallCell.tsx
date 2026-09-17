@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService, type AuditModule } from '@/services/auditService';
-import { CALL_RESULT_LABELS, type CallResult, type PhoneCallRecord } from '@/features/crm/model/callHistory';
+import { CALL_RESULT_LABELS, parseManualCallTime, type CallResult, type PhoneCallRecord } from '@/features/crm/model/callHistory';
 import type { LeadCandidateContactLog } from '@/features/crm/model/leadCandidateModels';
 import './PhoneCallCell.css';
 
@@ -20,6 +20,10 @@ interface PhoneCallCellProps {
 }
 
 const RESULT_OPTIONS = (Object.keys(CALL_RESULT_LABELS) as CallResult[]).filter(result => result !== 'pending');
+const localDateTime = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+};
 const formatCallTime = (value: string) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString('vi-VN', {
@@ -28,20 +32,31 @@ const formatCallTime = (value: string) => {
 };
 
 export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = [], auditModule, targetType, targetId, currentUser, canRecord, onCallStarted }: PhoneCallCellProps) => {
-  const [open, setOpen] = useState(false);
+  const [dialog, setDialog] = useState<'history' | 'manual' | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const phoneRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   const [callsByKey, setCallsByKey] = useState<Record<string, PhoneCallRecord[]>>({});
   const [legacyByKey, setLegacyByKey] = useState<Record<string, LeadCandidateContactLog[]>>({});
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const [historyError, setHistoryError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [historyRevision, setHistoryRevision] = useState(0);
   const [editingId, setEditingId] = useState('');
   const [result, setResult] = useState<CallResult>('pending');
   const [note, setNote] = useState('');
+  const [manualAt, setManualAt] = useState(localDateTime);
+  const [manualResult, setManualResult] = useState<CallResult | ''>('');
+  const [manualNote, setManualNote] = useState('');
   const keySignature = [...new Set([subjectKey, ...historyKeys])].sort().join('|');
   const visibleKeys = keySignature.split('|').filter(Boolean);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (dialog !== 'history') return undefined;
     const keys = keySignature.split('|').filter(Boolean);
     const pendingKeys = new Set(keys);
     const unsubscribers = keys.map(key => dbService.subscribeCollection('call_history', data => {
@@ -50,7 +65,7 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
       if (pendingKeys.size === 0) setLoading(false);
     }, {
       fieldName: 'subjectKey', fieldValue: key,
-      onError: () => { setError('Không tải được lịch sử cuộc gọi.'); pendingKeys.delete(key); setLoading(false); }
+      onError: () => { setHistoryError('Không tải được lịch sử cuộc gọi. Vui lòng thử lại hoặc báo quản trị viên.'); pendingKeys.delete(key); setLoading(false); }
     }));
     const candidateKey = keys.find(key => key.startsWith('candidate:'));
     if (candidateKey) {
@@ -61,23 +76,88 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
         .catch(() => setLegacyByKey(previous => ({ ...previous, [candidateKey]: [] })));
     }
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-  }, [open, keySignature]);
+  }, [dialog, keySignature, historyRevision]);
 
   useEffect(() => {
-    if (!open) return undefined;
-    const onEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
-    window.addEventListener('keydown', onEscape);
-    return () => window.removeEventListener('keydown', onEscape);
-  }, [open]);
+    if (!dialog) return undefined;
+    const onDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy) { setDialog(null); phoneRef.current?.focus(); }
+      if (event.key !== 'Tab') return;
+      const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)') || []);
+      if (controls.length === 0) return;
+      if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls[controls.length - 1].focus(); }
+      if (!event.shiftKey && document.activeElement === controls[controls.length - 1]) { event.preventDefault(); controls[0].focus(); }
+    };
+    window.addEventListener('keydown', onDialogKeyDown);
+    return () => window.removeEventListener('keydown', onDialogKeyDown);
+  }, [dialog, busy]);
+
+  useEffect(() => {
+    if (dialog) dialogRef.current?.querySelector<HTMLElement>(dialog === 'manual' ? 'input' : 'header button')?.focus();
+  }, [dialog]);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    menuRef.current?.querySelector('button')?.focus();
+    const closeOnOutside = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!phoneRef.current?.contains(target) && !menuRef.current?.contains(target)) setMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setMenuOpen(false); phoneRef.current?.focus(); }
+    };
+    const closeMenu = () => setMenuOpen(false);
+    document.addEventListener('pointerdown', closeOnOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('scroll', closeMenu, true);
+    window.addEventListener('resize', closeMenu);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('scroll', closeMenu, true);
+      window.removeEventListener('resize', closeMenu);
+    };
+  }, [menuOpen]);
+
+  const toggleMenu = () => {
+    if (menuOpen) { setMenuOpen(false); return; }
+    const rect = phoneRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const menuHeight = canRecord ? 122 : 46;
+    setMenuPosition({
+      top: rect.bottom + menuHeight + 8 < window.innerHeight ? rect.bottom + 4 : Math.max(8, rect.top - menuHeight - 4),
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - 196))
+    });
+    setMenuOpen(true);
+  };
+
+  const openHistory = () => {
+    setMenuOpen(false);
+    setHistoryError('');
+    setActionError('');
+    setSuccessMessage('');
+    setLoading(true);
+    setDialog('history');
+  };
+
+  const openManual = () => {
+    setMenuOpen(false);
+    setActionError('');
+    setSuccessMessage('');
+    setManualAt(localDateTime());
+    setManualResult('');
+    setManualNote('');
+    setDialog('manual');
+  };
 
   const startCall = async (dialNumber: string) => {
     if (!canRecord || busy) return;
     setBusy(true);
-    setError('');
+    setActionError('');
     const startedAt = new Date().toISOString();
     try {
       const call = await dbService.addDocument('call_history', {
-        subjectKey, companyName, phone, startedAt,
+        subjectKey, companyName, phone, startedAt, source: 'dial',
         createdById: currentUser.uid, createdByName: currentUser.displayName,
         result: 'pending', note: '', confirmedAt: '', confirmedById: '', confirmedByName: ''
       }) as PhoneCallRecord;
@@ -88,11 +168,48 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
         changes: [{ field: 'callId', label: 'Mã cuộc gọi', after: call.id }]
       });
       await onCallStarted?.();
-      window.location.assign(`tel:${dialNumber}`);
     } catch {
-      setError('Không lưu được lần gọi. Vui lòng kiểm tra lại lịch sử.');
-      setLoading(true);
-      setOpen(true);
+      openManual();
+      setActionError('Không lưu được lần gọi. Vui lòng thử lại hoặc báo quản trị viên.');
+      return;
+    } finally {
+      setBusy(false);
+    }
+    window.location.assign(`tel:${dialNumber}`);
+  };
+
+  const saveManualCall = async () => {
+    if (!canRecord || busy) return;
+    const startedAt = parseManualCallTime(manualAt);
+    if (!startedAt) {
+      setActionError('Vui lòng chọn thời gian cuộc gọi hợp lệ, không ở tương lai.');
+      return;
+    }
+    if (!manualResult || manualResult === 'pending') {
+      setActionError('Vui lòng chọn kết quả cuộc gọi.');
+      return;
+    }
+    setBusy(true);
+    setActionError('');
+    try {
+      const call = await dbService.addDocument('call_history', {
+        subjectKey, companyName, phone, source: 'manual', startedAt,
+        createdById: currentUser.uid, createdByName: currentUser.displayName,
+        result: manualResult, note: manualNote.trim(),
+        confirmedAt: new Date().toISOString(), confirmedById: currentUser.uid,
+        confirmedByName: currentUser.displayName
+      }) as PhoneCallRecord;
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: auditModule, action: 'phone_call_manual_recorded',
+        summary: `${currentUser.displayName} ghi nhận cuộc gọi ${companyName}: ${CALL_RESULT_LABELS[manualResult]}`,
+        targetType, targetId, targetLabel: companyName,
+        changes: [{ field: 'callId', label: 'Mã cuộc gọi', after: call.id }]
+      });
+      await onCallStarted?.();
+      openHistory();
+      setSuccessMessage('Đã lưu cuộc gọi.');
+    } catch {
+      setActionError('Không lưu được cuộc gọi. Vui lòng thử lại hoặc báo quản trị viên.');
     } finally {
       setBusy(false);
     }
@@ -101,7 +218,7 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
   const saveConfirmation = async (call: PhoneCallRecord) => {
     if (result === 'pending' || busy) return;
     setBusy(true);
-    setError('');
+    setActionError('');
     try {
       const confirmedAt = new Date().toISOString();
       await dbService.updateDocument('call_history', call.id, {
@@ -118,7 +235,7 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
       setResult('pending');
       setNote('');
     } catch {
-      setError('Không lưu được kết quả cuộc gọi. Vui lòng thử lại.');
+      setActionError('Không lưu được kết quả cuộc gọi. Vui lòng thử lại.');
     } finally {
       setBusy(false);
     }
@@ -133,41 +250,69 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
 
   return (
     <span className="phone-call-cell" onClick={event => event.stopPropagation()}>
-      {canRecord && dialNumber ? (
-        <a className="phone-call-cell__number" href={`tel:${dialNumber}`} title={`Gọi ${phone}`}
-          onClick={event => { event.preventDefault(); void startCall(dialNumber); }}><span className="erp-adaptive-table-value">{phone}</span></a>
-      ) : <span className="phone-call-cell__number phone-call-cell__number--readonly"><span className="erp-adaptive-table-value">{phone}</span></span>}
-      <button type="button" className="phone-call-cell__history" onClick={() => { setError(''); setLoading(true); setOpen(true); }}>
-        Lịch sử
+      <button ref={phoneRef} type="button" className="phone-call-cell__number" title={phone}
+        aria-label={`Thao tác với số ${phone}`} aria-haspopup="menu" aria-expanded={menuOpen}
+        disabled={busy} onClick={toggleMenu}>
+        <span className="erp-adaptive-table-value">{phone}</span>
       </button>
-      {open && createPortal(
-        <div className="phone-call-dialog-backdrop" onMouseDown={() => setOpen(false)}>
-          <section className="phone-call-dialog" role="dialog" aria-modal="true" aria-label={`Lịch sử cuộc gọi ${companyName}`}
+      {menuOpen && createPortal(
+        <div ref={menuRef} className="phone-call-cell__menu" role="menu" style={menuPosition}
+          onClick={event => event.stopPropagation()}>
+          {canRecord && dialNumber && <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void startCall(dialNumber); }}>Gọi</button>}
+          {canRecord && <button type="button" role="menuitem" onClick={openManual}>Ghi nhận</button>}
+          <button type="button" role="menuitem" onClick={openHistory}>Lịch sử</button>
+        </div>, document.body
+      )}
+      {dialog && createPortal(
+        <div className="phone-call-dialog-backdrop" onMouseDown={() => { if (!busy) setDialog(null); }}>
+          <section ref={dialogRef} className="phone-call-dialog" role="dialog" aria-modal="true"
+            aria-label={`${dialog === 'history' ? 'Lịch sử' : 'Ghi nhận'} cuộc gọi ${companyName}`}
             onMouseDown={event => event.stopPropagation()}>
             <header className="phone-call-dialog__header">
-              <div><strong>Lịch sử cuộc gọi</strong><span>{companyName} · {phone}</span></div>
-              <button type="button" onClick={() => setOpen(false)}>Đóng</button>
+              <div><strong>{dialog === 'history' ? 'Lịch sử cuộc gọi' : 'Ghi nhận cuộc gọi'}</strong><span>{companyName} · {phone}</span></div>
+              <button type="button" disabled={busy} onClick={() => setDialog(null)}>Đóng</button>
             </header>
-            <div className="phone-call-dialog__body">
-              {error && <p className="phone-call-dialog__error" role="alert">{error}</p>}
-              {loading && <p className="phone-call-dialog__empty">Đang tải lịch sử...</p>}
-              {!loading && timeline.length === 0 && (
-                <p className="phone-call-dialog__empty">Chưa có lần gọi nào được ghi nhận.</p>
-              )}
-              {!loading && timeline.length > 0 && (
+            {dialog === 'manual' ? (
+              <form className="phone-call-dialog__form" onSubmit={event => { event.preventDefault(); void saveManualCall(); }}>
+                {actionError && <p className="phone-call-dialog__error" role="alert">{actionError}</p>}
+                <label>Thời gian gọi *<input type="datetime-local" value={manualAt} max={localDateTime()}
+                  onChange={event => setManualAt(event.target.value)} required /></label>
+                <label>Kết quả cuộc gọi *<select value={manualResult} onChange={event => setManualResult(event.target.value as CallResult | '')} required>
+                  <option value="">Chọn kết quả</option>
+                  {RESULT_OPTIONS.map(option => <option key={option} value={option}>{CALL_RESULT_LABELS[option]}</option>)}
+                </select></label>
+                <label>Ghi chú<textarea value={manualNote} maxLength={500} rows={3}
+                  onChange={event => setManualNote(event.target.value)} placeholder="Nội dung trao đổi (nếu có)" /></label>
+                <div className="phone-call-dialog__form-actions">
+                  <button type="button" disabled={busy} onClick={() => setDialog(null)}>Hủy</button>
+                  <button type="submit" disabled={busy || !manualResult}>{busy ? 'Đang lưu...' : 'Lưu cuộc gọi'}</button>
+                </div>
+              </form>
+            ) : <div className="phone-call-dialog__body">
+              {successMessage && <p className="phone-call-dialog__success" role="status">{successMessage}</p>}
+              {actionError && <p className="phone-call-dialog__error" role="alert">{actionError}</p>}
+              {historyError && <div className="phone-call-dialog__load-error" role="alert">
+                <span>{historyError}</span>
+                <button type="button" onClick={() => { setHistoryError(''); setLoading(true); setHistoryRevision(value => value + 1); }}>Thử lại</button>
+              </div>}
+              {!historyError && loading && <p className="phone-call-dialog__empty">Đang tải lịch sử...</p>}
+              {!historyError && !loading && timeline.length === 0 && <p className="phone-call-dialog__empty">Chưa có lần gọi nào được ghi nhận.</p>}
+              {!historyError && !loading && timeline.length > 0 && (
                 <div className="phone-call-dialog__scroll">
                   <table>
-                    <thead><tr><th>Thời gian</th><th>Sale</th><th>Số gọi</th><th>Kết quả</th><th>Ghi chú</th><th>Thao tác</th></tr></thead>
+                    <thead><tr><th>Thời gian</th><th>Sale</th><th>Số gọi</th><th>Cách ghi nhận</th><th>Kết quả</th><th>Ghi chú</th><th>Thao tác</th></tr></thead>
                     <tbody>
                       {timeline.map(item => {
                         if (item.legacy) return <tr key={item.id}>
                           <td>{formatCallTime(item.legacy.occurredAt)}</td><td>{item.legacy.createdByName || '—'}</td><td>{phone}</td>
+                          <td>Ghi nhận cũ</td>
                           <td>Ghi nhận cũ · chưa xác minh kết quả</td><td>{item.legacy.note || '—'}</td><td>—</td>
                         </tr>;
                         const call = item.call!;
                         const canConfirm = canRecord && (call.createdById === currentUser.uid || currentUser.role === 'admin');
                         return <tr key={call.id}>
                           <td>{formatCallTime(call.startedAt)}</td><td>{call.createdByName}</td><td>{call.phone}</td>
+                          <td>{call.source === 'manual' ? 'Thủ công' : 'Bấm gọi'}</td>
                           <td>{editingId === call.id ? <select value={result} onChange={event => setResult(event.target.value as CallResult)}>
                             <option value="pending">Chọn kết quả</option>
                             {RESULT_OPTIONS.map(option => <option key={option} value={option}>{CALL_RESULT_LABELS[option]}</option>)}
@@ -181,7 +326,7 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
                   </table>
                 </div>
               )}
-            </div>
+            </div>}
           </section>
         </div>, document.body
       )}

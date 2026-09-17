@@ -27,3 +27,11 @@ test('standalone customers and leads do not share another business history', () 
   assert.deepEqual(callModule.customerCallHistoryKeys({ id: 'customer-2', sourceLeadId: lead.id }, [lead]), ['customer:customer-2', 'lead:lead-2']);
   assert.deepEqual(callModule.customerCallHistoryKeys({ id: 'customer-3', sourceLeadId: '' }, [lead]), ['customer:customer-3']);
 });
+
+test('manual call time must be valid and cannot be in the future', () => {
+  const now = new Date('2026-09-17T10:00:00').getTime();
+  assert.equal(callModule.parseManualCallTime('', now), null);
+  assert.equal(callModule.parseManualCallTime('not-a-time', now), null);
+  assert.equal(callModule.parseManualCallTime('2026-09-17T10:02', now), null);
+  assert.equal(callModule.parseManualCallTime('2026-09-17T09:30', now), new Date('2026-09-17T09:30').toISOString());
+});

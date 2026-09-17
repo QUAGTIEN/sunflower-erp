@@ -2,12 +2,14 @@ import type { CustomerRecord, LeadRecord } from './crmModels';
 import type { LeadCandidateRecord } from './leadCandidateModels';
 
 export type CallResult = 'pending' | 'discussed' | 'no_answer' | 'busy' | 'callback' | 'wrong_number' | 'not_interested';
+export type CallSource = 'dial' | 'manual';
 
 export interface PhoneCallRecord {
   id: string;
   subjectKey: string;
   companyName: string;
   phone: string;
+  source?: CallSource;
   startedAt: string;
   createdById: string;
   createdByName: string;
@@ -26,6 +28,13 @@ export const CALL_RESULT_LABELS: Record<CallResult, string> = {
   callback: 'Hẹn gọi lại',
   wrong_number: 'Sai số',
   not_interested: 'Không có nhu cầu'
+};
+
+export const parseManualCallTime = (localValue: string, now = Date.now()) => {
+  if (!localValue) return null;
+  const time = new Date(localValue);
+  if (Number.isNaN(time.getTime()) || time.getTime() > now + 60_000) return null;
+  return time.toISOString();
 };
 
 export const candidateCallSubjectKey = (candidate: LeadCandidateRecord) => `candidate:${candidate.id}`;
