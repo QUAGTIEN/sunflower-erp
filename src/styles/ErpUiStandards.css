@@ -1065,6 +1065,71 @@ input[type='checkbox']:disabled {
   }
 }
 
+.customer-insight-editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.customer-insight-group {
+  overflow: hidden;
+  border: 1px solid #d8e1ee;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.customer-insight-group > summary {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  color: #172554;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.customer-insight-group > summary strong {
+  color: #36558f;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.customer-insight-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 16px;
+  padding: 4px 12px 12px;
+  border-top: 1px solid #e5ebf3;
+}
+
+.customer-insight-options label {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 4px;
+  color: #273b61;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.35;
+}
+
+.customer-insight-options input {
+  width: 16px !important;
+  min-width: 16px;
+  height: 16px !important;
+  margin-top: 1px;
+}
+
+@media (max-width: 768px) {
+  .customer-insight-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .lead-table-card,
 .lead-candidate-workspace > .lead-table-card,
 .crm-customer-grid,

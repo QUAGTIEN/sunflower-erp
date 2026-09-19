@@ -122,6 +122,13 @@ import {
   type AdvancedFilterState
 } from '@/components/advancedDataFilterModel';
 import { LeadOverviewDashboard } from '@/features/crm/components/LeadOverviewDashboard';
+import { CustomerInsightEditor } from '@/features/crm/components/CustomerInsightEditor';
+import {
+  CUSTOMER_INSIGHT_ITEM_BY_ID,
+  getCustomerInsightGroupsForModule,
+  matchesCustomerInsightValues,
+  replaceCustomerInsightGroupValues
+} from '@/features/crm/model/customerInsightCatalog';
 import './Leads.css';
 import { PhoneCallCell } from '@/components/PhoneCallCell';
 import { leadCallHistoryKeys, leadCallSubjectKey } from '@/features/crm/model/callHistory';
@@ -188,6 +195,7 @@ interface LeadFormState {
   discoveredById: string;
   nextFollowUpAt: string;
   note: string;
+  customerInsightValues: string[];
 }
 
 interface LeadScheduleFormState {
@@ -304,7 +312,8 @@ const createEmptyForm = (currentUser: UserProfile, saleUsers: UserProfile[]): Le
   assignedSaleId: currentUser.role === 'sale' ? currentUser.uid : (saleUsers[0]?.uid || ''),
   discoveredById: currentUser.role === 'sale' ? currentUser.uid : '',
   nextFollowUpAt: '',
-  note: ''
+  note: '',
+  customerInsightValues: []
 });
 
 export const Leads: React.FC<LeadsProps> = ({
@@ -334,6 +343,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [storedFilterDefinitions, setStoredFilterDefinitions] = useState<LeadFilterDefinition[]>([]);
   const [profileDefinitions, setProfileDefinitions] = useState<LeadProfileFieldDefinition[]>([]);
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, string[]>>({});
+  const [insightFilters, setInsightFilters] = useState<string[]>([]);
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [showLeadFilters, setShowLeadFilters] = useState(false);
@@ -675,7 +685,8 @@ export const Leads: React.FC<LeadsProps> = ({
   const leadQuickFilterCount = Object.entries(dynamicFilters)
     .filter(([fieldId]) => visibleFilterIds.has(fieldId))
     .reduce((total, [, values]) => total + values.length, 0)
-    + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
+    + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0)
+    + insightFilters.length;
   const leadAdvancedFilterCount = countAdvancedFilters(advancedFilters);
   const leadActiveFilterCount = leadQuickFilterCount + leadAdvancedFilterCount + (overviewSelection || overviewDrilldown ? 1 : 0);
   const leadFilterChips = Object.entries(dynamicFilters).flatMap(([fieldId, values]) => {
@@ -697,7 +708,11 @@ export const Leads: React.FC<LeadsProps> = ({
       label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
       onRemove: () => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: (previous[definition.id] || []).filter(item => item !== value) }))
     }))
-  ))).concat(getAdvancedFilterSummaries(advancedFilterFields, advancedFilters).map(summary => ({
+  ))).concat(insightFilters.map(value => ({
+    id: `insight-${value}`,
+    label: CUSTOMER_INSIGHT_ITEM_BY_ID.get(value)?.label || value,
+    onRemove: () => setInsightFilters(previous => previous.filter(item => item !== value))
+  }))).concat(getAdvancedFilterSummaries(advancedFilterFields, advancedFilters).map(summary => ({
     id: `advanced-${summary.id}`,
     label: summary.label,
     onRemove: () => setAdvancedFilters(previous => {
@@ -774,6 +789,7 @@ export const Leads: React.FC<LeadsProps> = ({
         && (!overviewSelection || matchesLeadOverviewSelection(lead, overviewSelection, filterDefinitions))
         && (!overviewDrilldownIds || overviewDrilldownIds.has(lead.id))
         && matchesClassifications
+        && matchesCustomerInsightValues(lead.customerInsightValues || [], insightFilters)
         && matchesCustomFields
         && matchesAdvancedFilters(lead, advancedFilterFields, advancedFilters);
     }).sort((left, right) => {
@@ -787,6 +803,7 @@ export const Leads: React.FC<LeadsProps> = ({
     advancedFilterFields,
     advancedFilters,
     dynamicFilters,
+    insightFilters,
     filterDefinitions,
     overviewSelection,
     overviewDrilldownIds,
@@ -808,7 +825,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
   useEffect(() => {
     setLeadCurrentPage(1);
-  }, [searchTerm, dynamicFilters, customFieldFilters, advancedFilters]);
+  }, [searchTerm, dynamicFilters, insightFilters, customFieldFilters, advancedFilters]);
 
   const selectedLead = selectedLeadId
     ? leads.find(lead => lead.id === selectedLeadId) || null
@@ -930,7 +947,8 @@ export const Leads: React.FC<LeadsProps> = ({
       assignedSaleId: lead.assignedSaleId,
       discoveredById: lead.discoveredById || lead.createdById,
       nextFollowUpAt: toDateTimeLocal(lead.nextFollowUpAt),
-      note: lead.note
+      note: lead.note,
+      customerInsightValues: lead.customerInsightValues || []
     });
     setShowLeadForm(true);
   };
@@ -1368,6 +1386,7 @@ export const Leads: React.FC<LeadsProps> = ({
       sourceUrl: form.sourceUrl.trim(),
       potentialValue: Number(form.potentialValue),
       expectedProducts: form.expectedProducts.trim(),
+      customerInsightValues: form.customerInsightValues,
       stage: form.stage,
       filterValues: profileFilterValues,
       profileValues: formProfileValues,
@@ -1814,6 +1833,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const clearFilters = () => {
     setSearchTerm('');
     setDynamicFilters({});
+    setInsightFilters([]);
     setCustomFieldFilters({});
     setAdvancedFilters({});
     setOverviewSelection(null);
@@ -2189,6 +2209,11 @@ export const Leads: React.FC<LeadsProps> = ({
                 canEditAll={currentUser.role === 'admin'}
                 onChange={handleFormFilterValueChange}
               />
+              <CustomerInsightEditor
+                module="leads"
+                values={form.customerInsightValues}
+                onChange={values => updateForm('customerInsightValues', values)}
+              />
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
               <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Phân loại khách hàng')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} />
             </section>
@@ -2378,6 +2403,16 @@ export const Leads: React.FC<LeadsProps> = ({
                 </DataFilterSection>
               );
             })}
+            {getCustomerInsightGroupsForModule('leads').map(group => (
+              <DataFilterSection key={`insight-${group.id}`} title={group.label} description="Lọc theo phân loại nghiệp vụ thuộc phân hệ Tiềm năng." selectedCount={group.items.filter(item => insightFilters.includes(item.id)).length}>
+                <DataFilterCheckboxGroup
+                  options={group.items.map(item => ({ value: item.id, label: item.label }))}
+                  selectedValues={insightFilters.filter(value => group.items.some(item => item.id === value))}
+                  onChange={values => setInsightFilters(current => replaceCustomerInsightGroupValues(current, group.items.map(item => item.id), values))}
+                  searchable={group.items.length > 8}
+                />
+              </DataFilterSection>
+            ))}
             {customFieldDefinitions.filter(definition => definition.active).map(definition => (
               <DataFilterSection key={definition.id} title={definition.name} description={definition.description || 'Lọc theo trường tùy chỉnh.'} selectedCount={(customFieldFilters[definition.id] || []).length}>
                 <DataFilterCheckboxGroup

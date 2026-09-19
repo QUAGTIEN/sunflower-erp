@@ -1,8 +1,9 @@
 import type { PODiscountType } from '@/domain/poFinancials';
 import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
+import { normalizeCustomerInsightValues } from './customerInsightCatalog';
 
-export const CRM_SCHEMA_VERSION = 4;
+export const CRM_SCHEMA_VERSION = 5;
 
 export type CustomerRank = '' | 'A' | 'B' | 'C' | 'D';
 export type CustomerContactRole = 'primary' | 'procurement' | 'warehouse' | 'accounting' | 'other';
@@ -186,6 +187,7 @@ export interface CustomerRecord extends UnknownRecord {
   sourceUrl: string;
   expectedProducts: string;
   filterValues: Record<string, string[]>;
+  customerInsightValues: string[];
   sourceLeadId: string;
   convertedAt: string;
   discountType: PODiscountType;
@@ -306,6 +308,7 @@ export interface LeadRecord extends UnknownRecord {
   discoveredByName: string;
   sourceCandidateId: string;
   filterValues: Record<string, string[]>;
+  customerInsightValues: string[];
   profileValues: Record<string, string[]>;
   customFieldValues: EntityCustomFieldValues;
   note: string;
@@ -607,6 +610,7 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
         asArray(fieldValue).map(item => asText(item)).filter(Boolean)
       ])
     ),
+    customerInsightValues: normalizeCustomerInsightValues(source.customerInsightValues),
     sourceLeadId: asText(source.sourceLeadId),
     convertedAt: asText(source.convertedAt),
     discountType: normalizeDiscountType(source.discountType),
@@ -712,6 +716,7 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
         asArray(fieldValue).map(item => asText(item)).filter(Boolean)
       ])
     ),
+    customerInsightValues: normalizeCustomerInsightValues(source.customerInsightValues),
     profileValues: Object.fromEntries(
       Object.entries(asRecord(source.profileValues)).map(([fieldId, fieldValue]) => [
         fieldId,

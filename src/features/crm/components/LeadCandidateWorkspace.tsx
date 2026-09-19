@@ -63,6 +63,8 @@ import { PhoneCallCell } from '@/components/PhoneCallCell';
 import { candidateCallSubjectKey } from '@/features/crm/model/callHistory';
 import { PageBackButton } from '@/components/PageBackButton';
 import { BusinessLocationFields } from './BusinessLocationFields';
+import { CustomerInsightEditor } from './CustomerInsightEditor';
+import { CUSTOMER_INSIGHT_ITEM_BY_ID, getCustomerInsightGroupsForModule, matchesCustomerInsightValues, replaceCustomerInsightGroupValues } from '@/features/crm/model/customerInsightCatalog';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
@@ -128,6 +130,7 @@ interface CandidateFormState {
   assignedSaleId: string;
   nextContactAt: string;
   note: string;
+  customerInsightValues: string[];
 }
 
 interface ScheduleFormState {
@@ -463,7 +466,8 @@ const createEmptyCandidateForm = (
   sourceUrl: '',
   assignedSaleId: currentUser.role === 'sale' ? currentUser.uid : (ownerUsers[0]?.uid || currentUser.uid),
   nextContactAt: '',
-  note: ''
+  note: '',
+  customerInsightValues: []
 });
 
 const matchesSearch = (candidate: LeadCandidateRecord, searchTerm: string, customDefinitions: EntityFieldDefinition[] = []) => {
@@ -552,6 +556,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [industrialParkFilters, setIndustrialParkFilters] = useState<string[]>([]);
   const [contactResultFilters, setContactResultFilters] = useState<LeadCandidateContactResult[]>([]);
   const [potentialFilters, setPotentialFilters] = useState<LeadCandidatePotentialLevel[]>([]);
+  const [insightFilters, setInsightFilters] = useState<string[]>([]);
   const [pinnedOnly, setPinnedOnly] = useState(false);
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
@@ -925,7 +930,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       const tokens = getEntityCustomFieldFilterTokens(definition, candidate.customFieldValues?.[definition.id]);
       return selected.some(value => tokens.includes(value));
     });
-    return matchesSale && matchesSource && matchesProvince && matchesIndustrialPark && matchesContactResult && matchesPotential && matchesCustomFields && matchesAdvancedFilters(candidate, advancedFilterFields, advancedFilters) && (!pinnedFilterEnabled || !pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm, customFieldDefinitions);
+    return matchesSale && matchesSource && matchesProvince && matchesIndustrialPark && matchesContactResult && matchesPotential && matchesCustomerInsightValues(candidate.customerInsightValues || [], insightFilters) && matchesCustomFields && matchesAdvancedFilters(candidate, advancedFilterFields, advancedFilters) && (!pinnedFilterEnabled || !pinnedOnly || candidate.pinned) && matchesSearch(candidate, searchTerm, customFieldDefinitions);
   }).sort((left, right) => {
     if (workspaceView === 'tasks') {
       if (candidateSort === 'company_asc') return left.companyName.localeCompare(right.companyName, 'vi-VN');
@@ -957,7 +962,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
     return new Date(right.updatedAt || right.createdAt).getTime() - new Date(left.updatedAt || left.createdAt).getTime();
     });
-  }, [accessibleCandidates, advancedFilterFields, advancedFilters, candidateSort, contactResultFilterEnabled, contactResultFilters, customFieldDefinitions, customFieldFilters, industrialParkFilterEnabled, industrialParkFilters, pinnedFilterEnabled, pinnedOnly, potentialFilterEnabled, potentialFilters, provinceFilterEnabled, provinceFilters, saleFilterEnabled, saleFilters, searchTerm, sourceFilterEnabled, sourceFilters, taskCandidates, workspaceView]);
+  }, [accessibleCandidates, advancedFilterFields, advancedFilters, candidateSort, contactResultFilterEnabled, contactResultFilters, customFieldDefinitions, customFieldFilters, industrialParkFilterEnabled, industrialParkFilters, insightFilters, pinnedFilterEnabled, pinnedOnly, potentialFilterEnabled, potentialFilters, provinceFilterEnabled, provinceFilters, saleFilterEnabled, saleFilters, searchTerm, sourceFilterEnabled, sourceFilters, taskCandidates, workspaceView]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / pageSize));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -968,6 +973,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     + (contactResultFilterEnabled ? contactResultFilters.length : 0)
     + (potentialFilterEnabled ? potentialFilters.length : 0)
     + (saleFilterEnabled ? saleFilters.length : 0)
+    + insightFilters.length
     + (pinnedFilterEnabled && pinnedOnly ? 1 : 0)
     + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
   const activeFilterCount = quickFilterCount + advancedFilterCount;
@@ -1006,6 +1012,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       onRemove: () => setSaleFilters(previous => previous.filter(item => item !== value))
     })) : []),
     ...(pinnedFilterEnabled && pinnedOnly ? [{ id: 'pinned', label: configuredFilterName('pinned', 'Đã ghim'), onRemove: () => setPinnedOnly(false) }] : []),
+    ...insightFilters.map(value => ({ id: `insight-${value}`, label: CUSTOMER_INSIGHT_ITEM_BY_ID.get(value)?.label || value, onRemove: () => setInsightFilters(previous => previous.filter(item => item !== value)) })),
     ...customFieldDefinitions.filter(definition => definition.active).flatMap(definition => (customFieldFilters[definition.id] || []).map(value => ({
       id: `custom-${definition.id}-${value}`,
       label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
@@ -1344,7 +1351,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       sourceUrl: candidate.sourceUrl,
       assignedSaleId: candidate.assignedSaleId,
       nextContactAt: toDateTimeLocal(candidate.nextContactAt),
-      note: candidate.note
+      note: candidate.note,
+      customerInsightValues: candidate.customerInsightValues || []
     });
     setCustomFieldValues(candidate.customFieldValues || {});
     setSaveError('');
@@ -1416,6 +1424,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         source: form.source,
         sourceUrl: form.sourceUrl.trim(),
         note: form.note.trim(),
+        customerInsightValues: form.customerInsightValues,
         customFieldValues,
         assignedSaleId: form.assignedSaleId,
         assignedSaleName: assignedSale?.displayName || '',
@@ -1709,6 +1718,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setSourceFilters([]);
     setContactResultFilters([]);
     setPotentialFilters([]);
+    setInsightFilters([]);
     setSaleFilters([]);
     setPinnedOnly(false);
     setCustomFieldFilters({});
@@ -1836,6 +1846,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">Sản phẩm / nhu cầu quan tâm</label><textarea rows={4} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder="Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến..." /></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="note">Ghi chú</label><textarea rows={5} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Thông tin cần lưu ý trước khi liên hệ..." /></div>
               </div>
+              <CustomerInsightEditor module="customer_data" values={form.customerInsightValues} onChange={values => updateForm('customerInsightValues', values)} />
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
               <InlineEntityFieldManager table="lead_candidates" section="needs" sectionLabel="Nhu cầu sơ bộ" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }, { key: 'note', label: 'Ghi chú' }]} />
             </section>
@@ -1992,6 +2003,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             onChange={values => { setPotentialFilters(values as LeadCandidatePotentialLevel[]); setCurrentPage(1); }}
           />
         </DataFilterSection>}
+        {getCustomerInsightGroupsForModule('customer_data').map(group => <DataFilterSection key={group.id} title={group.label} description="Lọc theo phân loại dữ liệu thô." selectedCount={group.items.filter(item => insightFilters.includes(item.id)).length}>
+          <DataFilterCheckboxGroup options={group.items.map(item => ({ value: item.id, label: item.label }))} selectedValues={insightFilters.filter(value => group.items.some(item => item.id === value))} onChange={values => { setInsightFilters(current => replaceCustomerInsightGroupValues(current, group.items.map(item => item.id), values)); setCurrentPage(1); }} searchable={group.items.length > 8} />
+        </DataFilterSection>)}
         {saleFilterEnabled && (workspaceView === 'all' || currentUser.role === 'admin') && (
           <DataFilterSection title={configuredFilterName(CUSTOMER_FILTER_IDS.sale, 'Sale phụ trách')} description={configuredFilterDescription(CUSTOMER_FILTER_IDS.sale, 'Admin có thể chọn nhiều Sale để đối chiếu dữ liệu.')} selectedCount={saleFilters.length}>
             <DataFilterCheckboxGroup

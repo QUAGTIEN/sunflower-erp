@@ -2,8 +2,9 @@ import { isActiveLeadRecord, type CustomerRecord, type LeadRecord } from './crmM
 import { normalizeTaxCode } from './taxCodeUniqueness';
 import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
 import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
+import { normalizeCustomerInsightValues } from './customerInsightCatalog';
 
-export const LEAD_CANDIDATE_SCHEMA_VERSION = 10;
+export const LEAD_CANDIDATE_SCHEMA_VERSION = 11;
 
 export type LeadCandidateStatus = 'new' | 'retry' | 'disqualified' | 'converted';
 export type LeadCandidateTaskStatus = 'pending' | 'completed' | 'dismissed';
@@ -59,6 +60,7 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   source: string;
   sourceUrl: string;
   note: string;
+  customerInsightValues: string[];
   customFieldValues: EntityCustomFieldValues;
   status: LeadCandidateStatus;
   assignedSaleId: string;
@@ -277,6 +279,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     source: asText(source.source),
     sourceUrl: asText(source.sourceUrl),
     note: asText(source.note),
+    customerInsightValues: normalizeCustomerInsightValues(source.customerInsightValues),
     customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
     status: normalizeStatus(source.status),
     assignedSaleId: asText(source.assignedSaleId),

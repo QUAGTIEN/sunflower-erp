@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test:fields": "node --test tests/field-configuration.test.cjs",
     "test:calls": "node --test tests/call-history.test.cjs",
+    "test:insights": "node --test tests/customer-insight-catalog.test.cjs",
     "preview": "vite preview",
     "db:clear": "node scripts/clear-db.js"
   },

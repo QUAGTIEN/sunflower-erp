@@ -41,6 +41,10 @@ import {
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
+import {
+  CUSTOMER_INSIGHT_ITEM_BY_ID,
+  getCustomerInsightGroupsForModule
+} from '@/features/crm/model/customerInsightCatalog';
 import '@/components/CustomerHistory.css';
 import {
   Plus,
@@ -134,6 +138,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
   const [selectedOrderCustomerId, setSelectedOrderCustomerId] = useState('');
   const [salesStatusFilters, setSalesStatusFilters] = useState<string[]>([]);
   const [salesOwnerFilters, setSalesOwnerFilters] = useState<string[]>([]);
+  const [waitingInsightFilters, setWaitingInsightFilters] = useState<string[]>([]);
   const [showSalesFilters, setShowSalesFilters] = useState(false);
   const [showSalesColumnCustomizer, setShowSalesColumnCustomizer] = useState(false);
   const [salesVisibleColumns, setSalesVisibleColumns] = useState<string[]>(() => {
@@ -147,6 +152,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
   const salesVisibleColumnSet = new Set(salesVisibleColumns);
   const salesVisibleColumnCount = SALES_CUSTOMER_COLUMNS.filter(column => salesVisibleColumnSet.has(column.id)).length;
   const salesActiveFilterCount = salesStatusFilters.length + salesOwnerFilters.length;
+  const waitingActiveFilterCount = waitingInsightFilters.length;
   const saveSalesVisibleColumns = (selectedIds: string[]) => {
     const next = Array.from(new Set(['customer', 'actions', ...selectedIds]));
     setSalesVisibleColumns(next);
@@ -826,6 +832,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
       if (currentUser.role === 'sale' && customer.assignedSaleId && customer.assignedSaleId !== currentUser.uid) {
         return false;
       }
+      if (waitingInsightFilters.includes('po_promised') && !customer.pendingOrderDraft) return false;
       return true;
     })
     .filter(customer => {
@@ -923,9 +930,9 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{ flex: 1 }}
             />
-            {activeListView === 'orders' && !selectedOrderCustomer && <>
-              <DataFilterButton activeCount={salesActiveFilterCount} open={showSalesFilters} onClick={() => setShowSalesFilters(true)} />
-              <button type="button" className="data-filter-button" onClick={() => setShowSalesColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
+            {!selectedOrderCustomer && <>
+              <DataFilterButton activeCount={activeListView === 'orders' ? salesActiveFilterCount : waitingActiveFilterCount} open={showSalesFilters} onClick={() => setShowSalesFilters(true)} />
+              {activeListView === 'orders' && <button type="button" className="data-filter-button" onClick={() => setShowSalesColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>}
             </>}
           </div>
 
@@ -935,6 +942,14 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
               ...salesOwnerFilters.map(value => ({ id: `owner:${value}`, label: value === 'unassigned' ? t('Chưa phân công') : users.find(user => user.uid === value)?.displayName || value, onRemove: () => setSalesOwnerFilters(current => current.filter(item => item !== value)) }))
             ]}
             onClear={() => { setSalesStatusFilters([]); setSalesOwnerFilters([]); }}
+          />}
+          {activeListView === 'waiting-customers' && <DataFilterChipBar
+            chips={waitingInsightFilters.map(value => ({
+              id: `insight:${value}`,
+              label: CUSTOMER_INSIGHT_ITEM_BY_ID.get(value)?.label || value,
+              onRemove: () => setWaitingInsightFilters(current => current.filter(item => item !== value))
+            }))}
+            onClear={() => setWaitingInsightFilters([])}
           />}
 
           {activeListView === 'orders' ? (
@@ -1705,12 +1720,13 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
       />
       <DataFilterPanel
         open={showSalesFilters}
-        title={t('Lọc danh sách tạo đơn hàng')}
-        description={t('Lọc khách hàng theo trạng thái PO gần nhất và Sale phụ trách.')}
-        activeCount={salesActiveFilterCount}
+        title={activeListView === 'orders' ? t('Lọc danh sách tạo đơn hàng') : t('Lọc khách hàng chờ lên đơn')}
+        description={activeListView === 'orders' ? t('Lọc khách hàng theo trạng thái PO gần nhất và Sale phụ trách.') : t('Lọc theo trạng thái chuẩn bị đơn hàng.')}
+        activeCount={activeListView === 'orders' ? salesActiveFilterCount : waitingActiveFilterCount}
         onClose={() => setShowSalesFilters(false)}
-        onReset={() => { setSalesStatusFilters([]); setSalesOwnerFilters([]); }}
+        onReset={() => { setSalesStatusFilters([]); setSalesOwnerFilters([]); setWaitingInsightFilters([]); }}
       >
+        {activeListView === 'orders' ? <>
         <DataFilterSection title={t('Trạng thái PO gần nhất')} selectedCount={salesStatusFilters.length} defaultExpanded>
           <DataFilterCheckboxGroup
             options={PO_QUEUE_STATES.map(status => ({ value: status.value, label: t(status.label) }))}
@@ -1726,6 +1742,15 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
             searchable
           />
         </DataFilterSection>
+        </> : getCustomerInsightGroupsForModule('sales').map(group => (
+          <DataFilterSection key={group.id} title={group.label} selectedCount={group.items.filter(item => waitingInsightFilters.includes(item.id)).length} defaultExpanded>
+            <DataFilterCheckboxGroup
+              options={group.items.map(item => ({ value: item.id, label: item.label }))}
+              selectedValues={waitingInsightFilters}
+              onChange={setWaitingInsightFilters}
+            />
+          </DataFilterSection>
+        ))}
       </DataFilterPanel>
 
       {/* Image Preview Zoom Modal */}
