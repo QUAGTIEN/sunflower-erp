@@ -3,21 +3,6 @@
   gap: 10px;
 }
 
-.customer-insight-dashboard__heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.customer-insight-dashboard__eyebrow {
-  display: block;
-  margin-bottom: 3px;
-  color: #21469b;
-  font-size: 18px;
-  font-weight: 700;
-}
-
 .customer-insight-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

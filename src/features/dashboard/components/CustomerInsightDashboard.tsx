@@ -121,10 +121,6 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
 
   return (
     <section className="customer-insight-dashboard" aria-label="Tổng quan thông tin khách hàng">
-      <header className="customer-insight-dashboard__heading">
-        <span className="customer-insight-dashboard__eyebrow">Tổng quan khách hàng</span>
-      </header>
-
       <div className="customer-insight-kpis">
         <article className="is-total"><UsersRound size={25} /><div><span>Tổng hồ sơ</span><strong>{activeCandidates.length + activeLeads.length + activeCustomers.length} hồ sơ</strong><small>Tổng dữ liệu đang được quản lý</small></div></article>
         <article className="is-raw"><ClipboardList size={25} /><div><span>Dữ liệu thô</span><strong>{activeCandidates.length} hồ sơ</strong><small>Thông tin doanh nghiệp mới thu thập</small></div></article>
@@ -135,6 +131,8 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
         <article className="is-employees"><UsersRound size={25} /><div><span>Nhân viên</span><strong>{activeEmployeesCount} người</strong><small>Tài khoản nhân viên đang hoạt động</small></div></article>
         <article className="is-orders"><FileClock size={25} /><div><span>Đơn đang xử lý</span><strong>{activeOrdersCount} đơn</strong><small>PO chưa hoàn thành trong kỳ đang chọn</small></div></article>
       </div>
+
+      {operationalContent}
 
       <div className="customer-insight-groups">
         <div className="customer-insight-section-title"><span>8 nhóm thông tin khách hàng</span><small>Chọn một nhóm để xem chi tiết</small></div>
@@ -178,7 +176,6 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
         </div>
       </div>
 
-      {operationalContent}
     </section>
   );
 };

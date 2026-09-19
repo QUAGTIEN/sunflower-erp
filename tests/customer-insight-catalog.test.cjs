@@ -52,7 +52,7 @@ test('dashboard renders every group and routes item selections to their owning m
   assert.doesNotMatch(dashboardSource, /Theo dõi toàn bộ hành trình/);
   assert.match(dashboardSource, /customer-insight-module-text/);
   assert.doesNotMatch(dashboardSource, /customer-insight-results/);
-  assert.ok(dashboardSource.indexOf('customer-insight-groups') < dashboardSource.indexOf('{operationalContent}'));
+  assert.ok(dashboardSource.indexOf('{operationalContent}') < dashboardSource.indexOf('customer-insight-groups'));
 
   const dashboardPageSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'dashboard', 'pages', 'DashboardPage.tsx'),

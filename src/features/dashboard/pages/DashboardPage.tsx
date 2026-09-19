@@ -615,7 +615,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       <PageContextHeader section={t('Tổng quan')}>
         {/* TIME RANGE & DATE FILTERS */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', backgroundColor: '#f1f5f9', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+        <div className="dashboard-overview-toolbar">
+          {user.role === 'admin' && <h2>{t('Tổng quan khách hàng')}</h2>}
+          <div className="dashboard-date-filters">
           {/* Toggle filter mode */}
           <div style={{ display: 'flex', border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden', marginRight: '6px' }}>
             <button
@@ -677,6 +679,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               />
             </div>
           )}
+          </div>
         </div>
       </PageContextHeader>
 

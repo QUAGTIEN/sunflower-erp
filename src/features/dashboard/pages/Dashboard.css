@@ -1,3 +1,35 @@
+.dashboard-view .erp-page-context-actions {
+  min-height: 0;
+}
+
+.dashboard-overview-toolbar {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-overview-toolbar h2 {
+  margin: 0;
+  color: #21469b;
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.dashboard-date-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+
 .dashboard-view .dashboard-admin-metrics {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
@@ -104,6 +136,15 @@
 }
 
 @media (max-width: 640px) {
+  .dashboard-overview-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-date-filters {
+    width: 100%;
+  }
+
   .dashboard-view .dashboard-admin-metrics {
     grid-template-columns: 1fr;
   }
