@@ -22,7 +22,6 @@ import {
 } from '@/features/sales/model/poWorkflow';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { type AuditEvent } from '@/services/auditService';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import type { CustomerInsightModule } from '@/features/crm/model/customerInsightCatalog';
@@ -40,7 +39,6 @@ interface DashboardProps {
   inventory: any[];
   purchaseOrders: any[];
   productionCommands: any[];
-  deliveries: any[];
   invoices: any[];
   onNavigate: (page: string) => void;
   onNavigateInsight: (module: CustomerInsightModule, itemId: string) => void;
@@ -58,7 +56,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   inventory,
   purchaseOrders,
   productionCommands,
-  deliveries,
   invoices,
   onNavigate,
   onNavigateInsight,
@@ -76,7 +73,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const activeInventoryList = (inventory || []).filter(i => !i.deleted);
   const activePurchaseOrdersList = (purchaseOrders || []).filter(pur => !pur.deleted);
   const activeProductionCommandsList = (productionCommands || []).filter(cmd => !cmd.deleted);
-  const activeDeliveriesList = (deliveries || []).filter(d => !d.deleted);
   const activeInvoicesList = (invoices || []).filter(inv => !inv.deleted);
 
   // Timeframe states
@@ -95,7 +91,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [reminders, setReminders] = useState<any[]>([]);
   const [newReminderText, setNewReminderText] = useState('');
   const [newReminderDate, setNewReminderDate] = useState('');
-  const [activityFeed, setActivityFeed] = useState<AuditEvent[]>([]);
 
   // Load reminders
   useEffect(() => {
@@ -109,24 +104,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
     fetchReminders();
   }, []);
-
-  useEffect(() => {
-    if (user.role !== 'admin') return undefined;
-
-    return dbService.subscribeCollection('audit_events', data => {
-      const recentBusinessEvents = (data as AuditEvent[])
-        .filter(event => event.category === 'business' || event.category === 'administration')
-        .sort((left, right) => String(right.occurredAt || right.createdAt).localeCompare(String(left.occurredAt || left.createdAt)))
-        .slice(0, 10);
-      setActivityFeed(recentBusinessEvents);
-    }, {
-      orderByField: 'occurredAt',
-      orderDirection: 'desc',
-      maxResults: 100
-    });
-  }, [user.role]);
-
-  const visibleActivityFeed = user.role === 'admin' ? activityFeed : [];
 
   const matchesTimeframe = (dateString?: string) => {
     if (!dateString) return false;
@@ -149,7 +126,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const filteredInvoices = activeInvoicesList.filter(inv => matchesTimeframe(inv.createdAt || inv.date));
   const filteredPurchaseOrders = activePurchaseOrdersList.filter(pur => matchesTimeframe(pur.createdAt));
   const filteredProductionCommands = activeProductionCommandsList.filter(cmd => matchesTimeframe(cmd.startedAt || cmd.createdAt));
-  const filteredDeliveries = activeDeliveriesList.filter(del => matchesTimeframe(del.deliveryDate || del.createdAt));
 
   // Calculations helper
   const activePOs = filteredPOs.filter(po => !isPOCompleted(po));
@@ -587,6 +563,52 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   }
 
+  const adminOperationalContent = (
+    <div className="charts-row-mobile customer-insight-operational-charts" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', width: '100%' }}>
+      <div className="card" style={{ flex: '1 1 300px' }}>
+        <div className="card-header">
+          <span className="card-title">{t('Cơ Cấu Doanh Thu & Công Nợ')}</span>
+        </div>
+        <BarChart
+          data={[
+            { label: t('Doanh Thu'), value: totalRevenue },
+            { label: t('Phải Thu (AR)'), value: arDebt },
+            { label: t('Phải Trả (AP)'), value: apDebt }
+          ]}
+          yAxisSuffix=" đ"
+        />
+      </div>
+
+      <div className="card" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column' }}>
+        <div className="card-header">
+          <span className="card-title">{t('Hàng Đợi Xử Lý PO')}</span>
+        </div>
+        <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flex: 1, flexWrap: 'wrap' }} className="po-donut-row-interactive">
+          <div className="po-queue-donut"><DonutChart data={poQueueChartData} /></div>
+          <div className="po-queue-actions">
+            {poQueueChartData.map(state => (
+              <button
+                key={state.status}
+                type="button"
+                onClick={() => setSelectedProgressCategory(state.status)}
+                className="po-progress-card-btn"
+                title={t('Click để xem danh sách đơn hàng chi tiết')}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px',
+                  borderRadius: '8px', border: `1px solid ${state.color}55`, borderLeft: `4px solid ${state.color}`,
+                  backgroundColor: '#ffffff', color: '#1f2937', cursor: 'pointer', fontSize: '12.5px', fontWeight: 700, textAlign: 'left'
+                }}
+              >
+                <span>{t(state.label)}</span>
+                <strong style={{ color: state.color, fontSize: '17px' }}>{state.value}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   // STANDARD DASHBOARD VIEW
   return (
     <div className="dashboard-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -667,169 +689,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
             customers={customers}
             users={users}
             onNavigateInsight={onNavigateInsight}
+            collaboratingCustomersCount={collaboratingCustomers.length}
+            totalRevenue={totalRevenue}
+            activeEmployeesCount={activeEmployees.length}
+            activeOrdersCount={activePOs.length}
+            operationalContent={adminOperationalContent}
           />
 
-          <div className="metrics-grid dashboard-admin-metrics">
-            <div className="metric-card dashboard-metric-card dashboard-metric-card--customers">
-              <span className="metric-title">{t('KHÁCH HÀNG ĐANG HỢP TÁC')}</span>
-              <span className="metric-value">{collaboratingCustomers.length} {t('khách hàng')}</span>
-              <span className="metric-sub">{t('Khách hàng hợp tác đã phát sinh ít nhất một PO')}</span>
-            </div>
-            <div className="metric-card dashboard-metric-card dashboard-metric-card--revenue">
-              <span className="metric-title">{t('DOANH THU')}</span>
-              <span className="metric-value">{totalRevenue.toLocaleString()} đ</span>
-              <span className="metric-sub">{t('Hóa đơn đã thanh toán trong kỳ đang chọn')}</span>
-            </div>
-            <div className="metric-card dashboard-metric-card dashboard-metric-card--employees">
-              <span className="metric-title">{t('NHÂN VIÊN')}</span>
-              <span className="metric-value">{activeEmployees.length} {t('người')}</span>
-              <span className="metric-sub">{t('Tài khoản nhân viên đang hoạt động')}</span>
-            </div>
-            <div className="metric-card dashboard-metric-card dashboard-metric-card--active">
-              <span className="metric-title">{t('ĐƠN ĐANG XỬ LÝ')}</span>
-              <span className="metric-value">{activePOs.length} {t('đơn')}</span>
-              <span className="metric-sub">{t('PO chưa hoàn thành trong kỳ đang chọn')}</span>
-            </div>
-          </div>
-
-          {/* LSX Transfer Approvals Alert Card */}
-          {activeProductionCommandsList.some(cmd => cmd.status === 'transfer_pending') && (
-            <div className="card" style={{ border: '1px solid var(--color-warning-border)', backgroundColor: 'var(--color-warning-bg)', margin: '0 0 20px 0' }}>
-              <span className="card-title" style={{ color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 700 }}>
-                {t('Có Yêu Cầu Phê Duyệt Bàn Giao Lệnh Sản Xuất')}
-              </span>
-              <p style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '10px' }}>
-                {t('Thợ máy đang báo gặp sự cố và yêu cầu chuyển giao lại lệnh in/bế cho thợ khác. Vui lòng phê duyệt.')}
-              </p>
-              <button
-                className="btn btn-outline"
-                onClick={() => onNavigate('production')}
-                style={{ fontWeight: 600, color: 'var(--color-warning)', borderColor: 'var(--color-warning)', padding: '6px 12px', fontSize: '12.5px' }}
-              >
-                {t('XỬ LÝ NGAY TẠI TRANG SẢN XUẤT')} →
-              </button>
-            </div>
-          )}
-
-          {/* CHARTS CONTAINER + DYNAMIC INTERACTIVE CARDS */}
-          <div className="charts-row-mobile" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', width: '100%', marginBottom: '10px' }}>
-            <div className="card" style={{ flex: '1 1 300px' }}>
-              <div className="card-header">
-                <span className="card-title">{t('Cơ Cấu Doanh Thu & Công Nợ')}</span>
-              </div>
-              <BarChart
-                data={[
-                  { label: t('Doanh Thu'), value: totalRevenue },
-                  { label: t('Phải Thu (AR)'), value: arDebt },
-                  { label: t('Phải Trả (AP)'), value: apDebt }
-                ]}
-                yAxisSuffix=" đ"
-              />
-            </div>
-
-            <div className="card" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column' }}>
-              <div className="card-header">
-                <span className="card-title">{t('Hàng Đợi Xử Lý PO')}</span>
-              </div>
-              <div
-                style={{ display: 'flex', gap: '18px', alignItems: 'center', flex: 1, flexWrap: 'wrap' }}
-                className="po-donut-row-interactive"
-              >
-                <div className="po-queue-donut">
-                  <DonutChart data={poQueueChartData} />
-                </div>
-                <div className="po-queue-actions">
-                  {poQueueChartData.map(state => (
-                    <button
-                      key={state.status}
-                      type="button"
-                      onClick={() => setSelectedProgressCategory(state.status)}
-                      className="po-progress-card-btn"
-                      title={t('Click để xem danh sách đơn hàng chi tiết')}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '9px 12px',
-                        borderRadius: '8px',
-                        border: `1px solid ${state.color}55`,
-                        borderLeft: `4px solid ${state.color}`,
-                        backgroundColor: '#ffffff',
-                        color: '#1f2937',
-                        cursor: 'pointer',
-                        fontSize: '12.5px',
-                        fontWeight: 700,
-                        textAlign: 'left'
-                      }}
-                    >
-                      <span>{t(state.label)}</span>
-                      <strong style={{ color: state.color, fontSize: '17px' }}>{state.value}</strong>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="details-grid">
-            <div className="card">
-              <div className="card-header">
-                <span className="card-title">{t('Bảng tin hoạt động')}</span>
-                <button className="btn btn-sm btn-outline" onClick={() => onNavigate('users')}>{t('Xem lịch sử')}</button>
-              </div>
-              <div className="dashboard-activity-feed">
-                <div className="dashboard-activity-feed__header" aria-hidden="true">
-                  <span>{t('Thời gian')}</span>
-                  <span>{t('Nhân viên')}</span>
-                  <span>{t('Cập nhật')}</span>
-                  <span>{t('Đối tượng')}</span>
-                </div>
-                {visibleActivityFeed.length > 0 ? visibleActivityFeed.map(activity => (
-                  <div className="dashboard-activity-feed__row" key={activity.id}>
-                    <time dateTime={activity.occurredAt}>{formatDateTime(activity.occurredAt, 'vi-VN', '—')}</time>
-                    <strong>{activity.actorName || '—'}</strong>
-                    <span title={activity.summary}>{activity.summary || '—'}</span>
-                    <span title={activity.targetLabel || undefined}>{activity.targetLabel || activity.module || '—'}</span>
-                  </div>
-                )) : (
-                  <div className="dashboard-activity-feed__empty">{t('Chưa có cập nhật mới')}</div>
-                )}
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="card-header">
-                <span className="card-title">{t('Đơn Hàng Sắp Giao Trong Tuần')}</span>
-                <button className="btn btn-sm btn-outline" onClick={() => onNavigate('delivery')}>{t('Xem chuyến đi')}</button>
-              </div>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t('Mã Chuyến')}</th>
-                      <th>{t('Khu Vực')}</th>
-                      <th>{t('Ngày Giao')}</th>
-                      <th>{t('Trạng Trạng Thái')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredDeliveries.slice(0, 5).map(del => (
-                        <tr key={del.id}>
-                          <td style={{ fontWeight: 600 }}>{del.delCode}</td>
-                          <td>{del.region}</td>
-                          <td>{formatDate(del.deliveryDate)}</td>
-                          <td>
-                            <span className={`badge ${del.status === 'completed' ? 'badge-success' : 'badge-warning'}`}>
-                              {del.status === 'completed' ? t('Hoàn thành') : t('Đang lập kế hoạch')}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
         </>
       )}
 

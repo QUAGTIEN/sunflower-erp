@@ -364,7 +364,7 @@ function AppShell() {
     );
     syncSubscription(
       'deliveries',
-      pageNeeds('dashboard', 'commercial_map'),
+      pageNeeds('commercial_map'),
       () => dbService.subscribeCollection('deliveries', data => {
         setDeliveries(sortNewestFirst(data, delivery => [delivery.createdAt]));
       })
@@ -700,7 +700,6 @@ function AppShell() {
             inventory={inventory}
             purchaseOrders={purchaseOrders}
             productionCommands={productionCommands}
-            deliveries={deliveries}
             invoices={invoices}
             onNavigate={(page) => setActivePage(page)}
             onNavigateInsight={(module, itemId) => {

@@ -49,4 +49,16 @@ test('dashboard renders every group and routes item selections to their owning m
   assert.match(dashboardSource, /Tiềm năng/);
   assert.match(dashboardSource, /Khách hàng/);
   assert.match(dashboardSource, /Tạo đơn hàng/);
+  assert.equal((dashboardSource.match(/<article className="is-/g) || []).length, 8);
+  assert.doesNotMatch(dashboardSource, /Theo dõi toàn bộ hành trình/);
+  assert.match(dashboardSource, /customer-insight-module-text/);
+
+  const dashboardPageSource = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'features', 'dashboard', 'pages', 'DashboardPage.tsx'),
+    'utf8'
+  );
+  assert.doesNotMatch(dashboardPageSource, /Bảng tin hoạt động/);
+  assert.doesNotMatch(dashboardPageSource, /Đơn Hàng Sắp Giao Trong Tuần/);
+  assert.match(dashboardPageSource, /Cơ Cấu Doanh Thu & Công Nợ/);
+  assert.match(dashboardPageSource, /Hàng Đợi Xử Lý PO/);
 });
