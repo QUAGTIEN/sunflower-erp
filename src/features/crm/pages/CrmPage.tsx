@@ -339,7 +339,7 @@ export const Crm: React.FC<CrmProps> = ({
       contact: t('Liên hệ và giao nhận'),
       additional: t('Điều khoản thương mại'),
       assignment: t('Phụ trách'),
-      needs: t('Trường thông tin bổ sung')
+      needs: t('Nguồn và nhu cầu')
     };
     const configuredField = (key: string, fallback: string) => {
       const field = inlineSystemFieldConfiguration.fields.find(item => item.key === key);
@@ -586,7 +586,10 @@ export const Crm: React.FC<CrmProps> = ({
   ));
   const [customerRank, setCustomerRank] = useState<CustomerRank>('');
   const [companyName, setCompanyName] = useState(initialLead?.companyName || '');
+  const [website, setWebsite] = useState(initialLead?.website || '');
+  const [businessSector, setBusinessSector] = useState(initialLead?.businessSector || '');
   const [contactPerson, setContactPerson] = useState(initialLead?.contactPerson || '');
+  const [contactPosition, setContactPosition] = useState(initialLead?.contactPosition || '');
   const [phone, setPhone] = useState(initialLead?.phone || '');
   const [email, setEmail] = useState(initialLead?.email || '');
   const [address, setAddress] = useState(initialLead?.address || '');
@@ -595,15 +598,16 @@ export const Crm: React.FC<CrmProps> = ({
   const [industrialPark, setIndustrialPark] = useState(initialLead?.industrialPark || '');
   const [taxCode, setTaxCode] = useState(initialLead?.taxCode || '');
   const [assignedSaleId, setAssignedSaleId] = useState(initialLead?.assignedSaleId || '');
+  const [discoveredById, setDiscoveredById] = useState(initialLead?.discoveredById || '');
+  const [source, setSource] = useState(initialLead?.source || '');
+  const [sourceUrl, setSourceUrl] = useState(initialLead?.sourceUrl || '');
+  const [expectedProducts, setExpectedProducts] = useState(initialLead?.expectedProducts || '');
   const [discountType, setDiscountType] = useState<PODiscountType>('percent');
   const [discountRate, setDiscountRate] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [debtLimit, setDebtLimit] = useState(50000000);
   const [paymentTerms, setPaymentTerms] = useState('30 ngày');
-  const [note, setNote] = useState(() => [
-    initialLead?.note,
-    initialLead?.expectedProducts ? `Nhu cầu dự kiến: ${initialLead.expectedProducts}` : ''
-  ].filter(Boolean).join('\n'));
+  const [note, setNote] = useState(initialLead?.note || '');
   const [additionalContacts, setAdditionalContacts] = useState<CustomerContactRecord[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
 
@@ -624,6 +628,13 @@ export const Crm: React.FC<CrmProps> = ({
     const textSetters: Record<string, React.Dispatch<React.SetStateAction<string>>> = {
       taxCode: setTaxCode,
       assignedSaleId: setAssignedSaleId,
+      website: setWebsite,
+      businessSector: setBusinessSector,
+      contactPosition: setContactPosition,
+      discoveredById: setDiscoveredById,
+      source: setSource,
+      sourceUrl: setSourceUrl,
+      expectedProducts: setExpectedProducts,
       province: setProvince,
       ward: setWard,
       industrialPark: setIndustrialPark,
@@ -769,7 +780,10 @@ export const Crm: React.FC<CrmProps> = ({
     setCustomerCode(generateCustomerCode());
     setCustomerRank('');
     setCompanyName('');
+    setWebsite('');
+    setBusinessSector('');
     setContactPerson('');
+    setContactPosition('');
     setPhone('');
     setEmail('');
     setAddress('');
@@ -778,6 +792,10 @@ export const Crm: React.FC<CrmProps> = ({
     setIndustrialPark('');
     setTaxCode('');
     setAssignedSaleId(currentUser.role === 'sale' ? currentUser.uid : (saleUsers[0]?.uid || ''));
+    setDiscoveredById(currentUser.role === 'sale' ? currentUser.uid : '');
+    setSource('');
+    setSourceUrl('');
+    setExpectedProducts('');
     setDiscountType('percent');
     setDiscountRate(0);
     setDiscountAmount(0);
@@ -803,7 +821,10 @@ export const Crm: React.FC<CrmProps> = ({
     setCustomerCode(cust.customerCode);
     setCustomerRank(cust.customerRank);
     setCompanyName(cust.companyName);
+    setWebsite(cust.website || '');
+    setBusinessSector(cust.businessSector || '');
     setContactPerson(cust.contactPerson);
+    setContactPosition(cust.contactPosition || '');
     setPhone(cust.phone);
     setEmail(cust.email);
     setAddress(cust.address);
@@ -812,6 +833,10 @@ export const Crm: React.FC<CrmProps> = ({
     setIndustrialPark(cust.industrialPark || '');
     setTaxCode(cust.taxCode);
     setAssignedSaleId(cust.assignedSaleId);
+    setDiscoveredById(cust.discoveredById || '');
+    setSource(cust.source || '');
+    setSourceUrl(cust.sourceUrl || '');
+    setExpectedProducts(cust.expectedProducts || '');
     setDiscountType(cust.discountType);
     setDiscountRate(cust.discountRate);
     setDiscountAmount(cust.discountAmount);
@@ -846,7 +871,10 @@ export const Crm: React.FC<CrmProps> = ({
       customerCode: customerCode.trim() || generateCustomerCode(),
       customerRank,
       companyName: companyName.trim(),
+      website: website.trim(),
+      businessSector: businessSector.trim(),
       contactPerson: contactPerson.trim(),
+      contactPosition: contactPosition.trim(),
       phone: phone.trim(),
       email: email.trim(),
       address: address.trim(),
@@ -855,6 +883,12 @@ export const Crm: React.FC<CrmProps> = ({
       industrialPark: industrialPark.trim(),
       taxCode: taxCode.trim(),
       assignedSaleId,
+      discoveredById,
+      discoveredByName: users.find(user => user.uid === discoveredById)?.displayName || onboardingSourceLead?.discoveredByName || '',
+      source: source.trim(),
+      sourceUrl: sourceUrl.trim(),
+      expectedProducts: expectedProducts.trim(),
+      filterValues: onboardingSourceLead?.filterValues || {},
       sourceLeadId: onboardingSourceLead?.id || '',
       convertedAt: onboardingSourceLead ? now : '',
       discountType,
@@ -1030,7 +1064,10 @@ export const Crm: React.FC<CrmProps> = ({
       customerCode: customerCode.trim() || selectedCustomer.customerCode,
       customerRank,
       companyName,
+      website,
+      businessSector,
       contactPerson,
+      contactPosition,
       phone,
       email,
       address,
@@ -1039,6 +1076,11 @@ export const Crm: React.FC<CrmProps> = ({
       industrialPark,
       taxCode,
       assignedSaleId,
+      discoveredById,
+      discoveredByName: users.find(user => user.uid === discoveredById)?.displayName || selectedCustomer.discoveredByName || '',
+      source,
+      sourceUrl,
+      expectedProducts,
       discountType,
       discountRate: Number(discountRate),
       discountAmount: Number(discountAmount),
@@ -2474,7 +2516,12 @@ export const Crm: React.FC<CrmProps> = ({
       ['Hạng khách hàng', customerRank ? `Hạng ${customerRank}` : 'Chưa xếp hạng'],
       ['Tên công ty', companyName],
       ['Mã số thuế', taxCode],
-      ['Sale phụ trách', assignedSaleName]
+      ['Website', website],
+      ['Lĩnh vực hoạt động', businessSector],
+      ['Sale phụ trách', assignedSaleName],
+      ['Nguồn dữ liệu', source],
+      ['Đường dẫn nguồn', sourceUrl],
+      ['Sản phẩm / nhu cầu quan tâm', expectedProducts]
     ]);
     try {
       await copyTextToClipboard(profile);
@@ -2491,11 +2538,17 @@ export const Crm: React.FC<CrmProps> = ({
       ['Tên công ty', customer.companyName],
       ['Hạng khách hàng', customer.customerRank ? `Hạng ${customer.customerRank}` : 'Chưa xếp hạng'],
       ['Mã số thuế', customer.taxCode],
+      ['Website', customer.website],
+      ['Lĩnh vực hoạt động', customer.businessSector],
       ['Địa chỉ giao hàng', customer.address],
       ['Người liên hệ', customer.contactPerson],
+      ['Chức vụ', customer.contactPosition],
       ['Số điện thoại', customer.phone],
       ['Email', customer.email],
       ['Sale phụ trách', assignedSaleName],
+      ['Nguồn dữ liệu', customer.source],
+      ['Đường dẫn nguồn', customer.sourceUrl],
+      ['Sản phẩm / nhu cầu quan tâm', customer.expectedProducts],
       ['Hạn mức công nợ', `${Number(customer.debtLimit || 0).toLocaleString('vi-VN')} đ`],
       ['Điều khoản thanh toán', customer.paymentTerms],
       ['Ghi chú', customer.note]
@@ -2580,9 +2633,17 @@ export const Crm: React.FC<CrmProps> = ({
                 {saleUsers.map(sale => <option key={sale.uid} value={sale.uid}>{sale.displayName}</option>)}
               </select>
             </label>
+            <label className="form-group">
+              <span data-system-label="website">Website</span>
+              <input type="url" value={website} onChange={event => setWebsite(event.target.value)} placeholder="https://..." />
+            </label>
+            <label className="form-group">
+              <span data-system-label="businessSector">Lĩnh vực hoạt động</span>
+              <input value={businessSector} onChange={event => setBusinessSector(event.target.value)} placeholder="Ví dụ: Bao bì, thực phẩm, điện tử..." />
+            </label>
           </div>
           <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="company" sectionLabel="Hồ sơ doanh nghiệp" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'taxCode', label: 'Mã số thuế' }, { key: 'assignedSaleId', label: 'Sale phụ trách' }]} /></div>
+          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="company" sectionLabel="Hồ sơ doanh nghiệp" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'taxCode', label: 'Mã số thuế' }, { key: 'assignedSaleId', label: 'Sale phụ trách' }, { key: 'website', label: 'Website' }, { key: 'businessSector', label: 'Lĩnh vực hoạt động' }]} /></div>
         </section>
 
         <section className="customer-data-section customer-profile-card">
@@ -2625,6 +2686,10 @@ export const Crm: React.FC<CrmProps> = ({
               <input value={contactPerson} onChange={event => setContactPerson(event.target.value)} />
             </label>
             <label className="form-group">
+              <span data-system-label="contactPosition">Chức vụ</span>
+              <input value={contactPosition} onChange={event => setContactPosition(event.target.value)} />
+            </label>
+            <label className="form-group">
               <span data-system-label="phone">Số điện thoại</span>
               <input value={phone} onChange={event => setPhone(event.target.value)} />
             </label>
@@ -2642,7 +2707,7 @@ export const Crm: React.FC<CrmProps> = ({
             </label>
           </div>
           <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="contact" sectionLabel="Liên hệ và giao nhận" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'phone', label: 'Số điện thoại' }, { key: 'procurementPhone', label: 'SĐT thu mua' }, { key: 'warehousePhone', label: 'SĐT nhận hàng / kho' }, { key: 'email', label: 'Email' }]} /></div>
+          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="contact" sectionLabel="Liên hệ và giao nhận" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Số điện thoại' }, { key: 'procurementPhone', label: 'SĐT thu mua' }, { key: 'warehousePhone', label: 'SĐT nhận hàng / kho' }, { key: 'email', label: 'Email' }]} /></div>
         </section>
 
         <section className="customer-data-section customer-profile-card">
@@ -2693,6 +2758,35 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
           <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'additional')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
           <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="additional" sectionLabel="Điều khoản thương mại" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'discountType', label: 'Hình thức chiết khấu' }, { key: 'debtLimit', label: 'Hạn mức công nợ (đ)' }, { key: 'paymentTerms', label: 'Điều khoản thanh toán' }, { key: 'bankAccount', label: 'Tài khoản ngân hàng' }, { key: 'note', label: 'Ghi chú yêu cầu riêng' }]} /></div>
+        </section>
+
+        <section className="customer-data-section customer-profile-card customer-profile-card--wide">
+          <div className="customer-data-section__heading">
+            <span>Nguồn và nhu cầu kế thừa</span>
+          </div>
+          <div className="customer-profile-card__body customer-profile-fields">
+            <label className="form-group">
+              <span data-system-label="source">Nguồn dữ liệu</span>
+              <input value={source} onChange={event => setSource(event.target.value)} placeholder="Google Maps, giới thiệu, dữ liệu nội bộ..." />
+            </label>
+            <label className="form-group">
+              <span data-system-label="sourceUrl">Đường dẫn nguồn</span>
+              <input type="url" value={sourceUrl} onChange={event => setSourceUrl(event.target.value)} placeholder="https://..." />
+            </label>
+            <label className="form-group">
+              <span data-system-label="discoveredById">Sale tìm được khách hàng</span>
+              <select value={discoveredById} onChange={event => setDiscoveredById(event.target.value)} disabled={currentUser.role === 'sale'}>
+                <option value="">Chưa xác định</option>
+                {saleUsers.map(sale => <option key={sale.uid} value={sale.uid}>{sale.displayName}</option>)}
+              </select>
+            </label>
+            <label className="form-group customer-profile-field--wide">
+              <span data-system-label="expectedProducts">Sản phẩm / nhu cầu quan tâm</span>
+              <textarea rows={3} value={expectedProducts} onChange={event => setExpectedProducts(event.target.value)} placeholder="Nhu cầu được kế thừa từ Dữ liệu thô và Tiềm năng..." />
+            </label>
+          </div>
+          <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+          <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="needs" sectionLabel="Nguồn và nhu cầu kế thừa" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'source', label: 'Nguồn dữ liệu' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }, { key: 'discoveredById', label: 'Sale tìm được khách hàng' }, { key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }]} /></div>
         </section>
 
         {renderAdditionalContactsEditor()}
@@ -3039,6 +3133,8 @@ export const Crm: React.FC<CrmProps> = ({
                   <div className="customer-company-detail-grid">
                     <span>{t('Liên hệ chính')}</span>
                     <strong>{selectedCustomer.contactPerson || t('Chưa cập nhật')}</strong>
+                    <span>{t('Chức vụ')}</span>
+                    <strong>{selectedCustomer.contactPosition || t('Chưa cập nhật')}</strong>
                     <span>{t('Điện thoại')}</span>
                     <strong>{selectedCustomer.phone || t('Chưa cập nhật')}</strong>
                     <span>{t('Email')}</span>
@@ -3047,8 +3143,20 @@ export const Crm: React.FC<CrmProps> = ({
                     <strong>{users.find(u => u.uid === selectedCustomer.assignedSaleId)?.displayName || t('Chưa phân công')}</strong>
                     <span>{t('Mã số thuế')}</span>
                     <strong>{selectedCustomer.taxCode || t('Chưa cung cấp')}</strong>
+                    <span>{t('Website')}</span>
+                    <strong>{selectedCustomer.website || t('Chưa cập nhật')}</strong>
+                    <span>{t('Lĩnh vực hoạt động')}</span>
+                    <strong>{selectedCustomer.businessSector || t('Chưa cập nhật')}</strong>
                     <span>{t('Địa chỉ giao hàng')}</span>
                     <strong>{selectedCustomer.address || t('Chưa cập nhật')}</strong>
+                    <span>{t('Nguồn dữ liệu')}</span>
+                    <strong>{selectedCustomer.source || t('Chưa cập nhật')}</strong>
+                    <span>{t('Đường dẫn nguồn')}</span>
+                    <strong>{selectedCustomer.sourceUrl || t('Chưa cập nhật')}</strong>
+                    <span>{t('Sale tìm được khách hàng')}</span>
+                    <strong>{users.find(u => u.uid === selectedCustomer.discoveredById)?.displayName || selectedCustomer.discoveredByName || t('Chưa xác định')}</strong>
+                    <span>{t('Sản phẩm / nhu cầu quan tâm')}</span>
+                    <strong>{selectedCustomer.expectedProducts || t('Chưa cập nhật')}</strong>
                     {(selectedCustomer.customFields || [
                       {
                         id: 'discount',

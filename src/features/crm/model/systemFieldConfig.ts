@@ -54,6 +54,7 @@ export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> =
     input('potentialValue', 'Giá trị tiềm năng', ['Giá trị tiềm năng (đ)']),
     linked('assignedSaleId', 'Sale phụ trách'),
     linked('nextFollowUpAt', 'Chăm sóc tiếp', ['Lịch chăm sóc tiếp theo']), ...commonFormFields.map(field => field.key === 'taxCode' ? { ...field, protected: true } : field),
+    { ...input('sourceUrl', 'Đường dẫn nguồn'), formOnly: true },
     { ...linked('discoveredById', 'Sale tìm được Lead'), formOnly: true },
     { ...linked('stage', 'Giai đoạn xử lý'), formOnly: true }
   ],
@@ -71,12 +72,17 @@ export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> =
     { ...linked('ward', 'Phường / xã'), formOnly: true },
     { ...linked('industrialPark', 'Khu công nghiệp'), formOnly: true },
     ...formFields([
-      ['contactPerson', 'Người liên hệ'], ['procurementPhone', 'SĐT thu mua'],
+      ['website', 'Website'], ['businessSector', 'Lĩnh vực hoạt động'],
+      ['contactPerson', 'Người liên hệ'], ['contactPosition', 'Chức vụ'],
+      ['source', 'Nguồn dữ liệu'], ['sourceUrl', 'Đường dẫn nguồn'],
+      ['expectedProducts', 'Sản phẩm / nhu cầu quan tâm'],
+      ['procurementPhone', 'SĐT thu mua'],
       ['warehousePhone', 'SĐT nhận hàng / kho'], ['bankAccount', 'Tài khoản ngân hàng'],
       ['address', 'Địa chỉ giao hàng', ['Địa chỉ chi tiết / giao hàng']],
       ['discountType', 'Hình thức chiết khấu'], ['debtLimit', 'Hạn mức công nợ (đ)'],
       ['paymentTerms', 'Điều khoản thanh toán'], ['note', 'Ghi chú yêu cầu riêng']
-    ])
+    ]),
+    { ...linked('discoveredById', 'Sale tìm được khách hàng'), formOnly: true }
   ]
 };
 

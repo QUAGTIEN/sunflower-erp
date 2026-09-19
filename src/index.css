@@ -3038,6 +3038,10 @@ tr:hover td {
   flex-direction: column;
 }
 
+.customer-profile-card--wide {
+  grid-column: 1 / -1;
+}
+
 .customer-profile-card__body {
   flex: 1;
   padding: 16px;
@@ -3076,11 +3080,23 @@ tr:hover td {
 
 .customer-profile-fields input,
 .customer-profile-fields select,
+.customer-profile-fields textarea,
 .customer-location-section input,
 .customer-location-section select {
   width: 100%;
   min-width: 0;
+}
+
+.customer-profile-fields input,
+.customer-profile-fields select,
+.customer-location-section input,
+.customer-location-section select {
   height: 38px;
+}
+
+.customer-profile-fields textarea {
+  min-height: 84px;
+  resize: vertical;
 }
 
 .customer-profile-field--wide {
@@ -3120,6 +3136,10 @@ tr:hover td {
 @media (max-width: 1180px) {
   .customer-onboarding-profile-grid {
     grid-template-columns: 1fr;
+  }
+
+  .customer-profile-card--wide {
+    grid-column: auto;
   }
 }
 

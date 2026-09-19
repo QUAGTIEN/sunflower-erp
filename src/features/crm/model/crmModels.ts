@@ -2,7 +2,7 @@ import type { PODiscountType } from '@/domain/poFinancials';
 import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
 
-export const CRM_SCHEMA_VERSION = 3;
+export const CRM_SCHEMA_VERSION = 4;
 
 export type CustomerRank = '' | 'A' | 'B' | 'C' | 'D';
 export type CustomerContactRole = 'primary' | 'procurement' | 'warehouse' | 'accounting' | 'other';
@@ -164,7 +164,10 @@ export interface CustomerRecord extends UnknownRecord {
   customerCode: string;
   companyName: string;
   customerRank: CustomerRank;
+  website: string;
+  businessSector: string;
   contactPerson: string;
+  contactPosition: string;
   phone: string;
   email: string;
   address: string;
@@ -177,6 +180,12 @@ export interface CustomerRecord extends UnknownRecord {
   warehousePhone: string;
   bankAccount: string;
   assignedSaleId: string;
+  discoveredById: string;
+  discoveredByName: string;
+  source: string;
+  sourceUrl: string;
+  expectedProducts: string;
+  filterValues: Record<string, string[]>;
   sourceLeadId: string;
   convertedAt: string;
   discountType: PODiscountType;
@@ -282,6 +291,7 @@ export interface LeadRecord extends UnknownRecord {
   stage: LeadStage;
   companySize: LeadCompanySize;
   source: string;
+  sourceUrl: string;
   provinceId: string;
   province: string;
   ward: string;
@@ -570,7 +580,10 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     customerCode: asText(source.customerCode ?? source.code, id),
     companyName: asText(source.companyName ?? source.name),
     customerRank: normalizeCustomerRank(source.customerRank),
+    website: asText(source.website),
+    businessSector: asText(source.businessSector),
     contactPerson: asText(source.contactPerson),
+    contactPosition: asText(source.contactPosition),
     phone: asText(source.phone),
     email: asText(source.email),
     address: asText(source.address),
@@ -583,6 +596,17 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     warehousePhone: asText(source.warehousePhone),
     bankAccount: asText(source.bankAccount),
     assignedSaleId: asText(source.assignedSaleId),
+    discoveredById: asText(source.discoveredById),
+    discoveredByName: asText(source.discoveredByName),
+    source: asText(source.source),
+    sourceUrl: asText(source.sourceUrl),
+    expectedProducts: asText(source.expectedProducts),
+    filterValues: Object.fromEntries(
+      Object.entries(asRecord(source.filterValues)).map(([fieldId, fieldValue]) => [
+        fieldId,
+        asArray(fieldValue).map(item => asText(item)).filter(Boolean)
+      ])
+    ),
     sourceLeadId: asText(source.sourceLeadId),
     convertedAt: asText(source.convertedAt),
     discountType: normalizeDiscountType(source.discountType),
@@ -668,6 +692,7 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     stage: normalizeLeadStage(source.stage),
     companySize: normalizeLeadCompanySize(source.companySize),
     source: asText(source.source),
+    sourceUrl: asText(source.sourceUrl),
     provinceId: canonicalProvince.provinceId,
     province: canonicalProvince.province,
     ward: asText(source.ward),
