@@ -216,6 +216,7 @@ interface CrmProps {
   onLeadOnboardingClosed?: () => void;
   initialCustomerId?: string;
   onInitialCustomerOpened?: () => void;
+  initialInsightFilterId?: string;
 }
 
 const loadSpecsToFields = (productType: string, specifications: any = {}) => {
@@ -278,6 +279,7 @@ export const Crm: React.FC<CrmProps> = ({
   onLeadOnboardingClosed,
   initialCustomerId = '',
   onInitialCustomerOpened,
+  initialInsightFilterId = '',
 }) => {
   const { t } = useLanguage();
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
@@ -294,12 +296,28 @@ export const Crm: React.FC<CrmProps> = ({
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [showListFilters, setShowListFilters] = useState(false);
+
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [customerPageSize, setCustomerPageSize] = useState(25);
   const [customerPage, setCustomerPage] = useState(1);
   const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
+  useEffect(() => {
+    if (!initialInsightFilterId) return;
+    setSelectedCustomer(null);
+    setFilterType('all');
+    setSaleFilters([]);
+    setRankFilters([]);
+    setTimeFilters([]);
+    setProvinceFilters([]);
+    setIndustrialParkFilters([]);
+    setProductFilters([]);
+    setCustomFieldFilters({});
+    setAdvancedFilters({});
+    setInsightFilters([initialInsightFilterId]);
+    setCustomerPage(1);
+  }, [initialInsightFilterId]);
   const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'products'>('po');
   const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(false);
   const [customerNoteDraft, setCustomerNoteDraft] = useState('');

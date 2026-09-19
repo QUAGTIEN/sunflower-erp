@@ -66,6 +66,7 @@ interface SalesProps {
   initialSelectedPoId?: string;
   initialRepeatPoId?: string;
   initialPreparedCustomerId?: string;
+  initialInsightFilterId?: string;
   onRepeatOrderOpened?: () => void;
   onPreparedOrderOpened?: () => void;
   messages: any[];
@@ -122,7 +123,7 @@ const getWaitingDays = (createdAt: unknown) => {
   return Math.max(0, Math.floor((Date.now() - createdTime) / (24 * 60 * 60 * 1000)));
 };
 
-export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser, onRefresh, initialSelectedPoId, initialRepeatPoId, initialPreparedCustomerId, onRepeatOrderOpened, onPreparedOrderOpened, messages, users }) => {
+export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser, onRefresh, initialSelectedPoId, initialRepeatPoId, initialPreparedCustomerId, initialInsightFilterId = '', onRepeatOrderOpened, onPreparedOrderOpened, messages, users }) => {
   const { t } = useLanguage();
   const isFull = currentUser.role === 'admin' || currentUser.role === 'accountant';
   const isSaleOnly = currentUser.role === 'sale' || currentUser.role === 'designer';
@@ -141,6 +142,14 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
   const [waitingInsightFilters, setWaitingInsightFilters] = useState<string[]>([]);
   const [showSalesFilters, setShowSalesFilters] = useState(false);
   const [showSalesColumnCustomizer, setShowSalesColumnCustomizer] = useState(false);
+
+  useEffect(() => {
+    if (!initialInsightFilterId) return;
+    setActiveListView('waiting-customers');
+    setSelectedOrderCustomerId('');
+    setSearchTerm('');
+    setWaitingInsightFilters([initialInsightFilterId]);
+  }, [initialInsightFilterId]);
   const [salesVisibleColumns, setSalesVisibleColumns] = useState<string[]>(() => {
     try {
       const stored = window.localStorage.getItem(`sunflower:sales-customer-columns:${currentUser.uid}`);

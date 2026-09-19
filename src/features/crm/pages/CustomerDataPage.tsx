@@ -14,6 +14,7 @@ interface CustomerDataProps {
   onStartConversion: (candidate: LeadCandidateRecord) => void;
   initialCandidateId?: string;
   onInitialCandidateOpened?: () => void;
+  initialInsightFilterId?: string;
 }
 
 export const CustomerData: React.FC<CustomerDataProps> = ({
@@ -23,7 +24,8 @@ export const CustomerData: React.FC<CustomerDataProps> = ({
   currentUser,
   onStartConversion,
   initialCandidateId,
-  onInitialCandidateOpened
+  onInitialCandidateOpened,
+  initialInsightFilterId
 }) => {
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
   const saleUsers = useMemo(() => users.filter(user => user.role === 'sale'), [users]);
@@ -46,6 +48,7 @@ export const CustomerData: React.FC<CustomerDataProps> = ({
         onStartConversion={onStartConversion}
         initialCandidateId={initialCandidateId}
         onInitialCandidateOpened={onInitialCandidateOpened}
+        initialInsightFilterId={initialInsightFilterId}
       />
     </div>
   );

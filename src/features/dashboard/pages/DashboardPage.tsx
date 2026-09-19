@@ -23,6 +23,10 @@ import {
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { type AuditEvent } from '@/services/auditService';
+import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
+import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
+import type { CustomerInsightModule } from '@/features/crm/model/customerInsightCatalog';
+import { CustomerInsightDashboard } from '@/features/dashboard/components/CustomerInsightDashboard';
 import './Dashboard.css';
 
 interface DashboardProps {
@@ -30,13 +34,16 @@ interface DashboardProps {
   users: UserProfile[];
   pos: any[];
   designRequests: DesignRequest[];
-  customers: any[];
+  customers: CustomerRecord[];
+  leads: LeadRecord[];
+  candidates: LeadCandidateRecord[];
   inventory: any[];
   purchaseOrders: any[];
   productionCommands: any[];
   deliveries: any[];
   invoices: any[];
   onNavigate: (page: string) => void;
+  onNavigateInsight: (module: CustomerInsightModule, itemId: string) => void;
   onOpenPO: (poId: string) => void;
 }
 
@@ -46,12 +53,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   pos,
   designRequests,
   customers,
+  leads,
+  candidates,
   inventory,
   purchaseOrders,
   productionCommands,
   deliveries,
   invoices,
   onNavigate,
+  onNavigateInsight,
   onOpenPO
 }) => {
   const { t } = useLanguage();
@@ -651,6 +661,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* ADMIN / GIÁM ĐỐC VIEW */}
       {user.role === 'admin' && (
         <>
+          <CustomerInsightDashboard
+            candidates={candidates}
+            leads={leads}
+            customers={customers}
+            users={users}
+            onNavigateInsight={onNavigateInsight}
+          />
+
           <div className="metrics-grid dashboard-admin-metrics">
             <div className="metric-card dashboard-metric-card dashboard-metric-card--customers">
               <span className="metric-title">{t('KHÁCH HÀNG ĐANG HỢP TÁC')}</span>

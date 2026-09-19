@@ -109,6 +109,7 @@ interface LeadCandidateWorkspaceProps {
   onStartConversion: (candidate: LeadCandidateRecord) => void;
   initialCandidateId?: string;
   onInitialCandidateOpened?: () => void;
+  initialInsightFilterId?: string;
 }
 
 interface CandidateFormState {
@@ -526,7 +527,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   currentUser,
   onStartConversion,
   initialCandidateId = '',
-  onInitialCandidateOpened
+  onInitialCandidateOpened,
+  initialInsightFilterId = ''
 }) => {
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('lead_candidates', currentUser.role);
   const inlineSystemFieldConfiguration = useSystemFieldConfiguration('lead_candidates');
@@ -562,6 +564,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [candidateSort, setCandidateSort] = useState<CandidateSort>('priority');
   const [showDataFilters, setShowDataFilters] = useState(false);
+
+  useEffect(() => {
+    if (!initialInsightFilterId) return;
+    setWorkspaceView('all');
+    setInsightFilters([initialInsightFilterId]);
+    setCurrentPage(1);
+  }, [initialInsightFilterId]);
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [visibleColumnsByView, setVisibleColumnsByView] = useState(() => loadVisibleColumns(currentUser.uid, currentUser.role === 'admin'));
   const [hasStoredColumnPreferences, setHasStoredColumnPreferences] = useState(() => {

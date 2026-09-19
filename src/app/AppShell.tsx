@@ -123,6 +123,7 @@ function AppShell() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
+  const [leadCandidates, setLeadCandidates] = useState<LeadCandidateRecord[]>([]);
   const [pos, setPOs] = useState<any[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [procurementRequests, setProcurementRequests] = useState<ProcurementRequestRecord[]>([]);
@@ -165,6 +166,7 @@ function AppShell() {
   const [leadOnboarding, setLeadOnboarding] = useState<LeadRecord | null>(null);
   const [candidateLeadConversion, setCandidateLeadConversion] = useState<LeadCandidateRecord | null>(null);
   const [supportNavigationTarget, setSupportNavigationTarget] = useState<{ module: 'customer_data' | 'leads' | 'crm'; entityId: string } | null>(null);
+  const [customerInsightNavigation, setCustomerInsightNavigation] = useState<{ module: 'customer_data' | 'leads' | 'crm' | 'sales'; itemId: string } | null>(null);
 
   const handleRepeatOrderRequest = (poId: string) => {
     setSelectedPoId('');
@@ -320,6 +322,13 @@ function AppShell() {
       pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
       () => dbService.subscribeCollection('leads', data => {
         setLeads(sortNewestFirst(data as LeadRecord[], lead => [lead.createdAt, lead.updatedAt]));
+      })
+    );
+    syncSubscription(
+      'lead_candidates',
+      pageNeeds('dashboard'),
+      () => dbService.subscribeCollection('lead_candidates', data => {
+        setLeadCandidates(sortNewestFirst(data as LeadCandidateRecord[], candidate => [candidate.createdAt, candidate.updatedAt]));
       })
     );
     syncSubscription(
@@ -541,6 +550,7 @@ function AppShell() {
             onLeadOnboardingClosed={() => setLeadOnboarding(null)}
             initialCustomerId={supportNavigationTarget?.module === 'crm' ? supportNavigationTarget.entityId : ''}
             onInitialCustomerOpened={() => setSupportNavigationTarget(null)}
+            initialInsightFilterId={customerInsightNavigation?.module === 'crm' ? customerInsightNavigation.itemId : ''}
           />
         );
       case 'leads':
@@ -558,6 +568,7 @@ function AppShell() {
             onInitialCandidateConsumed={handleCandidateLeadConversionConsumed}
             initialLeadId={supportNavigationTarget?.module === 'leads' ? supportNavigationTarget.entityId : ''}
             onInitialLeadOpened={() => setSupportNavigationTarget(null)}
+            initialInsightFilterId={customerInsightNavigation?.module === 'leads' ? customerInsightNavigation.itemId : ''}
           />
         );
       case 'customer_data':
@@ -570,6 +581,7 @@ function AppShell() {
             currentUser={user}
             initialCandidateId={supportNavigationTarget?.module === 'customer_data' ? supportNavigationTarget.entityId : ''}
             onInitialCandidateOpened={() => setSupportNavigationTarget(null)}
+            initialInsightFilterId={customerInsightNavigation?.module === 'customer_data' ? customerInsightNavigation.itemId : ''}
             onStartConversion={candidate => {
               setCandidateLeadConversion(candidate);
               setActivePage('leads');
@@ -607,6 +619,7 @@ function AppShell() {
             initialPreparedCustomerId={preparedCustomerId}
             onRepeatOrderOpened={() => setRepeatSourcePoId('')}
             onPreparedOrderOpened={handlePreparedOrderOpened}
+            initialInsightFilterId={customerInsightNavigation?.module === 'sales' ? customerInsightNavigation.itemId : ''}
             messages={messages}
             users={users}
           />
@@ -682,12 +695,18 @@ function AppShell() {
             pos={pos}
             designRequests={designRequests}
             customers={customers}
+            leads={leads}
+            candidates={leadCandidates}
             inventory={inventory}
             purchaseOrders={purchaseOrders}
             productionCommands={productionCommands}
             deliveries={deliveries}
             invoices={invoices}
             onNavigate={(page) => setActivePage(page)}
+            onNavigateInsight={(module, itemId) => {
+              setCustomerInsightNavigation({ module, itemId });
+              setActivePage(module);
+            }}
             onOpenPO={(poId) => {
               setSelectedPoId(poId);
               setActivePage('sales');

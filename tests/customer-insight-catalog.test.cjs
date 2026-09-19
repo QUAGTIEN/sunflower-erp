@@ -36,3 +36,17 @@ test('catalog exposes navigation and group-safe filtering helpers', () => {
   assert.match(source, /export const replaceCustomerInsightGroupValues/);
   assert.match(source, /export const matchesCustomerInsightValues/);
 });
+
+test('dashboard renders every group and routes item selections to their owning module', () => {
+  const dashboardSource = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'features', 'dashboard', 'components', 'CustomerInsightDashboard.tsx'),
+    'utf8'
+  );
+  assert.match(dashboardSource, /CUSTOMER_INSIGHT_GROUPS\.map/);
+  assert.match(dashboardSource, /getCustomerInsightNavigation\(selectedItem\.id\)/);
+  assert.match(dashboardSource, /record\.module === selectedItem\.module/);
+  assert.match(dashboardSource, /Dữ liệu thô/);
+  assert.match(dashboardSource, /Tiềm năng/);
+  assert.match(dashboardSource, /Khách hàng/);
+  assert.match(dashboardSource, /Tạo đơn hàng/);
+});

@@ -146,6 +146,7 @@ interface LeadsProps {
   onInitialCandidateConsumed?: () => void;
   initialLeadId?: string;
   onInitialLeadOpened?: () => void;
+  initialInsightFilterId?: string;
 }
 
 type LeadOverviewSelection = 'quoted' | 'pending' | 'won' | 'lost' | 'converted';
@@ -327,7 +328,8 @@ export const Leads: React.FC<LeadsProps> = ({
   initialCandidate = null,
   onInitialCandidateConsumed,
   initialLeadId = '',
-  onInitialLeadOpened
+  onInitialLeadOpened,
+  initialInsightFilterId = ''
 }) => {
   const { t } = useLanguage();
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('leads', currentUser.role);
@@ -365,6 +367,18 @@ export const Leads: React.FC<LeadsProps> = ({
   const [leadRepositoryFileName, setLeadRepositoryFileName] = useState('');
   const [leadRepositoryFileLink, setLeadRepositoryFileLink] = useState('');
   const [taxCodeSaveError, setTaxCodeSaveError] = useState('');
+
+  useEffect(() => {
+    if (!initialInsightFilterId) return;
+    setWorkspaceTab('list');
+    setOverviewSelection(null);
+    setOverviewDrilldown(null);
+    setDynamicFilters({});
+    setCustomFieldFilters({});
+    setAdvancedFilters({});
+    setInsightFilters([initialInsightFilterId]);
+    setLeadCurrentPage(1);
+  }, [initialInsightFilterId]);
   const [scheduleLeadId, setScheduleLeadId] = useState('');
   const [scheduleForm, setScheduleForm] = useState<LeadScheduleFormState>({
     nextFollowUpAt: tomorrowAtNine()
