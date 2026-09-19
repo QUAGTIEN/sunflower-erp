@@ -79,11 +79,21 @@
   cursor: pointer;
 }
 
-.customer-insight-group-grid > button:hover,
-.customer-insight-group-grid > button.is-active {
+.customer-insight-group-grid > button:hover {
   border-color: #4c7fe7;
   background: #f5f9ff;
   box-shadow: 0 2px 8px rgb(33 70 155 / 10%);
+}
+
+.customer-insight-group-grid > button.is-active {
+  border-color: #1f5ed0;
+  background: #2463d4;
+  box-shadow: 0 3px 10px rgb(24 72 163 / 20%);
+}
+
+.customer-insight-group-grid > button.is-active:hover {
+  border-color: #174dab;
+  background: #1f58c2;
 }
 
 .customer-insight-group-card__icon {
@@ -100,6 +110,18 @@
 .customer-insight-group-card__content > strong { min-height: 34px; color: #29436e; font-size: 12.5px; line-height: 1.35; font-weight: 600; }
 .customer-insight-group-card__content b { color: #1a438d; font-size: 18px; line-height: 1; font-weight: 700; }
 .customer-insight-group-card__content small { overflow-wrap: anywhere; color: #687a96; font-size: 10.5px; line-height: 1.35; font-weight: 500; }
+
+.customer-insight-group-grid > button.is-active .customer-insight-group-card__icon {
+  background: rgb(255 255 255 / 16%);
+  color: #fff;
+}
+
+.customer-insight-group-grid > button.is-active .customer-insight-group-card__content > strong,
+.customer-insight-group-grid > button.is-active .customer-insight-group-card__content b,
+.customer-insight-group-grid > button.is-active .customer-insight-group-card__content small,
+.customer-insight-group-grid > button.is-active .customer-insight-group-card__action {
+  color: #fff;
+}
 
 .customer-insight-group-card__action {
   position: absolute;
