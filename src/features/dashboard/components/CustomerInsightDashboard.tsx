@@ -15,7 +15,6 @@ import {
   Target,
   UsersRound
 } from 'lucide-react';
-import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import {
@@ -24,14 +23,12 @@ import {
   type CustomerInsightItem,
   type CustomerInsightModule
 } from '@/features/crm/model/customerInsightCatalog';
-import { formatDateTime } from '@/shared/utils/dateFormatting';
 import './CustomerInsightDashboard.css';
 
 interface CustomerInsightDashboardProps {
   candidates: LeadCandidateRecord[];
   leads: LeadRecord[];
   customers: CustomerRecord[];
-  users: UserProfile[];
   onNavigateInsight: (module: CustomerInsightModule, itemId: string) => void;
   collaboratingCustomersCount: number;
   totalRevenue: number;
@@ -42,11 +39,7 @@ interface CustomerInsightDashboardProps {
 
 interface InsightRecord {
   key: string;
-  id: string;
-  companyName: string;
   module: CustomerInsightModule;
-  assignedSaleId: string;
-  updatedAt: string;
   values: string[];
 }
 
@@ -74,7 +67,6 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
   candidates,
   leads,
   customers,
-  users,
   onNavigateInsight,
   collaboratingCustomersCount,
   totalRevenue,
@@ -83,7 +75,6 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
   operationalContent
 }) => {
   const [selectedGroupId, setSelectedGroupId] = useState(CUSTOMER_INSIGHT_GROUPS[0].id);
-  const [selectedItemId, setSelectedItemId] = useState(CUSTOMER_INSIGHT_GROUPS[0].items[0].id);
 
   const activeCandidates = useMemo(() => candidates.filter(candidate => !candidate.archived), [candidates]);
   const activeLeads = useMemo(() => leads.filter(activeLead), [leads]);
@@ -92,47 +83,27 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
   const insightRecords = useMemo<InsightRecord[]>(() => [
     ...activeCandidates.map(candidate => ({
       key: `customer_data:${candidate.id}`,
-      id: candidate.id,
-      companyName: candidate.companyName,
       module: 'customer_data' as const,
-      assignedSaleId: candidate.assignedSaleId,
-      updatedAt: candidate.updatedAt || candidate.createdAt,
       values: candidate.customerInsightValues || []
     })),
     ...activeLeads.map(lead => ({
       key: `leads:${lead.id}`,
-      id: lead.id,
-      companyName: lead.companyName,
       module: 'leads' as const,
-      assignedSaleId: lead.assignedSaleId,
-      updatedAt: lead.updatedAt || lead.createdAt,
       values: lead.customerInsightValues || []
     })),
     ...activeCustomers.map(customer => ({
       key: `crm:${customer.id}`,
-      id: customer.id,
-      companyName: customer.companyName,
       module: 'crm' as const,
-      assignedSaleId: customer.assignedSaleId,
-      updatedAt: customer.updatedAt || customer.createdAt,
       values: customer.customerInsightValues || []
     })),
     ...activeCustomers.filter(customer => Boolean(customer.pendingOrderDraft)).map(customer => ({
       key: `sales:${customer.id}`,
-      id: customer.id,
-      companyName: customer.companyName,
       module: 'sales' as const,
-      assignedSaleId: customer.assignedSaleId,
-      updatedAt: String(customer.pendingOrderDraft?.updatedAt || customer.updatedAt || customer.createdAt || ''),
       values: ['po_promised']
     }))
   ], [activeCandidates, activeCustomers, activeLeads]);
 
   const selectedGroup = CUSTOMER_INSIGHT_GROUPS.find(group => group.id === selectedGroupId) || CUSTOMER_INSIGHT_GROUPS[0];
-  const selectedItem = selectedGroup.items.find(item => item.id === selectedItemId) || selectedGroup.items[0];
-  const selectedRecords = insightRecords
-    .filter(record => record.module === selectedItem.module && record.values.includes(selectedItem.id))
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
   const itemCount = (item: CustomerInsightItem) => insightRecords.filter(record => (
     record.module === item.module && record.values.includes(item.id)
@@ -141,11 +112,10 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
   const selectGroup = (groupId: string) => {
     const group = CUSTOMER_INSIGHT_GROUPS.find(entry => entry.id === groupId) || CUSTOMER_INSIGHT_GROUPS[0];
     setSelectedGroupId(group.id);
-    setSelectedItemId(group.items[0].id);
   };
 
-  const openSelectedList = () => {
-    const target = getCustomerInsightNavigation(selectedItem.id);
+  const openItemList = (item: CustomerInsightItem) => {
+    const target = getCustomerInsightNavigation(item.id);
     if (target) onNavigateInsight(target.pageId, target.insightItemId);
   };
 
@@ -165,8 +135,6 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
         <article className="is-employees"><UsersRound size={25} /><div><span>Nhân viên</span><strong>{activeEmployeesCount} người</strong><small>Tài khoản nhân viên đang hoạt động</small></div></article>
         <article className="is-orders"><FileClock size={25} /><div><span>Đơn đang xử lý</span><strong>{activeOrdersCount} đơn</strong><small>PO chưa hoàn thành trong kỳ đang chọn</small></div></article>
       </div>
-
-      {operationalContent}
 
       <div className="customer-insight-groups">
         <div className="customer-insight-section-title"><span>8 nhóm thông tin khách hàng</span><small>Chọn một nhóm để xem chi tiết</small></div>
@@ -200,7 +168,7 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
         </header>
         <div className="customer-insight-item-grid">
           {selectedGroup.items.map(item => (
-            <button key={item.id} type="button" className={selectedItem.id === item.id ? 'is-active' : ''} onClick={() => setSelectedItemId(item.id)}>
+            <button key={item.id} type="button" onClick={() => openItemList(item)}>
               <span>{item.label}</span>
               <em className={`customer-insight-module-text is-${item.module}`}>{MODULE_LABELS[item.module]}</em>
               <strong>{itemCount(item)}</strong>
@@ -210,31 +178,7 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
         </div>
       </div>
 
-      <div className="customer-insight-results">
-        <header>
-          <div>
-            <strong>Danh sách khách hàng</strong>
-            <span>{selectedItem.label} · {selectedRecords.length} hồ sơ</span>
-          </div>
-          <button type="button" onClick={openSelectedList}>Mở tại {MODULE_LABELS[selectedItem.module]} <ChevronRight size={15} /></button>
-        </header>
-        <div className="table-container">
-          <table>
-            <thead><tr><th>Khách hàng</th><th>Phân hệ</th><th>Sale phụ trách</th><th>Cập nhật gần nhất</th></tr></thead>
-            <tbody>
-              {selectedRecords.slice(0, 10).map(record => (
-                <tr key={record.key} onClick={openSelectedList}>
-                  <td><strong>{record.companyName || 'Chưa có tên doanh nghiệp'}</strong></td>
-                  <td><span className={`customer-insight-module-text is-${record.module}`}>{MODULE_LABELS[record.module]}</span></td>
-                  <td>{users.find(user => user.uid === record.assignedSaleId)?.displayName || 'Chưa phân công'}</td>
-                  <td>{formatDateTime(record.updatedAt, 'vi-VN', '—')}</td>
-                </tr>
-              ))}
-              {selectedRecords.length === 0 && <tr><td colSpan={4} className="customer-insight-results__empty">Chưa có hồ sơ thuộc mục này.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {operationalContent}
     </section>
   );
 };

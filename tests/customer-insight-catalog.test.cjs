@@ -43,8 +43,7 @@ test('dashboard renders every group and routes item selections to their owning m
     'utf8'
   );
   assert.match(dashboardSource, /CUSTOMER_INSIGHT_GROUPS\.map/);
-  assert.match(dashboardSource, /getCustomerInsightNavigation\(selectedItem\.id\)/);
-  assert.match(dashboardSource, /record\.module === selectedItem\.module/);
+  assert.match(dashboardSource, /getCustomerInsightNavigation\(item\.id\)/);
   assert.match(dashboardSource, /Dữ liệu thô/);
   assert.match(dashboardSource, /Tiềm năng/);
   assert.match(dashboardSource, /Khách hàng/);
@@ -52,6 +51,8 @@ test('dashboard renders every group and routes item selections to their owning m
   assert.equal((dashboardSource.match(/<article className="is-/g) || []).length, 8);
   assert.doesNotMatch(dashboardSource, /Theo dõi toàn bộ hành trình/);
   assert.match(dashboardSource, /customer-insight-module-text/);
+  assert.doesNotMatch(dashboardSource, /customer-insight-results/);
+  assert.ok(dashboardSource.indexOf('customer-insight-groups') < dashboardSource.indexOf('{operationalContent}'));
 
   const dashboardPageSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'dashboard', 'pages', 'DashboardPage.tsx'),

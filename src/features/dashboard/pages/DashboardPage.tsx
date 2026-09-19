@@ -687,7 +687,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             candidates={candidates}
             leads={leads}
             customers={customers}
-            users={users}
             onNavigateInsight={onNavigateInsight}
             collaboratingCustomersCount={collaboratingCustomers.length}
             totalRevenue={totalRevenue}
