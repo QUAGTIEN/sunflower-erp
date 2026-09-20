@@ -90,6 +90,7 @@ import { PageBackButton } from '@/components/PageBackButton';
 import { BusinessLocationFields } from '@/features/crm/components/BusinessLocationFields';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
+import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -351,6 +352,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [showLeadFilters, setShowLeadFilters] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
+  const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [editingLeadId, setEditingLeadId] = useState('');
   const [convertingCandidateId, setConvertingCandidateId] = useState('');
@@ -2518,6 +2520,7 @@ export const Leads: React.FC<LeadsProps> = ({
                             { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => setSelectedLeadId(lead.id) },
                             { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) },
                             { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) },
+                            ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), onSelect: () => setAssignmentTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
                             {
                               label: returningLeadId === lead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô'),
@@ -2596,6 +2599,9 @@ export const Leads: React.FC<LeadsProps> = ({
 
       {supportTarget && (
         <SupportRequestDialog currentUser={currentUser} users={users} target={supportTarget} onClose={() => setSupportTarget(null)} />
+      )}
+      {assignmentTarget && (
+        <WorkAssignmentDialog currentUser={currentUser} users={users} target={assignmentTarget} onClose={() => setAssignmentTarget(null)} />
       )}
 
     </SystemFieldSurface>

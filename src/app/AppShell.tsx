@@ -606,7 +606,7 @@ function AppShell() {
         );
       case 'work_schedule':
         if (!isPageAllowed('work_schedule')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
-        return <WorkSchedule currentUser={user} users={users} />;
+        return <WorkSchedule currentUser={user} users={users} candidates={leadCandidates} leads={leads} customers={customers} onOpenRecord={(module, id) => { setSupportNavigationTarget({ module, entityId: id }); setActivePage(module); }} />;
       case 'sales':
         if (!isPageAllowed('sales')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
         return (

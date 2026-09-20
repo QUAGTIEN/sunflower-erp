@@ -42,6 +42,7 @@ import { RowActionMenu } from '@/components/RowActionMenu';
 import { PhoneCallCell } from '@/components/PhoneCallCell';
 import { customerCallHistoryKeys, customerCallSubjectKey } from '@/features/crm/model/callHistory';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
+import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -303,6 +304,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
+  const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
   useEffect(() => {
     if (!initialInsightFilterId) return;
     setSelectedCustomer(null);
@@ -3096,6 +3098,7 @@ export const Crm: React.FC<CrmProps> = ({
                                   actions={[
                                     ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [{ label: t('Tạo PO'), icon: <ClipboardPlus size={14} />, onSelect: () => onPreparedOrderCreated?.(customer.id) }] : []),
                                     { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => openCustomerDetail(customer) },
+                                    ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), onSelect: () => setAssignmentTarget({ id: customer.id, label: customer.companyName, module: 'crm' }) }] : []),
                                     ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: customer.id, label: customer.companyName, module: 'crm' }) }] : []),
                                     ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [
                                       { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditModal(customer) },
@@ -4762,6 +4765,9 @@ export const Crm: React.FC<CrmProps> = ({
 
       {supportTarget && (
         <SupportRequestDialog currentUser={currentUser} users={users} target={supportTarget} onClose={() => setSupportTarget(null)} />
+      )}
+      {assignmentTarget && (
+        <WorkAssignmentDialog currentUser={currentUser} users={users} target={assignmentTarget} onClose={() => setAssignmentTarget(null)} />
       )}
 
     </SystemFieldSurface>

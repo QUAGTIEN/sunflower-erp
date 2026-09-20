@@ -11,6 +11,7 @@
     "test:calls": "node --test tests/call-history.test.cjs",
     "test:insights": "node --test tests/customer-insight-catalog.test.cjs",
     "test:sales-management": "node --test tests/sales-management.test.cjs",
+    "test:work-schedule": "node --test tests/work-schedule.test.cjs",
     "preview": "vite preview",
     "db:clear": "node scripts/clear-db.js"
   },

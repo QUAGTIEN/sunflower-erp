@@ -91,7 +91,9 @@
   font-size: 13px;
 }
 
-.support-request-dialog__body textarea {
+.support-request-dialog__body textarea,
+.support-request-dialog__body input,
+.support-request-dialog__body select {
   width: 100%;
   min-height: 104px;
   padding: 10px 11px;
@@ -104,6 +106,9 @@
   font-weight: 450;
   line-height: 1.45;
 }
+
+.support-request-dialog__body input,
+.support-request-dialog__body select { min-height: 38px; }
 
 .support-request-dialog__body textarea:focus {
   border-color: #6687c7;

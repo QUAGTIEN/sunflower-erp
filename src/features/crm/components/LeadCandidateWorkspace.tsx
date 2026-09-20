@@ -67,6 +67,7 @@ import { CustomerInsightEditor } from './CustomerInsightEditor';
 import { CUSTOMER_INSIGHT_ITEM_BY_ID, getCustomerInsightGroupsForModule, matchesCustomerInsightValues, replaceCustomerInsightGroupValues } from '@/features/crm/model/customerInsightCatalog';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
+import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -605,6 +606,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [employeePresences, setEmployeePresences] = useState<UserPresence[]>([]);
   const [selectedManagedSaleId, setSelectedManagedSaleId] = useState('');
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
+  const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
   const [employeeActivityRange, setEmployeeActivityRange] = useState<EmployeeActivityRange>('today');
   const [employeeActivityGroup, setEmployeeActivityGroup] = useState<EmployeeActivityGroup>('all');
   const [salesReportPeriod, setSalesReportPeriod] = useState<SalesReportPeriod>('week');
@@ -2314,6 +2316,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           actions={[
                             { label: 'Hẹn tiếp', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) },
                             { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
+                            ...(currentUser.role === 'admin' ? [{ label: 'Giao việc', onSelect: () => setAssignmentTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : []),
                             { label: 'Tắt công việc', icon: <X size={14} />, onSelect: () => dismissScheduledTask(candidate), disabled: isBusy, danger: true }
@@ -2426,6 +2429,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
                             { label: 'Xem hồ sơ', icon: <Eye size={14} />, onSelect: () => openCandidateProfile(candidate) },
+                            ...(currentUser.role === 'admin' ? [{ label: 'Giao việc', onSelect: () => setAssignmentTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(canManageCandidate(candidate) ? [
                               ...(isActive ? [{ label: 'Hẹn lịch', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) }] : []),
@@ -2528,6 +2532,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
       {supportTarget && (
         <SupportRequestDialog currentUser={currentUser} users={users} target={supportTarget} onClose={() => setSupportTarget(null)} />
+      )}
+      {assignmentTarget && (
+        <WorkAssignmentDialog currentUser={currentUser} users={users} target={assignmentTarget} onClose={() => setAssignmentTarget(null)} />
       )}
     </SystemFieldSurface>
   );

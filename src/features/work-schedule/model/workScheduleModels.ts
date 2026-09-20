@@ -1,7 +1,10 @@
-export type WorkScheduleStatus = 'not_started' | 'in_progress' | 'paused' | 'completed';
+export type WorkScheduleStatus = 'not_started' | 'in_progress' | 'waiting_customer' | 'support_requested' | 'awaiting_confirmation' | 'paused' | 'completed' | 'cancelled';
+export type WorkSchedulePriority = 'normal' | 'high' | 'urgent';
+export type WorkScheduleTaskType = 'assigned_task' | 'support_request' | 'personal_task';
 
 export type WorkScheduleReferenceType =
   | 'none'
+  | 'lead_candidate'
   | 'customer'
   | 'lead'
   | 'po'
@@ -28,6 +31,10 @@ export interface WorkScheduleRecord {
   referenceId: string;
   referenceLabel: string;
   notes: string;
+  priority: WorkSchedulePriority;
+  taskType: WorkScheduleTaskType;
+  requestedById: string;
+  requestedByName: string;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
@@ -35,10 +42,12 @@ export interface WorkScheduleRecord {
   deletedAt?: string;
 }
 
-const STATUS_VALUES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'paused', 'completed'];
+const STATUS_VALUES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused', 'completed', 'cancelled'];
 const REFERENCE_VALUES: WorkScheduleReferenceType[] = [
-  'none', 'customer', 'lead', 'po', 'design_request', 'production_order', 'delivery', 'other'
+  'none', 'lead_candidate', 'customer', 'lead', 'po', 'design_request', 'production_order', 'delivery', 'other'
 ];
+const PRIORITY_VALUES: WorkSchedulePriority[] = ['normal', 'high', 'urgent'];
+const TASK_TYPE_VALUES: WorkScheduleTaskType[] = ['assigned_task', 'support_request', 'personal_task'];
 
 const asText = (value: unknown): string => {
   if (typeof value === 'string') return value;
@@ -89,6 +98,10 @@ export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord 
     referenceId: asText(source.referenceId),
     referenceLabel: asText(source.referenceLabel),
     notes: asText(source.notes),
+    priority: PRIORITY_VALUES.includes(source.priority as WorkSchedulePriority) ? source.priority as WorkSchedulePriority : 'normal',
+    taskType: TASK_TYPE_VALUES.includes(source.taskType as WorkScheduleTaskType) ? source.taskType as WorkScheduleTaskType : 'assigned_task',
+    requestedById: asText(source.requestedById),
+    requestedByName: asText(source.requestedByName),
     createdAt: asText(source.createdAt),
     updatedAt: asText(source.updatedAt),
     deleted: source.deleted === true,
@@ -102,14 +115,25 @@ export const normalizeWorkScheduleRecords = (values: unknown): WorkScheduleRecor
 );
 
 export const WORK_SCHEDULE_STATUS_LABELS: Record<WorkScheduleStatus, string> = {
-  not_started: 'Chưa xử lý',
-  in_progress: 'Đang xử lý',
+  not_started: 'Chờ tiếp nhận',
+  in_progress: 'Đang thực hiện',
+  waiting_customer: 'Chờ khách hàng',
+  support_requested: 'Yêu cầu hỗ trợ',
+  awaiting_confirmation: 'Chờ xác nhận',
   paused: 'Đang xử lý',
-  completed: 'Đã xử lý'
+  completed: 'Hoàn thành',
+  cancelled: 'Đã hủy'
+};
+
+export const WORK_SCHEDULE_PRIORITY_LABELS: Record<WorkSchedulePriority, string> = {
+  normal: 'Bình thường',
+  high: 'Cao',
+  urgent: 'Khẩn cấp'
 };
 
 export const WORK_SCHEDULE_REFERENCE_LABELS: Record<WorkScheduleReferenceType, string> = {
   none: 'Không liên kết',
+  lead_candidate: 'Dữ liệu thô',
   customer: 'Khách hàng',
   lead: 'Lead',
   po: 'PO',
