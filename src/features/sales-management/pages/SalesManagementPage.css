@@ -1,0 +1,185 @@
+.sales-management-page {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.sales-management-toolbar {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sales-management-title,
+.sales-management-title > div,
+.sales-management-filters,
+.sales-management-card > header,
+.sales-management-list > header,
+.sales-management-module-tabs {
+  display: flex;
+  align-items: center;
+}
+
+.sales-management-title { min-width: 0; gap: 12px; }
+.sales-management-title > div { min-width: 0; align-items: baseline; gap: 8px; }
+.sales-management-title h1 { margin: 0; color: #142e62; font-size: 20px; line-height: 1.25; font-weight: 650; }
+.sales-management-title p { margin: 2px 0 0; color: #62738d; font-size: 12.5px; line-height: 1.35; font-weight: 500; }
+.sales-management-title p strong { font-weight: 650; }
+.sales-management-title p strong.is-active { color: #07835e; }
+.sales-management-title p strong.is-idle { color: #9b6200; }
+.sales-management-title p strong.is-offline { color: #66758b; }
+
+.sales-management-avatar,
+.sales-management-person > span {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e4edff;
+  color: #1e56bb;
+  font-weight: 700;
+}
+
+.sales-management-avatar { width: 42px; height: 42px; font-size: 14px; }
+.sales-management-current-action { overflow: hidden; max-width: 390px; color: #60718b; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.sales-management-filters { flex: 0 0 auto; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.sales-management-filters select,
+.sales-management-filters input { min-height: 36px; padding: 6px 10px; border: 1px solid #c9d5e7; border-radius: 6px; background: #fff; color: #20375f; font: 600 12.5px/1.2 Inter, sans-serif; }
+
+.sales-management-notice { padding: 10px 12px; border: 1px solid #efc5c5; border-radius: 6px; background: #fff5f5; color: #ad2323; font-size: 13px; font-weight: 600; }
+
+.sales-management-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sales-management-kpis.is-detail { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.sales-management-kpis article { display: grid; min-width: 0; min-height: 82px; align-content: center; gap: 3px; padding: 12px 14px; border: 1px solid #cfdbeb; border-left: 4px solid #3974df; border-radius: 6px; background: #fff; }
+.sales-management-kpis article:nth-child(2), .sales-management-kpis article:nth-child(7) { border-left-color: #0c9b74; }
+.sales-management-kpis article:nth-child(3), .sales-management-kpis article:nth-child(6) { border-left-color: #1598b3; }
+.sales-management-kpis article:nth-child(4), .sales-management-kpis article:nth-child(5) { border-left-color: #7356d6; }
+.sales-management-kpis article.is-warning { border-left-color: #e27119; }
+.sales-management-kpis article span { overflow: hidden; color: #536885; font-size: 11px; line-height: 1.2; font-weight: 650; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.sales-management-kpis article strong { color: #102f70; font-size: 20px; line-height: 1.2; font-weight: 700; }
+.sales-management-kpis article.is-warning strong { color: #c74d11; }
+.sales-management-kpis article small { overflow: hidden; color: #74839a; font-size: 11px; line-height: 1.25; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+
+.sales-management-analysis-grid,
+.sales-management-detail-grid { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.sales-management-detail-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); }
+.sales-management-card { min-width: 0; overflow: hidden; border: 1px solid #cfdaea; border-radius: 7px; background: #fff; }
+.sales-management-card > header { min-height: 48px; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #dbe4f0; }
+.sales-management-card > header h2 { margin: 0; color: #17356e; font-size: 15px; line-height: 1.3; font-weight: 650; }
+.sales-management-card > header > span { color: #65758e; font-size: 12px; font-weight: 550; }
+
+.sales-management-funnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; padding: 18px; }
+.sales-management-funnel > div { position: relative; display: grid; min-width: 0; min-height: 94px; place-content: center; gap: 4px; padding: 12px; background: #edf4ff; color: #173d8a; text-align: center; clip-path: polygon(0 0, 90% 0, 100% 50%, 90% 100%, 0 100%, 10% 50%); }
+.sales-management-funnel > div:first-child { clip-path: polygon(0 0, 90% 0, 100% 50%, 90% 100%, 0 100%); }
+.sales-management-funnel > div:nth-child(2) { background: #dfebff; }
+.sales-management-funnel > div:nth-child(3) { background: #d5e4ff; }
+.sales-management-funnel > div:nth-child(4) { background: #e8e3fb; color: #4d3899; }
+.sales-management-funnel span { overflow: hidden; font-size: 12px; line-height: 1.3; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.sales-management-funnel strong { font-size: 23px; line-height: 1; font-weight: 750; }
+.sales-management-funnel small { font-size: 11px; font-weight: 650; }
+
+.sales-management-bars { display: grid; gap: 20px; padding: 27px 22px; }
+.sales-management-bars > div { display: grid; grid-template-columns: 110px minmax(0, 1fr) 45px; align-items: center; gap: 12px; }
+.sales-management-bars span { color: #24416f; font-size: 12.5px; font-weight: 600; }
+.sales-management-bars i { display: block; height: 12px; overflow: hidden; border-radius: 3px; background: #e8eef6; }
+.sales-management-bars b { display: block; height: 100%; border-radius: inherit; }
+.sales-management-bars strong { color: #123574; font-size: 14px; text-align: right; }
+
+.sales-management-list > header label { display: flex; align-items: center; gap: 8px; color: #52647f; font-size: 12px; font-weight: 600; }
+.sales-management-list > header input { width: 220px; min-height: 34px; padding: 6px 10px; border: 1px solid #cbd6e6; border-radius: 5px; font: 500 12.5px Inter, sans-serif; }
+.sales-management-list .table-container { margin: 0; border: 0; border-radius: 0; }
+.sales-management-list table { min-width: 1120px; }
+.sales-management-list th { color: #30476e; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.sales-management-list td { color: #3e516f; font-size: 12.5px; }
+.sales-management-list td.is-number { color: #17366f; font-weight: 650; text-align: right; }
+.sales-management-list td.is-overdue,
+.sales-management-stalled td.is-overdue { color: #d14435; font-weight: 700; }
+
+.sales-management-person { display: inline-flex; min-width: 0; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; color: #17366f; cursor: pointer; }
+.sales-management-person > span { width: 30px; height: 30px; font-size: 10.5px; }
+.sales-management-person strong { overflow: hidden; max-width: 170px; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.sales-management-link { padding: 0; border: 0; background: transparent; color: #165fc5; font-size: 12px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+
+.sales-management-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.sales-management-status i { width: 8px; height: 8px; border-radius: 50%; background: #738197; }
+.sales-management-status.is-active { color: #07805c; }
+.sales-management-status.is-active i { background: #0aaa7d; }
+.sales-management-status.is-idle { color: #986000; }
+.sales-management-status.is-idle i { background: #e4a11b; }
+.sales-management-status.is-offline { color: #68778e; }
+
+.sales-management-work-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 12px 14px 8px; }
+.sales-management-work-metrics span { display: grid; gap: 2px; padding: 9px; border: 1px solid #d9e2ef; border-radius: 5px; color: #66758d; font-size: 11px; font-weight: 550; }
+.sales-management-work-metrics strong { color: #173b83; font-size: 17px; }
+.sales-management-dayline { display: grid; height: 86px; grid-template-columns: repeat(10, minmax(0, 1fr)); align-items: end; gap: 6px; padding: 8px 14px 18px; border-bottom: 1px solid #e1e7f0; }
+.sales-management-dayline span { position: relative; display: flex; height: 52px; align-items: flex-end; justify-content: center; border-bottom: 1px solid #bdcbe0; }
+.sales-management-dayline i { width: 65%; min-height: 4px; border-radius: 3px 3px 0 0; background: #4a85ed; }
+.sales-management-dayline small { position: absolute; bottom: -17px; color: #738198; font-size: 9.5px; white-space: nowrap; }
+.sales-management-latest { margin: 0; padding: 10px 14px; color: #5c6e88; font-size: 12px; }
+.sales-management-latest strong { color: #244474; font-weight: 650; }
+
+.sales-management-module-tabs { flex-wrap: wrap; gap: 4px; }
+.sales-management-module-tabs button { padding: 5px 9px; border: 1px solid #cdd8e8; border-radius: 5px; background: #fff; color: #53657f; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+.sales-management-module-tabs button.is-active { border-color: #285fc1; background: #285fc1; color: #fff; }
+.sales-management-activity-list { display: grid; max-height: 360px; overflow-y: auto; }
+.sales-management-activity-list > button { display: grid; min-width: 0; grid-template-columns: 62px 86px minmax(120px, .8fr) minmax(160px, 1.2fr); align-items: center; gap: 8px; padding: 9px 14px; border: 0; border-bottom: 1px solid #e1e7ef; background: #fff; color: #334b70; text-align: left; cursor: pointer; }
+.sales-management-activity-list > button:hover { background: #f6f9fd; }
+.sales-management-activity-list > button:disabled { cursor: default; }
+.sales-management-activity-list time { display: grid; color: #244878; font-size: 12px; font-weight: 650; }
+.sales-management-activity-list time small { color: #8190a5; font-size: 10px; font-weight: 500; }
+.sales-management-activity-list > button > span { font-size: 11.5px; font-weight: 700; }
+.sales-management-activity-list span.is-customer_data { color: #596c88; }
+.sales-management-activity-list span.is-leads { color: #b06500; }
+.sales-management-activity-list span.is-crm { color: #087a60; }
+.sales-management-activity-list strong,
+.sales-management-activity-list em { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.sales-management-activity-list em { color: #62738c; font-style: normal; font-weight: 500; }
+
+.sales-management-attention { padding: 5px 8px; border-radius: 4px; background: #fff0df; color: #bc5912 !important; font-weight: 650 !important; }
+.sales-management-stalled .table-container { margin: 0; border: 0; border-radius: 0; }
+.sales-management-stalled table { min-width: 650px; }
+.sales-management-stalled th { color: #344b71; font-size: 11.5px; font-weight: 650; }
+.sales-management-stalled td { max-width: 190px; overflow: hidden; color: #405372; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.sales-management-stalled tbody tr { cursor: pointer; }
+.sales-management-stalled tbody tr:hover { background: #f6f9fd; }
+.sales-management-stalled td strong { color: #17366f; font-size: 12px; }
+.sales-management-empty { padding: 24px !important; color: #718097 !important; text-align: center !important; font-size: 12.5px; font-weight: 550; }
+
+@media (max-width: 1280px) {
+  .sales-management-kpis.is-detail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sales-management-detail-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 980px) {
+  .sales-management-toolbar { align-items: flex-start; flex-direction: column; }
+  .sales-management-filters { width: 100%; justify-content: flex-start; }
+  .sales-management-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sales-management-analysis-grid { grid-template-columns: minmax(0, 1fr); }
+  .sales-management-current-action { max-width: 240px; }
+}
+
+@media (max-width: 640px) {
+  .sales-management-title { width: 100%; align-items: flex-start; flex-wrap: wrap; }
+  .sales-management-title > div { align-items: flex-start; flex-direction: column; }
+  .sales-management-current-action { width: 100%; max-width: none; }
+  .sales-management-filters select,
+  .sales-management-filters input { flex: 1 1 140px; }
+  .sales-management-kpis,
+  .sales-management-kpis.is-detail { grid-template-columns: minmax(0, 1fr); }
+  .sales-management-funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sales-management-funnel > div { clip-path: none !important; border-radius: 4px; }
+  .sales-management-list > header { align-items: flex-start; flex-direction: column; }
+  .sales-management-list > header label,
+  .sales-management-list > header input { width: 100%; }
+  .sales-management-work-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sales-management-activity-list > button { grid-template-columns: 52px 78px minmax(0, 1fr); }
+  .sales-management-activity-list em { grid-column: 2 / -1; }
+}

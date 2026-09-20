@@ -3,7 +3,7 @@ import type { UserProfile, UserRole } from '@/shared/types';
 export const getDefaultPagesForRole = (role: UserRole): string[] => {
   switch (role) {
     case 'admin':
-      return ['dashboard', 'chat', 'work_schedule', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
+      return ['dashboard', 'chat', 'work_schedule', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'sales_management', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
     case 'sale':
       return ['dashboard', 'chat', 'work_schedule', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'];
     case 'designer':
@@ -23,6 +23,7 @@ export const canAccessPage = (
 ): boolean => {
   if (!user) return false;
   const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
+  if (pageId === 'sales_management') return user.role === 'admin';
   if (pageId === 'work_schedule') return user.active !== false;
   if (pageId === 'leads') return allowed.includes('leads') || allowed.includes('crm');
   if (pageId === 'customer_data') {

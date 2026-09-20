@@ -2,6 +2,7 @@ import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { authService, dbService, isFirebaseRuntimeEnabled, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
 import { Dashboard } from '@/features/dashboard';
+import { SalesManagementPage } from '@/features/sales-management';
 import { Crm, CustomerData, Leads } from '@/features/crm';
 import { Sales } from '@/features/sales';
 import { Design, DesignLibrary } from '@/features/design';
@@ -76,6 +77,7 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   leads: { section: 'Tiềm năng', current: 'Tổng quan' },
   crm: { section: 'Khách hàng', current: 'Tất cả' },
   sales: { section: 'Tạo đơn hàng', current: 'Danh sách PO' },
+  sales_management: { section: 'Quản lý Sale', current: 'Tổng quan' },
   design: { section: 'Thiết kế', current: 'Danh sách yêu cầu thiết kế' },
   design_library: { section: 'Kho mẫu', current: 'Danh sách mẫu thiết kế' },
   purchase: { section: 'Mua hàng', current: 'Yêu cầu từ Sale PO' },
@@ -624,6 +626,21 @@ function AppShell() {
             users={users}
           />
         );
+      case 'sales_management':
+        if (!isPageAllowed('sales_management')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        return (
+          <SalesManagementPage
+            users={users}
+            candidates={leadCandidates}
+            leads={leads}
+            customers={customers}
+            currentUser={user}
+            onOpenRecord={(module, id) => {
+              setSupportNavigationTarget({ module, entityId: id });
+              setActivePage(module);
+            }}
+          />
+        );
       case 'design':
         if (!isPageAllowed('design')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
         return <Design pos={pos} designRequests={designRequests} users={users} currentUser={user} onRefresh={refreshData} />;
@@ -976,6 +993,19 @@ function AppShell() {
               <div className="sidebar-item-content">
                 <FileText size={16} />
                 <span className="sidebar-item-label">Tạo đơn hàng</span>
+              </div>
+            </button>
+          )}
+
+          {isPageAllowed('sales_management') && (
+            <button
+              className={`sidebar-item ${activePage === 'sales_management' ? 'active' : ''}`}
+              onClick={() => { setActivePage('sales_management'); setIsSidebarOpen(false); }}
+              title={t('Quản lý Sale')}
+            >
+              <div className="sidebar-item-content">
+                <UserCog size={16} />
+                <span className="sidebar-item-label">Quản lý Sale</span>
               </div>
             </button>
           )}
