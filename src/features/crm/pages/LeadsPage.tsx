@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
+  ClipboardCheck,
   Eye,
   LifeBuoy,
   Paperclip,
@@ -2520,7 +2521,7 @@ export const Leads: React.FC<LeadsProps> = ({
                             { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => setSelectedLeadId(lead.id) },
                             { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) },
                             { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) },
-                            ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), onSelect: () => setAssignmentTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
+                            ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
                             {
                               label: returningLeadId === lead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô'),

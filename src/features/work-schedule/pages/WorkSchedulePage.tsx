@@ -108,7 +108,6 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('this_month');
   const [page, setPage] = useState(1);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [weekAnchor, setWeekAnchor] = useState(() => getWeekStart(new Date()));
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -187,8 +186,6 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const pageIds = pageItems.map(item => item.id);
-  const isPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
 
   const setFilterAndFirstPage = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, value: T) => {
     setter(value);
@@ -202,18 +199,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
     setPriorityFilter('all');
     setPeriodFilter('this_month');
     setPage(1);
-    setSelectedIds(new Set());
   };
-  const toggleSelected = (id: string) => setSelectedIds(previous => {
-    const next = new Set(previous);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-  const togglePage = () => setSelectedIds(previous => {
-    const next = new Set(previous);
-    if (isPageSelected) pageIds.forEach(id => next.delete(id)); else pageIds.forEach(id => next.add(id));
-    return next;
-  });
   const openCreate = () => {
     setEditingItem(null);
     setForm(defaultForm(isAdmin ? '' : currentUser.uid));
@@ -313,14 +299,12 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   return <div className="work-schedule-page">
     <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Công việc'} />
 
-    <section className="work-schedule-heading">
-      <h1>Quản lý công việc</h1>
-      {activeTab === 'tasks' && <button type="button" className="btn btn-primary" onClick={openCreate}><Plus size={15} />Tạo công việc</button>}
-    </section>
-
     <div className="work-schedule-tabs" role="tablist">
-      <button type="button" role="tab" aria-selected={activeTab === 'tasks'} className={activeTab === 'tasks' ? 'is-active' : ''} onClick={() => setActiveTab('tasks')}>Công việc</button>
-      <button type="button" role="tab" aria-selected={activeTab === 'week'} className={activeTab === 'week' ? 'is-active' : ''} onClick={() => setActiveTab('week')}>Lịch tuần</button>
+      <div className="work-schedule-tab-list">
+        <button type="button" role="tab" aria-selected={activeTab === 'tasks'} className={activeTab === 'tasks' ? 'is-active' : ''} onClick={() => setActiveTab('tasks')}>Công việc</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'week'} className={activeTab === 'week' ? 'is-active' : ''} onClick={() => setActiveTab('week')}>Lịch tuần</button>
+      </div>
+      {activeTab === 'tasks' && <button type="button" className="btn btn-primary work-schedule-create" onClick={openCreate}><Plus size={15} />Tạo công việc</button>}
     </div>
 
     {message && <div className="work-schedule-message" role="status">{message}</div>}
@@ -351,11 +335,9 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
         <div className="work-schedule-table-wrap">
           <table className="work-schedule-table work-schedule-task-table">
             <thead><tr>
-              <th className="work-schedule-select-column"><input type="checkbox" aria-label="Chọn tất cả công việc trên trang" checked={isPageSelected} onChange={togglePage}/></th>
               <th>Công việc</th><th>Khách hàng</th><th>Phân hệ</th><th>Người giao</th><th>Người thực hiện</th><th>Hạn xử lý</th><th>Ưu tiên</th><th>Trạng thái</th><th>Cập nhật gần nhất</th><th>Thao tác</th>
             </tr></thead>
             <tbody>{!isLoading && pageItems.map(item => <tr key={item.id} className={isTaskOverdue(item, now) ? 'is-overdue' : ''}>
-              <td className="work-schedule-select-column"><input type="checkbox" aria-label={`Chọn ${item.title}`} checked={selectedIds.has(item.id)} onChange={() => toggleSelected(item.id)}/></td>
               <td><strong>{item.title}</strong><small>{item.description || 'Chưa có mô tả'}</small></td>
               <td>{item.referenceLabel ? <button type="button" className="work-schedule-link" onClick={() => openSource(item)}>{item.referenceLabel}</button> : '—'}</td>
               <td><span className={`work-schedule-reference work-schedule-reference--${item.referenceType}`}>{WORK_SCHEDULE_REFERENCE_LABELS[item.referenceType]}</span></td>
@@ -372,7 +354,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
           {!isLoading && pageItems.length === 0 && <div className="work-schedule-empty">Chưa có công việc phù hợp bộ lọc.</div>}
         </div>
         <footer className="work-schedule-pagination">
-          <span>Đã chọn {selectedIds.size} công việc</span>
+          <span>{filteredItems.length} công việc</span>
           <div><span>{filteredItems.length === 0 ? '0–0' : `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredItems.length)}`} / {filteredItems.length}</span><button type="button" className="btn btn-outline btn-sm" disabled={currentPage <= 1} onClick={() => setPage(previous => Math.max(1, previous - 1))}>Trước</button><button type="button" className="btn btn-outline btn-sm" disabled={currentPage >= totalPages} onClick={() => setPage(previous => Math.min(totalPages, previous + 1))}>Sau</button></div>
         </footer>
       </section>

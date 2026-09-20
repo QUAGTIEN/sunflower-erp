@@ -14,6 +14,7 @@ test('work assignment is available in every customer lifecycle module', () => {
     const source = read(file);
     assert.match(source, /WorkAssignmentDialog/);
     assert.match(source, /Giao việc/);
+    assert.match(source, /label: (?:t\()?['"]Giao việc['"]\)?.*icon: <ClipboardCheck/s);
   }
 });
 
@@ -28,7 +29,7 @@ test('support requests become managed work items', () => {
 test('task status and priority use colored text without badge styling', () => {
   const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');
-  assert.match(page, /Quản lý công việc/);
+  assert.doesNotMatch(page, /<h1>Quản lý công việc<\/h1>/);
   assert.match(page, /work-schedule-status--/);
   assert.match(page, /work-schedule-priority--/);
   const textRule = css.match(/\.work-schedule-status,\s*\.work-schedule-priority,[^{]*\{([^}]*)\}/s)?.[1] || '';
@@ -38,8 +39,8 @@ test('task status and priority use colored text without badge styling', () => {
 
 test('work and week tabs use the straight underline shared by ERP modules', () => {
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');
-  const tabRule = css.match(/\.work-schedule-tabs button \{([^}]*)\}/s)?.[1] || '';
-  assert.match(tabRule, /border-bottom: 2px solid transparent/);
-  assert.match(tabRule, /border-radius: 0/);
-  assert.match(css, /\.work-schedule-tabs button\.is-active \{[^}]*border-bottom-color:/s);
+  const underlineRule = css.match(/\.work-schedule-tab-list > button::after,[^{]*\{([^}]*)\}/s)?.[1] || '';
+  assert.match(underlineRule, /height: 2px/);
+  assert.match(underlineRule, /border-radius: 0 !important/);
+  assert.match(css, /\.work-schedule-tab-list > button\.is-active::after,[^{]*\{[^}]*opacity: 1/s);
 });

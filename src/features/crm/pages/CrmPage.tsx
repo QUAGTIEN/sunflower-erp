@@ -117,6 +117,7 @@ import {
   BarChart3,
   Building2,
   CircleDollarSign,
+  ClipboardCheck,
   ClipboardPlus,
   Search,
   ShoppingBag,
@@ -3098,7 +3099,7 @@ export const Crm: React.FC<CrmProps> = ({
                                   actions={[
                                     ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [{ label: t('Tạo PO'), icon: <ClipboardPlus size={14} />, onSelect: () => onPreparedOrderCreated?.(customer.id) }] : []),
                                     { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => openCustomerDetail(customer) },
-                                    ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), onSelect: () => setAssignmentTarget({ id: customer.id, label: customer.companyName, module: 'crm' }) }] : []),
+                                    ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: customer.id, label: customer.companyName, module: 'crm' }) }] : []),
                                     ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: customer.id, label: customer.companyName, module: 'crm' }) }] : []),
                                     ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [
                                       { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditModal(customer) },
