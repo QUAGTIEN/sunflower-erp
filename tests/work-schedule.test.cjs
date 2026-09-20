@@ -31,7 +31,15 @@ test('task status and priority use colored text without badge styling', () => {
   assert.match(page, /Quản lý công việc/);
   assert.match(page, /work-schedule-status--/);
   assert.match(page, /work-schedule-priority--/);
-  const textRule = css.match(/\.work-schedule-status,\.work-schedule-priority\{([^}]*)\}/)?.[1] || '';
+  const textRule = css.match(/\.work-schedule-status,\s*\.work-schedule-priority,[^{]*\{([^}]*)\}/s)?.[1] || '';
   assert.match(textRule, /color:/);
   assert.doesNotMatch(textRule, /background|border|border-radius|padding/);
+});
+
+test('work and week tabs use the straight underline shared by ERP modules', () => {
+  const css = read('src/features/work-schedule/pages/WorkSchedule.css');
+  const tabRule = css.match(/\.work-schedule-tabs button \{([^}]*)\}/s)?.[1] || '';
+  assert.match(tabRule, /border-bottom: 2px solid transparent/);
+  assert.match(tabRule, /border-radius: 0/);
+  assert.match(css, /\.work-schedule-tabs button\.is-active \{[^}]*border-bottom-color:/s);
 });
