@@ -161,10 +161,13 @@ export const SalesManagementPage: React.FC<SalesManagementPageProps> = ({
         <div className="sales-management-title">
           {selectedPerformance && <button type="button" className="btn btn-outline" onClick={() => setSelectedSaleId('')}>Danh sách Sale</button>}
           {selectedPerformance ? <>
-            <span className="sales-management-avatar">{getInitials(selectedPerformance.sale.displayName)}</span>
-            <div><h1>{selectedPerformance.sale.displayName}</h1><p>Sale · <strong className={`is-${selectedPerformance.status}`}>{STATUS_LABELS[selectedPerformance.status]}</strong></p></div>
-            <span className="sales-management-current-action">{selectedPerformance.latestEvent ? `${getSalesActionLabel(selectedPerformance.latestEvent)} · ${formatShortDateTime(selectedPerformance.latestEvent.occurredAt)}` : 'Chưa có thao tác trong kỳ'}</span>
-          </> : <div><h1>Tổng quan đội Sale</h1><p>Theo dõi trạng thái, hiệu suất chuyển đổi và công việc cần chú ý.</p></div>}
+            <div className="sales-management-identity">
+              <span className="sales-management-avatar">{getInitials(selectedPerformance.sale.displayName)}</span>
+              <div><h1>{selectedPerformance.sale.displayName}</h1><p>Sale</p></div>
+              <span className={`sales-management-status is-${selectedPerformance.status}`}><i />{STATUS_LABELS[selectedPerformance.status]}</span>
+            </div>
+            <div className="sales-management-current-action"><span>Thao tác gần nhất</span><strong>{selectedPerformance.latestEvent ? `${getSalesActionLabel(selectedPerformance.latestEvent)} · ${formatShortDateTime(selectedPerformance.latestEvent.occurredAt)}` : 'Chưa ghi nhận'}</strong></div>
+          </> : <h1>Tổng quan đội Sale</h1>}
         </div>
         <div className="sales-management-filters">
           <select value={period} onChange={event => setPeriod(event.target.value as SalesReportPeriod)} aria-label="Kỳ báo cáo">

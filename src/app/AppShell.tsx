@@ -932,6 +932,19 @@ function AppShell() {
             </button>
           )}
 
+          {isPageAllowed('sales_management') && (
+            <button
+              className={`sidebar-item ${activePage === 'sales_management' ? 'active' : ''}`}
+              onClick={() => { setActivePage('sales_management'); setIsSidebarOpen(false); }}
+              title={t('Quản lý Sale')}
+            >
+              <div className="sidebar-item-content">
+                <UserCog size={16} />
+                <span className="sidebar-item-label">Quản lý Sale</span>
+              </div>
+            </button>
+          )}
+
           {isPageAllowed('commercial_map') && (
             <button
               className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
@@ -993,19 +1006,6 @@ function AppShell() {
               <div className="sidebar-item-content">
                 <FileText size={16} />
                 <span className="sidebar-item-label">Tạo đơn hàng</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('sales_management') && (
-            <button
-              className={`sidebar-item ${activePage === 'sales_management' ? 'active' : ''}`}
-              onClick={() => { setActivePage('sales_management'); setIsSidebarOpen(false); }}
-              title={t('Quản lý Sale')}
-            >
-              <div className="sidebar-item-content">
-                <UserCog size={16} />
-                <span className="sidebar-item-label">Quản lý Sale</span>
               </div>
             </button>
           )}

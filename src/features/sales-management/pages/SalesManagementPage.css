@@ -14,7 +14,6 @@
 }
 
 .sales-management-title,
-.sales-management-title > div,
 .sales-management-filters,
 .sales-management-card > header,
 .sales-management-list > header,
@@ -24,13 +23,11 @@
 }
 
 .sales-management-title { min-width: 0; gap: 12px; }
-.sales-management-title > div { min-width: 0; align-items: baseline; gap: 8px; }
 .sales-management-title h1 { margin: 0; color: #142e62; font-size: 20px; line-height: 1.25; font-weight: 650; }
 .sales-management-title p { margin: 2px 0 0; color: #62738d; font-size: 12.5px; line-height: 1.35; font-weight: 500; }
-.sales-management-title p strong { font-weight: 650; }
-.sales-management-title p strong.is-active { color: #07835e; }
-.sales-management-title p strong.is-idle { color: #9b6200; }
-.sales-management-title p strong.is-offline { color: #66758b; }
+
+.sales-management-identity { display: flex; min-width: 0; align-items: center; gap: 10px; padding-right: 16px; border-right: 1px solid #d4deeb; }
+.sales-management-identity > div { display: grid; min-width: 0; gap: 1px; }
 
 .sales-management-avatar,
 .sales-management-person > span {
@@ -44,10 +41,13 @@
 }
 
 .sales-management-avatar { width: 42px; height: 42px; font-size: 14px; }
-.sales-management-current-action { overflow: hidden; max-width: 390px; color: #60718b; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.sales-management-filters { flex: 0 0 auto; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.sales-management-current-action { display: grid; min-width: 0; max-width: 360px; gap: 2px; }
+.sales-management-current-action span { color: #74839a; font-size: 10.5px; font-weight: 600; text-transform: uppercase; }
+.sales-management-current-action strong { overflow: hidden; color: #334d73; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.sales-management-filters { flex: 0 0 auto; justify-content: flex-end; flex-wrap: nowrap; gap: 8px; padding: 6px; border: 1px solid #d5dfec; border-radius: 7px; background: #f5f8fc; }
 .sales-management-filters select,
-.sales-management-filters input { min-height: 36px; padding: 6px 10px; border: 1px solid #c9d5e7; border-radius: 6px; background: #fff; color: #20375f; font: 600 12.5px/1.2 Inter, sans-serif; }
+.sales-management-filters input { width: 170px; min-height: 34px; padding: 5px 9px; border: 1px solid #c9d5e7; border-radius: 5px; background: #fff; color: #20375f; font: 600 12.5px/1.2 Inter, sans-serif; }
+.sales-management-filters input { width: 138px; }
 
 .sales-management-notice { padding: 10px 12px; border: 1px solid #efc5c5; border-radius: 6px; background: #fff5f5; color: #ad2323; font-size: 13px; font-weight: 600; }
 
@@ -58,11 +58,7 @@
 }
 
 .sales-management-kpis.is-detail { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.sales-management-kpis article { display: grid; min-width: 0; min-height: 82px; align-content: center; gap: 3px; padding: 12px 14px; border: 1px solid #cfdbeb; border-left: 4px solid #3974df; border-radius: 6px; background: #fff; }
-.sales-management-kpis article:nth-child(2), .sales-management-kpis article:nth-child(7) { border-left-color: #0c9b74; }
-.sales-management-kpis article:nth-child(3), .sales-management-kpis article:nth-child(6) { border-left-color: #1598b3; }
-.sales-management-kpis article:nth-child(4), .sales-management-kpis article:nth-child(5) { border-left-color: #7356d6; }
-.sales-management-kpis article.is-warning { border-left-color: #e27119; }
+.sales-management-kpis article { display: grid; min-width: 0; min-height: 82px; align-content: center; gap: 3px; padding: 12px 14px; border: 1px solid #cfdbeb; border-radius: 6px; background: #fff; }
 .sales-management-kpis article span { overflow: hidden; color: #536885; font-size: 11px; line-height: 1.2; font-weight: 650; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .sales-management-kpis article strong { color: #102f70; font-size: 20px; line-height: 1.2; font-weight: 700; }
 .sales-management-kpis article.is-warning strong { color: #c74d11; }
@@ -168,8 +164,9 @@
 
 @media (max-width: 640px) {
   .sales-management-title { width: 100%; align-items: flex-start; flex-wrap: wrap; }
-  .sales-management-title > div { align-items: flex-start; flex-direction: column; }
+  .sales-management-identity { width: 100%; border-right: 0; }
   .sales-management-current-action { width: 100%; max-width: none; }
+  .sales-management-filters { flex-wrap: wrap; }
   .sales-management-filters select,
   .sales-management-filters input { flex: 1 1 140px; }
   .sales-management-kpis,
