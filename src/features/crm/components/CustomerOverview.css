@@ -124,7 +124,6 @@
 .customer-overview__inactive-list button small { min-width: 0; color: #64748b; font-size: 12px; }
 .customer-overview__inactive-list button strong { color: #172554; font-size: 12px; font-weight: 600; white-space: nowrap; }
 .customer-overview__empty { margin: 0; padding: 20px 0; color: #64748b; font-size: 13px; }
-.customer-overview__footnote { margin: 0; color: #64748b; font-size: 11px; line-height: 1.4; }
 
 @media (max-width: 1320px) {
   .customer-overview__metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }

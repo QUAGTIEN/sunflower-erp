@@ -122,7 +122,5 @@ export function CustomerOverview({ customers, orders, invoices, onOpenCustomer }
         <ValueBars rows={data.highestDebt} value={row => row.debt} color="amber" onOpenCustomer={onOpenCustomer} />
       </section>
     </div>
-    {data.neverOrderedCount > 0 && <p className="customer-overview__footnote">{number(data.neverOrderedCount)} khách chưa có PO được tính riêng, không xếp vào nhóm “Lâu không mua”.</p>}
-    <p className="customer-overview__footnote">Giá trị PO là giá trị đơn hàng, chưa phải số tiền đã thu. Công nợ lấy từ hóa đơn phải thu còn số dư.</p>
   </div>;
 }
