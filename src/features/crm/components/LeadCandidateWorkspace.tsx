@@ -1914,11 +1914,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   if (currentUser.role === 'admin' && adminRawView !== 'list') {
     return <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace">
       <PageContextHeader section="Dữ liệu thô" current={adminRawView === 'priority' ? 'Bảng ưu tiên' : 'Tổng quan'} />
-      <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Dữ liệu thô">
-        <button type="button" role="tab" aria-selected={adminRawView === 'overview'} className={adminRawView === 'overview' ? 'is-active' : ''} onClick={() => setAdminRawView('overview')}>Tổng quan</button>
-        <button type="button" role="tab" aria-selected={adminRawView === 'priority'} className={adminRawView === 'priority' ? 'is-active' : ''} onClick={() => setAdminRawView('priority')}>Bảng ưu tiên</button>
+      {adminRawView === 'overview' && <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Dữ liệu thô">
+        <button type="button" role="tab" aria-selected={true} className="is-active" onClick={() => setAdminRawView('overview')}>Tổng quan</button>
         <button type="button" role="tab" aria-selected={false} onClick={() => setAdminRawView('list')}>Tất cả dữ liệu <strong>{accessibleCandidates.length}</strong></button>
-      </nav>
+      </nav>}
       <RawDataOverview
         mode={adminRawView}
         candidates={accessibleCandidates}
@@ -1936,6 +1935,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       <PageContextHeader section="Dữ liệu thô" current={workspaceView === 'tasks' ? 'Công việc cần xử lý' : 'Tất cả dữ liệu'} />
       <div className="lead-candidate-commandbar">
         <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Không gian làm việc Sale">
+          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={false} onClick={() => setAdminRawView('overview')}>Tổng quan</button>}
           {([
             ...(currentUser.role === 'admin' ? [] : [['tasks', 'Công việc cần xử lý'] as [CandidateWorkspaceView, string]]),
             ['all', 'Tất cả dữ liệu']
@@ -1960,13 +1960,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             >
               {value === 'management' && <UserRoundSearch size={15} />}
               {value === 'tasks' && <CalendarClock size={15} />}
-              {value === 'all' && <ListPlus size={15} />}
+              {value === 'all' && currentUser.role !== 'admin' && <ListPlus size={15} />}
               <span>{label}</span><strong>{workspaceCounts[value]}</strong>
             </button>
           ))}
         </nav>
-
-        {currentUser.role === 'admin' && <button type="button" className="btn btn-outline" onClick={() => setAdminRawView('overview')}>Tổng quan</button>}
 
         {workspaceView !== 'management' && <section className="lead-candidate-toolbar">
           <label className="lead-candidate-search">
