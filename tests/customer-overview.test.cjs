@@ -43,6 +43,10 @@ test('customer overview separates PO value, purchase frequency, inactivity and r
   assert.equal(overview.inactive[0].customer.id, 'b');
   assert.equal(overview.debtCount, 1);
   assert.equal(overview.totalDebt, 150);
+  assert.equal(overview.purchaseAgeBuckets.reduce((sum, count) => sum + count, 0), 2);
+  assert.equal(overview.highestDebt[0].customer.id, 'a');
+  assert.equal(overview.months.find(month => month.key === '2026-09').orderCount, 1);
+  assert.equal(overview.months.find(month => month.key === '2026-08').customerCount, 1);
 });
 
 test('an order without a usable date is not falsely classified as inactive', () => {
@@ -52,4 +56,19 @@ test('an order without a usable date is not falsely classified as inactive', () 
   assert.equal(overview.purchasedCount, 1);
   assert.equal(overview.inactiveCount, 0);
   assert.equal(overview.rows[0].lastOrderAt, null);
+  assert.equal(overview.unknownLastOrderCount, 1);
+});
+
+test('purchase age groups meet at 90 days and ignore inaccessible customers', () => {
+  const ninetyDaysAgo = new Date(now.getTime() - 90 * 86_400_000).toISOString();
+  const overview = model.buildCustomerOverview(customers.slice(0, 1), [
+    { customerId: 'a', orderDate: ninetyDaysAgo, totalAmount: 100 },
+    { customerId: 'b', orderDate: now.toISOString(), totalAmount: 900 }
+  ], [{ customerId: 'b', type: 'receivable', amount: 800 }], now);
+  assert.equal(overview.activeCount, 1);
+  assert.equal(overview.inactiveCount, 0);
+  assert.deepEqual(overview.purchaseAgeBuckets, [0, 0, 1, 0]);
+  assert.equal(overview.totalOrderValue, 100);
+  assert.equal(overview.totalDebt, 0);
+  assert.equal(overview.months.reduce((sum, month) => sum + month.orderCount, 0), 1);
 });
