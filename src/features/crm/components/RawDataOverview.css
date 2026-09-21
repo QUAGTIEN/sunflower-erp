@@ -558,3 +558,58 @@
   }
 }
 
+
+/* Compact polish after removing the duplicate priority summary. */
+.raw-overview__dashboard > .raw-overview__panel--priority > .raw-overview__panel-header {
+  grid-column: 1 / -1;
+}
+.raw-overview__dashboard .raw-overview__panel h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.raw-overview__panel--priority .raw-overview__config-button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.raw-overview > .raw-overview__metrics .raw-overview__metric span {
+  color: #405573;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+}
+.raw-overview > .raw-overview__metrics .raw-overview__metric strong {
+  font-size: 22px;
+  font-weight: 700;
+}
+.raw-overview__priority-note {
+  display: grid;
+  gap: 8px;
+}
+.raw-overview__priority-note button {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1e4ca2;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.raw-overview__priority-note button:hover,
+.raw-overview__priority-note button:focus-visible {
+  text-decoration: underline;
+}
+.raw-overview__source-column > span {
+  font-size: 13px;
+}
+@media (max-width: 480px) {
+  .raw-overview__panel--priority > .raw-overview__panel-header {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+}
+
