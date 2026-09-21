@@ -69,6 +69,7 @@ import { CUSTOMER_INSIGHT_ITEM_BY_ID, getCustomerInsightGroupsForModule, matches
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
+import { RawDataOverview } from './RawDataOverview';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -554,6 +555,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   [currentUser, saleUsers]);
   const [searchTerm, setSearchTerm] = useState('');
   const [workspaceView, setWorkspaceView] = useState<CandidateWorkspaceView>('all');
+  const [adminRawView, setAdminRawView] = useState<'overview' | 'priority' | 'list'>('overview');
   const [saleFilters, setSaleFilters] = useState<string[]>([]);
   const [sourceFilters, setSourceFilters] = useState<string[]>([]);
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
@@ -567,12 +569,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [candidateSort, setCandidateSort] = useState<CandidateSort>('priority');
   const [showDataFilters, setShowDataFilters] = useState(false);
 
-  useEffect(() => {
-    if (!initialInsightFilterId) return;
-    setWorkspaceView('all');
-    setInsightFilters([initialInsightFilterId]);
-    setCurrentPage(1);
-  }, [initialInsightFilterId]);
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [visibleColumnsByView, setVisibleColumnsByView] = useState(() => loadVisibleColumns(currentUser.uid, currentUser.role === 'admin'));
   const [hasStoredColumnPreferences, setHasStoredColumnPreferences] = useState(() => {
@@ -584,6 +580,16 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   });
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
+  useEffect(() => {
+    if (!initialInsightFilterId) return;
+    const timer = window.setTimeout(() => {
+      setAdminRawView('list');
+      setWorkspaceView('all');
+      setInsightFilters([initialInsightFilterId]);
+      setCurrentPage(1);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [initialInsightFilterId]);
   const [showForm, setShowForm] = useState(false);
   const [editingCandidateId, setEditingCandidateId] = useState('');
   const [form, setForm] = useState<CandidateFormState>(() => createEmptyCandidateForm(currentUser, candidateOwners));
@@ -1129,6 +1135,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   useEffect(() => {
     if (!initialCandidateId || !candidates.some(candidate => candidate.id === initialCandidateId)) return;
     const timer = window.setTimeout(() => {
+      setAdminRawView('list');
       setSelectedCandidateId(initialCandidateId);
       onInitialCandidateOpened?.();
     }, 0);
@@ -1904,13 +1911,33 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     );
   }
 
+  if (currentUser.role === 'admin' && adminRawView !== 'list') {
+    return <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace">
+      <PageContextHeader section="Dữ liệu thô" current={adminRawView === 'priority' ? 'Bảng ưu tiên' : 'Tổng quan'} />
+      <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Dữ liệu thô">
+        <button type="button" role="tab" aria-selected={adminRawView === 'overview'} className={adminRawView === 'overview' ? 'is-active' : ''} onClick={() => setAdminRawView('overview')}>Tổng quan</button>
+        <button type="button" role="tab" aria-selected={adminRawView === 'priority'} className={adminRawView === 'priority' ? 'is-active' : ''} onClick={() => setAdminRawView('priority')}>Bảng ưu tiên</button>
+        <button type="button" role="tab" aria-selected={false} onClick={() => setAdminRawView('list')}>Tất cả dữ liệu <strong>{accessibleCandidates.length}</strong></button>
+      </nav>
+      <RawDataOverview
+        mode={adminRawView}
+        candidates={accessibleCandidates}
+        saleUsers={saleUsers}
+        currentUser={currentUser}
+        onPriority={() => setAdminRawView('priority')}
+        onOverview={() => setAdminRawView('overview')}
+        onOpenCandidate={id => { setAdminRawView('list'); setSelectedCandidateId(id); }}
+      />
+    </SystemFieldSurface>;
+  }
+
   return (
     <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace">
       <PageContextHeader section="Dữ liệu thô" current={workspaceView === 'tasks' ? 'Công việc cần xử lý' : 'Tất cả dữ liệu'} />
       <div className="lead-candidate-commandbar">
         <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Không gian làm việc Sale">
           {([
-            ['tasks', 'Công việc cần xử lý'],
+            ...(currentUser.role === 'admin' ? [] : [['tasks', 'Công việc cần xử lý'] as [CandidateWorkspaceView, string]]),
             ['all', 'Tất cả dữ liệu']
           ] as Array<[CandidateWorkspaceView, string]>).map(([value, label]) => (
             <button
@@ -1938,6 +1965,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </button>
           ))}
         </nav>
+
+        {currentUser.role === 'admin' && <button type="button" className="btn btn-outline" onClick={() => setAdminRawView('overview')}>Tổng quan</button>}
 
         {workspaceView !== 'management' && <section className="lead-candidate-toolbar">
           <label className="lead-candidate-search">
