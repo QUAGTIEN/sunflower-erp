@@ -2900,7 +2900,7 @@ export const Crm: React.FC<CrmProps> = ({
             </div>
 
             {filterType === 'overview' ? (
-              <CustomerOverview customers={accessibleCustomers} orders={pos} invoices={invoices} onOpenCustomer={openCustomerDetail} />
+              <CustomerOverview customers={accessibleCustomers} orders={pos} invoices={invoices} provinceByCustomerId={provinceByCustomerId} onOpenCustomer={openCustomerDetail} />
             ) : (
               <>
                 <DataFilterChipBar chips={crmFilterChips} onClear={resetCrmListFilters} />

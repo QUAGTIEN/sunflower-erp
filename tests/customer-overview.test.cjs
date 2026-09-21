@@ -9,66 +9,58 @@ const { outputText } = ts.transpileModule(source, { compilerOptions: { module: t
 const model = {};
 new Function('exports', outputText)(model);
 
-const customers = [
-  { id: 'a', companyName: 'A' },
-  { id: 'b', companyName: 'B' },
-  { id: 'c', companyName: 'C' }
-];
+const customer = (id, companyName = id) => ({ id, companyName });
 const now = new Date('2026-09-21T00:00:00Z');
+const daysAgo = days => new Date(now.getTime() - days * 86_400_000).toISOString();
 
-test('customer overview separates PO value, purchase frequency, inactivity and receivable balance', () => {
-  const overview = model.buildCustomerOverview(customers, [
-    { customerId: 'a', orderDate: '2026-09-01', netAmount: 200 },
-    { customerId: 'a', orderDate: '2026-08-01', netAmount: 300 },
-    { customerId: 'b', orderDate: '2026-01-01', totalAmount: 50 },
-    { customerId: 'a', deleted: true, orderDate: '2026-09-02', netAmount: 999 }
-  ], [
-    { customerId: 'a', type: 'receivable', amount: 250, paidAmount: 100 },
-    { customerId: 'b', type: 'receivable', amount: 50, paidAmount: 50 },
-    { customerId: 'a', type: 'payable', amount: 999 },
-    { customerId: 'a', type: 'receivable', deleted: true, amount: 999 }
-  ], now);
+test('general situation, inactive group and provinces use only visible customers', () => {
+  const overview = model.buildCustomerOverview(
+    [customer('a'), customer('b'), customer('c')],
+    [
+      { customerId: 'a', orderDate: daysAgo(10), netAmount: 200 },
+      { customerId: 'a', orderDate: daysAgo(50), netAmount: 300 },
+      { customerId: 'b', orderDate: daysAgo(200), totalAmount: 50 },
+      { customerId: 'a', deleted: true, orderDate: daysAgo(5), netAmount: 999 },
+      { customerId: 'hidden', orderDate: daysAgo(5), totalAmount: 999 }
+    ],
+    [
+      { customerId: 'a', type: 'receivable', amount: 250, paidAmount: 100 },
+      { customerId: 'b', type: 'receivable', amount: 50, paidAmount: 50 },
+      { customerId: 'a', type: 'payable', amount: 999 },
+      { customerId: 'hidden', type: 'receivable', amount: 999 }
+    ],
+    now,
+    new Map([['a', 'Hà Nội'], ['b', 'Hà Nội']])
+  );
   assert.equal(overview.customerCount, 3);
   assert.equal(overview.purchasedCount, 2);
   assert.equal(overview.neverOrderedCount, 1);
-  assert.equal(overview.totalOrderValue, 550);
-  assert.equal(overview.highestValue[0].customer.id, 'a');
-  assert.equal(overview.lowestValue[0].customer.id, 'b');
-  assert.equal(overview.frequent[0].ordersLast12Months, 2);
-  assert.equal(overview.frequentCount, 0);
-  assert.equal(overview.occasionalCount, 2);
-  assert.equal(overview.noRecentOrdersCount, 1);
   assert.equal(overview.activeCount, 1);
   assert.equal(overview.inactiveCount, 1);
+  assert.deepEqual(overview.inactiveAgeCounts, [0, 1, 0]);
   assert.equal(overview.inactive[0].customer.id, 'b');
   assert.equal(overview.debtCount, 1);
-  assert.equal(overview.totalDebt, 150);
-  assert.equal(overview.purchaseAgeBuckets.reduce((sum, count) => sum + count, 0), 2);
-  assert.equal(overview.highestDebt[0].customer.id, 'a');
-  assert.equal(overview.months.find(month => month.key === '2026-09').orderCount, 1);
-  assert.equal(overview.months.find(month => month.key === '2026-08').customerCount, 1);
+  assert.equal(overview.highestValue[0].orderValue, 500);
+  assert.equal(overview.mostOrders[0].orderCount, 2);
+  assert.deepEqual(overview.provinces.map(province => [province.label, province.rows.length]), [['Hà Nội', 2], ['Chưa xác định', 1]]);
 });
 
-test('an order without a usable date is not falsely classified as inactive', () => {
-  const overview = model.buildCustomerOverview(customers.slice(0, 1), [
-    { customerId: 'a', orderDate: 'invalid', totalAmount: 25 }
-  ], [], now);
-  assert.equal(overview.purchasedCount, 1);
-  assert.equal(overview.inactiveCount, 0);
-  assert.equal(overview.rows[0].lastOrderAt, null);
-  assert.equal(overview.unknownLastOrderCount, 1);
+test('value and PO count rankings are independent', () => {
+  const overview = model.buildCustomerOverview(
+    [customer('high-value'), customer('many-orders')],
+    [{ customerId: 'high-value', totalAmount: 1000 }, ...Array.from({ length: 4 }, () => ({ customerId: 'many-orders', totalAmount: 10 }))],
+    [], now
+  );
+  assert.equal(overview.highestValue[0].customer.id, 'high-value');
+  assert.equal(overview.mostOrders[0].customer.id, 'many-orders');
+  assert.equal(overview.unknownLastOrderCount, 2);
 });
 
-test('purchase age groups meet at 90 days and ignore inaccessible customers', () => {
-  const ninetyDaysAgo = new Date(now.getTime() - 90 * 86_400_000).toISOString();
-  const overview = model.buildCustomerOverview(customers.slice(0, 1), [
-    { customerId: 'a', orderDate: ninetyDaysAgo, totalAmount: 100 },
-    { customerId: 'b', orderDate: now.toISOString(), totalAmount: 900 }
-  ], [{ customerId: 'b', type: 'receivable', amount: 800 }], now);
+test('inactive age boundaries start after 90 days', () => {
+  const customers = [90, 91, 181, 366].map(days => customer(String(days)));
+  const orders = [90, 91, 181, 366].map(days => ({ customerId: String(days), orderDate: daysAgo(days), totalAmount: 1 }));
+  const overview = model.buildCustomerOverview(customers, orders, [], now);
   assert.equal(overview.activeCount, 1);
-  assert.equal(overview.inactiveCount, 0);
-  assert.deepEqual(overview.purchaseAgeBuckets, [0, 0, 1, 0]);
-  assert.equal(overview.totalOrderValue, 100);
-  assert.equal(overview.totalDebt, 0);
-  assert.equal(overview.months.reduce((sum, month) => sum + month.orderCount, 0), 1);
+  assert.equal(overview.inactiveCount, 3);
+  assert.deepEqual(overview.inactiveAgeCounts, [1, 1, 1]);
 });
