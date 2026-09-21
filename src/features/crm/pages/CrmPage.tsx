@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
 import { useLanguage } from '@/context/LanguageContext';
-import { HorizontalBarChart } from '@/components/VisualCharts';
+import { CustomerOverview } from '@/features/crm/components/CustomerOverview';
 import { CustomerOnboardingItems } from '@/features/crm/components/CustomerOnboardingItems';
 import { CustomerInsightEditor } from '@/features/crm/components/CustomerInsightEditor';
 import {
@@ -114,9 +114,7 @@ import {
   Eye,
   AlertCircle,
   Copy,
-  BarChart3,
   Building2,
-  CircleDollarSign,
   ClipboardCheck,
   ClipboardPlus,
   Search,
@@ -146,7 +144,7 @@ const DOCUMENT_REPOSITORY_FOLDER_IDS: Record<string, string> = {
   other: 'other'
 };
 
-type CrmListFilter = 'all' | 'has_debt' | 'analytics';
+type CrmListFilter = 'overview' | 'all';
 type CrmTimeFilter = 'last_30_days' | 'last_90_days' | 'this_year' | 'no_orders';
 
 interface CrmFilterOption {
@@ -287,7 +285,7 @@ export const Crm: React.FC<CrmProps> = ({
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
   const inlineSystemFieldConfiguration = useSystemFieldConfiguration('customers');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<CrmListFilter>('all');
+  const [filterType, setFilterType] = useState<CrmListFilter>('overview');
   const [saleFilters, setSaleFilters] = useState<string[]>([]);
   const [rankFilters, setRankFilters] = useState<string[]>([]);
   const [timeFilters, setTimeFilters] = useState<CrmTimeFilter[]>([]);
@@ -336,9 +334,6 @@ export const Crm: React.FC<CrmProps> = ({
     }
   });
 
-  const [chartMonth, setChartMonth] = useState<string>('all');
-  const [chartYear, setChartYear] = useState<string>(() => String(new Date().getFullYear()));
-  const [showTop15, setShowTop15] = useState<boolean>(false);
 
   // File Repository states
   const [newFolderName, setNewFolderName] = useState('');
@@ -2130,7 +2125,6 @@ export const Crm: React.FC<CrmProps> = ({
     return ageInMilliseconds >= 0 && ageInMilliseconds < 7 * 86_400_000;
   };
 
-  const customersWithDebt = accessibleCustomers.filter(customer => getCustomerOutstandingDebt(customer.id) > 0);
   const currentYear = String(today.getFullYear());
 
   const leadById = new Map(leads.map(lead => [lead.id, lead] as const));
@@ -2419,7 +2413,6 @@ export const Crm: React.FC<CrmProps> = ({
     });
     if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesIndustrialPark || !matchesProduct || !matchesTime || !matchesCustomerInsightValues(customer.customerInsightValues || [], insightFilters) || !matchesCustomFields || !matchesAdvancedFilters(customer, advancedFilterFields, advancedFilters)) return false;
 
-    if (filterType === 'has_debt') return getCustomerOutstandingDebt(customer.id) > 0;
     return true;
   }), customer => [customer.createdAt, customer.updatedAt, customer.customerCode]);
   const customerTotalPages = Math.max(1, Math.ceil(filteredCustomers.length / customerPageSize));
@@ -2472,38 +2465,6 @@ export const Crm: React.FC<CrmProps> = ({
       assetCount: sample.previewImage ? 1 : 0
     }))
   ];
-
-  // Top 5/15 customers by sales volume with time filters
-  const topCustomerSales = accessibleCustomers
-    .map(c => {
-      const customerPOs = pos.filter(po => {
-        if (po.deleted === true) return false;
-        if (po.customerId !== c.id) return false;
-
-        // Month and Year filter
-        if (po.orderDate) {
-          const poDate = parseValidDate(po.orderDate);
-          if (!poDate) return false;
-          const y = String(poDate.getFullYear());
-          const m = String(poDate.getMonth() + 1);
-
-          if (chartYear !== 'all' && y !== chartYear) return false;
-          if (chartMonth !== 'all' && m !== chartMonth) return false;
-        } else {
-          if (chartYear !== 'all' || chartMonth !== 'all') return false;
-        }
-        return true;
-      });
-
-      return {
-        label: c.companyName,
-        value: customerPOs.length
-      };
-    })
-    .filter(item => item.value > 0)
-    .sort((a, b) => b.value - a.value);
-
-  const chartData = topCustomerSales.slice(0, showTop15 ? 15 : 5);
 
   const renderProductCommercialFields = () => (
     <div className="product-commercial-fields">
@@ -2857,7 +2818,7 @@ export const Crm: React.FC<CrmProps> = ({
 
   return (
     <SystemFieldSurface table="customers" className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
-      <PageContextHeader section={t('Khách hàng')} current={filterType === 'has_debt' ? t('Có công nợ') : filterType === 'analytics' ? t('Phân tích') : t('Tất cả')} />
+      <PageContextHeader section={t('Khách hàng')} current={filterType === 'overview' ? 'Tổng quan' : t('Tất cả')} />
 
       {currentUser.role === 'admin' && (editRequests.some(r => r.status === 'pending') || customers.some(c => c.deleteRequested && !c.deleted)) && (
         <div className="card" style={{ border: '2px solid var(--color-primary-light)', backgroundColor: '#f0fdf4', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
@@ -2911,18 +2872,13 @@ export const Crm: React.FC<CrmProps> = ({
           <div className="crm-command-center crm-data-workspace">
             <div className="crm-list-commandbar">
               <div className="crm-list-tabs content-tabs content-tabs--commandbar" role="tablist" aria-label={t('Chọn nhóm khách hàng')}>
+                <button type="button" className={`crm-list-tab ${filterType === 'overview' ? 'is-active' : ''}`} onClick={() => setFilterType('overview')} role="tab" aria-selected={filterType === 'overview'}>Tổng quan</button>
                 <button type="button" className={`crm-list-tab ${filterType === 'all' ? 'is-active' : ''}`} onClick={() => { setFilterType('all'); setCustomerPage(1); }} role="tab" aria-selected={filterType === 'all'}>
-                  <Building2 size={15} /><span>{t('Tất cả')}</span><span className="crm-list-tab__count">{accessibleCustomers.length}</span>
-                </button>
-                <button type="button" className={`crm-list-tab ${filterType === 'has_debt' ? 'is-active' : ''}`} onClick={() => { setFilterType('has_debt'); setCustomerPage(1); }} role="tab" aria-selected={filterType === 'has_debt'}>
-                  <CircleDollarSign size={15} /><span>{t('Có công nợ')}</span><span className="crm-list-tab__count">{customersWithDebt.length}</span>
-                </button>
-                <button type="button" className={`crm-list-tab ${filterType === 'analytics' ? 'is-active' : ''}`} onClick={() => { setFilterType('analytics'); setCustomerPage(1); }} role="tab" aria-selected={filterType === 'analytics'}>
-                  <BarChart3 size={15} /><span>{t('Phân tích')}</span>
+                  <span>{t('Tất cả')}</span><span className="crm-list-tab__count">{accessibleCustomers.length}</span>
                 </button>
               </div>
               <div className="crm-list-toolbar">
-                {filterType !== 'analytics' && (
+                {filterType === 'all' && (
                   <>
                     <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
                     <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
@@ -2943,24 +2899,8 @@ export const Crm: React.FC<CrmProps> = ({
               </div>
             </div>
 
-            {filterType === 'analytics' ? (
-              <div className="crm-analytics-panel">
-                <div className="crm-analytics-header">
-                  <div><strong>{t('Sản lượng đơn hàng theo khách hàng')}</strong><span>{t('So sánh số PO đã phát sinh theo khoảng thời gian.')}</span></div>
-                  <div>
-                    <select value={chartYear} onChange={(event) => setChartYear(event.target.value)}>
-                      <option value="all">{t('Tất cả năm')}</option>
-                      {[currentYear, String(Number(currentYear) - 1)].map(year => <option key={year} value={year}>{year}</option>)}
-                    </select>
-                    <select value={chartMonth} onChange={(event) => setChartMonth(event.target.value)}>
-                      <option value="all">{t('Tất cả tháng')}</option>
-                      {Array.from({ length: 12 }, (_, index) => String(index + 1)).map(month => <option key={month} value={month}>{t('Tháng')} {month}</option>)}
-                    </select>
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowTop15(!showTop15)}>{showTop15 ? t('Thu gọn Top 5') : t('Xem Top 15')}</button>
-                  </div>
-                </div>
-                {chartData.length > 0 ? <HorizontalBarChart data={chartData} valueSuffix={` ${t('đơn')}`} /> : <div className="crm-empty-state">{t('Chưa có đơn hàng trong khoảng thời gian đã chọn.')}</div>}
-              </div>
+            {filterType === 'overview' ? (
+              <CustomerOverview customers={accessibleCustomers} orders={pos} invoices={invoices} onOpenCustomer={openCustomerDetail} />
             ) : (
               <>
                 <DataFilterChipBar chips={crmFilterChips} onClear={resetCrmListFilters} />
