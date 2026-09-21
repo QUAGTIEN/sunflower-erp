@@ -1113,6 +1113,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     return (
       <PhoneCallCell phone={candidate.phone} companyName={candidate.companyName}
         subjectKey={candidateCallSubjectKey(candidate)} currentUser={currentUser}
+        context={{ contactPerson: candidate.contactPerson, contactPosition: candidate.contactPosition, province: candidate.province, businessSector: candidate.businessSector, expectedProducts: candidate.expectedProducts, source: candidate.source, assignedSaleName: candidate.assignedSaleName }}
         auditModule="lead_candidates" targetType="lead_candidate" targetId={candidate.id}
         canRecord={canManageCandidate(candidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
         onCallStarted={() => recordPhoneCall(candidate)} />

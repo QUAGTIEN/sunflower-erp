@@ -2501,6 +2501,7 @@ export const Leads: React.FC<LeadsProps> = ({
                       {visibleLeadColumnIds.has('contactPosition') && <td key="contactPosition">{renderLeadText(lead.contactPosition)}</td>}
                       {visibleLeadColumnIds.has('phone') && <td key="phone"><PhoneCallCell
                         phone={lead.phone} companyName={lead.companyName} subjectKey={leadCallSubjectKey(lead)} historyKeys={leadCallHistoryKeys(lead)}
+                        context={{ contactPerson: lead.contactPerson, contactPosition: lead.contactPosition, province: lead.province, businessSector: lead.businessSector, expectedProducts: lead.expectedProducts, source: lead.source, assignedSaleName: lead.assignedSaleName }}
                         currentUser={currentUser}
                         auditModule="leads" targetType="lead" targetId={lead.id}
                         canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && lead.assignedSaleId === currentUser.uid)}

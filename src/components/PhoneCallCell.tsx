@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService, type AuditModule } from '@/services/auditService';
 import { CALL_RESULT_LABELS, parseManualCallTime, type CallResult, type PhoneCallRecord } from '@/features/crm/model/callHistory';
 import type { LeadCandidateContactLog } from '@/features/crm/model/leadCandidateModels';
+import { CallWorkspace, type CallWorkspaceContext } from './CallWorkspace';
 import './PhoneCallCell.css';
 
 interface PhoneCallCellProps {
@@ -16,6 +17,7 @@ interface PhoneCallCellProps {
   targetId: string;
   currentUser: UserProfile;
   canRecord: boolean;
+  context?: CallWorkspaceContext;
   onCallStarted?: () => void | Promise<void>;
 }
 
@@ -33,8 +35,11 @@ const formatCallTime = (value: string) => {
   });
 };
 
-export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = [], auditModule, targetType, targetId, currentUser, canRecord, onCallStarted }: PhoneCallCellProps) => {
+export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = [], auditModule, targetType, targetId, currentUser, canRecord, context, onCallStarted }: PhoneCallCellProps) => {
   const [dialog, setDialog] = useState<'history' | 'manual' | 'call-error' | null>(null);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [workspaceView, setWorkspaceView] = useState<'overview' | 'history'>('overview');
+  const instanceId = useId();
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const phoneRef = useRef<HTMLButtonElement>(null);
@@ -58,7 +63,7 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
   const visibleKeys = keySignature.split('|').filter(Boolean);
 
   useEffect(() => {
-    if (dialog !== 'history') return undefined;
+    if (dialog !== 'history' && !workspaceOpen) return undefined;
     const keys = keySignature.split('|').filter(Boolean);
     const pendingKeys = new Set(keys);
     const unsubscribers = keys.map(key => dbService.subscribeCollection('call_history', data => {
@@ -84,7 +89,16 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
         .catch(() => setLegacyByKey(previous => ({ ...previous, [candidateKey]: [] })));
     }
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-  }, [dialog, keySignature, historyRevision]);
+  }, [dialog, workspaceOpen, keySignature, historyRevision]);
+
+  useEffect(() => {
+    if (!workspaceOpen) return undefined;
+    const closeOtherWorkspace = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== instanceId) setWorkspaceOpen(false);
+    };
+    document.addEventListener('sunflower:call-workspace-open', closeOtherWorkspace);
+    return () => document.removeEventListener('sunflower:call-workspace-open', closeOtherWorkspace);
+  }, [workspaceOpen, instanceId]);
 
   useEffect(() => {
     if (!dialog) return undefined;
@@ -158,34 +172,15 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
     setDialog('manual');
   };
 
-  const startCall = async (dialNumber: string) => {
-    if (!canRecord || busy) return;
-    setBusy(true);
+  const openWorkspace = (initialView: 'overview' | 'history') => {
+    setMenuOpen(false);
+    setHistoryError('');
     setActionError('');
-    const startedAt = new Date().toISOString();
-    try {
-      const call = await dbService.addDocument('call_history', {
-        subjectKey, companyName, phone, startedAt, source: 'dial',
-        createdById: currentUser.uid, createdByName: currentUser.displayName,
-        result: 'pending', note: '', confirmedAt: '', confirmedById: '', confirmedByName: ''
-      }) as PhoneCallRecord;
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: auditModule, action: 'phone_call_started',
-        summary: `Đã bấm gọi ${companyName} · ${phone}`,
-        targetType, targetId, targetLabel: companyName,
-        changes: [{ field: 'callId', label: 'Mã cuộc gọi', after: call.id }]
-      });
-      await onCallStarted?.();
-    } catch (error) {
-      setActionError(isPermissionError(error)
-        ? 'Tài khoản chưa được cấp quyền ghi nhận cuộc gọi. Ứng dụng gọi điện chưa được mở; vui lòng báo quản trị viên.'
-        : 'Không lưu được lần gọi nên ứng dụng gọi điện chưa được mở. Vui lòng thử lại.');
-      setDialog('call-error');
-      return;
-    } finally {
-      setBusy(false);
-    }
-    window.location.assign(`tel:${dialNumber}`);
+    setSuccessMessage('');
+    setLoading(true);
+    setWorkspaceView(initialView);
+    document.dispatchEvent(new CustomEvent('sunflower:call-workspace-open', { detail: instanceId }));
+    setWorkspaceOpen(true);
   };
 
   const saveManualCall = async () => {
@@ -270,9 +265,9 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
       {menuOpen && createPortal(
         <div ref={menuRef} className="phone-call-cell__menu" role="menu" style={menuPosition}
           onClick={event => event.stopPropagation()}>
-          {canRecord && dialNumber && <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); void startCall(dialNumber); }}>Gọi</button>}
+          {canRecord && dialNumber && <button type="button" role="menuitem" onClick={() => openWorkspace('overview')}>Mở không gian gọi</button>}
           {canRecord && <button type="button" role="menuitem" onClick={openManual}>Ghi nhận</button>}
-          <button type="button" role="menuitem" onClick={openHistory}>Lịch sử</button>
+          <button type="button" role="menuitem" onClick={() => openWorkspace('history')}>Lịch sử</button>
         </div>, document.body
       )}
       {dialog && createPortal(
@@ -342,6 +337,21 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
           </section>
         </div>, document.body
       )}
+      {workspaceOpen && createPortal(<CallWorkspace
+        phone={phone} companyName={companyName} subjectKey={subjectKey}
+        targetType={targetType} targetId={targetId} auditModule={auditModule}
+        currentUser={currentUser} canRecord={canRecord} context={context} initialView={workspaceView}
+        history={timeline.map(item => item.call ? ({
+          id: item.id, time: item.time, actor: item.call.createdByName,
+          result: CALL_RESULT_LABELS[item.call.result] || CALL_RESULT_LABELS.pending,
+          note: item.call.note, phone: item.call.phone
+        }) : ({
+          id: item.id, time: item.time, actor: item.legacy?.createdByName || 'Chưa rõ',
+          result: 'Ghi nhận cũ', note: item.legacy?.note || '', phone
+        }))}
+        historyLoading={loading} historyError={historyError}
+        onCallStarted={onCallStarted} onClose={() => { setWorkspaceOpen(false); phoneRef.current?.focus(); }}
+      />, document.querySelector('.app-container') || document.body)}
     </span>
   );
 };
