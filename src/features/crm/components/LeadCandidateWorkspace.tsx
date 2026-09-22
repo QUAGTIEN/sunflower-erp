@@ -1805,19 +1805,31 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   };
 
   if (showForm) {
+    const profileFields = [form.companyName, form.taxCode, form.businessSector, form.province,
+      form.ward, form.industrialPark, form.address, form.contactPerson, form.phone,
+      form.email, form.expectedProducts, form.assignedSaleId];
+    const completedProfileFields = profileFields.filter(value => String(value || '').trim()).length;
+    const profileCompletion = Math.round(completedProfileFields / profileFields.length * 100);
     return (
       <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
-        <header className="lead-form-page__header">
+        <header className={editingCandidate ? 'lead-candidate-profile-header' : 'lead-form-page__header'}>
           <PageBackButton onClick={() => setShowForm(false)} />
-          <div>
+          <div className="lead-candidate-profile-header__title">
             <span>{editingCandidateId ? 'CHỈNH SỬA DỮ LIỆU' : 'DỮ LIỆU MỚI'}</span>
-            <h1>{editingCandidateId ? 'Chỉnh sửa dữ liệu khách hàng' : 'Thêm dữ liệu khách hàng'}</h1>
+            <h1 title={editingCandidate ? form.companyName : undefined}>{editingCandidate ? form.companyName || 'Chưa có tên doanh nghiệp' : 'Thêm dữ liệu khách hàng'}</h1>
           </div>
           {editingCandidate && <PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
             subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
             auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
             canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
             onCallStarted={() => recordPhoneCall(editingCandidate)} />}
+          {editingCandidate && <div className="lead-candidate-profile-header__facts">
+            <div><span>Mã số thuế</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div>
+            <div><span>Lĩnh vực</span><strong title={form.businessSector || 'Chưa cập nhật'}>{form.businessSector || 'Chưa cập nhật'}</strong></div>
+            <div><span>Địa điểm</span><strong title={[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}>{[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}</strong></div>
+            <div className="lead-candidate-profile-header__completion"><span>Hoàn thiện hồ sơ</span><strong>{profileCompletion}% · {completedProfileFields}/{profileFields.length} trường thông tin</strong><span className="lead-candidate-profile-header__progress" role="progressbar" aria-label="Mức hoàn thiện hồ sơ" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${profileCompletion}%` }} /></span></div>
+            <div><span>Cập nhật lần cuối</span><strong>{formatShortDateTime(editingCandidate.updatedAt || editingCandidate.createdAt)}</strong></div>
+          </div>}
         </header>
 
         <form className="lead-form-page__form" onSubmit={handleSaveCandidate}>
@@ -1825,7 +1837,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <Building2 size={18} />
-                <div><h2>Thông tin doanh nghiệp</h2><p>Thông tin nhận diện, pháp lý và địa bàn của doanh nghiệp.</p></div>
+                <div><h2>Thông tin doanh nghiệp</h2></div>
               </div>
               <div className="lead-form-grid">
                 <div className="form-group lead-form-grid__wide"><label data-system-label="companyName">Tên doanh nghiệp *</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
@@ -1848,7 +1860,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <UserRoundSearch size={18} />
-                <div><h2>Liên hệ và nguồn dữ liệu</h2><p>Đầu mối liên hệ và nơi tìm thấy thông tin doanh nghiệp.</p></div>
+                <div><h2>Liên hệ và nguồn dữ liệu</h2></div>
               </div>
               <div className="lead-form-grid">
                 <div className="form-group"><label data-system-label="contactPerson">Người liên hệ</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
@@ -1865,7 +1877,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <Search size={18} />
-                <div><h2>Nhu cầu sơ bộ</h2><p>Thông tin phục vụ đánh giá trước khi chuyển thành Lead.</p></div>
+                <div><h2>Nhu cầu sơ bộ</h2></div>
               </div>
               <div className="lead-form-grid">
                 <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">Sản phẩm / nhu cầu quan tâm</label><textarea rows={4} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder="Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến..." /></div>
@@ -1879,13 +1891,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <CalendarClock size={18} />
-                <div><h2>Phụ trách và lịch hẹn</h2><p>Có thể lưu dữ liệu trước và đặt lịch làm việc sau.</p></div>
+                <div><h2>Phụ trách và lịch hẹn</h2></div>
               </div>
               <div className="lead-form-grid">
                 <div className="form-group lead-form-grid__wide"><label data-system-label="assignedSaleId">Người phụ trách *</label><select required value={form.assignedSaleId} disabled={currentUser.role === 'sale'} onChange={event => updateForm('assignedSaleId', event.target.value)}><option value="">Chưa phân công</option>{candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="nextContactAt">Lịch hẹn xử lý</label><input type="datetime-local" value={form.nextContactAt} onChange={event => updateForm('nextContactAt', event.target.value)} /></div>
               </div>
-              <div className="lead-fixed-form-note">Trường hệ thống được giữ ổn định; Admin có thể bổ sung trường riêng cho khung này.</div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
               <InlineEntityFieldManager table="lead_candidates" section="assignment" sectionLabel="Phụ trách và lịch hẹn" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'nextContactAt', label: 'Lịch hẹn xử lý' }]} />
             </section>
