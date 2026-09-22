@@ -2,8 +2,33 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const ts = require('typescript');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
+const loadScheduleModel = () => {
+  const source = read('src/features/work-schedule/model/workScheduleModels.ts');
+  const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+  const module = { exports: {} };
+  new Function('module', 'exports', compiled)(module, module.exports);
+  return module.exports;
+};
+
+test('new and existing work items keep their status codes with clear labels', () => {
+  const { normalizeWorkScheduleRecord, WORK_SCHEDULE_STATUS_LABELS } = loadScheduleModel();
+  assert.equal(normalizeWorkScheduleRecord({ status: 'not_started' }).status, 'not_started');
+  assert.equal(normalizeWorkScheduleRecord({ status: 'in_progress' }).status, 'in_progress');
+  assert.equal(normalizeWorkScheduleRecord({ status: 'paused' }).status, 'in_progress');
+  assert.equal(WORK_SCHEDULE_STATUS_LABELS.not_started, 'Chưa xử lí');
+  assert.equal(WORK_SCHEDULE_STATUS_LABELS.in_progress, 'Đang xử lí');
+  assert.equal(WORK_SCHEDULE_STATUS_LABELS.completed, 'Đã hoàn thành');
+});
+
+test('permanent deletion is limited to completed work and administrators', () => {
+  const { canPermanentlyDeleteWorkSchedule } = loadScheduleModel();
+  assert.equal(canPermanentlyDeleteWorkSchedule('admin', 'completed'), true);
+  assert.equal(canPermanentlyDeleteWorkSchedule('admin', 'in_progress'), false);
+  assert.equal(canPermanentlyDeleteWorkSchedule('sale', 'completed'), false);
+});
 
 test('work assignment is available in every customer lifecycle module', () => {
   for (const file of [

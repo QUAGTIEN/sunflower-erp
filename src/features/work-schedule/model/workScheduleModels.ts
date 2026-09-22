@@ -114,14 +114,18 @@ export const normalizeWorkScheduleRecords = (values: unknown): WorkScheduleRecor
   Array.isArray(values) ? values.map(normalizeWorkScheduleRecord) : []
 );
 
+export const canPermanentlyDeleteWorkSchedule = (role: string, status: WorkScheduleStatus): boolean => (
+  role === 'admin' && status === 'completed'
+);
+
 export const WORK_SCHEDULE_STATUS_LABELS: Record<WorkScheduleStatus, string> = {
-  not_started: 'Chờ tiếp nhận',
-  in_progress: 'Đang thực hiện',
+  not_started: 'Chưa xử lí',
+  in_progress: 'Đang xử lí',
   waiting_customer: 'Chờ khách hàng',
   support_requested: 'Yêu cầu hỗ trợ',
   awaiting_confirmation: 'Chờ xác nhận',
-  paused: 'Đang xử lý',
-  completed: 'Hoàn thành',
+  paused: 'Đang xử lí',
+  completed: 'Đã hoàn thành',
   cancelled: 'Đã hủy'
 };
 

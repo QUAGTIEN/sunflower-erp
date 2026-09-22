@@ -8,6 +8,7 @@ import {
   WORK_SCHEDULE_PRIORITY_LABELS,
   WORK_SCHEDULE_REFERENCE_LABELS,
   WORK_SCHEDULE_STATUS_LABELS,
+  canPermanentlyDeleteWorkSchedule,
   getWeekStart,
   isScheduleOnDate,
   normalizeWorkScheduleRecords,
@@ -120,6 +121,8 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   const [formError, setFormError] = useState('');
   const [formFieldErrors, setFormFieldErrors] = useState<Partial<Record<RequiredTaskField, string>>>({});
   const [saving, setSaving] = useState(false);
+  const [detailBusy, setDetailBusy] = useState(false);
+  const [detailError, setDetailError] = useState('');
 
   const loadItems = useCallback(async () => {
     setIsLoading(true);
@@ -155,7 +158,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   }, [candidates, customers, form.referenceType, leads]);
   const metrics = useMemo(() => ({
     pending: items.filter(item => item.status === 'not_started').length,
-    inProgress: items.filter(item => ['in_progress', 'waiting_customer', 'awaiting_confirmation', 'paused'].includes(item.status)).length,
+    inProgress: items.filter(item => item.status === 'in_progress' || item.status === 'paused').length,
     support: items.filter(item => item.status === 'support_requested').length,
     dueSoon: items.filter(item => isTaskDueSoon(item, now)).length,
     overdue: items.filter(item => isTaskOverdue(item, now)).length,
@@ -177,7 +180,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
     if (priorityFilter !== 'all' && item.priority !== priorityFilter) return false;
     if (!isInPeriod(item, periodFilter, now)) return false;
     if (taskFilter === 'pending') return item.status === 'not_started';
-    if (taskFilter === 'in_progress') return ['in_progress', 'waiting_customer', 'awaiting_confirmation', 'paused'].includes(item.status);
+    if (taskFilter === 'in_progress') return item.status === 'in_progress' || item.status === 'paused';
     if (taskFilter === 'support') return item.status === 'support_requested';
     if (taskFilter === 'overdue') return isTaskOverdue(item, now);
     if (taskFilter === 'completed') return item.status === 'completed';
@@ -256,17 +259,18 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
     setSaving(true);
     setMessage('');
     const currentTime = new Date();
+    const taskStatus: WorkScheduleStatus = editingItem ? form.status : 'not_started';
     const payload = {
       title: form.title.trim(), description: form.description.trim(), stage: '', assigneeId: assignee.uid,
       assigneeName: assignee.displayName, department: roleDepartment(assignee.role),
       assignedById: editingItem?.assignedById || currentUser.uid,
       assignedByName: editingItem?.assignedByName || currentUser.displayName,
       requestedById: editingItem?.requestedById || '', requestedByName: editingItem?.requestedByName || '',
-      startAt: editingItem?.startAt || currentTime.toISOString(), endAt: endAt.toISOString(), status: form.status,
-      progress: form.status === 'completed' ? 100 : form.status === 'not_started' ? 0 : 50,
+      startAt: editingItem?.startAt || currentTime.toISOString(), endAt: endAt.toISOString(), status: taskStatus,
+      progress: taskStatus === 'completed' ? 100 : taskStatus === 'not_started' ? 0 : 50,
       referenceType: form.referenceType, referenceId: form.referenceId, referenceLabel: form.referenceLabel,
       notes: editingItem?.notes || '', priority: form.priority, taskType: editingItem?.taskType || 'assigned_task',
-      updatedAt: currentTime.toISOString(), completedAt: form.status === 'completed' ? (editingItem?.completedAt || currentTime.toISOString()) : null,
+      updatedAt: currentTime.toISOString(), completedAt: taskStatus === 'completed' ? (editingItem?.completedAt || currentTime.toISOString()) : null,
       deleted: false
     };
     try {
@@ -305,24 +309,53 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
     }
   };
   const updateStatus = async (item: WorkScheduleRecord, status: WorkScheduleStatus) => {
-    const updatedAt = new Date().toISOString();
-    await dbService.updateDocument('work_schedule_items', item.id, {
-      status, progress: status === 'completed' ? 100 : status === 'not_started' ? 0 : 50,
-      updatedAt, completedAt: status === 'completed' ? updatedAt : null
-    });
-    const updated = {
-      ...item, status, progress: status === 'completed' ? 100 : status === 'not_started' ? 0 : 50,
-      updatedAt, ...(status === 'completed' ? { completedAt: updatedAt } : {})
-    };
-    setItems(previous => previous.map(current => current.id === item.id ? updated : current));
-    setSelectedItem(updated);
+    setDetailBusy(true);
+    setDetailError('');
+    setMessage('');
+    try {
+      const updatedAt = new Date().toISOString();
+      const completedAt = status === 'completed' ? updatedAt : null;
+      const progress = status === 'completed' ? 100 : status === 'not_started' ? 0 : 50;
+      await dbService.updateDocument('work_schedule_items', item.id, { status, progress, updatedAt, completedAt });
+      const updated = { ...item, status, progress, updatedAt, completedAt: completedAt || undefined };
+      setItems(previous => previous.map(current => current.id === item.id ? updated : current));
+      setSelectedItem(updated);
+      setMessage(`Đã chuyển công việc sang trạng thái ${WORK_SCHEDULE_STATUS_LABELS[status].toLowerCase()}.`);
+    } catch {
+      setDetailError('Không thể cập nhật trạng thái công việc. Vui lòng thử lại.');
+    } finally {
+      setDetailBusy(false);
+    }
+  };
+  const deleteCompletedTask = async (item: WorkScheduleRecord) => {
+    if (!canPermanentlyDeleteWorkSchedule(currentUser.role, item.status) || detailBusy) return;
+    if (!window.confirm(`Xóa vĩnh viễn công việc “${item.title}”? Thao tác này không thể hoàn tác.`)) return;
+    setDetailBusy(true);
+    setDetailError('');
+    setMessage('');
+    try {
+      const deleted = await dbService.deleteDocument('work_schedule_items', item.id);
+      if (!deleted) throw new Error('Work schedule item was not deleted');
+      setItems(previous => previous.filter(current => current.id !== item.id));
+      setSelectedItem(null);
+      setMessage('Đã xóa vĩnh viễn công việc.');
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: 'system', action: 'work_schedule_deleted',
+        summary: `Xóa vĩnh viễn công việc “${item.title}”`,
+        targetType: 'work_schedule', targetId: item.id, targetLabel: item.title, pageId: 'work_schedule'
+      });
+    } catch {
+      setDetailError('Không thể xóa công việc. Vui lòng thử lại.');
+    } finally {
+      setDetailBusy(false);
+    }
   };
   const openSource = (item: WorkScheduleRecord) => {
     const module = moduleFromReference(item.referenceType);
     if (module && item.referenceId) onOpenRecord?.(module, item.referenceId);
   };
   const filterLabels: Array<[TaskFilter, string]> = [
-    ['all', 'Tất cả'], ['pending', 'Chờ tiếp nhận'], ['in_progress', 'Đang thực hiện'],
+    ['all', 'Tất cả'], ['pending', 'Chưa xử lí'], ['in_progress', 'Đang xử lí'],
     ['support', 'Yêu cầu hỗ trợ'], ['overdue', 'Quá hạn'], ['completed', 'Đã hoàn thành']
   ];
 
@@ -341,8 +374,8 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
 
     {activeTab === 'tasks' ? <>
       <section className="work-schedule-kpis">
-        <article><span>Chờ tiếp nhận</span><strong>{metrics.pending} việc</strong></article>
-        <article><span>Đang thực hiện</span><strong>{metrics.inProgress} việc</strong></article>
+        <article><span>Chưa xử lí</span><strong>{metrics.pending} việc</strong></article>
+        <article><span>Đang xử lí</span><strong>{metrics.inProgress} việc</strong></article>
         <article><span>Yêu cầu hỗ trợ</span><strong>{metrics.support} yêu cầu</strong></article>
         <article><span>Sắp đến hạn</span><strong>{metrics.dueSoon} việc</strong></article>
         <article className="is-danger"><span>Quá hạn</span><strong>{metrics.overdue} việc</strong></article>
@@ -377,7 +410,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
               <td><span className={`work-schedule-priority work-schedule-priority--${item.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[item.priority]}</span></td>
               <td><span className={`work-schedule-status work-schedule-status--${item.status}`}>{WORK_SCHEDULE_STATUS_LABELS[item.status]}</span></td>
               <td>{relativeUpdateLabel(item.updatedAt, now)}</td>
-              <td><button type="button" className="work-schedule-link" onClick={() => setSelectedItem(item)}>Xem chi tiết</button></td>
+              <td><button type="button" className="work-schedule-link" onClick={() => { setDetailError(''); setSelectedItem(item); }}>Xem chi tiết</button></td>
             </tr>)}</tbody>
           </table>
           {isLoading && <div className="work-schedule-empty">Đang tải công việc...</div>}
@@ -393,7 +426,21 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
       <div className="work-schedule-table-wrap"><table className="work-schedule-table work-schedule-week-table"><thead><tr><th>Nhân viên</th>{weekDates.map(date => <th key={toDateKey(date)}>{getDayLabel(date)}</th>)}</tr></thead><tbody>{activeUsers.map(user => <tr key={user.uid}><td><strong>{user.displayName}</strong><small>{roleDepartment(user.role)}</small></td>{weekDates.map(date => { const schedules = items.filter(item => item.assigneeId === user.uid && isScheduleOnDate(item, date)); return <td key={`${user.uid}-${toDateKey(date)}`}><button type="button" className="work-schedule-week-cell" onClick={() => { setTaskFilter('all'); setActiveTab('tasks'); }}><strong>{schedules.length}</strong><span>{schedules.length ? 'công việc' : 'Trống'}</span></button></td>; })}</tr>)}</tbody></table></div>
     </section>}
 
-    {selectedItem && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setSelectedItem(null); }}><section className="work-schedule-detail" role="dialog" aria-modal="true"><header><div><span>Chi tiết công việc</span><h2>{selectedItem.title}</h2></div><button type="button" className="btn btn-outline" onClick={() => setSelectedItem(null)}>Đóng</button></header><div className="work-schedule-detail__grid"><div><span>Trạng thái</span><strong className={`work-schedule-status work-schedule-status--${selectedItem.status}`}>{WORK_SCHEDULE_STATUS_LABELS[selectedItem.status]}</strong></div><div><span>Mức ưu tiên</span><strong className={`work-schedule-priority work-schedule-priority--${selectedItem.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[selectedItem.priority]}</strong></div><div><span>Người thực hiện</span><strong>{selectedItem.assigneeName}</strong></div><div><span>Người giao việc</span><strong>{selectedItem.assignedByName || 'Tự tạo'}</strong></div><div><span>Thời hạn</span><strong>{dateTimeLabel(selectedItem.endAt)}</strong></div><div><span>Phân hệ</span><strong>{WORK_SCHEDULE_REFERENCE_LABELS[selectedItem.referenceType]}</strong></div></div><article><h3>Nội dung công việc</h3><p>{selectedItem.description || 'Chưa có nội dung.'}</p>{selectedItem.requestedByName && <p>Người yêu cầu hỗ trợ: <strong>{selectedItem.requestedByName}</strong></p>}</article><footer>{selectedItem.referenceId && moduleFromReference(selectedItem.referenceType) && <button type="button" className="btn btn-outline" onClick={() => openSource(selectedItem)}>Mở hồ sơ khách hàng</button>}<button type="button" className="btn btn-outline" onClick={() => openEdit(selectedItem)}>Chỉnh sửa</button>{selectedItem.status !== 'completed' && <button type="button" className="btn btn-primary" onClick={() => void updateStatus(selectedItem, 'completed')}>Đánh dấu hoàn thành</button>}</footer></section></div>}
+    {selectedItem && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget && !detailBusy) setSelectedItem(null); }}>
+      <section className="work-schedule-detail" role="dialog" aria-modal="true" aria-labelledby="work-schedule-detail-title">
+        <header><div><span>Chi tiết công việc</span><h2 id="work-schedule-detail-title">{selectedItem.title}</h2></div><button type="button" className="btn btn-outline" onClick={() => setSelectedItem(null)} disabled={detailBusy}>Đóng</button></header>
+        <div className="work-schedule-detail__grid"><div><span>Trạng thái</span><strong className={`work-schedule-status work-schedule-status--${selectedItem.status}`}>{WORK_SCHEDULE_STATUS_LABELS[selectedItem.status]}</strong></div><div><span>Mức ưu tiên</span><strong className={`work-schedule-priority work-schedule-priority--${selectedItem.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[selectedItem.priority]}</strong></div><div><span>Người thực hiện</span><strong>{selectedItem.assigneeName}</strong></div><div><span>Người giao việc</span><strong>{selectedItem.assignedByName || 'Tự tạo'}</strong></div><div><span>Thời hạn</span><strong>{dateTimeLabel(selectedItem.endAt)}</strong></div><div><span>Phân hệ</span><strong>{WORK_SCHEDULE_REFERENCE_LABELS[selectedItem.referenceType]}</strong></div></div>
+        <article><h3>Nội dung công việc</h3><p>{selectedItem.description || 'Chưa có nội dung.'}</p>{selectedItem.requestedByName && <p>Người yêu cầu hỗ trợ: <strong>{selectedItem.requestedByName}</strong></p>}</article>
+        {detailError && <p className="work-schedule-detail-error" role="alert">{detailError}</p>}
+        <footer>
+          {selectedItem.referenceId && moduleFromReference(selectedItem.referenceType) && <button type="button" className="btn btn-outline" onClick={() => openSource(selectedItem)} disabled={detailBusy}>Mở hồ sơ khách hàng</button>}
+          {canPermanentlyDeleteWorkSchedule(currentUser.role, selectedItem.status) && <button type="button" className="btn btn-outline work-schedule-delete" onClick={() => void deleteCompletedTask(selectedItem)} disabled={detailBusy}>Xóa vĩnh viễn</button>}
+          <button type="button" className="btn btn-outline" onClick={() => openEdit(selectedItem)} disabled={detailBusy}>Chỉnh sửa</button>
+          {selectedItem.status === 'not_started' && <button type="button" className="btn btn-outline" onClick={() => void updateStatus(selectedItem, 'in_progress')} disabled={detailBusy}>{detailBusy ? 'Đang cập nhật...' : 'Bắt đầu xử lí'}</button>}
+          {selectedItem.status !== 'completed' && <button type="button" className="btn btn-primary" onClick={() => void updateStatus(selectedItem, 'completed')} disabled={detailBusy}>{detailBusy ? 'Đang cập nhật...' : 'Đánh dấu hoàn thành'}</button>}
+        </footer>
+      </section>
+    </div>}
 
     {isFormOpen && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setIsFormOpen(false); }}>
       <form className="work-schedule-modal" role="dialog" aria-modal="true" aria-labelledby="work-schedule-form-title" onSubmit={saveTask} noValidate>
@@ -407,7 +454,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
           <label>Phân hệ liên kết<select value={form.referenceType} onChange={event => setForm(previous => ({ ...previous, referenceType: event.target.value as WorkScheduleReferenceType, referenceId: '', referenceLabel: '' }))}><option value="none">Không liên kết</option><option value="lead_candidate">Dữ liệu thô</option><option value="lead">Tiềm năng</option><option value="customer">Khách hàng</option></select></label>
           <label>Khách hàng<select disabled={form.referenceType === 'none'} value={form.referenceId} onChange={event => handleReferenceChange(event.target.value)}><option value="">Chọn khách hàng</option>{sourceOptions.map(item => <option key={item.id} value={item.id}>{item.companyName || item.id}</option>)}</select></label>
           <label>Mức ưu tiên<select value={form.priority} onChange={event => setForm(previous => ({ ...previous, priority: event.target.value as WorkSchedulePriority }))}><option value="normal">Bình thường</option><option value="high">Cao</option><option value="urgent">Khẩn cấp</option></select></label>
-          <label>Trạng thái<select value={form.status} onChange={event => setForm(previous => ({ ...previous, status: event.target.value as WorkScheduleStatus }))}>{EDITABLE_STATUSES.map(status => <option key={status} value={status}>{WORK_SCHEDULE_STATUS_LABELS[status]}</option>)}</select></label>
+          {editingItem && <label>Trạng thái<select value={form.status} onChange={event => setForm(previous => ({ ...previous, status: event.target.value as WorkScheduleStatus }))}>{EDITABLE_STATUSES.map(status => <option key={status} value={status}>{WORK_SCHEDULE_STATUS_LABELS[status]}</option>)}</select></label>}
         </div>
         <footer><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)} disabled={saving}>Hủy</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu công việc'}</button></footer>
       </form>
