@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ExternalLink,
   Eye,
+  Factory,
   LifeBuoy,
   ListPlus,
   Mail,
@@ -19,6 +20,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  ReceiptText,
   Search,
   Settings2,
   Star,
@@ -1814,21 +1816,24 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
         <header className={editingCandidate ? 'lead-candidate-profile-header' : 'lead-form-page__header'}>
           <PageBackButton onClick={() => setShowForm(false)} />
-          <div className="lead-candidate-profile-header__title">
-            <span>{editingCandidateId ? 'CHỈNH SỬA DỮ LIỆU' : 'DỮ LIỆU MỚI'}</span>
-            <h1 title={editingCandidate ? form.companyName : undefined}>{editingCandidate ? form.companyName || 'Chưa có tên doanh nghiệp' : 'Thêm dữ liệu khách hàng'}</h1>
-          </div>
+          {editingCandidate ? <div className="lead-candidate-profile-header__title">
+            <span className="lead-candidate-profile-header__emblem"><Building2 size={21} aria-hidden="true" /></span>
+            <div className="lead-candidate-profile-header__title-text">
+              <span>CHỈNH SỬA DỮ LIỆU</span>
+              <h1 title={form.companyName}>{form.companyName || 'Chưa có tên doanh nghiệp'}</h1>
+            </div>
+          </div> : <div><span>DỮ LIỆU MỚI</span><h1>Thêm dữ liệu khách hàng</h1></div>}
           {editingCandidate && <PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
             subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
             auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
             canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
             onCallStarted={() => recordPhoneCall(editingCandidate)} />}
           {editingCandidate && <div className="lead-candidate-profile-header__facts">
-            <div><span>Mã số thuế</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div>
-            <div><span>Lĩnh vực</span><strong title={form.businessSector || 'Chưa cập nhật'}>{form.businessSector || 'Chưa cập nhật'}</strong></div>
-            <div><span>Địa điểm</span><strong title={[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}>{[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}</strong></div>
-            <div className="lead-candidate-profile-header__completion"><span>Hoàn thiện hồ sơ</span><strong>{profileCompletion}% · {completedProfileFields}/{profileFields.length} trường thông tin</strong><span className="lead-candidate-profile-header__progress" role="progressbar" aria-label="Mức hoàn thiện hồ sơ" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${profileCompletion}%` }} /></span></div>
-            <div><span>Cập nhật lần cuối</span><strong>{formatShortDateTime(editingCandidate.updatedAt || editingCandidate.createdAt)}</strong></div>
+            <div><ReceiptText size={17} aria-hidden="true" /><div><span>Mã số thuế</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div></div>
+            <div><Factory size={17} aria-hidden="true" /><div><span>Lĩnh vực</span><strong title={form.businessSector || 'Chưa cập nhật'}>{form.businessSector || 'Chưa cập nhật'}</strong></div></div>
+            <div><MapPin size={17} aria-hidden="true" /><div><span>Địa điểm</span><strong title={[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}>{[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}</strong></div></div>
+            <div className="lead-candidate-profile-header__completion"><span className="lead-candidate-profile-header__ring" role="progressbar" aria-label="Mức hoàn thiện hồ sơ" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100} style={{ background: `conic-gradient(#16895b ${profileCompletion}%, #e5edf7 0)` }}><b>{profileCompletion}%</b></span><div><span>Hoàn thiện hồ sơ</span><strong>{completedProfileFields}/{profileFields.length} trường thông tin</strong></div></div>
+            <div><CalendarClock size={17} aria-hidden="true" /><div><span>Cập nhật lần cuối</span><strong>{formatShortDateTime(editingCandidate.updatedAt || editingCandidate.createdAt)}</strong></div></div>
           </div>}
         </header>
 
