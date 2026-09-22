@@ -91,9 +91,13 @@ test('raw data and leads share the 59-item classification page and list controls
   assert.match(leadsSource, /visibleLeadInsightItems\.map/);
   assert.match(leadsSource, /classificationLeadId/);
   assert.match(leadsSource, /CustomerInsightClassification/);
-  assert.match(leadsSource, /openClassification\(selectedLead\)/);
+  assert.match(leadsSource, /openClassification\(editingLead\)/);
   assert.match(leadsSource, /customerInsightValues: candidate\.customerInsightValues \|\| \[\]/);
   assert.doesNotMatch(leadsSource, /CustomerInsightEditor/);
+  assert.match(leadsSource, /lead-record-header/);
+  assert.match(leadsSource, /id="lead-profile-form"/);
+  assert.match(leadsSource, /Mở hồ sơ/);
+  assert.doesNotMatch(leadsSource, /if \(selectedLead\) \{/);
 
   const customerSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'CrmPage.tsx'),

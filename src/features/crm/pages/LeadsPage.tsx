@@ -12,8 +12,8 @@ import {
   Eye,
   LifeBuoy,
   Paperclip,
-  Pencil,
   Plus,
+  Save,
   Search,
   Settings2,
   Tags,
@@ -95,7 +95,7 @@ import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/Wo
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
-import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
+import { EntityCustomFieldsGrid, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
 import {
@@ -885,15 +885,6 @@ export const Leads: React.FC<LeadsProps> = ({
     setLeadRepositoryFileLink('');
   }, [selectedLeadId]);
 
-  useEffect(() => {
-    if (!initialLeadId || !leads.some(lead => lead.id === initialLeadId)) return;
-    const timer = window.setTimeout(() => {
-      setSelectedLeadId(initialLeadId);
-      onInitialLeadOpened?.();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [initialLeadId, leads, onInitialLeadOpened]);
-
   const scheduleLead = scheduleLeadId
     ? leads.find(lead => lead.id === scheduleLeadId) || null
     : null;
@@ -950,7 +941,8 @@ export const Leads: React.FC<LeadsProps> = ({
     setShowLeadForm(true);
   };
 
-  const openEditForm = (lead: LeadRecord) => {
+  const openEditForm = useCallback((lead: LeadRecord) => {
+    setSelectedLeadId(lead.id);
     setEditingLeadId(lead.id);
     setConvertingCandidateId('');
     setFormFilterValues(getLeadFilterValues(lead, filterDefinitions));
@@ -984,7 +976,23 @@ export const Leads: React.FC<LeadsProps> = ({
       customerInsightValues: lead.customerInsightValues || []
     });
     setShowLeadForm(true);
+  }, [filterDefinitions]);
+
+  const openLeadById = (leadId: string) => {
+    const lead = leads.find(entry => entry.id === leadId);
+    if (lead) openEditForm(lead);
   };
+
+  useEffect(() => {
+    if (!initialLeadId) return;
+    const lead = leads.find(entry => entry.id === initialLeadId);
+    if (!lead) return;
+    const timer = window.setTimeout(() => {
+      openEditForm(lead);
+      onInitialLeadOpened?.();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [initialLeadId, leads, onInitialLeadOpened, openEditForm]);
 
   const openClassification = (lead: LeadRecord) => {
     setClassificationLeadId(lead.id);
@@ -1151,6 +1159,8 @@ export const Leads: React.FC<LeadsProps> = ({
 
   const closeLeadForm = () => {
     setShowLeadForm(false);
+    setSelectedLeadId('');
+    setEditingLeadId('');
     setConvertingCandidateId('');
   };
 
@@ -1304,6 +1314,7 @@ export const Leads: React.FC<LeadsProps> = ({
       updatedAt: now,
       updatedBy: currentUser.displayName
     });
+    setUploadingFiles(previous => [...previous.filter(entry => entry.id !== file.id), file]);
     setLeadRepositoryFile('');
     setLeadRepositoryFileName('');
     setLeadRepositoryFileLink('');
@@ -1317,6 +1328,7 @@ export const Leads: React.FC<LeadsProps> = ({
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser.displayName
     });
+    setUploadingFiles(previous => previous.filter(file => file.id !== fileId));
   };
 
   const handleDeleteLeadRepositoryFolder = async (folderId: string) => {
@@ -1584,52 +1596,6 @@ export const Leads: React.FC<LeadsProps> = ({
     closeLeadForm();
   };
 
-  const handleLeadFilterValueChange = async (
-    lead: LeadRecord,
-    field: LeadFilterDefinition,
-    value: string,
-    checked?: boolean
-  ) => {
-    const currentValues = getLeadFilterValues(lead, filterDefinitions);
-    const nextFilterValues = updateLeadFilterValues(currentValues, field, value, checked);
-    const optionLabel = findLeadFilterOption(filterDefinitions, field.id, value)?.label || value || 'để trống';
-    const actionLabel = field.type === 'multi_select' || field.type === 'checkbox'
-      ? (checked ? 'Thêm' : 'Bỏ')
-      : 'Cập nhật';
-    const now = new Date().toISOString();
-    const linkedProfileFields: Partial<Pick<LeadRecord, 'companySize' | 'province' | 'ward' | 'industrialPark' | 'source'>> = {};
-    if (field.id === LEAD_FILTER_IDS.companySize && ['', 'large', 'medium', 'small'].includes(value)) {
-      linkedProfileFields.companySize = value as LeadCompanySize;
-    }
-    if (field.id === LEAD_FILTER_IDS.province) {
-      const selectedPath = findLeadFilterOptionPathInOptions(field.options, value);
-      linkedProfileFields.province = selectedPath[0]?.label || '';
-      linkedProfileFields.ward = selectedPath.find(option => option.kind === 'ward')?.label || '';
-      linkedProfileFields.industrialPark = '';
-      nextFilterValues[LEAD_FILTER_IDS.industrialPark] = [];
-    }
-    if (field.id === LEAD_FILTER_IDS.industrialPark) {
-      linkedProfileFields.industrialPark = findLeadFilterOption(filterDefinitions, field.id, value)?.label || '';
-    }
-    if (field.id === LEAD_FILTER_IDS.source) {
-      linkedProfileFields.source = field.options.find(item => item.id === value)?.label || '';
-    }
-
-    await dbService.updateDocument('leads', lead.id, {
-      ...linkedProfileFields,
-      filterValues: nextFilterValues,
-      activities: [{
-        id: `activity-filter-${now}`,
-        type: 'filter_tag',
-        note: `${actionLabel} ${field.name}: ${optionLabel}`,
-        occurredAt: now,
-        createdById: currentUser.uid,
-        createdByName: currentUser.displayName
-      }, ...(lead.activities || [])],
-      updatedBy: currentUser.displayName
-    });
-  };
-
   const findDuplicateCustomer = (lead: LeadRecord) => {
     const companyName = lead.companyName.trim().toLowerCase();
     const phone = lead.phone.replace(/\s/g, '');
@@ -1804,6 +1770,8 @@ export const Leads: React.FC<LeadsProps> = ({
         changes: [{ field: 'returnedToRawDataCandidateId', label: 'Dữ liệu thô', after: candidateId }]
       });
       setSelectedLeadId('');
+      setEditingLeadId('');
+      setShowLeadForm(false);
       onNavigateToCustomerData();
     } catch (error) {
       console.error('[Leads] Could not return lead to raw data.', error);
@@ -1874,6 +1842,7 @@ export const Leads: React.FC<LeadsProps> = ({
         updatedBy: currentUser.displayName
       });
       if (selectedLeadId === lead.id) setSelectedLeadId('');
+      if (editingLeadId === lead.id) setShowLeadForm(false);
 
       auditService.recordSafely(currentUser, {
         category: 'business',
@@ -1928,12 +1897,6 @@ export const Leads: React.FC<LeadsProps> = ({
       .map(optionId => findLeadFilterOption(filterDefinitions, fieldId, optionId)?.label)
       .filter(Boolean);
     return (fieldId === LEAD_FILTER_IDS.province ? labels.join(' · ') : labels[0]) || fallback;
-  };
-
-  const getProfileDisplayValue = (definition: LeadProfileFieldDefinition, values: string[]) => {
-    if (definition.type === 'checkbox') return values[0] === 'true' ? 'Có' : 'Không';
-    const labels = values.map(value => definition.options.find(option => option.id === value)?.label || value);
-    return labels.join(', ') || '—';
   };
 
   const renderFollowUp = (lead: LeadRecord) => {
@@ -2003,261 +1966,198 @@ export const Leads: React.FC<LeadsProps> = ({
     return renderLeadForm();
   }
 
-  if (selectedLead) {
-    const assignedSale = users.find(user => user.uid === selectedLead.assignedSaleId);
+  const renderLeadRepository = () => {
+    if (!selectedLead) return null;
     return (
-      <div className="lead-detail-page">
-        <div className="lead-detail-header">
-          <PageBackButton onClick={() => setSelectedLeadId('')} />
+      <section className="lead-panel lead-panel--wide customer-file-repository-card" aria-label={t('File liên quan')}>
+        <div className="card-header customer-file-repository-header">
           <div>
-            <div className="lead-detail-title">
-              <span className={`lead-stage-badge lead-stage-badge--${selectedLead.stage}`}>{getStageLabel(selectedLead.stage)}</span>
-              <h1>{selectedLead.companyName}</h1>
-            </div>
-            <p>{t('Thông tin, phân loại và kế hoạch chăm sóc khách hàng tiềm năng.')}</p>
-          </div>
-          <div className="lead-detail-actions">
-            <PhoneCallCell toolbar phone={selectedLead.phone} companyName={selectedLead.companyName}
-              subjectKey={leadCallSubjectKey(selectedLead)} historyKeys={leadCallHistoryKeys(selectedLead)}
-              auditModule="leads" targetType="lead" targetId={selectedLead.id} currentUser={currentUser}
-              canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && selectedLead.assignedSaleId === currentUser.uid)} />
-            <button type="button" className="btn btn-outline" onClick={() => openClassification(selectedLead)}>
-              <Tags size={15} /> {t('Phân loại')}
-            </button>
-            <button type="button" className="btn btn-outline" onClick={() => openEditForm(selectedLead)}>
-              <Pencil size={15} /> {t('Chỉnh sửa')}
-            </button>
-            {!['converted'].includes(selectedLead.stage) && !selectedLead.convertedCustomerId && (
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => void handleReturnLeadToRawData(selectedLead)}
-                disabled={returningLeadId === selectedLead.id || (currentUser.role !== 'admin' && selectedLead.assignedSaleId !== currentUser.uid)}
-              >
-                <Undo2 size={15} /> {returningLeadId === selectedLead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô')}
-              </button>
-            )}
-            {!['converted', 'lost'].includes(selectedLead.stage) && (
-              <button type="button" className="btn btn-primary" onClick={() => handleConvertLead(selectedLead)}>
-                <UserCheck size={15} /> {t('Chuyển thành khách hàng')}
-              </button>
-            )}
-            {selectedLead.stage === 'converted' && (
-              <button type="button" className="btn btn-primary" onClick={onNavigateToCrm}>
-                <Building2 size={15} /> {t('Mở CRM')}
-              </button>
-            )}
+            <span className="card-title">{t('File liên quan')}</span>
+            <small>{t('File thiết kế, báo giá và tài liệu sẽ được giữ nguyên khi chuyển thành khách hàng.')}</small>
           </div>
         </div>
 
-        <div className="lead-detail-layout">
-          <section className="lead-panel">
-            <div className="lead-panel__title"><Building2 size={17} /> {t('Hồ sơ doanh nghiệp')}</div>
-            <div className="lead-info-grid">
-              <span>{t('Người liên hệ')}</span><strong>{selectedLead.contactPerson || '—'}</strong>
-              <span>{t('Chức vụ')}</span><strong>{selectedLead.contactPosition || '—'}</strong>
-              <span>{t('Điện thoại')}</span><strong>{selectedLead.phone || '—'}</strong>
-              <span>Email</span><strong>{selectedLead.email || '—'}</strong>
-              <span>Website</span><strong>{selectedLead.website || '—'}</strong>
-              <span>{t('Lĩnh vực hoạt động')}</span><strong>{selectedLead.businessSector || '—'}</strong>
-              <span>{t('Mã số thuế')}</span><strong>{selectedLead.taxCode || '—'}</strong>
-              <span>{t('Địa chỉ')}</span><strong>{selectedLead.address || '—'}</strong>
-              <span>{t('Tỉnh / thành')}</span><strong>{getClassificationLabel(selectedLead, LEAD_FILTER_IDS.province, selectedLead.province || '—')}</strong>
-              <span>{t('Khu công nghiệp')}</span><strong>{selectedLead.industrialPark || '—'}</strong>
-              <span>{t('Quy mô')}</span><strong>{getClassificationLabel(selectedLead, LEAD_FILTER_IDS.companySize, COMPANY_SIZE_LABELS[selectedLead.companySize])}</strong>
-              <span>{t('Nguồn Lead')}</span><strong>{getClassificationLabel(selectedLead, LEAD_FILTER_IDS.source, selectedLead.source || '—')}</strong>
-              <span>{t('Sale phụ trách')}</span><strong>{assignedSale?.displayName || selectedLead.assignedSaleName || 'Chưa phân công'}</strong>
-              <span>{t('Lịch chăm sóc tiếp theo')}</span><strong className={isOverdue(selectedLead) ? 'lead-date-overdue' : ''}>{formatDateTime(selectedLead.nextFollowUpAt)}</strong>
-              <span>{t('Giá trị tiềm năng')}</span><strong>{selectedLead.potentialValue.toLocaleString('vi-VN')} đ</strong>
-              {customProfileDefinitions
-                .filter(definition => definition.active || (selectedLead.profileValues?.[definition.id] || []).length > 0)
-                .map(definition => (
-                  <React.Fragment key={definition.id}>
-                    <span>{definition.name}</span>
-                    <strong>{getProfileDisplayValue(definition, selectedLead.profileValues?.[definition.id] || [])}</strong>
-                  </React.Fragment>
-                ))}
-            </div>
-            <div className="lead-note-block">
-              <strong>{t('Nhu cầu sản phẩm')}</strong>
-              <p>{selectedLead.expectedProducts || t('Chưa cập nhật nhu cầu sản phẩm.')}</p>
-            </div>
-            <div className="lead-note-block">
-              <strong>{t('Ghi chú')}</strong>
-              <p>{selectedLead.note || t('Chưa có ghi chú.')}</p>
-            </div>
-            <EntityCustomFieldsReadOnly definitions={customFieldDefinitions} values={selectedLead.customFieldValues} />
-          </section>
-
-          <section className="lead-panel lead-classification-panel">
-            <div className="lead-panel__title"><Tags size={17} /> {t('Phân loại khách hàng')}</div>
-            <p className="lead-panel__hint">Các nhóm thông tin dùng để tìm và lọc Lead ngoài danh sách.</p>
-            <LeadDynamicFields
-              lead={selectedLead}
-              definitions={filterDefinitions}
-              canEditAll={currentUser.role === 'admin'}
-              onChange={(field, value, checked) => handleLeadFilterValueChange(selectedLead, field, value, checked)}
-            />
-          </section>
-
-          <section className="lead-panel lead-panel--wide customer-file-repository-card" aria-label={t('File liên quan')}>
-            <div className="card-header customer-file-repository-header">
-              <div>
-                <span className="card-title">{t('File liên quan')}</span>
-                <small>{t('File thiết kế, báo giá và tài liệu sẽ được giữ nguyên khi chuyển thành khách hàng.')}</small>
+        <div className="customer-drive-layout">
+          <aside className="customer-drive-sidebar" aria-label={t('Danh sách thư mục file liên quan')}>
+            {currentUser.role === 'admin' && (
+              <div className="customer-drive-new-folder">
+                <input
+                  type="text"
+                  value={newLeadFolderName}
+                  onChange={event => setNewLeadFolderName(event.target.value)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      void handleAddLeadRepositoryFolder();
+                    }
+                  }}
+                  placeholder={t('Tên thư mục mới')}
+                  aria-label={t('Tên thư mục mới')}
+                />
+                <button type="button" className="btn btn-primary" onClick={() => void handleAddLeadRepositoryFolder()} disabled={!newLeadFolderName.trim()}>{t('Tạo thư mục')}</button>
               </div>
+            )}
+
+            <div className="customer-drive-folder-list">
+              {leadRepositoryFolders.map(folder => {
+                const fileCount = selectedLead.files.filter(file => resolveCustomerFileFolderId(file, leadRepositoryFolders) === folder.id).length;
+                return (
+                  <div key={folder.id} className={`customer-drive-folder ${activeLeadRepositoryFolder?.id === folder.id ? 'is-active' : ''}`}>
+                    {renamingLeadFolderId === folder.id ? (
+                      <div className="customer-drive-folder-rename">
+                        <input
+                          autoFocus
+                          value={leadFolderNameDraft}
+                          onChange={event => setLeadFolderNameDraft(event.target.value)}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter') void handleRenameLeadRepositoryFolder(folder.id);
+                            if (event.key === 'Escape') setRenamingLeadFolderId('');
+                          }}
+                          aria-label={t('Tên thư mục')}
+                        />
+                        <button type="button" onClick={() => void handleRenameLeadRepositoryFolder(folder.id)}>{t('Lưu')}</button>
+                        <button type="button" onClick={() => setRenamingLeadFolderId('')}>{t('Hủy')}</button>
+                      </div>
+                    ) : (
+                      <>
+                        <button type="button" className="customer-drive-folder-select" onClick={() => setActiveLeadFolderId(folder.id)}>
+                          <span title={folder.name}>{folder.name}</span>
+                          <small>{fileCount}</small>
+                        </button>
+                        {currentUser.role === 'admin' && (
+                          <div className="customer-drive-folder-actions">
+                            <button type="button" onClick={() => { setRenamingLeadFolderId(folder.id); setLeadFolderNameDraft(folder.name); }}>{t('Đổi tên')}</button>
+                            <button type="button" onClick={() => void handleDeleteLeadRepositoryFolder(folder.id)}>{t('Xóa')}</button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+
+          <div className="customer-drive-content">
+            <div className="customer-drive-path">
+              <span>{t('File liên quan')}</span>
+              <strong>/ {activeLeadRepositoryFolder?.name || t('Chưa chọn thư mục')}</strong>
             </div>
 
-            <div className="customer-drive-layout">
-              <aside className="customer-drive-sidebar" aria-label={t('Danh sách thư mục file liên quan')}>
-                {currentUser.role === 'admin' && (
-                  <div className="customer-drive-new-folder">
-                    <input
-                      type="text"
-                      value={newLeadFolderName}
-                      onChange={event => setNewLeadFolderName(event.target.value)}
-                      onKeyDown={event => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          void handleAddLeadRepositoryFolder();
-                        }
-                      }}
-                      placeholder={t('Tên thư mục mới')}
-                      aria-label={t('Tên thư mục mới')}
-                    />
-                    <button type="button" className="btn btn-primary" onClick={() => void handleAddLeadRepositoryFolder()} disabled={!newLeadFolderName.trim()}>{t('Tạo thư mục')}</button>
-                  </div>
-                )}
+            {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeLeadRepositoryFolder && (
+              <details className="customer-drive-upload-panel">
+                <summary>{t('Thêm tài liệu vào thư mục này')}</summary>
+                <form onSubmit={event => void handleUploadLeadRepositoryFile(event)}>
+                  <label>
+                    <span>{t('Tên tài liệu')} *</span>
+                    <input value={leadRepositoryFileName} onChange={event => setLeadRepositoryFileName(event.target.value)} required placeholder={t('Ví dụ: File thiết kế nhãn chai')} />
+                  </label>
+                  <label>
+                    <span>{t('Chọn tệp dưới 900 KB')}</span>
+                    <input type="file" onChange={handleLeadRepositoryFileChange} />
+                  </label>
+                  <label>
+                    <span>{t('Hoặc đường dẫn Drive/OneDrive')}</span>
+                    <input type="url" value={leadRepositoryFileLink} onChange={event => setLeadRepositoryFileLink(event.target.value)} placeholder="https://..." />
+                  </label>
+                  <button type="submit" className="btn btn-primary">{t('Lưu tài liệu')}</button>
+                </form>
+              </details>
+            )}
 
-                <div className="customer-drive-folder-list">
-                  {leadRepositoryFolders.map(folder => {
-                    const fileCount = selectedLead.files.filter(file => resolveCustomerFileFolderId(file, leadRepositoryFolders) === folder.id).length;
+            <div className="table-container customer-drive-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t('Tên tài liệu')}</th>
+                    <th>{t('Loại')}</th>
+                    <th>{t('Ngày cập nhật')}</th>
+                    <th>{t('Người cập nhật')}</th>
+                    <th>{t('Thao tác')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeLeadRepositoryFiles.map(file => {
+                    const source = file.data || file.url;
+                    const isImage = source.startsWith('data:image/');
                     return (
-                      <div key={folder.id} className={`customer-drive-folder ${activeLeadRepositoryFolder?.id === folder.id ? 'is-active' : ''}`}>
-                        {renamingLeadFolderId === folder.id ? (
-                          <div className="customer-drive-folder-rename">
-                            <input
-                              autoFocus
-                              value={leadFolderNameDraft}
-                              onChange={event => setLeadFolderNameDraft(event.target.value)}
-                              onKeyDown={event => {
-                                if (event.key === 'Enter') void handleRenameLeadRepositoryFolder(folder.id);
-                                if (event.key === 'Escape') setRenamingLeadFolderId('');
-                              }}
-                              aria-label={t('Tên thư mục')}
-                            />
-                            <button type="button" onClick={() => void handleRenameLeadRepositoryFolder(folder.id)}>{t('Lưu')}</button>
-                            <button type="button" onClick={() => setRenamingLeadFolderId('')}>{t('Hủy')}</button>
+                      <tr key={file.id}>
+                        <td><strong title={file.name}>{file.name}</strong></td>
+                        <td>{isImage ? t('Hình ảnh') : file.url ? t('Đường dẫn') : t('Tệp tài liệu')}</td>
+                        <td>{formatDateTime(file.createdAt)}</td>
+                        <td>{file.createdBy || users.find(user => user.uid === file.createdById)?.displayName || '—'}</td>
+                        <td>
+                          <div className="customer-drive-file-actions">
+                            {file.url
+                              ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a>
+                              : source && <a href={source} download={file.name}>{t('Tải xuống')}</a>}
+                            {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" onClick={() => void handleDeleteLeadRepositoryFile(file.id)}>{t('Xóa')}</button>}
                           </div>
-                        ) : (
-                          <>
-                            <button type="button" className="customer-drive-folder-select" onClick={() => setActiveLeadFolderId(folder.id)}>
-                              <span title={folder.name}>{folder.name}</span>
-                              <small>{fileCount}</small>
-                            </button>
-                            {currentUser.role === 'admin' && (
-                              <div className="customer-drive-folder-actions">
-                                <button type="button" onClick={() => { setRenamingLeadFolderId(folder.id); setLeadFolderNameDraft(folder.name); }}>{t('Đổi tên')}</button>
-                                <button type="button" onClick={() => void handleDeleteLeadRepositoryFolder(folder.id)}>{t('Xóa')}</button>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
+                        </td>
+                      </tr>
                     );
                   })}
-                </div>
-              </aside>
-
-              <div className="customer-drive-content">
-                <div className="customer-drive-path">
-                  <span>{t('File liên quan')}</span>
-                  <strong>/ {activeLeadRepositoryFolder?.name || t('Chưa chọn thư mục')}</strong>
-                </div>
-
-                {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeLeadRepositoryFolder && (
-                  <details className="customer-drive-upload-panel">
-                    <summary>{t('Thêm tài liệu vào thư mục này')}</summary>
-                    <form onSubmit={event => void handleUploadLeadRepositoryFile(event)}>
-                      <label>
-                        <span>{t('Tên tài liệu')} *</span>
-                        <input value={leadRepositoryFileName} onChange={event => setLeadRepositoryFileName(event.target.value)} required placeholder={t('Ví dụ: File thiết kế nhãn chai')} />
-                      </label>
-                      <label>
-                        <span>{t('Chọn tệp dưới 900 KB')}</span>
-                        <input type="file" onChange={handleLeadRepositoryFileChange} />
-                      </label>
-                      <label>
-                        <span>{t('Hoặc đường dẫn Drive/OneDrive')}</span>
-                        <input type="url" value={leadRepositoryFileLink} onChange={event => setLeadRepositoryFileLink(event.target.value)} placeholder="https://..." />
-                      </label>
-                      <button type="submit" className="btn btn-primary">{t('Lưu tài liệu')}</button>
-                    </form>
-                  </details>
-                )}
-
-                <div className="table-container customer-drive-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>{t('Tên tài liệu')}</th>
-                        <th>{t('Loại')}</th>
-                        <th>{t('Ngày cập nhật')}</th>
-                        <th>{t('Người cập nhật')}</th>
-                        <th>{t('Thao tác')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeLeadRepositoryFiles.map(file => {
-                        const source = file.data || file.url;
-                        const isImage = source.startsWith('data:image/');
-                        return (
-                          <tr key={file.id}>
-                            <td><strong title={file.name}>{file.name}</strong></td>
-                            <td>{isImage ? t('Hình ảnh') : file.url ? t('Đường dẫn') : t('Tệp tài liệu')}</td>
-                            <td>{formatDateTime(file.createdAt)}</td>
-                            <td>{file.createdBy || users.find(user => user.uid === file.createdById)?.displayName || '—'}</td>
-                            <td>
-                              <div className="customer-drive-file-actions">
-                                {file.url
-                                  ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a>
-                                  : source && <a href={source} download={file.name}>{t('Tải xuống')}</a>}
-                                {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" onClick={() => void handleDeleteLeadRepositoryFile(file.id)}>{t('Xóa')}</button>}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {activeLeadRepositoryFiles.length === 0 && (
-                        <tr><td colSpan={5} className="lead-file-repository-empty">{t('Chưa có tài liệu trong thư mục này.')}</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                  {activeLeadRepositoryFiles.length === 0 && (
+                    <tr><td colSpan={5} className="lead-file-repository-empty">{t('Chưa có tài liệu trong thư mục này.')}</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          </section>
+          </div>
         </div>
-      </div>
+      </section>
     );
-  }
+  };
 
   function renderLeadForm() {
+    const assignedSaleName = editingLead
+      ? users.find(user => user.uid === editingLead.assignedSaleId)?.displayName || editingLead.assignedSaleName || 'Chưa phân công'
+      : '';
+    const canManageEditingLead = Boolean(editingLead && (
+      currentUser.role === 'admin'
+      || (currentUser.role === 'sale' && editingLead.assignedSaleId === currentUser.uid)
+    ));
     return (
       <SystemFieldSurface table="leads" className="lead-form-page">
-        <header className="lead-form-page__header">
+        <header className={`lead-form-page__header${editingLead ? ' lead-record-header' : ''}`}>
           <PageBackButton onClick={closeLeadForm} />
-          <div>
-            <span>{editingLeadId ? t('CHỈNH SỬA HỒ SƠ') : convertingCandidateId ? t('CHUYỂN TỪ DỮ LIỆU KHÁCH HÀNG') : t('HỒ SƠ MỚI')}</span>
-            <h1>{editingLeadId ? t('Chỉnh sửa khách hàng tiềm năng') : convertingCandidateId ? t('Tiếp nhận khách hàng thành Lead') : t('Thêm khách hàng tiềm năng')}</h1>
-          </div>
-          {editingLead && <PhoneCallCell toolbar phone={editingLead.phone} companyName={editingLead.companyName}
-            subjectKey={leadCallSubjectKey(editingLead)} historyKeys={leadCallHistoryKeys(editingLead)}
-            auditModule="leads" targetType="lead" targetId={editingLead.id} currentUser={currentUser}
-            canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && editingLead.assignedSaleId === currentUser.uid)} />}
+          {editingLead ? <>
+            <div className="lead-record-header__identity">
+              <div className="lead-record-header__title"><h1>{form.companyName || editingLead.companyName}</h1><span className={`lead-stage-badge lead-stage-badge--${form.stage}`}>{getStageLabel(form.stage)}</span></div>
+              <div className="lead-record-header__meta">
+                <span><small>{t('Mã số thuế')}</small><strong>{form.taxCode || 'Chưa cập nhật'}</strong></span>
+                <span><small>{t('Sale phụ trách')}</small><strong>{assignedSaleName}</strong></span>
+                <span><small>{t('Chăm sóc tiếp')}</small><strong>{form.nextFollowUpAt ? formatDateTime(form.nextFollowUpAt) : 'Chưa đặt lịch'}</strong></span>
+                <span><small>{t('Phân loại')}</small><strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length} mục</strong></span>
+              </div>
+            </div>
+            <div className="lead-record-header__actions">
+              <PhoneCallCell toolbar phone={editingLead.phone} companyName={editingLead.companyName}
+                subjectKey={leadCallSubjectKey(editingLead)} historyKeys={leadCallHistoryKeys(editingLead)}
+                auditModule="leads" targetType="lead" targetId={editingLead.id} currentUser={currentUser}
+                canRecord={canManageEditingLead} />
+              <button type="button" className="btn btn-outline" onClick={() => openClassification(editingLead)}><Tags size={15} /> {t('Phân loại')}</button>
+              <button type="submit" form="lead-profile-form" className="btn btn-primary" disabled={Boolean(taxCodeConflict || candidateTaxCodeConflict) || !normalizeTaxCode(form.taxCode)}><Save size={15} /> {t('Lưu')}</button>
+              <RowActionMenu
+                label={t('Thao tác hồ sơ')}
+                actions={[
+                  { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(editingLead) },
+                  ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: editingLead.id, label: editingLead.companyName, module: 'leads' }) }] : []),
+                  ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: editingLead.id, label: editingLead.companyName, module: 'leads' }) }] : []),
+                  ...(!['converted'].includes(editingLead.stage) && !editingLead.convertedCustomerId ? [{ label: returningLeadId === editingLead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô'), icon: <Undo2 size={14} />, onSelect: () => void handleReturnLeadToRawData(editingLead), disabled: returningLeadId === editingLead.id || !canManageEditingLead }] : []),
+                  ...(!['converted', 'lost'].includes(editingLead.stage) ? [{ label: t('Chuyển thành khách hàng'), icon: <UserCheck size={14} />, onSelect: () => handleConvertLead(editingLead), disabled: !canManageEditingLead }] : []),
+                  ...(editingLead.stage === 'converted' ? [{ label: t('Mở CRM'), icon: <Building2 size={14} />, onSelect: onNavigateToCrm }] : []),
+                  { label: t('Xóa Lead'), icon: <Trash2 size={14} />, onSelect: () => void handleDeleteLead(editingLead), danger: true, disabled: !canManageEditingLead }
+                ]}
+              />
+            </div>
+          </> : <div>
+            <span>{convertingCandidateId ? t('CHUYỂN TỪ DỮ LIỆU KHÁCH HÀNG') : t('HỒ SƠ MỚI')}</span>
+            <h1>{convertingCandidateId ? t('Tiếp nhận khách hàng thành Lead') : t('Thêm khách hàng tiềm năng')}</h1>
+          </div>}
         </header>
 
-        <form className="lead-form-page__form" onSubmit={handleSaveLead}>
+        <form id="lead-profile-form" className="lead-form-page__form" onSubmit={handleSaveLead}>
           <div className="lead-form-page__content">
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
@@ -2395,7 +2295,7 @@ export const Leads: React.FC<LeadsProps> = ({
               onChange={setCustomFieldValues}
             />
           </div>
-          <footer className="lead-form-page__footer">
+          {!editingLead && <footer className="lead-form-page__footer">
             <span>{t('Các thay đổi chỉ được ghi nhận khi bấm Lưu.')}</span>
             <div>
               <button type="button" className="btn btn-outline" onClick={closeLeadForm}>{t('Hủy')}</button>
@@ -2407,8 +2307,9 @@ export const Leads: React.FC<LeadsProps> = ({
                 {editingLeadId ? t('Cập nhật Lead') : convertingCandidateId ? t('Lưu Lead & hoàn tất tiếp cận') : t('Lưu Lead')}
               </button>
             </div>
-          </footer>
+          </footer>}
         </form>
+        {editingLead && renderLeadRepository()}
       </SystemFieldSurface>
     );
   }
@@ -2451,7 +2352,7 @@ export const Leads: React.FC<LeadsProps> = ({
           metrics={overviewCards}
           onMetricClick={key => openOverviewList(key as LeadOverviewSelection | null)}
           onGroupClick={openOverviewDrilldown}
-          onOpenLead={setSelectedLeadId}
+          onOpenLead={openLeadById}
         />
       ) : workspaceTab === 'performance' && currentUser.role === 'admin' ? (
         <LeadSalesWorkspace
@@ -2459,7 +2360,7 @@ export const Leads: React.FC<LeadsProps> = ({
           candidates={candidates}
           saleUsers={saleUsers}
           definitions={filterDefinitions}
-          onOpenLead={setSelectedLeadId}
+          onOpenLead={openLeadById}
         />
       ) : (
         <div className="lead-data-workspace">
@@ -2565,7 +2466,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 </tr></thead>
                 <tbody>
                   {displayedLeads.map((lead, leadIndex) => (
-                    <tr key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
+                    <tr key={lead.id} onClick={() => openEditForm(lead)}>
                       <ReorderableTableCells order={orderedLeadColumnIds}>
                       <td key="index" className="erp-table-index-column">{(safeLeadCurrentPage - 1) * leadPageSize + leadIndex + 1}</td>
                       <td key="company"><strong className="erp-company-name" title={lead.companyName}>{lead.companyName}</strong></td>
@@ -2588,7 +2489,7 @@ export const Leads: React.FC<LeadsProps> = ({
                         currentUser={currentUser}
                         auditModule="leads" targetType="lead" targetId={lead.id}
                         canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && lead.assignedSaleId === currentUser.uid)}
-                        onOpenDetails={() => setSelectedLeadId(lead.id)}
+                        onOpenDetails={() => openEditForm(lead)}
                       /></td>}
                       {visibleLeadColumnIds.has('email') && <td key="email">{renderLeadText(lead.email)}</td>}
                       {visibleLeadColumnIds.has('expectedProducts') && <td key="expectedProducts">{renderLeadText(lead.expectedProducts)}</td>}
@@ -2604,8 +2505,7 @@ export const Leads: React.FC<LeadsProps> = ({
                         <RowActionMenu
                           label={`${t('Thao tác')} ${lead.companyName}`}
                           actions={[
-                            { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => setSelectedLeadId(lead.id) },
-                            { label: t('Chỉnh sửa'), icon: <Pencil size={14} />, onSelect: () => openEditForm(lead) },
+                            { label: t('Mở hồ sơ'), icon: <Eye size={14} />, onSelect: () => openEditForm(lead) },
                             { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) },
                             ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),

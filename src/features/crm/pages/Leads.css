@@ -686,6 +686,110 @@
   border-bottom: 1px solid var(--erp-border-color);
 }
 
+.lead-record-header {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  grid-template-columns: auto minmax(320px, 1fr) auto;
+  gap: 10px 14px;
+  padding: 9px 12px;
+  box-shadow: 0 4px 14px rgb(15 23 42 / 6%);
+}
+
+.lead-record-header__identity {
+  min-width: 0;
+}
+
+.lead-record-header__title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lead-record-header__title h1 {
+  overflow: hidden;
+  min-width: 0;
+  margin: 0;
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-record-header__meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  margin-top: 6px;
+}
+
+.lead-record-header__meta > span {
+  display: inline-flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0 12px;
+  border-left: 1px solid #dbe3ef;
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.lead-record-header__meta > span:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.lead-record-header__meta small {
+  color: #64748b;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.lead-record-header__meta strong {
+  overflow: hidden;
+  max-width: 180px;
+  color: #244065;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-record-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.lead-record-header__actions .phone-call-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.lead-record-header__actions .btn,
+.lead-record-header__actions .phone-call-toolbar button,
+.lead-record-header__actions .row-action-menu__trigger {
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .lead-record-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .lead-record-header__actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
 .lead-form-page__header:has(> .phone-call-toolbar) {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
