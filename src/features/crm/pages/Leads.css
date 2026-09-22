@@ -276,6 +276,14 @@
 .lead-detail-actions {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.lead-detail-actions .phone-call-toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
   gap: 7px;
 }
 

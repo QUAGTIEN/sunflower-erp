@@ -124,7 +124,7 @@ import {
   type AdvancedFilterState
 } from '@/components/advancedDataFilterModel';
 import { LeadOverviewDashboard } from '@/features/crm/components/LeadOverviewDashboard';
-import { CustomerInsightEditor } from '@/features/crm/components/CustomerInsightEditor';
+import { CustomerInsightClassification } from '@/features/crm/components/CustomerInsightClassification';
 import {
   CUSTOMER_INSIGHT_GROUPS,
   CUSTOMER_INSIGHT_ITEMS,
@@ -354,6 +354,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [showLeadFilters, setShowLeadFilters] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
+  const [classificationLeadId, setClassificationLeadId] = useState('');
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
   const [showLeadForm, setShowLeadForm] = useState(false);
@@ -859,6 +860,9 @@ export const Leads: React.FC<LeadsProps> = ({
   const selectedLead = selectedLeadId
     ? leads.find(lead => lead.id === selectedLeadId) || null
     : null;
+  const classificationLead = classificationLeadId
+    ? leads.find(lead => lead.id === classificationLeadId) || null
+    : null;
 
   const leadRepositoryFolders = selectedLead
     ? getCustomerRepositoryFolders(selectedLead).filter(folder => folder.active !== false)
@@ -982,6 +986,32 @@ export const Leads: React.FC<LeadsProps> = ({
     setShowLeadForm(true);
   };
 
+  const openClassification = (lead: LeadRecord) => {
+    setClassificationLeadId(lead.id);
+  };
+
+  const saveClassification = async (lead: LeadRecord, values: string[]) => {
+    const canManage = currentUser.role === 'admin'
+      || (currentUser.role === 'sale' && lead.assignedSaleId === currentUser.uid);
+    if (!canManage) throw new Error('Not allowed to classify this lead');
+    const now = new Date().toISOString();
+    await dbService.updateDocument('leads', lead.id, {
+      customerInsightValues: values,
+      updatedAt: now,
+      updatedBy: currentUser.displayName
+    });
+    if (editingLeadId === lead.id) updateForm('customerInsightValues', values);
+    auditService.recordSafely(currentUser, {
+      category: 'business',
+      module: 'leads',
+      action: 'lead_classification_updated',
+      summary: `Cập nhật phân loại ${lead.companyName} · ${values.length}/${CUSTOMER_INSIGHT_ITEMS.length} mục`,
+      targetType: 'lead',
+      targetId: lead.id,
+      targetLabel: lead.companyName
+    });
+  };
+
   const openScheduleForm = (lead: LeadRecord) => {
     setScheduleLeadId(lead.id);
     setScheduleForm({
@@ -1103,7 +1133,8 @@ export const Leads: React.FC<LeadsProps> = ({
       discoveredById: candidate.discoveredById || candidate.createdById,
       nextFollowUpAt: toDateTimeLocal(candidate.queuedNextContactAt || candidate.nextContactAt),
       expectedProducts: candidate.expectedProducts || '',
-      note: candidate.note || ''
+      note: candidate.note || '',
+      customerInsightValues: candidate.customerInsightValues || []
     });
     setShowLeadForm(true);
   }, [currentUser, filterDefinitions, saleUsers]);
@@ -1935,6 +1966,39 @@ export const Leads: React.FC<LeadsProps> = ({
     </span>
   );
 
+  if (classificationLead) {
+    const canEditClassification = currentUser.role === 'admin'
+      || (currentUser.role === 'sale' && classificationLead.assignedSaleId === currentUser.uid);
+    return (
+      <div className="lead-detail-page lead-classification-page">
+        <div className="lead-detail-header">
+          <PageBackButton onClick={() => setClassificationLeadId('')} />
+          <div>
+            <div className="lead-detail-title">
+              <span className={`lead-stage-badge lead-stage-badge--${classificationLead.stage}`}>{getStageLabel(classificationLead.stage)}</span>
+              <h1>{classificationLead.companyName}</h1>
+            </div>
+            <p>{t('8 nhóm thông tin dùng chung giữa Dữ liệu thô và Tiềm năng.')}</p>
+          </div>
+          <div className="lead-detail-actions">
+            <PhoneCallCell toolbar phone={classificationLead.phone} companyName={classificationLead.companyName}
+              subjectKey={leadCallSubjectKey(classificationLead)} historyKeys={leadCallHistoryKeys(classificationLead)}
+              auditModule="leads" targetType="lead" targetId={classificationLead.id} currentUser={currentUser}
+              canRecord={canEditClassification} />
+            <button type="button" className="btn btn-primary" aria-current="page"><Tags size={15} /> {t('Phân loại')}</button>
+          </div>
+        </div>
+        <CustomerInsightClassification
+          key={classificationLead.id}
+          companyName={classificationLead.companyName}
+          values={classificationLead.customerInsightValues || []}
+          canEdit={canEditClassification}
+          onSave={values => saveClassification(classificationLead, values)}
+        />
+      </div>
+    );
+  }
+
   if (showLeadForm) {
     return renderLeadForm();
   }
@@ -1957,6 +2021,9 @@ export const Leads: React.FC<LeadsProps> = ({
               subjectKey={leadCallSubjectKey(selectedLead)} historyKeys={leadCallHistoryKeys(selectedLead)}
               auditModule="leads" targetType="lead" targetId={selectedLead.id} currentUser={currentUser}
               canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && selectedLead.assignedSaleId === currentUser.uid)} />
+            <button type="button" className="btn btn-outline" onClick={() => openClassification(selectedLead)}>
+              <Tags size={15} /> {t('Phân loại')}
+            </button>
             <button type="button" className="btn btn-outline" onClick={() => openEditForm(selectedLead)}>
               <Pencil size={15} /> {t('Chỉnh sửa')}
             </button>
@@ -2245,11 +2312,6 @@ export const Leads: React.FC<LeadsProps> = ({
                 definitions={formClassificationDefinitions}
                 canEditAll={currentUser.role === 'admin'}
                 onChange={handleFormFilterValueChange}
-              />
-              <CustomerInsightEditor
-                module="leads"
-                values={form.customerInsightValues}
-                onChange={values => updateForm('customerInsightValues', values)}
               />
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
               <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Phân loại khách hàng')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} />

@@ -65,7 +65,7 @@ test('dashboard renders every group and limits classification records to raw dat
   assert.match(dashboardPageSource, /Hàng Đợi Xử Lý PO/);
 });
 
-test('raw data classification provides all 59 checkable fields and shared list controls', () => {
+test('raw data and leads share the 59-item classification page and list controls', () => {
   const workspaceSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'components', 'LeadCandidateWorkspace.tsx'),
     'utf8'
@@ -89,6 +89,11 @@ test('raw data classification provides all 59 checkable fields and shared list c
   );
   assert.match(leadsSource, /CUSTOMER_INSIGHT_GROUPS\.flatMap/);
   assert.match(leadsSource, /visibleLeadInsightItems\.map/);
+  assert.match(leadsSource, /classificationLeadId/);
+  assert.match(leadsSource, /CustomerInsightClassification/);
+  assert.match(leadsSource, /openClassification\(selectedLead\)/);
+  assert.match(leadsSource, /customerInsightValues: candidate\.customerInsightValues \|\| \[\]/);
+  assert.doesNotMatch(leadsSource, /CustomerInsightEditor/);
 
   const customerSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'CrmPage.tsx'),
