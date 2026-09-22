@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Clock3 } from 'lucide-react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
@@ -62,7 +63,6 @@ export const SalesManagementPage: React.FC<SalesManagementPageProps> = ({
   candidates,
   leads,
   customers,
-  currentUser,
   onOpenRecord
 }) => {
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -157,16 +157,14 @@ export const SalesManagementPage: React.FC<SalesManagementPageProps> = ({
     <div className="sales-management-page">
       <PageContextHeader section="Quản lý Sale" current={selectedPerformance?.sale.displayName || 'Tổng quan'} />
 
-      <header className="sales-management-toolbar">
+      <header className={`sales-management-toolbar${selectedPerformance ? ' is-detail' : ''}`}>
         <div className="sales-management-title">
-          {selectedPerformance && <button type="button" className="btn btn-outline" onClick={() => setSelectedSaleId('')}>Danh sách Sale</button>}
+          {selectedPerformance && <button type="button" className="sales-management-back" onClick={() => setSelectedSaleId('')}><span aria-hidden="true">←</span> Danh sách Sale</button>}
           {selectedPerformance ? <>
             <div className="sales-management-identity">
-              <span className="sales-management-avatar">{getInitials(selectedPerformance.sale.displayName)}</span>
-              <div><h1>{selectedPerformance.sale.displayName}</h1><p>Sale</p></div>
-              <span className={`sales-management-status is-${selectedPerformance.status}`}><i />{STATUS_LABELS[selectedPerformance.status]}</span>
+              <h1>{selectedPerformance.sale.displayName}</h1>
             </div>
-            <div className="sales-management-current-action"><span>Thao tác gần nhất</span><strong>{selectedPerformance.latestEvent ? `${getSalesActionLabel(selectedPerformance.latestEvent)} · ${formatShortDateTime(selectedPerformance.latestEvent.occurredAt)}` : 'Chưa ghi nhận'}</strong></div>
+            <div className="sales-management-current-action"><Clock3 size={19} aria-hidden="true" /><div><span>Hoạt động gần nhất</span><strong>{selectedPerformance.latestEvent ? `${getSalesActionLabel(selectedPerformance.latestEvent)} · ${formatShortDateTime(selectedPerformance.latestEvent.occurredAt)}` : 'Chưa ghi nhận'}</strong></div></div>
           </> : <h1>Tổng quan đội Sale</h1>}
         </div>
         <div className="sales-management-filters">
