@@ -6,6 +6,7 @@ import { auditService, type AuditModule } from '@/services/auditService';
 import { CALL_RESULT_LABELS, type PhoneCallRecord } from '@/features/crm/model/callHistory';
 import { callDraftStorageKey, EMPTY_CALL_DRAFT } from '@/features/crm/model/callWorkspace';
 import type { LeadCandidateContactLog } from '@/features/crm/model/leadCandidateModels';
+import type { LeadActivityRecord } from '@/features/crm/model/crmModels';
 import { CallWorkspace, type CallWorkspaceContext } from './CallWorkspace';
 import './PhoneCallCell.css';
 
@@ -38,6 +39,7 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
   const [loading, setLoading] = useState(false);
   const [callsByKey, setCallsByKey] = useState<Record<string, PhoneCallRecord[]>>({});
   const [legacyByKey, setLegacyByKey] = useState<Record<string, LeadCandidateContactLog[]>>({});
+  const [leadActivitiesByKey, setLeadActivitiesByKey] = useState<Record<string, LeadActivityRecord[]>>({});
   const instanceId = useId();
   const phoneRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -68,6 +70,12 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
       void dbService.getDocument('lead_candidates', candidateKey.slice('candidate:'.length))
         .then(candidate => setLegacyByKey(previous => ({ ...previous, [candidateKey]: (candidate?.contactLogs || []) as LeadCandidateContactLog[] })))
         .catch(() => setLegacyByKey(previous => ({ ...previous, [candidateKey]: [] })));
+    }
+    const leadKey = keys.find(key => key.startsWith('lead:'));
+    if (leadKey) {
+      void dbService.getDocument('leads', leadKey.slice('lead:'.length))
+        .then(lead => setLeadActivitiesByKey(previous => ({ ...previous, [leadKey]: (lead?.activities || []) as LeadActivityRecord[] })))
+        .catch(() => setLeadActivitiesByKey(previous => ({ ...previous, [leadKey]: [] })));
     }
     return () => unsubscribers.forEach(unsubscribe => unsubscribe());
   }, [dialog, keySignature]);
@@ -168,6 +176,12 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
         : call.activityType === 'call' ? 'Cuộc gọi trước đây' : call.activityType === 'message' ? 'Tin nhắn'
           : call.activityType === 'email' ? 'Email' : call.activityType === 'meeting' ? 'Cuộc hẹn' : 'Ghi chú',
       note: [call.description, call.note].filter(Boolean).join(' · '), phone: call.activityType === 'call' ? phone : ''
+    })),
+    ...visibleKeys.flatMap(key => leadActivitiesByKey[key] || []).map(activity => ({
+      id: `lead-activity:${activity.id}`, time: activity.occurredAt,
+      actor: typeof activity.createdByName === 'string' ? activity.createdByName : 'Sale',
+      result: activity.type === 'schedule' ? 'Lịch chăm sóc' : activity.type === 'filter_tag' ? 'Cập nhật phân loại' : 'Hoạt động Tiềm năng',
+      note: activity.note, phone: ''
     }))
   ].sort((a, b) => b.time.localeCompare(a.time));
 
