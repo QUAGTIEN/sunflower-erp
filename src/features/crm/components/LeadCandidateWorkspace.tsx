@@ -1116,7 +1116,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         context={{ contactPerson: candidate.contactPerson, contactPosition: candidate.contactPosition, province: candidate.province, businessSector: candidate.businessSector, expectedProducts: candidate.expectedProducts, source: candidate.source, assignedSaleName: candidate.assignedSaleName }}
         auditModule="lead_candidates" targetType="lead_candidate" targetId={candidate.id}
         canRecord={canManageCandidate(candidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
-        onCallStarted={() => recordPhoneCall(candidate)} />
+        onCallStarted={() => recordPhoneCall(candidate)} onOpenDetails={() => openEditForm(candidate)} />
     );
   };
 
@@ -1813,6 +1813,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <span>{editingCandidateId ? 'CHỈNH SỬA DỮ LIỆU' : 'DỮ LIỆU MỚI'}</span>
             <h1>{editingCandidateId ? 'Chỉnh sửa dữ liệu khách hàng' : 'Thêm dữ liệu khách hàng'}</h1>
           </div>
+          {editingCandidate && <PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
+            subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
+            auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
+            canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
+            onCallStarted={() => recordPhoneCall(editingCandidate)} />}
         </header>
 
         <form className="lead-form-page__form" onSubmit={handleSaveCandidate}>

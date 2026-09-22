@@ -31,3 +31,9 @@ test('wrap-up rejects notes beyond Firestore 500-character limit', () => {
   const draft = { ...model.EMPTY_CALL_DRAFT, need: 'x'.repeat(500) };
   assert.match(model.validateCallWrap('discussed', draft), /500 ký tự/);
 });
+
+test('call note keeps optional potential evaluation without changing the follow-up rule', () => {
+  const draft = { ...model.EMPTY_CALL_DRAFT, potentialLevel: 'medium', note: 'Cần hỏi thêm số lượng' };
+  assert.match(model.callSummaryNote(draft), /Mức độ tiềm năng: Trung bình/);
+  assert.equal(model.validateCallWrap('discussed', draft), '');
+});

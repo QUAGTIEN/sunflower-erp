@@ -621,6 +621,7 @@ function AppShell() {
             initialPreparedCustomerId={preparedCustomerId}
             onRepeatOrderOpened={() => setRepeatSourcePoId('')}
             onPreparedOrderOpened={handlePreparedOrderOpened}
+            onOpenCustomerDetails={customerId => { setSupportNavigationTarget({ module: 'crm', entityId: customerId }); setActivePage('crm'); }}
             initialInsightFilterId={customerInsightNavigation?.module === 'sales' ? customerInsightNavigation.itemId : ''}
             messages={messages}
             users={users}

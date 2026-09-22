@@ -678,6 +678,17 @@
   border-bottom: 1px solid var(--erp-border-color);
 }
 
+.lead-form-page__header:has(> .phone-call-toolbar) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+@media (max-width: 820px) {
+  .lead-form-page__header:has(> .phone-call-toolbar) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .lead-form-page__header > .phone-call-toolbar { grid-column: 1 / -1; }
+}
+
 .lead-page-navigation__tools .lead-search {
   min-width: 240px;
 }

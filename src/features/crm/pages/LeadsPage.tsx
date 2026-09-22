@@ -1941,6 +1941,10 @@ export const Leads: React.FC<LeadsProps> = ({
             <p>{t('Thông tin, phân loại và kế hoạch chăm sóc khách hàng tiềm năng.')}</p>
           </div>
           <div className="lead-detail-actions">
+            <PhoneCallCell toolbar phone={selectedLead.phone} companyName={selectedLead.companyName}
+              subjectKey={leadCallSubjectKey(selectedLead)} historyKeys={leadCallHistoryKeys(selectedLead)}
+              auditModule="leads" targetType="lead" targetId={selectedLead.id} currentUser={currentUser}
+              canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && selectedLead.assignedSaleId === currentUser.uid)} />
             <button type="button" className="btn btn-outline" onClick={() => openEditForm(selectedLead)}>
               <Pencil size={15} /> {t('Chỉnh sửa')}
             </button>
@@ -2168,6 +2172,10 @@ export const Leads: React.FC<LeadsProps> = ({
             <span>{editingLeadId ? t('CHỈNH SỬA HỒ SƠ') : convertingCandidateId ? t('CHUYỂN TỪ DỮ LIỆU KHÁCH HÀNG') : t('HỒ SƠ MỚI')}</span>
             <h1>{editingLeadId ? t('Chỉnh sửa khách hàng tiềm năng') : convertingCandidateId ? t('Tiếp nhận khách hàng thành Lead') : t('Thêm khách hàng tiềm năng')}</h1>
           </div>
+          {editingLead && <PhoneCallCell toolbar phone={editingLead.phone} companyName={editingLead.companyName}
+            subjectKey={leadCallSubjectKey(editingLead)} historyKeys={leadCallHistoryKeys(editingLead)}
+            auditModule="leads" targetType="lead" targetId={editingLead.id} currentUser={currentUser}
+            canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && editingLead.assignedSaleId === currentUser.uid)} />}
         </header>
 
         <form className="lead-form-page__form" onSubmit={handleSaveLead}>
@@ -2505,6 +2513,7 @@ export const Leads: React.FC<LeadsProps> = ({
                         currentUser={currentUser}
                         auditModule="leads" targetType="lead" targetId={lead.id}
                         canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && lead.assignedSaleId === currentUser.uid)}
+                        onOpenDetails={() => setSelectedLeadId(lead.id)}
                       /></td>}
                       {visibleLeadColumnIds.has('email') && <td key="email">{renderLeadText(lead.email)}</td>}
                       {visibleLeadColumnIds.has('expectedProducts') && <td key="expectedProducts">{renderLeadText(lead.expectedProducts)}</td>}

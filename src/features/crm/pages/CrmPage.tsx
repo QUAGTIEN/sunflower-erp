@@ -302,6 +302,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [customerPage, setCustomerPage] = useState(1);
   const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [detailCallPhone, setDetailCallPhone] = useState('');
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
   useEffect(() => {
@@ -2056,7 +2057,8 @@ export const Crm: React.FC<CrmProps> = ({
   const customerMaterialsById = useMemo(() => buildCustomerMaterialHistory(pos), [pos]);
   const customerSamplesById = useMemo(() => buildCustomerOrderedSampleHistory(pos), [pos]);
 
-  const openCustomerDetail = (customer: CustomerRecord) => {
+  const openCustomerDetail = (customer: CustomerRecord, callPhone = customer.phone) => {
+    setDetailCallPhone(callPhone);
     setCustomerHistoryTab('po');
     setIsCompanyInfoExpanded(false);
     setCustomerNoteDraft(sanitizeCustomerNoteHtml(customer.noteHtml || plainTextToNoteHtml(customer.note || '')));
@@ -3021,9 +3023,9 @@ export const Crm: React.FC<CrmProps> = ({
                               {visibleCustomerColumnIds.has('industrialPark') && <td key="industrialPark">{renderCustomerText(customer.industrialPark)}</td>}
                               {visibleCustomerColumnIds.has('address') && <td key="address">{renderCustomerText(customer.address)}</td>}
                               {visibleCustomerColumnIds.has('contactPerson') && <td key="contactPerson">{renderCustomerText(customer.contactPerson)}</td>}
-                              {visibleCustomerColumnIds.has('phone') && <td key="phone"><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ contactPerson: customer.contactPerson, province: customer.province, businessSector: customer.businessSector, assignedSaleName: saleName }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></td>}
-                              {visibleCustomerColumnIds.has('procurementPhone') && <td key="procurementPhone"><PhoneCallCell phone={customer.procurementPhone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ phoneLabel: 'Số bộ phận thu mua', province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts, assignedSaleName: saleName }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></td>}
-                              {visibleCustomerColumnIds.has('warehousePhone') && <td key="warehousePhone"><PhoneCallCell phone={customer.warehousePhone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ phoneLabel: 'Số bộ phận kho', province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts, assignedSaleName: saleName }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></td>}
+                              {visibleCustomerColumnIds.has('phone') && <td key="phone"><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ contactPerson: customer.contactPerson, province: customer.province, businessSector: customer.businessSector, assignedSaleName: saleName }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} onOpenDetails={() => openCustomerDetail(customer)} /></td>}
+                              {visibleCustomerColumnIds.has('procurementPhone') && <td key="procurementPhone"><PhoneCallCell phone={customer.procurementPhone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ phoneLabel: 'Số bộ phận thu mua', province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts, assignedSaleName: saleName }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} onOpenDetails={() => openCustomerDetail(customer, customer.procurementPhone)} /></td>}
+                              {visibleCustomerColumnIds.has('warehousePhone') && <td key="warehousePhone"><PhoneCallCell phone={customer.warehousePhone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ phoneLabel: 'Số bộ phận kho', province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts, assignedSaleName: saleName }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} onOpenDetails={() => openCustomerDetail(customer, customer.warehousePhone)} /></td>}
                               {visibleCustomerColumnIds.has('email') && <td key="email"><span className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'} title={customer.email || undefined}>{customer.email || t('Chưa cập nhật')}</span></td>}
                               {visibleCustomerColumnIds.has('discountType') && <td key="discountType">{renderCustomerText(customer.discountType === 'amount' ? t('Theo tiền chênh') : t('Theo phần trăm'))}</td>}
                               {visibleCustomerColumnIds.has('discountValue') && <td key="discountValue">{renderCustomerText(customer.discountType === 'amount' ? `${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ` : `${Number(customer.discountRate || 0).toLocaleString('vi-VN')}%`)}</td>}
@@ -3097,6 +3099,10 @@ export const Crm: React.FC<CrmProps> = ({
             </div>
             {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
               <div className="crm-detail-actions">
+                <PhoneCallCell toolbar phone={detailCallPhone || selectedCustomer.phone} companyName={selectedCustomer.companyName}
+                  subjectKey={customerCallSubjectKey(selectedCustomer)} historyKeys={customerCallHistoryKeys(selectedCustomer, leads)}
+                  auditModule="crm" targetType="customer" targetId={selectedCustomer.id} currentUser={currentUser}
+                  canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!selectedCustomer.assignedSaleId || selectedCustomer.assignedSaleId === currentUser.uid))} />
                 <button type="button" className="btn btn-primary" onClick={() => openEditModal(selectedCustomer)}><Pencil size={15} /><span>{t('Chỉnh sửa hồ sơ')}</span></button>
                 <button type="button" className="btn btn-outline btn-symbol-sm crm-detail-delete" onClick={() => handleDeleteCustomer(selectedCustomer.id)} title={t('Xóa khách hàng')}><Trash2 size={15} /></button>
               </div>

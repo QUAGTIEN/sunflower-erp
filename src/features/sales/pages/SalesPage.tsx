@@ -69,6 +69,7 @@ interface SalesProps {
   initialInsightFilterId?: string;
   onRepeatOrderOpened?: () => void;
   onPreparedOrderOpened?: () => void;
+  onOpenCustomerDetails?: (customerId: string) => void;
   messages: any[];
   users: UserProfile[];
 }
@@ -123,7 +124,7 @@ const getWaitingDays = (createdAt: unknown) => {
   return Math.max(0, Math.floor((Date.now() - createdTime) / (24 * 60 * 60 * 1000)));
 };
 
-export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser, onRefresh, initialSelectedPoId, initialRepeatPoId, initialPreparedCustomerId, initialInsightFilterId = '', onRepeatOrderOpened, onPreparedOrderOpened, messages, users }) => {
+export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser, onRefresh, initialSelectedPoId, initialRepeatPoId, initialPreparedCustomerId, initialInsightFilterId = '', onRepeatOrderOpened, onPreparedOrderOpened, onOpenCustomerDetails, messages, users }) => {
   const { t } = useLanguage();
   const isFull = currentUser.role === 'admin' || currentUser.role === 'accountant';
   const isSaleOnly = currentUser.role === 'sale' || currentUser.role === 'designer';
@@ -1056,7 +1057,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
                             <td key="customer"><strong className="erp-company-name" title={customer.companyName}>{customer.companyName}</strong></td>
                             {salesVisibleColumnSet.has('code') && <td key="code"><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>}
                             {salesVisibleColumnSet.has('contact') && <td key="contact"><strong>{customer.contactPerson || t('Chưa cập nhật')}</strong></td>}
-                            {salesVisibleColumnSet.has('phone') && <td key="phone"><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ contactPerson: customer.contactPerson, contactPosition: customer.contactPosition, province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts, assignedSaleName: assignedSale?.displayName || customer.createdBy }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></td>}
+                            {salesVisibleColumnSet.has('phone') && <td key="phone"><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ contactPerson: customer.contactPerson, contactPosition: customer.contactPosition, province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts, assignedSaleName: assignedSale?.displayName || customer.createdBy }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} onOpenDetails={() => onOpenCustomerDetails?.(customer.id)} /></td>}
                             {salesVisibleColumnSet.has('email') && <td key="email">{customer.email || t('Chưa cập nhật')}</td>}
                             {salesVisibleColumnSet.has('sale') && <td key="sale">{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>}
                             {salesVisibleColumnSet.has('count') && <td key="count">{customerOrders.length.toLocaleString('vi-VN')}</td>}
@@ -1101,7 +1102,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
                         <td><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>
                         <td>
                           <strong className="waiting-customer-name">{customer.companyName || t('Chưa cung cấp')}</strong>
-                          {customer.phone && <div><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ contactPerson: customer.contactPerson, contactPosition: customer.contactPosition, province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} /></div>}
+                          {customer.phone && <div><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ contactPerson: customer.contactPerson, contactPosition: customer.contactPosition, province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} onOpenDetails={() => onOpenCustomerDetails?.(customer.id)} /></div>}
                           {customer.pendingOrderDraft && (
                             <span className="prepared-order-badge">Đã chuẩn bị thông tin đơn</span>
                           )}

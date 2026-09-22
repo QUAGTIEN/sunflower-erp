@@ -8,13 +8,14 @@ export interface CallDraft {
   quantity: string;
   targetPrice: string;
   note: string;
+  potentialLevel: '' | 'high' | 'medium' | 'low';
   nextAction: CallNextAction;
   followUpAt: string;
   followUpNote: string;
 }
 
 export const EMPTY_CALL_DRAFT: CallDraft = {
-  need: '', product: '', quantity: '', targetPrice: '', note: '',
+  need: '', product: '', quantity: '', targetPrice: '', note: '', potentialLevel: '',
   nextAction: 'none', followUpAt: '', followUpNote: ''
 };
 
@@ -33,6 +34,7 @@ export function callSummaryNote(draft: CallDraft): string {
     draft.quantity.trim() && `Số lượng: ${draft.quantity.trim()}`,
     draft.targetPrice.trim() && `Giá mục tiêu: ${draft.targetPrice.trim()}`,
     draft.note.trim() && `Ghi chú: ${draft.note.trim()}`,
+    draft.potentialLevel && `Mức độ tiềm năng: ${{ high: 'Cao', medium: 'Trung bình', low: 'Thấp' }[draft.potentialLevel]}`,
     draft.nextAction !== 'none' && `Bước tiếp theo: ${CALL_NEXT_ACTION_LABELS[draft.nextAction]}`,
     draft.nextAction !== 'none' && draft.followUpAt && `Thời hạn: ${new Date(draft.followUpAt).toLocaleString('vi-VN')}`,
     draft.nextAction !== 'none' && draft.followUpNote.trim() && `Cần làm: ${draft.followUpNote.trim()}`
