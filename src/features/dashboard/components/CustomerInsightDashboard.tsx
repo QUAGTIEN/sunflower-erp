@@ -90,24 +90,12 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
       key: `leads:${lead.id}`,
       module: 'leads' as const,
       values: lead.customerInsightValues || []
-    })),
-    ...activeCustomers.map(customer => ({
-      key: `crm:${customer.id}`,
-      module: 'crm' as const,
-      values: customer.customerInsightValues || []
-    })),
-    ...activeCustomers.filter(customer => Boolean(customer.pendingOrderDraft)).map(customer => ({
-      key: `sales:${customer.id}`,
-      module: 'sales' as const,
-      values: ['po_promised']
     }))
-  ], [activeCandidates, activeCustomers, activeLeads]);
+  ], [activeCandidates, activeLeads]);
 
   const selectedGroup = CUSTOMER_INSIGHT_GROUPS.find(group => group.id === selectedGroupId) || CUSTOMER_INSIGHT_GROUPS[0];
 
-  const itemCount = (item: CustomerInsightItem) => insightRecords.filter(record => (
-    record.module === item.module && record.values.includes(item.id)
-  )).length;
+  const itemCount = (item: CustomerInsightItem) => insightRecords.filter(record => record.values.includes(item.id)).length;
 
   const selectGroup = (groupId: string) => {
     const group = CUSTOMER_INSIGHT_GROUPS.find(entry => entry.id === groupId) || CUSTOMER_INSIGHT_GROUPS[0];
@@ -139,11 +127,11 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
         <div className="customer-insight-group-grid">
           {CUSTOMER_INSIGHT_GROUPS.map(group => {
             const Icon = GROUP_ICONS[group.id as keyof typeof GROUP_ICONS] || ClipboardList;
-            const groupRecords = insightRecords.filter(record => group.items.some(item => item.module === record.module && record.values.includes(item.id)));
-            const moduleCounts = Array.from(new Set(group.items.map(item => item.module))).map(module => ({
+            const groupRecords = insightRecords.filter(record => group.items.some(item => record.values.includes(item.id)));
+            const moduleCounts = (['customer_data', 'leads'] as CustomerInsightModule[]).map(module => ({
               module,
               count: new Set(groupRecords.filter(record => record.module === module).map(record => record.key)).size
-            }));
+            })).filter(entry => entry.count > 0);
             return (
               <button key={group.id} type="button" className={selectedGroup.id === group.id ? 'is-active' : ''} onClick={() => selectGroup(group.id)}>
                 <span className="customer-insight-group-card__icon"><Icon size={21} /></span>

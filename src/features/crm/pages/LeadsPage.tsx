@@ -126,6 +126,8 @@ import {
 import { LeadOverviewDashboard } from '@/features/crm/components/LeadOverviewDashboard';
 import { CustomerInsightEditor } from '@/features/crm/components/CustomerInsightEditor';
 import {
+  CUSTOMER_INSIGHT_GROUPS,
+  CUSTOMER_INSIGHT_ITEMS,
   CUSTOMER_INSIGHT_ITEM_BY_ID,
   getCustomerInsightGroupsForModule,
   matchesCustomerInsightValues,
@@ -509,6 +511,12 @@ export const Leads: React.FC<LeadsProps> = ({
       systemColumn('assignedSale', 'assignedSaleId', 'Sale phụ trách', sectionLabels.assignment, true),
       systemColumn('discoveredBy', 'discoveredById', 'Sale tìm được Lead', sectionLabels.assignment),
       systemColumn('nextFollowUpAt', 'nextFollowUpAt', 'Chăm sóc tiếp', sectionLabels.assignment, true),
+      ...CUSTOMER_INSIGHT_GROUPS.flatMap(group => group.items.map(entry => ({
+        id: `insight:${entry.id}`,
+        label: entry.label,
+        group: `${t('Phân loại khách hàng')} · ${group.label}`,
+        defaultVisible: false
+      }))),
       ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
         id: `custom:${definition.id}`,
         label: definition.name,
@@ -528,6 +536,10 @@ export const Leads: React.FC<LeadsProps> = ({
   const visibleLeadCustomFields = useMemo(
     () => customFieldDefinitions.filter(definition => definition.active && visibleLeadColumnIds.has(`custom:${definition.id}`)),
     [customFieldDefinitions, visibleLeadColumnIds]
+  );
+  const visibleLeadInsightItems = useMemo(
+    () => CUSTOMER_INSIGHT_ITEMS.filter(entry => visibleLeadColumnIds.has(`insight:${entry.id}`)),
+    [visibleLeadColumnIds]
   );
 
   const saveVisibleLeadColumns = (selectedIds: string[]) => {
@@ -2484,6 +2496,7 @@ export const Leads: React.FC<LeadsProps> = ({
                   {visibleLeadColumnIds.has('assignedSale') && <th key="assignedSale" data-system-field="assignedSaleId">{t('Sale phụ trách')}</th>}
                   {visibleLeadColumnIds.has('discoveredBy') && <th key="discoveredBy" data-system-field="discoveredById">{t('Sale tìm được Lead')}</th>}
                   {visibleLeadColumnIds.has('nextFollowUpAt') && <th key="nextFollowUpAt" data-system-field="nextFollowUpAt">{t('Chăm sóc tiếp')}</th>}
+                  {visibleLeadInsightItems.map(entry => <th key={`insight:${entry.id}`}>{entry.label}</th>)}
                   {visibleLeadCustomFields.map(definition => <th key={`custom:${definition.id}`}>{definition.name}</th>)}
                   <th key="actions">{t('Thao tác')}</th>
                   </ReorderableTableCells>
@@ -2523,6 +2536,7 @@ export const Leads: React.FC<LeadsProps> = ({
                       {visibleLeadColumnIds.has('assignedSale') && <td key="assignedSale">{users.find(user => user.uid === lead.assignedSaleId)?.displayName || lead.assignedSaleName || 'Chưa phân công'}</td>}
                       {visibleLeadColumnIds.has('discoveredBy') && <td key="discoveredBy">{renderLeadText(users.find(user => user.uid === lead.discoveredById)?.displayName || lead.discoveredByName)}</td>}
                       {visibleLeadColumnIds.has('nextFollowUpAt') && <td key="nextFollowUpAt">{renderFollowUp(lead)}</td>}
+                      {visibleLeadInsightItems.map(entry => <td key={`insight:${entry.id}`}><span className={`lead-candidate-insight-value ${(lead.customerInsightValues || []).includes(entry.id) ? 'is-selected' : ''}`}>{(lead.customerInsightValues || []).includes(entry.id) ? 'Đã chọn' : 'Chưa chọn'}</span></td>)}
                       {visibleLeadCustomFields.map(definition => <td key={`custom:${definition.id}`}>{formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id])}</td>)}
                       <td key="actions">
                         <RowActionMenu

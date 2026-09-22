@@ -17,7 +17,7 @@ const item = (id: string, label: string, module: CustomerInsightModule, derived?
 
 export const CUSTOMER_INSIGHT_GROUPS: CustomerInsightGroup[] = [
   { id: 'order_progress', label: 'Tiến độ mẫu / đơn hàng / PO', items: [
-    item('po_promised', 'Khách hẹn lên PO', 'sales', 'pending_order_draft'),
+    item('po_promised', 'Khách hẹn lên PO', 'leads', 'pending_order_draft'),
     item('sample_reviewing', 'Khách đang duyệt mẫu', 'leads'),
     item('sample_test_ok', 'Khách test mẫu OK', 'leads'),
     item('sample_test_not_ok', 'Khách test mẫu chưa OK', 'leads'),
@@ -49,14 +49,14 @@ export const CUSTOMER_INSIGHT_GROUPS: CustomerInsightGroup[] = [
     item('contact_left_company', 'Khách nghỉ công ty', 'customer_data')
   ]},
   { id: 'usage_scale', label: 'Quy mô / mức sử dụng', items: [
-    item('usage_low', 'Khách dùng ít', 'crm'), item('usage_5_10m', 'Khách dùng 5 tới 10 triệu', 'crm'),
-    item('usage_10_20m', 'Khách dùng 10 tới 20 triệu', 'crm'), item('usage_tens_millions', 'Khách dùng vài chục triệu', 'crm'),
-    item('usage_near_100m', 'Khách dùng gần trăm tới hơn trăm triệu', 'crm'), item('usage_100m_plus', 'Khách từ 100 triệu trở lên', 'crm')
+    item('usage_low', 'Khách dùng ít', 'leads'), item('usage_5_10m', 'Khách dùng 5 tới 10 triệu', 'leads'),
+    item('usage_10_20m', 'Khách dùng 10 tới 20 triệu', 'leads'), item('usage_tens_millions', 'Khách dùng vài chục triệu', 'leads'),
+    item('usage_near_100m', 'Khách dùng gần trăm tới hơn trăm triệu', 'leads'), item('usage_100m_plus', 'Khách từ 100 triệu trở lên', 'leads')
   ]},
   { id: 'supplier_competition', label: 'Quan hệ NCC / tình trạng cạnh tranh', items: [
     item('supplier_designated', 'Khách báo bị chỉ định', 'leads'), item('supplier_change_refused', 'Khách không muốn đổi NCC', 'leads'),
-    item('uses_company_products', 'Khách có sử dụng sản phẩm của công ty', 'crm'), item('sold_by_company', 'Khách công ty đã bán', 'crm'),
-    item('sold_by_close_partner', 'Khách đối tác thân cận đã bán', 'crm'), item('handled_by_other_sale', 'Khách sale khác đang chăm sóc', 'crm')
+    item('uses_company_products', 'Khách có sử dụng sản phẩm của công ty', 'leads'), item('sold_by_company', 'Khách công ty đã bán', 'leads'),
+    item('sold_by_close_partner', 'Khách đối tác thân cận đã bán', 'leads'), item('handled_by_other_sale', 'Khách sale khác đang chăm sóc', 'leads')
   ]},
   { id: 'special_requirements', label: 'Yêu cầu / điều kiện đặc biệt', items: [
     item('hard_to_source_material', 'Khách khó tìm nguyên vật liệu', 'leads'), item('certificate_required', 'Khách yêu cầu chứng chỉ', 'leads'),
@@ -80,9 +80,11 @@ export const CUSTOMER_INSIGHT_GROUPS: CustomerInsightGroup[] = [
 export const CUSTOMER_INSIGHT_ITEMS = CUSTOMER_INSIGHT_GROUPS.flatMap(group => group.items);
 export const CUSTOMER_INSIGHT_ITEM_BY_ID = new Map(CUSTOMER_INSIGHT_ITEMS.map(entry => [entry.id, entry]));
 
-export const getCustomerInsightGroupsForModule = (module: CustomerInsightModule) => CUSTOMER_INSIGHT_GROUPS
-  .map(group => ({ ...group, items: group.items.filter(entry => entry.module === module) }))
-  .filter(group => group.items.length > 0);
+export const getCustomerInsightGroupsForModule = (module: CustomerInsightModule) => (
+  module === 'customer_data' || module === 'leads'
+    ? CUSTOMER_INSIGHT_GROUPS
+    : []
+);
 
 export const normalizeCustomerInsightValues = (value: unknown): string[] => Array.from(new Set(
   (Array.isArray(value) ? value : []).filter((entry): entry is string => typeof entry === 'string' && CUSTOMER_INSIGHT_ITEM_BY_ID.has(entry))

@@ -1124,6 +1124,18 @@ input[type='checkbox']:disabled {
   margin-top: 1px;
 }
 
+.lead-candidate-insight-value {
+  color: #738197;
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.lead-candidate-insight-value.is-selected {
+  color: #087a55;
+  font-weight: 650;
+}
+
 @media (max-width: 768px) {
   .customer-insight-options {
     grid-template-columns: minmax(0, 1fr);

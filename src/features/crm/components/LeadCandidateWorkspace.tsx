@@ -66,8 +66,8 @@ import { PhoneCallCell } from '@/components/PhoneCallCell';
 import { candidateCallSubjectKey } from '@/features/crm/model/callHistory';
 import { PageBackButton } from '@/components/PageBackButton';
 import { BusinessLocationFields } from './BusinessLocationFields';
-import { CustomerInsightEditor } from './CustomerInsightEditor';
-import { CUSTOMER_INSIGHT_ITEM_BY_ID, getCustomerInsightGroupsForModule, matchesCustomerInsightValues, replaceCustomerInsightGroupValues } from '@/features/crm/model/customerInsightCatalog';
+import { CustomerInsightClassification } from './CustomerInsightClassification';
+import { CUSTOMER_INSIGHT_GROUPS, CUSTOMER_INSIGHT_ITEMS, CUSTOMER_INSIGHT_ITEM_BY_ID, getCustomerInsightGroupsForModule, matchesCustomerInsightValues, replaceCustomerInsightGroupValues } from '@/features/crm/model/customerInsightCatalog';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
@@ -236,7 +236,13 @@ const getAvailableColumns = (
     label: definition.name,
     group: CANDIDATE_SECTION_LABELS[definition.section] || CANDIDATE_SECTION_LABELS.additional,
     defaultVisible: definition.defaultVisible
-  }))
+  })),
+  ...CUSTOMER_INSIGHT_GROUPS.flatMap(group => group.items.map(entry => ({
+    id: `insight:${entry.id}`,
+    label: entry.label,
+    group: `Phân loại · ${group.label}`,
+    defaultVisible: false
+  })))
 ]);
 
 const getDefaultVisibleColumns = (isAdmin: boolean): Record<CandidateWorkspaceView, CandidateColumnId[]> => ({
@@ -594,6 +600,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   }, [initialInsightFilterId]);
   const [showForm, setShowForm] = useState(false);
   const [editingCandidateId, setEditingCandidateId] = useState('');
+  const [classificationCandidateId, setClassificationCandidateId] = useState('');
   const [form, setForm] = useState<CandidateFormState>(() => createEmptyCandidateForm(currentUser, candidateOwners));
   const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   const [saveError, setSaveError] = useState('');
@@ -704,6 +711,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     lockedEndIds: ['actions']
   });
   const candidateColumnLabels = Object.fromEntries(availableColumnOptions.map(column => [column.id, column.label]));
+  const visibleCandidateInsightItems = CUSTOMER_INSIGHT_ITEMS.filter(entry => visibleColumnSet.has(`insight:${entry.id}`));
   const candidateTableDefaultWidth = Math.max(1180, orderedColumnIds.reduce((total, columnId) => {
     if (columnId === 'select') return total + 36;
     if (columnId === 'index') return total + 52;
@@ -1059,6 +1067,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const selectedCandidate = selectedCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === selectedCandidateId) || null
     : null;
+  const classificationCandidate = classificationCandidateId
+    ? accessibleCandidates.find(candidate => candidate.id === classificationCandidateId) || null
+    : null;
   const duplicate = useMemo(() => findCandidateDuplicate(
     {
       companyName: form.companyName,
@@ -1379,6 +1390,27 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setCustomFieldValues(candidate.customFieldValues || {});
     setSaveError('');
     setShowForm(true);
+  };
+
+  const openClassification = (candidate: LeadCandidateRecord) => {
+    setClassificationCandidateId(candidate.id);
+    setActionError('');
+  };
+
+  const saveClassification = async (candidate: LeadCandidateRecord, values: string[]) => {
+    if (!canManageCandidate(candidate)) throw new Error('Not allowed to classify this candidate');
+    const now = new Date().toISOString();
+    await dbService.updateDocument('lead_candidates', candidate.id, {
+      customerInsightValues: values,
+      updatedAt: now,
+      updatedBy: currentUser.displayName
+    });
+    if (editingCandidateId === candidate.id) updateForm('customerInsightValues', values);
+    auditService.recordSafely(currentUser, {
+      category: 'business', module: 'lead_candidates', action: 'candidate_classification_updated',
+      summary: `Cập nhật phân loại ${candidate.companyName} · ${values.length}/${CUSTOMER_INSIGHT_ITEMS.length} mục`,
+      targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
+    });
   };
 
   const handleSaveCandidate = async (event: React.FormEvent) => {
@@ -1790,6 +1822,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     renderCompactValue(value || 'Chưa cập nhật', value || 'Chưa cập nhật', value ? '' : 'is-muted')
   );
 
+  const renderInsightValue = (candidate: LeadCandidateRecord, itemId: string) => {
+    const checked = (candidate.customerInsightValues || []).includes(itemId);
+    return <span className={`lead-candidate-insight-value ${checked ? 'is-selected' : ''}`}>{checked ? 'Đã chọn' : 'Chưa chọn'}</span>;
+  };
+
   const getContactSummary = (candidate: LeadCandidateRecord) => {
     const primaryContact = candidate.contactPerson || 'Chưa rõ người liên hệ';
     const contactChannel = candidate.phone || candidate.email || 'Chưa có thông tin liên hệ';
@@ -1805,6 +1842,45 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       `${description} · ${latestLog.createdByName || 'Không rõ người thực hiện'} · ${formatShortDateTime(latestLog.occurredAt)}`
     );
   };
+
+  if (classificationCandidate) {
+    const profileFields = [classificationCandidate.companyName, classificationCandidate.taxCode, classificationCandidate.businessSector, classificationCandidate.province,
+      classificationCandidate.ward, classificationCandidate.industrialPark, classificationCandidate.address, classificationCandidate.contactPerson,
+      classificationCandidate.phone, classificationCandidate.email, classificationCandidate.expectedProducts, classificationCandidate.assignedSaleId];
+    const completedProfileFields = profileFields.filter(value => String(value || '').trim()).length;
+    const profileCompletion = Math.round(completedProfileFields / profileFields.length * 100);
+    return <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
+      <header className="lead-candidate-profile-header">
+        <PageBackButton onClick={() => setClassificationCandidateId('')} />
+        <div className="lead-candidate-profile-header__title">
+          <span className="lead-candidate-profile-header__emblem"><Building2 size={21} aria-hidden="true" /></span>
+          <div className="lead-candidate-profile-header__title-text"><span>DỮ LIỆU THÔ</span><h1 title={classificationCandidate.companyName}>{classificationCandidate.companyName}</h1></div>
+        </div>
+        <div className="lead-candidate-profile-header__toolbar">
+          <PhoneCallCell toolbar phone={classificationCandidate.phone} companyName={classificationCandidate.companyName}
+            subjectKey={candidateCallSubjectKey(classificationCandidate)} currentUser={currentUser}
+            auditModule="lead_candidates" targetType="lead_candidate" targetId={classificationCandidate.id}
+            canRecord={canManageCandidate(classificationCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
+            onCallStarted={() => recordPhoneCall(classificationCandidate)} />
+          <button type="button" className="btn btn-primary" aria-current="page">Phân loại</button>
+        </div>
+        <div className="lead-candidate-profile-header__facts">
+          <div><ReceiptText size={17} aria-hidden="true" /><div><span>Mã số thuế</span><strong>{classificationCandidate.taxCode || 'Chưa cập nhật'}</strong></div></div>
+          <div><Factory size={17} aria-hidden="true" /><div><span>Lĩnh vực</span><strong>{classificationCandidate.businessSector || 'Chưa cập nhật'}</strong></div></div>
+          <div><MapPin size={17} aria-hidden="true" /><div><span>Địa điểm</span><strong>{[classificationCandidate.industrialPark, classificationCandidate.ward, classificationCandidate.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}</strong></div></div>
+          <div className="lead-candidate-profile-header__completion"><span className="lead-candidate-profile-header__ring" role="progressbar" aria-label="Mức hoàn thiện hồ sơ" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100} style={{ background: `conic-gradient(#16895b ${profileCompletion}%, #e5edf7 0)` }}><b>{profileCompletion}%</b></span><div><span>Hoàn thiện hồ sơ</span><strong>{completedProfileFields}/{profileFields.length} trường thông tin</strong></div></div>
+          <div><CalendarClock size={17} aria-hidden="true" /><div><span>Cập nhật lần cuối</span><strong>{formatShortDateTime(classificationCandidate.updatedAt || classificationCandidate.createdAt)}</strong></div></div>
+        </div>
+      </header>
+      <CustomerInsightClassification
+        key={classificationCandidate.id}
+        companyName={classificationCandidate.companyName}
+        values={classificationCandidate.customerInsightValues || []}
+        canEdit={canManageCandidate(classificationCandidate)}
+        onSave={values => saveClassification(classificationCandidate, values)}
+      />
+    </SystemFieldSurface>;
+  }
 
   if (showForm) {
     const profileFields = [form.companyName, form.taxCode, form.businessSector, form.province,
@@ -1823,11 +1899,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               <h1 title={form.companyName}>{form.companyName || 'Chưa có tên doanh nghiệp'}</h1>
             </div>
           </div> : <div><span>DỮ LIỆU MỚI</span><h1>Thêm dữ liệu khách hàng</h1></div>}
-          {editingCandidate && <PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
-            subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
-            auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
-            canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
-            onCallStarted={() => recordPhoneCall(editingCandidate)} />}
+          {editingCandidate && <div className="lead-candidate-profile-header__toolbar">
+            <PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
+              subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
+              auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
+              canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
+              onCallStarted={() => recordPhoneCall(editingCandidate)} />
+            <button type="button" className="btn btn-outline" onClick={() => openClassification(editingCandidate)}>Phân loại</button>
+          </div>}
           {editingCandidate && <div className="lead-candidate-profile-header__facts">
             <div><ReceiptText size={17} aria-hidden="true" /><div><span>Mã số thuế</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div></div>
             <div><Factory size={17} aria-hidden="true" /><div><span>Lĩnh vực</span><strong title={form.businessSector || 'Chưa cập nhật'}>{form.businessSector || 'Chưa cập nhật'}</strong></div></div>
@@ -1888,7 +1967,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">Sản phẩm / nhu cầu quan tâm</label><textarea rows={4} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder="Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến..." /></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="note">Ghi chú</label><textarea rows={5} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Thông tin cần lưu ý trước khi liên hệ..." /></div>
               </div>
-              <CustomerInsightEditor module="customer_data" values={form.customerInsightValues} onChange={values => updateForm('customerInsightValues', values)} />
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
               <InlineEntityFieldManager table="lead_candidates" section="needs" sectionLabel="Nhu cầu sơ bộ" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }, { key: 'note', label: 'Ghi chú' }]} />
             </section>
@@ -2319,6 +2397,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 {visibleColumnSet.has('schedule') && <th key="schedule" data-system-field="nextContactAt">Lịch hẹn</th>}
                 {visibleColumnSet.has('latest') && <th key="latest" data-system-field="latest">Cập nhật gần nhất</th>}
                 {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={`custom:${definition.id}`}>{definition.name}</th>)}
+                {visibleCandidateInsightItems.map(entry => <th key={`insight:${entry.id}`}>{entry.label}</th>)}
                 {visibleColumnSet.has('actions') && <th key="actions" className="lead-candidate-actions-column">Thao tác</th>}
                 </ReorderableTableCells>
               </tr></thead>
@@ -2360,6 +2439,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                         : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
                       {visibleColumnSet.has('latest') && <td key="latest">{renderCompactLatestActivity(candidate)}</td>}
                       {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={`custom:${definition.id}`}>{formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id])}</td>)}
+                      {visibleCandidateInsightItems.map(entry => <td key={`insight:${entry.id}`}>{renderInsightValue(candidate, entry.id)}</td>)}
                       {visibleColumnSet.has('actions') && <td key="actions" className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
@@ -2417,6 +2497,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                   {visibleColumnSet.has('schedule') && <th key="schedule" data-system-field="nextContactAt">Lịch tiếp theo</th>}
                   {visibleColumnSet.has('latest') && <th key="latest" data-system-field="latest">Cập nhật gần nhất</th>}
                   {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <th key={`custom:${definition.id}`}>{definition.name}</th>)}
+                  {visibleCandidateInsightItems.map(entry => <th key={`insight:${entry.id}`}>{entry.label}</th>)}
                   {visibleColumnSet.has('actions') && <th key="actions" className="lead-candidate-actions-column">Thao tác</th>}
                   </ReorderableTableCells>
                 </tr>
@@ -2474,6 +2555,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                         : renderCompactValue('Chưa đặt lịch', 'Chưa đặt lịch', 'is-muted')}</td>}
                       {visibleColumnSet.has('latest') && <td key="latest">{renderCompactLatestActivity(candidate)}</td>}
                       {customFieldDefinitions.filter(definition => visibleColumnSet.has(`custom:${definition.id}`)).map(definition => <td key={`custom:${definition.id}`}>{renderCompactValue(formatEntityCustomFieldValue(definition, candidate.customFieldValues?.[definition.id]))}</td>)}
+                      {visibleCandidateInsightItems.map(entry => <td key={`insight:${entry.id}`}>{renderInsightValue(candidate, entry.id)}</td>)}
                       {visibleColumnSet.has('actions') && <td key="actions" className="lead-candidate-actions-column">
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}

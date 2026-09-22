@@ -5,13 +5,6 @@ import { auditService } from '@/services/auditService';
 import { useLanguage } from '@/context/LanguageContext';
 import { CustomerOverview } from '@/features/crm/components/CustomerOverview';
 import { CustomerOnboardingItems } from '@/features/crm/components/CustomerOnboardingItems';
-import { CustomerInsightEditor } from '@/features/crm/components/CustomerInsightEditor';
-import {
-  CUSTOMER_INSIGHT_ITEM_BY_ID,
-  getCustomerInsightGroupsForModule,
-  matchesCustomerInsightValues,
-  replaceCustomerInsightGroupValues
-} from '@/features/crm/model/customerInsightCatalog';
 import { BusinessLocationFields } from '@/features/crm/components/BusinessLocationFields';
 import { CustomerNoteEditor } from '@/features/crm/components/CustomerNoteEditor';
 import {
@@ -216,7 +209,6 @@ interface CrmProps {
   onLeadOnboardingClosed?: () => void;
   initialCustomerId?: string;
   onInitialCustomerOpened?: () => void;
-  initialInsightFilterId?: string;
 }
 
 const loadSpecsToFields = (productType: string, specifications: any = {}) => {
@@ -279,7 +271,6 @@ export const Crm: React.FC<CrmProps> = ({
   onLeadOnboardingClosed,
   initialCustomerId = '',
   onInitialCustomerOpened,
-  initialInsightFilterId = '',
 }) => {
   const { t } = useLanguage();
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
@@ -292,7 +283,6 @@ export const Crm: React.FC<CrmProps> = ({
   const [provinceFilters, setProvinceFilters] = useState<string[]>([]);
   const [industrialParkFilters, setIndustrialParkFilters] = useState<string[]>([]);
   const [productFilters, setProductFilters] = useState<string[]>([]);
-  const [insightFilters, setInsightFilters] = useState<string[]>([]);
   const [customFieldFilters, setCustomFieldFilters] = useState<Record<string, string[]>>({});
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [showListFilters, setShowListFilters] = useState(false);
@@ -305,21 +295,6 @@ export const Crm: React.FC<CrmProps> = ({
   const [detailCallPhone, setDetailCallPhone] = useState('');
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
-  useEffect(() => {
-    if (!initialInsightFilterId) return;
-    setSelectedCustomer(null);
-    setFilterType('all');
-    setSaleFilters([]);
-    setRankFilters([]);
-    setTimeFilters([]);
-    setProvinceFilters([]);
-    setIndustrialParkFilters([]);
-    setProductFilters([]);
-    setCustomFieldFilters({});
-    setAdvancedFilters({});
-    setInsightFilters([initialInsightFilterId]);
-    setCustomerPage(1);
-  }, [initialInsightFilterId]);
   const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'products'>('po');
   const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(false);
   const [customerNoteDraft, setCustomerNoteDraft] = useState('');
@@ -2292,8 +2267,7 @@ export const Crm: React.FC<CrmProps> = ({
     + (provinceFilterEnabled ? provinceFilters.length : 0)
     + (industrialParkFilterEnabled ? industrialParkFilters.length : 0)
     + (productFilterEnabled ? productFilters.length : 0)
-    + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0)
-    + insightFilters.length;
+    + Object.values(customFieldFilters).reduce((total, values) => total + values.length, 0);
   const activeFilterCount = quickFilterCount + advancedFilterCount;
   const resetCrmListFilters = () => {
     setSearchTerm('');
@@ -2303,7 +2277,6 @@ export const Crm: React.FC<CrmProps> = ({
     setProvinceFilters([]);
     setIndustrialParkFilters([]);
     setProductFilters([]);
-    setInsightFilters([]);
     setCustomFieldFilters({});
     setAdvancedFilters({});
     setCustomerPage(1);
@@ -2339,11 +2312,6 @@ export const Crm: React.FC<CrmProps> = ({
       label: `${productFilterCopy.name}: ${productFilterOptions.find(option => option.value === value)?.label || value}`,
       onRemove: () => setProductFilters(previous => previous.filter(item => item !== value))
     })) : []),
-    ...insightFilters.map(value => ({
-      id: `insight-${value}`,
-      label: CUSTOMER_INSIGHT_ITEM_BY_ID.get(value)?.label || value,
-      onRemove: () => setInsightFilters(previous => previous.filter(item => item !== value))
-    })),
     ...customFieldDefinitions.filter(definition => definition.active).flatMap(definition => (customFieldFilters[definition.id] || []).map(value => ({
       id: `custom-${definition.id}-${value}`,
       label: `${definition.name}: ${getEntityCustomFieldFilterLabel(definition, value)}`,
@@ -2413,7 +2381,7 @@ export const Crm: React.FC<CrmProps> = ({
         return elapsedDays >= 0 && elapsedDays <= (value === 'last_30_days' ? 30 : 90);
       });
     });
-    if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesIndustrialPark || !matchesProduct || !matchesTime || !matchesCustomerInsightValues(customer.customerInsightValues || [], insightFilters) || !matchesCustomFields || !matchesAdvancedFilters(customer, advancedFilterFields, advancedFilters)) return false;
+    if (!matchesSearch || !matchesSale || !matchesRank || !matchesProvince || !matchesIndustrialPark || !matchesProduct || !matchesTime || !matchesCustomFields || !matchesAdvancedFilters(customer, advancedFilterFields, advancedFilters)) return false;
 
     return true;
   }), customer => [customer.createdAt, customer.updatedAt, customer.customerCode]);
@@ -2789,11 +2757,6 @@ export const Crm: React.FC<CrmProps> = ({
               <textarea rows={3} value={expectedProducts} onChange={event => setExpectedProducts(event.target.value)} placeholder="Nhu cầu được kế thừa từ Dữ liệu thô và Tiềm năng..." />
             </label>
           </div>
-          <CustomerInsightEditor
-            module="crm"
-            values={customerInsightValues}
-            onChange={setCustomerInsightValues}
-          />
           <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
           <div className="customer-profile-card__field-manager"><InlineEntityFieldManager table="customers" section="needs" sectionLabel="Nguồn và nhu cầu kế thừa" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'source', label: 'Nguồn dữ liệu' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }, { key: 'discoveredById', label: 'Sale tìm được khách hàng' }, { key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }]} /></div>
         </section>
@@ -2945,16 +2908,6 @@ export const Crm: React.FC<CrmProps> = ({
                       <DataFilterCheckboxGroup options={productFilterOptions} selectedValues={productFilters} onChange={values => { setProductFilters(values); setCustomerPage(1); }} searchable />
                     </DataFilterSection>
                   )}
-                  {getCustomerInsightGroupsForModule('crm').map(group => (
-                    <DataFilterSection key={`insight-${group.id}`} title={group.label} description="Lọc theo phân loại nghiệp vụ thuộc phân hệ Khách hàng." selectedCount={group.items.filter(item => insightFilters.includes(item.id)).length}>
-                      <DataFilterCheckboxGroup
-                        options={group.items.map(item => ({ value: item.id, label: item.label }))}
-                        selectedValues={insightFilters.filter(value => group.items.some(item => item.id === value))}
-                        onChange={values => { setInsightFilters(current => replaceCustomerInsightGroupValues(current, group.items.map(item => item.id), values)); setCustomerPage(1); }}
-                        searchable={group.items.length > 8}
-                      />
-                    </DataFilterSection>
-                  ))}
                   {customFieldDefinitions.filter(definition => definition.active).map(definition => (
                     <DataFilterSection key={definition.id} title={definition.name} description={definition.description || 'Lọc theo trường tùy chỉnh.'} selectedCount={(customFieldFilters[definition.id] || []).length}>
                       <DataFilterCheckboxGroup

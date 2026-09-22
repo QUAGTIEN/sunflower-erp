@@ -552,7 +552,6 @@ function AppShell() {
             onLeadOnboardingClosed={() => setLeadOnboarding(null)}
             initialCustomerId={supportNavigationTarget?.module === 'crm' ? supportNavigationTarget.entityId : ''}
             onInitialCustomerOpened={() => setSupportNavigationTarget(null)}
-            initialInsightFilterId={customerInsightNavigation?.module === 'crm' ? customerInsightNavigation.itemId : ''}
           />
         );
       case 'leads':
@@ -622,7 +621,6 @@ function AppShell() {
             onRepeatOrderOpened={() => setRepeatSourcePoId('')}
             onPreparedOrderOpened={handlePreparedOrderOpened}
             onOpenCustomerDetails={customerId => { setSupportNavigationTarget({ module: 'crm', entityId: customerId }); setActivePage('crm'); }}
-            initialInsightFilterId={customerInsightNavigation?.module === 'sales' ? customerInsightNavigation.itemId : ''}
             messages={messages}
             users={users}
           />
