@@ -45,6 +45,8 @@ interface ScheduleFormState {
   status: WorkScheduleStatus;
 }
 
+type RequiredTaskField = 'title' | 'assigneeId' | 'dueAt' | 'description';
+
 const PAGE_SIZE = 10;
 const ACTIVE_STATUSES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused'];
 const PAGE_REFERENCE_TIME = Date.now();
@@ -115,6 +117,8 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   const [editingItem, setEditingItem] = useState<WorkScheduleRecord | null>(null);
   const [selectedItem, setSelectedItem] = useState<WorkScheduleRecord | null>(null);
   const [form, setForm] = useState<ScheduleFormState>(() => defaultForm(isAdmin ? '' : currentUser.uid));
+  const [formError, setFormError] = useState('');
+  const [formFieldErrors, setFormFieldErrors] = useState<Partial<Record<RequiredTaskField, string>>>({});
   const [saving, setSaving] = useState(false);
 
   const loadItems = useCallback(async () => {
@@ -203,6 +207,9 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   const openCreate = () => {
     setEditingItem(null);
     setForm(defaultForm(isAdmin ? '' : currentUser.uid));
+    setFormError('');
+    setFormFieldErrors({});
+    setMessage('');
     setIsFormOpen(true);
   };
   const openEdit = (item: WorkScheduleRecord) => {
@@ -212,7 +219,17 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
       description: item.description, priority: item.priority, referenceType: item.referenceType,
       referenceId: item.referenceId, referenceLabel: item.referenceLabel, status: item.status
     });
+    setFormError('');
+    setFormFieldErrors({});
+    setMessage('');
     setIsFormOpen(true);
+  };
+  const updateFormField = <K extends keyof ScheduleFormState>(field: K, value: ScheduleFormState[K]) => {
+    setForm(previous => ({ ...previous, [field]: value }));
+    setFormError('');
+    if (field === 'title' || field === 'assigneeId' || field === 'dueAt' || field === 'description') {
+      setFormFieldErrors(previous => ({ ...previous, [field]: undefined }));
+    }
   };
   const handleReferenceChange = (id: string) => {
     const selected = sourceOptions.find(item => item.id === id);
@@ -222,10 +239,20 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
     event.preventDefault();
     const assignee = activeUsers.find(user => user.uid === (isAdmin ? form.assigneeId : currentUser.uid));
     const endAt = new Date(form.dueAt);
-    if (!form.title.trim() || !assignee || !form.description.trim() || !Number.isFinite(endAt.getTime())) {
-      setMessage('Vui lòng nhập đủ tiêu đề, người phụ trách, nội dung và thời hạn.');
+    const errors: Partial<Record<RequiredTaskField, string>> = {};
+    if (!form.title.trim()) errors.title = 'Vui lòng nhập tên công việc.';
+    if (!assignee) errors.assigneeId = isAdmin ? 'Vui lòng chọn Sale đảm nhận.' : 'Không tìm thấy tài khoản người phụ trách đang hoạt động.';
+    if (!form.dueAt || !Number.isFinite(endAt.getTime())) errors.dueAt = 'Vui lòng chọn thời hạn hợp lệ.';
+    if (!form.description.trim()) errors.description = 'Vui lòng nhập nội dung công việc.';
+    const firstInvalidField = (['title', 'assigneeId', 'dueAt', 'description'] as RequiredTaskField[]).find(field => errors[field]);
+    if (firstInvalidField || !assignee) {
+      setFormFieldErrors(errors);
+      setFormError('Hãy bổ sung các trường được đánh dấu để lưu công việc.');
+      if (firstInvalidField) event.currentTarget.querySelector<HTMLElement>(`[name="${firstInvalidField}"]`)?.focus();
       return;
     }
+    setFormFieldErrors({});
+    setFormError('');
     setSaving(true);
     setMessage('');
     const currentTime = new Date();
@@ -268,8 +295,11 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
       setIsFormOpen(false);
       setSelectedItem(normalized);
       setMessage(editingItem ? 'Đã cập nhật công việc.' : 'Đã giao công việc.');
-    } catch {
-      setMessage('Không thể lưu công việc. Vui lòng thử lại.');
+    } catch (error) {
+      const permissionDenied = typeof error === 'object' && error !== null && 'code' in error && error.code === 'permission-denied';
+      setFormError(permissionDenied
+        ? 'Tài khoản chưa được cấp quyền lưu công việc. Vui lòng liên hệ quản trị viên.'
+        : 'Không thể lưu công việc. Vui lòng kiểm tra kết nối và thử lại.');
     } finally {
       setSaving(false);
     }
@@ -365,6 +395,22 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
 
     {selectedItem && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget) setSelectedItem(null); }}><section className="work-schedule-detail" role="dialog" aria-modal="true"><header><div><span>Chi tiết công việc</span><h2>{selectedItem.title}</h2></div><button type="button" className="btn btn-outline" onClick={() => setSelectedItem(null)}>Đóng</button></header><div className="work-schedule-detail__grid"><div><span>Trạng thái</span><strong className={`work-schedule-status work-schedule-status--${selectedItem.status}`}>{WORK_SCHEDULE_STATUS_LABELS[selectedItem.status]}</strong></div><div><span>Mức ưu tiên</span><strong className={`work-schedule-priority work-schedule-priority--${selectedItem.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[selectedItem.priority]}</strong></div><div><span>Người thực hiện</span><strong>{selectedItem.assigneeName}</strong></div><div><span>Người giao việc</span><strong>{selectedItem.assignedByName || 'Tự tạo'}</strong></div><div><span>Thời hạn</span><strong>{dateTimeLabel(selectedItem.endAt)}</strong></div><div><span>Phân hệ</span><strong>{WORK_SCHEDULE_REFERENCE_LABELS[selectedItem.referenceType]}</strong></div></div><article><h3>Nội dung công việc</h3><p>{selectedItem.description || 'Chưa có nội dung.'}</p>{selectedItem.requestedByName && <p>Người yêu cầu hỗ trợ: <strong>{selectedItem.requestedByName}</strong></p>}</article><footer>{selectedItem.referenceId && moduleFromReference(selectedItem.referenceType) && <button type="button" className="btn btn-outline" onClick={() => openSource(selectedItem)}>Mở hồ sơ khách hàng</button>}<button type="button" className="btn btn-outline" onClick={() => openEdit(selectedItem)}>Chỉnh sửa</button>{selectedItem.status !== 'completed' && <button type="button" className="btn btn-primary" onClick={() => void updateStatus(selectedItem, 'completed')}>Đánh dấu hoàn thành</button>}</footer></section></div>}
 
-    {isFormOpen && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setIsFormOpen(false); }}><form className="work-schedule-modal" onSubmit={saveTask}><header><div><strong>{editingItem ? 'Cập nhật công việc' : 'Tạo công việc'}</strong><span>Nhập rõ nội dung, người phụ trách và thời hạn.</span></div><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)}>Đóng</button></header><div className="work-schedule-form-grid"><label className="is-wide">Tên công việc *<input autoFocus value={form.title} onChange={event => setForm(previous => ({ ...previous, title: event.target.value }))}/></label>{isAdmin && <label>Sale đảm nhận *<select value={form.assigneeId} onChange={event => setForm(previous => ({ ...previous, assigneeId: event.target.value }))}><option value="">Chọn Sale</option>{users.filter(user => user.role === 'sale' && user.active !== false).map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></label>}<label>Thời hạn *<input type="datetime-local" value={form.dueAt} onChange={event => setForm(previous => ({ ...previous, dueAt: event.target.value }))}/></label><label>Phân hệ liên kết<select value={form.referenceType} onChange={event => setForm(previous => ({ ...previous, referenceType: event.target.value as WorkScheduleReferenceType, referenceId: '', referenceLabel: '' }))}><option value="none">Không liên kết</option><option value="lead_candidate">Dữ liệu thô</option><option value="lead">Tiềm năng</option><option value="customer">Khách hàng</option></select></label><label>Khách hàng<select disabled={form.referenceType === 'none'} value={form.referenceId} onChange={event => handleReferenceChange(event.target.value)}><option value="">Chọn khách hàng</option>{sourceOptions.map(item => <option key={item.id} value={item.id}>{item.companyName || item.id}</option>)}</select></label><label>Mức ưu tiên<select value={form.priority} onChange={event => setForm(previous => ({ ...previous, priority: event.target.value as WorkSchedulePriority }))}><option value="normal">Bình thường</option><option value="high">Cao</option><option value="urgent">Khẩn cấp</option></select></label><label>Trạng thái<select value={form.status} onChange={event => setForm(previous => ({ ...previous, status: event.target.value as WorkScheduleStatus }))}>{EDITABLE_STATUSES.map(status => <option key={status} value={status}>{WORK_SCHEDULE_STATUS_LABELS[status]}</option>)}</select></label><label className="is-wide">Nội dung công việc *<textarea rows={4} value={form.description} onChange={event => setForm(previous => ({ ...previous, description: event.target.value }))}/></label></div><footer><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)}>Hủy</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu công việc'}</button></footer></form></div>}
+    {isFormOpen && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setIsFormOpen(false); }}>
+      <form className="work-schedule-modal" role="dialog" aria-modal="true" aria-labelledby="work-schedule-form-title" onSubmit={saveTask} noValidate>
+        <header><div><strong id="work-schedule-form-title">{editingItem ? 'Cập nhật công việc' : 'Tạo công việc'}</strong><span>Nhập rõ nội dung, người phụ trách và thời hạn.</span></div><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)} disabled={saving}>Đóng</button></header>
+        <div className="work-schedule-form-grid">
+          {formError && <div className="work-schedule-form-error is-wide" role="alert">{formError}</div>}
+          <label className="is-wide">Tên công việc *<input name="title" autoFocus aria-required="true" aria-invalid={Boolean(formFieldErrors.title)} value={form.title} onChange={event => updateFormField('title', event.target.value)} />{formFieldErrors.title && <small>{formFieldErrors.title}</small>}</label>
+          {isAdmin && <label>Sale đảm nhận *<select name="assigneeId" aria-required="true" aria-invalid={Boolean(formFieldErrors.assigneeId)} value={form.assigneeId} onChange={event => updateFormField('assigneeId', event.target.value)}><option value="">Chọn Sale</option>{users.filter(user => user.role === 'sale' && user.active !== false).map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>{formFieldErrors.assigneeId && <small>{formFieldErrors.assigneeId}</small>}</label>}
+          <label>Thời hạn *<input name="dueAt" type="datetime-local" aria-required="true" aria-invalid={Boolean(formFieldErrors.dueAt)} value={form.dueAt} onChange={event => updateFormField('dueAt', event.target.value)} />{formFieldErrors.dueAt && <small>{formFieldErrors.dueAt}</small>}</label>
+          <label className="is-wide">Nội dung công việc *<textarea name="description" rows={4} aria-required="true" aria-invalid={Boolean(formFieldErrors.description)} value={form.description} onChange={event => updateFormField('description', event.target.value)} />{formFieldErrors.description && <small>{formFieldErrors.description}</small>}</label>
+          <label>Phân hệ liên kết<select value={form.referenceType} onChange={event => setForm(previous => ({ ...previous, referenceType: event.target.value as WorkScheduleReferenceType, referenceId: '', referenceLabel: '' }))}><option value="none">Không liên kết</option><option value="lead_candidate">Dữ liệu thô</option><option value="lead">Tiềm năng</option><option value="customer">Khách hàng</option></select></label>
+          <label>Khách hàng<select disabled={form.referenceType === 'none'} value={form.referenceId} onChange={event => handleReferenceChange(event.target.value)}><option value="">Chọn khách hàng</option>{sourceOptions.map(item => <option key={item.id} value={item.id}>{item.companyName || item.id}</option>)}</select></label>
+          <label>Mức ưu tiên<select value={form.priority} onChange={event => setForm(previous => ({ ...previous, priority: event.target.value as WorkSchedulePriority }))}><option value="normal">Bình thường</option><option value="high">Cao</option><option value="urgent">Khẩn cấp</option></select></label>
+          <label>Trạng thái<select value={form.status} onChange={event => setForm(previous => ({ ...previous, status: event.target.value as WorkScheduleStatus }))}>{EDITABLE_STATUSES.map(status => <option key={status} value={status}>{WORK_SCHEDULE_STATUS_LABELS[status]}</option>)}</select></label>
+        </div>
+        <footer><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)} disabled={saving}>Hủy</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu công việc'}</button></footer>
+      </form>
+    </div>}
   </div>;
 };
