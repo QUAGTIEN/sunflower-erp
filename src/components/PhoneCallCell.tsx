@@ -7,7 +7,7 @@ import { CALL_RESULT_LABELS, type PhoneCallRecord } from '@/features/crm/model/c
 import { callDraftStorageKey, EMPTY_CALL_DRAFT } from '@/features/crm/model/callWorkspace';
 import type { LeadCandidateContactLog } from '@/features/crm/model/leadCandidateModels';
 import type { LeadActivityRecord } from '@/features/crm/model/crmModels';
-import { CallWorkspace, type CallWorkspaceContext } from './CallWorkspace';
+import { CallWorkspace, type CallWorkspaceContext, type CallWorkspaceHistoryRow } from './CallWorkspace';
 import './PhoneCallCell.css';
 
 interface PhoneCallCellProps {
@@ -169,19 +169,22 @@ export const PhoneCallCell = ({ phone, companyName, subjectKey, historyKeys = []
   };
 
   const timeline = [
-    ...visibleKeys.flatMap(key => callsByKey[key] || []).map(call => ({ id: call.id, time: call.startedAt, actor: call.createdByName, result: CALL_RESULT_LABELS[call.result] || CALL_RESULT_LABELS.pending, note: call.note, phone: call.phone, pending: call.result === 'pending', createdById: call.createdById })),
+    ...visibleKeys.flatMap(key => callsByKey[key] || []).map(call => ({ id: call.id, time: call.startedAt, actor: call.createdByName, result: CALL_RESULT_LABELS[call.result] || CALL_RESULT_LABELS.pending, note: call.note, phone: call.phone, pending: call.result === 'pending', createdById: call.createdById, kind: 'call' as const })),
     ...visibleKeys.flatMap(key => legacyByKey[key] || []).map(call => ({
       id: `legacy:${call.id}`, time: call.occurredAt, actor: call.createdByName || 'Chưa rõ',
       result: call.eventType === 'schedule' ? 'Đặt lịch liên hệ' : call.eventType === 'potential_level' ? 'Đánh giá tiềm năng'
         : call.activityType === 'call' ? 'Cuộc gọi trước đây' : call.activityType === 'message' ? 'Tin nhắn'
           : call.activityType === 'email' ? 'Email' : call.activityType === 'meeting' ? 'Cuộc hẹn' : 'Ghi chú',
-      note: [call.description, call.note].filter(Boolean).join(' · '), phone: call.activityType === 'call' ? phone : ''
+      note: [call.description, call.note].filter(Boolean).join(' · '), phone: call.activityType === 'call' ? phone : '',
+      kind: (call.eventType === 'schedule' ? 'schedule' : call.activityType === 'call' ? 'call'
+        : call.activityType === 'message' ? 'message' : call.activityType === 'email' ? 'email'
+          : call.activityType === 'meeting' ? 'meeting' : 'note') as CallWorkspaceHistoryRow['kind']
     })),
     ...visibleKeys.flatMap(key => leadActivitiesByKey[key] || []).map(activity => ({
       id: `lead-activity:${activity.id}`, time: activity.occurredAt,
       actor: typeof activity.createdByName === 'string' ? activity.createdByName : 'Sale',
       result: activity.type === 'schedule' ? 'Lịch chăm sóc' : activity.type === 'filter_tag' ? 'Cập nhật phân loại' : 'Hoạt động Tiềm năng',
-      note: activity.note, phone: ''
+      note: activity.note, phone: '', kind: (activity.type === 'schedule' ? 'schedule' : 'note') as CallWorkspaceHistoryRow['kind']
     }))
   ].sort((a, b) => b.time.localeCompare(a.time));
 
