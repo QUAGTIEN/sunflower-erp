@@ -5,6 +5,8 @@ const test = require('node:test');
 const ts = require('typescript');
 
 const source = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'model', 'rawDataOverview.ts'), 'utf8');
+const overviewSource = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'components', 'RawDataOverview.tsx'), 'utf8');
+const workspaceSource = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'components', 'LeadCandidateWorkspace.tsx'), 'utf8');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } });
 const model = {};
 new Function('exports', outputText)(model);
@@ -45,4 +47,13 @@ test('a newer successful call clears a previous wrong-number warning', () => {
   const result = model.scoreRawCandidate(candidate({ phone: '0901234567', source: 'Website', businessSector: 'Bao bì', expectedProducts: 'Tem nhãn' }), calls, model.DEFAULT_RAW_PRIORITY_RULES);
   assert.equal(result.group, 'call_first');
   assert.equal(result.connected, true);
+});
+
+test('raw data tabs preserve prepared views and overview data between switches', () => {
+  assert.match(overviewSource, /memo\(function RawDataOverview/);
+  assert.match(workspaceSource, /adminListPrepared/);
+  assert.match(workspaceSource, /requestIdleCallback/);
+  assert.match(workspaceSource, /hidden=\{adminRawView === 'list'\}/);
+  assert.match(workspaceSource, /hidden=\{currentUser\.role === 'admin' && adminRawView !== 'list'\}/);
+  assert.doesNotMatch(workspaceSource, /if \(currentUser\.role === 'admin' && adminRawView !== 'list'\)/);
 });

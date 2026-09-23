@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import type { LeadCandidateRecord } from '../model/leadCandidateModels';
@@ -47,7 +47,7 @@ const normalizeRules = (value: unknown): RawPriorityRules => {
   };
 };
 
-export function RawDataOverview({ mode, candidates, saleUsers, currentUser, onPriority, onOverview, onOpenCandidate }: Props) {
+export const RawDataOverview = memo(function RawDataOverview({ mode, candidates, saleUsers, currentUser, onPriority, onOverview, onOpenCandidate }: Props) {
   const [calls, setCalls] = useState<PhoneCallRecord[]>([]);
   const [callsLoading, setCallsLoading] = useState(true);
   const [callsError, setCallsError] = useState(false);
@@ -86,7 +86,9 @@ export function RawDataOverview({ mode, candidates, saleUsers, currentUser, onPr
     calls.forEach(call => {
       if (!call.subjectKey?.startsWith('candidate:')) return;
       const candidateId = call.subjectKey.slice('candidate:'.length);
-      indexed.set(candidateId, [...(indexed.get(candidateId) || []), call]);
+      const rows = indexed.get(candidateId);
+      if (rows) rows.push(call);
+      else indexed.set(candidateId, [call]);
     });
     return indexed;
   }, [calls]);
@@ -98,48 +100,48 @@ export function RawDataOverview({ mode, candidates, saleUsers, currentUser, onPr
     verify: priorityRows.filter(row => row.group === 'verify').length
   }), [priorityRows]);
   const thisMonth = monthKey(new Date().toISOString());
-  const metrics = [
+  const metrics = useMemo(() => [
     ['Tổng dữ liệu thô', candidates.length],
     ['Mới trong tháng', candidates.filter(candidate => monthKey(candidate.createdAt) === thisMonth).length],
     ['Đã gọi', scored.filter(row => row.called).length],
     ['Chưa gọi', scored.filter(row => !row.called).length],
     ['Đã liên hệ được', scored.filter(row => row.connected).length],
     ['Chuyển Tiềm năng', candidates.filter(candidate => candidate.status === 'converted' || candidate.convertedLeadId).length]
-  ] as const;
+  ] as const, [candidates, scored, thisMonth]);
   const ticks = useMemo(() => monthTicks(), []);
-  const trend = ticks.map(tick => ({
+  const trend = useMemo(() => ticks.map(tick => ({
     ...tick,
     found: candidates.filter(candidate => monthKey(candidate.createdAt) === tick.key).length,
     called: scored.filter(row => row.called && (
       (callsByCandidate.get(row.candidate.id) || []).some(call => monthKey(call.startedAt) === tick.key)
       || monthKey(row.candidate.lastContactAt) === tick.key
     )).length
-  }));
+  })), [callsByCandidate, candidates, scored, ticks]);
   const trendMax = Math.max(1, ...trend.flatMap(item => [item.found, item.called]));
   const trendX = (index: number) => 44 + index * (680 / Math.max(1, trend.length - 1));
   const trendY = (value: number) => 156 - value / trendMax * 128;
   const trendLine = (key: 'found' | 'called') => trend.map((item, index) => `${trendX(index)},${trendY(item[key])}`).join(' ');
-  const saleRows = saleUsers.map(user => ({
+  const saleRows = useMemo(() => saleUsers.map(user => ({
     id: user.uid, name: user.displayName,
     count: candidates.filter(candidate => candidate.discoveredById === user.uid).length
-  })).filter(row => row.count > 0).sort((left, right) => right.count - left.count).slice(0, 5);
+  })).filter(row => row.count > 0).sort((left, right) => right.count - left.count).slice(0, 5), [candidates, saleUsers]);
   const saleMax = Math.max(1, ...saleRows.map(row => row.count));
-  const provinceRows = countRawDataByProvince(candidates);
+  const provinceRows = useMemo(() => countRawDataByProvince(candidates), [candidates]);
   const provinceMax = Math.max(1, ...provinceRows.map(row => row.count));
   const donutTotal = priorityRows.length || 1;
   const greenPercent = groupCounts.call_first / donutTotal * 100;
   const yellowPercent = groupCounts.enrich / donutTotal * 100;
   const donutBackground = `conic-gradient(${PRIORITY_COLORS.call_first} 0 ${greenPercent}%, ${PRIORITY_COLORS.enrich} ${greenPercent}% ${greenPercent + yellowPercent}%, ${PRIORITY_COLORS.verify} ${greenPercent + yellowPercent}% 100%)`;
-  const sourceOptions = Array.from(new Set(priorityRows.map(row => row.candidate.source.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi-VN'));
-  const sectorOptions = Array.from(new Set(priorityRows.map(row => row.candidate.businessSector.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi-VN'));
-  const filtered = priorityRows.filter(row => {
+  const sourceOptions = useMemo(() => Array.from(new Set(priorityRows.map(row => row.candidate.source.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi-VN')), [priorityRows]);
+  const sectorOptions = useMemo(() => Array.from(new Set(priorityRows.map(row => row.candidate.businessSector.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'vi-VN')), [priorityRows]);
+  const filtered = useMemo(() => priorityRows.filter(row => {
     const candidate = row.candidate;
     return row.group === group
       && (sale === 'all' || candidate.discoveredById === sale)
       && (source === 'all' || candidate.source === source)
       && (sector === 'all' || candidate.businessSector === sector)
       && (!search.trim() || `${candidate.companyName} ${candidate.taxCode} ${candidate.phone}`.toLocaleLowerCase('vi-VN').includes(search.trim().toLocaleLowerCase('vi-VN')));
-  }).sort((left, right) => right.score - left.score || left.candidate.companyName.localeCompare(right.candidate.companyName, 'vi-VN'));
+  }).sort((left, right) => right.score - left.score || left.candidate.companyName.localeCompare(right.candidate.companyName, 'vi-VN')), [group, priorityRows, sale, search, sector, source]);
   const pageSize = 20;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -191,4 +193,4 @@ export function RawDataOverview({ mode, candidates, saleUsers, currentUser, onPr
     </> : <section className="raw-overview__priority-page"><h2>Ưu tiên khai thác dữ liệu</h2><p>Điểm được tính từ thông tin có sẵn; vùng ưu tiên không thay thế kết quả tư vấn thực tế.</p><div className="raw-overview__priority-tabs" role="tablist">{PRIORITY_GROUPS.map(key => <button key={key} type="button" role="tab" aria-selected={group === key} className={group === key ? 'is-active' : ''} onClick={() => { setGroup(key); setPage(1); }}>{RAW_PRIORITY_LABELS[key]} <strong>{formatNumber(groupCounts[key])}</strong></button>)}</div><div className="raw-overview__filters"><input aria-label="Tìm doanh nghiệp" placeholder="Tìm doanh nghiệp, MST, số điện thoại..." value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /><select aria-label="Lọc Sale tìm được" value={sale} onChange={event => { setSale(event.target.value); setPage(1); }}><option value="all">Tất cả Sale</option>{saleUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select><select aria-label="Lọc nguồn" value={source} onChange={event => { setSource(event.target.value); setPage(1); }}><option value="all">Tất cả nguồn</option>{sourceOptions.map(value => <option key={value} value={value}>{value}</option>)}</select><select aria-label="Lọc ngành nghề" value={sector} onChange={event => { setSector(event.target.value); setPage(1); }}><option value="all">Tất cả ngành nghề</option>{sectorOptions.map(value => <option key={value} value={value}>{value}</option>)}</select><button type="button" onClick={resetFilters}>Đặt lại</button></div><div className="raw-overview__table-wrap"><table><thead><tr><th>Doanh nghiệp</th><th>Sale tìm được</th><th>Điểm</th><th>Lý do xếp nhóm</th><th>Liên hệ</th><th>Thao tác</th></tr></thead><tbody>{visible.map(row => <tr key={row.candidate.id}><td title={row.candidate.companyName}><strong>{row.candidate.companyName}</strong></td><td>{row.candidate.discoveredByName || 'Chưa xác định'}</td><td><strong className={`raw-overview__group raw-overview__group--${group}`}>{row.score}</strong></td><td title={row.reasons.join('; ')}>{row.reasons.slice(0, 3).join(' · ')}</td><td>{row.candidate.phone || 'Chưa có số'}</td><td><button type="button" onClick={() => onOpenCandidate(row.candidate.id)}>Mở hồ sơ</button></td></tr>)}</tbody></table>{visible.length === 0 && <p className="raw-overview__empty">Không có hồ sơ phù hợp.</p>}</div><footer className="raw-overview__pagination"><span>Hiển thị {filtered.length ? (safePage - 1) * pageSize + 1 : 0}–{Math.min(safePage * pageSize, filtered.length)} / {formatNumber(filtered.length)}</span><div><button type="button" disabled={safePage === 1} onClick={() => setPage(page - 1)}>Trước</button><span>{safePage} / {totalPages}</span><button type="button" disabled={safePage === totalPages} onClick={() => setPage(page + 1)}>Sau</button></div></footer></section>}
     {rulesOpen && <div className="raw-overview__modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !rulesSaving) setRulesOpen(false); }}><form className="raw-overview__modal" onSubmit={saveRules} role="dialog" aria-modal="true" aria-labelledby="raw-rules-title"><header><h2 id="raw-rules-title">Cấu hình ưu tiên</h2><button type="button" onClick={() => setRulesOpen(false)} disabled={rulesSaving}>Đóng</button></header><p>Ngành và sản phẩm mục tiêu được ngăn cách bằng dấu phẩy. Mỗi hồ sơ vẫn hiển thị lý do xếp nhóm.</p><label>Ngành mục tiêu<input value={rulesDraft.targetIndustries} onChange={event => setRulesDraft(previous => ({ ...previous, targetIndustries: event.target.value }))} placeholder="Ví dụ: bao bì, thực phẩm" /></label><label>Sản phẩm mục tiêu<input value={rulesDraft.targetProducts} onChange={event => setRulesDraft(previous => ({ ...previous, targetProducts: event.target.value }))} placeholder="Ví dụ: tem nhãn, mực in" /></label><label>Điểm tối thiểu để gọi trước<input type="number" min="30" max="90" value={rulesDraft.callFirstThreshold} onChange={event => setRulesDraft(previous => ({ ...previous, callFirstThreshold: Number(event.target.value) }))} /></label>{rulesError && <p role="alert">{rulesError}</p>}<footer><button type="button" className="btn btn-outline" onClick={() => setRulesOpen(false)}>Hủy</button><button type="submit" className="btn btn-primary" disabled={rulesSaving}>{rulesSaving ? 'Đang lưu...' : 'Lưu cấu hình'}</button></footer></form></div>}
   </div>;
-}
+});
