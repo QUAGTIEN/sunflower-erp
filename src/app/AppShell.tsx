@@ -34,7 +34,7 @@ import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { useGlobalTableColumnResize } from '@/hooks/useGlobalTableColumnResize';
 import { useAdaptiveTableText } from '@/hooks/useAdaptiveTableText';
 import { normalizePORecords } from '@/domain/poCompatibility';
-import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
+import { normalizeLeadRecords, type CustomerRecord, type LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import type { ProcurementRequestRecord } from '@/features/procurement/model/purchaseModels';
 import type { UserNotificationRecord } from '@/domain/notificationModels';
@@ -323,7 +323,7 @@ function AppShell() {
       'leads',
       pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
       () => dbService.subscribeCollection('leads', data => {
-        setLeads(sortNewestFirst(data as LeadRecord[], lead => [lead.createdAt, lead.updatedAt]));
+        setLeads(sortNewestFirst(normalizeLeadRecords(data), lead => [lead.createdAt, lead.updatedAt]));
       })
     );
     syncSubscription(

@@ -110,4 +110,11 @@ test('raw data and leads share the 59-item classification page and list controls
   assert.doesNotMatch(customerSource, /CustomerInsightEditor/);
   assert.doesNotMatch(customerSource, /getCustomerInsightGroupsForModule\('crm'\)/);
   assert.doesNotMatch(salesSource, /getCustomerInsightGroupsForModule\('sales'\)/);
+
+  const appShellSource = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'app', 'AppShell.tsx'),
+    'utf8'
+  );
+  assert.match(appShellSource, /normalizeLeadRecords\(data\)/);
+  assert.match(leadsSource, /\(selectedLead\.files \|\| \[\]\)\.filter/);
 });

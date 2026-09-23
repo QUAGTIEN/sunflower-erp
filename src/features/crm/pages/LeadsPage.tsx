@@ -870,7 +870,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const activeLeadRepositoryFolder = leadRepositoryFolders.find(folder => folder.id === activeLeadFolderId)
     || leadRepositoryFolders[0];
   const activeLeadRepositoryFiles = selectedLead && activeLeadRepositoryFolder
-    ? selectedLead.files.filter(file => resolveCustomerFileFolderId(file, leadRepositoryFolders) === activeLeadRepositoryFolder.id)
+    ? (selectedLead.files || []).filter(file => resolveCustomerFileFolderId(file, leadRepositoryFolders) === activeLeadRepositoryFolder.id)
     : [];
 
   useEffect(() => {
@@ -1309,7 +1309,7 @@ export const Leads: React.FC<LeadsProps> = ({
       createdBy: currentUser.displayName
     };
     await dbService.updateDocument('leads', selectedLead.id, {
-      files: [...selectedLead.files, file],
+      files: [...(selectedLead.files || []), file],
       fileFolders: getCustomerRepositoryFolders(selectedLead),
       updatedAt: now,
       updatedBy: currentUser.displayName
@@ -1324,7 +1324,7 @@ export const Leads: React.FC<LeadsProps> = ({
     if (!selectedLead || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
     if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) return;
     await dbService.updateDocument('leads', selectedLead.id, {
-      files: selectedLead.files.filter(file => file.id !== fileId),
+      files: (selectedLead.files || []).filter(file => file.id !== fileId),
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser.displayName
     });
@@ -1336,7 +1336,7 @@ export const Leads: React.FC<LeadsProps> = ({
     const folders = getCustomerRepositoryFolders(selectedLead);
     const folder = folders.find(item => item.id === folderId);
     if (!folder) return;
-    if (selectedLead.files.some(file => resolveCustomerFileFolderId(file, folders) === folderId)) {
+    if ((selectedLead.files || []).some(file => resolveCustomerFileFolderId(file, folders) === folderId)) {
       window.alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
       return;
     }
@@ -2000,7 +2000,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
             <div className="customer-drive-folder-list">
               {leadRepositoryFolders.map(folder => {
-                const fileCount = selectedLead.files.filter(file => resolveCustomerFileFolderId(file, leadRepositoryFolders) === folder.id).length;
+                const fileCount = (selectedLead.files || []).filter(file => resolveCustomerFileFolderId(file, leadRepositoryFolders) === folder.id).length;
                 return (
                   <div key={folder.id} className={`customer-drive-folder ${activeLeadRepositoryFolder?.id === folder.id ? 'is-active' : ''}`}>
                     {renamingLeadFolderId === folder.id ? (
