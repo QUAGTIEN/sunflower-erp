@@ -70,6 +70,177 @@
   margin-right: 0;
 }
 
+.work-schedule-workspace {
+  display: grid;
+  min-width: 0;
+  min-height: 620px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.work-schedule-groups {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid #d8e1ee;
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.work-schedule-groups > header,
+.work-schedule-group-header {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e1e7ef;
+}
+
+.work-schedule-groups > header > strong {
+  font-size: 15px;
+}
+
+.work-schedule-group-search {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0 9px;
+  color: #64748b;
+}
+
+.work-schedule-group-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #1e293b;
+  font: inherit;
+  font-size: 12px;
+}
+
+.work-schedule-group-list {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.work-schedule-group-list > button {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px 8px 18px;
+  border: 0;
+  border-bottom: 1px solid #edf1f6;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.work-schedule-group-list > button::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: #1d5fd1;
+  content: '';
+  opacity: 0;
+}
+
+.work-schedule-group-list > button:hover { background: #f8fafc; }
+.work-schedule-group-list > button.is-active { color: #17449d; background: #edf4ff; font-weight: 650; }
+.work-schedule-group-list > button.is-active::before { opacity: 1; }
+.work-schedule-group-list > button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.work-schedule-group-list > button strong { flex: none; }
+.work-schedule-group-list > p { margin: 16px 12px; color: #64748b; font-size: 12px; }
+
+.work-schedule-group-help {
+  margin: 0;
+  border-top: 1px solid #e1e7ef;
+  padding: 12px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.work-schedule-group-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.work-schedule-group-header h2 {
+  margin: 0;
+  color: #153a8a;
+  font-size: 18px;
+}
+
+.work-schedule-group-header span {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.work-schedule-group-header > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.work-schedule-group-header select {
+  min-width: 170px;
+  min-height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  padding: 6px 9px;
+  color: #27364c;
+  font: inherit;
+  font-size: 12px;
+}
+
+.work-schedule-status-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px 0;
+}
+
+.work-schedule-summary {
+  min-height: 68px;
+  border: 1px solid #d8e1ee;
+  border-radius: 4px;
+  background: #fff;
+  padding: 10px 12px;
+  color: #536176;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.work-schedule-summary:hover,
+.work-schedule-summary.is-active { border-color: #8ca9e8; background: #f6f9ff; }
+.work-schedule-summary span { display: block; font-size: 12px; font-weight: 600; }
+.work-schedule-summary strong { display: block; margin-top: 5px; font-size: 20px; }
+.work-schedule-summary--in_progress strong { color: #1d5fd1; }
+.work-schedule-summary--not_started strong { color: #52627a; }
+.work-schedule-summary--cannot_process strong { color: #c81e1e; }
+.work-schedule-summary--completed strong { color: #07845f; }
+
 .work-schedule-kpis {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -150,25 +321,10 @@
 }
 
 .work-schedule-toolbar {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.35fr) repeat(4, minmax(130px, 0.8fr)) auto;
+  display: flex;
   align-items: center;
   gap: 8px;
   padding: 9px 12px;
-}
-
-.work-schedule-toolbar select {
-  width: 100%;
-  min-width: 0;
-  min-height: 36px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  background: #fff;
-  padding: 6px 9px;
-  color: #27364c;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
 }
 
 .work-schedule-search {
@@ -181,6 +337,22 @@
   border-radius: 4px;
   padding: 0 10px;
   color: #64748b;
+}
+
+.work-schedule-toolbar .work-schedule-search {
+  width: min(360px, 100%);
+}
+
+.work-schedule-page .data-filter-section select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  padding: 6px 9px;
+  color: #27364c;
+  font: inherit;
+  font-size: 12px;
 }
 
 .work-schedule-search input {
@@ -243,7 +415,7 @@
 
 .work-schedule-table {
   width: 100%;
-  min-width: 1460px;
+  min-width: 1240px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -273,16 +445,15 @@
   font-weight: 650;
 }
 
-.work-schedule-task-table th:nth-child(1) { width: 220px; }
-.work-schedule-task-table th:nth-child(2) { width: 150px; }
-.work-schedule-task-table th:nth-child(3) { width: 112px; }
+.work-schedule-task-table th:nth-child(1) { width: 230px; }
+.work-schedule-task-table th:nth-child(2) { width: 145px; }
+.work-schedule-task-table th:nth-child(3) { width: 105px; }
 .work-schedule-task-table th:nth-child(4),
-.work-schedule-task-table th:nth-child(5) { width: 130px; }
-.work-schedule-task-table th:nth-child(6) { width: 142px; }
+.work-schedule-task-table th:nth-child(5) { width: 120px; }
+.work-schedule-task-table th:nth-child(6) { width: 135px; }
 .work-schedule-task-table th:nth-child(7),
-.work-schedule-task-table th:nth-child(8) { width: 108px; }
-.work-schedule-task-table th:nth-child(9) { width: 125px; }
-.work-schedule-task-table th:nth-child(10) { width: 100px; }
+.work-schedule-task-table th:nth-child(8) { width: 112px; }
+.work-schedule-task-table th:nth-child(9) { width: 96px; }
 
 .work-schedule-table td > strong {
   display: block;
@@ -333,6 +504,7 @@
 .work-schedule-status--awaiting_confirmation { color: #7c3aed; }
 .work-schedule-status--support_requested { color: #c2410c; }
 .work-schedule-status--completed { color: #087a55; }
+.work-schedule-status--cannot_process,
 .work-schedule-status--cancelled { color: #9f1239; }
 .work-schedule-priority--normal { color: #536176; }
 .work-schedule-priority--high { color: #c2410c; }
@@ -466,6 +638,12 @@
   color: #a32222;
 }
 
+.work-schedule-group-modal .work-schedule-delete {
+  margin-right: auto;
+  border-color: #f1b5b5;
+  color: #a32222;
+}
+
 .work-schedule-detail .work-schedule-delete:hover,
 .work-schedule-detail .work-schedule-delete:focus-visible {
   background: #fff1f1;
@@ -583,17 +761,22 @@
 .work-schedule-detail p { margin: 6px 0; color: #3d4b60; font-size: 12px; line-height: 1.6; }
 
 @media (max-width: 1280px) {
-  .work-schedule-toolbar { grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, 0.7fr)); }
   .work-schedule-clear { justify-self: start; }
 }
 
 @media (max-width: 1100px) {
+  .work-schedule-workspace { grid-template-columns: 230px minmax(0, 1fr); }
   .work-schedule-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 700px) {
+  .work-schedule-workspace { grid-template-columns: 1fr; }
+  .work-schedule-groups { max-height: 360px; }
+  .work-schedule-status-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .work-schedule-group-header { align-items: flex-start; flex-direction: column; }
+  .work-schedule-group-header > div:last-child { width: 100%; flex-wrap: wrap; }
   .work-schedule-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .work-schedule-toolbar { grid-template-columns: 1fr; }
+  .work-schedule-toolbar { flex-wrap: wrap; }
   .work-schedule-form-grid,
   .work-schedule-detail__grid { grid-template-columns: 1fr; }
   .work-schedule-form-grid .is-wide { grid-column: auto; }

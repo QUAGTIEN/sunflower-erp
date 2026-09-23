@@ -217,6 +217,7 @@ export function CallWorkspace({ phone, companyName, subjectKey, targetType, targ
             endAt: followUpDate.toISOString(), status: 'not_started', progress: 0,
             referenceType: targetType, referenceId: targetId, referenceLabel: companyName,
             notes: `Tạo từ cuộc gọi ${callId}`, priority: 'normal', taskType: 'personal_task',
+            groupId: 'business', groupName: 'Công việc kinh doanh',
             createdAt: now, updatedAt: now, deleted: false
         });
       }

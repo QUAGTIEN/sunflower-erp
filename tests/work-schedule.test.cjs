@@ -20,7 +20,31 @@ test('new and existing work items keep their status codes with clear labels', ()
   assert.equal(normalizeWorkScheduleRecord({ status: 'paused' }).status, 'in_progress');
   assert.equal(WORK_SCHEDULE_STATUS_LABELS.not_started, 'Chưa xử lí');
   assert.equal(WORK_SCHEDULE_STATUS_LABELS.in_progress, 'Đang xử lí');
-  assert.equal(WORK_SCHEDULE_STATUS_LABELS.completed, 'Đã hoàn thành');
+  assert.equal(WORK_SCHEDULE_STATUS_LABELS.cannot_process, 'Không xử lí được');
+  assert.equal(WORK_SCHEDULE_STATUS_LABELS.completed, 'Đã xử lí');
+});
+
+test('work groups provide defaults and preserve stored changes', () => {
+  const { mergeWorkScheduleGroups, inferWorkScheduleGroupId } = loadScheduleModel();
+  const defaults = mergeWorkScheduleGroups([]);
+  assert.deepEqual(defaults.map(group => group.id), ['boss', 'personnel', 'business', 'technical', 'logistics', 'workshop', 'delivery']);
+  const changed = mergeWorkScheduleGroups([{ id: 'business', name: 'Kinh doanh mới', order: 30, active: true }]);
+  assert.equal(changed.find(group => group.id === 'business').name, 'Kinh doanh mới');
+  assert.equal(inferWorkScheduleGroupId({ taskType: 'support_request' }), 'boss');
+  assert.equal(inferWorkScheduleGroupId({ referenceType: 'lead' }), 'business');
+});
+
+test('tasks sort by status before priority and deadline', () => {
+  const { compareWorkScheduleItems, normalizeWorkScheduleRecord } = loadScheduleModel();
+  const task = (id, status, priority, endAt) => normalizeWorkScheduleRecord({ id, status, priority, endAt });
+  const rows = [
+    task('completed', 'completed', 'urgent', '2026-01-01T00:00:00.000Z'),
+    task('pending', 'not_started', 'urgent', '2026-01-01T00:00:00.000Z'),
+    task('processing-normal', 'in_progress', 'normal', '2026-01-02T00:00:00.000Z'),
+    task('processing-urgent', 'in_progress', 'urgent', '2026-01-03T00:00:00.000Z'),
+    task('blocked', 'cannot_process', 'urgent', '2026-01-01T00:00:00.000Z')
+  ].sort(compareWorkScheduleItems);
+  assert.deepEqual(rows.map(row => row.id), ['processing-urgent', 'processing-normal', 'pending', 'blocked', 'completed']);
 });
 
 test('permanent deletion is limited to completed work and administrators', () => {
@@ -60,6 +84,20 @@ test('task status and priority use colored text without badge styling', () => {
   const textRule = css.match(/\.work-schedule-status,\s*\.work-schedule-priority,[^{]*\{([^}]*)\}/s)?.[1] || '';
   assert.match(textRule, /color:/);
   assert.doesNotMatch(textRule, /background|border|border-radius|padding/);
+});
+
+test('work page requires a group and uses the shared funnel filter panel', () => {
+  const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
+  const rules = read('firestore.rules');
+  assert.match(page, /DataFilterButton/);
+  assert.match(page, /DataFilterPanel/);
+  assert.match(page, /Nhóm công việc \*/);
+  assert.match(page, /Thêm nhóm công việc/);
+  assert.match(page, /Quản lý nhóm công việc/);
+  assert.match(rules, /match \/work_schedule_groups\/\{documentId\}/);
+  for (const file of ['src/components/WorkAssignmentDialog.tsx', 'src/components/SupportRequestDialog.tsx', 'src/components/CallWorkspace.tsx']) {
+    assert.match(read(file), /groupId:/);
+  }
 });
 
 test('work and week tabs use the straight underline shared by ERP modules', () => {

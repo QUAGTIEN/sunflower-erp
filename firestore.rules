@@ -352,9 +352,14 @@ service cloud.firestore {
             'title', 'description', 'stage', 'startAt', 'endAt',
             'status', 'progress', 'referenceType', 'referenceId',
             'referenceLabel', 'notes', 'completedAt', 'updatedAt',
-            'deleted', 'deletedAt'
+            'groupId', 'groupName', 'deleted', 'deletedAt'
           ]));
       allow delete: if isAdmin();
+    }
+
+    match /work_schedule_groups/{documentId} {
+      allow read: if isActive();
+      allow create, update, delete: if isAdmin();
     }
 
     // Internal collaboration and per-user workflow notifications.

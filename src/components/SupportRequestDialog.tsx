@@ -87,6 +87,7 @@ export const SupportRequestDialog: React.FC<SupportRequestDialogProps> = ({
         assigneeId: admins[0].uid, assigneeName: admins[0].displayName, department: 'Ban giám đốc',
         assignedById: currentUser.uid, assignedByName: currentUser.displayName,
         requestedById: currentUser.uid, requestedByName: currentUser.displayName,
+        groupId: 'boss', groupName: 'Công việc của sếp',
         startAt: now, endAt: deadline.toISOString(), status: 'support_requested', progress: 0,
         referenceType: REFERENCE_TYPES[target.module], referenceId: target.id, referenceLabel: target.label,
         notes: '', priority, taskType: 'support_request', createdAt: now, updatedAt: now, deleted: false
