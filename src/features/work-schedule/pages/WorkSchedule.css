@@ -288,6 +288,7 @@
   min-width: max-content;
   flex: 1 1 auto;
   align-items: center;
+  gap: 7px;
 }
 
 .work-schedule-status-filter {
@@ -295,10 +296,10 @@
   min-height: 32px;
   align-items: center;
   gap: 6px;
-  border: 0;
-  border-right: 1px solid #d8e1ee;
-  background: transparent;
-  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: #f5f7fa;
+  padding: 0 8px;
   color: #536176;
   font: inherit;
   font-size: 12px;
@@ -307,14 +308,13 @@
   cursor: pointer;
 }
 
-.work-schedule-status-filter:first-child { padding-left: 6px; }
-.work-schedule-status-filter:last-child { border-right: 0; }
 .work-schedule-status-filter:hover,
-.work-schedule-status-filter.is-active { text-decoration: underline; text-underline-offset: 4px; }
-.work-schedule-status-filter--in_progress { color: #1659bd; }
-.work-schedule-status-filter--not_started { color: #5f6f84; }
-.work-schedule-status-filter--cannot_process { color: #c81e1e; }
-.work-schedule-status-filter--completed { color: #087a55; }
+.work-schedule-status-filter.is-active { border-color: currentColor; box-shadow: 0 0 0 1px rgb(255 255 255 / 70%) inset; }
+.work-schedule-status-filter strong { display: grid; min-width: 20px; height: 20px; place-items: center; border-radius: 50%; background: rgb(255 255 255 / 78%); font-size: 11px; }
+.work-schedule-status-filter--in_progress { color: #1659bd; background: #eaf2ff; }
+.work-schedule-status-filter--not_started { color: #5f6f84; background: #f1f4f8; }
+.work-schedule-status-filter--cannot_process { color: #c81e1e; background: #fff0f0; }
+.work-schedule-status-filter--completed { color: #087a55; background: #e9f8f1; }
 
 .work-schedule-assignee-select {
   width: 175px;
@@ -329,7 +329,7 @@
   font-size: 12px;
 }
 
-.work-schedule-page .data-filter-section select {
+.work-schedule-filter-field select {
   width: 100%;
   min-height: 36px;
   border: 1px solid #cbd5e1;
@@ -344,12 +344,32 @@
 .work-schedule-search input {
   width: 100%;
   min-width: 0;
-  border: 0;
+  height: auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
   outline: 0;
+  box-shadow: none !important;
   color: #1e293b;
   font: inherit;
   font-size: 12px;
   font-weight: 500;
+}
+
+.work-schedule-filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 2px 0 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.work-schedule-filter-field > span {
+  color: #1e293b;
+  font-size: 12.5px;
+  font-weight: 650;
 }
 
 .work-schedule-clear {
@@ -406,6 +426,10 @@
   table-layout: fixed;
 }
 
+.work-schedule-task-table {
+  min-width: 820px;
+}
+
 .work-schedule-table th,
 .work-schedule-table td {
   height: 48px;
@@ -431,15 +455,11 @@
   font-weight: 650;
 }
 
-.work-schedule-task-table th:nth-child(1) { width: 230px; }
-.work-schedule-task-table th:nth-child(2) { width: 145px; }
-.work-schedule-task-table th:nth-child(3) { width: 105px; }
-.work-schedule-task-table th:nth-child(4),
-.work-schedule-task-table th:nth-child(5) { width: 120px; }
-.work-schedule-task-table th:nth-child(6) { width: 135px; }
-.work-schedule-task-table th:nth-child(7),
-.work-schedule-task-table th:nth-child(8) { width: 112px; }
-.work-schedule-task-table th:nth-child(9) { width: 96px; }
+.work-schedule-task-table th:nth-child(1) { width: 32%; }
+.work-schedule-task-table th:nth-child(2) { width: 24%; }
+.work-schedule-task-table th:nth-child(3) { width: 17%; }
+.work-schedule-task-table th:nth-child(4) { width: 12%; }
+.work-schedule-task-table th:nth-child(5) { width: 15%; }
 
 .work-schedule-table td > strong {
   display: block;
@@ -469,6 +489,9 @@
 .work-schedule-task-table tbody tr:hover td {
   background: #f8fafc;
 }
+
+.work-schedule-task-table tbody tr.is-clickable { cursor: pointer; }
+.work-schedule-task-table tbody tr.is-clickable:focus-visible { outline: 2px solid #4f7fe0; outline-offset: -2px; }
 
 .work-schedule-task-table tr.is-overdue td:first-child {
   box-shadow: inset 3px 0 #dc2626;
@@ -534,11 +557,31 @@
 }
 
 .work-schedule-empty {
-  padding: 32px 16px;
+  display: flex;
+  min-height: 300px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 7px;
+  padding: 42px 16px;
   color: #64748b;
   font-size: 12px;
   text-align: center;
 }
+
+.work-schedule-empty__icon {
+  display: grid;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 5px;
+  place-items: center;
+  border-radius: 50%;
+  color: #9aabc3;
+  background: #f0f4fa;
+}
+
+.work-schedule-empty > strong { color: #536176; font-size: 13px; }
+.work-schedule-empty > small { color: #8a98ac; font-size: 11px; }
 
 .work-schedule-pagination {
   display: flex;

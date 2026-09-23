@@ -125,6 +125,20 @@ test('work groups share one table workspace and status failure requires a note',
   assert.match(rules, /'cannotProcessNote'/);
 });
 
+test('work table stays compact with flat filters, colored statuses and an empty state', () => {
+  const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
+  const css = read('src/features/work-schedule/pages/WorkSchedule.css');
+  assert.match(page, /<th>Công việc<\/th><th>Khách hàng<\/th><th>Hạn xử lý<\/th><th>Ưu tiên<\/th><th>Trạng thái<\/th>/);
+  assert.doesNotMatch(page, /<th>Thao tác<\/th>/);
+  assert.match(page, /aria-label=\{`Xem chi tiết công việc/);
+  assert.match(page, /work-schedule-filter-field/);
+  assert.doesNotMatch(page, /<DataFilterSection/);
+  assert.match(page, /work-schedule-empty__icon/);
+  assert.match(css, /\.work-schedule-status-filter--in_progress[^}]*background: #eaf2ff/);
+  assert.match(css, /\.work-schedule-status-filter--cannot_process[^}]*background: #fff0f0/);
+  assert.match(css, /\.work-schedule-status-filter--completed[^}]*background: #e9f8f1/);
+});
+
 test('work and week tabs use the straight underline shared by ERP modules', () => {
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');
   const underlineRule = css.match(/\.work-schedule-tab-list > button::after,[^{]*\{([^}]*)\}/s)?.[1] || '';
