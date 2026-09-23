@@ -343,6 +343,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [leadPageSize, setLeadPageSize] = useState(25);
   const [leadCurrentPage, setLeadCurrentPage] = useState(1);
   const [workspaceTab, setWorkspaceTab] = useState<'overview' | 'list' | 'performance'>('overview');
+  const [leadListPrepared, setLeadListPrepared] = useState(false);
   const [overviewSelection, setOverviewSelection] = useState<LeadOverviewSelection | null>(null);
   const [overviewDrilldown, setOverviewDrilldown] = useState<{ label: string; ids: string[] } | null>(null);
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
@@ -406,6 +407,21 @@ export const Leads: React.FC<LeadsProps> = ({
     setInsightFilters([initialInsightFilterId]);
     setLeadCurrentPage(1);
   }, [initialInsightFilterId]);
+
+  useEffect(() => {
+    if (leadListPrepared) return undefined;
+    const prepare = () => setLeadListPrepared(true);
+    const idleWindow = window as unknown as {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      const idleId = idleWindow.requestIdleCallback(prepare, { timeout: 1200 });
+      return () => idleWindow.cancelIdleCallback?.(idleId);
+    }
+    const timer = window.setTimeout(prepare, 250);
+    return () => window.clearTimeout(timer);
+  }, [leadListPrepared]);
   const [scheduleLeadId, setScheduleLeadId] = useState('');
   const [scheduleForm, setScheduleForm] = useState<LeadScheduleFormState>({
     nextFollowUpAt: tomorrowAtNine()
@@ -1901,12 +1917,21 @@ export const Leads: React.FC<LeadsProps> = ({
   const openOverviewList = (selection: LeadOverviewSelection | null) => {
     clearFilters();
     setOverviewSelection(selection);
+    setLeadListPrepared(true);
     setWorkspaceTab('list');
   };
 
   const openOverviewDrilldown = (label: string, matchingLeads: LeadRecord[]) => {
     clearFilters();
     setOverviewDrilldown({ label, ids: matchingLeads.map(lead => lead.id) });
+    setLeadListPrepared(true);
+    setWorkspaceTab('list');
+  };
+
+  const openLeadListTab = () => {
+    setOverviewSelection(null);
+    setOverviewDrilldown(null);
+    setLeadListPrepared(true);
     setWorkspaceTab('list');
   };
 
@@ -2353,7 +2378,7 @@ export const Leads: React.FC<LeadsProps> = ({
         <div className="lead-workspace-tabs content-tabs content-tabs--compact" role="tablist" aria-label="Không gian quản lý khách hàng tiềm năng">
           <button type="button" role="tab" aria-selected={workspaceTab === 'overview'} className={workspaceTab === 'overview' ? 'is-active' : ''} onClick={() => setWorkspaceTab('overview')}>Tổng quan</button>
           {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}>Khách hàng của Sale</button>}
-          <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={() => { setOverviewSelection(null); setOverviewDrilldown(null); setWorkspaceTab('list'); }}>Danh sách KH tiềm năng <span>{accessibleLeads.length}</span></button>
+          <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={openLeadListTab}>Danh sách KH tiềm năng <span>{accessibleLeads.length}</span></button>
         </div>
         {workspaceTab === 'list' && (
           <section className="lead-page-navigation__tools lead-candidate-toolbar">
@@ -2390,8 +2415,9 @@ export const Leads: React.FC<LeadsProps> = ({
           definitions={filterDefinitions}
           onOpenLead={openLeadById}
         />
-      ) : (
-        <div className="lead-data-workspace">
+      ) : null}
+      {(leadListPrepared || workspaceTab === 'list') && (
+        <div className="lead-data-workspace" hidden={workspaceTab !== 'list'}>
           <DataFilterChipBar chips={leadFilterChips} onClear={clearFilters} />
 
           <DataFilterPanel
