@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, FolderCog, Plus, Search } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FolderCog, Plus, Search, X } from 'lucide-react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataFilterButton, DataFilterPanel, DataFilterSection } from '@/components/DataWorkspaceFilters';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -91,6 +91,7 @@ const isInPeriod = (item: WorkScheduleRecord, period: PeriodFilter, referenceTim
   if (period === 'this_month') return due.getMonth() === reference.getMonth() && due.getFullYear() === reference.getFullYear();
   return due.getTime() >= referenceTime && due.getTime() <= referenceTime + 30 * 86_400_000;
 };
+const isErrorMessage = (value: string) => /^(Không thể|Vui lòng|Chưa có)|\bcòn \d+ công việc/.test(value);
 
 export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, candidates = [], leads = [], customers = [], onOpenRecord }) => {
   const isAdmin = currentUser.role === 'admin';
@@ -148,6 +149,11 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   // Loading is the external synchronization performed by this effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadItems(); }, [loadItems]);
+  useEffect(() => {
+    if (!message || isErrorMessage(message)) return undefined;
+    const timer = window.setTimeout(() => setMessage(''), 4_000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   const weekDates = useMemo(() => Array.from({ length: 7 }, (_, index) => {
     const date = new Date(weekAnchor);
@@ -363,7 +369,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
       }
       const updated = { ...item, status, progress, updatedAt, completedAt: completedAt || undefined, ...failureFields };
       setItems(previous => previous.map(current => current.id === item.id ? updated : current));
-      setSelectedItem(updated);
+      setSelectedItem(previous => previous?.id === item.id ? updated : previous);
       setStatusNoteItem(null);
       setStatusNote('');
       setStatusNoteError('');
@@ -484,10 +490,9 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
         <button type="button" role="tab" aria-selected={activeTab === 'tasks'} className={activeTab === 'tasks' ? 'is-active' : ''} onClick={() => setActiveTab('tasks')}>Công việc</button>
         <button type="button" role="tab" aria-selected={activeTab === 'week'} className={activeTab === 'week' ? 'is-active' : ''} onClick={() => setActiveTab('week')}>Lịch tuần</button>
       </div>
-      {activeTab === 'tasks' && <button type="button" className="btn btn-primary work-schedule-create" onClick={openCreate} disabled={!selectedGroup}><Plus size={15} />Tạo công việc</button>}
     </div>
 
-    {message && <div className="work-schedule-message" role="status">{message}</div>}
+    {message && <div className={`work-schedule-message ${isErrorMessage(message) ? 'is-error' : 'is-success'}`} role={isErrorMessage(message) ? 'alert' : 'status'}>{isErrorMessage(message) ? <AlertCircle size={17}/> : <CheckCircle2 size={17}/>}<span>{message}</span><button type="button" aria-label="Đóng thông báo" onClick={() => setMessage('')}><X size={15}/></button></div>}
 
     {activeTab === 'tasks' ? <>
       <section className="work-schedule-card work-schedule-group-content">
@@ -495,18 +500,14 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
             <div className="work-schedule-group-tabs">
               {groups.map(group => <button key={group.id} type="button" className={effectiveGroupId === group.id ? 'is-active' : ''} onClick={() => { setSelectedGroupId(group.id); setPage(1); }}><span>{group.name}</span><strong>{groupCounts[group.id] || 0}</strong></button>)}
             </div>
-            {isAdmin && <div className="work-schedule-group-actions"><button type="button" className="btn btn-outline btn-sm" onClick={() => openGroupDialog('rename')} disabled={!selectedGroup}><FolderCog size={14} />Quản lý nhóm</button><button type="button" className="btn btn-outline btn-sm" onClick={() => openGroupDialog('create')}><Plus size={14} />Thêm nhóm</button></div>}
+            {isAdmin && <details className="work-schedule-group-menu"><summary><FolderCog size={14}/>Nhóm</summary><div><button type="button" onClick={() => openGroupDialog('create')}><Plus size={14}/>Thêm nhóm</button><button type="button" onClick={() => openGroupDialog('rename')} disabled={!selectedGroup}><FolderCog size={14}/>Quản lý nhóm đang chọn</button></div></details>}
           </nav>
-          <header className="work-schedule-group-header">
-            <div><h2>{selectedGroup?.name || 'Chưa chọn nhóm'}</h2><span>{groupItems.length} công việc</span></div>
-            <div>{isAdmin && <select aria-label="Nhân sự" value={assigneeFilter} onChange={event => setFilterAndFirstPage(setAssigneeFilter, event.target.value)}><option value="all">Nhân sự: Tất cả</option>{activeUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>}</div>
-          </header>
-          <div className="work-schedule-status-summary">
-            {(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <button key={status} type="button" className={`work-schedule-summary work-schedule-summary--${status} ${statusFilter === status ? 'is-active' : ''}`} onClick={() => setFilterAndFirstPage(setStatusFilter, statusFilter === status ? 'all' : status)}><span>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</span><strong>{metrics[status]}</strong></button>)}
-          </div>
           <div className="work-schedule-toolbar">
             <label className="work-schedule-search"><Search size={15}/><input aria-label="Tìm công việc" placeholder="Tìm công việc, khách hàng..." value={searchTerm} onChange={event => setFilterAndFirstPage(setSearchTerm, event.target.value)}/></label>
+            <div className="work-schedule-status-filters" aria-label="Lọc nhanh theo trạng thái">{(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <button key={status} type="button" className={`work-schedule-status-filter work-schedule-status-filter--${status} ${statusFilter === status ? 'is-active' : ''}`} onClick={() => setFilterAndFirstPage(setStatusFilter, statusFilter === status ? 'all' : status)}><span>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</span><strong>{metrics[status]}</strong></button>)}</div>
+            {isAdmin && <select className="work-schedule-assignee-select" aria-label="Nhân sự" value={assigneeFilter} onChange={event => setFilterAndFirstPage(setAssigneeFilter, event.target.value)}><option value="all">Nhân sự: Tất cả</option>{activeUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>}
             <DataFilterButton activeCount={activeFilterCount} open={showFilters} onClick={() => setShowFilters(true)} />
+            <button type="button" className="btn btn-primary work-schedule-create" onClick={openCreate} disabled={!selectedGroup}><Plus size={15} />Tạo công việc</button>
             {(activeFilterCount > 0 || searchTerm) && <button type="button" className="work-schedule-clear" onClick={clearFilters}>Xóa bộ lọc</button>}
           </div>
           {metrics.support > 0 && <div className="work-schedule-support-alert"><AlertCircle size={16}/><span><strong>{metrics.support} yêu cầu hỗ trợ</strong> đang chờ xử lí trong nhóm này</span></div>}
@@ -520,7 +521,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
                 <td>{item.assignedByName || 'Tự tạo'}</td><td>{item.assigneeName}</td>
                 <td><strong>{dateTimeLabel(item.endAt)}</strong>{isTaskOverdue(item, now) && <small className="work-schedule-text--danger">Đã quá hạn</small>}</td>
                 <td><span className={`work-schedule-priority work-schedule-priority--${item.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[item.priority]}</span></td>
-                <td><span className={`work-schedule-status work-schedule-status--${displayStatus}`}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[displayStatus]}</span></td>
+                <td><select aria-label={`Trạng thái ${item.title}`} className={`work-schedule-status-select work-schedule-status-select--${displayStatus}`} value={displayStatus} onChange={event => requestStatusChange(item, event.target.value as WorkScheduleStatus)} disabled={detailBusy}>{EDITABLE_STATUSES.map(status => <option key={status} value={status}>{WORK_SCHEDULE_STATUS_LABELS[status]}</option>)}</select></td>
                 <td><button type="button" className="work-schedule-link" onClick={() => { setDetailError(''); setSelectedItem(item); }}>Xem chi tiết</button></td>
               </tr>; })}</tbody>
             </table>

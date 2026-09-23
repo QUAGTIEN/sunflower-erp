@@ -112,11 +112,16 @@ test('work groups share one table workspace and status failure requires a note',
   const rules = read('firestore.rules');
   assert.match(page, /work-schedule-group-tabs/);
   assert.doesNotMatch(page, /<aside className="work-schedule-groups"/);
+  assert.doesNotMatch(page, /work-schedule-group-header/);
+  assert.match(page, /work-schedule-status-filters/);
+  assert.match(page, /work-schedule-status-select/);
+  assert.match(page, /setSelectedItem\(previous => previous\?\.id === item\.id \? updated : previous\)/);
   assert.match(page, /Xác nhận tình trạng công việc/);
   assert.match(page, /Vui lòng nhập lý do không xử lí được/);
   assert.match(page, /eventType: 'work_schedule_cannot_process'/);
   assert.match(page, /activeAdmins\.map/);
   assert.match(css, /\.work-schedule-status-options/);
+  assert.match(css, /\.work-schedule-message \{[^}]*position: fixed/s);
   assert.match(rules, /'cannotProcessNote'/);
 });
 
