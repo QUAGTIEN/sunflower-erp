@@ -98,6 +98,10 @@ test('raw data and leads share the 59-item classification page and list controls
   assert.match(leadsSource, /id="lead-profile-form"/);
   assert.match(leadsSource, /Mở hồ sơ/);
   assert.doesNotMatch(leadsSource, /if \(selectedLead\) \{/);
+  assert.match(leadsSource, /function renderLeadRepository\(\)/);
+  assert.doesNotMatch(leadsSource, /const renderLeadRepository\s*=/);
+  assert.match(leadsSource, /window\.history\.pushState/);
+  assert.match(leadsSource, /window\.addEventListener\('popstate'/);
 
   const customerSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'CrmPage.tsx'),

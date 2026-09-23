@@ -1,6 +1,6 @@
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Building2,
@@ -373,6 +373,27 @@ export const Leads: React.FC<LeadsProps> = ({
   const [leadRepositoryFileName, setLeadRepositoryFileName] = useState('');
   const [leadRepositoryFileLink, setLeadRepositoryFileLink] = useState('');
   const [taxCodeSaveError, setTaxCodeSaveError] = useState('');
+  const leadProfileHistoryActive = useRef(false);
+
+  const enterLeadProfileHistory = useCallback(() => {
+    if (leadProfileHistoryActive.current) return;
+    window.history.pushState({ ...window.history.state, sunflowerView: 'lead-profile' }, '');
+    leadProfileHistoryActive.current = true;
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!leadProfileHistoryActive.current) return;
+      leadProfileHistoryActive.current = false;
+      setShowLeadForm(false);
+      setSelectedLeadId('');
+      setEditingLeadId('');
+      setConvertingCandidateId('');
+      setClassificationLeadId('');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (!initialInsightFilterId) return;
@@ -938,6 +959,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setUploadingFiles([]);
     setForm(createEmptyForm(currentUser, saleUsers));
     setTaxCodeSaveError('');
+    enterLeadProfileHistory();
     setShowLeadForm(true);
   };
 
@@ -975,8 +997,9 @@ export const Leads: React.FC<LeadsProps> = ({
       note: lead.note,
       customerInsightValues: lead.customerInsightValues || []
     });
+    enterLeadProfileHistory();
     setShowLeadForm(true);
-  }, [filterDefinitions]);
+  }, [enterLeadProfileHistory, filterDefinitions]);
 
   const openLeadById = (leadId: string) => {
     const lead = leads.find(entry => entry.id === leadId);
@@ -1144,8 +1167,9 @@ export const Leads: React.FC<LeadsProps> = ({
       note: candidate.note || '',
       customerInsightValues: candidate.customerInsightValues || []
     });
+    enterLeadProfileHistory();
     setShowLeadForm(true);
-  }, [currentUser, filterDefinitions, saleUsers]);
+  }, [currentUser, enterLeadProfileHistory, filterDefinitions, saleUsers]);
 
   useEffect(() => {
     if (!initialCandidate) return;
@@ -1158,6 +1182,10 @@ export const Leads: React.FC<LeadsProps> = ({
   }, [initialCandidate, onInitialCandidateConsumed, openCreateFormFromCandidate]);
 
   const closeLeadForm = () => {
+    if (leadProfileHistoryActive.current) {
+      window.history.back();
+      return;
+    }
     setShowLeadForm(false);
     setSelectedLeadId('');
     setEditingLeadId('');
@@ -1966,7 +1994,7 @@ export const Leads: React.FC<LeadsProps> = ({
     return renderLeadForm();
   }
 
-  const renderLeadRepository = () => {
+  function renderLeadRepository() {
     if (!selectedLead) return null;
     return (
       <section className="lead-panel lead-panel--wide customer-file-repository-card" aria-label={t('File liên quan')}>
@@ -2107,7 +2135,7 @@ export const Leads: React.FC<LeadsProps> = ({
         </div>
       </section>
     );
-  };
+  }
 
   function renderLeadForm() {
     const assignedSaleName = editingLead
