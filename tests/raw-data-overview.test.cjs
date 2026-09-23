@@ -7,6 +7,7 @@ const ts = require('typescript');
 const source = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'model', 'rawDataOverview.ts'), 'utf8');
 const overviewSource = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'components', 'RawDataOverview.tsx'), 'utf8');
 const workspaceSource = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'components', 'LeadCandidateWorkspace.tsx'), 'utf8');
+const workspaceStyles = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'Leads.css'), 'utf8');
 const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } });
 const model = {};
 new Function('exports', outputText)(model);
@@ -55,5 +56,6 @@ test('raw data tabs preserve prepared views and overview data between switches',
   assert.match(workspaceSource, /requestIdleCallback/);
   assert.match(workspaceSource, /hidden=\{adminRawView === 'list'\}/);
   assert.match(workspaceSource, /hidden=\{currentUser\.role === 'admin' && adminRawView !== 'list'\}/);
+  assert.match(workspaceStyles, /\.lead-candidate-workspace\[hidden\]\s*\{\s*display:\s*none;/);
   assert.doesNotMatch(workspaceSource, /if \(currentUser\.role === 'admin' && adminRawView !== 'list'\)/);
 });

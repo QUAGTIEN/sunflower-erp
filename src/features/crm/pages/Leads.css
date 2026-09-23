@@ -1062,6 +1062,10 @@
   background: transparent;
 }
 
+.lead-candidate-workspace[hidden] {
+  display: none;
+}
+
 .lead-candidate-warning,
 .lead-candidate-table td > a {
   display: flex;
