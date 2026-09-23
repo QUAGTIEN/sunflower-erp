@@ -53,7 +53,8 @@ test('a newer successful call clears a previous wrong-number warning', () => {
 test('raw data tabs preserve prepared views and overview data between switches', () => {
   assert.match(overviewSource, /memo\(function RawDataOverview/);
   assert.match(workspaceSource, /adminListPrepared/);
-  assert.match(workspaceSource, /requestIdleCallback/);
+  assert.match(workspaceSource, /requestAnimationFrame\(\(\) => setAdminListPrepared\(true\)\)/);
+  assert.doesNotMatch(workspaceSource, /requestIdleCallback\(prepare/);
   assert.match(workspaceSource, /hidden=\{adminRawView === 'list'\}/);
   assert.match(workspaceSource, /hidden=\{currentUser\.role === 'admin' && adminRawView !== 'list'\}/);
   assert.match(workspaceStyles, /\.lead-candidate-workspace\[hidden\]\s*\{\s*display:\s*none;/);

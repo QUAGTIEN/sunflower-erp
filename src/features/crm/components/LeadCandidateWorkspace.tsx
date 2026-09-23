@@ -652,17 +652,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   useEffect(() => {
     if (currentUser.role !== 'admin' || adminListPrepared) return undefined;
-    const prepare = () => setAdminListPrepared(true);
-    const idleWindow = window as unknown as {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (idleWindow.requestIdleCallback) {
-      const idleId = idleWindow.requestIdleCallback(prepare, { timeout: 1200 });
-      return () => idleWindow.cancelIdleCallback?.(idleId);
-    }
-    const timer = window.setTimeout(prepare, 250);
-    return () => window.clearTimeout(timer);
+    const frame = window.requestAnimationFrame(() => setAdminListPrepared(true));
+    return () => window.cancelAnimationFrame(frame);
   }, [adminListPrepared, currentUser.role]);
 
   useEffect(() => {

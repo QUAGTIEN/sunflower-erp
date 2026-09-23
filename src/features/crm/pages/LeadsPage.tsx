@@ -410,17 +410,8 @@ export const Leads: React.FC<LeadsProps> = ({
 
   useEffect(() => {
     if (leadListPrepared) return undefined;
-    const prepare = () => setLeadListPrepared(true);
-    const idleWindow = window as unknown as {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (idleWindow.requestIdleCallback) {
-      const idleId = idleWindow.requestIdleCallback(prepare, { timeout: 1200 });
-      return () => idleWindow.cancelIdleCallback?.(idleId);
-    }
-    const timer = window.setTimeout(prepare, 250);
-    return () => window.clearTimeout(timer);
+    const frame = window.requestAnimationFrame(() => setLeadListPrepared(true));
+    return () => window.cancelAnimationFrame(frame);
   }, [leadListPrepared]);
   const [scheduleLeadId, setScheduleLeadId] = useState('');
   const [scheduleForm, setScheduleForm] = useState<LeadScheduleFormState>({

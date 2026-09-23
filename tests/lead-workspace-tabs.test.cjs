@@ -8,9 +8,10 @@ const source = readFileSync(
   'utf8'
 );
 
-test('lead list is prepared during idle time and preserved between workspace tabs', () => {
+test('lead list is prepared after the first frame and preserved between workspace tabs', () => {
   assert.match(source, /const \[leadListPrepared, setLeadListPrepared\] = useState\(false\)/);
-  assert.match(source, /requestIdleCallback\(prepare, \{ timeout: 1200 \}\)/);
+  assert.match(source, /requestAnimationFrame\(\(\) => setLeadListPrepared\(true\)\)/);
+  assert.doesNotMatch(source, /requestIdleCallback\(prepare/);
   assert.match(source, /leadListPrepared \|\| workspaceTab === 'list'/);
   assert.match(source, /className="lead-data-workspace" hidden=\{workspaceTab !== 'list'\}/);
   assert.match(source, /onClick=\{openLeadListTab\}/);
