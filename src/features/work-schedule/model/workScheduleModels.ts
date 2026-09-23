@@ -32,6 +32,10 @@ export interface WorkScheduleRecord {
   referenceId: string;
   referenceLabel: string;
   notes: string;
+  cannotProcessNote: string;
+  cannotProcessAt: string;
+  cannotProcessById: string;
+  cannotProcessByName: string;
   priority: WorkSchedulePriority;
   taskType: WorkScheduleTaskType;
   groupId: string;
@@ -122,6 +126,10 @@ export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord 
     referenceId: asText(source.referenceId),
     referenceLabel: asText(source.referenceLabel),
     notes: asText(source.notes),
+    cannotProcessNote: asText(source.cannotProcessNote),
+    cannotProcessAt: asText(source.cannotProcessAt),
+    cannotProcessById: asText(source.cannotProcessById),
+    cannotProcessByName: asText(source.cannotProcessByName),
     priority: PRIORITY_VALUES.includes(source.priority as WorkSchedulePriority) ? source.priority as WorkSchedulePriority : 'normal',
     taskType: TASK_TYPE_VALUES.includes(source.taskType as WorkScheduleTaskType) ? source.taskType as WorkScheduleTaskType : 'assigned_task',
     groupId: asText(source.groupId),

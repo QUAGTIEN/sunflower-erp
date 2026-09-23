@@ -352,6 +352,8 @@ service cloud.firestore {
             'title', 'description', 'stage', 'startAt', 'endAt',
             'status', 'progress', 'referenceType', 'referenceId',
             'referenceLabel', 'notes', 'completedAt', 'updatedAt',
+            'cannotProcessNote', 'cannotProcessAt',
+            'cannotProcessById', 'cannotProcessByName',
             'groupId', 'groupName', 'deleted', 'deletedAt'
           ]));
       allow delete: if isAdmin();

@@ -22,6 +22,12 @@ test('new and existing work items keep their status codes with clear labels', ()
   assert.equal(WORK_SCHEDULE_STATUS_LABELS.in_progress, 'Đang xử lí');
   assert.equal(WORK_SCHEDULE_STATUS_LABELS.cannot_process, 'Không xử lí được');
   assert.equal(WORK_SCHEDULE_STATUS_LABELS.completed, 'Đã xử lí');
+  const blocked = normalizeWorkScheduleRecord({
+    status: 'cannot_process', cannotProcessNote: 'Thiếu thông tin kỹ thuật',
+    cannotProcessByName: 'Khánh Ly'
+  });
+  assert.equal(blocked.cannotProcessNote, 'Thiếu thông tin kỹ thuật');
+  assert.equal(blocked.cannotProcessByName, 'Khánh Ly');
 });
 
 test('work groups provide defaults and preserve stored changes', () => {
@@ -98,6 +104,20 @@ test('work page requires a group and uses the shared funnel filter panel', () =>
   for (const file of ['src/components/WorkAssignmentDialog.tsx', 'src/components/SupportRequestDialog.tsx', 'src/components/CallWorkspace.tsx']) {
     assert.match(read(file), /groupId:/);
   }
+});
+
+test('work groups share one table workspace and status failure requires a note', () => {
+  const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
+  const css = read('src/features/work-schedule/pages/WorkSchedule.css');
+  const rules = read('firestore.rules');
+  assert.match(page, /work-schedule-group-tabs/);
+  assert.doesNotMatch(page, /<aside className="work-schedule-groups"/);
+  assert.match(page, /Xác nhận tình trạng công việc/);
+  assert.match(page, /Vui lòng nhập lý do không xử lí được/);
+  assert.match(page, /eventType: 'work_schedule_cannot_process'/);
+  assert.match(page, /activeAdmins\.map/);
+  assert.match(css, /\.work-schedule-status-options/);
+  assert.match(rules, /'cannotProcessNote'/);
 });
 
 test('work and week tabs use the straight underline shared by ERP modules', () => {

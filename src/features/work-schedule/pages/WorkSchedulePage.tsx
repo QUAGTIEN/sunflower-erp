@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Plus, Search } from 'lucide-react';
+import { AlertCircle, FolderCog, Plus, Search } from 'lucide-react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataFilterButton, DataFilterPanel, DataFilterSection } from '@/components/DataWorkspaceFilters';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -59,7 +59,7 @@ type RequiredTaskField = 'groupId' | 'title' | 'assigneeId' | 'dueAt' | 'descrip
 const PAGE_SIZE = 10;
 const ACTIVE_STATUSES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused'];
 const PAGE_REFERENCE_TIME = Date.now();
-const EDITABLE_STATUSES: WorkScheduleStatus[] = ['in_progress', 'not_started', 'cannot_process', 'completed'];
+const EDITABLE_STATUSES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'completed', 'cannot_process'];
 const localDateTime = (value: Date) => new Date(value.getTime() - value.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 const defaultDeadline = () => {
   const value = new Date();
@@ -98,7 +98,6 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   const [items, setItems] = useState<WorkScheduleRecord[]>([]);
   const [groups, setGroups] = useState<WorkScheduleGroupRecord[]>(() => mergeWorkScheduleGroups([]));
   const [selectedGroupId, setSelectedGroupId] = useState('boss');
-  const [groupSearch, setGroupSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'tasks' | 'week'>('tasks');
   const [searchTerm, setSearchTerm] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
@@ -124,6 +123,9 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   const [saving, setSaving] = useState(false);
   const [detailBusy, setDetailBusy] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const [statusNoteItem, setStatusNoteItem] = useState<WorkScheduleRecord | null>(null);
+  const [statusNote, setStatusNote] = useState('');
+  const [statusNoteError, setStatusNoteError] = useState('');
 
   const loadItems = useCallback(async () => {
     setIsLoading(true);
@@ -167,10 +169,6 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
     group.id,
     items.filter(item => inferWorkScheduleGroupId(item) === group.id).length
   ])), [groups, items]);
-  const visibleGroups = useMemo(() => {
-    const query = groupSearch.trim().toLocaleLowerCase('vi-VN');
-    return query ? groups.filter(group => group.name.toLocaleLowerCase('vi-VN').includes(query)) : groups;
-  }, [groupSearch, groups]);
   const groupItems = useMemo(() => items.filter(item => inferWorkScheduleGroupId(item) === effectiveGroupId), [effectiveGroupId, items]);
   const metrics = useMemo(() => ({
     in_progress: groupItems.filter(item => getWorkScheduleDisplayStatus(item.status) === 'in_progress').length,
@@ -319,7 +317,17 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
       setSaving(false);
     }
   };
-  const updateStatus = async (item: WorkScheduleRecord, status: WorkScheduleStatus) => {
+  const updateStatus = async (item: WorkScheduleRecord, status: WorkScheduleStatus, failureNote = '') => {
+    const trimmedFailureNote = failureNote.trim();
+    const activeAdmins = users.filter(user => user.role === 'admin' && user.active !== false);
+    if (status === 'cannot_process' && !trimmedFailureNote) {
+      setStatusNoteError('Vui lòng nhập lý do không xử lí được.');
+      return;
+    }
+    if (status === 'cannot_process' && !isAdmin && activeAdmins.length === 0) {
+      setStatusNoteError('Chưa có tài khoản quản lý đang hoạt động để nhận thông báo.');
+      return;
+    }
     setDetailBusy(true);
     setDetailError('');
     setMessage('');
@@ -327,16 +335,58 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
       const updatedAt = new Date().toISOString();
       const completedAt = status === 'completed' ? updatedAt : null;
       const progress = status === 'completed' ? 100 : status === 'not_started' ? 0 : 50;
-      await dbService.updateDocument('work_schedule_items', item.id, { status, progress, updatedAt, completedAt });
-      const updated = { ...item, status, progress, updatedAt, completedAt: completedAt || undefined };
+      const failureFields = status === 'cannot_process' ? {
+        cannotProcessNote: trimmedFailureNote,
+        cannotProcessAt: updatedAt,
+        cannotProcessById: currentUser.uid,
+        cannotProcessByName: currentUser.displayName
+      } : {};
+      await dbService.updateDocument('work_schedule_items', item.id, { status, progress, updatedAt, completedAt, ...failureFields });
+      if (status === 'cannot_process' && !isAdmin) {
+        const eventKey = `work_schedule:cannot_process:${item.id}:${updatedAt}`;
+        await Promise.all(activeAdmins.map(admin => dbService.addDocument('notifications', {
+          id: `work-status-${item.id}-${admin.uid}-${Date.now()}`,
+          schemaVersion: 1,
+          recipientId: admin.uid,
+          module: 'system',
+          eventType: 'work_schedule_cannot_process',
+          eventKey,
+          entityId: item.id,
+          entityCode: item.referenceLabel || item.title,
+          title: `${currentUser.displayName} không thể xử lí công việc`,
+          message: `${item.title} · ${trimmedFailureNote}`,
+          createdAt: updatedAt,
+          createdById: currentUser.uid,
+          source: 'manual',
+          readAt: null
+        })));
+      }
+      const updated = { ...item, status, progress, updatedAt, completedAt: completedAt || undefined, ...failureFields };
       setItems(previous => previous.map(current => current.id === item.id ? updated : current));
       setSelectedItem(updated);
+      setStatusNoteItem(null);
+      setStatusNote('');
+      setStatusNoteError('');
       setMessage(`Đã chuyển công việc sang trạng thái ${WORK_SCHEDULE_STATUS_LABELS[status].toLowerCase()}.`);
     } catch {
-      setDetailError('Không thể cập nhật trạng thái công việc. Vui lòng thử lại.');
+      const errorMessage = status === 'cannot_process'
+        ? 'Không thể lưu trạng thái hoặc gửi thông báo cho quản lý. Vui lòng thử lại.'
+        : 'Không thể cập nhật trạng thái công việc. Vui lòng thử lại.';
+      if (statusNoteItem) setStatusNoteError(errorMessage);
+      else setDetailError(errorMessage);
     } finally {
       setDetailBusy(false);
     }
+  };
+  const requestStatusChange = (item: WorkScheduleRecord, status: WorkScheduleStatus) => {
+    if (getWorkScheduleDisplayStatus(item.status) === status) return;
+    if (status === 'cannot_process') {
+      setStatusNoteItem(item);
+      setStatusNote(item.cannotProcessNote || '');
+      setStatusNoteError('');
+      return;
+    }
+    void updateStatus(item, status);
   };
   const deleteCompletedTask = async (item: WorkScheduleRecord) => {
     if (!canPermanentlyDeleteWorkSchedule(currentUser.role, item.status) || detailBusy) return;
@@ -440,21 +490,16 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
     {message && <div className="work-schedule-message" role="status">{message}</div>}
 
     {activeTab === 'tasks' ? <>
-      <div className="work-schedule-workspace">
-        <aside className="work-schedule-groups" aria-label="Nhóm công việc">
-          <header><strong>Nhóm công việc</strong>{isAdmin && <button type="button" className="btn btn-outline btn-sm" onClick={() => openGroupDialog('create')}><Plus size={14} />Thêm nhóm</button>}</header>
-          <label className="work-schedule-group-search"><Search size={14}/><input aria-label="Tìm nhóm công việc" placeholder="Tìm nhóm công việc..." value={groupSearch} onChange={event => setGroupSearch(event.target.value)} /></label>
-          <div className="work-schedule-group-list">
-            {visibleGroups.map(group => <button key={group.id} type="button" className={effectiveGroupId === group.id ? 'is-active' : ''} onClick={() => { setSelectedGroupId(group.id); setPage(1); }}><span>{group.name}</span><strong>{groupCounts[group.id] || 0}</strong></button>)}
-            {visibleGroups.length === 0 && <p>Không tìm thấy nhóm phù hợp.</p>}
-          </div>
-          <p className="work-schedule-group-help">Chọn nhóm trước khi tạo công việc</p>
-        </aside>
-
-        <section className="work-schedule-card work-schedule-group-content">
+      <section className="work-schedule-card work-schedule-group-content">
+          <nav className="work-schedule-group-nav" aria-label="Nhóm công việc">
+            <div className="work-schedule-group-tabs">
+              {groups.map(group => <button key={group.id} type="button" className={effectiveGroupId === group.id ? 'is-active' : ''} onClick={() => { setSelectedGroupId(group.id); setPage(1); }}><span>{group.name}</span><strong>{groupCounts[group.id] || 0}</strong></button>)}
+            </div>
+            {isAdmin && <div className="work-schedule-group-actions"><button type="button" className="btn btn-outline btn-sm" onClick={() => openGroupDialog('rename')} disabled={!selectedGroup}><FolderCog size={14} />Quản lý nhóm</button><button type="button" className="btn btn-outline btn-sm" onClick={() => openGroupDialog('create')}><Plus size={14} />Thêm nhóm</button></div>}
+          </nav>
           <header className="work-schedule-group-header">
             <div><h2>{selectedGroup?.name || 'Chưa chọn nhóm'}</h2><span>{groupItems.length} công việc</span></div>
-            <div>{isAdmin && <select aria-label="Nhân sự" value={assigneeFilter} onChange={event => setFilterAndFirstPage(setAssigneeFilter, event.target.value)}><option value="all">Nhân sự: Tất cả</option>{activeUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>}{isAdmin && selectedGroup && <button type="button" className="btn btn-outline" onClick={() => openGroupDialog('rename')}>Quản lý nhóm</button>}</div>
+            <div>{isAdmin && <select aria-label="Nhân sự" value={assigneeFilter} onChange={event => setFilterAndFirstPage(setAssigneeFilter, event.target.value)}><option value="all">Nhân sự: Tất cả</option>{activeUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>}</div>
           </header>
           <div className="work-schedule-status-summary">
             {(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <button key={status} type="button" className={`work-schedule-summary work-schedule-summary--${status} ${statusFilter === status ? 'is-active' : ''}`} onClick={() => setFilterAndFirstPage(setStatusFilter, statusFilter === status ? 'all' : status)}><span>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</span><strong>{metrics[status]}</strong></button>)}
@@ -483,8 +528,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
             {!isLoading && pageItems.length === 0 && <div className="work-schedule-empty">Chưa có công việc phù hợp trong nhóm này.</div>}
           </div>
           <footer className="work-schedule-pagination"><span>{filteredItems.length} công việc</span><div><span>{filteredItems.length === 0 ? '0–0' : `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredItems.length)}`} / {filteredItems.length}</span><button type="button" className="btn btn-outline btn-sm" disabled={currentPage <= 1} onClick={() => setPage(previous => Math.max(1, previous - 1))}>Trước</button><button type="button" className="btn btn-outline btn-sm" disabled={currentPage >= totalPages} onClick={() => setPage(previous => Math.min(totalPages, previous + 1))}>Sau</button></div></footer>
-        </section>
-      </div>
+      </section>
 
       <DataFilterPanel open={showFilters} title="Lọc danh sách công việc" description="Lọc theo trạng thái, mức ưu tiên, phân hệ, nhân sự và thời gian." activeCount={activeFilterCount} onClose={() => setShowFilters(false)} onReset={clearFilters}>
         <DataFilterSection title="Trạng thái" selectedCount={statusFilter === 'all' ? 0 : 1} defaultExpanded><select value={statusFilter} onChange={event => setFilterAndFirstPage(setStatusFilter, event.target.value as 'all' | WorkScheduleDisplayStatus)}><option value="all">Tất cả trạng thái</option>{(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <option key={status} value={status}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</option>)}</select></DataFilterSection>
@@ -502,17 +546,28 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
       <section className="work-schedule-detail" role="dialog" aria-modal="true" aria-labelledby="work-schedule-detail-title">
         <header><div><span>Chi tiết công việc</span><h2 id="work-schedule-detail-title">{selectedItem.title}</h2></div><button type="button" className="btn btn-outline" onClick={() => setSelectedItem(null)} disabled={detailBusy}>Đóng</button></header>
         <div className="work-schedule-detail__grid"><div><span>Trạng thái</span><strong className={`work-schedule-status work-schedule-status--${getWorkScheduleDisplayStatus(selectedItem.status)}`}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[getWorkScheduleDisplayStatus(selectedItem.status)]}</strong></div><div><span>Mức ưu tiên</span><strong className={`work-schedule-priority work-schedule-priority--${selectedItem.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[selectedItem.priority]}</strong></div><div><span>Nhóm công việc</span><strong>{groups.find(group => group.id === inferWorkScheduleGroupId(selectedItem))?.name || selectedItem.groupName || 'Chưa phân nhóm'}</strong></div><div><span>Người thực hiện</span><strong>{selectedItem.assigneeName}</strong></div><div><span>Người giao việc</span><strong>{selectedItem.assignedByName || 'Tự tạo'}</strong></div><div><span>Thời hạn</span><strong>{dateTimeLabel(selectedItem.endAt)}</strong></div><div><span>Phân hệ</span><strong>{WORK_SCHEDULE_REFERENCE_LABELS[selectedItem.referenceType]}</strong></div></div>
-        <article><h3>Nội dung công việc</h3><p>{selectedItem.description || 'Chưa có nội dung.'}</p>{selectedItem.requestedByName && <p>Người yêu cầu hỗ trợ: <strong>{selectedItem.requestedByName}</strong></p>}</article>
+        <section className="work-schedule-status-control" aria-labelledby="work-status-title">
+          <div><h3 id="work-status-title">Xác nhận tình trạng công việc</h3><p>Có thể thay đổi trạng thái bất cứ lúc nào.</p></div>
+          <div className="work-schedule-status-options" role="group" aria-label="Chọn trạng thái công việc">
+            {EDITABLE_STATUSES.map(status => { const isActive = getWorkScheduleDisplayStatus(selectedItem.status) === status; return <button key={status} type="button" className={`work-schedule-status-option work-schedule-status-option--${status} ${isActive ? 'is-active' : ''}`} aria-pressed={isActive} onClick={() => requestStatusChange(selectedItem, status)} disabled={detailBusy || isActive}><span aria-hidden="true"/><strong>{WORK_SCHEDULE_STATUS_LABELS[status]}</strong></button>; })}
+          </div>
+        </section>
+        <article><h3>Nội dung công việc</h3><p>{selectedItem.description || 'Chưa có nội dung.'}</p>{selectedItem.requestedByName && <p>Người yêu cầu hỗ trợ: <strong>{selectedItem.requestedByName}</strong></p>}{selectedItem.cannotProcessNote && <div className="work-schedule-failure-note"><strong>Lý do không xử lí được</strong><p>{selectedItem.cannotProcessNote}</p><small>{selectedItem.cannotProcessByName || selectedItem.assigneeName}{selectedItem.cannotProcessAt ? ` · ${dateTimeLabel(selectedItem.cannotProcessAt)}` : ''}</small></div>}</article>
         {detailError && <p className="work-schedule-detail-error" role="alert">{detailError}</p>}
         <footer>
           {selectedItem.referenceId && moduleFromReference(selectedItem.referenceType) && <button type="button" className="btn btn-outline" onClick={() => openSource(selectedItem)} disabled={detailBusy}>Mở hồ sơ khách hàng</button>}
           {canPermanentlyDeleteWorkSchedule(currentUser.role, selectedItem.status) && <button type="button" className="btn btn-outline work-schedule-delete" onClick={() => void deleteCompletedTask(selectedItem)} disabled={detailBusy}>Xóa vĩnh viễn</button>}
           <button type="button" className="btn btn-outline" onClick={() => openEdit(selectedItem)} disabled={detailBusy}>Chỉnh sửa</button>
-          {getWorkScheduleDisplayStatus(selectedItem.status) === 'not_started' && <button type="button" className="btn btn-outline" onClick={() => void updateStatus(selectedItem, 'in_progress')} disabled={detailBusy}>{detailBusy ? 'Đang cập nhật...' : 'Bắt đầu xử lí'}</button>}
-          {!['cannot_process', 'completed'].includes(getWorkScheduleDisplayStatus(selectedItem.status)) && <button type="button" className="btn btn-outline" onClick={() => void updateStatus(selectedItem, 'cannot_process')} disabled={detailBusy}>Không xử lí được</button>}
-          {selectedItem.status !== 'completed' && <button type="button" className="btn btn-primary" onClick={() => void updateStatus(selectedItem, 'completed')} disabled={detailBusy}>{detailBusy ? 'Đang cập nhật...' : 'Đánh dấu hoàn thành'}</button>}
         </footer>
       </section>
+    </div>}
+
+    {statusNoteItem && <div className="work-schedule-modal-overlay work-schedule-status-note-overlay" onMouseDown={event => { if (event.target === event.currentTarget && !detailBusy) setStatusNoteItem(null); }}>
+      <form className="work-schedule-modal work-schedule-status-note-modal" role="dialog" aria-modal="true" aria-labelledby="work-status-note-title" onSubmit={event => { event.preventDefault(); void updateStatus(statusNoteItem, 'cannot_process', statusNote); }}>
+        <header><div><strong id="work-status-note-title">Xác nhận không xử lí được</strong><span>Lý do sẽ được lưu trong công việc và gửi tới tài khoản quản lý.</span></div><button type="button" className="btn btn-outline" onClick={() => setStatusNoteItem(null)} disabled={detailBusy}>Đóng</button></header>
+        <div className="work-schedule-form-grid"><label className="is-wide">Lý do *<textarea autoFocus rows={5} maxLength={500} value={statusNote} onChange={event => { setStatusNote(event.target.value); setStatusNoteError(''); }} placeholder="Nêu rõ trở ngại hoặc nguyên nhân không thể xử lí công việc này..." aria-invalid={Boolean(statusNoteError)} /></label>{statusNoteError && <div className="work-schedule-form-error is-wide" role="alert">{statusNoteError}</div>}<small className="work-schedule-note-count is-wide">{statusNote.length}/500 ký tự</small></div>
+        <footer><button type="button" className="btn btn-outline" onClick={() => setStatusNoteItem(null)} disabled={detailBusy}>Hủy</button><button type="submit" className="btn btn-primary" disabled={detailBusy}>{detailBusy ? 'Đang xác nhận...' : 'Xác nhận trạng thái'}</button></footer>
+      </form>
     </div>}
 
     {isFormOpen && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setIsFormOpen(false); }}>
@@ -528,7 +583,6 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
           <label>Phân hệ liên kết<select value={form.referenceType} onChange={event => setForm(previous => ({ ...previous, referenceType: event.target.value as WorkScheduleReferenceType, referenceId: '', referenceLabel: '' }))}><option value="none">Không liên kết</option><option value="lead_candidate">Dữ liệu thô</option><option value="lead">Tiềm năng</option><option value="customer">Khách hàng</option></select></label>
           <label>Khách hàng<select disabled={form.referenceType === 'none'} value={form.referenceId} onChange={event => handleReferenceChange(event.target.value)}><option value="">Chọn khách hàng</option>{sourceOptions.map(item => <option key={item.id} value={item.id}>{item.companyName || item.id}</option>)}</select></label>
           <label>Mức ưu tiên<select value={form.priority} onChange={event => setForm(previous => ({ ...previous, priority: event.target.value as WorkSchedulePriority }))}><option value="normal">Bình thường</option><option value="high">Cao</option><option value="urgent">Khẩn cấp</option></select></label>
-          {editingItem && <label>Trạng thái<select value={form.status} onChange={event => setForm(previous => ({ ...previous, status: event.target.value as WorkScheduleStatus }))}>{EDITABLE_STATUSES.map(status => <option key={status} value={status}>{WORK_SCHEDULE_STATUS_LABELS[status]}</option>)}</select></label>}
         </div>
         <footer><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)} disabled={saving}>Hủy</button><button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu công việc'}</button></footer>
       </form>
