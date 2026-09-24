@@ -125,6 +125,16 @@ test('work groups share one table workspace and status failure requires a note',
   assert.match(rules, /'cannotProcessNote'/);
 });
 
+test('dashboard work-group navigation opens the matching schedule group', () => {
+  const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
+  const shell = read('src/app/AppShell.tsx');
+  assert.match(page, /initialGroupId/);
+  assert.match(page, /useState\(initialGroupId \|\| 'boss'\)/);
+  assert.match(page, /onInitialGroupConsumed/);
+  assert.match(shell, /setWorkScheduleGroupNavigation\(groupId\)/);
+  assert.match(shell, /initialGroupId=\{workScheduleGroupNavigation\}/);
+});
+
 test('work table stays compact with flat filters, colored statuses and an empty state', () => {
   const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');

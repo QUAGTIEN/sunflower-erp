@@ -188,13 +188,15 @@
 
 .dashboard-task-list {
   display: grid;
+  min-height: 0;
   flex: 1;
   align-content: stretch;
+  overflow-y: auto;
 }
 
 .dashboard-task-list article {
   display: grid;
-  grid-template-columns: 32px minmax(150px, 1fr) 88px 118px 84px;
+  grid-template-columns: 32px minmax(140px, 1fr) 54px 82px 112px 74px;
   min-width: 0;
   align-items: center;
   gap: 10px;
@@ -206,6 +208,7 @@
 .dashboard-task-list article strong { overflow: hidden; color: #263e66; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-task-list article time { overflow: hidden; color: #60728e; font-size: 10.5px; font-style: normal; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .dashboard-task-list .btn { min-width: 82px; white-space: nowrap; }
+.dashboard-task-list__count { color: #415878; font-size: 10.5px; font-weight: 650; white-space: nowrap; }
 
 .dashboard-task-list__icon {
   display: grid;
@@ -217,9 +220,10 @@
   color: #2563eb;
 }
 
-.dashboard-task-list article.is-urgent .dashboard-task-list__icon { background: #fff0f0; color: #dc2626; }
-.dashboard-task-list article.is-warning .dashboard-task-list__icon { background: #fff6e8; color: #d97706; }
-.dashboard-task-list article.is-success .dashboard-task-list__icon { background: #eaf8f1; color: #059669; }
+.dashboard-task-list article.is-tone-1 .dashboard-task-list__icon { background: #edf2f7; color: #4f6478; }
+.dashboard-task-list article.is-tone-2 .dashboard-task-list__icon { background: #e6f6f5; color: #0f777d; }
+.dashboard-task-list article.is-tone-3 .dashboard-task-list__icon { background: #eaf5ef; color: #356f53; }
+.dashboard-task-list article.is-tone-4 .dashboard-task-list__icon { background: #fff2e6; color: #a8581d; }
 
 .dashboard-task-list__priority {
   display: inline-flex;
@@ -236,22 +240,22 @@
   white-space: nowrap;
 }
 
-.dashboard-task-list article.is-urgent .dashboard-task-list__priority { background: #fff0f0; color: #dc2626; }
-.dashboard-task-list article.is-warning .dashboard-task-list__priority { background: #fff3df; color: #d97706; }
-.dashboard-task-list article.is-success .dashboard-task-list__priority { background: #eaf8f1; color: #07815b; }
+.dashboard-task-list__priority.is-urgent { background: #fff0f0; color: #dc2626; }
+.dashboard-task-list__priority.is-high { background: #fff3df; color: #d97706; }
+.dashboard-task-list__priority.is-normal { background: #edf4ff; color: #2563eb; }
 
 @media (max-width: 1380px) {
   .dashboard-revenue-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .dashboard-task-list article {
-    grid-template-columns: 28px minmax(145px, 1fr) auto auto 72px;
-    gap: 8px;
-    padding-inline: 12px;
+    grid-template-columns: 28px minmax(100px, 1fr) 42px 66px 82px 56px;
+    gap: 6px;
+    padding-inline: 10px;
   }
 
   .dashboard-task-list .btn {
-    min-width: 72px;
-    padding-inline: 8px;
+    min-width: 56px;
+    padding-inline: 6px;
   }
 }
 
@@ -368,19 +372,29 @@
     gap: 6px 10px;
   }
 
-  .dashboard-task-list__priority {
+  .dashboard-task-list article strong {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .dashboard-task-list__count {
     grid-column: 2;
     grid-row: 2;
   }
 
-  .dashboard-task-list article time {
+  .dashboard-task-list__priority {
     grid-column: 2;
     grid-row: 3;
   }
 
+  .dashboard-task-list article time {
+    grid-column: 2;
+    grid-row: 4;
+  }
+
   .dashboard-task-list article .btn {
     grid-column: 3;
-    grid-row: 1 / span 3;
+    grid-row: 1 / span 4;
   }
 }
 

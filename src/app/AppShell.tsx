@@ -169,6 +169,7 @@ function AppShell() {
   const [candidateLeadConversion, setCandidateLeadConversion] = useState<LeadCandidateRecord | null>(null);
   const [supportNavigationTarget, setSupportNavigationTarget] = useState<{ module: 'customer_data' | 'leads' | 'crm'; entityId: string } | null>(null);
   const [customerInsightNavigation, setCustomerInsightNavigation] = useState<{ module: 'customer_data' | 'leads' | 'crm' | 'sales'; itemId: string } | null>(null);
+  const [workScheduleGroupNavigation, setWorkScheduleGroupNavigation] = useState('');
 
   const handleRepeatOrderRequest = (poId: string) => {
     setSelectedPoId('');
@@ -605,7 +606,7 @@ function AppShell() {
         );
       case 'work_schedule':
         if (!isPageAllowed('work_schedule')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
-        return <WorkSchedule currentUser={user} users={users} candidates={leadCandidates} leads={leads} customers={customers} onOpenRecord={(module, id) => { setSupportNavigationTarget({ module, entityId: id }); setActivePage(module); }} />;
+        return <WorkSchedule currentUser={user} users={users} candidates={leadCandidates} leads={leads} customers={customers} initialGroupId={workScheduleGroupNavigation} onInitialGroupConsumed={() => setWorkScheduleGroupNavigation('')} onOpenRecord={(module, id) => { setSupportNavigationTarget({ module, entityId: id }); setActivePage(module); }} />;
       case 'sales':
         if (!isPageAllowed('sales')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
         return (
@@ -721,6 +722,10 @@ function AppShell() {
             onNavigateInsight={(module, itemId) => {
               setCustomerInsightNavigation({ module, itemId });
               setActivePage(module);
+            }}
+            onNavigateWorkGroup={(groupId) => {
+              setWorkScheduleGroupNavigation(groupId);
+              setActivePage('work_schedule');
             }}
             onOpenPO={(poId) => {
               setSelectedPoId(poId);

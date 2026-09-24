@@ -39,6 +39,8 @@ interface WorkScheduleProps {
   leads?: CustomerEntity[];
   customers?: CustomerEntity[];
   onOpenRecord?: (module: SourceModule, id: string) => void;
+  initialGroupId?: string;
+  onInitialGroupConsumed?: () => void;
 }
 
 interface ScheduleFormState {
@@ -93,12 +95,21 @@ const isInPeriod = (item: WorkScheduleRecord, period: PeriodFilter, referenceTim
 };
 const isErrorMessage = (value: string) => /^(Không thể|Vui lòng|Chưa có)|\bcòn \d+ công việc/.test(value);
 
-export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, candidates = [], leads = [], customers = [], onOpenRecord }) => {
+export const WorkSchedule: React.FC<WorkScheduleProps> = ({
+  currentUser,
+  users,
+  candidates = [],
+  leads = [],
+  customers = [],
+  onOpenRecord,
+  initialGroupId = '',
+  onInitialGroupConsumed
+}) => {
   const isAdmin = currentUser.role === 'admin';
   const now = PAGE_REFERENCE_TIME;
   const [items, setItems] = useState<WorkScheduleRecord[]>([]);
   const [groups, setGroups] = useState<WorkScheduleGroupRecord[]>(() => mergeWorkScheduleGroups([]));
-  const [selectedGroupId, setSelectedGroupId] = useState('boss');
+  const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId || 'boss');
   const [activeTab, setActiveTab] = useState<'tasks' | 'week'>('tasks');
   const [searchTerm, setSearchTerm] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
@@ -149,6 +160,10 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({ currentUser, users, 
   // Loading is the external synchronization performed by this effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadItems(); }, [loadItems]);
+  useEffect(() => {
+    if (!initialGroupId || !groups.some(group => group.id === initialGroupId)) return;
+    onInitialGroupConsumed?.();
+  }, [groups, initialGroupId, onInitialGroupConsumed]);
   useEffect(() => {
     if (!message || isErrorMessage(message)) return undefined;
     const timer = window.setTimeout(() => setMessage(''), 4_000);

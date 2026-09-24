@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { DonutChart } from '@/components/VisualCharts';
@@ -7,7 +7,7 @@ import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { DesignRequest } from '@/features/design/model/designWorkflow';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
 import {
-  AlertTriangle, Bell, ChevronDown, ChevronUp, Clock, FileText, Percent, PhoneCall, Plus, Sliders, Trash2
+  Bell, ChevronDown, ChevronUp, ClipboardList, Clock, Plus, Sliders, Trash2
 } from 'lucide-react';
 import {
   getPOBadgeClass,
@@ -25,6 +25,14 @@ import { PageContextHeader } from '@/components/PageContextHeader';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import type { CustomerInsightModule } from '@/features/crm/model/customerInsightCatalog';
+import {
+  WORK_SCHEDULE_PRIORITY_LABELS,
+  inferWorkScheduleGroupId,
+  mergeWorkScheduleGroups,
+  normalizeWorkScheduleRecords,
+  type WorkScheduleGroupRecord,
+  type WorkScheduleRecord
+} from '@/features/work-schedule/model/workScheduleModels';
 import { CustomerInsightDashboard } from '@/features/dashboard/components/CustomerInsightDashboard';
 import './Dashboard.css';
 
@@ -42,6 +50,7 @@ interface DashboardProps {
   invoices: any[];
   onNavigate: (page: string) => void;
   onNavigateInsight: (module: CustomerInsightModule, itemId: string) => void;
+  onNavigateWorkGroup: (groupId: string) => void;
   onOpenPO: (poId: string) => void;
 }
 
@@ -111,15 +120,6 @@ const formatCompactMoney = (value: number) => {
   return value.toLocaleString('vi-VN');
 };
 
-const earliestValidDate = (values: unknown[]): string => {
-  const dates = values
-    .filter((value): value is string => typeof value === 'string' && value.length > 0)
-    .map(value => ({ value, timestamp: new Date(value).getTime() }))
-    .filter(entry => Number.isFinite(entry.timestamp))
-    .sort((left, right) => left.timestamp - right.timestamp);
-  return dates[0]?.value || '';
-};
-
 const RevenueTrendChart: React.FC<{ data: RevenueTrendPoint[] }> = ({ data }) => {
   const width = 620;
   const height = 164;
@@ -177,9 +177,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   inventory,
   purchaseOrders,
   productionCommands,
-  invoices,
   onNavigate,
   onNavigateInsight,
+  onNavigateWorkGroup,
   onOpenPO
 }) => {
   const { t } = useLanguage();
@@ -194,7 +194,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const activeInventoryList = (inventory || []).filter(i => !i.deleted);
   const activePurchaseOrdersList = (purchaseOrders || []).filter(pur => !pur.deleted);
   const activeProductionCommandsList = (productionCommands || []).filter(cmd => !cmd.deleted);
-  const activeInvoicesList = (invoices || []).filter(inv => !inv.deleted);
 
   // Timeframe states
   const [filterMode, setFilterMode] = useState<'month' | 'range'>('month');
@@ -212,6 +211,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [reminders, setReminders] = useState<any[]>([]);
   const [newReminderText, setNewReminderText] = useState('');
   const [newReminderDate, setNewReminderDate] = useState('');
+  const [workScheduleItems, setWorkScheduleItems] = useState<WorkScheduleRecord[]>([]);
+  const [workScheduleGroups, setWorkScheduleGroups] = useState<WorkScheduleGroupRecord[]>(() => mergeWorkScheduleGroups([]));
 
   // Load reminders
   useEffect(() => {
@@ -225,6 +226,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
     fetchReminders();
   }, []);
+
+  useEffect(() => {
+    const loadWorkSchedule = async () => {
+      try {
+        const [items, groups] = await Promise.all([
+          user.role === 'admin'
+            ? dbService.getCollection('work_schedule_items')
+            : dbService.getCollectionByField('work_schedule_items', 'assigneeId', user.uid),
+          dbService.getCollection('work_schedule_groups').catch(() => [])
+        ]);
+        setWorkScheduleItems(normalizeWorkScheduleRecords(items).filter(item => !item.deleted));
+        setWorkScheduleGroups(mergeWorkScheduleGroups(groups));
+      } catch (error) {
+        console.error('Error loading work schedule overview:', error);
+      }
+    };
+    void loadWorkSchedule();
+  }, [user.role, user.uid]);
 
   const matchesTimeframe = (dateString?: string) => {
     if (!dateString) return false;
@@ -288,23 +307,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }, { gross: 0, directDiscount: 0, net: 0 });
     return { ...metrics, label: `T${period.getMonth() + 1}` };
   });
-
-  const now = new Date();
-  const upcomingDebtLimit = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const receivablesNeedingAttention = activeInvoicesList.filter(invoice => {
-    if (invoice.type !== 'receivable' || invoice.status === 'paid') return false;
-    const dueDate = new Date(invoice.dueDate || '');
-    return !Number.isNaN(dueDate.getTime()) && dueDate <= upcomingDebtLimit;
-  });
-  const pendingDiscountPOs = filteredPOs.filter(po => isPOInQueue(po, 'waiting_discount'));
-  const waitingInvoicePOs = filteredPOs.filter(po => isPOInQueue(po, 'waiting_invoice'));
-  const followUpLeads = (leads || []).filter(lead => (
-    !lead.deleted
-    && !lead.returnedToRawData
-    && lead.stage !== 'converted'
-    && !lead.convertedCustomerId
-    && (lead.customerInsightValues || []).includes('contact_later')
-  ));
 
   // Warning for low stock materials
   const lowStockMaterials = activeInventoryList.filter(item => item.qtyInStock < item.minQtyAlert);
@@ -399,6 +401,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
       console.error(err);
     }
   };
+
+  const workGroupSummaries = useMemo(() => {
+    const activeStatuses = new Set(['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused']);
+    const priorityRank = { urgent: 0, high: 1, normal: 2 } as const;
+    return workScheduleGroups.map(group => {
+      const tasks = workScheduleItems
+        .filter(item => activeStatuses.has(item.status) && inferWorkScheduleGroupId(item) === group.id)
+        .sort((left, right) => {
+          const leftDate = new Date(left.endAt).getTime();
+          const rightDate = new Date(right.endAt).getTime();
+          if (!Number.isFinite(leftDate)) return 1;
+          if (!Number.isFinite(rightDate)) return -1;
+          return leftDate - rightDate;
+        });
+      const priority = [...tasks].sort((left, right) => priorityRank[left.priority] - priorityRank[right.priority])[0]?.priority || 'normal';
+      return { group, tasks, priority, nearestDue: tasks[0]?.endAt || '' };
+    });
+  }, [workScheduleGroups, workScheduleItems]);
 
   // DRILL-DOWN SUB-VIEW RENDERING
   if (selectedProgressCategory) {
@@ -723,22 +743,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   }
 
-  const earliestReceivableDue = [...receivablesNeedingAttention]
-    .sort((left, right) => new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime())[0]?.dueDate;
-  const earliestDiscountDue = earliestValidDate(pendingDiscountPOs.flatMap(po => [
-    po.discountDueDate,
-    po.settlementDueDate,
-    po.dueDate,
-    po.expectedDeliveryDate
-  ]));
-  const earliestInvoiceDue = earliestValidDate(waitingInvoicePOs.flatMap(po => [
-    po.invoiceDueDate,
-    po.dueDate,
-    po.expectedDeliveryDate
-  ]));
-  const earliestFollowUpDue = earliestValidDate(followUpLeads.map(lead => lead.nextFollowUpAt));
-  const taskDueLabel = (date: string) => date ? `${t('Hạn')}: ${formatDate(date)}` : t('Chưa có hạn');
-
   const adminRevenueContent = (
     <section className="customer-overview-panel dashboard-revenue-panel" aria-labelledby="dashboard-revenue-title">
       <header className="customer-overview-panel__header">
@@ -793,34 +797,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <h3 id="dashboard-task-title">{t('Việc cần xử lý')}</h3>
       </header>
       <div className="dashboard-task-list">
-        <article className="is-urgent">
-          <span className="dashboard-task-list__icon"><AlertTriangle size={17} aria-hidden="true" /></span>
-          <strong>{receivablesNeedingAttention.length} {t('công nợ sắp quá hạn')}</strong>
-          <span className="dashboard-task-list__priority">{t('Ưu tiên cao')}</span>
-          <time>{taskDueLabel(earliestReceivableDue)}</time>
-          <button type="button" className="btn btn-sm btn-outline" disabled={receivablesNeedingAttention.length === 0} onClick={() => onNavigate('accounting')}>{t('Xem ngay')}</button>
-        </article>
-        <article className="is-warning">
-          <span className="dashboard-task-list__icon"><Percent size={17} aria-hidden="true" /></span>
-          <strong>{pendingDiscountPOs.length} {t('kỳ chiết khấu chờ duyệt')}</strong>
-          <span className="dashboard-task-list__priority">{t('Cần xử lý')}</span>
-          <time>{taskDueLabel(earliestDiscountDue)}</time>
-          <button type="button" className="btn btn-sm btn-outline" disabled={pendingDiscountPOs.length === 0} onClick={() => setSelectedProgressCategory('waiting_discount')}>{t('Duyệt')}</button>
-        </article>
-        <article>
-          <span className="dashboard-task-list__icon"><FileText size={17} aria-hidden="true" /></span>
-          <strong>{waitingInvoicePOs.length} {t('PO chờ xuất hóa đơn')}</strong>
-          <span className="dashboard-task-list__priority">{t('Bình thường')}</span>
-          <time>{taskDueLabel(earliestInvoiceDue)}</time>
-          <button type="button" className="btn btn-sm btn-outline" disabled={waitingInvoicePOs.length === 0} onClick={() => setSelectedProgressCategory('waiting_invoice')}>{t('Xử lý')}</button>
-        </article>
-        <article className="is-success">
-          <span className="dashboard-task-list__icon"><PhoneCall size={17} aria-hidden="true" /></span>
-          <strong>{followUpLeads.length} {t('khách hàng cần liên hệ lại')}</strong>
-          <span className="dashboard-task-list__priority">{t('Thấp')}</span>
-          <time>{taskDueLabel(earliestFollowUpDue)}</time>
-          <button type="button" className="btn btn-sm btn-outline" disabled={followUpLeads.length === 0} onClick={() => onNavigateInsight('leads', 'contact_later')}>{t('Xem')}</button>
-        </article>
+        {workGroupSummaries.map((summary, index) => (
+          <article key={summary.group.id} className={`is-tone-${(index % 4) + 1}`}>
+            <span className="dashboard-task-list__icon"><ClipboardList size={17} aria-hidden="true" /></span>
+            <strong title={summary.group.name}>{summary.group.name}</strong>
+            <span className="dashboard-task-list__count">{summary.tasks.length} {t('việc')}</span>
+            <span className={`dashboard-task-list__priority is-${summary.priority}`}>{t(WORK_SCHEDULE_PRIORITY_LABELS[summary.priority])}</span>
+            <time>{summary.nearestDue ? `${t('Hạn')}: ${formatDate(summary.nearestDue)}` : t('Chưa có việc')}</time>
+            <button type="button" className="btn btn-sm btn-outline" onClick={() => onNavigateWorkGroup(summary.group.id)}>{t('Xem')}</button>
+          </article>
+        ))}
       </div>
     </section>
   );

@@ -44,7 +44,10 @@ test('dashboard renders the focused overview and limits classification records t
     'utf8'
   );
   assert.match(dashboardSource, /DASHBOARD_GROUP_IDS/);
-  assert.match(dashboardSource, /getCustomerInsightNavigation\(targetItem\.id\)/);
+  assert.match(dashboardSource, /getCustomerInsightNavigation\(item\.id\)/);
+  assert.match(dashboardSource, /selectedGroup\.items\.map/);
+  assert.match(dashboardSource, /setSelectedGroupId\(group\.id\)/);
+  assert.match(dashboardSource, /phân loại/);
   assert.match(dashboardSource, /Dữ liệu thô/);
   assert.match(dashboardSource, /Tiềm năng/);
   assert.match(dashboardSource, /PO đang hoạt động/);
@@ -67,6 +70,9 @@ test('dashboard renders the focused overview and limits classification records t
   assert.match(dashboardPageSource, /Hàng đợi xử lý PO/);
   assert.match(dashboardPageSource, /Việc cần xử lý/);
   assert.match(dashboardPageSource, /Chiết khấu phải trả/);
+  assert.match(dashboardPageSource, /mergeWorkScheduleGroups/);
+  assert.match(dashboardPageSource, /workGroupSummaries\.map/);
+  assert.match(dashboardPageSource, /onNavigateWorkGroup\(summary\.group\.id\)/);
 });
 
 test('raw data and leads share the 59-item classification page and list controls', () => {
