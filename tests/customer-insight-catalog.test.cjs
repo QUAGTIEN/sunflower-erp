@@ -131,6 +131,8 @@ test('raw data and leads share the 61-item classification page and list controls
     'utf8'
   );
   assert.match(leadsCss, /\.lead-form-page__header\.lead-record-header\s*\{[^}]*display: grid !important/s);
+  assert.match(leadsCss, /\.lead-form-page__header\.lead-record-header\s*\{[^}]*min-height: 70px !important/s);
+  assert.match(leadsCss, /\.lead-form-page__header\.lead-record-header\s*\{[^}]*padding: 10px 12px !important/s);
   assert.match(leadsCss, /> \.lead-record-header__actions\s*\{[^}]*flex-wrap: nowrap/s);
 
   const customerSource = fs.readFileSync(
