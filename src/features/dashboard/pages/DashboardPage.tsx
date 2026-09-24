@@ -7,7 +7,7 @@ import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { DesignRequest } from '@/features/design/model/designWorkflow';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
 import {
-  Clock, Trash2, Plus, Sliders, Bell, ChevronDown, ChevronUp
+  AlertTriangle, Bell, ChevronDown, ChevronUp, Clock, FileText, Percent, PhoneCall, Plus, Sliders, Trash2
 } from 'lucide-react';
 import {
   getPOBadgeClass,
@@ -109,6 +109,15 @@ const formatCompactMoney = (value: number) => {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tỷ`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`;
   return value.toLocaleString('vi-VN');
+};
+
+const earliestValidDate = (values: unknown[]): string => {
+  const dates = values
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .map(value => ({ value, timestamp: new Date(value).getTime() }))
+    .filter(entry => Number.isFinite(entry.timestamp))
+    .sort((left, right) => left.timestamp - right.timestamp);
+  return dates[0]?.value || '';
 };
 
 const RevenueTrendChart: React.FC<{ data: RevenueTrendPoint[] }> = ({ data }) => {
@@ -716,6 +725,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const earliestReceivableDue = [...receivablesNeedingAttention]
     .sort((left, right) => new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime())[0]?.dueDate;
+  const earliestDiscountDue = earliestValidDate(pendingDiscountPOs.flatMap(po => [
+    po.discountDueDate,
+    po.settlementDueDate,
+    po.dueDate,
+    po.expectedDeliveryDate
+  ]));
+  const earliestInvoiceDue = earliestValidDate(waitingInvoicePOs.flatMap(po => [
+    po.invoiceDueDate,
+    po.dueDate,
+    po.expectedDeliveryDate
+  ]));
+  const earliestFollowUpDue = earliestValidDate(followUpLeads.map(lead => lead.nextFollowUpAt));
+  const taskDueLabel = (date: string) => date ? `${t('Hạn')}: ${formatDate(date)}` : t('Chưa có hạn');
 
   const adminRevenueContent = (
     <section className="customer-overview-panel dashboard-revenue-panel" aria-labelledby="dashboard-revenue-title">
@@ -772,19 +794,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </header>
       <div className="dashboard-task-list">
         <article className="is-urgent">
-          <div><strong>{receivablesNeedingAttention.length} {t('công nợ đến hạn hoặc quá hạn')}</strong><small>{earliestReceivableDue ? `${t('Hạn gần nhất')}: ${formatDate(earliestReceivableDue)}` : t('Không có công nợ cần xử lý')}</small></div>
+          <span className="dashboard-task-list__icon"><AlertTriangle size={17} aria-hidden="true" /></span>
+          <strong>{receivablesNeedingAttention.length} {t('công nợ sắp quá hạn')}</strong>
+          <span className="dashboard-task-list__priority">{t('Ưu tiên cao')}</span>
+          <time>{taskDueLabel(earliestReceivableDue)}</time>
           <button type="button" className="btn btn-sm btn-outline" disabled={receivablesNeedingAttention.length === 0} onClick={() => onNavigate('accounting')}>{t('Xem ngay')}</button>
         </article>
         <article className="is-warning">
-          <div><strong>{pendingDiscountPOs.length} {t('PO chờ xử lý chiết khấu')}</strong><small>{t('Đã hoàn tất thu công nợ và chờ kế toán xử lý')}</small></div>
-          <button type="button" className="btn btn-sm btn-outline" disabled={pendingDiscountPOs.length === 0} onClick={() => setSelectedProgressCategory('waiting_discount')}>{t('Xử lý')}</button>
+          <span className="dashboard-task-list__icon"><Percent size={17} aria-hidden="true" /></span>
+          <strong>{pendingDiscountPOs.length} {t('kỳ chiết khấu chờ duyệt')}</strong>
+          <span className="dashboard-task-list__priority">{t('Cần xử lý')}</span>
+          <time>{taskDueLabel(earliestDiscountDue)}</time>
+          <button type="button" className="btn btn-sm btn-outline" disabled={pendingDiscountPOs.length === 0} onClick={() => setSelectedProgressCategory('waiting_discount')}>{t('Duyệt')}</button>
         </article>
         <article>
-          <div><strong>{waitingInvoicePOs.length} {t('PO chờ xuất hóa đơn')}</strong><small>{t('Đơn đã giao và chờ lập hóa đơn phải thu')}</small></div>
+          <span className="dashboard-task-list__icon"><FileText size={17} aria-hidden="true" /></span>
+          <strong>{waitingInvoicePOs.length} {t('PO chờ xuất hóa đơn')}</strong>
+          <span className="dashboard-task-list__priority">{t('Bình thường')}</span>
+          <time>{taskDueLabel(earliestInvoiceDue)}</time>
           <button type="button" className="btn btn-sm btn-outline" disabled={waitingInvoicePOs.length === 0} onClick={() => setSelectedProgressCategory('waiting_invoice')}>{t('Xử lý')}</button>
         </article>
         <article className="is-success">
-          <div><strong>{followUpLeads.length} {t('khách hàng cần liên hệ lại')}</strong><small>{t('Tiềm năng được phân loại hẹn liên hệ sau')}</small></div>
+          <span className="dashboard-task-list__icon"><PhoneCall size={17} aria-hidden="true" /></span>
+          <strong>{followUpLeads.length} {t('khách hàng cần liên hệ lại')}</strong>
+          <span className="dashboard-task-list__priority">{t('Thấp')}</span>
+          <time>{taskDueLabel(earliestFollowUpDue)}</time>
           <button type="button" className="btn btn-sm btn-outline" disabled={followUpLeads.length === 0} onClick={() => onNavigateInsight('leads', 'contact_later')}>{t('Xem')}</button>
         </article>
       </div>

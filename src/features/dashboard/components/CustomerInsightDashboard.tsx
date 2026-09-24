@@ -1,4 +1,5 @@
 import React, { useMemo, type ReactNode } from 'react';
+import { ChevronRight, Package, PhoneCall } from 'lucide-react';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import {
@@ -31,6 +32,17 @@ const activeLead = (lead: LeadRecord) => (
 );
 
 const DASHBOARD_GROUP_IDS = ['product_needs', 'contact_interaction'] as const;
+
+const GROUP_PRESENTATION = {
+  product_needs: {
+    description: 'Xem chi tiết sản phẩm khách hàng quan tâm và nhu cầu hiện tại.',
+    Icon: Package
+  },
+  contact_interaction: {
+    description: 'Xem lịch sử liên hệ, ghi chú và các tương tác với khách hàng.',
+    Icon: PhoneCall
+  }
+};
 
 export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> = ({
   candidates,
@@ -106,12 +118,19 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
           </header>
           <div className="customer-insight-summary-grid">
             {dashboardGroups.map(group => (
-              <button key={group.id} type="button" onClick={() => openGroup(group)}>
-                <span>{group.label}</span>
-                <strong>{groupRecordCount(group)} hồ sơ</strong>
-                <small>{group.items.length} mục phân loại đang được theo dõi</small>
-                <b>Xem chi tiết</b>
-              </button>
+              (() => {
+                const presentation = GROUP_PRESENTATION[group.id as keyof typeof GROUP_PRESENTATION];
+                const Icon = presentation.Icon;
+                const count = groupRecordCount(group);
+                return (
+                  <button key={group.id} type="button" onClick={() => openGroup(group)} title={`${count} hồ sơ có thông tin trong nhóm này`}>
+                    <span className="customer-insight-summary-card__icon"><Icon size={22} aria-hidden="true" /></span>
+                    <strong>{group.label}</strong>
+                    <small>{presentation.description}</small>
+                    <b>Xem chi tiết <ChevronRight size={14} aria-hidden="true" /></b>
+                  </button>
+                );
+              })()
             ))}
           </div>
         </section>

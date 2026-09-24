@@ -72,9 +72,9 @@
   display: grid;
   min-width: 0;
   min-height: 180px;
-  align-content: center;
+  align-content: start;
   gap: 8px;
-  padding: 20px;
+  padding: 18px;
   border: 1px solid #d7e0ed;
   border-radius: var(--erp-surface-radius, 6px);
   background: #f8fbff;
@@ -87,10 +87,25 @@
 .customer-insight-summary-grid > button:hover,
 .customer-insight-summary-grid > button:focus-visible { border-color: #6687c7; background: #eef5ff; }
 .customer-insight-summary-grid > button:focus-visible { outline: 2px solid var(--erp-focus-ring, #bfdbfe); outline-offset: 1px; }
-.customer-insight-summary-grid span { color: #172554; font-size: 15px; line-height: 1.35; font-weight: 650; }
-.customer-insight-summary-grid strong { color: #1e4ea1; font-size: 20px; font-weight: 700; }
-.customer-insight-summary-grid small { color: #60728e; font-size: 12px; line-height: 1.45; }
-.customer-insight-summary-grid b { align-self: end; margin-top: 12px; color: #1d5fc7; font-size: 12px; font-weight: 650; }
+
+.customer-insight-summary-card__icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e6efff;
+  color: #2563eb;
+}
+
+.customer-insight-summary-grid > button:last-child .customer-insight-summary-card__icon {
+  background: #dff6ea;
+  color: #059669;
+}
+
+.customer-insight-summary-grid > button > strong { color: #173a7a; font-size: 15px; line-height: 1.35; font-weight: 700; }
+.customer-insight-summary-grid > button > small { color: #60728e; font-size: 12px; line-height: 1.45; }
+.customer-insight-summary-grid > button > b { display: inline-flex; align-items: center; justify-self: end; gap: 3px; align-self: end; margin-top: auto; padding-top: 12px; color: #1d5fc7; font-size: 11px; font-weight: 650; }
 
 @media (max-width: 1120px) {
   .customer-insight-overview-grid { grid-template-columns: minmax(0, 1fr); }
