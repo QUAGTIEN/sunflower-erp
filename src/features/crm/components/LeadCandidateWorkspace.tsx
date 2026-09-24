@@ -10,20 +10,15 @@ import {
   ClipboardCheck,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
-  Eye,
   Factory,
   LifeBuoy,
   ListPlus,
-  Mail,
   MapPin,
   Pencil,
-  Phone,
   Plus,
   ReceiptText,
   Search,
   Settings2,
-  Star,
   Trash2,
   UserRoundSearch,
   X
@@ -75,7 +70,7 @@ import { RawDataOverview } from './RawDataOverview';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
-import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
+import { EntityCustomFieldsGrid, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
 import {
@@ -611,7 +606,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [scheduleError, setScheduleError] = useState('');
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [scheduleContactResult, setScheduleContactResult] = useState<LeadCandidateContactResult | ''>('');
-  const [selectedCandidateId, setSelectedCandidateId] = useState('');
   const [actionError, setActionError] = useState('');
   const [taskActionCandidateId, setTaskActionCandidateId] = useState('');
   const [fieldActionCandidateId, setFieldActionCandidateId] = useState('');
@@ -644,12 +638,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setAdminListPrepared(true);
     setAdminRawView('list');
   }, []);
-  const openRawCandidate = useCallback((id: string) => {
-    setAdminListPrepared(true);
-    setAdminRawView('list');
-    setSelectedCandidateId(id);
-  }, []);
-
   useEffect(() => {
     if (currentUser.role !== 'admin' || adminListPrepared) return undefined;
     const frame = window.requestAnimationFrame(() => setAdminListPrepared(true));
@@ -1088,9 +1076,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const scheduleCandidate = scheduleCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === scheduleCandidateId) || null
     : null;
-  const selectedCandidate = selectedCandidateId
-    ? accessibleCandidates.find(candidate => candidate.id === selectedCandidateId) || null
-    : null;
   const classificationCandidate = classificationCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === classificationCandidateId) || null
     : null;
@@ -1148,38 +1133,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const renderPhoneLink = (candidate: LeadCandidateRecord) => {
     if (!candidate.phone) return renderCandidateField(candidate.phone);
     return (
-      <PhoneCallCell phone={candidate.phone} companyName={candidate.companyName}
-        subjectKey={candidateCallSubjectKey(candidate)} currentUser={currentUser}
-        context={{ contactPerson: candidate.contactPerson, contactPosition: candidate.contactPosition, province: candidate.province, businessSector: candidate.businessSector, expectedProducts: candidate.expectedProducts, source: candidate.source, assignedSaleName: candidate.assignedSaleName }}
-        auditModule="lead_candidates" targetType="lead_candidate" targetId={candidate.id}
-        canRecord={canManageCandidate(candidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
-        onCallStarted={() => recordPhoneCall(candidate)} onOpenDetails={() => openEditForm(candidate)} />
+      <button type="button" className="lead-candidate-phone-link" onClick={() => openEditForm(candidate)}>{candidate.phone}</button>
     );
   };
-
-  const openCandidateProfile = (candidate: LeadCandidateRecord) => {
-    setSelectedCandidateId(candidate.id);
-    auditService.recordSafely(currentUser, {
-      category: 'business',
-      module: 'lead_candidates',
-      action: 'candidate_opened',
-      summary: `Mở hồ sơ ${candidate.companyName}`,
-      targetType: 'lead_candidate',
-      targetId: candidate.id,
-      targetLabel: candidate.companyName
-    });
-  };
-
-  useEffect(() => {
-    if (!initialCandidateId || !candidates.some(candidate => candidate.id === initialCandidateId)) return;
-    const timer = window.setTimeout(() => {
-      setAdminRawView('list');
-      setAdminListPrepared(true);
-      setSelectedCandidateId(initialCandidateId);
-      onInitialCandidateOpened?.();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [candidates, initialCandidateId, onInitialCandidateOpened]);
 
   const buildTaskAssignment = (
     candidate?: LeadCandidateRecord | null,
@@ -1389,7 +1345,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setShowForm(true);
   };
 
-  const openEditForm = (candidate: LeadCandidateRecord) => {
+  const openEditForm = useCallback((candidate: LeadCandidateRecord) => {
     setEditingCandidateId(candidate.id);
     setForm({
       companyName: candidate.companyName,
@@ -1415,7 +1371,37 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setCustomFieldValues(candidate.customFieldValues || {});
     setSaveError('');
     setShowForm(true);
+    auditService.recordSafely(currentUser, {
+      category: 'business',
+      module: 'lead_candidates',
+      action: 'candidate_opened',
+      summary: `Mở hồ sơ ${candidate.companyName}`,
+      targetType: 'lead_candidate',
+      targetId: candidate.id,
+      targetLabel: candidate.companyName
+    });
+  }, [currentUser]);
+
+  const openRawCandidate = (id: string) => {
+    const candidate = accessibleCandidates.find(entry => entry.id === id);
+    if (!candidate) return;
+    setAdminListPrepared(true);
+    setAdminRawView('list');
+    openEditForm(candidate);
   };
+
+  useEffect(() => {
+    if (!initialCandidateId) return;
+    const candidate = candidates.find(entry => entry.id === initialCandidateId);
+    if (!candidate) return;
+    const timer = window.setTimeout(() => {
+      setAdminRawView('list');
+      setAdminListPrepared(true);
+      openEditForm(candidate);
+      onInitialCandidateOpened?.();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [candidates, initialCandidateId, onInitialCandidateOpened, openEditForm]);
 
   const openClassification = (candidate: LeadCandidateRecord) => {
     setClassificationCandidateId(candidate.id);
@@ -1784,7 +1770,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         summary: `Xóa ${candidate.companyName} khỏi danh sách dữ liệu`,
         targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
       });
-      setSelectedCandidateId('');
     } catch {
       setActionError('Không thể xóa dữ liệu khỏi danh sách. Vui lòng kiểm tra quyền Firebase và thử lại.');
     }
@@ -2073,7 +2058,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               className={workspaceView === value ? 'is-active' : ''}
               onClick={() => {
                 setWorkspaceView(value);
-                setSelectedCandidateId('');
                 setSelectedQueueCandidateIds([]);
                 setBatchQueueError('');
                 setCurrentPage(1);
@@ -2439,7 +2423,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                     <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
                       <ReorderableTableCells order={orderedColumnIds} expandOverflowText={false}>
                       {visibleColumnSet.has('index') && <td key="index" className="erp-table-index-column">{(safeCurrentPage - 1) * pageSize + candidateIndex + 1}</td>}
-                      {visibleColumnSet.has('company') && <td key="company"><button type="button" className="lead-candidate-company-button" onClick={() => openCandidateProfile(candidate)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
+                      {visibleColumnSet.has('company') && <td key="company"><button type="button" className="lead-candidate-company-button" onClick={() => openEditForm(candidate)} title={`${candidate.companyName}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
                       {visibleColumnSet.has('taxCode') && <td key="taxCode">{renderCandidateField(candidate.taxCode)}</td>}
                       {visibleColumnSet.has('website') && <td key="website">{renderCandidateField(candidate.website)}</td>}
                       {visibleColumnSet.has('businessSector') && <td key="businessSector">{renderCandidateField(candidate.businessSector)}</td>}
@@ -2551,7 +2535,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                         />
                       </td>}
                       {visibleColumnSet.has('index') && <td key="index" className="erp-table-index-column">{(safeCurrentPage - 1) * pageSize + candidateIndex + 1}</td>}
-                      {visibleColumnSet.has('company') && <td key="company"><button type="button" className="lead-candidate-company-button" onClick={() => openCandidateProfile(candidate)} title={`${candidate.companyName} · ${candidate.source || 'Chưa rõ nguồn'}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
+                      {visibleColumnSet.has('company') && <td key="company"><button type="button" className="lead-candidate-company-button" onClick={() => openEditForm(candidate)} title={`${candidate.companyName} · ${candidate.source || 'Chưa rõ nguồn'}${candidate.taxCode ? ` · MST ${candidate.taxCode}` : ''}`}><strong className="erp-company-name">{candidate.companyName}</strong></button></td>}
                       {visibleColumnSet.has('taxCode') && <td key="taxCode">{renderCandidateField(candidate.taxCode)}</td>}
                       {visibleColumnSet.has('website') && <td key="website">{renderCandidateField(candidate.website)}</td>}
                       {visibleColumnSet.has('businessSector') && <td key="businessSector">{renderCandidateField(candidate.businessSector)}</td>}
@@ -2585,7 +2569,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                         <RowActionMenu
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
-                            { label: 'Xem hồ sơ', icon: <Eye size={14} />, onSelect: () => openCandidateProfile(candidate) },
                             ...(currentUser.role === 'admin' ? [{ label: 'Giao việc', icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(canManageCandidate(candidate) ? [
@@ -2613,57 +2596,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           </footer>
         )}
       </section>
-      )}
-
-      {selectedCandidate && (
-        <>
-          <button type="button" className="lead-candidate-drawer-backdrop" aria-label="Đóng hồ sơ" onClick={() => setSelectedCandidateId('')} />
-          <aside className="lead-candidate-drawer" aria-label={`Hồ sơ ${selectedCandidate.companyName}`}>
-            <div className="lead-candidate-drawer__header">
-              <div><span>HỒ SƠ DỮ LIỆU</span><h2>{selectedCandidate.companyName}</h2><p>{selectedCandidate.province || 'Chưa rõ tỉnh/thành'} · {selectedCandidate.source || 'Chưa rõ nguồn'}</p></div>
-              <button type="button" className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => setSelectedCandidateId('')} aria-label="Đóng"><X size={15} /></button>
-            </div>
-
-            <div className="lead-candidate-drawer__actions">
-              {canManageCandidate(selectedCandidate) && (selectedCandidate.status === 'new' || selectedCandidate.status === 'retry') && <button type="button" className="btn btn-primary" onClick={() => openScheduleForm(selectedCandidate)}><CalendarClock size={14} /> Hẹn lịch xử lý</button>}
-              {canManageCandidate(selectedCandidate) && (selectedCandidate.status === 'new' || selectedCandidate.status === 'retry') && <button type="button" className="btn btn-outline" onClick={() => onStartConversion(selectedCandidate)}><CheckCircle2 size={14} /> Chuyển Lead</button>}
-              {canManageCandidate(selectedCandidate) && <button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => openEditForm(selectedCandidate)} title="Chỉnh sửa"><Pencil size={14} /></button>}
-            </div>
-
-            <div className="lead-candidate-drawer__body">
-              <section>
-                <h3>Thông tin liên hệ</h3>
-                <div className="lead-candidate-drawer__info">
-                  <span><UserRoundSearch size={13} /> Người liên hệ</span><strong>{selectedCandidate.contactPerson || '—'}</strong>
-                  <span><Phone size={13} /> Điện thoại</span><strong>{renderPhoneLink(selectedCandidate)}</strong>
-                  <span><Mail size={13} /> Email</span><strong>{selectedCandidate.email || '—'}</strong>
-                  <span><UserRoundSearch size={13} /> Chức vụ</span><strong>{selectedCandidate.contactPosition || '—'}</strong>
-                  <span><Building2 size={13} /> Lĩnh vực</span><strong>{selectedCandidate.businessSector || '—'}</strong>
-                  <span><MapPin size={13} /> Địa chỉ</span><strong>{selectedCandidate.address || '—'}</strong>
-                  <span><Building2 size={13} /> Mã số thuế</span><strong>{selectedCandidate.taxCode || '—'}</strong>
-                  <span><UserRoundSearch size={13} /> Sale phụ trách</span><strong>{selectedCandidate.assignedSaleName || 'Chưa phân công'}</strong>
-                  <span><CheckCircle2 size={13} /> Trạng thái</span><strong>{CONTACT_STATUS_LABELS[selectedCandidate.contactResult]}</strong>
-                  <span><Star size={13} /> Tiềm năng</span><strong>{POTENTIAL_LEVEL_LABELS[selectedCandidate.potentialLevel]}</strong>
-                </div>
-                {(selectedCandidate.sourceUrl || selectedCandidate.website) && <a className="lead-candidate-source-link" href={selectedCandidate.sourceUrl || selectedCandidate.website} target="_blank" rel="noreferrer"><ExternalLink size={13} /> Mở nguồn dữ liệu</a>}
-              </section>
-
-              <section>
-                <h3>Nhu cầu sơ bộ</h3>
-                <p className="lead-candidate-drawer__note">{selectedCandidate.expectedProducts || 'Chưa ghi nhận nhu cầu sản phẩm.'}</p>
-              </section>
-
-              <section>
-                <h3>Ghi chú làm việc</h3>
-                <p className="lead-candidate-drawer__note">{selectedCandidate.note || 'Chưa có ghi chú.'}</p>
-              </section>
-
-              <EntityCustomFieldsReadOnly definitions={customFieldDefinitions} values={selectedCandidate.customFieldValues} />
-
-              {currentUser.role === 'admin' && <button type="button" className="lead-candidate-disqualify" onClick={() => archiveCandidate(selectedCandidate)}>Xóa khỏi danh sách dữ liệu</button>}
-            </div>
-          </aside>
-        </>
       )}
 
       {scheduleCandidate && (

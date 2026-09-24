@@ -9,7 +9,6 @@ import {
   ChevronRight,
   CheckCircle2,
   ClipboardCheck,
-  Eye,
   LifeBuoy,
   Paperclip,
   Plus,
@@ -2528,14 +2527,7 @@ export const Leads: React.FC<LeadsProps> = ({
                       {visibleLeadColumnIds.has('contact') && <td key="contact">{renderLeadText(lead.contactPerson)}</td>}
                       {visibleLeadColumnIds.has('contactPerson') && <td key="contactPerson">{renderLeadText(lead.contactPerson)}</td>}
                       {visibleLeadColumnIds.has('contactPosition') && <td key="contactPosition">{renderLeadText(lead.contactPosition)}</td>}
-                      {visibleLeadColumnIds.has('phone') && <td key="phone"><PhoneCallCell
-                        phone={lead.phone} companyName={lead.companyName} subjectKey={leadCallSubjectKey(lead)} historyKeys={leadCallHistoryKeys(lead)}
-                        context={{ contactPerson: lead.contactPerson, contactPosition: lead.contactPosition, province: lead.province, businessSector: lead.businessSector, expectedProducts: lead.expectedProducts, source: lead.source, assignedSaleName: lead.assignedSaleName }}
-                        currentUser={currentUser}
-                        auditModule="leads" targetType="lead" targetId={lead.id}
-                        canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && lead.assignedSaleId === currentUser.uid)}
-                        onOpenDetails={() => openEditForm(lead)}
-                      /></td>}
+                      {visibleLeadColumnIds.has('phone') && <td key="phone">{lead.phone ? <button type="button" className="lead-candidate-phone-link" onClick={event => { event.stopPropagation(); openEditForm(lead); }}>{lead.phone}</button> : renderLeadText(lead.phone)}</td>}
                       {visibleLeadColumnIds.has('email') && <td key="email">{renderLeadText(lead.email)}</td>}
                       {visibleLeadColumnIds.has('expectedProducts') && <td key="expectedProducts">{renderLeadText(lead.expectedProducts)}</td>}
                       {visibleLeadColumnIds.has('potentialValue') && <td key="potentialValue"><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>}
@@ -2550,7 +2542,6 @@ export const Leads: React.FC<LeadsProps> = ({
                         <RowActionMenu
                           label={`${t('Thao tác')} ${lead.companyName}`}
                           actions={[
-                            { label: t('Mở hồ sơ'), icon: <Eye size={14} />, onSelect: () => openEditForm(lead) },
                             { label: t('Hẹn lịch'), icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(lead) },
                             ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: t('Yêu cầu hỗ trợ'), icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: lead.id, label: lead.companyName, module: 'leads' }) }] : []),
