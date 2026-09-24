@@ -126,6 +126,13 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.match(leadsSource, /window\.history\.pushState/);
   assert.match(leadsSource, /window\.addEventListener\('popstate'/);
 
+  const leadsCss = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'Leads.css'),
+    'utf8'
+  );
+  assert.match(leadsCss, /\.lead-form-page__header\.lead-record-header\s*\{[^}]*display: grid !important/s);
+  assert.match(leadsCss, /> \.lead-record-header__actions\s*\{[^}]*flex-wrap: nowrap/s);
+
   const customerSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'CrmPage.tsx'),
     'utf8'
