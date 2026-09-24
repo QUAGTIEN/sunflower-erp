@@ -2292,7 +2292,7 @@ export const Leads: React.FC<LeadsProps> = ({
         </header>
 
         <form id="lead-profile-form" className="lead-form-page__form" onSubmit={handleSaveLead}>
-          <div className="lead-form-page__content">
+          <div className="lead-form-page__content lead-standardized-form">
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <Building2 size={18} />
@@ -2396,9 +2396,15 @@ export const Leads: React.FC<LeadsProps> = ({
 
             <section className="lead-form-card lead-form-card--wide lead-attachments-card">
               <div className="lead-form-card__heading"><Paperclip size={18} /><div><h2>{t('Tệp đính kèm')}</h2></div></div>
-              <div className="lead-attachments-card__toolbar">
-                <label className="btn btn-outline lead-attachments-card__upload">{t('Tải tệp lên')}<input type="file" multiple onChange={handleLeadFilesChange} /></label>
-                <span>{t('Tệp dưới 900 KB; tệp lớn dùng đường dẫn Drive hoặc OneDrive.')}</span>
+              <div className="lead-attachments-card__upload-row">
+                <div className="lead-attachments-card__toolbar">
+                  <label className="btn btn-outline lead-attachments-card__upload">{t('Tải tệp lên')}<input type="file" multiple onChange={handleLeadFilesChange} /></label>
+                  <span>{t('Tệp dưới 900 KB; tệp lớn dùng đường dẫn Drive hoặc OneDrive.')}</span>
+                </div>
+                <label className="lead-attachments-card__dropzone">
+                  <span>{t('Kéo thả tệp vào đây hoặc chọn từ máy')}</span>
+                  <input type="file" multiple onChange={handleLeadFilesChange} />
+                </label>
               </div>
               <details className="lead-attachments-card__link"><summary>{t('Thêm đường dẫn Drive/OneDrive')}</summary><div><input aria-label={t('Tên tài liệu')} placeholder={t('Tên tài liệu')} value={attachmentLinkName} onChange={event => setAttachmentLinkName(event.target.value)} /><input aria-label={t('Đường dẫn chia sẻ')} type="url" placeholder="https://..." value={attachmentLinkUrl} onChange={event => setAttachmentLinkUrl(event.target.value)} /><button type="button" className="btn btn-outline" onClick={handleAddAttachmentLink}>{t('Thêm liên kết')}</button></div></details>
               <div className="table-container lead-attachments-card__table"><table><thead><tr><th>{t('Tên tệp')}</th><th>{t('Loại')}</th><th>{t('Dung lượng')}</th><th>{t('Ngày cập nhật')}</th><th>{t('Người cập nhật')}</th><th>{t('Thao tác')}</th></tr></thead><tbody>
