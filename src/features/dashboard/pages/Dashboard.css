@@ -106,9 +106,10 @@
 }
 
 .dashboard-revenue-trend__grid { stroke: #dfe7f2; stroke-width: 1; stroke-dasharray: 4 4; }
-.dashboard-revenue-trend__bar { fill: #2f6fe4; }
-.dashboard-revenue-trend__line { fill: none; stroke: #0ea5a8; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-.dashboard-revenue-trend__point { fill: #fff; stroke: #0a8e91; stroke-width: 2.5; }
+.dashboard-revenue-trend__net { fill: #24476b; }
+.dashboard-revenue-trend__discount { fill: #c6a15b; }
+.dashboard-revenue-trend__axis-label { fill: #71819a; font-size: 9px; font-weight: 500; }
+.dashboard-revenue-trend__value { fill: #173a5e; font-size: 9.5px; font-weight: 700; }
 .dashboard-revenue-trend__label { fill: #5b6d88; font-size: 11px; font-weight: 550; }
 
 .dashboard-revenue-trend__legend {
@@ -120,8 +121,9 @@
 }
 
 .dashboard-revenue-trend__legend span { display: inline-flex; align-items: center; gap: 5px; }
-.dashboard-revenue-trend__legend i { display: inline-block; width: 14px; height: 5px; border-radius: 2px; background: #2f6fe4; }
-.dashboard-revenue-trend__legend i.is-net { height: 3px; background: #0ea5a8; }
+.dashboard-revenue-trend__legend i { display: inline-block; width: 14px; height: 7px; border-radius: 2px; }
+.dashboard-revenue-trend__legend i.is-net { background: #24476b; }
+.dashboard-revenue-trend__legend i.is-discount { background: #c6a15b; }
 
 .dashboard-po-queue-content {
   display: grid;

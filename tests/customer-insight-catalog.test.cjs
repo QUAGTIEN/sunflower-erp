@@ -71,7 +71,9 @@ test('dashboard renders the focused overview and limits classification records t
   );
   assert.doesNotMatch(dashboardPageSource, /Bảng tin hoạt động/);
   assert.doesNotMatch(dashboardPageSource, /Đơn Hàng Sắp Giao Trong Tuần/);
-  assert.match(dashboardPageSource, /Doanh thu theo tháng/);
+  assert.match(dashboardPageSource, /Giá trị PO 6 tháng gần nhất/);
+  assert.match(dashboardPageSource, /dashboard-revenue-trend__discount/);
+  assert.match(dashboardPageSource, /Tổng cột = trước chiết khấu/);
   assert.match(dashboardPageSource, /Hàng đợi xử lý PO/);
   assert.match(dashboardPageSource, /Việc cần xử lý/);
   assert.match(dashboardPageSource, /Chiết khấu phải trả/);

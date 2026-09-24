@@ -122,46 +122,59 @@ const formatCompactMoney = (value: number) => {
 
 const RevenueTrendChart: React.FC<{ data: RevenueTrendPoint[] }> = ({ data }) => {
   const width = 620;
-  const height = 164;
-  const paddingX = 28;
-  const plotTop = 14;
-  const plotBottom = 126;
+  const height = 174;
+  const paddingLeft = 52;
+  const paddingRight = 20;
+  const plotTop = 22;
+  const plotBottom = 136;
   const plotHeight = plotBottom - plotTop;
-  const step = (width - paddingX * 2) / Math.max(data.length, 1);
-  const maxValue = Math.max(...data.flatMap(point => [point.gross, point.net]), 1);
-  const netPoints = data.map((point, index) => {
-    const x = paddingX + (index * step) + (step / 2);
-    const y = plotBottom - ((point.net / maxValue) * plotHeight);
-    return `${x},${y}`;
-  }).join(' ');
+  const step = (width - paddingLeft - paddingRight) / Math.max(data.length, 1);
+  const rawMaxValue = Math.max(...data.map(point => point.gross), 0);
+  const magnitude = rawMaxValue > 0 ? 10 ** Math.floor(Math.log10(rawMaxValue)) : 1;
+  const normalizedMax = rawMaxValue / magnitude;
+  const scaleMax = rawMaxValue === 0
+    ? 1
+    : (normalizedMax <= 1 ? 1 : normalizedMax <= 2 ? 2 : normalizedMax <= 5 ? 5 : 10) * magnitude;
+  const tickRatios = [0, 0.25, 0.5, 0.75, 1];
 
   return (
     <div className="dashboard-revenue-trend">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Doanh thu tổng và doanh thu sau chiết khấu trong sáu tháng">
-        {[0, 0.5, 1].map(ratio => {
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Giá trị PO trước và sau chiết khấu trong sáu tháng gần nhất">
+        <desc>Phần navy là doanh thu sau chiết khấu. Phần champagne là chiết khấu trực tiếp. Tổng chiều cao cột là giá trị trước chiết khấu.</desc>
+        {tickRatios.map(ratio => {
           const y = plotBottom - ratio * plotHeight;
-          return <line key={ratio} x1={paddingX} y1={y} x2={width - paddingX} y2={y} className="dashboard-revenue-trend__grid" />;
-        })}
-        {data.map((point, index) => {
-          const barHeight = (point.gross / maxValue) * plotHeight;
-          const x = paddingX + (index * step) + (step / 2) - 15;
           return (
-            <g key={`${point.label}-${index}`}>
-              <rect x={x} y={plotBottom - barHeight} width="30" height={Math.max(2, barHeight)} rx="3" className="dashboard-revenue-trend__bar" />
-              <text x={x + 15} y={plotBottom + 19} textAnchor="middle" className="dashboard-revenue-trend__label">{point.label}</text>
+            <g key={ratio}>
+              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} className="dashboard-revenue-trend__grid" />
+              <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="dashboard-revenue-trend__axis-label">
+                {ratio === 0 ? '0' : formatCompactMoney(scaleMax * ratio)}
+              </text>
             </g>
           );
         })}
-        <polyline points={netPoints} className="dashboard-revenue-trend__line" />
         {data.map((point, index) => {
-          const x = paddingX + (index * step) + (step / 2);
-          const y = plotBottom - ((point.net / maxValue) * plotHeight);
-          return <circle key={`net-${index}`} cx={x} cy={y} r="4" className="dashboard-revenue-trend__point" />;
+          const grossHeight = (point.gross / scaleMax) * plotHeight;
+          const netHeight = (point.net / scaleMax) * plotHeight;
+          const discountHeight = Math.max(0, grossHeight - netHeight);
+          const x = paddingLeft + (index * step) + (step / 2) - 16;
+          return (
+            <g key={`${point.label}-${index}`}>
+              <title>{`${point.label}: trước chiết khấu ${point.gross.toLocaleString('vi-VN')} đ; sau chiết khấu ${point.net.toLocaleString('vi-VN')} đ; chiết khấu trực tiếp ${point.directDiscount.toLocaleString('vi-VN')} đ`}</title>
+              {point.net > 0 && <rect x={x} y={plotBottom - netHeight} width="32" height={netHeight} rx={discountHeight > 0 ? 0 : 3} className="dashboard-revenue-trend__net" />}
+              {discountHeight > 0 && <rect x={x} y={plotBottom - grossHeight} width="32" height={discountHeight} rx="3" className="dashboard-revenue-trend__discount" />}
+              {point.gross > 0 && (
+                <text x={x + 16} y={Math.max(12, plotBottom - grossHeight - 6)} textAnchor="middle" className="dashboard-revenue-trend__value">
+                  {formatCompactMoney(point.gross)}
+                </text>
+              )}
+              <text x={x + 16} y={plotBottom + 19} textAnchor="middle" className="dashboard-revenue-trend__label">{point.label}</text>
+            </g>
+          );
         })}
       </svg>
       <div className="dashboard-revenue-trend__legend" aria-hidden="true">
-        <span><i className="is-gross" />Doanh thu tổng</span>
         <span><i className="is-net" />Sau chiết khấu</span>
+        <span><i className="is-discount" />Chiết khấu trực tiếp</span>
       </div>
     </div>
   );
@@ -756,8 +769,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <article><span>{t('Chiết khấu phải trả')}</span><strong>{payableDiscount.toLocaleString('vi-VN')} đ</strong></article>
       </div>
       <div className="dashboard-revenue-chart-heading">
-        <span>{t('Doanh thu theo tháng')}</span>
-        <small>{formatCompactMoney(revenueMetrics.directDiscount)} {t('chiết khấu trực tiếp trong kỳ')}</small>
+        <span>{t('Giá trị PO 6 tháng gần nhất')}</span>
+        <small>{t('Tổng cột = trước chiết khấu')}</small>
       </div>
       <RevenueTrendChart data={revenueTrendData} />
     </section>
