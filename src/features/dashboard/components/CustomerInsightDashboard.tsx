@@ -1,5 +1,5 @@
-import React, { useMemo, useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Package, PhoneCall } from 'lucide-react';
+import React, { useMemo, type ReactNode } from 'react';
+import { ChevronRight, Package, PhoneCall } from 'lucide-react';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import {
@@ -57,7 +57,6 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
   const activeCandidates = useMemo(() => candidates.filter(candidate => !candidate.archived), [candidates]);
   const activeLeads = useMemo(() => leads.filter(activeLead), [leads]);
   const activeCustomers = useMemo(() => customers.filter(customer => !customer.deleted), [customers]);
-  const [selectedGroupId, setSelectedGroupId] = useState('');
 
   const insightRecords = useMemo<InsightRecord[]>(() => [
     ...activeCandidates.map(candidate => ({
@@ -83,8 +82,6 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
       .filter(record => group.items.some(item => record.values.includes(item.id)))
       .map(record => record.key)
   ).size;
-
-  const selectedGroup = dashboardGroups.find(group => group.id === selectedGroupId) || null;
 
   const openItem = (item: CustomerInsightItem) => {
     const target = getCustomerInsightNavigation(item.id);
@@ -115,43 +112,35 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
 
         <section className="customer-overview-panel customer-insight-summary-panel" aria-labelledby="customer-insight-summary-title">
           <header className="customer-overview-panel__header">
-            <div className="customer-insight-summary-heading">
-              {selectedGroup && (
-                <button type="button" aria-label="Quay lại các nhóm thông tin khách hàng" onClick={() => setSelectedGroupId('')}>
-                  <ChevronLeft size={17} aria-hidden="true" />
-                </button>
-              )}
-              <h3 id="customer-insight-summary-title">{selectedGroup?.label || 'Các nhóm thông tin khách hàng'}</h3>
-            </div>
-            {selectedGroup && <small>{selectedGroup.items.length} phân loại</small>}
+            <h3 id="customer-insight-summary-title">Các nhóm thông tin khách hàng</h3>
+            <small>{dashboardGroups.reduce((total, group) => total + group.items.length, 0)} phân loại</small>
           </header>
-          {selectedGroup ? (
-            <div className="customer-insight-classification-list">
-              {selectedGroup.items.map(item => (
-                <button key={item.id} type="button" onClick={() => openItem(item)}>
-                  <span>{item.label}</span>
-                  <small>{itemCount(item)} hồ sơ</small>
-                  <ChevronRight size={15} aria-hidden="true" />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="customer-insight-summary-grid">
-              {dashboardGroups.map(group => {
-                const presentation = GROUP_PRESENTATION[group.id as keyof typeof GROUP_PRESENTATION];
-                const Icon = presentation.Icon;
-                const count = groupRecordCount(group);
-                return (
-                  <button key={group.id} type="button" onClick={() => setSelectedGroupId(group.id)} title={`${count} hồ sơ có thông tin trong nhóm này`}>
-                    <span className="customer-insight-summary-card__icon"><Icon size={22} aria-hidden="true" /></span>
-                    <strong>{group.label}</strong>
-                    <small>{presentation.description}</small>
-                    <b>Xem chi tiết <ChevronRight size={14} aria-hidden="true" /></b>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          <div className="customer-insight-expanded-groups">
+            {dashboardGroups.map(group => {
+              const presentation = GROUP_PRESENTATION[group.id as keyof typeof GROUP_PRESENTATION];
+              const Icon = presentation.Icon;
+              return (
+                <section key={group.id} className="customer-insight-expanded-group" aria-labelledby={`customer-insight-group-${group.id}`}>
+                  <header>
+                    <span className="customer-insight-summary-card__icon"><Icon size={20} aria-hidden="true" /></span>
+                    <div>
+                      <strong id={`customer-insight-group-${group.id}`}>{group.label}</strong>
+                      <small>{groupRecordCount(group)} hồ sơ · {group.items.length} phân loại</small>
+                    </div>
+                  </header>
+                  <div className="customer-insight-classification-list">
+                    {group.items.map(item => (
+                      <button key={item.id} type="button" onClick={() => openItem(item)}>
+                        <span>{item.label}</span>
+                        <small>{itemCount(item)} hồ sơ</small>
+                        <ChevronRight size={15} aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </section>
       </div>
     </section>

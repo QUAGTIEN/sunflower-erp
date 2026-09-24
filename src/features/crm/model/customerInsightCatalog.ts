@@ -46,7 +46,8 @@ export const CUSTOMER_INSIGHT_GROUPS: CustomerInsightGroup[] = [
     item('meeting_agreed', 'Khách cho hẹn gặp', 'leads'),
     item('onsite_required', 'Khách cần qua trực tiếp làm việc', 'leads'),
     item('remote_possible', 'Khách có thể xử lý từ xa', 'leads'),
-    item('contact_left_company', 'Khách nghỉ công ty', 'customer_data')
+    item('contact_left_company', 'Khách nghỉ công ty', 'customer_data'),
+    item('sale_quote_sent', 'Khách đã được Sale báo giá', 'leads')
   ]},
   { id: 'usage_scale', label: 'Quy mô / mức sử dụng', items: [
     item('usage_low', 'Khách dùng ít', 'leads'), item('usage_5_10m', 'Khách dùng 5 tới 10 triệu', 'leads'),
@@ -65,7 +66,8 @@ export const CUSTOMER_INSIGHT_GROUPS: CustomerInsightGroup[] = [
     item('factory_audit_required', 'Khách cần audit nhà xưởng', 'leads')
   ]},
   { id: 'product_needs', label: 'Sản phẩm / nhu cầu', items: [
-    item('buys_machinery', 'Khách mua máy móc', 'leads'), item('buys_labels', 'Khách mua tem nhãn', 'leads'), item('buys_ink', 'Khách mua mực in', 'leads')
+    item('buys_machinery', 'Khách mua máy móc', 'leads'), item('buys_labels', 'Khách mua tem nhãn', 'leads'), item('buys_ink', 'Khách mua mực in', 'leads'),
+    item('design_file_provided', 'Khách cho file thiết kế', 'leads')
   ]},
   { id: 'industry', label: 'Ngành nghề khách hàng', items: [
     item('industry_garment', 'Khách may mặc', 'customer_data'), item('industry_electronics', 'Khách điện tử', 'customer_data'),

@@ -11,12 +11,12 @@ const source = fs.readFileSync(
 const items = [...source.matchAll(/item\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(customer_data|leads|crm|sales)'(?:\s*,\s*'([^']+)')?\)/g)]
   .map(match => ({ id: match[1], label: match[2], module: match[3], derived: match[4] || '' }));
 
-test('customer insight catalog contains 8 groups and exactly 59 unique items', () => {
+test('customer insight catalog contains 8 groups and exactly 61 unique items', () => {
   const groupIds = [...source.matchAll(/\{ id: '([^']+)', label: '[^']+', items: \[/g)].map(match => match[1]);
   assert.equal(groupIds.length, 8);
   assert.equal(new Set(groupIds).size, 8);
-  assert.equal(items.length, 59);
-  assert.equal(new Set(items.map(item => item.id)).size, 59);
+  assert.equal(items.length, 61);
+  assert.equal(new Set(items.map(item => item.id)).size, 61);
 });
 
 test('classifications are owned only by raw data and leads', () => {
@@ -24,10 +24,14 @@ test('classifications are owned only by raw data and leads', () => {
     result[item.module] = (result[item.module] || 0) + 1;
     return result;
   }, {});
-  assert.deepEqual(counts, { leads: 43, customer_data: 16 });
+  assert.deepEqual(counts, { leads: 45, customer_data: 16 });
   assert.deepEqual(
     items.filter(item => item.derived).map(item => ({ id: item.id, derived: item.derived })),
     [{ id: 'po_promised', derived: 'pending_order_draft' }]
+  );
+  assert.deepEqual(
+    items.filter(item => ['design_file_provided', 'sale_quote_sent'].includes(item.id)).map(item => item.label),
+    ['Khách đã được Sale báo giá', 'Khách cho file thiết kế']
   );
 });
 
@@ -45,8 +49,9 @@ test('dashboard renders the focused overview and limits classification records t
   );
   assert.match(dashboardSource, /DASHBOARD_GROUP_IDS/);
   assert.match(dashboardSource, /getCustomerInsightNavigation\(item\.id\)/);
-  assert.match(dashboardSource, /selectedGroup\.items\.map/);
-  assert.match(dashboardSource, /setSelectedGroupId\(group\.id\)/);
+  assert.match(dashboardSource, /customer-insight-expanded-groups/);
+  assert.match(dashboardSource, /group\.items\.map/);
+  assert.doesNotMatch(dashboardSource, /setSelectedGroupId/);
   assert.match(dashboardSource, /phân loại/);
   assert.match(dashboardSource, /Dữ liệu thô/);
   assert.match(dashboardSource, /Tiềm năng/);
@@ -75,7 +80,7 @@ test('dashboard renders the focused overview and limits classification records t
   assert.match(dashboardPageSource, /onNavigateWorkGroup\(summary\.group\.id\)/);
 });
 
-test('raw data and leads share the 59-item classification page and list controls', () => {
+test('raw data and leads share the 61-item classification page and list controls', () => {
   const workspaceSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'components', 'LeadCandidateWorkspace.tsx'),
     'utf8'
@@ -89,7 +94,7 @@ test('raw data and leads share the 59-item classification page and list controls
   assert.match(workspaceSource, /CUSTOMER_INSIGHT_GROUPS\.flatMap/);
   assert.match(workspaceSource, /visibleCandidateInsightItems\.map/);
   assert.match(classificationSource, /CUSTOMER_INSIGHT_GROUPS\.map/);
-  assert.match(classificationSource, /Tìm trong 59 mục/);
+  assert.match(classificationSource, /Tìm trong \{CUSTOMER_INSIGHT_ITEMS\.length\} mục/);
   assert.match(classificationSource, /Lưu phân loại/);
   assert.match(classificationSource, /type="checkbox"/);
 

@@ -73,8 +73,8 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
       </div>
       <div className="customer-classification__tools">
         <label>
-          <span className="sr-only">Tìm trong 59 mục</span>
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm trong 59 mục..." />
+          <span className="sr-only">Tìm trong {CUSTOMER_INSIGHT_ITEMS.length} mục</span>
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder={`Tìm trong ${CUSTOMER_INSIGHT_ITEMS.length} mục...`} />
         </label>
         <div className="customer-classification__filters" role="group" aria-label="Lọc mục phân loại">
           {FILTER_OPTIONS.map(option => <button key={option.value} type="button" className={filter === option.value ? 'is-active' : ''} aria-pressed={filter === option.value} onClick={() => setFilter(option.value)}>{option.label}</button>)}
