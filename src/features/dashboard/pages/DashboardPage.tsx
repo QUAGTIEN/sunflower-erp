@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
-import { BarChart, DonutChart } from '@/components/VisualCharts';
+import { DonutChart } from '@/components/VisualCharts';
 import { ensureReceivableInvoice } from '@/features/sales/api/poWorkflowService';
 import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { DesignRequest } from '@/features/design/model/designWorkflow';
@@ -45,9 +45,121 @@ interface DashboardProps {
   onOpenPO: (poId: string) => void;
 }
 
+interface PORevenueMetrics {
+  gross: number;
+  directDiscount: number;
+  net: number;
+}
+
+interface RevenueTrendPoint extends PORevenueMetrics {
+  label: string;
+}
+
+const nonnegativeNumber = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+};
+
+const calculatePORevenueMetrics = (po: Record<string, unknown>): PORevenueMetrics => {
+  const items: Record<string, unknown>[] = Array.isArray(po.items)
+    ? po.items.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+    : [];
+  const itemFinancials: ReturnType<typeof calculatePOItemFinancials>[] = items
+    .map((item: Record<string, unknown>) => calculatePOItemFinancials(item));
+  const itemGross = itemFinancials.reduce((sum, item) => sum + item.grossAmount, 0);
+  const itemDiscount = itemFinancials.reduce((sum, item) => sum + item.discountAmount, 0);
+  const itemNet = itemFinancials.reduce((sum, item) => sum + item.amountBeforeVat, 0);
+  const storedTotal = nonnegativeNumber(po.totalAmount);
+  const storedNet = nonnegativeNumber(po.netAmount);
+  const storedDiscount = Math.max(nonnegativeNumber(po.discountAmount), itemDiscount);
+  const hasModernItemFinancials = items.some(item => (
+    item.discountType !== undefined || item.discountRate !== undefined || item.discountAmount !== undefined
+  ));
+
+  if (storedDiscount > 0 || hasModernItemFinancials) {
+    const net = storedTotal || itemNet;
+    return {
+      gross: net + storedDiscount,
+      directDiscount: storedDiscount,
+      net
+    };
+  }
+
+  // Legacy POs stored totalAmount before discount and netAmount after discount.
+  if (storedTotal > 0 && storedNet > 0 && storedNet < storedTotal) {
+    return {
+      gross: storedTotal,
+      directDiscount: storedTotal - storedNet,
+      net: storedNet
+    };
+  }
+
+  const gross = itemGross || storedTotal || storedNet;
+  const net = itemNet || storedTotal || storedNet;
+  return { gross, directDiscount: Math.max(0, gross - net), net };
+};
+
+const getPayableDiscountAmount = (po: Record<string, unknown>) => Math.max(
+  nonnegativeNumber(po.discountPayableAmount),
+  nonnegativeNumber(po.rebateAmount),
+  nonnegativeNumber(po.discountSettlementAmount)
+);
+
+const formatCompactMoney = (value: number) => {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tỷ`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`;
+  return value.toLocaleString('vi-VN');
+};
+
+const RevenueTrendChart: React.FC<{ data: RevenueTrendPoint[] }> = ({ data }) => {
+  const width = 620;
+  const height = 164;
+  const paddingX = 28;
+  const plotTop = 14;
+  const plotBottom = 126;
+  const plotHeight = plotBottom - plotTop;
+  const step = (width - paddingX * 2) / Math.max(data.length, 1);
+  const maxValue = Math.max(...data.flatMap(point => [point.gross, point.net]), 1);
+  const netPoints = data.map((point, index) => {
+    const x = paddingX + (index * step) + (step / 2);
+    const y = plotBottom - ((point.net / maxValue) * plotHeight);
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div className="dashboard-revenue-trend">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Doanh thu tổng và doanh thu sau chiết khấu trong sáu tháng">
+        {[0, 0.5, 1].map(ratio => {
+          const y = plotBottom - ratio * plotHeight;
+          return <line key={ratio} x1={paddingX} y1={y} x2={width - paddingX} y2={y} className="dashboard-revenue-trend__grid" />;
+        })}
+        {data.map((point, index) => {
+          const barHeight = (point.gross / maxValue) * plotHeight;
+          const x = paddingX + (index * step) + (step / 2) - 15;
+          return (
+            <g key={`${point.label}-${index}`}>
+              <rect x={x} y={plotBottom - barHeight} width="30" height={Math.max(2, barHeight)} rx="3" className="dashboard-revenue-trend__bar" />
+              <text x={x + 15} y={plotBottom + 19} textAnchor="middle" className="dashboard-revenue-trend__label">{point.label}</text>
+            </g>
+          );
+        })}
+        <polyline points={netPoints} className="dashboard-revenue-trend__line" />
+        {data.map((point, index) => {
+          const x = paddingX + (index * step) + (step / 2);
+          const y = plotBottom - ((point.net / maxValue) * plotHeight);
+          return <circle key={`net-${index}`} cx={x} cy={y} r="4" className="dashboard-revenue-trend__point" />;
+        })}
+      </svg>
+      <div className="dashboard-revenue-trend__legend" aria-hidden="true">
+        <span><i className="is-gross" />Doanh thu tổng</span>
+        <span><i className="is-net" />Sau chiết khấu</span>
+      </div>
+    </div>
+  );
+};
+
 export const Dashboard: React.FC<DashboardProps> = ({
   user,
-  users,
   pos,
   designRequests,
   customers,
@@ -123,28 +235,67 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const filteredPOs = activePOsList.filter(po => matchesTimeframe(po.orderDate || po.createdAt));
-  const filteredInvoices = activeInvoicesList.filter(inv => matchesTimeframe(inv.createdAt || inv.date));
   const filteredPurchaseOrders = activePurchaseOrdersList.filter(pur => matchesTimeframe(pur.createdAt));
   const filteredProductionCommands = activeProductionCommandsList.filter(cmd => matchesTimeframe(cmd.startedAt || cmd.createdAt));
 
   // Calculations helper
   const activePOs = filteredPOs.filter(po => !isPOCompleted(po));
-  const customerIdsWithOrders = new Set(activePOsList.map(po => po.customerId).filter(Boolean));
-  const collaboratingCustomers = activeCustomersList.filter(customer => customerIdsWithOrders.has(customer.id));
-  const activeEmployees = (users || []).filter(employee => employee.active !== false);
 
-  // Financial calculations
-  const totalRevenue = filteredInvoices
-    .filter(inv => inv.type === 'receivable' && inv.status === 'paid')
-    .reduce((sum, inv) => sum + Number(inv.amount), 0);
+  // Revenue is reported before VAT. Cash collection remains a separate accounting measure.
+  const revenueMetrics = filteredPOs.reduce<PORevenueMetrics>((summary, po) => {
+    const metrics = calculatePORevenueMetrics(po);
+    summary.gross += metrics.gross;
+    summary.directDiscount += metrics.directDiscount;
+    summary.net += metrics.net;
+    return summary;
+  }, { gross: 0, directDiscount: 0, net: 0 });
 
-  const arDebt = filteredInvoices
-    .filter(inv => inv.type === 'receivable' && inv.status !== 'paid')
-    .reduce((sum, inv) => sum + (Number(inv.amount) - Number(inv.paidAmount)), 0);
+  const newCustomerIds = new Set(
+    activeCustomersList.filter(customer => matchesTimeframe(customer.convertedAt || customer.createdAt)).map(customer => customer.id)
+  );
+  const newCustomerRevenue = filteredPOs
+    .filter(po => newCustomerIds.has(po.customerId))
+    .reduce((sum, po) => sum + calculatePORevenueMetrics(po).net, 0);
+  const payableDiscount = filteredPOs
+    .filter(po => getPOQueueStatus(po) === 'waiting_discount' && po.discountSettlementStatus !== 'paid')
+    .reduce((sum, po) => sum + getPayableDiscountAmount(po), 0);
 
-  const apDebt = filteredPurchaseOrders
-    .filter(pur => pur.status !== 'received')
-    .reduce((sum, pur) => sum + Number(pur.totalPrice), 0);
+  const trendEndMonth = selectedMonth === 'all' ? 11 : Math.max(0, Number(selectedMonth) - 1);
+  const trendEndYear = Number(selectedYear);
+  const revenueTrendData: RevenueTrendPoint[] = Array.from({ length: 6 }, (_, offset) => {
+    const period = new Date(trendEndYear, trendEndMonth - (5 - offset), 1);
+    const periodPOs = activePOsList.filter(po => {
+      const date = new Date(po.orderDate || po.createdAt || '');
+      return !Number.isNaN(date.getTime())
+        && date.getFullYear() === period.getFullYear()
+        && date.getMonth() === period.getMonth();
+    });
+    const metrics = periodPOs.reduce<PORevenueMetrics>((summary, po) => {
+      const values = calculatePORevenueMetrics(po);
+      summary.gross += values.gross;
+      summary.directDiscount += values.directDiscount;
+      summary.net += values.net;
+      return summary;
+    }, { gross: 0, directDiscount: 0, net: 0 });
+    return { ...metrics, label: `T${period.getMonth() + 1}` };
+  });
+
+  const now = new Date();
+  const upcomingDebtLimit = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const receivablesNeedingAttention = activeInvoicesList.filter(invoice => {
+    if (invoice.type !== 'receivable' || invoice.status === 'paid') return false;
+    const dueDate = new Date(invoice.dueDate || '');
+    return !Number.isNaN(dueDate.getTime()) && dueDate <= upcomingDebtLimit;
+  });
+  const pendingDiscountPOs = filteredPOs.filter(po => isPOInQueue(po, 'waiting_discount'));
+  const waitingInvoicePOs = filteredPOs.filter(po => isPOInQueue(po, 'waiting_invoice'));
+  const followUpLeads = (leads || []).filter(lead => (
+    !lead.deleted
+    && !lead.returnedToRawData
+    && lead.stage !== 'converted'
+    && !lead.convertedCustomerId
+    && (lead.customerInsightValues || []).includes('contact_later')
+  ));
 
   // Warning for low stock materials
   const lowStockMaterials = activeInventoryList.filter(item => item.qtyInStock < item.minQtyAlert);
@@ -563,50 +714,81 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   }
 
-  const adminOperationalContent = (
-    <div className="charts-row-mobile customer-insight-operational-charts" style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', width: '100%' }}>
-      <div className="card" style={{ flex: '1 1 300px' }}>
-        <div className="card-header">
-          <span className="card-title">{t('Cơ Cấu Doanh Thu & Công Nợ')}</span>
-        </div>
-        <BarChart
-          data={[
-            { label: t('Doanh Thu'), value: totalRevenue },
-            { label: t('Phải Thu (AR)'), value: arDebt },
-            { label: t('Phải Trả (AP)'), value: apDebt }
-          ]}
-          yAxisSuffix=" đ"
-        />
-      </div>
+  const earliestReceivableDue = [...receivablesNeedingAttention]
+    .sort((left, right) => new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime())[0]?.dueDate;
 
-      <div className="card" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column' }}>
-        <div className="card-header">
-          <span className="card-title">{t('Hàng Đợi Xử Lý PO')}</span>
+  const adminRevenueContent = (
+    <section className="customer-overview-panel dashboard-revenue-panel" aria-labelledby="dashboard-revenue-title">
+      <header className="customer-overview-panel__header">
+        <h3 id="dashboard-revenue-title">{t('Doanh thu')}</h3>
+        <small>{t('Giá trị chưa bao gồm VAT')}</small>
+      </header>
+      <div className="dashboard-revenue-metrics">
+        <article><span>{t('Doanh thu tổng')}</span><strong>{revenueMetrics.gross.toLocaleString('vi-VN')} đ</strong></article>
+        <article><span>{t('Sau chiết khấu')}</span><strong>{revenueMetrics.net.toLocaleString('vi-VN')} đ</strong></article>
+        <article><span>{t('Khách hàng mới')}</span><strong>{newCustomerRevenue.toLocaleString('vi-VN')} đ</strong></article>
+        <article><span>{t('Chiết khấu phải trả')}</span><strong>{payableDiscount.toLocaleString('vi-VN')} đ</strong></article>
+      </div>
+      <div className="dashboard-revenue-chart-heading">
+        <span>{t('Doanh thu theo tháng')}</span>
+        <small>{formatCompactMoney(revenueMetrics.directDiscount)} {t('chiết khấu trực tiếp trong kỳ')}</small>
+      </div>
+      <RevenueTrendChart data={revenueTrendData} />
+    </section>
+  );
+
+  const adminQueueContent = (
+    <section className="customer-overview-panel dashboard-po-queue-panel" aria-labelledby="dashboard-po-queue-title">
+      <header className="customer-overview-panel__header">
+        <h3 id="dashboard-po-queue-title">{t('Hàng đợi xử lý PO')}</h3>
+      </header>
+      <div className="dashboard-po-queue-content">
+        <div className="dashboard-po-queue-chart">
+          <DonutChart data={poQueueChartData} />
+          <span className="dashboard-po-queue-total"><strong>{activePOs.length}</strong><small>{t('đang xử lý')}</small></span>
         </div>
-        <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flex: 1, flexWrap: 'wrap' }} className="po-donut-row-interactive">
-          <div className="po-queue-donut"><DonutChart data={poQueueChartData} /></div>
-          <div className="po-queue-actions">
-            {poQueueChartData.map(state => (
-              <button
-                key={state.status}
-                type="button"
-                onClick={() => setSelectedProgressCategory(state.status)}
-                className="po-progress-card-btn"
-                title={t('Click để xem danh sách đơn hàng chi tiết')}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px',
-                  borderRadius: '8px', border: `1px solid ${state.color}55`, borderLeft: `4px solid ${state.color}`,
-                  backgroundColor: '#ffffff', color: '#1f2937', cursor: 'pointer', fontSize: '12.5px', fontWeight: 700, textAlign: 'left'
-                }}
-              >
-                <span>{t(state.label)}</span>
-                <strong style={{ color: state.color, fontSize: '17px' }}>{state.value}</strong>
-              </button>
-            ))}
-          </div>
+        <div className="dashboard-po-queue-actions">
+          {poQueueChartData.map(state => (
+            <button
+              key={state.status}
+              type="button"
+              onClick={() => setSelectedProgressCategory(state.status)}
+              title={t('Xem danh sách đơn hàng chi tiết')}
+              style={{ borderLeftColor: state.color }}
+            >
+              <span>{t(state.label)}</span>
+              <strong style={{ color: state.color }}>{state.value}</strong>
+            </button>
+          ))}
         </div>
       </div>
-    </div>
+    </section>
+  );
+
+  const adminTasksContent = (
+    <section className="customer-overview-panel dashboard-task-panel" aria-labelledby="dashboard-task-title">
+      <header className="customer-overview-panel__header">
+        <h3 id="dashboard-task-title">{t('Việc cần xử lý')}</h3>
+      </header>
+      <div className="dashboard-task-list">
+        <article className="is-urgent">
+          <div><strong>{receivablesNeedingAttention.length} {t('công nợ đến hạn hoặc quá hạn')}</strong><small>{earliestReceivableDue ? `${t('Hạn gần nhất')}: ${formatDate(earliestReceivableDue)}` : t('Không có công nợ cần xử lý')}</small></div>
+          <button type="button" className="btn btn-sm btn-outline" disabled={receivablesNeedingAttention.length === 0} onClick={() => onNavigate('accounting')}>{t('Xem ngay')}</button>
+        </article>
+        <article className="is-warning">
+          <div><strong>{pendingDiscountPOs.length} {t('PO chờ xử lý chiết khấu')}</strong><small>{t('Đã hoàn tất thu công nợ và chờ kế toán xử lý')}</small></div>
+          <button type="button" className="btn btn-sm btn-outline" disabled={pendingDiscountPOs.length === 0} onClick={() => setSelectedProgressCategory('waiting_discount')}>{t('Xử lý')}</button>
+        </article>
+        <article>
+          <div><strong>{waitingInvoicePOs.length} {t('PO chờ xuất hóa đơn')}</strong><small>{t('Đơn đã giao và chờ lập hóa đơn phải thu')}</small></div>
+          <button type="button" className="btn btn-sm btn-outline" disabled={waitingInvoicePOs.length === 0} onClick={() => setSelectedProgressCategory('waiting_invoice')}>{t('Xử lý')}</button>
+        </article>
+        <article className="is-success">
+          <div><strong>{followUpLeads.length} {t('khách hàng cần liên hệ lại')}</strong><small>{t('Tiềm năng được phân loại hẹn liên hệ sau')}</small></div>
+          <button type="button" className="btn btn-sm btn-outline" disabled={followUpLeads.length === 0} onClick={() => onNavigateInsight('leads', 'contact_later')}>{t('Xem')}</button>
+        </article>
+      </div>
+    </section>
   );
 
   // STANDARD DASHBOARD VIEW
@@ -691,11 +873,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             leads={leads}
             customers={customers}
             onNavigateInsight={onNavigateInsight}
-            collaboratingCustomersCount={collaboratingCustomers.length}
-            totalRevenue={totalRevenue}
-            activeEmployeesCount={activeEmployees.length}
             activeOrdersCount={activePOs.length}
-            operationalContent={adminOperationalContent}
+            revenueContent={adminRevenueContent}
+            queueContent={adminQueueContent}
+            tasksContent={adminTasksContent}
           />
 
         </>

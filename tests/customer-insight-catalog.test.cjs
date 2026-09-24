@@ -38,22 +38,24 @@ test('catalog exposes navigation and group-safe filtering helpers', () => {
   assert.match(source, /module === 'customer_data' \|\| module === 'leads'/);
 });
 
-test('dashboard renders every group and limits classification records to raw data and leads', () => {
+test('dashboard renders the focused overview and limits classification records to raw data and leads', () => {
   const dashboardSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'dashboard', 'components', 'CustomerInsightDashboard.tsx'),
     'utf8'
   );
-  assert.match(dashboardSource, /CUSTOMER_INSIGHT_GROUPS\.map/);
-  assert.match(dashboardSource, /getCustomerInsightNavigation\(item\.id\)/);
+  assert.match(dashboardSource, /DASHBOARD_GROUP_IDS/);
+  assert.match(dashboardSource, /getCustomerInsightNavigation\(targetItem\.id\)/);
   assert.match(dashboardSource, /Dữ liệu thô/);
   assert.match(dashboardSource, /Tiềm năng/);
+  assert.match(dashboardSource, /PO đang hoạt động/);
+  assert.match(dashboardSource, /product_needs/);
+  assert.match(dashboardSource, /contact_interaction/);
   assert.doesNotMatch(dashboardSource, /key: `crm:/);
   assert.doesNotMatch(dashboardSource, /key: `sales:/);
-  assert.equal((dashboardSource.match(/<article className="is-/g) || []).length, 8);
+  assert.equal((dashboardSource.match(/<article className="is-/g) || []).length, 4);
   assert.doesNotMatch(dashboardSource, /Theo dõi toàn bộ hành trình/);
-  assert.match(dashboardSource, /customer-insight-module-text/);
-  assert.doesNotMatch(dashboardSource, /customer-insight-results/);
-  assert.ok(dashboardSource.indexOf('{operationalContent}') < dashboardSource.indexOf('customer-insight-groups'));
+  assert.match(dashboardSource, /customer-insight-overview-grid/);
+  assert.ok(dashboardSource.indexOf('{revenueContent}') < dashboardSource.indexOf('customer-insight-summary-panel'));
 
   const dashboardPageSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'dashboard', 'pages', 'DashboardPage.tsx'),
@@ -61,8 +63,10 @@ test('dashboard renders every group and limits classification records to raw dat
   );
   assert.doesNotMatch(dashboardPageSource, /Bảng tin hoạt động/);
   assert.doesNotMatch(dashboardPageSource, /Đơn Hàng Sắp Giao Trong Tuần/);
-  assert.match(dashboardPageSource, /Cơ Cấu Doanh Thu & Công Nợ/);
-  assert.match(dashboardPageSource, /Hàng Đợi Xử Lý PO/);
+  assert.match(dashboardPageSource, /Doanh thu theo tháng/);
+  assert.match(dashboardPageSource, /Hàng đợi xử lý PO/);
+  assert.match(dashboardPageSource, /Việc cần xử lý/);
+  assert.match(dashboardPageSource, /Chiết khấu phải trả/);
 });
 
 test('raw data and leads share the 59-item classification page and list controls', () => {
