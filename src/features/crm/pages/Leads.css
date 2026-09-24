@@ -497,6 +497,119 @@
   grid-column: 1 / -1;
 }
 
+.lead-form-card--wide,
+.lead-form-page__extension-label {
+  grid-column: 1 / -1;
+}
+
+.lead-form-page__extension-label {
+  align-self: end;
+  margin: 2px 0 -6px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #cbdaf3;
+  color: #1e4fa4;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.lead-attachments-card__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.lead-attachments-card__toolbar > span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.lead-attachments-card__link {
+  margin-bottom: 10px;
+  color: #1e40af;
+  font-size: 12px;
+}
+
+.lead-attachments-card__link > summary {
+  width: fit-content;
+  cursor: pointer;
+}
+
+.lead-attachments-card__link > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.lead-attachments-card__link input {
+  min-width: 180px;
+  flex: 1 1 220px;
+}
+
+.lead-attachments-card__upload {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.lead-attachments-card__upload input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.lead-attachments-card__upload:focus-within {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.lead-attachments-card__table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.lead-attachments-card__table table {
+  min-width: 720px;
+  width: 100%;
+}
+
+.lead-attachments-card__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.lead-attachments-card__actions button {
+  padding: 0;
+  border: 0;
+  color: #b91c1c;
+  background: transparent;
+  cursor: pointer;
+}
+
+.lead-repository-disclosure {
+  margin-top: 14px;
+}
+
+.lead-repository-disclosure > summary {
+  padding: 10px 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  color: #1e3a8a;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lead-repository-disclosure[open] > summary {
+  margin-bottom: 10px;
+}
+
 .lead-profile-structure-toggle {
   flex: 0 0 auto;
   margin-left: auto;

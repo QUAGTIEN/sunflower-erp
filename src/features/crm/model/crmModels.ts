@@ -270,6 +270,7 @@ export interface LeadActivityRecord extends UnknownRecord {
 export interface LeadFileRecord extends UnknownRecord {
   id: string;
   name: string;
+  size?: number;
   folderId: string;
   folder: string;
   url: string;
@@ -291,6 +292,7 @@ export interface LeadRecord extends UnknownRecord {
   website: string;
   businessSector: string;
   stage: LeadStage;
+  industry?: string;
   companySize: LeadCompanySize;
   source: string;
   sourceUrl: string;
@@ -302,6 +304,11 @@ export interface LeadRecord extends UnknownRecord {
   taxCode: string;
   potentialValue: number;
   expectedProducts: string;
+  closingProbability?: number;
+  expectedCloseAt?: string;
+  lastContactResult?: string;
+  nextGoal?: string;
+  careNote?: string;
   assignedSaleId: string;
   assignedSaleName: string;
   discoveredById: string;
@@ -427,6 +434,7 @@ const normalizeCustomerFile = (value: unknown, index = 0): CustomerFileRecord =>
     ...source,
     id: asText(source.id, `file-${index + 1}`),
     name: asText(source.name ?? source.fileName),
+    size: Math.max(0, asNumber(source.size)),
     folderId: asText(source.folderId),
     folder: asText(source.folder),
     url: asText(source.url ?? source.fileUrl),
@@ -694,6 +702,7 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     website: asText(source.website),
     businessSector: asText(source.businessSector),
     stage: normalizeLeadStage(source.stage),
+    industry: asText(source.industry),
     companySize: normalizeLeadCompanySize(source.companySize),
     source: asText(source.source),
     sourceUrl: asText(source.sourceUrl),
@@ -705,6 +714,11 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     taxCode: asText(source.taxCode),
     potentialValue: Math.max(0, asNumber(source.potentialValue)),
     expectedProducts: asText(source.expectedProducts),
+    closingProbability: Math.min(100, Math.max(0, asNumber(source.closingProbability))),
+    expectedCloseAt: asText(source.expectedCloseAt),
+    lastContactResult: asText(source.lastContactResult),
+    nextGoal: asText(source.nextGoal),
+    careNote: asText(source.careNote),
     assignedSaleId: asText(source.assignedSaleId),
     assignedSaleName: asText(source.assignedSaleName),
     discoveredById: asText(source.discoveredById, asText(source.createdById)),

@@ -184,6 +184,7 @@ interface LeadFormState {
   email: string;
   website: string;
   businessSector: string;
+  industry: string;
   taxCode: string;
   address: string;
   province: string;
@@ -194,6 +195,11 @@ interface LeadFormState {
   sourceUrl: string;
   potentialValue: number;
   expectedProducts: string;
+  closingProbability: number;
+  expectedCloseAt: string;
+  lastContactResult: string;
+  nextGoal: string;
+  careNote: string;
   stage: LeadStage;
   assignedSaleId: string;
   discoveredById: string;
@@ -302,6 +308,7 @@ const createEmptyForm = (currentUser: UserProfile, saleUsers: UserProfile[]): Le
   email: '',
   website: '',
   businessSector: '',
+  industry: '',
   taxCode: '',
   address: '',
   province: '',
@@ -312,6 +319,11 @@ const createEmptyForm = (currentUser: UserProfile, saleUsers: UserProfile[]): Le
   sourceUrl: '',
   potentialValue: 0,
   expectedProducts: '',
+  closingProbability: 0,
+  expectedCloseAt: '',
+  lastContactResult: '',
+  nextGoal: '',
+  careNote: '',
   stage: 'new',
   assignedSaleId: currentUser.role === 'sale' ? currentUser.uid : (saleUsers[0]?.uid || ''),
   discoveredById: currentUser.role === 'sale' ? currentUser.uid : '',
@@ -335,7 +347,7 @@ export const Leads: React.FC<LeadsProps> = ({
   initialInsightFilterId = ''
 }) => {
   const { t } = useLanguage();
-  const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('leads', currentUser.role);
+  const { definitions: customFieldDefinitions, allDefinitions: allCustomFieldDefinitions } = useEntityFieldDefinitions('leads', currentUser.role);
   const inlineSystemFieldConfiguration = useSystemFieldConfiguration('leads');
   const saleUsers = useMemo(() => users.filter(user => user.role === 'sale'), [users]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -365,6 +377,8 @@ export const Leads: React.FC<LeadsProps> = ({
   const [formProfileValues, setFormProfileValues] = useState<Record<string, string[]>>({});
   const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   const [uploadingFiles, setUploadingFiles] = useState<LeadFileRecord[]>([]);
+  const [attachmentLinkName, setAttachmentLinkName] = useState('');
+  const [attachmentLinkUrl, setAttachmentLinkUrl] = useState('');
   const [activeLeadFolderId, setActiveLeadFolderId] = useState('contracts');
   const [newLeadFolderName, setNewLeadFolderName] = useState('');
   const [renamingLeadFolderId, setRenamingLeadFolderId] = useState('');
@@ -970,6 +984,10 @@ export const Leads: React.FC<LeadsProps> = ({
   };
 
   const openEditForm = useCallback((lead: LeadRecord) => {
+    const leadIndustryDefinition = customFieldDefinitions.find(definition => definition.section === 'company' && normalizeSearchText(definition.name) === 'nganh nghe');
+    const legacyIndustry = leadIndustryDefinition && lead.customFieldValues?.[leadIndustryDefinition.id] !== undefined
+      ? formatEntityCustomFieldValue(leadIndustryDefinition, lead.customFieldValues[leadIndustryDefinition.id])
+      : '';
     setSelectedLeadId(lead.id);
     setEditingLeadId(lead.id);
     setConvertingCandidateId('');
@@ -986,6 +1004,7 @@ export const Leads: React.FC<LeadsProps> = ({
       email: lead.email,
       website: lead.website || '',
       businessSector: lead.businessSector || '',
+      industry: lead.industry || legacyIndustry,
       taxCode: lead.taxCode,
       address: lead.address,
       province: lead.province,
@@ -996,6 +1015,11 @@ export const Leads: React.FC<LeadsProps> = ({
       sourceUrl: lead.sourceUrl || '',
       potentialValue: lead.potentialValue,
       expectedProducts: lead.expectedProducts,
+      closingProbability: lead.closingProbability || 0,
+      expectedCloseAt: lead.expectedCloseAt || '',
+      lastContactResult: lead.lastContactResult || '',
+      nextGoal: lead.nextGoal || '',
+      careNote: lead.careNote || '',
       stage: lead.stage,
       assignedSaleId: lead.assignedSaleId,
       discoveredById: lead.discoveredById || lead.createdById,
@@ -1005,7 +1029,7 @@ export const Leads: React.FC<LeadsProps> = ({
     });
     enterLeadProfileHistory();
     setShowLeadForm(true);
-  }, [enterLeadProfileHistory, filterDefinitions]);
+  }, [customFieldDefinitions, enterLeadProfileHistory, filterDefinitions]);
 
   const openLeadById = (leadId: string) => {
     const lead = leads.find(entry => entry.id === leadId);
@@ -1136,9 +1160,42 @@ export const Leads: React.FC<LeadsProps> = ({
   const openCreateFormFromCandidate = useCallback((candidate: LeadCandidateRecord) => {
     setEditingLeadId('');
     setConvertingCandidateId(candidate.id);
-    setUploadingFiles([]);
+    setUploadingFiles(Array.isArray(candidate.files) ? candidate.files.flatMap((value, index) => {
+      if (!value || typeof value !== 'object') return [];
+      const file = value as Record<string, unknown>;
+      const name = String(file.name || file.fileName || '');
+      if (!name) return [];
+      return [{
+        id: String(file.id || `candidate-file-${index}`),
+        name,
+        size: Number(file.size) || 0,
+        folderId: String(file.folderId || 'other'),
+        folder: String(file.folder || 'Tài liệu khác'),
+        url: String(file.url || file.fileUrl || ''),
+        data: String(file.data || file.base64 || ''),
+        createdAt: String(file.createdAt || ''),
+        createdById: String(file.createdById || ''),
+        createdBy: String(file.createdBy || '')
+      } satisfies LeadFileRecord];
+    }) : []);
     setFormProfileValues({});
-    setCustomFieldValues({});
+    const sharedCustomValues = { ...(candidate.customFieldValues || {}) };
+    const rawDefinitions = allCustomFieldDefinitions.filter(definition => definition.table === 'lead_candidates' && !definition.removed);
+    const rawIndustryDefinition = rawDefinitions.find(definition => definition.section === 'company' && normalizeSearchText(definition.name) === 'nganh nghe');
+    const rawIndustry = rawIndustryDefinition && candidate.customFieldValues?.[rawIndustryDefinition.id] !== undefined
+      ? formatEntityCustomFieldValue(rawIndustryDefinition, candidate.customFieldValues[rawIndustryDefinition.id])
+      : '';
+    for (const leadDefinition of customFieldDefinitions) {
+      const rawDefinition = rawDefinitions.find(definition => (
+        definition.section === leadDefinition.section
+        && definition.type === leadDefinition.type
+        && normalizeSearchText(definition.name) === normalizeSearchText(leadDefinition.name)
+      ));
+      if (!rawDefinition) continue;
+      const rawValue = candidate.customFieldValues?.[rawDefinition.id];
+      if (rawValue !== undefined) sharedCustomValues[leadDefinition.id] = rawValue;
+    }
+    setCustomFieldValues(sharedCustomValues);
     setTaxCodeSaveError('');
     const leadSource = mapCandidateSourceToLeadSource(candidate.source);
     const sourceOptionId = findLeadFilterOptionId(filterDefinitions, LEAD_FILTER_IDS.source, leadSource);
@@ -1158,6 +1215,7 @@ export const Leads: React.FC<LeadsProps> = ({
       email: candidate.email,
       website: candidate.website || '',
       businessSector: candidate.businessSector || '',
+      industry: String(candidate.industry || rawIndustry),
       taxCode: candidate.taxCode,
       address: candidate.address,
       province: candidate.province,
@@ -1170,12 +1228,13 @@ export const Leads: React.FC<LeadsProps> = ({
       discoveredById: candidate.discoveredById || candidate.createdById,
       nextFollowUpAt: toDateTimeLocal(candidate.queuedNextContactAt || candidate.nextContactAt),
       expectedProducts: candidate.expectedProducts || '',
+      lastContactResult: candidate.lastContactNote || '',
       note: candidate.note || '',
       customerInsightValues: candidate.customerInsightValues || []
     });
     enterLeadProfileHistory();
     setShowLeadForm(true);
-  }, [currentUser, enterLeadProfileHistory, filterDefinitions, saleUsers]);
+  }, [allCustomFieldDefinitions, currentUser, customFieldDefinitions, enterLeadProfileHistory, filterDefinitions, saleUsers]);
 
   useEffect(() => {
     if (!initialCandidate) return;
@@ -1233,8 +1292,9 @@ export const Leads: React.FC<LeadsProps> = ({
     const nextFiles = await Promise.all(files.map(file => new Promise<LeadFileRecord>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve({
-        id: `lead-file-${file.lastModified}-${file.name}`,
+        id: `lead-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         name: file.name,
+        size: file.size,
         folderId: 'other',
         folder: 'Tài liệu khác',
         url: '',
@@ -1247,6 +1307,29 @@ export const Leads: React.FC<LeadsProps> = ({
       reader.readAsDataURL(file);
     })));
     setUploadingFiles(previous => [...previous, ...nextFiles]);
+    event.target.value = '';
+  };
+
+  const handleAddAttachmentLink = () => {
+    const name = attachmentLinkName.trim();
+    const url = attachmentLinkUrl.trim();
+    if (!name || !/^https?:\/\//i.test(url)) {
+      window.alert(t('Nhập tên tệp và đường dẫn chia sẻ bắt đầu bằng http:// hoặc https://.'));
+      return;
+    }
+    setUploadingFiles(previous => [...previous, {
+      id: `lead-link-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      folderId: 'other',
+      folder: 'Tài liệu khác',
+      url,
+      data: '',
+      createdAt: new Date().toISOString(),
+      createdById: currentUser.uid,
+      createdBy: currentUser.displayName
+    }]);
+    setAttachmentLinkName('');
+    setAttachmentLinkUrl('');
   };
 
   const handleLeadRepositoryFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1482,6 +1565,7 @@ export const Leads: React.FC<LeadsProps> = ({
       email: form.email.trim(),
       website: form.website.trim(),
       businessSector: form.businessSector.trim(),
+      industry: form.industry.trim(),
       taxCode: normalizedTaxCode,
       address: form.address.trim(),
       province: form.province.trim(),
@@ -1492,6 +1576,11 @@ export const Leads: React.FC<LeadsProps> = ({
       sourceUrl: form.sourceUrl.trim(),
       potentialValue: Number(form.potentialValue),
       expectedProducts: form.expectedProducts.trim(),
+      closingProbability: Number(form.closingProbability),
+      expectedCloseAt: form.expectedCloseAt,
+      lastContactResult: form.lastContactResult.trim(),
+      nextGoal: form.nextGoal.trim(),
+      careNote: form.careNote.trim(),
       customerInsightValues: form.customerInsightValues,
       stage: form.stage,
       filterValues: profileFilterValues,
@@ -1711,7 +1800,9 @@ export const Leads: React.FC<LeadsProps> = ({
         industrialPark: (lead.industrialPark || '').trim(),
         website: (lead.website || '').trim(),
         businessSector: (lead.businessSector || '').trim(),
+        industry: (lead.industry || '').trim(),
         expectedProducts: (lead.expectedProducts || '').trim(),
+        files: lead.files || [],
         source: linkedCandidate?.source || mapLeadSourceToCandidateSource(lead.source),
         sourceUrl: lead.sourceUrl || linkedCandidate?.sourceUrl || '',
         note: lead.note.trim(),
@@ -2205,11 +2296,11 @@ export const Leads: React.FC<LeadsProps> = ({
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <Building2 size={18} />
-                <div><h2>{t('Thông tin doanh nghiệp')}</h2><p>{t('Thông tin pháp lý và nhận diện doanh nghiệp.')}</p></div>
+                <div><h2>{t('Thông tin doanh nghiệp')}</h2></div>
               </div>
               <div className="lead-form-grid">
                 <div className="form-group lead-form-grid__wide"><label data-system-label="companyName">{t('Tên doanh nghiệp *')}</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
-                <div className="form-group lead-form-grid__wide">
+                <div className="form-group">
                   <label data-system-label="taxCode">{t('Mã số thuế *')}</label>
                   <input
                     required
@@ -2231,7 +2322,7 @@ export const Leads: React.FC<LeadsProps> = ({
                   </span>
                 </div>
                 <div className="form-group"><label data-system-label="website">{t('Website')}</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
-                <div className="form-group"><label data-system-label="businessSector">{t('Lĩnh vực hoạt động')}</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder={t('Ví dụ: Bao bì, thực phẩm, điện tử...')} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="businessSector">{t('Lĩnh vực hoạt động')}</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder={t('Ví dụ: Bao bì, thực phẩm, điện tử...')} /></div>
                 <BusinessLocationFields
                   className="lead-form-grid__wide"
                   province={form.province}
@@ -2240,73 +2331,46 @@ export const Leads: React.FC<LeadsProps> = ({
                   onChange={location => setForm(previous => ({ ...previous, ...location }))}
                 />
                 <div className="form-group lead-form-grid__wide"><label data-system-label="address">{t('Địa chỉ doanh nghiệp')}</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="industry">{t('Ngành nghề')}</label><input value={form.industry} onChange={event => updateForm('industry', event.target.value)} /></div>
               </div>
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company' && normalizeSearchText(definition.name) !== 'nganh nghe')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
               <InlineEntityFieldManager table="leads" section="company" sectionLabel={t('Thông tin doanh nghiệp')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'website', label: 'Website' }, { key: 'businessSector', label: 'Lĩnh vực hoạt động' }, { key: 'province', label: 'Tỉnh / thành' }, { key: 'ward', label: 'Phường / xã' }, { key: 'industrialPark', label: 'Khu công nghiệp' }, { key: 'address', label: 'Địa chỉ doanh nghiệp' }]} />
-            </section>
-
-            <section className="lead-form-card lead-form-card--classification">
-              <div className="lead-form-card__heading">
-                <Tags size={18} />
-                <div><h2>{t('Phân loại khách hàng')}</h2><p>{t('Thông tin chuẩn phục vụ tìm kiếm và đánh giá Lead.')}</p></div>
-              </div>
-              <LeadDynamicFields
-                values={formFilterValues}
-                definitions={formClassificationDefinitions}
-                canEditAll={currentUser.role === 'admin'}
-                onChange={handleFormFilterValueChange}
-              />
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Phân loại khách hàng')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} />
             </section>
 
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <UserCheck size={18} />
-                <div><h2>{t('Liên hệ và nhu cầu')}</h2><p>{t('Đầu mối liên hệ, nguồn dữ liệu, nhu cầu và giá trị cơ hội.')}</p></div>
+                <div><h2>{t('Liên hệ và nguồn dữ liệu')}</h2></div>
               </div>
               <div className="lead-form-grid">
                 <div className="form-group"><label data-system-label="contactPerson">{t('Người liên hệ')}</label><input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} /></div>
                 <div className="form-group"><label data-system-label="contactPosition">{t('Chức vụ')}</label><input value={form.contactPosition} onChange={event => updateForm('contactPosition', event.target.value)} placeholder={t('Ví dụ: Thu mua, Giám đốc...')} /></div>
                 <div className="form-group"><label data-system-label="phone">{t('Điện thoại')}</label><input type="tel" value={form.phone} onChange={event => updateForm('phone', event.target.value)} /></div>
                 <div className="form-group"><label data-system-label="email">Email</label><input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} /></div>
-                <div className="form-group"><label data-system-label="source">{t('Nguồn dữ liệu')}</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}><option value="">{t('Chưa chọn')}</option>{form.source && !leadSourceOptions.includes(form.source) && <option value={form.source}>{form.source}</option>}{leadSourceOptions.map(source => <option key={source} value={source}>{source}</option>)}</select></div>
+                <div className="form-group"><label data-system-label="source">{t('Nguồn tìm kiếm')}</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}><option value="">{t('Chưa chọn')}</option>{form.source && !leadSourceOptions.includes(form.source) && <option value={form.source}>{form.source}</option>}{leadSourceOptions.map(source => <option key={source} value={source}>{source}</option>)}</select></div>
                 <div className="form-group"><label data-system-label="sourceUrl">{t('Đường dẫn nguồn')}</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="https://..." /></div>
-                <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">{t('Sản phẩm / nhu cầu quan tâm')}</label><textarea rows={3} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder={t('Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến...')} /></div>
-                <div className="form-group"><label data-system-label="potentialValue">{t('Giá trị tiềm năng (đ)')}</label><input type="number" min="0" value={form.potentialValue} onChange={event => updateForm('potentialValue', Number(event.target.value))} /></div>
-                <div className="form-group"><label data-system-label="stage">{t('Giai đoạn xử lý')}</label><select value={form.stage} onChange={event => updateForm('stage', event.target.value as LeadStage)}>{LEAD_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.label}</option>)}</select></div>
-                <div className="form-group lead-form-grid__wide"><label data-system-label="note">{t('Ghi chú')}</label><textarea rows={3} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder={t('Thông tin cần lưu ý khi làm việc với khách hàng...')} /></div>
-                <div className="form-group lead-form-grid__wide">
-                  <label>{t('Tệp / tài liệu liên quan')}</label>
-                  <div className="lead-file-dropzone">
-                    <Paperclip size={18} />
-                    <div><strong>{t('Chọn tệp từ máy tính')}</strong><span>{t('Có thể gắn nhiều báo giá, hình ảnh hoặc tài liệu liên quan.')}</span></div>
-                    <input type="file" multiple onChange={handleLeadFilesChange} />
-                  </div>
-                  {uploadingFiles.length > 0 && (
-                    <div className="lead-upload-list">
-                      {uploadingFiles.map(file => (
-                        <span key={file.id}>
-                          <Paperclip size={12} /> {file.name}
-                          <button type="button" onClick={() => setUploadingFiles(previous => previous.filter(item => item.id !== file.id))} aria-label={`${t('Bỏ tệp')} ${file.name}`}><X size={12} /></button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="contact" sectionLabel={t('Liên hệ và nhu cầu')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'source', label: 'Nguồn dữ liệu' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }, { key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }, { key: 'potentialValue', label: 'Giá trị tiềm năng' }, { key: 'stage', label: 'Giai đoạn xử lý' }, { key: 'note', label: 'Ghi chú' }]} />
+              <InlineEntityFieldManager table="leads" section="contact" sectionLabel={t('Liên hệ và nguồn dữ liệu')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'source', label: 'Nguồn tìm kiếm' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }]} />
+            </section>
+
+            <section className="lead-form-card">
+              <div className="lead-form-card__heading"><Search size={18} /><div><h2>{t('Nhu cầu sơ bộ')}</h2></div></div>
+              <div className="lead-form-grid">
+                <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">{t('Sản phẩm / nhu cầu quan tâm')}</label><textarea rows={3} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder={t('Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến...')} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="note">{t('Ghi chú')}</label><textarea rows={3} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder={t('Thông tin cần lưu ý khi làm việc với khách hàng...')} /></div>
+              </div>
+              <InlineEntityFieldManager table="leads" section="needs" sectionLabel={t('Nhu cầu sơ bộ')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }, { key: 'note', label: 'Ghi chú' }]} />
             </section>
 
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
                 <CalendarClock size={18} />
-                <div><h2>{t('Phụ trách và lịch làm việc')}</h2><p>{t('Phân công rõ người chịu trách nhiệm và lịch chăm sóc.')}</p></div>
+                <div><h2>{t('Phụ trách và lịch hẹn')}</h2></div>
               </div>
               <div className="lead-form-grid">
                 <div className={`form-group${currentUser.role === 'admin' ? '' : ' lead-form-grid__wide'}`}>
-                  <label data-system-label="assignedSaleId">{t('Sale phụ trách')}</label>
+                  <label data-system-label="assignedSaleId">{t('Người phụ trách *')}</label>
                   <select value={form.assignedSaleId} onChange={event => updateForm('assignedSaleId', event.target.value)} disabled={currentUser.role === 'sale'}>
                     <option value="">{t('-- Chưa phân công --')}</option>
                     {saleUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}
@@ -2322,13 +2386,53 @@ export const Leads: React.FC<LeadsProps> = ({
                   </div>
                 )}
                 <div className="form-group lead-form-grid__wide">
-                  <label data-system-label="nextFollowUpAt">{t('Lịch chăm sóc tiếp theo')}</label>
+                  <label data-system-label="nextFollowUpAt">{t('Lịch hẹn xử lý')}</label>
                   <input type="datetime-local" value={form.nextFollowUpAt} onChange={event => updateForm('nextFollowUpAt', event.target.value)} />
                 </div>
               </div>
-              <div className="lead-fixed-form-note">{t('Trường hệ thống được giữ ổn định; Admin có thể bổ sung trường riêng cho khung này.')}</div>
               <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="assignment" sectionLabel={t('Phụ trách và lịch làm việc')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'discoveredById', label: 'Sale tìm được Lead' }, { key: 'nextFollowUpAt', label: 'Lịch chăm sóc tiếp theo' }]} />
+              <InlineEntityFieldManager table="leads" section="assignment" sectionLabel={t('Phụ trách và lịch hẹn')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'discoveredById', label: 'Sale tìm được Lead' }, { key: 'nextFollowUpAt', label: 'Lịch hẹn xử lý' }]} />
+            </section>
+
+            <section className="lead-form-card lead-form-card--wide lead-attachments-card">
+              <div className="lead-form-card__heading"><Paperclip size={18} /><div><h2>{t('Tệp đính kèm')}</h2></div></div>
+              <div className="lead-attachments-card__toolbar">
+                <label className="btn btn-outline lead-attachments-card__upload">{t('Tải tệp lên')}<input type="file" multiple onChange={handleLeadFilesChange} /></label>
+                <span>{t('Tệp dưới 900 KB; tệp lớn dùng đường dẫn Drive hoặc OneDrive.')}</span>
+              </div>
+              <details className="lead-attachments-card__link"><summary>{t('Thêm đường dẫn Drive/OneDrive')}</summary><div><input aria-label={t('Tên tài liệu')} placeholder={t('Tên tài liệu')} value={attachmentLinkName} onChange={event => setAttachmentLinkName(event.target.value)} /><input aria-label={t('Đường dẫn chia sẻ')} type="url" placeholder="https://..." value={attachmentLinkUrl} onChange={event => setAttachmentLinkUrl(event.target.value)} /><button type="button" className="btn btn-outline" onClick={handleAddAttachmentLink}>{t('Thêm liên kết')}</button></div></details>
+              <div className="table-container lead-attachments-card__table"><table><thead><tr><th>{t('Tên tệp')}</th><th>{t('Loại')}</th><th>{t('Dung lượng')}</th><th>{t('Ngày cập nhật')}</th><th>{t('Người cập nhật')}</th><th>{t('Thao tác')}</th></tr></thead><tbody>
+                {uploadingFiles.map(file => {
+                  const source = file.data || file.url;
+                  return <tr key={file.id}><td title={file.name}>{file.name}</td><td>{file.url ? t('Đường dẫn') : source.startsWith('data:image/') ? t('Hình ảnh') : t('Tệp tài liệu')}</td><td>{file.size ? `${(file.size / 1024).toLocaleString('vi-VN', { maximumFractionDigits: 0 })} KB` : '—'}</td><td>{file.createdAt ? formatDateTime(file.createdAt) : '—'}</td><td>{file.createdBy || '—'}</td><td><div className="lead-attachments-card__actions">{source && (file.url ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a> : <a href={source} download={file.name}>{t('Tải xuống')}</a>)}<button type="button" onClick={() => { if (window.confirm(t('Xóa tệp này khỏi hồ sơ?'))) setUploadingFiles(previous => previous.filter(item => item.id !== file.id)); }}>{t('Xóa')}</button></div></td></tr>;
+                })}
+                {uploadingFiles.length === 0 && <tr><td colSpan={6} className="lead-file-repository-empty">{t('Chưa có tệp đính kèm.')}</td></tr>}
+              </tbody></table></div>
+            </section>
+
+            <div className="lead-form-page__extension-label">{t('THÔNG TIN BỔ SUNG CHO TIỀM NĂNG')}</div>
+
+            <section className="lead-form-card">
+              <div className="lead-form-card__heading"><Tags size={18} /><div><h2>{t('Đánh giá tiềm năng')}</h2></div></div>
+              <div className="lead-form-grid">
+                <div className="form-group"><label data-system-label="companySize">{t('Quy mô doanh nghiệp')}</label><select value={form.companySize} onChange={event => updateForm('companySize', event.target.value as LeadCompanySize)}>{Object.entries(COMPANY_SIZE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                <div className="form-group"><label data-system-label="stage">{t('Giai đoạn xử lý')}</label><select value={form.stage} onChange={event => updateForm('stage', event.target.value as LeadStage)}>{LEAD_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.label}</option>)}</select></div>
+                <div className="form-group"><label data-system-label="potentialValue">{t('Giá trị tiềm năng (đ)')}</label><input type="number" min="0" value={form.potentialValue} onChange={event => updateForm('potentialValue', Number(event.target.value))} /></div>
+                <div className="form-group"><label data-system-label="closingProbability">{t('Khả năng chốt (%)')}</label><input type="number" min="0" max="100" value={form.closingProbability} onChange={event => updateForm('closingProbability', Number(event.target.value))} /></div>
+                <div className="form-group"><label data-system-label="expectedCloseAt">{t('Dự kiến chốt')}</label><input type="date" value={form.expectedCloseAt} onChange={event => updateForm('expectedCloseAt', event.target.value)} /></div>
+              </div>
+              <LeadDynamicFields values={formFilterValues} definitions={formClassificationDefinitions.filter(definition => definition.id !== LEAD_FILTER_IDS.companySize)} canEditAll={currentUser.role === 'admin'} onChange={handleFormFilterValueChange} />
+              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Đánh giá tiềm năng')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'companySize', label: 'Quy mô doanh nghiệp' }, { key: 'stage', label: 'Giai đoạn xử lý' }, { key: 'potentialValue', label: 'Giá trị tiềm năng' }]} />
+            </section>
+
+            <section className="lead-form-card">
+              <div className="lead-form-card__heading"><CalendarClock size={18} /><div><h2>{t('Kế hoạch chăm sóc')}</h2></div></div>
+              <div className="lead-form-grid">
+                <div className="form-group"><label data-system-label="lastContactResult">{t('Kết quả liên hệ gần nhất')}</label><input value={form.lastContactResult} onChange={event => updateForm('lastContactResult', event.target.value)} /></div>
+                <div className="form-group"><label data-system-label="nextGoal">{t('Mục tiêu tiếp theo')}</label><input value={form.nextGoal} onChange={event => updateForm('nextGoal', event.target.value)} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="careNote">{t('Ghi chú chăm sóc')}</label><textarea rows={3} value={form.careNote} onChange={event => updateForm('careNote', event.target.value)} /></div>
+              </div>
             </section>
 
             <EntityCustomFieldsSection
@@ -2352,7 +2456,7 @@ export const Leads: React.FC<LeadsProps> = ({
             </div>
           </footer>}
         </form>
-        {editingLead && renderLeadRepository()}
+        {editingLead && <details className="lead-repository-disclosure"><summary>{t('Quản lý thư mục tài liệu')}</summary>{renderLeadRepository()}</details>}
       </SystemFieldSurface>
     );
   }
