@@ -619,14 +619,14 @@
 }
 
 .lead-attachments-card__table {
-  display: block !important;
-  height: auto !important;
-  max-height: 210px !important;
-  min-height: 0 !important;
-  flex: 0 0 auto !important;
+  display: block;
+  max-height: 210px;
   width: 100%;
   overflow: auto;
-  border-radius: 4px !important;
+  flex: none;
+  border: 1px solid #d7e0ed;
+  border-radius: 4px;
+  background: #fff;
 }
 
 .lead-attachments-card__table table {
@@ -650,10 +650,19 @@
   font-size: 12px !important;
 }
 
-.lead-attachments-card__table .lead-file-repository-empty {
-  height: 48px !important;
-  min-height: 48px !important;
-  max-height: 48px !important;
+.lead-attachments-card__empty {
+  display: flex;
+  min-height: 48px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px solid #d7e0ed;
+  border-radius: 4px;
+  color: #64748b;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .lead-attachments-card__actions {

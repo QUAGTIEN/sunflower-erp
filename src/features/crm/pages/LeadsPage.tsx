@@ -2407,13 +2407,18 @@ export const Leads: React.FC<LeadsProps> = ({
                 </label>
               </div>
               <details className="lead-attachments-card__link"><summary>{t('Thêm đường dẫn Drive/OneDrive')}</summary><div><input aria-label={t('Tên tài liệu')} placeholder={t('Tên tài liệu')} value={attachmentLinkName} onChange={event => setAttachmentLinkName(event.target.value)} /><input aria-label={t('Đường dẫn chia sẻ')} type="url" placeholder="https://..." value={attachmentLinkUrl} onChange={event => setAttachmentLinkUrl(event.target.value)} /><button type="button" className="btn btn-outline" onClick={handleAddAttachmentLink}>{t('Thêm liên kết')}</button></div></details>
-              <div className="table-container lead-attachments-card__table"><table><thead><tr><th>{t('Tên tệp')}</th><th>{t('Loại')}</th><th>{t('Dung lượng')}</th><th>{t('Ngày cập nhật')}</th><th>{t('Người cập nhật')}</th><th>{t('Thao tác')}</th></tr></thead><tbody>
-                {uploadingFiles.map(file => {
-                  const source = file.data || file.url;
-                  return <tr key={file.id}><td title={file.name}>{file.name}</td><td>{file.url ? t('Đường dẫn') : source.startsWith('data:image/') ? t('Hình ảnh') : t('Tệp tài liệu')}</td><td>{file.size ? `${(file.size / 1024).toLocaleString('vi-VN', { maximumFractionDigits: 0 })} KB` : '—'}</td><td>{file.createdAt ? formatDateTime(file.createdAt) : '—'}</td><td>{file.createdBy || '—'}</td><td><div className="lead-attachments-card__actions">{source && (file.url ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a> : <a href={source} download={file.name}>{t('Tải xuống')}</a>)}<button type="button" onClick={() => { if (window.confirm(t('Xóa tệp này khỏi hồ sơ?'))) setUploadingFiles(previous => previous.filter(item => item.id !== file.id)); }}>{t('Xóa')}</button></div></td></tr>;
-                })}
-                {uploadingFiles.length === 0 && <tr><td colSpan={6} className="lead-file-repository-empty">{t('Chưa có tệp đính kèm.')}</td></tr>}
-              </tbody></table></div>
+              {uploadingFiles.length > 0 ? (
+                <div className="lead-attachments-card__table">
+                  <table><thead><tr><th>{t('Tên tệp')}</th><th>{t('Loại')}</th><th>{t('Dung lượng')}</th><th>{t('Ngày cập nhật')}</th><th>{t('Người cập nhật')}</th><th>{t('Thao tác')}</th></tr></thead><tbody>
+                    {uploadingFiles.map(file => {
+                      const source = file.data || file.url || '';
+                      return <tr key={file.id}><td title={file.name}>{file.name}</td><td>{file.url ? t('Đường dẫn') : source.startsWith('data:image/') ? t('Hình ảnh') : t('Tệp tài liệu')}</td><td>{file.size ? `${(file.size / 1024).toLocaleString('vi-VN', { maximumFractionDigits: 0 })} KB` : '—'}</td><td>{file.createdAt ? formatDateTime(file.createdAt) : '—'}</td><td>{file.createdBy || '—'}</td><td><div className="lead-attachments-card__actions">{source && (file.url ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a> : <a href={source} download={file.name}>{t('Tải xuống')}</a>)}<button type="button" onClick={() => { if (window.confirm(t('Xóa tệp này khỏi hồ sơ?'))) setUploadingFiles(previous => previous.filter(item => item.id !== file.id)); }}>{t('Xóa')}</button></div></td></tr>;
+                    })}
+                  </tbody></table>
+                </div>
+              ) : (
+                <div className="lead-attachments-card__empty">{t('Chưa có tệp đính kèm.')}</div>
+              )}
             </section>
 
             <div className="lead-form-page__extension-label">{t('THÔNG TIN BỔ SUNG CHO TIỀM NĂNG')}</div>
