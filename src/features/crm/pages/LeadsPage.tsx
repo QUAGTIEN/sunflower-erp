@@ -2467,7 +2467,6 @@ export const Leads: React.FC<LeadsProps> = ({
             </div>
           </footer>}
         </form>
-        {editingLead && <details className="lead-repository-disclosure"><summary>{t('Quản lý thư mục tài liệu')}</summary>{renderLeadRepository()}</details>}
       </SystemFieldSurface>
     );
   }

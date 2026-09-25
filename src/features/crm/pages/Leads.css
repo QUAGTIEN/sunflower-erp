@@ -678,25 +678,6 @@
   cursor: pointer;
 }
 
-.lead-repository-disclosure {
-  margin-top: 14px;
-}
-
-.lead-repository-disclosure > summary {
-  padding: 10px 14px;
-  border: 1px solid #dbe3ef;
-  border-radius: 6px;
-  color: #1e3a8a;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.lead-repository-disclosure[open] > summary {
-  margin-bottom: 10px;
-}
-
 .lead-profile-structure-toggle {
   flex: 0 0 auto;
   margin-left: auto;
