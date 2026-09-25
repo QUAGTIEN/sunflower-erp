@@ -6,6 +6,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { Activity, Clock3, History, Search, Trash2, Pencil, X } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
 import { auditService, type AuditEvent, type UserPresence } from '@/services/auditService';
+import { getDefaultPagesForRole } from '@/app/navigation/accessControl';
 import './UserManagement.css';
 
 interface UserManagementProps {
@@ -59,11 +60,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   const ALL_PAGES = [
     { id: 'dashboard', label: t('Bảng Điều Khiển') },
     { id: 'chat', label: t('Kênh Trao Đổi') },
+    { id: 'work_schedule', label: t('Lịch Làm Việc') },
     { id: 'crm', label: t('Khách Hàng Hợp Tác') },
     { id: 'leads', label: t('Khách Hàng Tiềm Năng') },
     { id: 'customer_data', label: t('Dữ Liệu Khách Hàng') },
     { id: 'commercial_map', label: t('Bản Đồ Thương Mại') },
     { id: 'sales', label: t('Tạo đơn hàng') },
+    { id: 'sales_management', label: t('Quản Lý Sale') },
     { id: 'design', label: t('Quản Lý Thiết Kế') },
     { id: 'purchase', label: t('Mua Hàng NCC') },
     { id: 'suppliers', label: t('Danh Sách Nhà Cung Cấp') },
@@ -74,25 +77,6 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     { id: 'users', label: t('Quản Lý Tài Khoản') },
     { id: 'recycle_bin', label: t('Kho Rác Hệ Thống') },
   ];
-
-  const getDefaultPagesForRole = (r: string): string[] => {
-    switch (r) {
-      case 'admin':
-        return ['dashboard', 'chat', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
-      case 'sale':
-        return ['dashboard', 'chat', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'];
-      case 'designer':
-        return ['dashboard', 'chat', 'design'];
-      case 'purchaser':
-        return ['dashboard', 'chat', 'purchase', 'suppliers', 'inventory'];
-      case 'producer':
-        return ['dashboard', 'chat', 'production'];
-      case 'accountant':
-        return ['dashboard', 'chat', 'accounting'];
-      default:
-        return ['dashboard', 'chat'];
-    }
-  };
 
   const openAddModal = () => {
     setDisplayName('');

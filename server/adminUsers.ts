@@ -16,9 +16,13 @@ export type UserRole = typeof USER_ROLES[number];
 export const ERP_PAGE_IDS = [
   'dashboard',
   'chat',
+  'work_schedule',
   'crm',
   'leads',
+  'customer_data',
+  'commercial_map',
   'sales',
+  'sales_management',
   'design',
   'purchase',
   'suppliers',
