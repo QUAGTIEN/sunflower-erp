@@ -91,14 +91,18 @@ test('raw data and leads share the 61-item classification page and list controls
     path.join(__dirname, '..', 'src', 'features', 'crm', 'components', 'CustomerInsightClassification.tsx'),
     'utf8'
   );
-  assert.match(workspaceSource, />Phân loại<\/button>/);
+  assert.match(workspaceSource, /Phân loại khách hàng <strong>\{form\.customerInsightValues\.length\}/);
+  assert.match(workspaceSource, />\s*Thông tin hồ sơ\s*<\/button>/);
   assert.match(workspaceSource, /CustomerInsightClassification/);
   assert.match(workspaceSource, /CUSTOMER_INSIGHT_GROUPS\.flatMap/);
   assert.match(workspaceSource, /visibleCandidateInsightItems\.map/);
   assert.doesNotMatch(workspaceSource, /lead-candidate-drawer/);
   assert.doesNotMatch(workspaceSource, /label: 'Xem hồ sơ'/);
   assert.match(workspaceSource, /className="lead-candidate-company-button" onClick=\{\(\) => openEditForm\(candidate\)\}/);
-  assert.match(workspaceSource, /className="lead-candidate-phone-link" onClick=\{\(\) => openEditForm\(candidate\)\}/);
+  assert.match(workspaceSource, /className="lead-candidate-phone-link" onClick=\{\(\) => openEditForm\(candidate, 'profile'\)\}/);
+  assert.doesNotMatch(workspaceSource, /data-system-label="businessSector"/);
+  assert.doesNotMatch(workspaceSource, /data-system-label="expectedProducts"/);
+  assert.match(workspaceSource, /<h2>File liên quan<\/h2>/);
   assert.match(classificationSource, /CUSTOMER_INSIGHT_GROUPS\.map/);
   assert.match(classificationSource, /Tìm trong \{CUSTOMER_INSIGHT_ITEMS\.length\} mục/);
   assert.match(classificationSource, /Lưu phân loại/);

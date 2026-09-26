@@ -60,6 +60,13 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
     }
   };
 
+  const reset = () => {
+    setDraft(savedValues);
+    setSearch('');
+    setFilter('all');
+    setMessage('');
+  };
+
   return <main className="customer-classification" aria-label={`Phân loại ${companyName}`}>
     <header className="customer-classification__header">
       <div>
@@ -79,6 +86,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
         <div className="customer-classification__filters" role="group" aria-label="Lọc mục phân loại">
           {FILTER_OPTIONS.map(option => <button key={option.value} type="button" className={filter === option.value ? 'is-active' : ''} aria-pressed={filter === option.value} onClick={() => setFilter(option.value)}>{option.label}</button>)}
         </div>
+        <button type="button" className="btn btn-outline" disabled={!hasChanges || saving} onClick={reset}>Đặt lại</button>
         <button type="button" className="btn btn-primary" disabled={!canEdit || !hasChanges || saving} onClick={() => void save()}>{saving ? 'Đang lưu...' : 'Lưu phân loại'}</button>
       </div>
     </header>
@@ -87,7 +95,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
     {!canEdit && <p className="customer-classification__message">Bạn chỉ có quyền xem phân loại của hồ sơ này.</p>}
 
     <div className="customer-classification__groups">
-      {CUSTOMER_INSIGHT_GROUPS.map(group => {
+      {CUSTOMER_INSIGHT_GROUPS.map((group, groupIndex) => {
         const visibleItems = group.items.filter(item => {
           if (normalizedSearch && !item.label.toLocaleLowerCase('vi-VN').includes(normalizedSearch)) return false;
           if (filter === 'selected') return selected.has(item.id);
@@ -96,7 +104,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
         });
         const selectedCount = group.items.filter(item => selected.has(item.id)).length;
         return <section key={group.id} className="customer-classification__group">
-          <header><h3>{group.label}</h3><strong>{selectedCount}/{group.items.length}</strong></header>
+          <header><h3><span>{groupIndex + 1}</span>{group.label}</h3><strong>{selectedCount}/{group.items.length}</strong></header>
           {visibleItems.length > 0 ? <div className="customer-classification__options">
             {visibleItems.map(item => <label key={item.id}>
               <input type="checkbox" checked={selected.has(item.id)} disabled={!canEdit || saving} onChange={event => toggle(item.id, event.target.checked)} />

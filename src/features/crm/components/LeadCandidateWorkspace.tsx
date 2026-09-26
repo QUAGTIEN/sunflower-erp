@@ -10,10 +10,10 @@ import {
   ClipboardCheck,
   ChevronLeft,
   ChevronRight,
-  Factory,
   LifeBuoy,
   ListPlus,
   MapPin,
+  Paperclip,
   Pencil,
   Plus,
   ReceiptText,
@@ -33,6 +33,7 @@ import {
   type LeadCandidateContactLog,
   type LeadCandidateContactOutcome,
   type LeadCandidateContactResult,
+  type LeadCandidateFileRecord,
   type LeadCandidatePotentialLevel,
   type LeadCandidateRecord,
   type LeadCandidateTaskSource,
@@ -146,12 +147,35 @@ type CandidateColumnId = string;
 type EmployeeActivityRange = 'today' | '7days' | 'all';
 type EmployeeActivityGroup = 'all' | 'call' | 'data' | 'schedule' | 'task';
 type SalesReportPeriod = 'week' | 'month' | 'quarter' | 'custom';
+type CandidateDetailTab = 'classification' | 'profile';
 
 interface SalesReportWindow {
   startAt: number;
   endAt: number;
   label: string;
 }
+
+const normalizeCandidateFieldName = (value: string) => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/đ/g, 'd')
+  .toLocaleLowerCase('vi-VN')
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+const isClassificationOwnedProfileField = (definition: EntityFieldDefinition) => {
+  const name = normalizeCandidateFieldName(definition.name);
+  return [
+    'nganh nghe',
+    'linh vuc hoat dong',
+    'san pham nhu cau',
+    'san pham nhu cau quan tam',
+    'nhu cau san pham',
+    'doi thu canh tranh',
+    'quy mo doanh nghiep',
+    'muc su dung'
+  ].includes(name);
+};
 
 interface CandidateColumnOption extends TableColumnOption {
   id: CandidateColumnId;
@@ -537,6 +561,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   initialInsightFilterId = ''
 }) => {
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('lead_candidates', currentUser.role);
+  const profileCustomFieldDefinitions = useMemo(
+    () => customFieldDefinitions.filter(definition => !isClassificationOwnedProfileField(definition)),
+    [customFieldDefinitions]
+  );
   const inlineSystemFieldConfiguration = useSystemFieldConfiguration('lead_candidates');
   const systemFilterDefinitions = useSystemFilterConfiguration();
   const provinceFilterEnabled = isSystemFilterEnabled(systemFilterDefinitions, LEAD_FILTER_IDS.province, 'customer_data');
@@ -597,8 +625,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   }, [initialInsightFilterId]);
   const [showForm, setShowForm] = useState(false);
   const [editingCandidateId, setEditingCandidateId] = useState('');
-  const [classificationCandidateId, setClassificationCandidateId] = useState('');
+  const [candidateDetailTab, setCandidateDetailTab] = useState<CandidateDetailTab>('classification');
   const [form, setForm] = useState<CandidateFormState>(() => createEmptyCandidateForm(currentUser, candidateOwners));
+  const [candidateFiles, setCandidateFiles] = useState<LeadCandidateFileRecord[]>([]);
+  const [candidateLinkName, setCandidateLinkName] = useState('');
+  const [candidateLinkUrl, setCandidateLinkUrl] = useState('');
   const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   const [saveError, setSaveError] = useState('');
   const [scheduleCandidateId, setScheduleCandidateId] = useState('');
@@ -1076,9 +1107,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const scheduleCandidate = scheduleCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === scheduleCandidateId) || null
     : null;
-  const classificationCandidate = classificationCandidateId
-    ? accessibleCandidates.find(candidate => candidate.id === classificationCandidateId) || null
-    : null;
   const duplicate = useMemo(() => findCandidateDuplicate(
     {
       companyName: form.companyName,
@@ -1133,7 +1161,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const renderPhoneLink = (candidate: LeadCandidateRecord) => {
     if (!candidate.phone) return renderCandidateField(candidate.phone);
     return (
-      <button type="button" className="lead-candidate-phone-link" onClick={() => openEditForm(candidate)}>{candidate.phone}</button>
+      <button type="button" className="lead-candidate-phone-link" onClick={() => openEditForm(candidate, 'profile')}>{candidate.phone}</button>
     );
   };
 
@@ -1339,14 +1367,19 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   const openCreateForm = () => {
     setEditingCandidateId('');
+    setCandidateDetailTab('profile');
     setForm(createEmptyCandidateForm(currentUser, candidateOwners));
+    setCandidateFiles([]);
+    setCandidateLinkName('');
+    setCandidateLinkUrl('');
     setCustomFieldValues({});
     setSaveError('');
     setShowForm(true);
   };
 
-  const openEditForm = useCallback((candidate: LeadCandidateRecord) => {
+  const openEditForm = useCallback((candidate: LeadCandidateRecord, initialTab: CandidateDetailTab = 'classification') => {
     setEditingCandidateId(candidate.id);
+    setCandidateDetailTab(initialTab);
     setForm({
       companyName: candidate.companyName,
       contactPerson: candidate.contactPerson,
@@ -1380,6 +1413,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       targetId: candidate.id,
       targetLabel: candidate.companyName
     });
+    setCandidateFiles(candidate.files || []);
+    setCandidateLinkName('');
+    setCandidateLinkUrl('');
   }, [currentUser]);
 
   const openRawCandidate = (id: string) => {
@@ -1403,9 +1439,63 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     return () => window.clearTimeout(timer);
   }, [candidates, initialCandidateId, onInitialCandidateOpened, openEditForm]);
 
-  const openClassification = (candidate: LeadCandidateRecord) => {
-    setClassificationCandidateId(candidate.id);
-    setActionError('');
+  const appendCandidateFiles = async (files: File[]) => {
+    const oversizedFile = files.find(file => file.size > 900_000);
+    if (oversizedFile) {
+      window.alert('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.');
+      return;
+    }
+    const nextFiles = await Promise.all(files.map(file => new Promise<LeadCandidateFileRecord>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({
+        id: `candidate-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: file.name,
+        size: file.size,
+        folderId: 'other',
+        folder: 'Tài liệu khác',
+        url: '',
+        data: String(reader.result || ''),
+        createdAt: new Date().toISOString(),
+        createdById: currentUser.uid,
+        createdBy: currentUser.displayName
+      });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    })));
+    setCandidateFiles(previous => [...previous, ...nextFiles]);
+  };
+
+  const handleCandidateFilesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    await appendCandidateFiles(Array.from(event.target.files || []));
+    event.target.value = '';
+  };
+
+  const handleCandidateFilesDrop = async (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    await appendCandidateFiles(Array.from(event.dataTransfer.files || []));
+  };
+
+  const handleAddCandidateLink = () => {
+    const name = candidateLinkName.trim();
+    const url = candidateLinkUrl.trim();
+    if (!name || !/^https?:\/\//i.test(url)) {
+      window.alert('Nhập tên tài liệu và đường dẫn chia sẻ bắt đầu bằng http:// hoặc https://.');
+      return;
+    }
+    setCandidateFiles(previous => [...previous, {
+      id: `candidate-link-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      size: 0,
+      folderId: 'other',
+      folder: 'Tài liệu khác',
+      url,
+      data: '',
+      createdAt: new Date().toISOString(),
+      createdById: currentUser.uid,
+      createdBy: currentUser.displayName
+    }]);
+    setCandidateLinkName('');
+    setCandidateLinkUrl('');
   };
 
   const saveClassification = async (candidate: LeadCandidateRecord, values: string[]) => {
@@ -1427,7 +1517,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const handleSaveCandidate = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.companyName.trim() || !form.assignedSaleId || hasBlockingDuplicate) return;
-    const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
+    const missingCustomFields = getMissingRequiredEntityFields(profileCustomFieldDefinitions, customFieldValues, currentUser.role);
     if (missingCustomFields.length > 0) {
       setSaveError(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
       return;
@@ -1490,6 +1580,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         sourceUrl: form.sourceUrl.trim(),
         note: form.note.trim(),
         customerInsightValues: form.customerInsightValues,
+        files: candidateFiles,
         customFieldValues,
         assignedSaleId: form.assignedSaleId,
         assignedSaleName: assignedSale?.displayName || '',
@@ -1853,49 +1944,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     );
   };
 
-  if (classificationCandidate) {
-    const profileFields = [classificationCandidate.companyName, classificationCandidate.taxCode, classificationCandidate.businessSector, classificationCandidate.province,
-      classificationCandidate.ward, classificationCandidate.industrialPark, classificationCandidate.address, classificationCandidate.contactPerson,
-      classificationCandidate.phone, classificationCandidate.email, classificationCandidate.expectedProducts, classificationCandidate.assignedSaleId];
-    const completedProfileFields = profileFields.filter(value => String(value || '').trim()).length;
-    const profileCompletion = Math.round(completedProfileFields / profileFields.length * 100);
-    return <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
-      <header className="lead-candidate-profile-header">
-        <PageBackButton onClick={() => setClassificationCandidateId('')} />
-        <div className="lead-candidate-profile-header__title">
-          <span className="lead-candidate-profile-header__emblem"><Building2 size={21} aria-hidden="true" /></span>
-          <div className="lead-candidate-profile-header__title-text"><span>DỮ LIỆU THÔ</span><h1 title={classificationCandidate.companyName}>{classificationCandidate.companyName}</h1></div>
-        </div>
-        <div className="lead-candidate-profile-header__toolbar">
-          <PhoneCallCell toolbar phone={classificationCandidate.phone} companyName={classificationCandidate.companyName}
-            subjectKey={candidateCallSubjectKey(classificationCandidate)} currentUser={currentUser}
-            auditModule="lead_candidates" targetType="lead_candidate" targetId={classificationCandidate.id}
-            canRecord={canManageCandidate(classificationCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
-            onCallStarted={() => recordPhoneCall(classificationCandidate)} />
-          <button type="button" className="btn btn-primary" aria-current="page">Phân loại</button>
-        </div>
-        <div className="lead-candidate-profile-header__facts">
-          <div><ReceiptText size={17} aria-hidden="true" /><div><span>Mã số thuế</span><strong>{classificationCandidate.taxCode || 'Chưa cập nhật'}</strong></div></div>
-          <div><Factory size={17} aria-hidden="true" /><div><span>Lĩnh vực</span><strong>{classificationCandidate.businessSector || 'Chưa cập nhật'}</strong></div></div>
-          <div><MapPin size={17} aria-hidden="true" /><div><span>Địa điểm</span><strong>{[classificationCandidate.industrialPark, classificationCandidate.ward, classificationCandidate.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}</strong></div></div>
-          <div className="lead-candidate-profile-header__completion"><span className="lead-candidate-profile-header__ring" role="progressbar" aria-label="Mức hoàn thiện hồ sơ" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100} style={{ background: `conic-gradient(#16895b ${profileCompletion}%, #e5edf7 0)` }}><b>{profileCompletion}%</b></span><div><span>Hoàn thiện hồ sơ</span><strong>{completedProfileFields}/{profileFields.length} trường thông tin</strong></div></div>
-          <div><CalendarClock size={17} aria-hidden="true" /><div><span>Cập nhật lần cuối</span><strong>{formatShortDateTime(classificationCandidate.updatedAt || classificationCandidate.createdAt)}</strong></div></div>
-        </div>
-      </header>
-      <CustomerInsightClassification
-        key={classificationCandidate.id}
-        companyName={classificationCandidate.companyName}
-        values={classificationCandidate.customerInsightValues || []}
-        canEdit={canManageCandidate(classificationCandidate)}
-        onSave={values => saveClassification(classificationCandidate, values)}
-      />
-    </SystemFieldSurface>;
-  }
-
   if (showForm) {
-    const profileFields = [form.companyName, form.taxCode, form.businessSector, form.province,
-      form.ward, form.industrialPark, form.address, form.contactPerson, form.phone,
-      form.email, form.expectedProducts, form.assignedSaleId];
+    const profileFields = [form.companyName, form.taxCode, form.website, form.province,
+      form.ward, form.industrialPark, form.address, form.contactPerson, form.contactPosition,
+      form.phone, form.email, form.source, form.sourceUrl, form.assignedSaleId, form.nextContactAt, form.note];
     const completedProfileFields = profileFields.filter(value => String(value || '').trim()).length;
     const profileCompletion = Math.round(completedProfileFields / profileFields.length * 100);
     return (
@@ -1905,7 +1957,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           {editingCandidate ? <div className="lead-candidate-profile-header__title">
             <span className="lead-candidate-profile-header__emblem"><Building2 size={21} aria-hidden="true" /></span>
             <div className="lead-candidate-profile-header__title-text">
-              <span>CHỈNH SỬA DỮ LIỆU</span>
+              <span>DỮ LIỆU THÔ</span>
               <h1 title={form.companyName}>{form.companyName || 'Chưa có tên doanh nghiệp'}</h1>
             </div>
           </div> : <div><span>DỮ LIỆU MỚI</span><h1>Thêm dữ liệu khách hàng</h1></div>}
@@ -1915,18 +1967,37 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
               canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
               onCallStarted={() => recordPhoneCall(editingCandidate)} />
-            <button type="button" className="btn btn-outline" onClick={() => openClassification(editingCandidate)}>Phân loại</button>
+            {candidateDetailTab === 'profile' && <button type="submit" form="lead-candidate-profile-form" className="btn btn-primary" disabled={Boolean(hasBlockingDuplicate)}>Lưu dữ liệu</button>}
           </div>}
           {editingCandidate && <div className="lead-candidate-profile-header__facts">
             <div><ReceiptText size={17} aria-hidden="true" /><div><span>Mã số thuế</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div></div>
-            <div><Factory size={17} aria-hidden="true" /><div><span>Lĩnh vực</span><strong title={form.businessSector || 'Chưa cập nhật'}>{form.businessSector || 'Chưa cập nhật'}</strong></div></div>
+            <div><UserRoundSearch size={17} aria-hidden="true" /><div><span>Sale phụ trách</span><strong>{candidateOwners.find(user => user.uid === form.assignedSaleId)?.displayName || 'Chưa phân công'}</strong></div></div>
             <div><MapPin size={17} aria-hidden="true" /><div><span>Địa điểm</span><strong title={[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}>{[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}</strong></div></div>
-            <div className="lead-candidate-profile-header__completion"><span className="lead-candidate-profile-header__ring" role="progressbar" aria-label="Mức hoàn thiện hồ sơ" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100} style={{ background: `conic-gradient(#16895b ${profileCompletion}%, #e5edf7 0)` }}><b>{profileCompletion}%</b></span><div><span>Hoàn thiện hồ sơ</span><strong>{completedProfileFields}/{profileFields.length} trường thông tin</strong></div></div>
+            <div className="lead-candidate-profile-header__completion"><span className="lead-candidate-profile-header__ring" role="progressbar" aria-label="Mức hoàn thiện hồ sơ" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100} style={{ background: `conic-gradient(#16895b ${profileCompletion}%, #e5edf7 0)` }}><b>{profileCompletion}%</b></span><div><span>Thông tin hồ sơ</span><strong>{completedProfileFields}/{profileFields.length} trường đã có</strong></div></div>
             <div><CalendarClock size={17} aria-hidden="true" /><div><span>Cập nhật lần cuối</span><strong>{formatShortDateTime(editingCandidate.updatedAt || editingCandidate.createdAt)}</strong></div></div>
           </div>}
         </header>
 
-        <form className="lead-form-page__form" onSubmit={handleSaveCandidate}>
+        {editingCandidate && <nav className="lead-candidate-detail-tabs" role="tablist" aria-label="Chi tiết dữ liệu khách hàng">
+          <button type="button" role="tab" aria-selected={candidateDetailTab === 'classification'} className={candidateDetailTab === 'classification' ? 'is-active' : ''} onClick={() => setCandidateDetailTab('classification')}>
+            Phân loại khách hàng <strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length}</strong>
+          </button>
+          <button type="button" role="tab" aria-selected={candidateDetailTab === 'profile'} className={candidateDetailTab === 'profile' ? 'is-active' : ''} onClick={() => setCandidateDetailTab('profile')}>
+            Thông tin hồ sơ
+          </button>
+        </nav>}
+
+        {editingCandidate && <div className="lead-candidate-detail-panel" hidden={candidateDetailTab !== 'classification'}>
+          <CustomerInsightClassification
+            key={editingCandidate.id}
+            companyName={editingCandidate.companyName}
+            values={form.customerInsightValues}
+            canEdit={canManageCandidate(editingCandidate)}
+            onSave={values => saveClassification(editingCandidate, values)}
+          />
+        </div>}
+
+        <form id="lead-candidate-profile-form" className="lead-form-page__form lead-candidate-detail-panel" hidden={Boolean(editingCandidate && candidateDetailTab !== 'profile')} onSubmit={handleSaveCandidate}>
           <div className="lead-form-page__content lead-candidate-form-page__content lead-candidate-quick-form">
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
@@ -1934,10 +2005,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div><h2>Thông tin doanh nghiệp</h2></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label data-system-label="companyName">Tên doanh nghiệp *</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="companyName">Tên doanh nghiệp *</label><input autoFocus={candidateDetailTab === 'profile'} required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
                 <div className="form-group"><label data-system-label="taxCode">Mã số thuế</label><input value={form.taxCode} readOnly={Boolean(editingCandidate?.taxCode)} onChange={event => updateForm('taxCode', event.target.value)} /></div>
                 <div className="form-group"><label data-system-label="website">Website</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
-                <div className="form-group lead-form-grid__wide"><label data-system-label="businessSector">Lĩnh vực hoạt động</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder="Ví dụ: Bao bì, thực phẩm, điện tử..." /></div>
                 <BusinessLocationFields
                   className="lead-form-grid__wide"
                   province={form.province}
@@ -1947,8 +2017,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 />
                 <div className="form-group lead-form-grid__wide"><label data-system-label="address">Địa chỉ doanh nghiệp</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
               </div>
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="lead_candidates" section="company" sectionLabel="Thông tin doanh nghiệp" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'taxCode', label: 'Mã số thuế' }, { key: 'website', label: 'Website' }, { key: 'businessSector', label: 'Lĩnh vực hoạt động' }, { key: 'province', label: 'Tỉnh / thành' }, { key: 'ward', label: 'Phường / xã' }, { key: 'industrialPark', label: 'Khu công nghiệp' }, { key: 'address', label: 'Địa chỉ doanh nghiệp' }]} />
+              <EntityCustomFieldsGrid definitions={profileCustomFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="lead_candidates" section="company" sectionLabel="Thông tin doanh nghiệp" definitions={profileCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'taxCode', label: 'Mã số thuế' }, { key: 'website', label: 'Website' }, { key: 'province', label: 'Tỉnh / thành' }, { key: 'ward', label: 'Phường / xã' }, { key: 'industrialPark', label: 'Khu công nghiệp' }, { key: 'address', label: 'Địa chỉ doanh nghiệp' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -1964,21 +2034,20 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div className="form-group"><label data-system-label="source">Nguồn tìm kiếm</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}>{CANDIDATE_SOURCES.map(source => <option key={source}>{source}</option>)}</select></div>
                 <div className="form-group"><label data-system-label="sourceUrl">Đường dẫn nguồn</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="Link Facebook, Google Maps..." /></div>
               </div>
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="lead_candidates" section="contact" sectionLabel="Liên hệ và nguồn dữ liệu" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'source', label: 'Nguồn tìm kiếm' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }]} />
+              <EntityCustomFieldsGrid definitions={profileCustomFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="lead_candidates" section="contact" sectionLabel="Liên hệ và nguồn dữ liệu" definitions={profileCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'source', label: 'Nguồn tìm kiếm' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }]} />
             </section>
 
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
-                <Search size={18} />
-                <div><h2>Nhu cầu sơ bộ</h2></div>
+                <ListPlus size={18} />
+                <div><h2>Thông tin bổ sung</h2></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">Sản phẩm / nhu cầu quan tâm</label><textarea rows={4} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder="Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến..." /></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="note">Ghi chú</label><textarea rows={5} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder="Thông tin cần lưu ý trước khi liên hệ..." /></div>
               </div>
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="lead_candidates" section="needs" sectionLabel="Nhu cầu sơ bộ" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }, { key: 'note', label: 'Ghi chú' }]} />
+              <EntityCustomFieldsGrid definitions={profileCustomFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="lead_candidates" section="needs" sectionLabel="Thông tin bổ sung" definitions={profileCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'note', label: 'Ghi chú' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -1987,19 +2056,58 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 <div><h2>Phụ trách và lịch hẹn</h2></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label data-system-label="assignedSaleId">Người phụ trách *</label><select required value={form.assignedSaleId} disabled={currentUser.role === 'sale'} onChange={event => updateForm('assignedSaleId', event.target.value)}><option value="">Chưa phân công</option>{candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></div>
+                <div className="form-group"><label data-system-label="assignedSaleId">Người phụ trách *</label><select required value={form.assignedSaleId} disabled={currentUser.role === 'sale'} onChange={event => updateForm('assignedSaleId', event.target.value)}><option value="">Chưa phân công</option>{candidateOwners.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></div>
+                <div className="form-group"><label>Sale tìm được dữ liệu</label><input value={editingCandidate?.discoveredByName || currentUser.displayName} readOnly /></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="nextContactAt">Lịch hẹn xử lý</label><input type="datetime-local" value={form.nextContactAt} onChange={event => updateForm('nextContactAt', event.target.value)} /></div>
               </div>
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="lead_candidates" section="assignment" sectionLabel="Phụ trách và lịch hẹn" definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'nextContactAt', label: 'Lịch hẹn xử lý' }]} />
+              <EntityCustomFieldsGrid definitions={profileCustomFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="lead_candidates" section="assignment" sectionLabel="Phụ trách và lịch hẹn" definitions={profileCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'nextContactAt', label: 'Lịch hẹn xử lý' }]} />
             </section>
 
             <EntityCustomFieldsSection
-              definitions={customFieldDefinitions.filter(definition => definition.section === 'additional')}
+              definitions={profileCustomFieldDefinitions.filter(definition => definition.section === 'additional')}
               values={customFieldValues}
               role={currentUser.role}
               onChange={setCustomFieldValues}
             />
+
+            <section className="lead-form-card lead-candidate-files-card">
+              <div className="lead-form-card__heading">
+                <Paperclip size={18} />
+                <div><h2>File liên quan</h2></div>
+              </div>
+              <div className="lead-candidate-files-card__tools">
+                <label className="btn btn-outline lead-candidate-files-card__upload">
+                  Tải tệp lên
+                  <input type="file" multiple onChange={event => void handleCandidateFilesChange(event)} />
+                </label>
+                <span>Tệp dưới 900 KB; tệp lớn dùng đường dẫn Drive hoặc OneDrive.</span>
+                <label className="lead-candidate-files-card__dropzone" onDragOver={event => event.preventDefault()} onDrop={event => void handleCandidateFilesDrop(event)}>
+                  Kéo thả tệp vào đây hoặc chọn từ máy
+                  <input type="file" multiple onChange={event => void handleCandidateFilesChange(event)} />
+                </label>
+              </div>
+              <details className="lead-candidate-files-card__link">
+                <summary>Thêm đường dẫn Drive/OneDrive</summary>
+                <div>
+                  <input value={candidateLinkName} onChange={event => setCandidateLinkName(event.target.value)} placeholder="Tên tài liệu" />
+                  <input type="url" value={candidateLinkUrl} onChange={event => setCandidateLinkUrl(event.target.value)} placeholder="https://..." />
+                  <button type="button" className="btn btn-outline" onClick={handleAddCandidateLink}>Thêm đường dẫn</button>
+                </div>
+              </details>
+              <div className="lead-candidate-files-card__list">
+                {candidateFiles.length === 0 ? <p>Chưa có tệp liên quan.</p> : candidateFiles.map(file => {
+                  const source = file.url || file.data;
+                  return <div key={file.id} className="lead-candidate-files-card__row">
+                    <div><strong title={file.name}>{file.name}</strong><span>{file.url ? 'Đường dẫn' : file.size ? `${Math.ceil(file.size / 1024).toLocaleString('vi-VN')} KB` : 'Tệp tài liệu'} · {file.createdBy || 'Chưa rõ người tải'}</span></div>
+                    <div>
+                      {source && (file.url ? <a className="btn btn-outline" href={source} target="_blank" rel="noreferrer">Mở</a> : <a className="btn btn-outline" href={source} download={file.name}>Tải xuống</a>)}
+                      <button type="button" className="btn btn-outline lead-candidate-files-card__delete" onClick={() => setCandidateFiles(previous => previous.filter(item => item.id !== file.id))}>Xóa</button>
+                    </div>
+                  </div>;
+                })}
+              </div>
+            </section>
           </div>
 
           {(duplicate || saveError) && (
@@ -2454,7 +2562,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
                             { label: 'Hẹn tiếp', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) },
-                            { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
+                            { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate, 'profile') },
                             ...(currentUser.role === 'admin' ? [{ label: 'Giao việc', icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : []),
@@ -2573,7 +2681,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(canManageCandidate(candidate) ? [
                               ...(isActive ? [{ label: 'Hẹn lịch', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) }] : []),
-                              { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate) },
+                              { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate, 'profile') },
                               ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : [])
                             ] : []),
                             ...(currentUser.role === 'admin' ? [{ label: 'Xóa khỏi danh sách', icon: <Trash2 size={14} />, onSelect: () => archiveCandidate(candidate), danger: true }] : [])

@@ -40,6 +40,19 @@ export interface LeadCandidateContactLog {
   createdByName: string;
 }
 
+export interface LeadCandidateFileRecord extends Record<string, unknown> {
+  id: string;
+  name: string;
+  size?: number;
+  folderId: string;
+  folder: string;
+  url: string;
+  data: string;
+  createdAt: string;
+  createdById: string;
+  createdBy: string;
+}
+
 export interface LeadCandidateRecord extends Record<string, unknown> {
   id: string;
   schemaVersion: number;
@@ -61,6 +74,7 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   sourceUrl: string;
   note: string;
   customerInsightValues: string[];
+  files: LeadCandidateFileRecord[];
   customFieldValues: EntityCustomFieldValues;
   status: LeadCandidateStatus;
   assignedSaleId: string;
@@ -246,6 +260,26 @@ const normalizeContactLogs = (value: unknown): LeadCandidateContactLog[] => (
     : []
 );
 
+const normalizeFiles = (value: unknown): LeadCandidateFileRecord[] => (
+  Array.isArray(value)
+    ? value.map(item => {
+      const file = asRecord(item);
+      return {
+        id: asText(file.id),
+        name: asText(file.name),
+        size: asNonNegativeInteger(file.size),
+        folderId: asText(file.folderId),
+        folder: asText(file.folder),
+        url: asText(file.url),
+        data: asText(file.data),
+        createdAt: asText(file.createdAt),
+        createdById: asText(file.createdById),
+        createdBy: asText(file.createdBy ?? file.createdByName)
+      };
+    }).filter(file => file.id && file.name)
+    : []
+);
+
 export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecord => {
   const source = asRecord(value);
   const nextContactAt = asText(source.nextContactAt);
@@ -280,6 +314,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     sourceUrl: asText(source.sourceUrl),
     note: asText(source.note),
     customerInsightValues: normalizeCustomerInsightValues(source.customerInsightValues),
+    files: normalizeFiles(source.files),
     customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
     status: normalizeStatus(source.status),
     assignedSaleId: asText(source.assignedSaleId),
