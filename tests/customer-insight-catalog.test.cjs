@@ -108,6 +108,13 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.match(classificationSource, /Lưu phân loại/);
   assert.match(classificationSource, /type="checkbox"/);
 
+  const customerDataCss = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'CustomerData.css'),
+    'utf8'
+  );
+  assert.match(customerDataCss, /\.customer-classification__groups\s*\{[^}]*grid-template-columns:\s*repeat\(4,/s);
+  assert.match(customerDataCss, /@media \(max-width: 1500px\)[\s\S]*\.customer-classification__groups\s*\{[^}]*repeat\(2,/);
+
   const leadsSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'LeadsPage.tsx'),
     'utf8'
