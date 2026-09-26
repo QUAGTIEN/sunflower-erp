@@ -89,28 +89,16 @@
   font-size: 12px;
 }
 
-.customer-classification__filters {
+.customer-classification__record-actions,
+.customer-classification__record-actions .phone-call-toolbar {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
 }
 
-.customer-classification__filters button {
-  min-height: 32px;
-  padding: 5px 10px;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: #f2f6fc;
-  color: #405574;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.customer-classification__filters button.is-active {
-  border-color: #1f5fc7;
-  background: #1f5fc7;
-  color: #fff;
+.customer-classification__record-actions .phone-call-toolbar button {
+  min-height: 34px;
+  white-space: nowrap;
 }
 
 .customer-classification__message {
@@ -238,6 +226,59 @@
 }
 
 .lead-candidate-profile-header__toolbar .phone-call-toolbar { display: flex; gap: 8px; }
+
+.lead-candidate-profile-header__tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lead-candidate-profile-header__tabs button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid #b9cbea;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f4b91;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lead-candidate-profile-header__tabs button:hover {
+  border-color: #7ca4df;
+  background: #f6f9ff;
+}
+
+.lead-candidate-profile-header__tabs button:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 16%);
+  outline-offset: 2px;
+}
+
+.lead-candidate-profile-header__tabs button.is-active {
+  border-color: #1f5fc7;
+  background: #1f5fc7;
+  color: #fff;
+}
+
+.lead-candidate-profile-header__tabs strong {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #eaf2ff;
+  color: #2457a5;
+  font-size: 11px;
+}
+
+.lead-candidate-profile-header__tabs button.is-active strong {
+  background: #fff;
+  color: #1f5fc7;
+}
 
 .lead-candidate-detail-tabs {
   display: flex;
@@ -389,8 +430,11 @@
   .customer-classification__tools { align-items: stretch; flex-direction: column; }
   .customer-classification__tools label,
   .customer-classification__tools input { width: 100%; }
-  .customer-classification__filters button { flex: 1; }
+  .customer-classification__record-actions,
+  .customer-classification__record-actions .phone-call-toolbar { width: 100%; flex-wrap: wrap; }
   .lead-candidate-profile-header__toolbar { grid-column: 1 / -1; width: 100%; justify-self: stretch; }
+  .lead-candidate-profile-header__tabs { width: 100%; overflow-x: auto; }
+  .lead-candidate-profile-header__tabs button { flex: 1 0 auto; }
   .lead-candidate-detail-tabs { gap: 16px; overflow-x: auto; }
   .lead-candidate-detail-tabs button { white-space: nowrap; }
   .lead-candidate-files-card__tools,

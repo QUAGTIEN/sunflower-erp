@@ -2180,7 +2180,7 @@ export const Leads: React.FC<LeadsProps> = ({
     return (
       <SystemFieldSurface table="leads" className="lead-form-page">
         <header className={`lead-form-page__header${editingLead ? ' lead-record-header' : ''}`}>
-          <PageBackButton onClick={closeLeadForm} />
+          <PageBackButton iconOnly title={t('Quay lại danh sách khách hàng tiềm năng')} onClick={closeLeadForm} />
           {editingLead ? <>
             <div className="lead-record-header__identity">
               <div className="lead-record-header__title"><h1>{form.companyName || editingLead.companyName}</h1><span className={`lead-stage-badge lead-stage-badge--${form.stage}`}>{getStageLabel(form.stage)}</span></div>
@@ -2192,10 +2192,14 @@ export const Leads: React.FC<LeadsProps> = ({
               </div>
             </div>
             <div className="lead-record-header__actions">
-              <PhoneCallCell toolbar phone={editingLead.phone} companyName={editingLead.companyName}
-                subjectKey={leadCallSubjectKey(editingLead)} historyKeys={leadCallHistoryKeys(editingLead)}
-                auditModule="leads" targetType="lead" targetId={editingLead.id} currentUser={currentUser}
-                canRecord={canManageEditingLead} />
+              <nav className="lead-record-header__tabs" role="tablist" aria-label={t('Nội dung hồ sơ khách hàng tiềm năng')}>
+                <button type="button" role="tab" className={leadDetailTab === 'classification' ? 'is-active' : ''} aria-selected={leadDetailTab === 'classification'} onClick={() => setLeadDetailTab('classification')}>
+                  {t('Phân loại khách hàng')} <strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length}</strong>
+                </button>
+                <button type="button" role="tab" className={leadDetailTab === 'profile' ? 'is-active' : ''} aria-selected={leadDetailTab === 'profile'} onClick={() => setLeadDetailTab('profile')}>
+                  {t('Thông tin hồ sơ')}
+                </button>
+              </nav>
               {leadDetailTab === 'profile' && <button type="submit" form="lead-profile-form" className="btn btn-primary" disabled={Boolean(taxCodeConflict || candidateTaxCodeConflict) || !normalizeTaxCode(form.taxCode)}><Save size={15} /> {t('Lưu')}</button>}
               <RowActionMenu
                 label={t('Thao tác hồ sơ')}
@@ -2217,28 +2221,6 @@ export const Leads: React.FC<LeadsProps> = ({
         </header>
 
         {editingLead && (
-          <nav className="lead-detail-tabs" aria-label={t('Nội dung hồ sơ khách hàng tiềm năng')}>
-            <button
-              type="button"
-              className={leadDetailTab === 'classification' ? 'is-active' : ''}
-              aria-selected={leadDetailTab === 'classification'}
-              onClick={() => setLeadDetailTab('classification')}
-            >
-              {t('Phân loại khách hàng')}
-              <strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length}</strong>
-            </button>
-            <button
-              type="button"
-              className={leadDetailTab === 'profile' ? 'is-active' : ''}
-              aria-selected={leadDetailTab === 'profile'}
-              onClick={() => setLeadDetailTab('profile')}
-            >
-              {t('Thông tin hồ sơ')}
-            </button>
-          </nav>
-        )}
-
-        {editingLead && (
           <div className="lead-detail-panel" hidden={leadDetailTab !== 'classification'}>
             <CustomerInsightClassification
               key={editingLead.id}
@@ -2246,6 +2228,10 @@ export const Leads: React.FC<LeadsProps> = ({
               values={form.customerInsightValues}
               canEdit={canManageEditingLead}
               onSave={values => saveClassification(editingLead, values)}
+              toolbarActions={<PhoneCallCell toolbar phone={editingLead.phone} companyName={editingLead.companyName}
+                subjectKey={leadCallSubjectKey(editingLead)} historyKeys={leadCallHistoryKeys(editingLead)}
+                auditModule="leads" targetType="lead" targetId={editingLead.id} currentUser={currentUser}
+                canRecord={canManageEditingLead} />}
             />
           </div>
         )}

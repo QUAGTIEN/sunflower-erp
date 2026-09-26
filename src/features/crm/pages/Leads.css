@@ -446,6 +446,20 @@
   border-radius: 5px;
 }
 
+.lead-form-page__header .app-back-button--icon-only {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.lead-form-page__header .app-back-button--icon-only .app-back-button__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+}
+
 .lead-form-page__form {
   display: flex;
   flex: 1;
@@ -1017,6 +1031,59 @@
   gap: 7px;
 }
 
+.lead-record-header__tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lead-record-header__tabs button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid #b9cbea;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f4b91;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lead-record-header__tabs button:hover {
+  border-color: #7ca4df;
+  background: #f6f9ff;
+}
+
+.lead-record-header__tabs button:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 16%);
+  outline-offset: 2px;
+}
+
+.lead-record-header__tabs button.is-active {
+  border-color: #1f5fc7;
+  background: #1f5fc7;
+  color: #fff;
+}
+
+.lead-record-header__tabs strong {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #eaf2ff;
+  color: #2457a5;
+  font-size: 11px;
+}
+
+.lead-record-header__tabs button.is-active strong {
+  background: #fff;
+  color: #1f5fc7;
+}
+
 .lead-record-header__actions .btn,
 .lead-record-header__actions .phone-call-toolbar button,
 .lead-record-header__actions .row-action-menu__trigger {
@@ -1036,6 +1103,11 @@
     flex-wrap: wrap;
     min-width: 0;
   }
+
+  .lead-record-header__tabs {
+    min-width: 0;
+    overflow-x: auto;
+  }
 }
 
 @media (max-width: 680px) {
@@ -1053,6 +1125,14 @@
 
   .lead-form-page__header.lead-record-header > .app-back-button {
     justify-self: start;
+  }
+
+  .lead-record-header__tabs {
+    width: 100%;
+  }
+
+  .lead-record-header__tabs button {
+    flex: 1 0 auto;
   }
 }
 
@@ -2133,7 +2213,7 @@
 }
 
 .lead-candidate-profile-header > .app-back-button {
-  min-height: 36px;
+  min-height: 44px;
   align-self: center;
 }
 
@@ -2141,7 +2221,7 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 10px;
+  gap: 0;
 }
 
 .lead-candidate-profile-header__emblem {

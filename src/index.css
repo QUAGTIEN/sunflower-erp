@@ -1038,6 +1038,25 @@ tr:hover td {
   color: #1d4ed8;
 }
 
+.app-back-button--icon-only {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-color: #b9c9df;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.app-back-button--icon-only .app-back-button__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: #edf4ff;
+  color: #1756b3;
+}
+
 .app-back-button:hover {
   border-color: #93b4ed;
   background: #f8fbff;

@@ -5,31 +5,24 @@ import {
   normalizeCustomerInsightValues
 } from '../model/customerInsightCatalog';
 
-type ClassificationFilter = 'all' | 'selected' | 'unselected';
-
 interface CustomerInsightClassificationProps {
   companyName: string;
   values: string[];
   canEdit: boolean;
   onSave: (values: string[]) => Promise<void>;
+  toolbarActions?: React.ReactNode;
 }
-
-const FILTER_OPTIONS: Array<{ value: ClassificationFilter; label: string }> = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'selected', label: 'Đã chọn' },
-  { value: 'unselected', label: 'Chưa chọn' }
-];
 
 export const CustomerInsightClassification: React.FC<CustomerInsightClassificationProps> = ({
   companyName,
   values,
   canEdit,
-  onSave
+  onSave,
+  toolbarActions
 }) => {
   const [draft, setDraft] = useState(() => normalizeCustomerInsightValues(values));
   const [savedValues, setSavedValues] = useState(() => normalizeCustomerInsightValues(values));
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<ClassificationFilter>('all');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const selected = useMemo(() => new Set(draft), [draft]);
@@ -60,13 +53,6 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
     }
   };
 
-  const reset = () => {
-    setDraft(savedValues);
-    setSearch('');
-    setFilter('all');
-    setMessage('');
-  };
-
   return <main className="customer-classification" aria-label={`Phân loại ${companyName}`}>
     <header className="customer-classification__header">
       <div>
@@ -83,10 +69,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
           <span className="sr-only">Tìm trong {CUSTOMER_INSIGHT_ITEMS.length} mục</span>
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder={`Tìm trong ${CUSTOMER_INSIGHT_ITEMS.length} mục...`} />
         </label>
-        <div className="customer-classification__filters" role="group" aria-label="Lọc mục phân loại">
-          {FILTER_OPTIONS.map(option => <button key={option.value} type="button" className={filter === option.value ? 'is-active' : ''} aria-pressed={filter === option.value} onClick={() => setFilter(option.value)}>{option.label}</button>)}
-        </div>
-        <button type="button" className="btn btn-outline" disabled={!hasChanges || saving} onClick={reset}>Đặt lại</button>
+        {toolbarActions && <div className="customer-classification__record-actions">{toolbarActions}</div>}
         <button type="button" className="btn btn-primary" disabled={!canEdit || !hasChanges || saving} onClick={() => void save()}>{saving ? 'Đang lưu...' : 'Lưu phân loại'}</button>
       </div>
     </header>
@@ -98,8 +81,6 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
       {CUSTOMER_INSIGHT_GROUPS.map((group, groupIndex) => {
         const visibleItems = group.items.filter(item => {
           if (normalizedSearch && !item.label.toLocaleLowerCase('vi-VN').includes(normalizedSearch)) return false;
-          if (filter === 'selected') return selected.has(item.id);
-          if (filter === 'unselected') return !selected.has(item.id);
           return true;
         });
         const selectedCount = group.items.filter(item => selected.has(item.id)).length;

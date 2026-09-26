@@ -1953,20 +1953,21 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     return (
       <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
         <header className={editingCandidate ? 'lead-candidate-profile-header' : 'lead-form-page__header'}>
-          <PageBackButton onClick={() => setShowForm(false)} />
+          <PageBackButton iconOnly title="Quay lại danh sách dữ liệu" onClick={() => setShowForm(false)} />
           {editingCandidate ? <div className="lead-candidate-profile-header__title">
-            <span className="lead-candidate-profile-header__emblem"><Building2 size={21} aria-hidden="true" /></span>
             <div className="lead-candidate-profile-header__title-text">
-              <span>DỮ LIỆU THÔ</span>
               <h1 title={form.companyName}>{form.companyName || 'Chưa có tên doanh nghiệp'}</h1>
             </div>
           </div> : <div><span>DỮ LIỆU MỚI</span><h1>Thêm dữ liệu khách hàng</h1></div>}
           {editingCandidate && <div className="lead-candidate-profile-header__toolbar">
-            <PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
-              subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
-              auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
-              canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
-              onCallStarted={() => recordPhoneCall(editingCandidate)} />
+            <nav className="lead-candidate-profile-header__tabs" role="tablist" aria-label="Chi tiết dữ liệu khách hàng">
+              <button type="button" role="tab" aria-selected={candidateDetailTab === 'classification'} className={candidateDetailTab === 'classification' ? 'is-active' : ''} onClick={() => setCandidateDetailTab('classification')}>
+                Phân loại khách hàng <strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length}</strong>
+              </button>
+              <button type="button" role="tab" aria-selected={candidateDetailTab === 'profile'} className={candidateDetailTab === 'profile' ? 'is-active' : ''} onClick={() => setCandidateDetailTab('profile')}>
+                Thông tin hồ sơ
+              </button>
+            </nav>
             {candidateDetailTab === 'profile' && <button type="submit" form="lead-candidate-profile-form" className="btn btn-primary" disabled={Boolean(hasBlockingDuplicate)}>Lưu dữ liệu</button>}
           </div>}
           {editingCandidate && <div className="lead-candidate-profile-header__facts">
@@ -1978,15 +1979,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           </div>}
         </header>
 
-        {editingCandidate && <nav className="lead-candidate-detail-tabs" role="tablist" aria-label="Chi tiết dữ liệu khách hàng">
-          <button type="button" role="tab" aria-selected={candidateDetailTab === 'classification'} className={candidateDetailTab === 'classification' ? 'is-active' : ''} onClick={() => setCandidateDetailTab('classification')}>
-            Phân loại khách hàng <strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length}</strong>
-          </button>
-          <button type="button" role="tab" aria-selected={candidateDetailTab === 'profile'} className={candidateDetailTab === 'profile' ? 'is-active' : ''} onClick={() => setCandidateDetailTab('profile')}>
-            Thông tin hồ sơ
-          </button>
-        </nav>}
-
         {editingCandidate && <div className="lead-candidate-detail-panel" hidden={candidateDetailTab !== 'classification'}>
           <CustomerInsightClassification
             key={editingCandidate.id}
@@ -1994,6 +1986,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             values={form.customerInsightValues}
             canEdit={canManageCandidate(editingCandidate)}
             onSave={values => saveClassification(editingCandidate, values)}
+            toolbarActions={<PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
+              subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
+              auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
+              canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
+              onCallStarted={() => recordPhoneCall(editingCandidate)} />}
           />
         </div>}
 

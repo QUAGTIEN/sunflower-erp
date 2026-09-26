@@ -107,6 +107,9 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.match(classificationSource, /Tìm trong \{CUSTOMER_INSIGHT_ITEMS\.length\} mục/);
   assert.match(classificationSource, /Lưu phân loại/);
   assert.match(classificationSource, /type="checkbox"/);
+  assert.match(classificationSource, /toolbarActions/);
+  assert.doesNotMatch(classificationSource, /FILTER_OPTIONS/);
+  assert.doesNotMatch(classificationSource, />Đặt lại<\/button>/);
 
   const customerDataCss = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'CustomerData.css'),
@@ -124,7 +127,7 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.doesNotMatch(leadsSource, /classificationLeadId/);
   assert.match(leadsSource, /CustomerInsightClassification/);
   assert.match(leadsSource, /type LeadDetailTab = 'classification' \| 'profile'/);
-  assert.match(leadsSource, /className="lead-detail-tabs"/);
+  assert.match(leadsSource, /className="lead-record-header__tabs"/);
   assert.match(leadsSource, /hidden=\{leadDetailTab !== 'classification'\}/);
   assert.match(leadsSource, /hidden=\{Boolean\(editingLead && leadDetailTab !== 'profile'\)\}/);
   assert.match(leadsSource, /customerInsightValues: candidate\.customerInsightValues \|\| \[\]/);
