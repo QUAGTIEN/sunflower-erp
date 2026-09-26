@@ -1084,6 +1084,22 @@
   color: #1f5fc7;
 }
 
+.lead-record-header__save-slot {
+  display: flex;
+  width: 62px;
+  min-width: 62px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.lead-record-header__save-slot > .btn {
+  width: 62px;
+  min-height: 40px;
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+
 .lead-record-header__actions .btn,
 .lead-record-header__actions .phone-call-toolbar button,
 .lead-record-header__actions .row-action-menu__trigger {

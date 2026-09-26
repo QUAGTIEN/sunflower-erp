@@ -220,6 +220,7 @@
 
 .lead-candidate-profile-header__toolbar {
   display: flex;
+  align-items: center;
   justify-self: end;
   flex-wrap: wrap;
   gap: 8px;
@@ -278,6 +279,22 @@
 .lead-candidate-profile-header__tabs button.is-active strong {
   background: #fff;
   color: #1f5fc7;
+}
+
+.lead-candidate-profile-header__save-slot {
+  display: flex;
+  width: 94px;
+  min-width: 94px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.lead-candidate-profile-header__save-slot > .btn {
+  width: 94px;
+  min-height: 40px;
+  padding-inline: 10px;
+  white-space: nowrap;
 }
 
 .lead-candidate-detail-tabs {
@@ -435,6 +452,7 @@
   .lead-candidate-profile-header__toolbar { grid-column: 1 / -1; width: 100%; justify-self: stretch; }
   .lead-candidate-profile-header__tabs { width: 100%; overflow-x: auto; }
   .lead-candidate-profile-header__tabs button { flex: 1 0 auto; }
+  .lead-candidate-profile-header__save-slot { margin-left: auto; }
   .lead-candidate-detail-tabs { gap: 16px; overflow-x: auto; }
   .lead-candidate-detail-tabs button { white-space: nowrap; }
   .lead-candidate-files-card__tools,

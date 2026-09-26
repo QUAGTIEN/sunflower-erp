@@ -2200,7 +2200,11 @@ export const Leads: React.FC<LeadsProps> = ({
                   {t('Thông tin hồ sơ')}
                 </button>
               </nav>
-              {leadDetailTab === 'profile' && <button type="submit" form="lead-profile-form" className="btn btn-primary" disabled={Boolean(taxCodeConflict || candidateTaxCodeConflict) || !normalizeTaxCode(form.taxCode)}><Save size={15} /> {t('Lưu')}</button>}
+              <span className="lead-record-header__save-slot">
+                {leadDetailTab === 'profile'
+                  ? <button type="submit" form="lead-profile-form" className="btn btn-primary" disabled={Boolean(taxCodeConflict || candidateTaxCodeConflict) || !normalizeTaxCode(form.taxCode)}><Save size={15} /> {t('Lưu')}</button>
+                  : <span aria-hidden="true" />}
+              </span>
               <RowActionMenu
                 label={t('Thao tác hồ sơ')}
                 actions={[

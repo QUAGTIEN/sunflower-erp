@@ -1968,7 +1968,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 Thông tin hồ sơ
               </button>
             </nav>
-            {candidateDetailTab === 'profile' && <button type="submit" form="lead-candidate-profile-form" className="btn btn-primary" disabled={Boolean(hasBlockingDuplicate)}>Lưu dữ liệu</button>}
+            <span className="lead-candidate-profile-header__save-slot">
+              {candidateDetailTab === 'profile'
+                ? <button type="submit" form="lead-candidate-profile-form" className="btn btn-primary" disabled={Boolean(hasBlockingDuplicate)}>Lưu dữ liệu</button>
+                : <span aria-hidden="true" />}
+            </span>
           </div>}
           {editingCandidate && <div className="lead-candidate-profile-header__facts">
             <div><ReceiptText size={17} aria-hidden="true" /><div><span>Mã số thuế</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div></div>
