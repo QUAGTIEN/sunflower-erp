@@ -91,9 +91,10 @@ test('raw data and leads share the 61-item classification page and list controls
     path.join(__dirname, '..', 'src', 'features', 'crm', 'components', 'CustomerInsightClassification.tsx'),
     'utf8'
   );
-  assert.match(workspaceSource, /Phân loại khách hàng <strong>\{form\.customerInsightValues\.length\}/);
-  assert.match(workspaceSource, />\s*Thông tin hồ sơ\s*<\/button>/);
+  assert.match(workspaceSource, /classificationLabel="Phân loại khách hàng"/);
+  assert.match(workspaceSource, /profileLabel="Thông tin hồ sơ"/);
   assert.match(workspaceSource, /CustomerInsightClassification/);
+  assert.match(workspaceSource, /CrmRecordHeaderFacts/);
   assert.match(workspaceSource, /CUSTOMER_INSIGHT_GROUPS\.flatMap/);
   assert.match(workspaceSource, /visibleCandidateInsightItems\.map/);
   assert.doesNotMatch(workspaceSource, /lead-candidate-drawer/);
@@ -127,7 +128,8 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.doesNotMatch(leadsSource, /classificationLeadId/);
   assert.match(leadsSource, /CustomerInsightClassification/);
   assert.match(leadsSource, /type LeadDetailTab = 'classification' \| 'profile'/);
-  assert.match(leadsSource, /className="lead-record-header__tabs"/);
+  assert.match(leadsSource, /CrmRecordHeaderTabs/);
+  assert.match(leadsSource, /CrmRecordHeaderFacts/);
   assert.match(leadsSource, /hidden=\{leadDetailTab !== 'classification'\}/);
   assert.match(leadsSource, /hidden=\{Boolean\(editingLead && leadDetailTab !== 'profile'\)\}/);
   assert.match(leadsSource, /customerInsightValues: candidate\.customerInsightValues \|\| \[\]/);
@@ -146,6 +148,17 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.doesNotMatch(leadsSource, /const renderLeadRepository\s*=/);
   assert.match(leadsSource, /window\.history\.pushState/);
   assert.match(leadsSource, /window\.addEventListener\('popstate'/);
+
+  const sharedHeaderSource = fs.readFileSync(
+    path.join(__dirname, '..', 'src', 'features', 'crm', 'components', 'CrmRecordHeader.tsx'),
+    'utf8'
+  );
+  assert.match(sharedHeaderSource, /Mã số thuế/);
+  assert.match(sharedHeaderSource, /Sale phụ trách/);
+  assert.match(sharedHeaderSource, /label="Phân loại"/);
+  assert.match(sharedHeaderSource, /label="Thông tin hồ sơ"/);
+  assert.match(sharedHeaderSource, /Giai đoạn hiện tại/);
+  assert.match(sharedHeaderSource, /Chăm sóc tiếp/);
 
   const leadsCss = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'Leads.css'),

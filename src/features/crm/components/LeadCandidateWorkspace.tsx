@@ -12,11 +12,9 @@ import {
   ChevronRight,
   LifeBuoy,
   ListPlus,
-  MapPin,
   Paperclip,
   Pencil,
   Plus,
-  ReceiptText,
   Search,
   Settings2,
   Trash2,
@@ -63,6 +61,7 @@ import { candidateCallSubjectKey } from '@/features/crm/model/callHistory';
 import { PageBackButton } from '@/components/PageBackButton';
 import { BusinessLocationFields } from './BusinessLocationFields';
 import { CustomerInsightClassification } from './CustomerInsightClassification';
+import { CrmRecordHeaderFacts, CrmRecordHeaderTabs } from './CrmRecordHeader';
 import { CUSTOMER_INSIGHT_GROUPS, CUSTOMER_INSIGHT_ITEMS, CUSTOMER_INSIGHT_ITEM_BY_ID, getCustomerInsightGroupsForModule, matchesCustomerInsightValues, replaceCustomerInsightGroupValues } from '@/features/crm/model/customerInsightCatalog';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
@@ -363,6 +362,13 @@ const getEmployeeActivityGroup = (action: string): Exclude<EmployeeActivityGroup
   if (action === 'follow_up_scheduled') return 'schedule';
   if (['candidate_added_to_work_queue', 'candidate_assigned_to_sale', 'candidate_task_dismissed'].includes(action)) return 'task';
   return 'data';
+};
+
+const CANDIDATE_STAGE_LABELS: Record<LeadCandidateRecord['status'], string> = {
+  new: 'Dữ liệu mới',
+  retry: 'Cần xử lý lại',
+  disqualified: 'Không phù hợp',
+  converted: 'Đã chuyển Tiềm năng'
 };
 
 const REPORT_WORK_ACTIONS = new Set([
@@ -1949,7 +1955,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       form.ward, form.industrialPark, form.address, form.contactPerson, form.contactPosition,
       form.phone, form.email, form.source, form.sourceUrl, form.assignedSaleId, form.nextContactAt, form.note];
     const completedProfileFields = profileFields.filter(value => String(value || '').trim()).length;
-    const profileCompletion = Math.round(completedProfileFields / profileFields.length * 100);
     return (
       <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
         <header className={editingCandidate ? 'lead-candidate-profile-header' : 'lead-form-page__header'}>
@@ -1960,22 +1965,26 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </div>
           </div> : <div><span>DỮ LIỆU MỚI</span><h1>Thêm dữ liệu khách hàng</h1></div>}
           {editingCandidate && <div className="lead-candidate-profile-header__toolbar">
-            <nav className="lead-candidate-profile-header__tabs" role="tablist" aria-label="Chi tiết dữ liệu khách hàng">
-              <button type="button" role="tab" aria-selected={candidateDetailTab === 'classification'} className={candidateDetailTab === 'classification' ? 'is-active' : ''} onClick={() => setCandidateDetailTab('classification')}>
-                Phân loại khách hàng <strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length}</strong>
-              </button>
-              <button type="button" role="tab" aria-selected={candidateDetailTab === 'profile'} className={candidateDetailTab === 'profile' ? 'is-active' : ''} onClick={() => setCandidateDetailTab('profile')}>
-                Thông tin hồ sơ
-              </button>
-            </nav>
+            <CrmRecordHeaderTabs
+              activeTab={candidateDetailTab}
+              classificationCount={form.customerInsightValues.length}
+              classificationTotal={CUSTOMER_INSIGHT_ITEMS.length}
+              classificationLabel="Phân loại khách hàng"
+              profileLabel="Thông tin hồ sơ"
+              ariaLabel="Chi tiết dữ liệu khách hàng"
+              onTabChange={setCandidateDetailTab}
+            />
           </div>}
-          {editingCandidate && <div className="lead-candidate-profile-header__facts">
-            <div><ReceiptText size={17} aria-hidden="true" /><div><span>Mã số thuế</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div></div>
-            <div><UserRoundSearch size={17} aria-hidden="true" /><div><span>Sale phụ trách</span><strong>{candidateOwners.find(user => user.uid === form.assignedSaleId)?.displayName || 'Chưa phân công'}</strong></div></div>
-            <div><MapPin size={17} aria-hidden="true" /><div><span>Địa điểm</span><strong title={[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}>{[form.industrialPark, form.ward, form.province].filter(Boolean).join(', ') || 'Chưa cập nhật'}</strong></div></div>
-            <div className="lead-candidate-profile-header__completion"><span className="lead-candidate-profile-header__ring" role="progressbar" aria-label="Mức hoàn thiện hồ sơ" aria-valuenow={profileCompletion} aria-valuemin={0} aria-valuemax={100} style={{ background: `conic-gradient(#16895b ${profileCompletion}%, #e5edf7 0)` }}><b>{profileCompletion}%</b></span><div><span>Thông tin hồ sơ</span><strong>{completedProfileFields}/{profileFields.length} trường đã có</strong></div></div>
-            <div><CalendarClock size={17} aria-hidden="true" /><div><span>Cập nhật lần cuối</span><strong>{formatShortDateTime(editingCandidate.updatedAt || editingCandidate.createdAt)}</strong></div></div>
-          </div>}
+          {editingCandidate && <CrmRecordHeaderFacts
+            taxCode={form.taxCode || 'Chưa cập nhật'}
+            saleName={candidateOwners.find(user => user.uid === form.assignedSaleId)?.displayName || editingCandidate.assignedSaleName || 'Chưa phân công'}
+            classificationCount={form.customerInsightValues.length}
+            classificationTotal={CUSTOMER_INSIGHT_ITEMS.length}
+            profileCompleted={completedProfileFields}
+            profileTotal={profileFields.length}
+            stageLabel={CANDIDATE_STAGE_LABELS[editingCandidate.status]}
+            nextCareLabel={form.nextContactAt ? formatShortDateTime(form.nextContactAt) : 'Chưa đặt lịch'}
+          />}
         </header>
 
         {editingCandidate && <div className="lead-candidate-detail-panel" hidden={candidateDetailTab !== 'classification'}>

@@ -12,14 +12,12 @@ import {
   LifeBuoy,
   Paperclip,
   Plus,
-  ReceiptText,
   Search,
   Settings2,
   Tags,
   Trash2,
   Undo2,
   UserCheck,
-  UserRoundSearch,
   X
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -123,6 +121,7 @@ import {
 } from '@/components/advancedDataFilterModel';
 import { LeadOverviewDashboard } from '@/features/crm/components/LeadOverviewDashboard';
 import { CustomerInsightClassification } from '@/features/crm/components/CustomerInsightClassification';
+import { CrmRecordHeaderFacts, CrmRecordHeaderTabs } from '@/features/crm/components/CrmRecordHeader';
 import {
   CUSTOMER_INSIGHT_GROUPS,
   CUSTOMER_INSIGHT_ITEMS,
@@ -2178,23 +2177,35 @@ export const Leads: React.FC<LeadsProps> = ({
       currentUser.role === 'admin'
       || (currentUser.role === 'sale' && editingLead.assignedSaleId === currentUser.uid)
     ));
+    const profileFields: Array<string | number> = [
+      form.companyName, form.taxCode, form.website, form.province, form.ward,
+      form.industrialPark, form.address, form.contactPerson, form.contactPosition,
+      form.phone, form.email, form.source, form.sourceUrl, form.note,
+      form.assignedSaleId, form.discoveredById, form.nextFollowUpAt, form.stage,
+      form.potentialValue, form.closingProbability, form.expectedCloseAt,
+      form.lastContactResult, form.nextGoal, form.careNote
+    ];
+    const completedProfileFields = profileFields.filter(value => (
+      typeof value === 'number' ? value > 0 : String(value || '').trim().length > 0
+    )).length;
     return (
       <SystemFieldSurface table="leads" className="lead-form-page">
         <header className={`lead-form-page__header${editingLead ? ' lead-record-header' : ''}`}>
           <PageBackButton iconOnly title={t('Quay lại danh sách khách hàng tiềm năng')} onClick={closeLeadForm} />
           {editingLead ? <>
             <div className="lead-record-header__identity">
-              <div className="lead-record-header__title"><h1>{form.companyName || editingLead.companyName}</h1><span className={`lead-stage-badge lead-stage-badge--${form.stage}`}>{getStageLabel(form.stage)}</span></div>
+              <div className="lead-record-header__title"><h1 title={form.companyName || editingLead.companyName}>{form.companyName || editingLead.companyName}</h1></div>
             </div>
             <div className="lead-record-header__actions">
-              <nav className="lead-record-header__tabs" role="tablist" aria-label={t('Nội dung hồ sơ khách hàng tiềm năng')}>
-                <button type="button" role="tab" className={leadDetailTab === 'classification' ? 'is-active' : ''} aria-selected={leadDetailTab === 'classification'} onClick={() => setLeadDetailTab('classification')}>
-                  {t('Phân loại khách hàng')} <strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length}</strong>
-                </button>
-                <button type="button" role="tab" className={leadDetailTab === 'profile' ? 'is-active' : ''} aria-selected={leadDetailTab === 'profile'} onClick={() => setLeadDetailTab('profile')}>
-                  {t('Thông tin hồ sơ')}
-                </button>
-              </nav>
+              <CrmRecordHeaderTabs
+                activeTab={leadDetailTab}
+                classificationCount={form.customerInsightValues.length}
+                classificationTotal={CUSTOMER_INSIGHT_ITEMS.length}
+                classificationLabel={t('Phân loại khách hàng')}
+                profileLabel={t('Thông tin hồ sơ')}
+                ariaLabel={t('Nội dung hồ sơ khách hàng tiềm năng')}
+                onTabChange={setLeadDetailTab}
+              />
               <RowActionMenu
                 label={t('Thao tác hồ sơ')}
                 actions={[
@@ -2208,13 +2219,16 @@ export const Leads: React.FC<LeadsProps> = ({
                 ]}
               />
             </div>
-            <div className="lead-record-header__facts">
-              <div><ReceiptText size={17} aria-hidden="true" /><div><span>{t('Mã số thuế')}</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div></div>
-              <div><UserRoundSearch size={17} aria-hidden="true" /><div><span>{t('Sale phụ trách')}</span><strong title={assignedSaleName}>{assignedSaleName}</strong></div></div>
-              <div><CalendarClock size={17} aria-hidden="true" /><div><span>{t('Chăm sóc tiếp')}</span><strong title={form.nextFollowUpAt ? formatDateTime(form.nextFollowUpAt) : 'Chưa đặt lịch'}>{form.nextFollowUpAt ? formatDateTime(form.nextFollowUpAt) : 'Chưa đặt lịch'}</strong></div></div>
-              <div><Tags size={17} aria-hidden="true" /><div><span>{t('Phân loại khách hàng')}</span><strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length} {t('mục')}</strong></div></div>
-              <div><CheckCircle2 size={17} aria-hidden="true" /><div><span>{t('Giai đoạn hiện tại')}</span><strong>{getStageLabel(form.stage)}</strong></div></div>
-            </div>
+            <CrmRecordHeaderFacts
+              taxCode={form.taxCode || 'Chưa cập nhật'}
+              saleName={assignedSaleName}
+              classificationCount={form.customerInsightValues.length}
+              classificationTotal={CUSTOMER_INSIGHT_ITEMS.length}
+              profileCompleted={completedProfileFields}
+              profileTotal={profileFields.length}
+              stageLabel={getStageLabel(form.stage)}
+              nextCareLabel={form.nextFollowUpAt ? formatDateTime(form.nextFollowUpAt) : 'Chưa đặt lịch'}
+            />
           </> : <div>
             <span>{convertingCandidateId ? t('CHUYỂN TỪ DỮ LIỆU KHÁCH HÀNG') : t('HỒ SƠ MỚI')}</span>
             <h1>{convertingCandidateId ? t('Tiếp nhận khách hàng thành Lead') : t('Thêm khách hàng tiềm năng')}</h1>
