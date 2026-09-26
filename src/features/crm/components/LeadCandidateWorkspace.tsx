@@ -1968,11 +1968,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                 Thông tin hồ sơ
               </button>
             </nav>
-            <span className="lead-candidate-profile-header__save-slot">
-              {candidateDetailTab === 'profile'
-                ? <button type="submit" form="lead-candidate-profile-form" className="btn btn-primary" disabled={Boolean(hasBlockingDuplicate)}>Lưu dữ liệu</button>
-                : <span aria-hidden="true" />}
-            </span>
           </div>}
           {editingCandidate && <div className="lead-candidate-profile-header__facts">
             <div><ReceiptText size={17} aria-hidden="true" /><div><span>Mã số thuế</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div></div>
@@ -2118,7 +2113,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </div>
           )}
 
-          <footer className="lead-form-page__footer">
+          <footer className={`lead-form-page__footer${editingCandidate ? ' lead-form-page__footer--fixed' : ''}`}>
             <span>Dữ liệu chỉ được ghi nhận khi bấm Lưu dữ liệu.</span>
             <div>
               <button type="button" className="btn btn-outline" onClick={() => setShowForm(false)}>Hủy</button>

@@ -859,6 +859,28 @@
   gap: 8px;
 }
 
+.lead-form-page__form:has(> .lead-form-page__footer--fixed) {
+  padding-bottom: 72px;
+}
+
+.lead-form-page__footer--fixed {
+  position: fixed;
+  z-index: 18;
+  right: 24px;
+  bottom: 0;
+  left: calc(var(--sidebar-width) + 24px);
+  min-height: 60px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border);
+  border-bottom: 0;
+  border-radius: 0;
+  box-shadow: 0 -6px 18px rgb(20 43 90 / 6%);
+}
+
+.app-container.sidebar-collapsed .lead-form-page__footer--fixed {
+  left: 24px;
+}
+
 .lead-upload-list {
   display: flex;
   flex-wrap: wrap;
@@ -1044,10 +1066,10 @@
   justify-content: center;
   gap: 8px;
   padding: 0 16px;
-  border: 1px solid #b9cbea;
+  border: 1px solid var(--color-primary);
   border-radius: 6px;
   background: #fff;
-  color: #1f4b91;
+  color: var(--color-primary);
   font: inherit;
   font-size: 13px;
   font-weight: 650;
@@ -1056,8 +1078,8 @@
 }
 
 .lead-record-header__tabs button:hover {
-  border-color: #7ca4df;
-  background: #f6f9ff;
+  border-color: var(--color-primary-dark);
+  background: var(--color-primary-light);
 }
 
 .lead-record-header__tabs button:focus-visible {
@@ -1066,8 +1088,8 @@
 }
 
 .lead-record-header__tabs button.is-active {
-  border-color: #1f5fc7;
-  background: #1f5fc7;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
   color: #fff;
 }
 
@@ -1075,29 +1097,13 @@
   padding: 2px 7px;
   border-radius: 10px;
   background: #eaf2ff;
-  color: #2457a5;
+  color: var(--color-primary);
   font-size: 11px;
 }
 
 .lead-record-header__tabs button.is-active strong {
   background: #fff;
-  color: #1f5fc7;
-}
-
-.lead-record-header__save-slot {
-  display: flex;
-  width: 62px;
-  min-width: 62px;
-  min-height: 40px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.lead-record-header__save-slot > .btn {
-  width: 62px;
-  min-height: 40px;
-  padding-inline: 10px;
-  white-space: nowrap;
+  color: var(--color-primary);
 }
 
 .lead-record-header__actions .btn,
@@ -4166,6 +4172,10 @@
     width: 100%;
   }
 
+  .lead-form-page__form:has(> .lead-form-page__footer--fixed) {
+    padding-bottom: 116px;
+  }
+
   .lead-save-view-form input {
     width: 100%;
   }
@@ -4721,4 +4731,12 @@
   }
 
   .employee-monitor__layout:has(.employee-monitor-detail) { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .lead-form-page__footer--fixed {
+    right: 12px;
+    left: 12px;
+    padding: 10px 12px;
+  }
 }

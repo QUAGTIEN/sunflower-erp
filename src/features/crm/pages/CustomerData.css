@@ -241,10 +241,10 @@
   justify-content: center;
   gap: 8px;
   padding: 0 16px;
-  border: 1px solid #b9cbea;
+  border: 1px solid var(--color-primary);
   border-radius: 6px;
   background: #fff;
-  color: #1f4b91;
+  color: var(--color-primary);
   font: inherit;
   font-size: 13px;
   font-weight: 650;
@@ -253,8 +253,8 @@
 }
 
 .lead-candidate-profile-header__tabs button:hover {
-  border-color: #7ca4df;
-  background: #f6f9ff;
+  border-color: var(--color-primary-dark);
+  background: var(--color-primary-light);
 }
 
 .lead-candidate-profile-header__tabs button:focus-visible {
@@ -263,8 +263,8 @@
 }
 
 .lead-candidate-profile-header__tabs button.is-active {
-  border-color: #1f5fc7;
-  background: #1f5fc7;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
   color: #fff;
 }
 
@@ -272,29 +272,13 @@
   padding: 2px 7px;
   border-radius: 10px;
   background: #eaf2ff;
-  color: #2457a5;
+  color: var(--color-primary);
   font-size: 11px;
 }
 
 .lead-candidate-profile-header__tabs button.is-active strong {
   background: #fff;
-  color: #1f5fc7;
-}
-
-.lead-candidate-profile-header__save-slot {
-  display: flex;
-  width: 94px;
-  min-width: 94px;
-  min-height: 40px;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.lead-candidate-profile-header__save-slot > .btn {
-  width: 94px;
-  min-height: 40px;
-  padding-inline: 10px;
-  white-space: nowrap;
+  color: var(--color-primary);
 }
 
 .lead-candidate-detail-tabs {
@@ -452,7 +436,6 @@
   .lead-candidate-profile-header__toolbar { grid-column: 1 / -1; width: 100%; justify-self: stretch; }
   .lead-candidate-profile-header__tabs { width: 100%; overflow-x: auto; }
   .lead-candidate-profile-header__tabs button { flex: 1 0 auto; }
-  .lead-candidate-profile-header__save-slot { margin-left: auto; }
   .lead-candidate-detail-tabs { gap: 16px; overflow-x: auto; }
   .lead-candidate-detail-tabs button { white-space: nowrap; }
   .lead-candidate-files-card__tools,

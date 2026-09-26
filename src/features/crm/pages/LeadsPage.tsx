@@ -12,7 +12,6 @@ import {
   LifeBuoy,
   Paperclip,
   Plus,
-  Save,
   Search,
   Settings2,
   Tags,
@@ -2200,11 +2199,6 @@ export const Leads: React.FC<LeadsProps> = ({
                   {t('Thông tin hồ sơ')}
                 </button>
               </nav>
-              <span className="lead-record-header__save-slot">
-                {leadDetailTab === 'profile'
-                  ? <button type="submit" form="lead-profile-form" className="btn btn-primary" disabled={Boolean(taxCodeConflict || candidateTaxCodeConflict) || !normalizeTaxCode(form.taxCode)}><Save size={15} /> {t('Lưu')}</button>
-                  : <span aria-hidden="true" />}
-              </span>
               <RowActionMenu
                 label={t('Thao tác hồ sơ')}
                 actions={[
@@ -2398,7 +2392,7 @@ export const Leads: React.FC<LeadsProps> = ({
               onChange={setCustomFieldValues}
             />
           </div>
-          {!editingLead && <footer className="lead-form-page__footer">
+          <footer className={`lead-form-page__footer${editingLead ? ' lead-form-page__footer--fixed' : ''}`}>
             <span>{t('Các thay đổi chỉ được ghi nhận khi bấm Lưu.')}</span>
             <div>
               <button type="button" className="btn btn-outline" onClick={closeLeadForm}>{t('Hủy')}</button>
@@ -2410,7 +2404,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 {editingLeadId ? t('Cập nhật Lead') : convertingCandidateId ? t('Lưu Lead & hoàn tất tiếp cận') : t('Lưu Lead')}
               </button>
             </div>
-          </footer>}
+          </footer>
         </form>
       </SystemFieldSurface>
     );
