@@ -12,12 +12,14 @@ import {
   LifeBuoy,
   Paperclip,
   Plus,
+  ReceiptText,
   Search,
   Settings2,
   Tags,
   Trash2,
   Undo2,
   UserCheck,
+  UserRoundSearch,
   X
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
@@ -2183,12 +2185,6 @@ export const Leads: React.FC<LeadsProps> = ({
           {editingLead ? <>
             <div className="lead-record-header__identity">
               <div className="lead-record-header__title"><h1>{form.companyName || editingLead.companyName}</h1><span className={`lead-stage-badge lead-stage-badge--${form.stage}`}>{getStageLabel(form.stage)}</span></div>
-              <div className="lead-record-header__meta">
-                <span><small>{t('Mã số thuế')}</small><strong>{form.taxCode || 'Chưa cập nhật'}</strong></span>
-                <span><small>{t('Sale phụ trách')}</small><strong>{assignedSaleName}</strong></span>
-                <span><small>{t('Chăm sóc tiếp')}</small><strong>{form.nextFollowUpAt ? formatDateTime(form.nextFollowUpAt) : 'Chưa đặt lịch'}</strong></span>
-                <span><small>{t('Phân loại')}</small><strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length} mục</strong></span>
-              </div>
             </div>
             <div className="lead-record-header__actions">
               <nav className="lead-record-header__tabs" role="tablist" aria-label={t('Nội dung hồ sơ khách hàng tiềm năng')}>
@@ -2211,6 +2207,13 @@ export const Leads: React.FC<LeadsProps> = ({
                   { label: t('Xóa Lead'), icon: <Trash2 size={14} />, onSelect: () => void handleDeleteLead(editingLead), danger: true, disabled: !canManageEditingLead }
                 ]}
               />
+            </div>
+            <div className="lead-record-header__facts">
+              <div><ReceiptText size={17} aria-hidden="true" /><div><span>{t('Mã số thuế')}</span><strong title={form.taxCode || 'Chưa cập nhật'}>{form.taxCode || 'Chưa cập nhật'}</strong></div></div>
+              <div><UserRoundSearch size={17} aria-hidden="true" /><div><span>{t('Sale phụ trách')}</span><strong title={assignedSaleName}>{assignedSaleName}</strong></div></div>
+              <div><CalendarClock size={17} aria-hidden="true" /><div><span>{t('Chăm sóc tiếp')}</span><strong title={form.nextFollowUpAt ? formatDateTime(form.nextFollowUpAt) : 'Chưa đặt lịch'}>{form.nextFollowUpAt ? formatDateTime(form.nextFollowUpAt) : 'Chưa đặt lịch'}</strong></div></div>
+              <div><Tags size={17} aria-hidden="true" /><div><span>{t('Phân loại khách hàng')}</span><strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length} {t('mục')}</strong></div></div>
+              <div><CheckCircle2 size={17} aria-hidden="true" /><div><span>{t('Giai đoạn hiện tại')}</span><strong>{getStageLabel(form.stage)}</strong></div></div>
             </div>
           </> : <div>
             <span>{convertingCandidateId ? t('CHUYỂN TỪ DỮ LIỆU KHÁCH HÀNG') : t('HỒ SƠ MỚI')}</span>
