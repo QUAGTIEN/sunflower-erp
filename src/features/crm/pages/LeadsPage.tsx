@@ -80,7 +80,6 @@ import {
   NOTIFICATION_SCHEMA_VERSION
 } from '@/domain/notificationModels';
 import {
-  LeadDynamicFields,
   LeadSalesWorkspace
 } from '@/features/crm/components/LeadFilterSystem';
 import {
@@ -112,7 +111,6 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
-import { AdvancedDataFilters } from '@/components/AdvancedDataFilters';
 import {
   countAdvancedFilters,
   getAdvancedFilterKindForFieldType,
@@ -275,30 +273,22 @@ const matchesEverySearchTerm = (searchTerm: string, values: unknown[]) => {
   return terms.every(term => haystack.includes(term));
 };
 
-const updateLeadFilterValues = (
-  currentValues: Record<string, string[]>,
-  field: LeadFilterDefinition,
-  value: string,
-  checked?: boolean
-) => {
-  const previousFieldValues = currentValues[field.id] || [];
-  let nextFieldValues: string[];
+type LeadDetailTab = 'classification' | 'profile';
 
-  if (field.id === LEAD_FILTER_IDS.province) {
-    const selectedPath = value ? findLeadFilterOptionPathInOptions(field.options, value) : [];
-    nextFieldValues = selectedPath.map(option => option.id);
-  } else if (field.type === 'multi_select') {
-    nextFieldValues = checked
-      ? Array.from(new Set([...previousFieldValues, value]))
-      : previousFieldValues.filter(item => item !== value);
-  } else if (field.type === 'checkbox') {
-    nextFieldValues = checked ? ['true'] : [];
-  } else {
-    nextFieldValues = value ? [value] : [];
-  }
+const CLASSIFICATION_OWNED_PROFILE_FIELDS = new Set([
+  'nganh nghe',
+  'linh vuc hoat dong',
+  'san pham nhu cau',
+  'san pham nhu cau quan tam',
+  'nhu cau san pham',
+  'doi thu canh tranh',
+  'quy mo doanh nghiep',
+  'muc su dung'
+]);
 
-  return { ...currentValues, [field.id]: nextFieldValues };
-};
+const isClassificationOwnedProfileField = (definition: { name: string }) => (
+  CLASSIFICATION_OWNED_PROFILE_FIELDS.has(normalizeSearchText(definition.name))
+);
 
 const createEmptyForm = (currentUser: UserProfile, saleUsers: UserProfile[]): LeadFormState => ({
   companyName: '',
@@ -366,7 +356,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedFilterState>({});
   const [showLeadFilters, setShowLeadFilters] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState('');
-  const [classificationLeadId, setClassificationLeadId] = useState('');
+  const [leadDetailTab, setLeadDetailTab] = useState<LeadDetailTab>('classification');
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
   const [showLeadForm, setShowLeadForm] = useState(false);
@@ -403,7 +393,7 @@ export const Leads: React.FC<LeadsProps> = ({
       setSelectedLeadId('');
       setEditingLeadId('');
       setConvertingCandidateId('');
-      setClassificationLeadId('');
+      setLeadDetailTab('classification');
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -482,14 +472,6 @@ export const Leads: React.FC<LeadsProps> = ({
     () => mergeLeadFilterDefinitions(storedFilterDefinitions),
     [storedFilterDefinitions]
   );
-  const formClassificationDefinitions = useMemo(
-    () => filterDefinitions.filter(field => !(new Set<string>([
-      LEAD_FILTER_IDS.province,
-      LEAD_FILTER_IDS.industrialPark,
-      LEAD_FILTER_IDS.source
-    ])).has(field.id)),
-    [filterDefinitions]
-  );
   const leadSourceOptions = useMemo(() => {
     const definition = filterDefinitions.find(field => field.id === LEAD_FILTER_IDS.source);
     return definition
@@ -509,6 +491,10 @@ export const Leads: React.FC<LeadsProps> = ({
   const customProfileDefinitions = useMemo(
     () => profileDefinitions.filter(definition => !isLeadSystemProfileField(definition)),
     [profileDefinitions]
+  );
+  const profileFormCustomFieldDefinitions = useMemo(
+    () => customFieldDefinitions.filter(definition => !isClassificationOwnedProfileField(definition)),
+    [customFieldDefinitions]
   );
 
   const leadColumnOptions = useMemo<TableColumnOption[]>(() => {
@@ -901,9 +887,6 @@ export const Leads: React.FC<LeadsProps> = ({
   const selectedLead = selectedLeadId
     ? leads.find(lead => lead.id === selectedLeadId) || null
     : null;
-  const classificationLead = classificationLeadId
-    ? leads.find(lead => lead.id === classificationLeadId) || null
-    : null;
 
   const leadRepositoryFolders = selectedLead
     ? getCustomerRepositoryFolders(selectedLead).filter(folder => folder.active !== false)
@@ -979,11 +962,12 @@ export const Leads: React.FC<LeadsProps> = ({
     setUploadingFiles([]);
     setForm(createEmptyForm(currentUser, saleUsers));
     setTaxCodeSaveError('');
+    setLeadDetailTab('profile');
     enterLeadProfileHistory();
     setShowLeadForm(true);
   };
 
-  const openEditForm = useCallback((lead: LeadRecord) => {
+  const openEditForm = useCallback((lead: LeadRecord, initialTab: LeadDetailTab = 'classification') => {
     const leadIndustryDefinition = customFieldDefinitions.find(definition => definition.section === 'company' && normalizeSearchText(definition.name) === 'nganh nghe');
     const legacyIndustry = leadIndustryDefinition && lead.customFieldValues?.[leadIndustryDefinition.id] !== undefined
       ? formatEntityCustomFieldValue(leadIndustryDefinition, lead.customFieldValues[leadIndustryDefinition.id])
@@ -996,6 +980,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setCustomFieldValues(lead.customFieldValues || {});
     setUploadingFiles(lead.files || []);
     setTaxCodeSaveError('');
+    setLeadDetailTab(initialTab);
     setForm({
       companyName: lead.companyName,
       contactPerson: lead.contactPerson,
@@ -1046,10 +1031,6 @@ export const Leads: React.FC<LeadsProps> = ({
     }, 0);
     return () => window.clearTimeout(timer);
   }, [initialLeadId, leads, onInitialLeadOpened, openEditForm]);
-
-  const openClassification = (lead: LeadRecord) => {
-    setClassificationLeadId(lead.id);
-  };
 
   const saveClassification = async (lead: LeadRecord, values: string[]) => {
     const canManage = currentUser.role === 'admin'
@@ -1197,6 +1178,7 @@ export const Leads: React.FC<LeadsProps> = ({
     }
     setCustomFieldValues(sharedCustomValues);
     setTaxCodeSaveError('');
+    setLeadDetailTab('profile');
     const leadSource = mapCandidateSourceToLeadSource(candidate.source);
     const sourceOptionId = findLeadFilterOptionId(filterDefinitions, LEAD_FILTER_IDS.source, leadSource);
     setFormFilterValues({
@@ -1255,30 +1237,7 @@ export const Leads: React.FC<LeadsProps> = ({
     setSelectedLeadId('');
     setEditingLeadId('');
     setConvertingCandidateId('');
-  };
-
-  const handleFormFilterValueChange = (
-    field: LeadFilterDefinition,
-    value: string,
-    checked?: boolean
-  ) => {
-    setFormFilterValues(previous => updateLeadFilterValues(previous, field, value, checked));
-
-    const selectedOption = findLeadFilterOption(filterDefinitions, field.id, value);
-    const selectedLabel = selectedOption?.label || '';
-    if (field.id === LEAD_FILTER_IDS.companySize) {
-      updateForm('companySize', ['', 'large', 'medium', 'small'].includes(value) ? value as LeadCompanySize : '');
-    } else if (field.id === LEAD_FILTER_IDS.province) {
-      const selectedPath = findLeadFilterOptionPathInOptions(field.options, value);
-      updateForm('province', selectedPath[0]?.label || '');
-      updateForm('ward', selectedPath.find(option => option.kind === 'ward')?.label || '');
-      updateForm('industrialPark', '');
-      setFormFilterValues(previous => ({ ...previous, [LEAD_FILTER_IDS.industrialPark]: [] }));
-    } else if (field.id === LEAD_FILTER_IDS.industrialPark) {
-      updateForm('industrialPark', selectedLabel);
-    } else if (field.id === LEAD_FILTER_IDS.source) {
-      updateForm('source', selectedLabel);
-    }
+    setLeadDetailTab('classification');
   };
 
   const handleLeadFilesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1475,7 +1434,7 @@ export const Leads: React.FC<LeadsProps> = ({
     event.preventDefault();
     const normalizedTaxCode = normalizeTaxCode(form.taxCode);
     if (!form.companyName.trim() || !normalizedTaxCode) return;
-    const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
+    const missingCustomFields = getMissingRequiredEntityFields(profileFormCustomFieldDefinitions, customFieldValues, currentUser.role);
     if (missingCustomFields.length > 0) {
       setTaxCodeSaveError(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
       return;
@@ -2063,39 +2022,6 @@ export const Leads: React.FC<LeadsProps> = ({
     </span>
   );
 
-  if (classificationLead) {
-    const canEditClassification = currentUser.role === 'admin'
-      || (currentUser.role === 'sale' && classificationLead.assignedSaleId === currentUser.uid);
-    return (
-      <div className="lead-detail-page lead-classification-page">
-        <div className="lead-detail-header">
-          <PageBackButton onClick={() => setClassificationLeadId('')} />
-          <div>
-            <div className="lead-detail-title">
-              <span className={`lead-stage-badge lead-stage-badge--${classificationLead.stage}`}>{getStageLabel(classificationLead.stage)}</span>
-              <h1>{classificationLead.companyName}</h1>
-            </div>
-            <p>{t('8 nhóm thông tin dùng chung giữa Dữ liệu thô và Tiềm năng.')}</p>
-          </div>
-          <div className="lead-detail-actions">
-            <PhoneCallCell toolbar phone={classificationLead.phone} companyName={classificationLead.companyName}
-              subjectKey={leadCallSubjectKey(classificationLead)} historyKeys={leadCallHistoryKeys(classificationLead)}
-              auditModule="leads" targetType="lead" targetId={classificationLead.id} currentUser={currentUser}
-              canRecord={canEditClassification} />
-            <button type="button" className="btn btn-primary" aria-current="page"><Tags size={15} /> {t('Phân loại')}</button>
-          </div>
-        </div>
-        <CustomerInsightClassification
-          key={classificationLead.id}
-          companyName={classificationLead.companyName}
-          values={classificationLead.customerInsightValues || []}
-          canEdit={canEditClassification}
-          onSave={values => saveClassification(classificationLead, values)}
-        />
-      </div>
-    );
-  }
-
   if (showLeadForm) {
     return renderLeadForm();
   }
@@ -2270,8 +2196,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 subjectKey={leadCallSubjectKey(editingLead)} historyKeys={leadCallHistoryKeys(editingLead)}
                 auditModule="leads" targetType="lead" targetId={editingLead.id} currentUser={currentUser}
                 canRecord={canManageEditingLead} />
-              <button type="button" className="btn btn-outline" onClick={() => openClassification(editingLead)}><Tags size={15} /> {t('Phân loại')}</button>
-              <button type="submit" form="lead-profile-form" className="btn btn-primary" disabled={Boolean(taxCodeConflict || candidateTaxCodeConflict) || !normalizeTaxCode(form.taxCode)}><Save size={15} /> {t('Lưu')}</button>
+              {leadDetailTab === 'profile' && <button type="submit" form="lead-profile-form" className="btn btn-primary" disabled={Boolean(taxCodeConflict || candidateTaxCodeConflict) || !normalizeTaxCode(form.taxCode)}><Save size={15} /> {t('Lưu')}</button>}
               <RowActionMenu
                 label={t('Thao tác hồ sơ')}
                 actions={[
@@ -2291,7 +2216,41 @@ export const Leads: React.FC<LeadsProps> = ({
           </div>}
         </header>
 
-        <form id="lead-profile-form" className="lead-form-page__form" onSubmit={handleSaveLead}>
+        {editingLead && (
+          <nav className="lead-detail-tabs" aria-label={t('Nội dung hồ sơ khách hàng tiềm năng')}>
+            <button
+              type="button"
+              className={leadDetailTab === 'classification' ? 'is-active' : ''}
+              aria-selected={leadDetailTab === 'classification'}
+              onClick={() => setLeadDetailTab('classification')}
+            >
+              {t('Phân loại khách hàng')}
+              <strong>{form.customerInsightValues.length}/{CUSTOMER_INSIGHT_ITEMS.length}</strong>
+            </button>
+            <button
+              type="button"
+              className={leadDetailTab === 'profile' ? 'is-active' : ''}
+              aria-selected={leadDetailTab === 'profile'}
+              onClick={() => setLeadDetailTab('profile')}
+            >
+              {t('Thông tin hồ sơ')}
+            </button>
+          </nav>
+        )}
+
+        {editingLead && (
+          <div className="lead-detail-panel" hidden={leadDetailTab !== 'classification'}>
+            <CustomerInsightClassification
+              key={editingLead.id}
+              companyName={editingLead.companyName}
+              values={form.customerInsightValues}
+              canEdit={canManageEditingLead}
+              onSave={values => saveClassification(editingLead, values)}
+            />
+          </div>
+        )}
+
+        <form id="lead-profile-form" className="lead-form-page__form lead-detail-panel" hidden={Boolean(editingLead && leadDetailTab !== 'profile')} onSubmit={handleSaveLead}>
           <div className="lead-form-page__content lead-standardized-form">
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
@@ -2299,7 +2258,7 @@ export const Leads: React.FC<LeadsProps> = ({
                 <div><h2>{t('Thông tin doanh nghiệp')}</h2></div>
               </div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label data-system-label="companyName">{t('Tên doanh nghiệp *')}</label><input autoFocus required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
+                <div className="form-group lead-form-grid__wide"><label data-system-label="companyName">{t('Tên doanh nghiệp *')}</label><input autoFocus={!editingLead || leadDetailTab === 'profile'} required value={form.companyName} onChange={event => updateForm('companyName', event.target.value)} /></div>
                 <div className="form-group">
                   <label data-system-label="taxCode">{t('Mã số thuế *')}</label>
                   <input
@@ -2322,7 +2281,6 @@ export const Leads: React.FC<LeadsProps> = ({
                   </span>
                 </div>
                 <div className="form-group"><label data-system-label="website">{t('Website')}</label><input type="url" value={form.website} onChange={event => updateForm('website', event.target.value)} placeholder="https://..." /></div>
-                <div className="form-group lead-form-grid__wide"><label data-system-label="businessSector">{t('Lĩnh vực hoạt động')}</label><input value={form.businessSector} onChange={event => updateForm('businessSector', event.target.value)} placeholder={t('Ví dụ: Bao bì, thực phẩm, điện tử...')} /></div>
                 <BusinessLocationFields
                   className="lead-form-grid__wide"
                   province={form.province}
@@ -2331,10 +2289,9 @@ export const Leads: React.FC<LeadsProps> = ({
                   onChange={location => setForm(previous => ({ ...previous, ...location }))}
                 />
                 <div className="form-group lead-form-grid__wide"><label data-system-label="address">{t('Địa chỉ doanh nghiệp')}</label><input value={form.address} onChange={event => updateForm('address', event.target.value)} /></div>
-                <div className="form-group"><label data-system-label="industry">{t('Ngành nghề')}</label><input value={form.industry} onChange={event => updateForm('industry', event.target.value)} /></div>
               </div>
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'company' && normalizeSearchText(definition.name) !== 'nganh nghe')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="company" sectionLabel={t('Thông tin doanh nghiệp')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'website', label: 'Website' }, { key: 'businessSector', label: 'Lĩnh vực hoạt động' }, { key: 'province', label: 'Tỉnh / thành' }, { key: 'ward', label: 'Phường / xã' }, { key: 'industrialPark', label: 'Khu công nghiệp' }, { key: 'address', label: 'Địa chỉ doanh nghiệp' }]} />
+              <EntityCustomFieldsGrid definitions={profileFormCustomFieldDefinitions.filter(definition => definition.section === 'company')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="company" sectionLabel={t('Thông tin doanh nghiệp')} definitions={profileFormCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'website', label: 'Website' }, { key: 'province', label: 'Tỉnh / thành' }, { key: 'ward', label: 'Phường / xã' }, { key: 'industrialPark', label: 'Khu công nghiệp' }, { key: 'address', label: 'Địa chỉ doanh nghiệp' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -2350,17 +2307,17 @@ export const Leads: React.FC<LeadsProps> = ({
                 <div className="form-group"><label data-system-label="source">{t('Nguồn tìm kiếm')}</label><select value={form.source} onChange={event => updateForm('source', event.target.value)}><option value="">{t('Chưa chọn')}</option>{form.source && !leadSourceOptions.includes(form.source) && <option value={form.source}>{form.source}</option>}{leadSourceOptions.map(source => <option key={source} value={source}>{source}</option>)}</select></div>
                 <div className="form-group"><label data-system-label="sourceUrl">{t('Đường dẫn nguồn')}</label><input type="url" value={form.sourceUrl} onChange={event => updateForm('sourceUrl', event.target.value)} placeholder="https://..." /></div>
               </div>
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="contact" sectionLabel={t('Liên hệ và nguồn dữ liệu')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'source', label: 'Nguồn tìm kiếm' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }]} />
+              <EntityCustomFieldsGrid definitions={profileFormCustomFieldDefinitions.filter(definition => definition.section === 'contact')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="contact" sectionLabel={t('Liên hệ và nguồn dữ liệu')} definitions={profileFormCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'contactPerson', label: 'Người liên hệ' }, { key: 'contactPosition', label: 'Chức vụ' }, { key: 'phone', label: 'Điện thoại' }, { key: 'email', label: 'Email' }, { key: 'source', label: 'Nguồn tìm kiếm' }, { key: 'sourceUrl', label: 'Đường dẫn nguồn' }]} />
             </section>
 
             <section className="lead-form-card">
-              <div className="lead-form-card__heading"><Search size={18} /><div><h2>{t('Nhu cầu sơ bộ')}</h2></div></div>
+              <div className="lead-form-card__heading"><Search size={18} /><div><h2>{t('Thông tin bổ sung')}</h2></div></div>
               <div className="lead-form-grid">
-                <div className="form-group lead-form-grid__wide"><label data-system-label="expectedProducts">{t('Sản phẩm / nhu cầu quan tâm')}</label><textarea rows={3} value={form.expectedProducts} onChange={event => updateForm('expectedProducts', event.target.value)} placeholder={t('Tem nhãn, vật liệu, quy cách hoặc nhu cầu dự kiến...')} /></div>
                 <div className="form-group lead-form-grid__wide"><label data-system-label="note">{t('Ghi chú')}</label><textarea rows={3} value={form.note} onChange={event => updateForm('note', event.target.value)} placeholder={t('Thông tin cần lưu ý khi làm việc với khách hàng...')} /></div>
               </div>
-              <InlineEntityFieldManager table="leads" section="needs" sectionLabel={t('Nhu cầu sơ bộ')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'expectedProducts', label: 'Sản phẩm / nhu cầu quan tâm' }, { key: 'note', label: 'Ghi chú' }]} />
+              <EntityCustomFieldsGrid definitions={profileFormCustomFieldDefinitions.filter(definition => definition.section === 'needs')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="needs" sectionLabel={t('Thông tin bổ sung')} definitions={profileFormCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'note', label: 'Ghi chú' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -2390,12 +2347,12 @@ export const Leads: React.FC<LeadsProps> = ({
                   <input type="datetime-local" value={form.nextFollowUpAt} onChange={event => updateForm('nextFollowUpAt', event.target.value)} />
                 </div>
               </div>
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="assignment" sectionLabel={t('Phụ trách và lịch hẹn')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'discoveredById', label: 'Sale tìm được Lead' }, { key: 'nextFollowUpAt', label: 'Lịch hẹn xử lý' }]} />
+              <EntityCustomFieldsGrid definitions={profileFormCustomFieldDefinitions.filter(definition => definition.section === 'assignment')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="assignment" sectionLabel={t('Phụ trách và lịch hẹn')} definitions={profileFormCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'discoveredById', label: 'Sale tìm được Lead' }, { key: 'nextFollowUpAt', label: 'Lịch hẹn xử lý' }]} />
             </section>
 
             <section className="lead-form-card lead-form-card--wide lead-attachments-card">
-              <div className="lead-form-card__heading"><Paperclip size={18} /><div><h2>{t('Tệp đính kèm')}</h2></div></div>
+              <div className="lead-form-card__heading"><Paperclip size={18} /><div><h2>{t('File liên quan')}</h2></div></div>
               <div className="lead-attachments-card__upload-row">
                 <div className="lead-attachments-card__toolbar">
                   <label className="btn btn-outline lead-attachments-card__upload">{t('Tải tệp lên')}<input type="file" multiple onChange={handleLeadFilesChange} /></label>
@@ -2426,15 +2383,13 @@ export const Leads: React.FC<LeadsProps> = ({
             <section className="lead-form-card">
               <div className="lead-form-card__heading"><Tags size={18} /><div><h2>{t('Đánh giá tiềm năng')}</h2></div></div>
               <div className="lead-form-grid">
-                <div className="form-group"><label data-system-label="companySize">{t('Quy mô doanh nghiệp')}</label><select value={form.companySize} onChange={event => updateForm('companySize', event.target.value as LeadCompanySize)}>{Object.entries(COMPANY_SIZE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
                 <div className="form-group"><label data-system-label="stage">{t('Giai đoạn xử lý')}</label><select value={form.stage} onChange={event => updateForm('stage', event.target.value as LeadStage)}>{LEAD_STAGES.map(stage => <option key={stage.id} value={stage.id}>{stage.label}</option>)}</select></div>
                 <div className="form-group"><label data-system-label="potentialValue">{t('Giá trị tiềm năng (đ)')}</label><input type="number" min="0" value={form.potentialValue} onChange={event => updateForm('potentialValue', Number(event.target.value))} /></div>
                 <div className="form-group"><label data-system-label="closingProbability">{t('Khả năng chốt (%)')}</label><input type="number" min="0" max="100" value={form.closingProbability} onChange={event => updateForm('closingProbability', Number(event.target.value))} /></div>
                 <div className="form-group"><label data-system-label="expectedCloseAt">{t('Dự kiến chốt')}</label><input type="date" value={form.expectedCloseAt} onChange={event => updateForm('expectedCloseAt', event.target.value)} /></div>
               </div>
-              <LeadDynamicFields values={formFilterValues} definitions={formClassificationDefinitions.filter(definition => definition.id !== LEAD_FILTER_IDS.companySize)} canEditAll={currentUser.role === 'admin'} onChange={handleFormFilterValueChange} />
-              <EntityCustomFieldsGrid definitions={customFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
-              <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Đánh giá tiềm năng')} definitions={customFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'companySize', label: 'Quy mô doanh nghiệp' }, { key: 'stage', label: 'Giai đoạn xử lý' }, { key: 'potentialValue', label: 'Giá trị tiềm năng' }]} />
+              <EntityCustomFieldsGrid definitions={profileFormCustomFieldDefinitions.filter(definition => definition.section === 'classification')} values={customFieldValues} role={currentUser.role} onChange={setCustomFieldValues} />
+              <InlineEntityFieldManager table="leads" section="classification" sectionLabel={t('Đánh giá tiềm năng')} definitions={profileFormCustomFieldDefinitions} currentUser={currentUser} systemConfiguration={inlineSystemFieldConfiguration} onCustomFieldPurged={clearPurgedCustomField} onSystemFieldPurged={clearPurgedSystemField} systemFields={[{ key: 'stage', label: 'Giai đoạn xử lý' }, { key: 'potentialValue', label: 'Giá trị tiềm năng' }]} />
             </section>
 
             <section className="lead-form-card">
@@ -2447,7 +2402,7 @@ export const Leads: React.FC<LeadsProps> = ({
             </section>
 
             <EntityCustomFieldsSection
-              definitions={customFieldDefinitions.filter(definition => definition.section === 'additional')}
+              definitions={profileFormCustomFieldDefinitions.filter(definition => definition.section === 'additional')}
               values={customFieldValues}
               role={currentUser.role}
               onChange={setCustomFieldValues}
@@ -2641,7 +2596,7 @@ export const Leads: React.FC<LeadsProps> = ({
                       {visibleLeadColumnIds.has('contact') && <td key="contact">{renderLeadText(lead.contactPerson)}</td>}
                       {visibleLeadColumnIds.has('contactPerson') && <td key="contactPerson">{renderLeadText(lead.contactPerson)}</td>}
                       {visibleLeadColumnIds.has('contactPosition') && <td key="contactPosition">{renderLeadText(lead.contactPosition)}</td>}
-                      {visibleLeadColumnIds.has('phone') && <td key="phone">{lead.phone ? <button type="button" className="lead-candidate-phone-link" onClick={event => { event.stopPropagation(); openEditForm(lead); }}>{lead.phone}</button> : renderLeadText(lead.phone)}</td>}
+                      {visibleLeadColumnIds.has('phone') && <td key="phone">{lead.phone ? <button type="button" className="lead-candidate-phone-link" onClick={event => { event.stopPropagation(); openEditForm(lead, 'profile'); }}>{lead.phone}</button> : renderLeadText(lead.phone)}</td>}
                       {visibleLeadColumnIds.has('email') && <td key="email">{renderLeadText(lead.email)}</td>}
                       {visibleLeadColumnIds.has('expectedProducts') && <td key="expectedProducts">{renderLeadText(lead.expectedProducts)}</td>}
                       {visibleLeadColumnIds.has('potentialValue') && <td key="potentialValue"><strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong></td>}

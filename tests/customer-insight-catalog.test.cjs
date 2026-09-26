@@ -114,9 +114,12 @@ test('raw data and leads share the 61-item classification page and list controls
   );
   assert.match(leadsSource, /CUSTOMER_INSIGHT_GROUPS\.flatMap/);
   assert.match(leadsSource, /visibleLeadInsightItems\.map/);
-  assert.match(leadsSource, /classificationLeadId/);
+  assert.doesNotMatch(leadsSource, /classificationLeadId/);
   assert.match(leadsSource, /CustomerInsightClassification/);
-  assert.match(leadsSource, /openClassification\(editingLead\)/);
+  assert.match(leadsSource, /type LeadDetailTab = 'classification' \| 'profile'/);
+  assert.match(leadsSource, /className="lead-detail-tabs"/);
+  assert.match(leadsSource, /hidden=\{leadDetailTab !== 'classification'\}/);
+  assert.match(leadsSource, /hidden=\{Boolean\(editingLead && leadDetailTab !== 'profile'\)\}/);
   assert.match(leadsSource, /customerInsightValues: candidate\.customerInsightValues \|\| \[\]/);
   assert.doesNotMatch(leadsSource, /CustomerInsightEditor/);
   assert.match(leadsSource, /lead-record-header/);
@@ -124,6 +127,10 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.doesNotMatch(leadsSource, /label: t\('Mở hồ sơ'\)/);
   assert.match(leadsSource, /<tr key=\{lead\.id\} onClick=\{\(\) => openEditForm\(lead\)\}>/);
   assert.match(leadsSource, /className="lead-candidate-phone-link"/);
+  assert.match(leadsSource, /openEditForm\(lead, 'profile'\)/);
+  assert.doesNotMatch(leadsSource, /data-system-label="businessSector"/);
+  assert.doesNotMatch(leadsSource, /data-system-label="expectedProducts"/);
+  assert.doesNotMatch(leadsSource, /data-system-label="companySize"/);
   assert.doesNotMatch(leadsSource, /if \(selectedLead\) \{/);
   assert.match(leadsSource, /function renderLeadRepository\(\)/);
   assert.doesNotMatch(leadsSource, /const renderLeadRepository\s*=/);
