@@ -2,8 +2,11 @@ import React from 'react';
 import {
   CalendarClock,
   CheckCircle2,
+  ClipboardList,
+  ListChecks,
   ReceiptText,
-  UserRoundSearch
+  UserRoundSearch,
+  UsersRound
 } from 'lucide-react';
 import './CrmRecordHeader.css';
 
@@ -30,6 +33,11 @@ interface CrmRecordHeaderFactsProps {
   nextCareLabel: string;
 }
 
+interface CrmRecordHeaderIdentityProps {
+  title: string;
+  subtitle?: string;
+}
+
 interface HeaderProgressProps {
   label: string;
   completed: number;
@@ -38,6 +46,17 @@ interface HeaderProgressProps {
 }
 
 const clampCount = (value: number, total: number) => Math.min(Math.max(0, value), Math.max(0, total));
+
+export const CrmRecordHeaderIdentity: React.FC<CrmRecordHeaderIdentityProps> = ({
+  title,
+  subtitle = 'Phân loại và hoàn thiện thông tin hồ sơ khách hàng'
+}) => <div className="crm-record-header-identity">
+  <span className="crm-record-header-identity__icon"><UsersRound size={20} aria-hidden="true" /></span>
+  <div>
+    <h1 title={title}>{title}</h1>
+    <p>{subtitle}</p>
+  </div>
+</div>;
 
 const HeaderProgress: React.FC<HeaderProgressProps> = ({ label, completed, total, color }) => {
   const safeTotal = Math.max(0, total);
@@ -80,7 +99,9 @@ export const CrmRecordHeaderTabs: React.FC<CrmRecordHeaderTabsProps> = ({
     className={activeTab === 'classification' ? 'is-active' : ''}
     onClick={() => onTabChange('classification')}
   >
-    {classificationLabel} <strong>{clampCount(classificationCount, classificationTotal)}/{classificationTotal}</strong>
+    <ListChecks size={15} aria-hidden="true" />
+    <span>{classificationLabel}</span>
+    <strong>{clampCount(classificationCount, classificationTotal)}/{classificationTotal}</strong>
   </button>
   <button
     type="button"
@@ -89,7 +110,8 @@ export const CrmRecordHeaderTabs: React.FC<CrmRecordHeaderTabsProps> = ({
     className={activeTab === 'profile' ? 'is-active' : ''}
     onClick={() => onTabChange('profile')}
   >
-    {profileLabel}
+    <ClipboardList size={15} aria-hidden="true" />
+    <span>{profileLabel}</span>
   </button>
 </nav>;
 
@@ -104,21 +126,21 @@ export const CrmRecordHeaderFacts: React.FC<CrmRecordHeaderFactsProps> = ({
   nextCareLabel
 }) => <div className="crm-record-header-facts">
   <div>
-    <ReceiptText size={17} aria-hidden="true" />
+    <span className="crm-record-header-facts__icon crm-record-header-facts__icon--tax"><ReceiptText size={17} aria-hidden="true" /></span>
     <div><span>Mã số thuế</span><strong title={taxCode}>{taxCode}</strong></div>
   </div>
   <div>
-    <UserRoundSearch size={17} aria-hidden="true" />
+    <span className="crm-record-header-facts__icon crm-record-header-facts__icon--sale"><UserRoundSearch size={17} aria-hidden="true" /></span>
     <div><span>Sale phụ trách</span><strong title={saleName}>{saleName}</strong></div>
   </div>
   <HeaderProgress label="Phân loại" completed={classificationCount} total={classificationTotal} color="#2563b8" />
   <HeaderProgress label="Thông tin hồ sơ" completed={profileCompleted} total={profileTotal} color="#16895b" />
   <div>
-    <CheckCircle2 size={17} aria-hidden="true" />
+    <span className="crm-record-header-facts__icon crm-record-header-facts__icon--stage"><CheckCircle2 size={17} aria-hidden="true" /></span>
     <div><span>Giai đoạn hiện tại</span><strong title={stageLabel}>{stageLabel}</strong></div>
   </div>
   <div>
-    <CalendarClock size={17} aria-hidden="true" />
+    <span className="crm-record-header-facts__icon crm-record-header-facts__icon--care"><CalendarClock size={17} aria-hidden="true" /></span>
     <div><span>Chăm sóc tiếp</span><strong title={nextCareLabel}>{nextCareLabel}</strong></div>
   </div>
 </div>;

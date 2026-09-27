@@ -61,7 +61,7 @@ import { candidateCallSubjectKey } from '@/features/crm/model/callHistory';
 import { PageBackButton } from '@/components/PageBackButton';
 import { BusinessLocationFields } from './BusinessLocationFields';
 import { CustomerInsightClassification } from './CustomerInsightClassification';
-import { CrmRecordHeaderFacts, CrmRecordHeaderTabs } from './CrmRecordHeader';
+import { CrmRecordHeaderFacts, CrmRecordHeaderIdentity, CrmRecordHeaderTabs } from './CrmRecordHeader';
 import { CUSTOMER_INSIGHT_GROUPS, CUSTOMER_INSIGHT_ITEMS, CUSTOMER_INSIGHT_ITEM_BY_ID, getCustomerInsightGroupsForModule, matchesCustomerInsightValues, replaceCustomerInsightGroupValues } from '@/features/crm/model/customerInsightCatalog';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
@@ -1957,13 +1957,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     const completedProfileFields = profileFields.filter(value => String(value || '').trim()).length;
     return (
       <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
-        <header className={editingCandidate ? 'lead-candidate-profile-header' : 'lead-form-page__header'}>
+        <header className={editingCandidate ? 'lead-candidate-profile-header crm-record-header' : 'lead-form-page__header'}>
           <PageBackButton iconOnly title="Quay lại danh sách dữ liệu" onClick={() => setShowForm(false)} />
-          {editingCandidate ? <div className="lead-candidate-profile-header__title">
-            <div className="lead-candidate-profile-header__title-text">
-              <h1 title={form.companyName}>{form.companyName || 'Chưa có tên doanh nghiệp'}</h1>
-            </div>
-          </div> : <div><span>DỮ LIỆU MỚI</span><h1>Thêm dữ liệu khách hàng</h1></div>}
+          {editingCandidate ? <CrmRecordHeaderIdentity title={form.companyName || 'Chưa có tên doanh nghiệp'} /> : <div><span>DỮ LIỆU MỚI</span><h1>Thêm dữ liệu khách hàng</h1></div>}
           {editingCandidate && <div className="lead-candidate-profile-header__toolbar">
             <CrmRecordHeaderTabs
               activeTab={candidateDetailTab}

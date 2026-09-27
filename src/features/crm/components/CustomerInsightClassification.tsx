@@ -1,5 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import {
+  BarChart3,
+  Factory,
+  Layers3,
+  Package,
+  Phone,
+  Settings2,
+  ShoppingCart,
+  Store,
+  Tag,
+  type LucideIcon
+} from 'lucide-react';
+import {
   CUSTOMER_INSIGHT_GROUPS,
   CUSTOMER_INSIGHT_ITEMS,
   normalizeCustomerInsightValues
@@ -12,6 +24,17 @@ interface CustomerInsightClassificationProps {
   onSave: (values: string[]) => Promise<void>;
   toolbarActions?: React.ReactNode;
 }
+
+const GROUP_PRESENTATION: Record<string, { icon: LucideIcon; tone: string }> = {
+  order_progress: { icon: ShoppingCart, tone: 'green' },
+  commercial_price: { icon: Tag, tone: 'pink' },
+  contact_interaction: { icon: Phone, tone: 'blue' },
+  usage_scale: { icon: BarChart3, tone: 'orange' },
+  supplier_competition: { icon: Store, tone: 'violet' },
+  special_requirements: { icon: Settings2, tone: 'cyan' },
+  product_needs: { icon: Package, tone: 'teal' },
+  industry: { icon: Factory, tone: 'purple' }
+};
 
 export const CustomerInsightClassification: React.FC<CustomerInsightClassificationProps> = ({
   companyName,
@@ -56,7 +79,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
   return <main className="customer-classification" aria-label={`Phân loại ${companyName}`}>
     <header className="customer-classification__header">
       <div>
-        <h2>Phân loại thông tin khách hàng</h2>
+        <h2><span><Layers3 size={17} aria-hidden="true" /></span>Phân loại thông tin khách hàng</h2>
         <div className="customer-classification__progress">
           <strong>{draft.length}/{CUSTOMER_INSIGHT_ITEMS.length} mục đã xác nhận</strong>
           <span role="progressbar" aria-label="Tiến độ phân loại" aria-valuemin={0} aria-valuemax={CUSTOMER_INSIGHT_ITEMS.length} aria-valuenow={draft.length}>
@@ -84,8 +107,10 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
           return true;
         });
         const selectedCount = group.items.filter(item => selected.has(item.id)).length;
-        return <section key={group.id} className="customer-classification__group">
-          <header><h3><span>{groupIndex + 1}</span>{group.label}</h3><strong>{selectedCount}/{group.items.length}</strong></header>
+        const presentation = GROUP_PRESENTATION[group.id];
+        const GroupIcon = presentation.icon;
+        return <section key={group.id} className={`customer-classification__group customer-classification__group--${presentation.tone}`}>
+          <header><h3><span className="customer-classification__group-icon"><GroupIcon size={15} aria-hidden="true" /></span><span className="customer-classification__group-number">{groupIndex + 1}</span><span className="customer-classification__group-label">{group.label}</span></h3><strong>{selectedCount}/{group.items.length}</strong></header>
           {visibleItems.length > 0 ? <div className="customer-classification__options">
             {visibleItems.map(item => <label key={item.id}>
               <input type="checkbox" checked={selected.has(item.id)} disabled={!canEdit || saving} onChange={event => toggle(item.id, event.target.checked)} />

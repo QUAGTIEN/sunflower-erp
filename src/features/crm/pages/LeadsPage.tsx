@@ -121,7 +121,7 @@ import {
 } from '@/components/advancedDataFilterModel';
 import { LeadOverviewDashboard } from '@/features/crm/components/LeadOverviewDashboard';
 import { CustomerInsightClassification } from '@/features/crm/components/CustomerInsightClassification';
-import { CrmRecordHeaderFacts, CrmRecordHeaderTabs } from '@/features/crm/components/CrmRecordHeader';
+import { CrmRecordHeaderFacts, CrmRecordHeaderIdentity, CrmRecordHeaderTabs } from '@/features/crm/components/CrmRecordHeader';
 import {
   CUSTOMER_INSIGHT_GROUPS,
   CUSTOMER_INSIGHT_ITEMS,
@@ -2190,12 +2190,10 @@ export const Leads: React.FC<LeadsProps> = ({
     )).length;
     return (
       <SystemFieldSurface table="leads" className="lead-form-page">
-        <header className={`lead-form-page__header${editingLead ? ' lead-record-header' : ''}`}>
+        <header className={`lead-form-page__header${editingLead ? ' lead-record-header crm-record-header' : ''}`}>
           <PageBackButton iconOnly title={t('Quay lại danh sách khách hàng tiềm năng')} onClick={closeLeadForm} />
           {editingLead ? <>
-            <div className="lead-record-header__identity">
-              <div className="lead-record-header__title"><h1 title={form.companyName || editingLead.companyName}>{form.companyName || editingLead.companyName}</h1></div>
-            </div>
+            <div className="lead-record-header__identity"><CrmRecordHeaderIdentity title={form.companyName || editingLead.companyName} /></div>
             <div className="lead-record-header__actions">
               <CrmRecordHeaderTabs
                 activeTab={leadDetailTab}
