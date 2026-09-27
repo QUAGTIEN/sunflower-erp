@@ -830,3 +830,276 @@
   }
 }
 
+/* Approved action-focused raw-data overview. */
+.raw-overview__dashboard {
+  grid-template-columns: minmax(480px, 1.2fr) minmax(280px, .72fr) minmax(390px, 1fr);
+  grid-template-rows: none;
+  align-items: stretch;
+}
+
+.raw-overview__dashboard > .raw-overview__panel {
+  min-height: 0;
+  padding: 14px;
+}
+
+.raw-overview__dashboard > .raw-overview__panel--general,
+.raw-overview__dashboard > .raw-overview__panel--signals {
+  grid-column: 1 / -1;
+}
+
+.raw-overview__dashboard > .raw-overview__panel--general {
+  min-height: 150px;
+}
+
+.raw-overview__dashboard > .raw-overview__panel--signals {
+  min-height: 250px;
+}
+
+.raw-overview__dashboard > .raw-overview__panel--priority,
+.raw-overview__dashboard > .raw-overview__panel--sale,
+.raw-overview__dashboard > .raw-overview__panel--province {
+  min-height: 300px;
+}
+
+.raw-overview__dashboard .raw-overview__metrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.raw-overview__dashboard .raw-overview__metrics > .raw-overview__metric {
+  --overview-accent: #2a73d5;
+  --overview-soft: #e9f2ff;
+  display: flex;
+  min-height: 86px;
+  align-items: center;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-color: #dce6f3;
+  border-radius: 6px;
+  background: #fbfdff;
+}
+
+.raw-overview__metric--green { --overview-accent: #159766; --overview-soft: #e2f6ed; }
+.raw-overview__metric--red { --overview-accent: #d54855; --overview-soft: #fdebed; }
+.raw-overview__metric--violet { --overview-accent: #7855c7; --overview-soft: #eee7fb; }
+.raw-overview__metric--orange { --overview-accent: #d98224; --overview-soft: #feecd8; }
+
+.raw-overview__metric-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--overview-soft);
+  color: var(--overview-accent) !important;
+}
+
+.raw-overview__metric-content {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 3px;
+}
+
+.raw-overview__dashboard .raw-overview__metric-content > span {
+  overflow: hidden;
+  color: #334a6c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raw-overview__dashboard .raw-overview__metric-content > strong {
+  color: #15386f;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.raw-overview__metric-content > small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raw-overview__metric-content > small.is-favorable { color: #12805a; }
+.raw-overview__metric-content > small.is-unfavorable { color: #c83b47; }
+.raw-overview__metric-content > small.is-neutral { color: #718096; }
+
+.raw-overview__signals {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.raw-overview__signal {
+  --signal-accent: #2a73d5;
+  --signal-soft: #e9f2ff;
+  display: flex;
+  min-width: 0;
+  min-height: 54px;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border: 1px solid #dce6f3;
+  border-radius: 6px;
+  background: #fbfdff;
+}
+
+.raw-overview__signal--green { --signal-accent: #159766; --signal-soft: #e2f6ed; }
+.raw-overview__signal--red { --signal-accent: #d54855; --signal-soft: #fdebed; }
+.raw-overview__signal--violet { --signal-accent: #7855c7; --signal-soft: #eee7fb; }
+.raw-overview__signal--orange { --signal-accent: #d98224; --signal-soft: #feecd8; }
+.raw-overview__signal--teal { --signal-accent: #168b82; --signal-soft: #def3f0; }
+.raw-overview__signal--yellow { --signal-accent: #bd8400; --signal-soft: #fff3cf; }
+
+.raw-overview__signal-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--signal-soft);
+  color: var(--signal-accent);
+}
+
+.raw-overview__signal > div {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.raw-overview__signal > div > span {
+  overflow: hidden;
+  color: #304663;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raw-overview__signal > div > strong {
+  color: #173663;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.raw-overview__signal > div > i {
+  display: block;
+  overflow: hidden;
+  height: 5px;
+  grid-column: 1 / -1;
+  border-radius: 3px;
+  background: #e8eef6;
+}
+
+.raw-overview__signal > div > i > b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--signal-accent);
+}
+
+.raw-overview__dashboard > .raw-overview__panel--priority {
+  display: flex;
+  flex-direction: column;
+}
+
+.raw-overview__dashboard .raw-overview__panel--priority .raw-overview__priority-chart {
+  grid-template-columns: minmax(130px, 170px) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 185px;
+}
+
+.raw-overview__dashboard .raw-overview__panel--priority .raw-overview__donut {
+  width: 150px;
+  height: 150px;
+}
+
+.raw-overview__dashboard .raw-overview__panel--priority .raw-overview__donut > span {
+  width: 92px;
+  height: 92px;
+}
+
+.raw-overview__dashboard .raw-overview__panel--priority .raw-overview__priority-legend {
+  gap: 8px;
+}
+
+.raw-overview__dashboard .raw-overview__panel--priority .raw-overview__priority-note {
+  margin-top: auto;
+}
+
+.raw-overview__dashboard .raw-overview__panel--sale .raw-overview__bars {
+  margin-top: 20px;
+}
+
+.raw-overview__dashboard .raw-overview__panel--province .raw-overview__province-scroll {
+  margin-top: 18px;
+}
+
+.raw-overview__dashboard .raw-overview__panel--province .raw-overview__province-chart {
+  height: 220px;
+}
+
+@media (max-width: 1350px) {
+  .raw-overview__dashboard {
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr);
+  }
+
+  .raw-overview__dashboard > .raw-overview__panel--province {
+    grid-column: 1 / -1;
+  }
+
+  .raw-overview__signals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1250px) {
+  .raw-overview__dashboard .raw-overview__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .raw-overview__dashboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .raw-overview__dashboard > .raw-overview__panel--general,
+  .raw-overview__dashboard > .raw-overview__panel--signals,
+  .raw-overview__dashboard > .raw-overview__panel--province {
+    grid-column: auto;
+  }
+
+  .raw-overview__signals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .raw-overview__dashboard .raw-overview__metrics,
+  .raw-overview__signals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .raw-overview__dashboard .raw-overview__panel--priority .raw-overview__priority-chart {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

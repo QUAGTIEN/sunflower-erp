@@ -1,4 +1,26 @@
 import { memo, useEffect, useMemo, useState } from 'react';
+import {
+  BarChart3,
+  CalendarClock,
+  CheckCircle2,
+  CircleDollarSign,
+  CircleX,
+  ClipboardCheck,
+  Database,
+  FileCheck2,
+  FileText,
+  ListChecks,
+  Phone,
+  PhoneOff,
+  Send,
+  Sparkles,
+  Tag,
+  TrendingDown,
+  TrendingUp,
+  UserRoundX,
+  WalletCards,
+  type LucideIcon
+} from 'lucide-react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import type { LeadCandidateRecord } from '../model/leadCandidateModels';
@@ -25,18 +47,36 @@ type Props = {
 const RULE_DOCUMENT_ID = 'default';
 const PRIORITY_GROUPS: RawPriorityGroup[] = ['call_first', 'enrich', 'verify'];
 const PRIORITY_COLORS: Record<RawPriorityGroup, string> = { call_first: '#16845e', enrich: '#c58705', verify: '#cb3a43' };
+type OverviewMetric = { label: string; value: number; delta: number | null; lowerIsBetter?: boolean; loading?: boolean; icon: LucideIcon; tone: string };
+type SignalDefinition = { id: string; label: string; icon: LucideIcon; tone: string; matches?: (values: Set<string>) => boolean };
+const SIGNAL_DEFINITIONS: SignalDefinition[] = [
+  { id: 'po_promised', label: 'Hẹn lên PO', icon: CalendarClock, tone: 'blue' },
+  { id: 'sample_reviewing', label: 'Đang duyệt mẫu', icon: FileText, tone: 'green' },
+  { id: 'sample_test_ok', label: 'Test mẫu OK', icon: CheckCircle2, tone: 'green' },
+  { id: 'sample_test_not_ok', label: 'Test mẫu chưa OK', icon: CircleX, tone: 'red' },
+  { id: 'sample_planning', label: 'Đang làm mẫu / kế hoạch', icon: Sparkles, tone: 'violet' },
+  { id: 'sample_promised_not_received', label: 'Hẹn cho mẫu, chưa nhận', icon: CalendarClock, tone: 'orange' },
+  { id: 'sample_sent', label: 'Đã gửi mẫu', icon: Send, tone: 'blue' },
+  { id: 'product_info_provided', label: 'Đã cung cấp thông tin SP', icon: ListChecks, tone: 'teal' },
+  { id: 'target_price_provided', label: 'Đã cho giá target', icon: CircleDollarSign, tone: 'yellow' },
+  { id: 'target_price_missing', label: 'Chưa cho giá target', icon: CircleX, tone: 'red', matches: values => values.has('target_price_promised') && !values.has('target_price_provided') },
+  { id: 'price_low', label: 'Giá thấp', icon: TrendingDown, tone: 'green' },
+  { id: 'price_high', label: 'Giá cao', icon: TrendingUp, tone: 'red' },
+  { id: 'price_surveying', label: 'Đang khảo giá', icon: Tag, tone: 'violet' },
+  { id: 'sale_quote_sent', label: 'Sale đã báo giá', icon: FileCheck2, tone: 'blue' },
+  { id: 'usage_100m_plus', label: 'Từ 100 triệu trở lên', icon: BarChart3, tone: 'red' }
+];
 const formatNumber = (value: number) => value.toLocaleString('vi-VN');
 const monthKey = (value: string) => {
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : '';
 };
-const monthName = (date: Date) => `T${date.getMonth() + 1}`;
-const monthTicks = () => Array.from({ length: 6 }, (_, index) => {
+const relativeMonthKey = (offset: number) => {
   const date = new Date();
   date.setDate(1);
-  date.setMonth(date.getMonth() - (5 - index));
-  return { key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`, label: monthName(date) };
-});
+  date.setMonth(date.getMonth() + offset);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+};
 const normalizeRules = (value: unknown): RawPriorityRules => {
   const source = value && typeof value === 'object' ? value as Record<string, unknown> : {};
   const threshold = Number(source.callFirstThreshold);
@@ -99,28 +139,38 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
     enrich: priorityRows.filter(row => row.group === 'enrich').length,
     verify: priorityRows.filter(row => row.group === 'verify').length
   }), [priorityRows]);
-  const thisMonth = monthKey(new Date().toISOString());
-  const metrics = useMemo(() => [
-    ['Tổng dữ liệu thô', candidates.length],
-    ['Mới trong tháng', candidates.filter(candidate => monthKey(candidate.createdAt) === thisMonth).length],
-    ['Đã gọi', scored.filter(row => row.called).length],
-    ['Chưa gọi', scored.filter(row => !row.called).length],
-    ['Đã liên hệ được', scored.filter(row => row.connected).length],
-    ['Chuyển Tiềm năng', candidates.filter(candidate => candidate.status === 'converted' || candidate.convertedLeadId).length]
-  ] as const, [candidates, scored, thisMonth]);
-  const ticks = useMemo(() => monthTicks(), []);
-  const trend = useMemo(() => ticks.map(tick => ({
-    ...tick,
-    found: candidates.filter(candidate => monthKey(candidate.createdAt) === tick.key).length,
-    called: scored.filter(row => row.called && (
-      (callsByCandidate.get(row.candidate.id) || []).some(call => monthKey(call.startedAt) === tick.key)
-      || monthKey(row.candidate.lastContactAt) === tick.key
-    )).length
-  })), [callsByCandidate, candidates, scored, ticks]);
-  const trendMax = Math.max(1, ...trend.flatMap(item => [item.found, item.called]));
-  const trendX = (index: number) => 44 + index * (680 / Math.max(1, trend.length - 1));
-  const trendY = (value: number) => 156 - value / trendMax * 128;
-  const trendLine = (key: 'found' | 'called') => trend.map((item, index) => `${trendX(index)},${trendY(item[key])}`).join(' ');
+  const thisMonth = relativeMonthKey(0);
+  const previousMonth = relativeMonthKey(-1);
+  const metrics = useMemo<OverviewMetric[]>(() => {
+    const calledInMonth = (candidate: LeadCandidateRecord, key: string) => (
+      (callsByCandidate.get(candidate.id) || []).some(call => monthKey(call.startedAt) === key)
+      || monthKey(candidate.lastContactAt) === key
+    );
+    const newInMonth = (key: string) => candidates.filter(candidate => monthKey(candidate.createdAt) === key).length;
+    const calledInMonthCount = (key: string) => candidates.filter(candidate => calledInMonth(candidate, key)).length;
+    const uncalledNewInMonth = (key: string) => scored.filter(row => !row.called && monthKey(row.candidate.createdAt) === key).length;
+    const unassignedNewInMonth = (key: string) => candidates.filter(candidate => !candidate.assignedSaleId && monthKey(candidate.createdAt) === key).length;
+    const convertedInMonth = (key: string) => candidates.filter(candidate => monthKey(candidate.convertedAt) === key).length;
+    return [
+      { label: 'Tổng dữ liệu thô', value: candidates.length, delta: null, icon: Database, tone: 'blue' },
+      { label: 'Mới trong tháng', value: newInMonth(thisMonth), delta: newInMonth(thisMonth) - newInMonth(previousMonth), icon: ClipboardCheck, tone: 'green' },
+      { label: 'Đã gọi', value: scored.filter(row => row.called).length, delta: calledInMonthCount(thisMonth) - calledInMonthCount(previousMonth), loading: callsLoading, icon: Phone, tone: 'blue' },
+      { label: 'Chưa gọi', value: scored.filter(row => !row.called).length, delta: uncalledNewInMonth(thisMonth) - uncalledNewInMonth(previousMonth), lowerIsBetter: true, loading: callsLoading, icon: PhoneOff, tone: 'red' },
+      { label: 'Chưa phân công Sale', value: candidates.filter(candidate => !candidate.assignedSaleId).length, delta: unassignedNewInMonth(thisMonth) - unassignedNewInMonth(previousMonth), lowerIsBetter: true, icon: UserRoundX, tone: 'violet' },
+      { label: 'Chuyển Tiềm năng', value: candidates.filter(candidate => candidate.status === 'converted' || candidate.convertedLeadId).length, delta: convertedInMonth(thisMonth) - convertedInMonth(previousMonth), icon: WalletCards, tone: 'orange' }
+    ];
+  }, [callsByCandidate, callsLoading, candidates, previousMonth, scored, thisMonth]);
+  const signalRows = useMemo(() => {
+    const activeCandidates = priorityRows.map(row => row.candidate);
+    return SIGNAL_DEFINITIONS.map(signal => ({
+      ...signal,
+      count: activeCandidates.filter(candidate => {
+        const values = new Set(candidate.customerInsightValues || []);
+        return signal.matches ? signal.matches(values) : values.has(signal.id);
+      }).length
+    }));
+  }, [priorityRows]);
+  const signalMax = Math.max(1, ...signalRows.map(signal => signal.count));
   const saleRows = useMemo(() => saleUsers.map(user => ({
     id: user.uid, name: user.displayName,
     count: candidates.filter(candidate => candidate.discoveredById === user.uid).length
@@ -174,16 +224,34 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
     {mode === 'overview' ? <>
       <div className="raw-overview__dashboard">
         <section className="raw-overview__panel raw-overview__panel--general">
-          <header><h2>Tình hình chung</h2><p>Số liệu dữ liệu thô và xu hướng trong 6 tháng</p></header>
-          <div className="raw-overview__metrics">{metrics.map(([label, value], index) => <div key={label} className={`raw-overview__metric raw-overview__metric--${index + 1}`}><strong>{callsLoading && ['Đã gọi', 'Chưa gọi', 'Đã liên hệ được'].includes(label) ? '…' : formatNumber(value)}</strong><span>{label}</span></div>)}</div>
-          <div className="raw-overview__subheading"><span>Xu hướng dữ liệu thô</span><div className="raw-overview__series-legend"><span>Dữ liệu mới</span><span>Đã gọi</span></div></div>
-          <div className="raw-overview__line-chart" role="img" aria-label="Dữ liệu mới và hồ sơ đã gọi theo từng tháng trong sáu tháng gần đây">
-            <svg viewBox="0 0 760 195" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-              {[0, 1, 2, 3, 4].map(index => <g key={index}><line x1="44" x2="724" y1={28 + index * 32} y2={28 + index * 32} className="raw-overview__gridline" /><text x="34" y={32 + index * 32} textAnchor="end">{Math.round(trendMax * (4 - index) / 4)}</text></g>)}
-              <polyline points={trendLine('found')} className="raw-overview__line raw-overview__line--found" />
-              <polyline points={trendLine('called')} className="raw-overview__line raw-overview__line--called" />
-              {trend.map((item, index) => <g key={item.key}><circle cx={trendX(index)} cy={trendY(item.found)} r="3.5" className="raw-overview__dot raw-overview__dot--found"><title>{item.label}: {item.found} dữ liệu mới</title></circle><circle cx={trendX(index)} cy={trendY(item.called)} r="3.5" className="raw-overview__dot raw-overview__dot--called"><title>{item.label}: {item.called} hồ sơ đã gọi</title></circle><text x={trendX(index)} y="183" textAnchor="middle">{item.label}</text></g>)}
-            </svg>
+          <header><h2>Tình hình chung</h2><p>Số liệu tổng hợp và biến động so với tháng trước</p></header>
+          <div className="raw-overview__metrics">{metrics.map(metric => {
+            const MetricIcon = metric.icon;
+            const favorable = metric.delta === 0 || metric.delta === null
+              ? null
+              : metric.lowerIsBetter ? metric.delta < 0 : metric.delta > 0;
+            return <div key={metric.label} className={`raw-overview__metric raw-overview__metric--${metric.tone}`}>
+              <span className="raw-overview__metric-icon"><MetricIcon size={18} aria-hidden="true" /></span>
+              <div className="raw-overview__metric-content">
+                <span title={metric.label}>{metric.label}</span>
+                <strong>{metric.loading ? '…' : formatNumber(metric.value)}</strong>
+                {metric.delta !== null && !metric.loading && <small className={favorable === null ? 'is-neutral' : favorable ? 'is-favorable' : 'is-unfavorable'}>
+                  {metric.delta === 0 ? '— Không đổi so với tháng trước' : `${metric.delta > 0 ? '↑' : '↓'} ${formatNumber(Math.abs(metric.delta))} so với tháng trước`}
+                </small>}
+              </div>
+            </div>;
+          })}</div>
+        </section>
+        <section className="raw-overview__panel raw-overview__panel--signals">
+          <header><h2>Tín hiệu khai thác khách hàng</h2><p>Phân loại nhanh dữ liệu thô đang xử lý</p></header>
+          <div className="raw-overview__signals">
+            {signalRows.map(signal => {
+              const SignalIcon = signal.icon;
+              return <div key={signal.id} className={`raw-overview__signal raw-overview__signal--${signal.tone}`} title={`${signal.label}: ${formatNumber(signal.count)} hồ sơ`}>
+                <span className="raw-overview__signal-icon"><SignalIcon size={16} aria-hidden="true" /></span>
+                <div><span>{signal.label}</span><strong>{formatNumber(signal.count)}</strong><i><b style={{ width: `${signal.count / signalMax * 100}%` }} /></i></div>
+              </div>;
+            })}
           </div>
         </section>
         <section className="raw-overview__panel raw-overview__panel--priority"><header className="raw-overview__panel-header"><div><h2>Ưu tiên khai thác</h2><p>Nên gọi · Bổ sung thông tin · Xác minh trước khi gọi</p></div><button type="button" className="raw-overview__config-button" onClick={() => { setRulesDraft(rules); setRulesOpen(true); }}>Cấu hình ưu tiên</button></header><div className="raw-overview__priority-chart"><div className="raw-overview__donut" style={{ background: priorityRows.length ? donutBackground : '#e8edf5' }}><span><strong>{formatNumber(priorityRows.length)}</strong><small>hồ sơ</small></span></div><div className="raw-overview__priority-legend">{PRIORITY_GROUPS.map(key => <button key={key} type="button" onClick={() => { setGroup(key); setPage(1); onPriority(); }}><span className={`raw-overview__group raw-overview__group--${key}`}>{RAW_PRIORITY_LABELS[key]}</span><strong>{formatNumber(groupCounts[key])}</strong><i><b style={{ width: `${priorityRows.length ? groupCounts[key] / priorityRows.length * 100 : 0}%` }} /></i></button>)}</div></div><div className="raw-overview__priority-note"><span>Chọn một nhóm để xem hồ sơ và lý do xếp ưu tiên</span><button type="button" onClick={() => { setGroup('call_first'); onPriority(); }}>Xem bảng ưu tiên</button></div></section>
