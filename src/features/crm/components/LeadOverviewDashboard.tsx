@@ -1,21 +1,54 @@
 import { useMemo, useState } from 'react';
+import {
+  BadgeCheck,
+  BarChart3,
+  Building2,
+  CalendarClock,
+  CheckCircle2,
+  CircleDollarSign,
+  CircleHelp,
+  CircleX,
+  Clock3,
+  FileCheck2,
+  FileSearch,
+  Handshake,
+  MessagesSquare,
+  Send,
+  Sparkles,
+  TrendingUp,
+  UsersRound,
+  type LucideIcon
+} from 'lucide-react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import type { LeadFilterDefinition, LeadRecord, LeadStage } from '@/features/crm/model/crmModels';
+import type { LeadFilterDefinition, LeadRecord } from '@/features/crm/model/crmModels';
 import { findLeadFilterOption, getLeadFilterValues, LEAD_FILTER_IDS } from '@/features/crm/model/leadFilterConfig';
 import './LeadOverviewDashboard.css';
 
 type OverviewMetric = { key: string | null; label: string; count: number };
 type LeadGroup = { label: string; leads: LeadRecord[]; color: string };
 type ProvinceStatus = 'total' | 'negotiating' | 'quoted' | 'sample' | 'discussing' | 'new' | 'won' | 'lost' | 'converted';
+type SignalDefinition = { id: string; label: string; icon: LucideIcon; tone: string; matches?: (values: Set<string>) => boolean };
 
-const STAGES: Array<{ id: LeadStage; label: string; color: string }> = [
-  { id: 'new', label: 'Mới tiếp nhận', color: '#8096c8' },
-  { id: 'contacted', label: 'Đã liên hệ', color: '#38a8b8' },
-  { id: 'quoted', label: 'Đã gửi báo giá', color: '#f2a842' },
-  { id: 'negotiating', label: 'Đang đàm phán', color: '#e66b5b' },
-  { id: 'won', label: 'Thành công', color: '#35a779' },
-  { id: 'lost', label: 'Không thành công', color: '#a3adbd' },
-  { id: 'converted', label: 'Đã chuyển đổi', color: '#6956bd' }
+const METRIC_PRESENTATION: Record<string, { icon: LucideIcon; tone: string; lowerIsBetter?: boolean }> = {
+  'Tổng KH tiềm năng': { icon: UsersRound, tone: 'blue' },
+  'Đã gửi báo giá': { icon: Send, tone: 'green' },
+  'Đang chờ chốt': { icon: Clock3, tone: 'orange' },
+  'Đã chốt': { icon: CheckCircle2, tone: 'green' },
+  'Không thành công': { icon: CircleX, tone: 'red', lowerIsBetter: true },
+  'Đã thành khách hàng': { icon: Building2, tone: 'violet' }
+};
+
+const INSIGHT_SIGNAL_DEFINITIONS: SignalDefinition[] = [
+  { id: 'po_promised', label: 'Hẹn lên PO', icon: CalendarClock, tone: 'blue' },
+  { id: 'sample_reviewing', label: 'Đang duyệt mẫu', icon: FileSearch, tone: 'green' },
+  { id: 'sample_test_ok', label: 'Test mẫu OK', icon: BadgeCheck, tone: 'green' },
+  { id: 'sample_test_not_ok', label: 'Test mẫu chưa OK', icon: CircleX, tone: 'red' },
+  { id: 'sample_promised_not_received', label: 'Hẹn cho mẫu, chưa nhận', icon: CalendarClock, tone: 'orange' },
+  { id: 'target_price_provided', label: 'Đã cho giá target', icon: CircleDollarSign, tone: 'green' },
+  { id: 'target_price_missing', label: 'Chưa cho giá target', icon: CircleHelp, tone: 'violet', matches: values => values.has('target_price_promised') && !values.has('target_price_provided') },
+  { id: 'price_high', label: 'Giá cao', icon: TrendingUp, tone: 'red' },
+  { id: 'sale_quote_sent', label: 'Sale đã báo giá', icon: FileCheck2, tone: 'blue' },
+  { id: 'usage_100m_plus', label: 'Từ 100 triệu trở lên', icon: BarChart3, tone: 'violet' }
 ];
 
 const OPPORTUNITY_COLORS = ['#e66b5b', '#f2a842', '#7768c9', '#38a8b8', '#a3adbd'];
@@ -32,6 +65,27 @@ const PROVINCE_STATUSES: Array<{ id: ProvinceStatus; label: string; color: strin
 ];
 const DASHBOARD_REFERENCE_TIME = Date.now();
 const isOpen = (lead: LeadRecord) => !['won', 'lost', 'converted'].includes(lead.stage) && !lead.convertedCustomerId;
+const monthKey = (value: string) => {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}` : '';
+};
+const relativeMonthKey = (offset: number) => {
+  const date = new Date();
+  date.setDate(1);
+  date.setMonth(date.getMonth() + offset);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const matchesOverviewMetric = (lead: LeadRecord, key: string | null, definitions: LeadFilterDefinition[]) => {
+  if (!key) return true;
+  if (key === 'quoted') {
+    const progress = getLeadFilterValues(lead, definitions)[LEAD_FILTER_IDS.progress] || [];
+    return progress.includes('quote_sent') || lead.stage === 'quoted' || lead.stage === 'negotiating';
+  }
+  if (key === 'pending') return lead.stage === 'quoted' || lead.stage === 'negotiating';
+  if (key === 'converted') return lead.stage === 'converted' || Boolean(lead.convertedCustomerId);
+  return lead.stage === key;
+};
 
 const getProvinceStatus = (lead: LeadRecord, definitions: LeadFilterDefinition[]): ProvinceStatus => {
   if (lead.stage === 'converted' || lead.convertedCustomerId) return 'converted';
@@ -43,17 +97,6 @@ const getProvinceStatus = (lead: LeadRecord, definitions: LeadFilterDefinition[]
   if (progress.includes('sample_in_progress')) return 'sample';
   if (lead.stage === 'contacted' || progress.some(value => ['contacted', 'discussing', 'preparing_quote'].includes(value))) return 'discussing';
   return 'new';
-};
-
-const donutBackground = (groups: LeadGroup[]) => {
-  const total = groups.reduce((sum, group) => sum + group.leads.length, 0);
-  if (!total) return '#e8eef7';
-  let offset = 0;
-  return `conic-gradient(${groups.filter(group => group.leads.length).map(group => {
-    const start = offset;
-    offset += group.leads.length / total * 100;
-    return `${group.color} ${start}% ${offset}%`;
-  }).join(', ')})`;
 };
 
 interface Props {
@@ -71,13 +114,7 @@ export function LeadOverviewDashboard({
   leads, saleUsers, currentUser, definitions, metrics, onMetricClick, onGroupClick, onOpenLead
 }: Props) {
   const [selectedProvinceStatus, setSelectedProvinceStatus] = useState<ProvinceStatus>('total');
-  const { stages, opportunities, saleRows, provinces } = useMemo(() => {
-    const stages: LeadGroup[] = STAGES.map(stage => ({
-      label: stage.label,
-      color: stage.color,
-      leads: leads.filter(lead => lead.stage === stage.id)
-    }));
-
+  const { opportunities, saleRows, provinces } = useMemo(() => {
     const opportunityBuckets: LeadGroup[] = [
       { label: 'Đang đàm phán', color: OPPORTUNITY_COLORS[0], leads: [] },
       { label: 'Đã gửi báo giá', color: OPPORTUNITY_COLORS[1], leads: [] },
@@ -126,12 +163,55 @@ export function LeadOverviewDashboard({
       provinceMap.set(key, entry);
     });
     const provinces = Array.from(provinceMap.values());
-    return { stages, opportunities: opportunityBuckets, saleRows, provinces };
+    return { opportunities: opportunityBuckets, saleRows, provinces };
   }, [leads, saleUsers, currentUser.role, currentUser.uid, definitions]);
 
-  const donut = donutBackground(stages);
   const maxOpportunity = Math.max(1, ...opportunities.slice(0, 4).map(group => group.leads.length));
   const maxSale = Math.max(1, ...saleRows.map(row => row.active.length + row.won.length));
+  const metricRows = useMemo(() => {
+    const thisMonth = relativeMonthKey(0);
+    const previousMonth = relativeMonthKey(-1);
+    return metrics.map((metric, index) => {
+      const presentation: { icon: LucideIcon; tone: string; lowerIsBetter?: boolean } =
+        METRIC_PRESENTATION[metric.label] || { icon: UsersRound, tone: 'blue' };
+      const countInMonth = (key: string) => leads.filter(lead => {
+        if (!matchesOverviewMetric(lead, metric.key, definitions)) return false;
+        const eventAt = metric.key === 'converted' ? lead.convertedAt : lead.createdAt;
+        return monthKey(eventAt) === key;
+      }).length;
+      return {
+        ...metric,
+        ...presentation,
+        delta: index === 0 ? null : countInMonth(thisMonth) - countInMonth(previousMonth)
+      };
+    });
+  }, [definitions, leads, metrics]);
+  const signalRows = useMemo(() => {
+    const opportunityPresentation = [
+      { icon: Handshake, tone: 'red' },
+      { icon: Send, tone: 'orange' },
+      { icon: Sparkles, tone: 'violet' },
+      { icon: MessagesSquare, tone: 'teal' },
+      { icon: CircleHelp, tone: 'blue' }
+    ];
+    const opportunitySignals = opportunities.map((group, index) => ({
+      id: `opportunity-${index}`,
+      label: group.label,
+      icon: opportunityPresentation[index].icon,
+      tone: opportunityPresentation[index].tone,
+      leads: group.leads
+    }));
+    const openLeads = leads.filter(isOpen);
+    const insightSignals = INSIGHT_SIGNAL_DEFINITIONS.map(signal => ({
+      ...signal,
+      leads: openLeads.filter(lead => {
+        const values = new Set(lead.customerInsightValues || []);
+        return signal.matches ? signal.matches(values) : values.has(signal.id);
+      })
+    }));
+    return [...opportunitySignals, ...insightSignals];
+  }, [leads, opportunities]);
+  const maxSignal = Math.max(1, ...signalRows.map(signal => signal.leads.length));
   const provinceSeries = useMemo(() => PROVINCE_STATUSES.filter(status => status.id === selectedProvinceStatus), [selectedProvinceStatus]);
   const provinceColumns = useMemo(() => {
     const statusByLead = new Map(leads.map(lead => [lead.id, getProvinceStatus(lead, definitions)]));
@@ -148,26 +228,41 @@ export function LeadOverviewDashboard({
 
   return (
     <section className="lead-insights" aria-label="Tổng quan khách hàng tiềm năng">
-      <section className="lead-insights__panel" aria-labelledby="lead-insights-general">
-        <h2 id="lead-insights-general">Tình hình chung</h2>
+      <section className="lead-insights__panel lead-insights__panel--general" aria-label="Chỉ số tổng quan khách hàng tiềm năng">
         <div className="lead-insights__metrics">
-          {metrics.map(metric => <button key={metric.label} type="button" onClick={() => onMetricClick(metric.key)}>
-            <strong>{metric.count.toLocaleString('vi-VN')}</strong><span>{metric.label}</span>
-          </button>)}
-        </div>
-        <div className="lead-insights__donut-layout">
-          <div className="lead-insights__donut" style={{ background: donut }} role="img" aria-label={`Phân bổ ${leads.length} khách theo giai đoạn`}>
-            <span><strong>{leads.length.toLocaleString('vi-VN')}</strong><small>khách</small></span>
-          </div>
-          <div className="lead-insights__legend">
-            {stages.map(group => <button key={group.label} type="button" onClick={() => onGroupClick(group.label, group.leads)} disabled={!group.leads.length} title={`${group.label}: ${group.leads.length} khách`}>
-              <i style={{ background: group.color }} /><span>{group.label}</span><strong>{group.leads.length}</strong>
-            </button>)}
-          </div>
+          {metricRows.map(metric => {
+            const MetricIcon = metric.icon;
+            const favorable = metric.delta === 0 || metric.delta === null
+              ? null
+              : metric.lowerIsBetter ? metric.delta < 0 : metric.delta > 0;
+            return <button key={metric.label} type="button" className={`lead-insights__metric lead-insights__metric--${metric.tone}`} onClick={() => onMetricClick(metric.key)}>
+              <span className="lead-insights__metric-icon"><MetricIcon size={18} aria-hidden="true" /></span>
+              <span className="lead-insights__metric-content">
+                <span title={metric.label}>{metric.label}</span>
+                <strong>{metric.count.toLocaleString('vi-VN')}</strong>
+                {metric.delta !== null && <small className={favorable === null ? 'is-neutral' : favorable ? 'is-favorable' : 'is-unfavorable'}>
+                  {metric.delta === 0 ? '— Không đổi so với tháng trước' : `${metric.delta > 0 ? '↑' : '↓'} ${Math.abs(metric.delta).toLocaleString('vi-VN')} so với tháng trước`}
+                </small>}
+              </span>
+            </button>;
+          })}
         </div>
       </section>
 
-      <section className="lead-insights__panel" aria-labelledby="lead-insights-opportunity">
+      <section className="lead-insights__panel lead-insights__panel--signals" aria-labelledby="lead-insights-signals">
+        <header><h2 id="lead-insights-signals">Tín hiệu khai thác khách hàng</h2><p>Theo dõi nhanh tín hiệu và tiến độ chốt Lead</p></header>
+        <div className="lead-insights__signals">
+          {signalRows.map(signal => {
+            const SignalIcon = signal.icon;
+            return <button key={signal.id} type="button" className={`lead-insights__signal lead-insights__signal--${signal.tone}`} disabled={!signal.leads.length} onClick={() => onGroupClick(signal.label, signal.leads)} title={`${signal.label}: ${signal.leads.length} khách`}>
+              <span className="lead-insights__signal-icon"><SignalIcon size={16} aria-hidden="true" /></span>
+              <span className="lead-insights__signal-content"><span>{signal.label}</span><strong>{signal.leads.length}</strong><i><b style={{ width: `${signal.leads.length / maxSignal * 100}%` }} /></i></span>
+            </button>;
+          })}
+        </div>
+      </section>
+
+      <section className="lead-insights__panel lead-insights__panel--opportunity" aria-labelledby="lead-insights-opportunity">
         <h2 id="lead-insights-opportunity">Cơ hội</h2>
         <div className="lead-insights__bars">
           {opportunities.slice(0, 4).map(group => <button key={group.label} type="button" className="lead-insights__bar-row" onClick={() => onGroupClick(group.label, group.leads)} disabled={!group.leads.length} title={`${group.label}: ${group.leads.length} khách`}>
@@ -189,7 +284,7 @@ export function LeadOverviewDashboard({
         </div>
       </section>
 
-      <section className="lead-insights__panel" aria-labelledby="lead-insights-sale">
+      <section className="lead-insights__panel lead-insights__panel--sale" aria-labelledby="lead-insights-sale">
         <h2 id="lead-insights-sale">Theo dõi Sale</h2>
         <div className="lead-insights__sale-legend"><span><i className="is-active" />Đang xử lý</span><span><i className="is-overdue" />Quá hạn</span><span><i className="is-won" />Đã chốt</span></div>
         <div className="lead-insights__sale-list">
@@ -200,7 +295,7 @@ export function LeadOverviewDashboard({
         </div>
       </section>
 
-      <section className="lead-insights__panel" aria-labelledby="lead-insights-province">
+      <section className="lead-insights__panel lead-insights__panel--province" aria-labelledby="lead-insights-province">
         <div className="lead-insights__province-heading">
           <h2 id="lead-insights-province">Tỉnh thành</h2>
           <select

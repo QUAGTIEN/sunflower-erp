@@ -500,3 +500,250 @@
   .lead-insights__donut { width: 120px; }
   .lead-insights__lead-list small { display: none; }
 }
+
+/* Dashboard layout shared with the raw-data overview. */
+.lead-insights {
+  grid-template-columns: minmax(420px, 1.18fr) minmax(280px, .72fr) minmax(390px, 1fr);
+  grid-template-rows: none;
+  align-items: stretch;
+}
+
+.lead-insights__panel {
+  min-height: 0;
+  border-color: #dce6f3;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.lead-insights__panel--general,
+.lead-insights__panel--signals {
+  grid-column: 1 / -1;
+}
+
+.lead-insights__panel--general {
+  padding: 12px 14px;
+}
+
+.lead-insights__panel--signals {
+  gap: 10px;
+  padding: 14px 16px 16px;
+}
+
+.lead-insights__panel--opportunity,
+.lead-insights__panel--sale,
+.lead-insights__panel--province {
+  min-height: 300px;
+}
+
+.lead-insights__panel--signals header {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lead-insights__panel--signals header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.lead-insights__metrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lead-insights__metrics .lead-insights__metric {
+  display: grid;
+  min-height: 82px !important;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  justify-content: initial;
+  gap: 10px;
+  padding: 10px 11px;
+  overflow: hidden;
+  border: 1px solid #dce6f3;
+  border-radius: 6px;
+  background: #fbfdff;
+  text-align: left;
+}
+
+.lead-insights__metric-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: #eaf2ff;
+  color: #2563eb;
+}
+
+.lead-insights__metric-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lead-insights__metrics .lead-insights__metric-content > span {
+  color: #52627d;
+  font-size: 11px;
+}
+
+.lead-insights__metrics .lead-insights__metric-content strong {
+  color: #122b67;
+  font-size: 20px;
+  line-height: 1.05;
+}
+
+.lead-insights__metric-content small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-insights__metric-content small.is-favorable { color: #087f5b; }
+.lead-insights__metric-content small.is-unfavorable { color: #c2413b; }
+.lead-insights__metric-content small.is-neutral { color: #64748b; }
+
+.lead-insights__metric--green .lead-insights__metric-icon { background: #e8f8f1; color: #0f9f70; }
+.lead-insights__metric--orange .lead-insights__metric-icon { background: #fff3df; color: #e58a08; }
+.lead-insights__metric--red .lead-insights__metric-icon { background: #fff0ef; color: #dc514b; }
+.lead-insights__metric--violet .lead-insights__metric-icon { background: #f2edff; color: #7c4dde; }
+
+.lead-insights__signals {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lead-insights__signal {
+  display: grid;
+  min-width: 0;
+  min-height: 62px !important;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  overflow: hidden;
+  border: 1px solid #dfe8f4;
+  border-radius: 6px;
+  background: #fbfdff;
+  color: #253858;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lead-insights__signal:not(:disabled):hover {
+  border-color: #aac3ec;
+  background: #f4f8ff;
+}
+
+.lead-insights__signal-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: #eaf2ff;
+  color: #2563eb;
+}
+
+.lead-insights__signal-content {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.lead-insights__signal-content > span {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lead-insights__signal-content > strong {
+  color: #173a80;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lead-insights__signal-content > i {
+  display: block;
+  height: 4px;
+  grid-column: 1 / -1;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7edf6;
+}
+
+.lead-insights__signal-content > i > b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #3975d8;
+}
+
+.lead-insights__signal--green .lead-insights__signal-icon { background: #e8f8f1; color: #0f9f70; }
+.lead-insights__signal--green .lead-insights__signal-content > i > b { background: #18a979; }
+.lead-insights__signal--orange .lead-insights__signal-icon { background: #fff3df; color: #e58a08; }
+.lead-insights__signal--orange .lead-insights__signal-content > i > b { background: #f0a129; }
+.lead-insights__signal--red .lead-insights__signal-icon { background: #fff0ef; color: #dc514b; }
+.lead-insights__signal--red .lead-insights__signal-content > i > b { background: #e1635d; }
+.lead-insights__signal--violet .lead-insights__signal-icon { background: #f2edff; color: #7c4dde; }
+.lead-insights__signal--violet .lead-insights__signal-content > i > b { background: #8357d9; }
+.lead-insights__signal--teal .lead-insights__signal-icon { background: #e7f8f8; color: #1695a3; }
+.lead-insights__signal--teal .lead-insights__signal-content > i > b { background: #27a7b3; }
+
+@media (max-width: 1350px) {
+  .lead-insights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lead-insights__panel--province {
+    grid-column: 1 / -1;
+  }
+
+  .lead-insights__signals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1250px) {
+  .lead-insights__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .lead-insights {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lead-insights__panel--general,
+  .lead-insights__panel--signals,
+  .lead-insights__panel--province {
+    grid-column: auto;
+  }
+
+  .lead-insights__signals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .lead-insights__metrics,
+  .lead-insights__signals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lead-insights__metrics .lead-insights__metric {
+    min-height: 72px !important;
+  }
+}

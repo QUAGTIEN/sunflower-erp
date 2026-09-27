@@ -224,7 +224,6 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
     {mode === 'overview' ? <>
       <div className="raw-overview__dashboard">
         <section className="raw-overview__panel raw-overview__panel--general">
-          <header><h2>Tình hình chung</h2><p>Số liệu tổng hợp và biến động so với tháng trước</p></header>
           <div className="raw-overview__metrics">{metrics.map(metric => {
             const MetricIcon = metric.icon;
             const favorable = metric.delta === 0 || metric.delta === null

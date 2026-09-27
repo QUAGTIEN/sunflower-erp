@@ -138,6 +138,10 @@
   gap: 6px;
   margin-top: 12px;
 }
+
+.raw-overview__dashboard > .raw-overview__panel--general > .raw-overview__metrics {
+  margin-top: 0;
+}
 .raw-overview__dashboard .raw-overview__metrics > div {
   min-height: 58px;
   gap: 3px;
