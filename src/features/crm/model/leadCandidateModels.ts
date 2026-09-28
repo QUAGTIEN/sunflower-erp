@@ -3,6 +3,13 @@ import { normalizeTaxCode } from './taxCodeUniqueness';
 import { normalizeEntityCustomFieldValues, type EntityCustomFieldValues } from './entityFieldConfig';
 import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
 import { normalizeCustomerInsightValues } from './customerInsightCatalog';
+import {
+  getLeadCandidatePriorityLevel,
+  normalizeLeadCandidateScore,
+  type LeadCandidatePriorityLevel,
+  type LeadCandidateScoreBreakdownItem,
+  type LeadCandidateScoringMode
+} from './leadCandidateScoring';
 
 export const LEAD_CANDIDATE_SCHEMA_VERSION = 11;
 
@@ -74,6 +81,16 @@ export interface LeadCandidateRecord extends Record<string, unknown> {
   sourceUrl: string;
   note: string;
   customerInsightValues: string[];
+  scoringMode: LeadCandidateScoringMode;
+  automaticScore: number;
+  manualScore: number;
+  effectiveScore: number;
+  priorityLevel: LeadCandidatePriorityLevel;
+  manualScoreReason: string;
+  scoreBreakdown: LeadCandidateScoreBreakdownItem[];
+  scoreCalculatedAt: string;
+  scoreUpdatedById: string;
+  scoreUpdatedByName: string;
   files: LeadCandidateFileRecord[];
   customFieldValues: EntityCustomFieldValues;
   status: LeadCandidateStatus;
@@ -292,6 +309,20 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
   const lastContactAt = asText(source.lastContactAt);
   const lastContactOutcome = normalizeContactOutcome(source.lastContactOutcome);
   const canonicalProvince = canonicalizeVietnamProvince(source.province, source.provinceId);
+  const automaticScore = normalizeLeadCandidateScore(source.automaticScore);
+  const manualScore = normalizeLeadCandidateScore(source.manualScore);
+  const scoringMode: LeadCandidateScoringMode = source.scoringMode === 'manual' ? 'manual' : 'automatic';
+  const effectiveScore = scoringMode === 'manual' ? manualScore : automaticScore;
+  const scoreBreakdown = Array.isArray(source.scoreBreakdown)
+    ? source.scoreBreakdown.map(value => {
+      const entry = asRecord(value);
+      return {
+        itemId: asText(entry.itemId),
+        label: asText(entry.label),
+        points: Number(entry.points) || 0
+      };
+    }).filter(entry => entry.itemId && entry.label)
+    : [];
   return {
     ...source,
     id: asText(source.id),
@@ -314,6 +345,16 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     sourceUrl: asText(source.sourceUrl),
     note: asText(source.note),
     customerInsightValues: normalizeCustomerInsightValues(source.customerInsightValues),
+    scoringMode,
+    automaticScore,
+    manualScore,
+    effectiveScore,
+    priorityLevel: getLeadCandidatePriorityLevel(effectiveScore),
+    manualScoreReason: asText(source.manualScoreReason),
+    scoreBreakdown,
+    scoreCalculatedAt: asText(source.scoreCalculatedAt),
+    scoreUpdatedById: asText(source.scoreUpdatedById),
+    scoreUpdatedByName: asText(source.scoreUpdatedByName),
     files: normalizeFiles(source.files),
     customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
     status: normalizeStatus(source.status),

@@ -67,6 +67,7 @@ import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
 import { RawDataOverview } from './RawDataOverview';
+import { RawDataScoringPage } from './RawDataScoringPage';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -592,7 +593,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   [currentUser, saleUsers]);
   const [searchTerm, setSearchTerm] = useState('');
   const [workspaceView, setWorkspaceView] = useState<CandidateWorkspaceView>('all');
-  const [adminRawView, setAdminRawView] = useState<'overview' | 'priority' | 'list'>('overview');
+  const [adminRawView, setAdminRawView] = useState<'overview' | 'priority' | 'scoring' | 'list'>('overview');
   const [adminListPrepared, setAdminListPrepared] = useState(currentUser.role !== 'admin');
   const [saleFilters, setSaleFilters] = useState<string[]>([]);
   const [sourceFilters, setSourceFilters] = useState<string[]>([]);
@@ -671,6 +672,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setShowColumnCustomizer(false);
   }, []);
   const showRawPriority = useCallback(() => setAdminRawView('priority'), []);
+  const showRawScoring = useCallback(() => setAdminRawView('scoring'), []);
   const showRawList = useCallback(() => {
     setAdminListPrepared(true);
     setAdminRawView('list');
@@ -2134,20 +2136,25 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   return <>
     {currentUser.role === 'admin' && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={adminRawView === 'list'}>
-      <PageContextHeader section="Dữ liệu thô" current={adminRawView === 'priority' ? 'Bảng ưu tiên' : 'Tổng quan'} />
+      <PageContextHeader section="Dữ liệu thô" current={adminRawView === 'priority' ? 'Bảng ưu tiên' : adminRawView === 'scoring' ? 'Chấm điểm khách hàng' : 'Tổng quan'} />
       {adminRawView === 'overview' && <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Dữ liệu thô">
         <button type="button" role="tab" aria-selected={true} className="is-active" onClick={showRawOverview}>Tổng quan</button>
         <button type="button" role="tab" aria-selected={false} onClick={showRawList}>Tất cả dữ liệu <strong>{accessibleCandidates.length}</strong></button>
       </nav>}
-      <RawDataOverview
+      {adminRawView === 'scoring' ? <RawDataScoringPage
+        candidates={accessibleCandidates}
+        currentUser={currentUser}
+        onBack={showRawOverview}
+        onOpenCandidate={openRawCandidate}
+      /> : <RawDataOverview
         mode={rawOverviewMode}
         candidates={accessibleCandidates}
         saleUsers={saleUsers}
-        currentUser={currentUser}
         onPriority={showRawPriority}
+        onScoring={showRawScoring}
         onOverview={showRawOverview}
         onOpenCandidate={openRawCandidate}
-      />
+      />}
     </SystemFieldSurface>}
 
     {(currentUser.role !== 'admin' || adminListPrepared || adminRawView === 'list') && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={currentUser.role === 'admin' && adminRawView !== 'list'}>

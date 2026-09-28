@@ -1,5 +1,6 @@
 import type { LeadCandidateRecord } from './leadCandidateModels';
 import type { PhoneCallRecord } from './callHistory';
+import { getLeadCandidateEffectiveScore } from './leadCandidateScoring';
 
 export type RawPriorityGroup = 'call_first' | 'enrich' | 'verify';
 
@@ -62,6 +63,10 @@ export const scoreRawCandidate = (candidate: LeadCandidateRecord, calls: PhoneCa
   if (candidate.nextContactAt && new Date(candidate.nextContactAt).getTime() <= Date.now() + 86_400_000) {
     score += 20;
     reasons.unshift('Có lịch liên hệ sắp đến hạn');
+  }
+  if (candidate.scoringMode === 'manual' || (candidate.customerInsightValues || []).length > 0) {
+    score = getLeadCandidateEffectiveScore(candidate);
+    reasons.unshift(candidate.scoringMode === 'manual' ? 'Điểm ưu tiên được chấm thủ công' : 'Điểm tự động từ phân loại khách hàng');
   }
   const recentCalls = [...history].sort((left, right) => right.startedAt.localeCompare(left.startedAt));
   const wrongNumber = recentCalls[0]?.result === 'wrong_number' || (!recentCalls.length && candidate.lastContactOutcome === 'wrong_number');
