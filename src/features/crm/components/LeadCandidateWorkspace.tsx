@@ -1542,8 +1542,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
     try {
       const [latestLeads, latestCustomers, latestCandidates] = await Promise.all([
-        dbService.getCollection('leads'),
-        dbService.getCollection('customers'),
+        currentUser.role === 'sale'
+          ? dbService.getCollectionByField('leads', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+          : dbService.getCollection('leads'),
+        currentUser.role === 'sale'
+          ? dbService.getCollectionByField('customers', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+          : dbService.getCollection('customers'),
         currentUser.role === 'admin'
           ? dbService.getCollection('lead_candidates')
           : Promise.resolve(candidates)

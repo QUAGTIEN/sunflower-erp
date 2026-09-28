@@ -125,19 +125,45 @@ service cloud.firestore {
 
     // CRM and lead management.
     match /customers/{documentId} {
-      allow read: if isActive();
-      allow create, update: if hasPage('crm') || hasPage('sales');
+      allow read: if isActive()
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || resource.data.assignedSaleId == request.auth.uid);
+      allow create: if (hasPage('crm') || hasPage('sales'))
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || request.resource.data.assignedSaleId == request.auth.uid);
+      allow update: if (hasPage('crm') || hasPage('sales'))
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || (resource.data.assignedSaleId == request.auth.uid
+            && request.resource.data.assignedSaleId == resource.data.assignedSaleId));
       allow delete: if isAdmin();
     }
 
     match /leads/{documentId} {
-      allow read: if isActive();
-      allow create, update: if hasPage('leads') || hasPage('crm');
+      allow read: if isActive()
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || resource.data.assignedSaleId == request.auth.uid);
+      allow create: if (hasPage('leads') || hasPage('crm'))
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || request.resource.data.assignedSaleId == request.auth.uid);
+      allow update: if (hasPage('leads') || hasPage('crm'))
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || (resource.data.assignedSaleId == request.auth.uid
+            && request.resource.data.assignedSaleId == resource.data.assignedSaleId));
       allow delete: if isAdmin();
     }
 
     match /lead_candidates/{documentId} {
-      allow read: if isActive() && canUseCrm();
+      allow read: if isActive()
+        && canUseCrm()
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || resource.data.assignedSaleId == request.auth.uid);
       allow create: if canUseCrm()
         && (isAdmin()
           || (request.resource.data.assignedSaleId == request.auth.uid

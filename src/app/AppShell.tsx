@@ -318,21 +318,30 @@ function AppShell() {
       pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
       () => dbService.subscribeCollection('customers', data => {
         setCustomers(data as CustomerRecord[]);
-      })
+      }, user.role === 'sale' ? {
+        fieldName: 'assignedSaleId',
+        fieldValue: user.uid
+      } : undefined)
     );
     syncSubscription(
       'leads',
       pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
       () => dbService.subscribeCollection('leads', data => {
         setLeads(sortNewestFirst(normalizeLeadRecords(data), lead => [lead.createdAt, lead.updatedAt]));
-      })
+      }, user.role === 'sale' ? {
+        fieldName: 'assignedSaleId',
+        fieldValue: user.uid
+      } : undefined)
     );
     syncSubscription(
       'lead_candidates',
       pageNeeds('dashboard'),
       () => dbService.subscribeCollection('lead_candidates', data => {
         setLeadCandidates(sortNewestFirst(data as LeadCandidateRecord[], candidate => [candidate.createdAt, candidate.updatedAt]));
-      })
+      }, user.role === 'sale' ? {
+        fieldName: 'assignedSaleId',
+        fieldValue: user.uid
+      } : undefined)
     );
     syncSubscription(
       'pos',

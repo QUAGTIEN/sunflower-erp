@@ -33,8 +33,11 @@ export const CustomerData: React.FC<CustomerDataProps> = ({
   useEffect(() => {
     return dbService.subscribeCollection('lead_candidates', data => {
       setCandidates(sortNewestFirst(data as LeadCandidateRecord[], candidate => [candidate.createdAt, candidate.updatedAt]));
-    });
-  }, []);
+    }, currentUser.role === 'sale' ? {
+      fieldName: 'assignedSaleId',
+      fieldValue: currentUser.uid
+    } : undefined);
+  }, [currentUser.role, currentUser.uid]);
 
   return (
     <div className="customer-data-page">

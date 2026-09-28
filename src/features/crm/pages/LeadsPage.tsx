@@ -447,9 +447,12 @@ export const Leads: React.FC<LeadsProps> = ({
   useEffect(() => {
     const unsubscribe = dbService.subscribeCollection('lead_candidates', data => {
       setCandidates(sortNewestFirst(data as LeadCandidateRecord[], candidate => [candidate.createdAt, candidate.updatedAt]));
-    });
+    }, currentUser.role === 'sale' ? {
+      fieldName: 'assignedSaleId',
+      fieldValue: currentUser.uid
+    } : undefined);
     return unsubscribe;
-  }, []);
+  }, [currentUser.role, currentUser.uid]);
 
   useEffect(() => {
     const unsubscribeDefinitions = dbService.subscribeCollection('lead_filter_definitions', data => {
@@ -1440,9 +1443,15 @@ export const Leads: React.FC<LeadsProps> = ({
       return;
     }
     const [latestLeadData, latestCustomerData, latestCandidateData] = await Promise.all([
-      dbService.getCollection('leads'),
-      dbService.getCollection('customers'),
-      dbService.getCollection('lead_candidates')
+      currentUser.role === 'sale'
+        ? dbService.getCollectionByField('leads', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+        : dbService.getCollection('leads'),
+      currentUser.role === 'sale'
+        ? dbService.getCollectionByField('customers', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+        : dbService.getCollection('customers'),
+      currentUser.role === 'sale'
+        ? dbService.getCollectionByField('lead_candidates', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+        : dbService.getCollection('lead_candidates')
     ]);
     const latestLeads = latestLeadData as LeadRecord[];
     const latestCandidates = latestCandidateData as LeadCandidateRecord[];
@@ -1706,7 +1715,9 @@ export const Leads: React.FC<LeadsProps> = ({
 
     setReturningLeadId(lead.id);
     try {
-      const latestCandidates = await dbService.getCollection('lead_candidates') as LeadCandidateRecord[];
+      const latestCandidates = await (currentUser.role === 'sale'
+        ? dbService.getCollectionByField('lead_candidates', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+        : dbService.getCollection('lead_candidates')) as LeadCandidateRecord[];
       const linkedCandidate = latestCandidates.find(candidate => (
         candidate.id === lead.sourceCandidateId
         || candidate.convertedLeadId === lead.id

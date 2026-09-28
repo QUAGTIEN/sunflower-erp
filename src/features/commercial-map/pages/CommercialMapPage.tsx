@@ -236,7 +236,10 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
 
   useEffect(() => dbService.subscribeCollection('lead_candidates', data => {
     setCandidates(data as LeadCandidateRecord[]);
-  }), []);
+  }, currentUser.role === 'sale' ? {
+    fieldName: 'assignedSaleId',
+    fieldValue: currentUser.uid
+  } : undefined), [currentUser.role, currentUser.uid]);
 
   useEffect(() => dbService.subscribeCollection('lead_filter_definitions', data => {
     setStoredFilterDefinitions(data as LeadFilterDefinition[]);
