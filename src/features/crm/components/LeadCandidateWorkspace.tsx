@@ -778,7 +778,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   const accessibleCandidates = useMemo(() => candidates.filter(candidate => (
     !candidate.archived
-  )), [candidates]);
+    && (currentUser.role !== 'sale' || candidate.assignedSaleId === currentUser.uid)
+  )), [candidates, currentUser.role, currentUser.uid]);
 
   const taskCandidates = useMemo(() => accessibleCandidates.filter(candidate => (
     isVisibleTask(candidate)
