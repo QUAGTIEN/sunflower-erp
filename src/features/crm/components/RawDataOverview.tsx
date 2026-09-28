@@ -110,7 +110,7 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
     void Promise.allSettled([
       dbService.getCollection('call_history'),
       dbService.getDocument('raw_data_priority_rules', RULE_DOCUMENT_ID),
-      dbService.getDocument('raw_data_scoring_rules', RULE_DOCUMENT_ID)
+      dbService.getDocument('raw_data_priority_rules', 'scoring-default')
     ]).then(([history, configuration, scoringConfiguration]) => {
       if (!active) return;
       if (history.status === 'fulfilled') setCalls(history.value as PhoneCallRecord[]);

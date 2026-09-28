@@ -15,7 +15,8 @@ interface Props {
   onBack: () => void;
 }
 
-const RULE_DOCUMENT_ID = 'default';
+const RULE_COLLECTION = 'raw_data_priority_rules';
+const RULE_DOCUMENT_ID = 'scoring-default';
 const POINT_OPTIONS = Array.from({ length: 21 }, (_, index) => (index - 10) * 5);
 const CAP_OPTIONS = Array.from({ length: 21 }, (_, index) => index * 5);
 const cloneRules = (rules: LeadCandidateScoringRules): LeadCandidateScoringRules => ({
@@ -52,7 +53,7 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
 
   useEffect(() => {
     let active = true;
-    void dbService.getDocument('raw_data_scoring_rules', RULE_DOCUMENT_ID).then(value => {
+    void dbService.getDocument(RULE_COLLECTION, RULE_DOCUMENT_ID).then(value => {
       if (!active) return;
       const next = value ? normalizeLeadCandidateScoringRules(value) : cloneRules(DEFAULT_LEAD_CANDIDATE_SCORING_RULES);
       setRules(next);
@@ -113,8 +114,8 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
     const now = new Date().toISOString();
     const payload = { id: RULE_DOCUMENT_ID, ...normalized, updatedAt: now, updatedById: currentUser.uid, updatedByName: currentUser.displayName };
     try {
-      if (exists) await dbService.updateDocument('raw_data_scoring_rules', RULE_DOCUMENT_ID, payload);
-      else await dbService.addDocument('raw_data_scoring_rules', payload);
+      if (exists) await dbService.updateDocument(RULE_COLLECTION, RULE_DOCUMENT_ID, payload);
+      else await dbService.addDocument(RULE_COLLECTION, payload);
       setRules(normalized);
       setSavedRules(cloneRules(normalized));
       setExists(true);

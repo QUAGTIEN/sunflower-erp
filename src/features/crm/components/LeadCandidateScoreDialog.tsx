@@ -53,7 +53,7 @@ export function LeadCandidateScoreDialog({ candidate, currentUser, onClose }: Pr
 
   useEffect(() => {
     let active = true;
-    void dbService.getDocument('raw_data_scoring_rules', 'default').then(value => {
+    void dbService.getDocument('raw_data_priority_rules', 'scoring-default').then(value => {
       if (active && value) setRules(normalizeLeadCandidateScoringRules(value));
     }).catch(() => {
       if (active) setError('Không tải được cấu hình mới nhất; điểm tự động đang dùng mức mặc định.');
