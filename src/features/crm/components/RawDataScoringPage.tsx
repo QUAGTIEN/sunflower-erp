@@ -153,7 +153,7 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
 
   return <section className="raw-score-rules" aria-label="Cấu hình điểm khách hàng">
     <header className="raw-score-rules__header">
-      <div><h2>Thiết lập điểm tự động</h2><p>Cấu hình trọng số cho {CUSTOMER_INSIGHT_ITEMS.length} tiêu chí. Mọi giá trị đều theo bội số của 5.</p></div>
+      <h2>Thiết lập điểm tự động</h2>
       <div className="raw-score-rules__header-actions">
         <button type="button" className="btn btn-outline" onClick={goBack}>Quay lại</button>
         <button type="button" className="btn btn-outline" onClick={resetDefaults} disabled={loading || saving || loadFailed}>Khôi phục mặc định</button>
@@ -171,7 +171,7 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
 
     <div className="raw-score-rules__workspace">
       <aside className="raw-score-rules__group-list" aria-label="Nhóm tiêu chí">
-        <h3>Nhóm tiêu chí</h3>
+        <header><h3>Nhóm tiêu chí</h3><span>Giới hạn</span></header>
         <div>
           {CUSTOMER_INSIGHT_GROUPS.map((group, groupIndex) => {
             const isSelected = group.id === selectedGroup?.id;
@@ -185,7 +185,6 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
               onClick={() => { setSelectedGroupId(group.id); setSearchTerm(''); }}
             >
               <span className="raw-score-rules__group-name" title={group.label}>{groupIndex + 1}. {group.label}</span>
-              <span className="raw-score-rules__group-count">{group.items.length} tiêu chí</span>
               <strong>{rules.groupCaps[group.id]} điểm</strong>
             </button>;
           })}
@@ -194,7 +193,7 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
 
       {selectedGroup && <main className="raw-score-rules__editor">
         <header className="raw-score-rules__editor-header">
-          <div><h3>{CUSTOMER_INSIGHT_GROUPS.findIndex(group => group.id === selectedGroup.id) + 1}. {selectedGroup.label}</h3><p>{selectedGroup.items.length} tiêu chí</p></div>
+          <h3>{CUSTOMER_INSIGHT_GROUPS.findIndex(group => group.id === selectedGroup.id) + 1}. {selectedGroup.label}</h3>
           <label><span>Giới hạn nhóm</span><select value={rules.groupCaps[selectedGroup.id]} disabled={loading || saving || loadFailed} onChange={event => updateCap(selectedGroup.id, Number(event.target.value))}>{CAP_OPTIONS.map(value => <option key={value} value={value}>{value} điểm</option>)}</select></label>
         </header>
 
@@ -205,6 +204,7 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
 
         <div className="raw-score-rules__table-wrap">
           <table>
+            <colgroup><col /><col className="raw-score-rules__effect-column" /><col className="raw-score-rules__point-column" /></colgroup>
             <thead><tr><th>Tiêu chí</th><th>Tác động</th><th>Điểm</th></tr></thead>
             <tbody>{visibleItems.length ? visibleItems.map(item => {
               const points = rules.points[item.id] || 0;
@@ -213,7 +213,6 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
             }) : <tr><td colSpan={3} className="raw-score-rules__empty">Không tìm thấy tiêu chí phù hợp.</td></tr>}</tbody>
           </table>
         </div>
-        <p className="raw-score-rules__helper">Điểm chỉ nhận các giá trị là bội số của 5. Điểm cuối cùng được giới hạn từ 0 đến 100.</p>
       </main>}
     </div>
   </section>;
