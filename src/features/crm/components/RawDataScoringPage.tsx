@@ -23,17 +23,32 @@ const cloneRules = (rules: LeadCandidateScoringRules): LeadCandidateScoringRules
   groupCaps: { ...rules.groupCaps }
 });
 const formatPoints = (points: number) => points > 0 ? `+${points}` : String(points);
+const getErrorCode = (error: unknown) => (
+  typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+);
 
 export function RawDataScoringPage({ currentUser, onBack }: Props) {
   const [rules, setRules] = useState<LeadCandidateScoringRules>(() => cloneRules(DEFAULT_LEAD_CANDIDATE_SCORING_RULES));
   const [savedRules, setSavedRules] = useState<LeadCandidateScoringRules>(() => cloneRules(DEFAULT_LEAD_CANDIDATE_SCORING_RULES));
+  const [selectedGroupId, setSelectedGroupId] = useState(CUSTOMER_INSIGHT_GROUPS[0]?.id || '');
+  const [searchTerm, setSearchTerm] = useState('');
   const [exists, setExists] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const hasChanges = useMemo(() => !exists || JSON.stringify(rules) !== JSON.stringify(savedRules), [exists, rules, savedRules]);
+  const hasChanges = !loading && JSON.stringify(rules) !== JSON.stringify(savedRules);
   const totalCap = Object.values(rules.groupCaps).reduce((sum, value) => sum + value, 0);
+  const selectedGroup = useMemo(
+    () => CUSTOMER_INSIGHT_GROUPS.find(group => group.id === selectedGroupId) || CUSTOMER_INSIGHT_GROUPS[0],
+    [selectedGroupId]
+  );
+  const visibleItems = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLocaleLowerCase('vi');
+    if (!normalizedSearch) return selectedGroup?.items || [];
+    return (selectedGroup?.items || []).filter(item => item.label.toLocaleLowerCase('vi').includes(normalizedSearch));
+  }, [searchTerm, selectedGroup]);
 
   useEffect(() => {
     let active = true;
@@ -43,22 +58,39 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
       setRules(next);
       setSavedRules(cloneRules(next));
       setExists(Boolean(value));
-    }).catch(() => {
-      if (active) setError('Không thể tải cấu hình điểm. Hệ thống đang hiển thị mức mặc định.');
+      setLoadFailed(false);
+    }).catch(loadError => {
+      if (!active) return;
+      setLoadFailed(true);
+      setError(getErrorCode(loadError).includes('permission-denied')
+        ? 'Chưa có quyền tải cấu hình điểm. Vui lòng xuất bản Firestore Rules mới nhất.'
+        : 'Không thể tải cấu hình điểm. Vui lòng kiểm tra kết nối và thử lại.');
     }).finally(() => {
       if (active) setLoading(false);
     });
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasChanges) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasChanges]);
+
   const updatePoint = (itemId: string, points: number) => {
     setRules(previous => ({ ...previous, points: { ...previous.points, [itemId]: points } }));
     setMessage('');
+    setError('');
   };
 
   const updateCap = (groupId: string, cap: number) => {
     setRules(previous => ({ ...previous, groupCaps: { ...previous.groupCaps, [groupId]: cap } }));
     setMessage('');
+    setError('');
   };
 
   const resetDefaults = () => {
@@ -73,7 +105,7 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
   };
 
   const save = async () => {
-    if (!hasChanges || saving) return;
+    if (!hasChanges || saving || loadFailed) return;
     setSaving(true);
     setMessage('');
     setError('');
@@ -86,66 +118,102 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
       setRules(normalized);
       setSavedRules(cloneRules(normalized));
       setExists(true);
-      setMessage('Đã lưu quy tắc chấm điểm. Điểm tự động sẽ áp dụng theo cấu hình mới.');
+      setMessage('Đã lưu cấu hình điểm tự động.');
       auditService.recordSafely(currentUser, {
         category: 'administration', module: 'lead_candidates', action: 'candidate_scoring_rules_updated',
         summary: `Cập nhật quy tắc chấm điểm ${CUSTOMER_INSIGHT_ITEMS.length} tiêu chí`,
         targetType: 'raw_data_scoring_rules', targetId: RULE_DOCUMENT_ID, targetLabel: 'Quy tắc chấm điểm dữ liệu thô'
       });
-    } catch {
-      setError('Không thể lưu cấu hình điểm. Vui lòng kiểm tra kết nối hoặc quyền truy cập.');
+    } catch (saveError) {
+      setError(getErrorCode(saveError).includes('permission-denied')
+        ? 'Tài khoản hiện tại không có quyền lưu cấu hình điểm.'
+        : 'Không thể lưu cấu hình điểm. Vui lòng kiểm tra kết nối và thử lại.');
     } finally {
       setSaving(false);
     }
   };
+
+  const statusLabel = loading
+    ? 'Đang tải cấu hình'
+    : loadFailed
+      ? 'Tải cấu hình thất bại'
+      : hasChanges
+        ? 'Có thay đổi chưa lưu'
+        : exists
+          ? 'Đã tải cấu hình'
+          : 'Đang dùng cấu hình mặc định';
+  const statusTone = loading
+    ? 'is-loading'
+    : loadFailed
+      ? 'is-error'
+      : hasChanges
+        ? 'is-pending'
+        : 'is-success';
 
   return <section className="raw-score-rules" aria-label="Cấu hình điểm khách hàng">
     <header className="raw-score-rules__header">
       <div><h2>Thiết lập điểm tự động</h2><p>Cấu hình trọng số cho {CUSTOMER_INSIGHT_ITEMS.length} tiêu chí. Mọi giá trị đều theo bội số của 5.</p></div>
       <div className="raw-score-rules__header-actions">
         <button type="button" className="btn btn-outline" onClick={goBack}>Quay lại</button>
-        <button type="button" className="btn btn-outline" onClick={resetDefaults} disabled={loading || saving}>Khôi phục mặc định</button>
-        <button type="button" className="btn btn-primary" onClick={save} disabled={loading || saving || !hasChanges}>{saving ? 'Đang lưu...' : 'Lưu cấu hình'}</button>
+        <button type="button" className="btn btn-outline" onClick={resetDefaults} disabled={loading || saving || loadFailed}>Khôi phục mặc định</button>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={loading || saving || loadFailed || !hasChanges}>{saving ? 'Đang lưu...' : 'Lưu cấu hình'}</button>
       </div>
     </header>
 
-    <section className="raw-score-rules__summary" aria-label="Tóm tắt cấu hình">
-      <div><span>Số tiêu chí</span><strong>{CUSTOMER_INSIGHT_ITEMS.length}</strong></div>
-      <div><span>Số nhóm</span><strong>{CUSTOMER_INSIGHT_GROUPS.length}</strong></div>
-      <div><span>Tổng giới hạn nhóm</span><strong>{totalCap} điểm</strong></div>
-      <p>Điểm cuối cùng luôn được giới hạn từ 0 đến 100. Điểm âm làm giảm mức ưu tiên của khách hàng.</p>
+    <section className="raw-score-rules__status" aria-label="Trạng thái cấu hình">
+      <div><strong>{CUSTOMER_INSIGHT_ITEMS.length} tiêu chí</strong><span aria-hidden="true">•</span><strong>{CUSTOMER_INSIGHT_GROUPS.length} nhóm</strong><span aria-hidden="true">•</span><strong className={totalCap !== 100 ? 'is-warning' : ''}>Giới hạn tổng {totalCap} điểm</strong></div>
+      <span className={`raw-score-rules__status-badge ${statusTone}`} role="status">{statusLabel}</span>
     </section>
 
-    {loading && <p className="raw-score-rules__notice" role="status">Đang tải cấu hình điểm...</p>}
     {error && <p className="raw-score-rules__notice is-error" role="alert">{error}</p>}
     {message && <p className="raw-score-rules__notice is-success" role="status">{message}</p>}
 
-    <div className="raw-score-rules__groups">
-      {CUSTOMER_INSIGHT_GROUPS.map((group, groupIndex) => {
-        const configuredPoints = group.items.reduce((sum, item) => sum + Math.max(0, rules.points[item.id] || 0), 0);
-        return <details key={group.id} className="raw-score-rule-group" open={groupIndex === 0}>
-          <summary>
-            <span>{groupIndex + 1}. {group.label}</span>
-            <span>{group.items.length} tiêu chí · Tổng điểm dương {configuredPoints}</span>
-            <label onClick={event => event.stopPropagation()}><span>Giới hạn nhóm</span><select value={rules.groupCaps[group.id]} disabled={loading || saving} onChange={event => updateCap(group.id, Number(event.target.value))}>{CAP_OPTIONS.map(value => <option key={value} value={value}>{value} điểm</option>)}</select></label>
-          </summary>
-          <div className="raw-score-rule-group__table-wrap">
-            <table>
-              <thead><tr><th>Tiêu chí phân loại</th><th>Loại tác động</th><th>Điểm tự động</th></tr></thead>
-              <tbody>{group.items.map(item => {
-                const points = rules.points[item.id] || 0;
-                return <tr key={item.id}><td title={item.label}>{item.label}</td><td><span className={`raw-score-rule-group__effect ${points > 0 ? 'is-positive' : points < 0 ? 'is-negative' : 'is-neutral'}`}>{points > 0 ? 'Cộng điểm' : points < 0 ? 'Trừ điểm' : 'Không tính điểm'}</span></td><td><select aria-label={`Điểm cho ${item.label}`} value={points} disabled={loading || saving} onChange={event => updatePoint(item.id, Number(event.target.value))}>{POINT_OPTIONS.map(value => <option key={value} value={value}>{formatPoints(value)} điểm</option>)}</select></td></tr>;
-              })}</tbody>
-            </table>
-          </div>
-        </details>;
-      })}
-    </div>
+    <div className="raw-score-rules__workspace">
+      <aside className="raw-score-rules__group-list" aria-label="Nhóm tiêu chí">
+        <h3>Nhóm tiêu chí</h3>
+        <div>
+          {CUSTOMER_INSIGHT_GROUPS.map((group, groupIndex) => {
+            const isSelected = group.id === selectedGroup?.id;
+            const isChanged = rules.groupCaps[group.id] !== savedRules.groupCaps[group.id]
+              || group.items.some(item => rules.points[item.id] !== savedRules.points[item.id]);
+            return <button
+              type="button"
+              key={group.id}
+              className={`${isSelected ? 'is-selected' : ''} ${isChanged ? 'is-changed' : ''}`}
+              aria-pressed={isSelected}
+              onClick={() => { setSelectedGroupId(group.id); setSearchTerm(''); }}
+            >
+              <span className="raw-score-rules__group-name" title={group.label}>{groupIndex + 1}. {group.label}</span>
+              <span className="raw-score-rules__group-count">{group.items.length} tiêu chí</span>
+              <strong>{rules.groupCaps[group.id]} điểm</strong>
+            </button>;
+          })}
+        </div>
+      </aside>
 
-    <footer className="raw-score-rules__footer">
-      <span>{hasChanges ? 'Có thay đổi chưa lưu.' : 'Cấu hình đã được lưu.'}</span>
-      <button type="button" className="btn btn-outline" onClick={goBack} disabled={saving}>Hủy</button>
-      <button type="button" className="btn btn-primary" onClick={save} disabled={loading || saving || !hasChanges}>{saving ? 'Đang lưu...' : 'Lưu cấu hình'}</button>
-    </footer>
+      {selectedGroup && <main className="raw-score-rules__editor">
+        <header className="raw-score-rules__editor-header">
+          <div><h3>{CUSTOMER_INSIGHT_GROUPS.findIndex(group => group.id === selectedGroup.id) + 1}. {selectedGroup.label}</h3><p>{selectedGroup.items.length} tiêu chí</p></div>
+          <label><span>Giới hạn nhóm</span><select value={rules.groupCaps[selectedGroup.id]} disabled={loading || saving || loadFailed} onChange={event => updateCap(selectedGroup.id, Number(event.target.value))}>{CAP_OPTIONS.map(value => <option key={value} value={value}>{value} điểm</option>)}</select></label>
+        </header>
+
+        <div className="raw-score-rules__search">
+          <label htmlFor="raw-score-rule-search">Tìm tiêu chí</label>
+          <input id="raw-score-rule-search" type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Nhập tên tiêu chí..." />
+        </div>
+
+        <div className="raw-score-rules__table-wrap">
+          <table>
+            <thead><tr><th>Tiêu chí</th><th>Tác động</th><th>Điểm</th></tr></thead>
+            <tbody>{visibleItems.length ? visibleItems.map(item => {
+              const points = rules.points[item.id] || 0;
+              const isChanged = points !== savedRules.points[item.id];
+              return <tr key={item.id} className={isChanged ? 'is-changed' : ''}><td title={item.label}>{item.label}</td><td><span className={`raw-score-rules__effect ${points > 0 ? 'is-positive' : points < 0 ? 'is-negative' : 'is-neutral'}`}>{points > 0 ? 'Tăng' : points < 0 ? 'Giảm' : 'Không đổi'}</span></td><td><select aria-label={`Điểm cho ${item.label}`} value={points} disabled={loading || saving || loadFailed} onChange={event => updatePoint(item.id, Number(event.target.value))}>{POINT_OPTIONS.map(value => <option key={value} value={value}>{formatPoints(value)}</option>)}</select></td></tr>;
+            }) : <tr><td colSpan={3} className="raw-score-rules__empty">Không tìm thấy tiêu chí phù hợp.</td></tr>}</tbody>
+          </table>
+        </div>
+        <p className="raw-score-rules__helper">Điểm chỉ nhận các giá trị là bội số của 5. Điểm cuối cùng được giới hạn từ 0 đến 100.</p>
+      </main>}
+    </div>
   </section>;
 }

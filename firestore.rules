@@ -207,6 +207,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /raw_data_scoring_rules/{documentId} {
+      allow read: if isActive();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
     // Sale PO is shared by all downstream departments because every team
     // updates its own stage on the same order document.
     match /pos/{documentId} {
