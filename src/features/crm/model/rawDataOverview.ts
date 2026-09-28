@@ -1,6 +1,6 @@
 import type { LeadCandidateRecord } from './leadCandidateModels';
 import type { PhoneCallRecord } from './callHistory';
-import { getLeadCandidateEffectiveScore } from './leadCandidateScoring';
+import { getLeadCandidateEffectiveScore, type LeadCandidateScoringRules } from './leadCandidateScoring';
 
 export type RawPriorityGroup = 'call_first' | 'enrich' | 'verify';
 
@@ -46,7 +46,12 @@ export interface ScoredRawCandidate {
   connected: boolean;
 }
 
-export const scoreRawCandidate = (candidate: LeadCandidateRecord, calls: PhoneCallRecord[], rules: RawPriorityRules): ScoredRawCandidate => {
+export const scoreRawCandidate = (
+  candidate: LeadCandidateRecord,
+  calls: PhoneCallRecord[],
+  rules: RawPriorityRules,
+  scoringRules?: LeadCandidateScoringRules
+): ScoredRawCandidate => {
   const history = candidateCalls(candidate, calls);
   const called = hasRawCandidateCall(candidate, calls);
   const connected = hasRawCandidateConversation(candidate, calls);
@@ -65,7 +70,7 @@ export const scoreRawCandidate = (candidate: LeadCandidateRecord, calls: PhoneCa
     reasons.unshift('Có lịch liên hệ sắp đến hạn');
   }
   if (candidate.scoringMode === 'manual' || (candidate.customerInsightValues || []).length > 0) {
-    score = getLeadCandidateEffectiveScore(candidate);
+    score = getLeadCandidateEffectiveScore(candidate, scoringRules);
     reasons.unshift(candidate.scoringMode === 'manual' ? 'Điểm ưu tiên được chấm thủ công' : 'Điểm tự động từ phân loại khách hàng');
   }
   const recentCalls = [...history].sort((left, right) => right.startedAt.localeCompare(left.startedAt));

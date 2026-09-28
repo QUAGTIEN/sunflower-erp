@@ -68,6 +68,7 @@ import { SupportRequestDialog, type SupportRequestTarget } from '@/components/Su
 import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
 import { RawDataOverview } from './RawDataOverview';
 import { RawDataScoringPage } from './RawDataScoringPage';
+import { LeadCandidateScoreDialog } from './LeadCandidateScoreDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
@@ -640,6 +641,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   const [saveError, setSaveError] = useState('');
   const [scheduleCandidateId, setScheduleCandidateId] = useState('');
+  const [scoringCandidateId, setScoringCandidateId] = useState('');
   const [scheduleForm, setScheduleForm] = useState<ScheduleFormState>({ nextContactAt: tomorrowAtNine(), note: '' });
   const [scheduleError, setScheduleError] = useState('');
   const [savingSchedule, setSavingSchedule] = useState(false);
@@ -1115,6 +1117,12 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const scheduleCandidate = scheduleCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === scheduleCandidateId) || null
     : null;
+  const scoringCandidateRecord = scoringCandidateId
+    ? accessibleCandidates.find(candidate => candidate.id === scoringCandidateId) || null
+    : null;
+  const scoringCandidate = scoringCandidateRecord && editingCandidate?.id === scoringCandidateRecord.id
+    ? { ...scoringCandidateRecord, customerInsightValues: form.customerInsightValues }
+    : scoringCandidateRecord;
   const duplicate = useMemo(() => findCandidateDuplicate(
     {
       companyName: form.companyName,
@@ -1992,6 +2000,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             values={form.customerInsightValues}
             canEdit={canManageCandidate(editingCandidate)}
             onSave={values => saveClassification(editingCandidate, values)}
+            onScore={() => setScoringCandidateId(editingCandidate.id)}
             toolbarActions={<PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
               subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
               auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
@@ -2128,6 +2137,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </div>
           </footer>
         </form>
+        {scoringCandidate && <LeadCandidateScoreDialog candidate={scoringCandidate} currentUser={currentUser} onClose={() => setScoringCandidateId('')} />}
       </SystemFieldSurface>
     );
   }
@@ -2136,16 +2146,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   return <>
     {currentUser.role === 'admin' && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={adminRawView === 'list'}>
-      <PageContextHeader section="Dữ liệu thô" current={adminRawView === 'priority' ? 'Bảng ưu tiên' : adminRawView === 'scoring' ? 'Chấm điểm khách hàng' : 'Tổng quan'} />
+      <PageContextHeader section="Dữ liệu thô" current={adminRawView === 'priority' ? 'Bảng ưu tiên' : adminRawView === 'scoring' ? 'Thiết lập điểm tự động' : 'Tổng quan'} />
       {adminRawView === 'overview' && <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Dữ liệu thô">
         <button type="button" role="tab" aria-selected={true} className="is-active" onClick={showRawOverview}>Tổng quan</button>
         <button type="button" role="tab" aria-selected={false} onClick={showRawList}>Tất cả dữ liệu <strong>{accessibleCandidates.length}</strong></button>
       </nav>}
       {adminRawView === 'scoring' ? <RawDataScoringPage
-        candidates={accessibleCandidates}
         currentUser={currentUser}
         onBack={showRawOverview}
-        onOpenCandidate={openRawCandidate}
       /> : <RawDataOverview
         mode={rawOverviewMode}
         candidates={accessibleCandidates}
@@ -2570,6 +2578,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
                             { label: 'Hẹn tiếp', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) },
+                            { label: 'Chấm điểm', onSelect: () => setScoringCandidateId(candidate.id) },
                             { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate, 'profile') },
                             ...(currentUser.role === 'admin' ? [{ label: 'Giao việc', icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
@@ -2689,6 +2698,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(canManageCandidate(candidate) ? [
                               ...(isActive ? [{ label: 'Hẹn lịch', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) }] : []),
+                              { label: 'Chấm điểm', onSelect: () => setScoringCandidateId(candidate.id) },
                               { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate, 'profile') },
                               ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : [])
                             ] : []),
@@ -2733,6 +2743,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </div>
           </form>
         </div>
+      )}
+
+      {scoringCandidate && (
+        <LeadCandidateScoreDialog candidate={scoringCandidate} currentUser={currentUser} onClose={() => setScoringCandidateId('')} />
       )}
 
       {supportTarget && (

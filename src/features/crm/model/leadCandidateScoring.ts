@@ -15,6 +15,11 @@ export interface LeadCandidateScoreResult {
   breakdown: LeadCandidateScoreBreakdownItem[];
 }
 
+export interface LeadCandidateScoringRules {
+  points: Record<string, number>;
+  groupCaps: Record<string, number>;
+}
+
 export const LEAD_CANDIDATE_SCORE_STEP = 5;
 export const LEAD_CANDIDATE_SCORE_MAX = 100;
 
@@ -93,6 +98,11 @@ export const LEAD_CANDIDATE_SCORE_POINTS: Record<string, number> = {
   industry_chemicals_paint: 5
 };
 
+export const DEFAULT_LEAD_CANDIDATE_SCORING_RULES: LeadCandidateScoringRules = {
+  points: LEAD_CANDIDATE_SCORE_POINTS,
+  groupCaps: LEAD_CANDIDATE_GROUP_CAPS
+};
+
 const clampScore = (value: number) => Math.max(0, Math.min(LEAD_CANDIDATE_SCORE_MAX, value));
 
 export const normalizeLeadCandidateScore = (value: unknown) => {
@@ -101,7 +111,36 @@ export const normalizeLeadCandidateScore = (value: unknown) => {
   return clampScore(Math.round(numeric / LEAD_CANDIDATE_SCORE_STEP) * LEAD_CANDIDATE_SCORE_STEP);
 };
 
-export const calculateLeadCandidateAutomaticScore = (values: string[]): LeadCandidateScoreResult => {
+const asRecord = (value: unknown): Record<string, unknown> => (
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+);
+
+const normalizeRuleValue = (value: unknown, fallback: number, min: number, max: number) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(numeric / LEAD_CANDIDATE_SCORE_STEP) * LEAD_CANDIDATE_SCORE_STEP));
+};
+
+export const normalizeLeadCandidateScoringRules = (value: unknown): LeadCandidateScoringRules => {
+  const source = asRecord(value);
+  const pointSource = asRecord(source.points);
+  const capSource = asRecord(source.groupCaps);
+  return {
+    points: Object.fromEntries(Object.keys(LEAD_CANDIDATE_SCORE_POINTS).map(itemId => [
+      itemId,
+      normalizeRuleValue(pointSource[itemId], LEAD_CANDIDATE_SCORE_POINTS[itemId], -100, 100)
+    ])),
+    groupCaps: Object.fromEntries(Object.keys(LEAD_CANDIDATE_GROUP_CAPS).map(groupId => [
+      groupId,
+      normalizeRuleValue(capSource[groupId], LEAD_CANDIDATE_GROUP_CAPS[groupId], 0, 100)
+    ]))
+  };
+};
+
+export const calculateLeadCandidateAutomaticScore = (
+  values: string[],
+  rules: LeadCandidateScoringRules = DEFAULT_LEAD_CANDIDATE_SCORING_RULES
+): LeadCandidateScoreResult => {
   const selected = new Set(values);
   const breakdown: LeadCandidateScoreBreakdownItem[] = [];
   let rawScore = 0;
@@ -109,11 +148,11 @@ export const calculateLeadCandidateAutomaticScore = (values: string[]): LeadCand
   CUSTOMER_INSIGHT_GROUPS.forEach(group => {
     const entries = group.items
       .filter(item => selected.has(item.id))
-      .map(item => ({ itemId: item.id, label: item.label, points: LEAD_CANDIDATE_SCORE_POINTS[item.id] || 0 }));
+      .map(item => ({ itemId: item.id, label: item.label, points: rules.points[item.id] || 0 }));
     const positive = entries.filter(entry => entry.points > 0);
     const negative = entries.filter(entry => entry.points < 0);
     const positiveTotal = positive.reduce((sum, entry) => sum + entry.points, 0);
-    const cappedPositive = Math.min(positiveTotal, LEAD_CANDIDATE_GROUP_CAPS[group.id] || positiveTotal);
+    const cappedPositive = Math.min(positiveTotal, rules.groupCaps[group.id] ?? positiveTotal);
     const negativeTotal = negative.reduce((sum, entry) => sum + entry.points, 0);
     rawScore += cappedPositive + negativeTotal;
     breakdown.push(...entries);
@@ -140,8 +179,8 @@ export const getLeadCandidateEffectiveScore = (candidate: {
   customerInsightValues?: string[];
   scoringMode?: LeadCandidateScoringMode;
   manualScore?: number;
-}) => {
-  const automatic = calculateLeadCandidateAutomaticScore(candidate.customerInsightValues || []).automaticScore;
+}, rules: LeadCandidateScoringRules = DEFAULT_LEAD_CANDIDATE_SCORING_RULES) => {
+  const automatic = calculateLeadCandidateAutomaticScore(candidate.customerInsightValues || [], rules).automaticScore;
   return candidate.scoringMode === 'manual' ? normalizeLeadCandidateScore(candidate.manualScore) : automatic;
 };
 

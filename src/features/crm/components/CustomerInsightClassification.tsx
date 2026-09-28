@@ -22,6 +22,7 @@ interface CustomerInsightClassificationProps {
   values: string[];
   canEdit: boolean;
   onSave: (values: string[]) => Promise<void>;
+  onScore?: () => void;
   toolbarActions?: React.ReactNode;
 }
 
@@ -41,6 +42,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
   values,
   canEdit,
   onSave,
+  onScore,
   toolbarActions
 }) => {
   const [draft, setDraft] = useState(() => normalizeCustomerInsightValues(values));
@@ -93,6 +95,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
           <input value={search} onChange={event => setSearch(event.target.value)} placeholder={`Tìm trong ${CUSTOMER_INSIGHT_ITEMS.length} mục...`} />
         </label>
         {toolbarActions && <div className="customer-classification__record-actions">{toolbarActions}</div>}
+        {onScore && <button type="button" className="btn btn-outline" disabled={!canEdit || hasChanges || saving} title={hasChanges ? 'Lưu phân loại trước khi chấm điểm' : 'Chấm điểm khách hàng'} onClick={onScore}>Chấm điểm</button>}
         <button type="button" className="btn btn-primary" disabled={!canEdit || !hasChanges || saving} onClick={() => void save()}>{saving ? 'Đang lưu...' : 'Lưu phân loại'}</button>
       </div>
     </header>

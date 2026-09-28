@@ -2,194 +2,150 @@ import { useEffect, useMemo, useState } from 'react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
-import type { LeadCandidateRecord } from '../model/leadCandidateModels';
 import { CUSTOMER_INSIGHT_GROUPS, CUSTOMER_INSIGHT_ITEMS } from '../model/customerInsightCatalog';
 import {
-  calculateLeadCandidateAutomaticScore,
-  getLeadCandidatePriorityLevel,
-  LEAD_CANDIDATE_GROUP_CAPS,
-  LEAD_CANDIDATE_PRIORITY_LABELS,
-  LEAD_CANDIDATE_SCORE_POINTS,
-  normalizeLeadCandidateScore,
-  type LeadCandidateScoringMode
+  DEFAULT_LEAD_CANDIDATE_SCORING_RULES,
+  normalizeLeadCandidateScoringRules,
+  type LeadCandidateScoringRules
 } from '../model/leadCandidateScoring';
 import './RawDataScoringPage.css';
 
 interface Props {
-  candidates: LeadCandidateRecord[];
   currentUser: UserProfile;
   onBack: () => void;
-  onOpenCandidate: (id: string) => void;
 }
 
-const SCORE_OPTIONS = Array.from({ length: 21 }, (_, index) => index * 5);
+const RULE_DOCUMENT_ID = 'default';
+const POINT_OPTIONS = Array.from({ length: 21 }, (_, index) => (index - 10) * 5);
+const CAP_OPTIONS = Array.from({ length: 21 }, (_, index) => index * 5);
+const cloneRules = (rules: LeadCandidateScoringRules): LeadCandidateScoringRules => ({
+  points: { ...rules.points },
+  groupCaps: { ...rules.groupCaps }
+});
 const formatPoints = (points: number) => points > 0 ? `+${points}` : String(points);
 
-export function RawDataScoringPage({ candidates, currentUser, onBack, onOpenCandidate }: Props) {
-  const availableCandidates = useMemo(() => candidates
-    .filter(candidate => candidate.status !== 'converted' && !candidate.convertedLeadId)
-    .slice()
-    .sort((left, right) => left.companyName.localeCompare(right.companyName, 'vi-VN')), [candidates]);
-  const [selectedId, setSelectedId] = useState(() => availableCandidates[0]?.id || '');
-  const selectedCandidate = availableCandidates.find(candidate => candidate.id === selectedId) || availableCandidates[0];
-  const [mode, setMode] = useState<LeadCandidateScoringMode>('automatic');
-  const [manualScore, setManualScore] = useState(0);
-  const [reason, setReason] = useState('');
+export function RawDataScoringPage({ currentUser, onBack }: Props) {
+  const [rules, setRules] = useState<LeadCandidateScoringRules>(() => cloneRules(DEFAULT_LEAD_CANDIDATE_SCORING_RULES));
+  const [savedRules, setSavedRules] = useState<LeadCandidateScoringRules>(() => cloneRules(DEFAULT_LEAD_CANDIDATE_SCORING_RULES));
+  const [exists, setExists] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const hasChanges = useMemo(() => !exists || JSON.stringify(rules) !== JSON.stringify(savedRules), [exists, rules, savedRules]);
+  const totalCap = Object.values(rules.groupCaps).reduce((sum, value) => sum + value, 0);
 
   useEffect(() => {
-    if (!selectedCandidate) return;
-    setSelectedId(selectedCandidate.id);
-    setMode(selectedCandidate.scoringMode || 'automatic');
-    setManualScore(normalizeLeadCandidateScore(selectedCandidate.manualScore));
-    setReason(selectedCandidate.manualScoreReason || '');
+    let active = true;
+    void dbService.getDocument('raw_data_scoring_rules', RULE_DOCUMENT_ID).then(value => {
+      if (!active) return;
+      const next = value ? normalizeLeadCandidateScoringRules(value) : cloneRules(DEFAULT_LEAD_CANDIDATE_SCORING_RULES);
+      setRules(next);
+      setSavedRules(cloneRules(next));
+      setExists(Boolean(value));
+    }).catch(() => {
+      if (active) setError('Không thể tải cấu hình điểm. Hệ thống đang hiển thị mức mặc định.');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const updatePoint = (itemId: string, points: number) => {
+    setRules(previous => ({ ...previous, points: { ...previous.points, [itemId]: points } }));
+    setMessage('');
+  };
+
+  const updateCap = (groupId: string, cap: number) => {
+    setRules(previous => ({ ...previous, groupCaps: { ...previous.groupCaps, [groupId]: cap } }));
+    setMessage('');
+  };
+
+  const resetDefaults = () => {
+    setRules(cloneRules(DEFAULT_LEAD_CANDIDATE_SCORING_RULES));
     setMessage('');
     setError('');
-  }, [selectedCandidate?.id]);
+  };
 
-  const automatic = useMemo(
-    () => calculateLeadCandidateAutomaticScore(selectedCandidate?.customerInsightValues || []),
-    [selectedCandidate?.customerInsightValues]
-  );
-  const effectiveScore = mode === 'manual' ? normalizeLeadCandidateScore(manualScore) : automatic.automaticScore;
-  const priorityLevel = getLeadCandidatePriorityLevel(effectiveScore);
-  const selectedValues = useMemo(() => new Set(selectedCandidate?.customerInsightValues || []), [selectedCandidate?.customerInsightValues]);
+  const goBack = () => {
+    if (hasChanges && !window.confirm('Bạn có thay đổi chưa lưu. Bạn vẫn muốn rời trang?')) return;
+    onBack();
+  };
 
-  const saveScore = async () => {
-    if (!selectedCandidate || saving) return;
-    if (mode === 'manual' && !reason.trim()) {
-      setError('Vui lòng nhập lý do khi chấm điểm thủ công.');
-      return;
-    }
+  const save = async () => {
+    if (!hasChanges || saving) return;
     setSaving(true);
-    setError('');
     setMessage('');
+    setError('');
+    const normalized = normalizeLeadCandidateScoringRules(rules);
     const now = new Date().toISOString();
+    const payload = { id: RULE_DOCUMENT_ID, ...normalized, updatedAt: now, updatedById: currentUser.uid, updatedByName: currentUser.displayName };
     try {
-      await dbService.updateDocument('lead_candidates', selectedCandidate.id, {
-        scoringMode: mode,
-        automaticScore: automatic.automaticScore,
-        manualScore: normalizeLeadCandidateScore(manualScore),
-        effectiveScore,
-        priorityLevel,
-        manualScoreReason: mode === 'manual' ? reason.trim() : '',
-        scoreBreakdown: automatic.breakdown,
-        scoreCalculatedAt: now,
-        scoreUpdatedById: currentUser.uid,
-        scoreUpdatedByName: currentUser.displayName,
-        updatedAt: now,
-        updatedBy: currentUser.displayName
-      });
+      if (exists) await dbService.updateDocument('raw_data_scoring_rules', RULE_DOCUMENT_ID, payload);
+      else await dbService.addDocument('raw_data_scoring_rules', payload);
+      setRules(normalized);
+      setSavedRules(cloneRules(normalized));
+      setExists(true);
+      setMessage('Đã lưu quy tắc chấm điểm. Điểm tự động sẽ áp dụng theo cấu hình mới.');
       auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'lead_candidates',
-        action: 'candidate_priority_score_updated',
-        summary: `Cập nhật điểm ưu tiên ${selectedCandidate.companyName}: ${effectiveScore} điểm (${mode === 'manual' ? 'thủ công' : 'tự động'})`,
-        targetType: 'lead_candidate',
-        targetId: selectedCandidate.id,
-        targetLabel: selectedCandidate.companyName
+        category: 'administration', module: 'lead_candidates', action: 'candidate_scoring_rules_updated',
+        summary: `Cập nhật quy tắc chấm điểm ${CUSTOMER_INSIGHT_ITEMS.length} tiêu chí`,
+        targetType: 'raw_data_scoring_rules', targetId: RULE_DOCUMENT_ID, targetLabel: 'Quy tắc chấm điểm dữ liệu thô'
       });
-      setMessage(`Đã lưu ${effectiveScore} điểm cho ${selectedCandidate.companyName}.`);
     } catch {
-      setError('Không thể lưu điểm lúc này. Vui lòng thử lại.');
+      setError('Không thể lưu cấu hình điểm. Vui lòng kiểm tra kết nối hoặc quyền truy cập.');
     } finally {
       setSaving(false);
     }
   };
 
-  if (!selectedCandidate) {
-    return <section className="raw-scoring-page">
-      <div className="raw-scoring-page__empty">
-        <h2>Chấm điểm khách hàng</h2>
-        <p>Chưa có hồ sơ dữ liệu thô phù hợp để chấm điểm.</p>
-        <button type="button" className="btn btn-outline" onClick={onBack}>Quay lại tổng quan</button>
+  return <section className="raw-score-rules" aria-label="Cấu hình điểm khách hàng">
+    <header className="raw-score-rules__header">
+      <div><h2>Thiết lập điểm tự động</h2><p>Cấu hình trọng số cho {CUSTOMER_INSIGHT_ITEMS.length} tiêu chí. Mọi giá trị đều theo bội số của 5.</p></div>
+      <div className="raw-score-rules__header-actions">
+        <button type="button" className="btn btn-outline" onClick={goBack}>Quay lại</button>
+        <button type="button" className="btn btn-outline" onClick={resetDefaults} disabled={loading || saving}>Khôi phục mặc định</button>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={loading || saving || !hasChanges}>{saving ? 'Đang lưu...' : 'Lưu cấu hình'}</button>
       </div>
-    </section>;
-  }
+    </header>
 
-  return <section className="raw-scoring-page" aria-label="Chấm điểm khách hàng">
-    <div className="raw-scoring-page__toolbar">
-      <button type="button" className="btn btn-outline" onClick={onBack}>Quay lại</button>
-      <label>
-        <span>Khách hàng</span>
-        <select value={selectedCandidate.id} onChange={event => setSelectedId(event.target.value)}>
-          {availableCandidates.map(candidate => <option key={candidate.id} value={candidate.id}>{candidate.companyName}</option>)}
-        </select>
-      </label>
-      <div className="raw-scoring-page__identity">
-        <strong title={selectedCandidate.companyName}>{selectedCandidate.companyName}</strong>
-        <span>MST: {selectedCandidate.taxCode || 'Chưa cập nhật'} · Sale: {selectedCandidate.assignedSaleName || 'Chưa phân công'}</span>
-      </div>
-      <button type="button" className="btn btn-outline" onClick={() => onOpenCandidate(selectedCandidate.id)}>Mở hồ sơ phân loại</button>
-    </div>
+    <section className="raw-score-rules__summary" aria-label="Tóm tắt cấu hình">
+      <div><span>Số tiêu chí</span><strong>{CUSTOMER_INSIGHT_ITEMS.length}</strong></div>
+      <div><span>Số nhóm</span><strong>{CUSTOMER_INSIGHT_GROUPS.length}</strong></div>
+      <div><span>Tổng giới hạn nhóm</span><strong>{totalCap} điểm</strong></div>
+      <p>Điểm cuối cùng luôn được giới hạn từ 0 đến 100. Điểm âm làm giảm mức ưu tiên của khách hàng.</p>
+    </section>
 
-    <div className="raw-scoring-page__layout">
-      <section className="raw-scoring-page__rules" aria-labelledby="raw-scoring-rules-title">
-        <header>
-          <div><h2 id="raw-scoring-rules-title">Điểm tự động theo phân loại</h2><p>Điểm được tính từ các mục đã xác nhận trong hồ sơ khách hàng.</p></div>
-          <strong>{selectedValues.size}/{CUSTOMER_INSIGHT_ITEMS.length} mục</strong>
-        </header>
-        <div className="raw-scoring-page__groups">
-          {CUSTOMER_INSIGHT_GROUPS.map((group, index) => {
-            const selectedItems = group.items.filter(item => selectedValues.has(item.id));
-            return <details key={group.id} className="raw-scoring-group" open={index === 0}>
-              <summary>
-                <span>{index + 1}. {group.label}</span>
-                <strong>{selectedItems.length}/{group.items.length} mục · Tối đa {LEAD_CANDIDATE_GROUP_CAPS[group.id]} điểm</strong>
-              </summary>
-              <div className="raw-scoring-group__table-wrap">
-                <table>
-                  <thead><tr><th>Tiêu chí</th><th>Trạng thái</th><th>Điểm</th></tr></thead>
-                  <tbody>{group.items.map(item => {
-                    const checked = selectedValues.has(item.id);
-                    const points = LEAD_CANDIDATE_SCORE_POINTS[item.id] || 0;
-                    return <tr key={item.id} className={checked ? 'is-selected' : ''}>
-                      <td title={item.label}>{item.label}</td>
-                      <td>{checked ? 'Đã xác nhận' : 'Chưa xác nhận'}</td>
-                      <td><strong className={points < 0 ? 'is-negative' : points > 0 ? 'is-positive' : ''}>{formatPoints(points)}</strong></td>
-                    </tr>;
-                  })}</tbody>
-                </table>
-              </div>
-            </details>;
-          })}
-        </div>
-      </section>
+    {loading && <p className="raw-score-rules__notice" role="status">Đang tải cấu hình điểm...</p>}
+    {error && <p className="raw-score-rules__notice is-error" role="alert">{error}</p>}
+    {message && <p className="raw-score-rules__notice is-success" role="status">{message}</p>}
 
-      <aside className="raw-scoring-page__sidebar">
-        <section className={`raw-scoring-summary raw-scoring-summary--${priorityLevel}`}>
-          <div className="raw-scoring-summary__score"><strong>{effectiveScore}</strong><span>Điểm hiệu lực</span></div>
-          <div><h2>Ưu tiên {LEAD_CANDIDATE_PRIORITY_LABELS[priorityLevel].toLocaleLowerCase('vi-VN')}</h2><p>Điểm dùng để sắp xếp thứ tự khai thác khách hàng.</p></div>
-          <dl><div><dt>Tự động</dt><dd>{automatic.automaticScore}</dd></div><div><dt>Thủ công</dt><dd>{mode === 'manual' ? manualScore : 'Chưa dùng'}</dd></div></dl>
-        </section>
-
-        <section className="raw-scoring-page__mode" aria-labelledby="raw-scoring-mode-title">
-          <h2 id="raw-scoring-mode-title">Phương thức chấm điểm</h2>
-          <div className="raw-scoring-page__mode-options">
-            <label className={mode === 'automatic' ? 'is-active' : ''}><input type="radio" name="scoring-mode" value="automatic" checked={mode === 'automatic'} onChange={() => setMode('automatic')} /><span>Tự động</span><small>Dùng điểm từ phân loại khách hàng</small></label>
-            <label className={mode === 'manual' ? 'is-active' : ''}><input type="radio" name="scoring-mode" value="manual" checked={mode === 'manual'} onChange={() => setMode('manual')} /><span>Thủ công</span><small>Chỉ định trực tiếp điểm hiệu lực</small></label>
+    <div className="raw-score-rules__groups">
+      {CUSTOMER_INSIGHT_GROUPS.map((group, groupIndex) => {
+        const configuredPoints = group.items.reduce((sum, item) => sum + Math.max(0, rules.points[item.id] || 0), 0);
+        return <details key={group.id} className="raw-score-rule-group" open={groupIndex === 0}>
+          <summary>
+            <span>{groupIndex + 1}. {group.label}</span>
+            <span>{group.items.length} tiêu chí · Tổng điểm dương {configuredPoints}</span>
+            <label onClick={event => event.stopPropagation()}><span>Giới hạn nhóm</span><select value={rules.groupCaps[group.id]} disabled={loading || saving} onChange={event => updateCap(group.id, Number(event.target.value))}>{CAP_OPTIONS.map(value => <option key={value} value={value}>{value} điểm</option>)}</select></label>
+          </summary>
+          <div className="raw-score-rule-group__table-wrap">
+            <table>
+              <thead><tr><th>Tiêu chí phân loại</th><th>Loại tác động</th><th>Điểm tự động</th></tr></thead>
+              <tbody>{group.items.map(item => {
+                const points = rules.points[item.id] || 0;
+                return <tr key={item.id}><td title={item.label}>{item.label}</td><td><span className={`raw-score-rule-group__effect ${points > 0 ? 'is-positive' : points < 0 ? 'is-negative' : 'is-neutral'}`}>{points > 0 ? 'Cộng điểm' : points < 0 ? 'Trừ điểm' : 'Không tính điểm'}</span></td><td><select aria-label={`Điểm cho ${item.label}`} value={points} disabled={loading || saving} onChange={event => updatePoint(item.id, Number(event.target.value))}>{POINT_OPTIONS.map(value => <option key={value} value={value}>{formatPoints(value)} điểm</option>)}</select></td></tr>;
+              })}</tbody>
+            </table>
           </div>
-          {mode === 'manual' && <div className="raw-scoring-page__manual-fields">
-            <label><span>Điểm thủ công *</span><select value={manualScore} onChange={event => setManualScore(Number(event.target.value))}>{SCORE_OPTIONS.map(score => <option key={score} value={score}>{score} điểm</option>)}</select></label>
-            <label><span>Lý do chấm thủ công *</span><textarea rows={4} maxLength={500} value={reason} onChange={event => setReason(event.target.value)} placeholder="Nhập căn cứ đánh giá khách hàng..." /><small>{reason.length}/500</small></label>
-          </div>}
-          {selectedCandidate.scoreUpdatedByName && <p className="raw-scoring-page__updated">Cập nhật gần nhất bởi {selectedCandidate.scoreUpdatedByName}{selectedCandidate.scoreCalculatedAt ? ` · ${new Date(selectedCandidate.scoreCalculatedAt).toLocaleString('vi-VN')}` : ''}</p>}
-        </section>
-
-        <section className="raw-scoring-page__breakdown" aria-labelledby="raw-scoring-breakdown-title">
-          <h2 id="raw-scoring-breakdown-title">Chi tiết điểm tự động</h2>
-          <div>{automatic.breakdown.length ? automatic.breakdown.map(item => <p key={item.itemId}><span title={item.label}>{item.label}</span><strong className={item.points < 0 ? 'is-negative' : item.points > 0 ? 'is-positive' : ''}>{formatPoints(item.points)}</strong></p>) : <p className="raw-scoring-page__muted">Chưa có mục phân loại được xác nhận.</p>}</div>
-          <footer><span>Tổng sau giới hạn nhóm</span><strong>{automatic.automaticScore} điểm</strong></footer>
-        </section>
-      </aside>
+        </details>;
+      })}
     </div>
 
-    <footer className="raw-scoring-page__footer">
-      <div>{error && <p className="is-error" role="alert">{error}</p>}{message && <p className="is-success" role="status">{message}</p>}</div>
-      <button type="button" className="btn btn-outline" onClick={onBack} disabled={saving}>Hủy</button>
-      <button type="button" className="btn btn-primary" onClick={saveScore} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu điểm'}</button>
+    <footer className="raw-score-rules__footer">
+      <span>{hasChanges ? 'Có thay đổi chưa lưu.' : 'Cấu hình đã được lưu.'}</span>
+      <button type="button" className="btn btn-outline" onClick={goBack} disabled={saving}>Hủy</button>
+      <button type="button" className="btn btn-primary" onClick={save} disabled={loading || saving || !hasChanges}>{saving ? 'Đang lưu...' : 'Lưu cấu hình'}</button>
     </footer>
   </section>;
 }

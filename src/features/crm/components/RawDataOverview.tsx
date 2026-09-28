@@ -25,6 +25,11 @@ import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import type { LeadCandidateRecord } from '../model/leadCandidateModels';
 import type { PhoneCallRecord } from '../model/callHistory';
+import {
+  DEFAULT_LEAD_CANDIDATE_SCORING_RULES,
+  normalizeLeadCandidateScoringRules,
+  type LeadCandidateScoringRules
+} from '../model/leadCandidateScoring';
 import { countRawDataByProvince } from '../model/rawDataProvinces';
 import {
   DEFAULT_RAW_PRIORITY_RULES,
@@ -92,6 +97,7 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
   const [callsLoading, setCallsLoading] = useState(true);
   const [callsError, setCallsError] = useState(false);
   const [rules, setRules] = useState<RawPriorityRules>(DEFAULT_RAW_PRIORITY_RULES);
+  const [scoringRules, setScoringRules] = useState<LeadCandidateScoringRules>(DEFAULT_LEAD_CANDIDATE_SCORING_RULES);
   const [group, setGroup] = useState<RawPriorityGroup>('call_first');
   const [search, setSearch] = useState('');
   const [sale, setSale] = useState('all');
@@ -101,13 +107,20 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
 
   useEffect(() => {
     let active = true;
-    void Promise.allSettled([dbService.getCollection('call_history'), dbService.getDocument('raw_data_priority_rules', RULE_DOCUMENT_ID)]).then(([history, configuration]) => {
+    void Promise.allSettled([
+      dbService.getCollection('call_history'),
+      dbService.getDocument('raw_data_priority_rules', RULE_DOCUMENT_ID),
+      dbService.getDocument('raw_data_scoring_rules', RULE_DOCUMENT_ID)
+    ]).then(([history, configuration, scoringConfiguration]) => {
       if (!active) return;
       if (history.status === 'fulfilled') setCalls(history.value as PhoneCallRecord[]);
       else setCallsError(true);
       if (configuration.status === 'fulfilled' && configuration.value) {
         const next = normalizeRules(configuration.value);
         setRules(next);
+      }
+      if (scoringConfiguration.status === 'fulfilled' && scoringConfiguration.value) {
+        setScoringRules(normalizeLeadCandidateScoringRules(scoringConfiguration.value));
       }
       setCallsLoading(false);
     });
@@ -125,7 +138,7 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
     });
     return indexed;
   }, [calls]);
-  const scored = useMemo(() => candidates.map(candidate => scoreRawCandidate(candidate, callsByCandidate.get(candidate.id) || [], rules)), [callsByCandidate, candidates, rules]);
+  const scored = useMemo(() => candidates.map(candidate => scoreRawCandidate(candidate, callsByCandidate.get(candidate.id) || [], rules, scoringRules)), [callsByCandidate, candidates, rules, scoringRules]);
   const priorityRows = useMemo(() => scored.filter(row => row.candidate.status !== 'converted' && !row.candidate.convertedLeadId), [scored]);
   const groupCounts = useMemo(() => ({
     call_first: priorityRows.filter(row => row.group === 'call_first').length,
