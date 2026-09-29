@@ -95,6 +95,16 @@ export const CrmRecordHeaderTabs: React.FC<CrmRecordHeaderTabsProps> = ({
   <button
     type="button"
     role="tab"
+    aria-selected={activeTab === 'profile'}
+    className={activeTab === 'profile' ? 'is-active' : ''}
+    onClick={() => onTabChange('profile')}
+  >
+    <ClipboardList size={15} aria-hidden="true" />
+    <span>{profileLabel}</span>
+  </button>
+  <button
+    type="button"
+    role="tab"
     aria-selected={activeTab === 'classification'}
     className={activeTab === 'classification' ? 'is-active' : ''}
     onClick={() => onTabChange('classification')}
@@ -102,16 +112,6 @@ export const CrmRecordHeaderTabs: React.FC<CrmRecordHeaderTabsProps> = ({
     <ListChecks size={15} aria-hidden="true" />
     <span>{classificationLabel}</span>
     <strong>{clampCount(classificationCount, classificationTotal)}/{classificationTotal}</strong>
-  </button>
-  <button
-    type="button"
-    role="tab"
-    aria-selected={activeTab === 'profile'}
-    className={activeTab === 'profile' ? 'is-active' : ''}
-    onClick={() => onTabChange('profile')}
-  >
-    <ClipboardList size={15} aria-hidden="true" />
-    <span>{profileLabel}</span>
   </button>
 </nav>;
 
