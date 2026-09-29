@@ -602,20 +602,24 @@ export const Leads: React.FC<LeadsProps> = ({
     () => leads.filter(isActiveLeadRecord),
     [leads]
   );
+  const overviewLeads = useMemo(() => currentUser.role === 'sale'
+    ? accessibleLeads.filter(lead => lead.discoveredById === currentUser.uid)
+    : accessibleLeads,
+  [accessibleLeads, currentUser.role, currentUser.uid]);
 
   const leadOverview = useMemo(() => {
-    const count = (selection: LeadOverviewSelection) => accessibleLeads.filter(lead => (
+    const count = (selection: LeadOverviewSelection) => overviewLeads.filter(lead => (
       matchesLeadOverviewSelection(lead, selection, filterDefinitions)
     )).length;
     return {
-      total: accessibleLeads.length,
+      total: overviewLeads.length,
       quoted: count('quoted'),
       pending: count('pending'),
       won: count('won'),
       lost: count('lost'),
       converted: count('converted')
     };
-  }, [accessibleLeads, filterDefinitions]);
+  }, [filterDefinitions, overviewLeads]);
 
   const customFilterOptions = useMemo(() => Object.fromEntries(
     customFieldDefinitions.filter(definition => definition.active).map(definition => [
@@ -1967,7 +1971,12 @@ export const Leads: React.FC<LeadsProps> = ({
 
   const openOverviewList = (selection: LeadOverviewSelection | null) => {
     clearFilters();
-    setOverviewSelection(selection);
+    setOverviewDrilldown({
+      label: selection ? LEAD_OVERVIEW_LABELS[selection] : 'Tổng KH tiềm năng',
+      ids: overviewLeads
+        .filter(lead => !selection || matchesLeadOverviewSelection(lead, selection, filterDefinitions))
+        .map(lead => lead.id)
+    });
     setLeadListPrepared(true);
     setWorkspaceTab('list');
   };
@@ -2467,7 +2476,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
       {workspaceTab === 'overview' ? (
         <LeadOverviewDashboard
-          leads={accessibleLeads}
+          leads={overviewLeads}
           saleUsers={saleUsers}
           currentUser={currentUser}
           definitions={filterDefinitions}

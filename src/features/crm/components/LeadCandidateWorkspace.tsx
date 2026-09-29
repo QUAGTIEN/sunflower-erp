@@ -782,6 +782,14 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     !candidate.archived
     && (currentUser.role !== 'sale' || candidate.assignedSaleId === currentUser.uid)
   )), [candidates, currentUser.role, currentUser.uid]);
+  const overviewCandidates = useMemo(() => currentUser.role === 'sale'
+    ? accessibleCandidates.filter(candidate => candidate.discoveredById === currentUser.uid)
+    : accessibleCandidates,
+  [accessibleCandidates, currentUser.role, currentUser.uid]);
+  const overviewSaleUsers = useMemo(() => currentUser.role === 'sale'
+    ? saleUsers.filter(user => user.uid === currentUser.uid)
+    : saleUsers,
+  [currentUser.role, currentUser.uid, saleUsers]);
 
   const taskCandidates = useMemo(() => accessibleCandidates.filter(candidate => (
     isVisibleTask(candidate)
@@ -2166,7 +2174,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const rawOverviewMode = adminRawView === 'priority' ? 'priority' : 'overview';
 
   return <>
-    {currentUser.role === 'admin' && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={adminRawView === 'list'}>
+    {adminRawView !== 'list' && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace">
       <PageContextHeader section="Dữ liệu thô" current={adminRawView === 'priority' ? 'Bảng ưu tiên' : adminRawView === 'scoring' ? 'Thiết lập điểm tự động' : 'Tổng quan'} />
       {adminRawView === 'overview' && <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Dữ liệu thô">
         <button type="button" role="tab" aria-selected={true} className="is-active" onClick={showRawOverview}>Tổng quan</button>
@@ -2177,8 +2185,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         onBack={showRawOverview}
       /> : <RawDataOverview
         mode={rawOverviewMode}
-        candidates={accessibleCandidates}
-        saleUsers={saleUsers}
+        candidates={overviewCandidates}
+        saleUsers={overviewSaleUsers}
+        canConfigureScoring={currentUser.role === 'admin'}
         onPriority={showRawPriority}
         onScoring={showRawScoring}
         onOverview={showRawOverview}
@@ -2186,11 +2195,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       />}
     </SystemFieldSurface>}
 
-    {(currentUser.role !== 'admin' || adminListPrepared || adminRawView === 'list') && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={currentUser.role === 'admin' && adminRawView !== 'list'}>
+    {(adminListPrepared || adminRawView === 'list') && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={adminRawView !== 'list'}>
       <PageContextHeader section="Dữ liệu thô" current={workspaceView === 'tasks' ? 'Công việc cần xử lý' : 'Tất cả dữ liệu'} />
       <div className="lead-candidate-commandbar">
         <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Không gian làm việc Sale">
-          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={false} onClick={showRawOverview}>Tổng quan</button>}
+          <button type="button" role="tab" aria-selected={false} onClick={showRawOverview}>Tổng quan</button>
           {([
             ...(currentUser.role === 'admin' ? [] : [['tasks', 'Công việc cần xử lý'] as [CandidateWorkspaceView, string]]),
             ['all', 'Tất cả dữ liệu']

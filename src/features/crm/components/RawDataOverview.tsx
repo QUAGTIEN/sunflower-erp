@@ -44,6 +44,7 @@ type Props = {
   mode: 'overview' | 'priority';
   candidates: LeadCandidateRecord[];
   saleUsers: UserProfile[];
+  canConfigureScoring: boolean;
   onPriority: () => void;
   onScoring: () => void;
   onOverview: () => void;
@@ -92,7 +93,7 @@ const normalizeRules = (value: unknown): RawPriorityRules => {
   };
 };
 
-export const RawDataOverview = memo(function RawDataOverview({ mode, candidates, saleUsers, onPriority, onScoring, onOverview, onOpenCandidate }: Props) {
+export const RawDataOverview = memo(function RawDataOverview({ mode, candidates, saleUsers, canConfigureScoring, onPriority, onScoring, onOverview, onOpenCandidate }: Props) {
   const [calls, setCalls] = useState<PhoneCallRecord[]>([]);
   const [callsLoading, setCallsLoading] = useState(true);
   const [callsError, setCallsError] = useState(false);
@@ -238,7 +239,7 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
             })}
           </div>
         </section>
-        <section className="raw-overview__panel raw-overview__panel--priority"><header className="raw-overview__panel-header"><div><h2>Ưu tiên khai thác</h2><p>Nên gọi · Bổ sung thông tin · Xác minh trước khi gọi</p></div><button type="button" className="raw-overview__config-button" onClick={onScoring}>Cập nhật điểm</button></header><div className="raw-overview__priority-chart"><div className="raw-overview__donut" style={{ background: priorityRows.length ? donutBackground : '#e8edf5' }}><span><strong>{formatNumber(priorityRows.length)}</strong><small>hồ sơ</small></span></div><div className="raw-overview__priority-legend">{PRIORITY_GROUPS.map(key => <button key={key} type="button" onClick={() => { setGroup(key); setPage(1); onPriority(); }}><span className={`raw-overview__group raw-overview__group--${key}`}>{RAW_PRIORITY_LABELS[key]}</span><strong>{formatNumber(groupCounts[key])}</strong><i><b style={{ width: `${priorityRows.length ? groupCounts[key] / priorityRows.length * 100 : 0}%` }} /></i></button>)}</div></div><div className="raw-overview__priority-note"><span>Chọn một nhóm để xem hồ sơ và lý do xếp ưu tiên</span><button type="button" onClick={() => { setGroup('call_first'); onPriority(); }}>Xem bảng ưu tiên</button></div></section>
+        <section className="raw-overview__panel raw-overview__panel--priority"><header className="raw-overview__panel-header"><div><h2>Ưu tiên khai thác</h2><p>Nên gọi · Bổ sung thông tin · Xác minh trước khi gọi</p></div>{canConfigureScoring && <button type="button" className="raw-overview__config-button" onClick={onScoring}>Cập nhật điểm</button>}</header><div className="raw-overview__priority-chart"><div className="raw-overview__donut" style={{ background: priorityRows.length ? donutBackground : '#e8edf5' }}><span><strong>{formatNumber(priorityRows.length)}</strong><small>hồ sơ</small></span></div><div className="raw-overview__priority-legend">{PRIORITY_GROUPS.map(key => <button key={key} type="button" onClick={() => { setGroup(key); setPage(1); onPriority(); }}><span className={`raw-overview__group raw-overview__group--${key}`}>{RAW_PRIORITY_LABELS[key]}</span><strong>{formatNumber(groupCounts[key])}</strong><i><b style={{ width: `${priorityRows.length ? groupCounts[key] / priorityRows.length * 100 : 0}%` }} /></i></button>)}</div></div><div className="raw-overview__priority-note"><span>Chọn một nhóm để xem hồ sơ và lý do xếp ưu tiên</span><button type="button" onClick={() => { setGroup('call_first'); onPriority(); }}>Xem bảng ưu tiên</button></div></section>
         <section className="raw-overview__panel raw-overview__panel--sale"><h2>Dữ liệu của Sale</h2><p>Dữ liệu thô do từng Sale tự tìm</p><div className="raw-overview__bars">{saleRows.length ? saleRows.map(row => <div key={row.id}><span title={row.name}>{row.name}</span><i><b style={{ width: `${row.count / saleMax * 100}%` }} /></i><strong>{formatNumber(row.count)}</strong></div>) : <p>Chưa có dữ liệu Sale tự tìm.</p>}</div></section>
         <section className="raw-overview__panel raw-overview__panel--province"><h2>Dữ liệu kiếm được theo tỉnh thành</h2><p>Phân bố dữ liệu thô theo địa bàn doanh nghiệp</p>{provinceRows.length ? <div className="raw-overview__province-scroll"><div className="raw-overview__province-chart" role="img" aria-label={provinceRows.map(row => `${row.label}: ${formatNumber(row.count)} hồ sơ`).join('; ')}>{provinceRows.map(row => <div className="raw-overview__province-column" key={row.label}><strong>{formatNumber(row.count)}</strong><i style={{ height: `${Math.max(3, row.count / provinceMax * 175)}px` }} /><span title={row.label}>{row.label}</span></div>)}</div></div> : <p className="raw-overview__empty">Chưa có dữ liệu để thống kê theo tỉnh thành.</p>}</section>
       </div>
