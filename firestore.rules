@@ -47,7 +47,10 @@ service cloud.firestore {
     }
 
     function canUseCrm() {
-      return hasPage('crm') || hasPage('leads') || hasPage('sales');
+      return hasPage('crm')
+        || hasPage('leads')
+        || hasPage('customer_data')
+        || hasPage('sales');
     }
 
     function canUseOrderFlow() {
@@ -142,7 +145,12 @@ service cloud.firestore {
     }
 
     match /leads/{documentId} {
-      allow read: if isActive()
+      allow get: if isActive()
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || !exists(/databases/$(database)/documents/leads/$(documentId))
+          || resource.data.assignedSaleId == request.auth.uid);
+      allow list: if isActive()
         && (isAdmin()
           || userProfile().role != 'sale'
           || resource.data.assignedSaleId == request.auth.uid);
@@ -159,7 +167,13 @@ service cloud.firestore {
     }
 
     match /lead_candidates/{documentId} {
-      allow read: if isActive()
+      allow get: if isActive()
+        && canUseCrm()
+        && (isAdmin()
+          || userProfile().role != 'sale'
+          || !exists(/databases/$(database)/documents/lead_candidates/$(documentId))
+          || resource.data.assignedSaleId == request.auth.uid);
+      allow list: if isActive()
         && canUseCrm()
         && (isAdmin()
           || userProfile().role != 'sale'

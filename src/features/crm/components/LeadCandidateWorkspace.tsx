@@ -1686,7 +1686,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       if (isDocumentAlreadyExistsError(error)) {
         setSaveError('Mã số thuế này vừa được một Sale khác lưu vào Dữ liệu khách hàng.');
       } else if (errorCode === 'permission-denied' || errorCode === 'firestore/permission-denied') {
-        setSaveError('Firebase chưa cấp quyền lưu Dữ liệu khách hàng. Admin cần xuất bản Firestore Rules mới nhất.');
+        setSaveError(normalizeTaxCode(form.taxCode)
+          ? 'Không thể lưu: mã số thuế có thể đã tồn tại ở hồ sơ của Sale khác hoặc Firestore Rules chưa được cập nhật.'
+          : 'Firebase chưa cấp quyền lưu Dữ liệu khách hàng. Admin cần xuất bản Firestore Rules mới nhất.');
       } else if (errorCode === 'auth/session-expired' || errorCode === 'unauthenticated') {
         setSaveError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.');
       } else {
