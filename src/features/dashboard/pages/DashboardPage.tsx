@@ -64,6 +64,24 @@ interface RevenueTrendPoint extends PORevenueMetrics {
   label: string;
 }
 
+type SalePoFilter = 'all' | 'waiting_design' | 'waiting_production' | 'waiting_delivery';
+
+const SALE_ACTIVE_TASK_STATUSES = new Set([
+  'not_started',
+  'in_progress',
+  'waiting_customer',
+  'support_requested',
+  'awaiting_confirmation',
+  'paused'
+]);
+
+const SALE_FUNNEL_STAGES = [
+  { id: 'new', label: 'Mới tiếp nhận', color: '#2f6edb' },
+  { id: 'contacted', label: 'Đã liên hệ', color: '#2fb5ca' },
+  { id: 'quoted', label: 'Đã báo giá', color: '#e6a23c' },
+  { id: 'negotiating', label: 'Đang đàm phán', color: '#43a978' }
+] as const;
+
 const nonnegativeNumber = (value: unknown) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
@@ -217,6 +235,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Drill-down sub-view state
   const [selectedProgressCategory, setSelectedProgressCategory] = useState<POQueueStatus | null>(null);
+  const [salePoFilter, setSalePoFilter] = useState<SalePoFilter>('all');
   const [expandedPoId, setExpandedPoId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -432,6 +451,68 @@ export const Dashboard: React.FC<DashboardProps> = ({
       return { group, tasks, priority, nearestDue: tasks[0]?.endAt || '' };
     });
   }, [workScheduleGroups, workScheduleItems]);
+
+  const salePOs = filteredPOs.filter(po => po.saleId === user.uid);
+  const saleCustomers = activeCustomersList.filter(customer => customer.assignedSaleId === user.uid);
+  const saleLeads = leads.filter(lead => !lead.deleted && lead.assignedSaleId === user.uid);
+  const saleNewLeads = saleLeads.filter(lead => matchesTimeframe(lead.createdAt));
+  const saleActiveTasks = workScheduleItems
+    .filter(item => item.assigneeId === user.uid && SALE_ACTIVE_TASK_STATUSES.has(item.status))
+    .sort((left, right) => {
+      const priorityOrder = { urgent: 0, high: 1, normal: 2 } as const;
+      const leftTime = new Date(left.endAt).getTime();
+      const rightTime = new Date(right.endAt).getTime();
+      const normalizedLeftTime = Number.isFinite(leftTime) ? leftTime : Number.MAX_SAFE_INTEGER;
+      const normalizedRightTime = Number.isFinite(rightTime) ? rightTime : Number.MAX_SAFE_INTEGER;
+      return normalizedLeftTime - normalizedRightTime
+        || priorityOrder[left.priority] - priorityOrder[right.priority];
+    });
+  const saleNow = new Date();
+  const saleTodayStart = new Date(saleNow.getFullYear(), saleNow.getMonth(), saleNow.getDate()).getTime();
+  const saleTodayEnd = saleTodayStart + (24 * 60 * 60 * 1000) - 1;
+  const saleTodayTaskCount = saleActiveTasks.filter(item => {
+    const dueAt = new Date(item.endAt).getTime();
+    return Number.isFinite(dueAt) && dueAt >= saleTodayStart && dueAt <= saleTodayEnd;
+  }).length;
+  const saleOverdueTaskCount = saleActiveTasks.filter(item => {
+    const dueAt = new Date(item.endAt).getTime();
+    return Number.isFinite(dueAt) && dueAt < saleTodayStart;
+  }).length;
+  const salePriorityTasks = saleActiveTasks.slice(0, 4);
+  const saleFunnelRows = SALE_FUNNEL_STAGES.map(stage => ({
+    ...stage,
+    count: saleLeads.filter(lead => lead.stage === stage.id).length
+  }));
+  const saleFunnelTotal = saleFunnelRows.reduce((total, row) => total + row.count, 0);
+  let saleFunnelCursor = 0;
+  const saleFunnelBackground = saleFunnelTotal > 0
+    ? `conic-gradient(${saleFunnelRows.map(row => {
+      const start = saleFunnelCursor;
+      saleFunnelCursor += (row.count / saleFunnelTotal) * 100;
+      return `${row.color} ${start}% ${saleFunnelCursor}%`;
+    }).join(', ')})`
+    : '#e5eaf2';
+  const salePriorityLeadCount = saleLeads.filter(lead => {
+    if (['won', 'lost', 'converted'].includes(lead.stage) || !lead.nextFollowUpAt) return false;
+    const nextFollowUpAt = new Date(lead.nextFollowUpAt).getTime();
+    return Number.isFinite(nextFollowUpAt) && nextFollowUpAt <= saleTodayEnd;
+  }).length;
+  const recentSalePOs = salePOs
+    .filter(po => salePoFilter === 'all' || isPOInQueue(po, salePoFilter))
+    .sort((left, right) => (
+      new Date(right.updatedAt || right.orderDate || right.createdAt || '').getTime()
+      - new Date(left.updatedAt || left.orderDate || left.createdAt || '').getTime()
+    ))
+    .slice(0, 5);
+
+  const getSaleTaskState = (endAt: string, priority: WorkScheduleRecord['priority']) => {
+    const dueAt = new Date(endAt).getTime();
+    if (Number.isFinite(dueAt) && dueAt < saleTodayStart) return { label: t('Quá hạn'), tone: 'danger' };
+    if (Number.isFinite(dueAt) && dueAt <= saleTodayEnd) return { label: t('Hôm nay'), tone: 'warning' };
+    if (priority === 'urgent') return { label: t('Khẩn cấp'), tone: 'danger' };
+    if (priority === 'high') return { label: t('Ưu tiên'), tone: 'warning' };
+    return { label: t('Đang xử lý'), tone: 'info' };
+  };
 
   // DRILL-DOWN SUB-VIEW RENDERING
   if (selectedProgressCategory) {
@@ -832,6 +913,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* TIME RANGE & DATE FILTERS */}
         <div className="dashboard-overview-toolbar">
           {user.role === 'admin' && <h2>{t('Tổng quan khách hàng')}</h2>}
+          {user.role === 'sale' && <div className="sale-dashboard__heading">
+            <h2>{t('Tổng quan công việc')}</h2>
+            <p>{t('Xin chào')}, {user.displayName}</p>
+          </div>}
+          <div className="dashboard-overview-toolbar__actions">
           <div className="dashboard-date-filters">
           {/* Toggle filter mode */}
           <div style={{ display: 'flex', border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden', marginRight: '6px' }}>
@@ -895,6 +981,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           )}
           </div>
+          {user.role === 'sale' && <button type="button" className="btn btn-primary sale-dashboard__create-button" onClick={() => onNavigate('sales')}>{t('Tạo đơn hàng mới')}</button>}
+          </div>
         </div>
       </PageContextHeader>
 
@@ -917,72 +1005,129 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* SALE VIEW */}
       {user.role === 'sale' && (
-        <>
-          <div className="metrics-grid">
-            <div className="metric-card">
-              <span className="metric-title">{t('Tổng Đơn Của Tôi')}</span>
-              <span className="metric-value">{filteredPOs.filter(po => po.saleId === user.uid).length} {t('đơn')}</span>
-              <span className="metric-sub">{t('Doanh số phụ trách')}</span>
-            </div>
-            <div className="metric-card">
-              <span className="metric-title">{t('Đơn Chờ Khách Duyệt Màu')}</span>
-              <span className="metric-value" style={{ color: 'var(--color-warning)' }}>
-                {filteredPOs.filter(po => (
-                  po.saleId === user.uid &&
-                  isPOInQueue(po, 'waiting_design') &&
-                  (po.designProgress === 'customer_approval_pending' || po.status === 'layout_pending')
-                )).length} {t('đơn')}
-              </span>
-              <span className="metric-sub">{t('Cần đôn đốc khách chốt')}</span>
-            </div>
-            <div className="metric-card">
-              <span className="metric-title">{t('Khách Hàng Của Tôi')}</span>
-              <span className="metric-value">
-                {activeCustomersList.filter(c => c.assignedSaleId === user.uid).length} {t('Khách')}
-              </span>
-              <span className="metric-sub">{t('Trong tệp chăm sóc')}</span>
-            </div>
+        <div className="sale-dashboard">
+          <section className="sale-dashboard__metrics" aria-label={t('Chỉ số công việc của Sale')}>
+            <article className="sale-dashboard__metric is-primary">
+              <span>{t('Việc cần xử lý')}</span>
+              <strong>{saleTodayTaskCount}</strong>
+              <small>{t('Trong hôm nay')}</small>
+            </article>
+            <article className="sale-dashboard__metric is-danger">
+              <span>{t('Lịch quá hạn')}</span>
+              <strong>{saleOverdueTaskCount}</strong>
+              <small>{t('Cần xử lý ngay')}</small>
+            </article>
+            <article className="sale-dashboard__metric is-success">
+              <span>{t('Tiềm năng mới')}</span>
+              <strong>{saleNewLeads.length}</strong>
+              <small>{t('Trong kỳ đã chọn')}</small>
+            </article>
+            <article className="sale-dashboard__metric is-violet">
+              <span>{t('Khách hàng của tôi')}</span>
+              <strong>{saleCustomers.length}</strong>
+              <small>{t('Đang chăm sóc')}</small>
+            </article>
+            <article className="sale-dashboard__metric is-warning">
+              <span>{t('Đơn hàng trong kỳ')}</span>
+              <strong>{salePOs.length}</strong>
+              <small>{salePOs.reduce((total, po) => total + Number(po.netAmount || po.totalAmount || 0), 0).toLocaleString('vi-VN')} đ</small>
+            </article>
+          </section>
+
+          <div className="sale-dashboard__focus-grid">
+            <section className="sale-dashboard__panel sale-dashboard__tasks" aria-labelledby="sale-priority-tasks-title">
+              <header className="sale-dashboard__panel-header">
+                <h2 id="sale-priority-tasks-title">{t('Công việc ưu tiên hôm nay')}</h2>
+                <button type="button" className="sale-dashboard__text-action" onClick={() => onNavigate('work_schedule')}>{t('Xem tất cả')}</button>
+              </header>
+              <div className="sale-dashboard__task-table">
+                <div className="sale-dashboard__task-head" aria-hidden="true">
+                  <span>{t('Công việc')}</span>
+                  <span>{t('Liên quan')}</span>
+                  <span>{t('Thời gian')}</span>
+                  <span>{t('Trạng thái')}</span>
+                </div>
+                {salePriorityTasks.map(task => {
+                  const state = getSaleTaskState(task.endAt, task.priority);
+                  return <article key={task.id} className="sale-dashboard__task-row">
+                    <strong title={task.title}>{task.title || t('Công việc chưa đặt tên')}</strong>
+                    <span title={task.referenceLabel || task.groupName}>{task.referenceLabel || task.groupName || t('Công việc cá nhân')}</span>
+                    <time>{task.endAt ? formatDateTime(task.endAt) : t('Chưa đặt hạn')}</time>
+                    <span className={`sale-dashboard__status is-${state.tone}`}>{state.label}</span>
+                  </article>;
+                })}
+                {!salePriorityTasks.length && <p className="sale-dashboard__empty">{t('Không có công việc đang chờ xử lý.')}</p>}
+              </div>
+            </section>
+
+            <section className="sale-dashboard__panel sale-dashboard__funnel" aria-labelledby="sale-funnel-title">
+              <header className="sale-dashboard__panel-header">
+                <h2 id="sale-funnel-title">{t('Phễu khách hàng của tôi')}</h2>
+                <button type="button" className="sale-dashboard__text-action" onClick={() => onNavigate('leads')}>{t('Xem chi tiết')}</button>
+              </header>
+              <div className="sale-dashboard__funnel-content">
+                <div className="sale-dashboard__funnel-rows">
+                  {saleFunnelRows.map(row => <div key={row.id} className="sale-dashboard__funnel-row">
+                    <span>{t(row.label)}</span>
+                    <div><i style={{ width: `${saleFunnelTotal ? (row.count / saleFunnelTotal) * 100 : 0}%`, background: row.color }} /></div>
+                    <strong>{row.count}</strong>
+                  </div>)}
+                </div>
+                <div className="sale-dashboard__funnel-summary">
+                  <div className="sale-dashboard__donut" style={{ background: saleFunnelBackground }}>
+                    <span><strong>{saleFunnelTotal}</strong><small>{t('Hồ sơ phụ trách')}</small></span>
+                  </div>
+                  <p>{salePriorityLeadCount} {t('cần ưu tiên')}</p>
+                </div>
+              </div>
+            </section>
           </div>
 
-          <div className="card">
-            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="card-title">{t('Theo Dõi Tiến Độ Đơn Hàng PO Gần Đây')}</span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {/* Visual navigation category buttons */}
-                <button type="button" className="btn btn-sm btn-outline" style={{ fontSize: '11px' }} onClick={() => setSelectedProgressCategory('waiting_design')}>{t('Chờ thiết kế')}</button>
-                <button type="button" className="btn btn-sm btn-outline" style={{ fontSize: '11px' }} onClick={() => setSelectedProgressCategory('waiting_production')}>{t('Chờ sản xuất')}</button>
-                <button type="button" className="btn btn-sm btn-outline" style={{ fontSize: '11px' }} onClick={() => setSelectedProgressCategory('waiting_delivery')}>{t('Chờ giao')}</button>
-                <button type="button" className="btn btn-sm btn-primary" onClick={() => onNavigate('sales')}>{t('Tạo đơn hàng mới')}</button>
+          <section className="sale-dashboard__panel sale-dashboard__orders" aria-labelledby="sale-orders-title">
+            <header className="sale-dashboard__panel-header sale-dashboard__orders-header">
+              <h2 id="sale-orders-title">{t('Theo dõi đơn hàng PO gần đây')}</h2>
+              <div className="sale-dashboard__filters" role="group" aria-label={t('Lọc tiến độ đơn hàng')}>
+                {([
+                  ['all', 'Tất cả'],
+                  ['waiting_design', 'Chờ thiết kế'],
+                  ['waiting_production', 'Chờ sản xuất'],
+                  ['waiting_delivery', 'Chờ giao']
+                ] as Array<[SalePoFilter, string]>).map(([value, label]) => <button
+                  key={value}
+                  type="button"
+                  className={salePoFilter === value ? 'is-active' : ''}
+                  aria-pressed={salePoFilter === value}
+                  onClick={() => setSalePoFilter(value)}
+                >{t(label)}</button>)}
               </div>
-            </div>
-            <div className="table-container">
+            </header>
+            <div className="table-container sale-dashboard__orders-table">
               <table>
                 <thead>
                   <tr>
                     <th>{t('Mã PO')}</th>
-                    <th>{t('Khách Hàng')}</th>
-                    <th>{t('Ngày Đặt')}</th>
-                    <th>{t('Trị Giá')}</th>
-                    <th>{t('Tiến Độ')}</th>
+                    <th>{t('Khách hàng')}</th>
+                    <th>{t('Ngày đặt')}</th>
+                    <th className="is-number">{t('Trị giá')}</th>
+                    <th>{t('Tiến độ')}</th>
+                    <th>{t('Cập nhật')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPOs.filter(po => po.saleId === user.uid).slice(0, 8).map(po => (
-                    <tr key={po.id}>
-                      <td style={{ fontWeight: 600 }}>{po.poCode}</td>
-                      <td>{po.customerName}</td>
-                      <td>{formatDate(po.orderDate)}</td>
-                      <td>{po.netAmount.toLocaleString()} đ</td>
-                      <td>
-                        <span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {recentSalePOs.map(po => <tr key={po.id}>
+                    <td><button type="button" className="sale-dashboard__po-link" onClick={() => onOpenPO(po.id)}>{po.poCode}</button></td>
+                    <td title={po.customerName}>{po.customerName}</td>
+                    <td>{formatDate(po.orderDate)}</td>
+                    <td className="is-number">{Number(po.netAmount || po.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
+                    <td><span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span></td>
+                    <td>{formatDateTime(po.updatedAt || po.orderDate || po.createdAt)}</td>
+                  </tr>)}
+                  {!recentSalePOs.length && <tr><td colSpan={6} className="sale-dashboard__table-empty">{t('Không có đơn hàng phù hợp trong kỳ đã chọn.')}</td></tr>}
                 </tbody>
               </table>
             </div>
-          </div>
-        </>
+          </section>
+        </div>
       )}
 
       {/* DESIGNER VIEW */}
