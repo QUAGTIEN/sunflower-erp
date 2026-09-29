@@ -22,6 +22,7 @@ interface CustomerInsightClassificationProps {
   values: string[];
   canEdit: boolean;
   onSave: (values: string[]) => Promise<void>;
+  onDraftChange?: (values: string[]) => void;
   onScore?: () => void;
   toolbarActions?: React.ReactNode;
 }
@@ -42,6 +43,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
   values,
   canEdit,
   onSave,
+  onDraftChange,
   onScore,
   toolbarActions
 }) => {
@@ -57,9 +59,11 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
   }, [draft.length, savedValues, selected]);
 
   const toggle = (itemId: string, checked: boolean) => {
-    setDraft(current => checked
-      ? Array.from(new Set([...current, itemId]))
-      : current.filter(value => value !== itemId));
+    const next = checked
+      ? Array.from(new Set([...draft, itemId]))
+      : draft.filter(value => value !== itemId);
+    setDraft(next);
+    onDraftChange?.(next);
     setMessage('');
   };
 

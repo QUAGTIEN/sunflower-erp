@@ -1980,12 +1980,15 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       form.ward, form.industrialPark, form.address, form.contactPerson, form.contactPosition,
       form.phone, form.email, form.source, form.sourceUrl, form.assignedSaleId, form.nextContactAt, form.note];
     const completedProfileFields = profileFields.filter(value => String(value || '').trim()).length;
+    const profileSaleName = candidateOwners.find(user => user.uid === form.assignedSaleId)?.displayName
+      || editingCandidate?.assignedSaleName
+      || 'Chưa phân công';
     return (
       <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
-        <header className={editingCandidate ? 'lead-candidate-profile-header crm-record-header' : 'lead-form-page__header'}>
+        <header className="lead-candidate-profile-header crm-record-header">
           <PageBackButton iconOnly title="Quay lại danh sách dữ liệu" onClick={() => setShowForm(false)} />
-          {editingCandidate ? <CrmRecordHeaderIdentity title={form.companyName || 'Chưa có tên doanh nghiệp'} /> : <div><span>DỮ LIỆU MỚI</span><h1>Thêm dữ liệu khách hàng</h1></div>}
-          {editingCandidate && <div className="lead-candidate-profile-header__toolbar">
+          <CrmRecordHeaderIdentity title={editingCandidate ? form.companyName || 'Chưa có tên doanh nghiệp' : 'Thông tin khách hàng mới'} />
+          <div className="lead-candidate-profile-header__toolbar">
             <CrmRecordHeaderTabs
               activeTab={candidateDetailTab}
               classificationCount={form.customerInsightValues.length}
@@ -1995,36 +1998,39 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               ariaLabel="Chi tiết dữ liệu khách hàng"
               onTabChange={setCandidateDetailTab}
             />
-          </div>}
-          {editingCandidate && <CrmRecordHeaderFacts
+          </div>
+          <CrmRecordHeaderFacts
             taxCode={form.taxCode || 'Chưa cập nhật'}
-            saleName={candidateOwners.find(user => user.uid === form.assignedSaleId)?.displayName || editingCandidate.assignedSaleName || 'Chưa phân công'}
+            saleName={profileSaleName}
             classificationCount={form.customerInsightValues.length}
             classificationTotal={CUSTOMER_INSIGHT_ITEMS.length}
             profileCompleted={completedProfileFields}
             profileTotal={profileFields.length}
-            stageLabel={CANDIDATE_STAGE_LABELS[editingCandidate.status]}
+            stageLabel={editingCandidate ? CANDIDATE_STAGE_LABELS[editingCandidate.status] : 'Dữ liệu mới'}
             nextCareLabel={form.nextContactAt ? formatShortDateTime(form.nextContactAt) : 'Chưa đặt lịch'}
-          />}
+          />
         </header>
 
-        {editingCandidate && <div className="lead-candidate-detail-panel" hidden={candidateDetailTab !== 'classification'}>
+        <div className="lead-candidate-detail-panel" hidden={candidateDetailTab !== 'classification'}>
           <CustomerInsightClassification
-            key={editingCandidate.id}
-            companyName={editingCandidate.companyName}
+            key={editingCandidate?.id || 'new-candidate'}
+            companyName={editingCandidate?.companyName || form.companyName || 'khách hàng mới'}
             values={form.customerInsightValues}
-            canEdit={canManageCandidate(editingCandidate)}
-            onSave={values => saveClassification(editingCandidate, values)}
-            onScore={() => setScoringCandidateId(editingCandidate.id)}
-            toolbarActions={<PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
+            canEdit={!editingCandidate || canManageCandidate(editingCandidate)}
+            onDraftChange={!editingCandidate ? values => updateForm('customerInsightValues', values) : undefined}
+            onSave={editingCandidate
+              ? values => saveClassification(editingCandidate, values)
+              : async values => updateForm('customerInsightValues', values)}
+            onScore={editingCandidate ? () => setScoringCandidateId(editingCandidate.id) : undefined}
+            toolbarActions={editingCandidate ? <PhoneCallCell toolbar phone={editingCandidate.phone} companyName={editingCandidate.companyName}
               subjectKey={candidateCallSubjectKey(editingCandidate)} currentUser={currentUser}
               auditModule="lead_candidates" targetType="lead_candidate" targetId={editingCandidate.id}
               canRecord={canManageCandidate(editingCandidate) && (currentUser.role === 'sale' || currentUser.role === 'admin')}
-              onCallStarted={() => recordPhoneCall(editingCandidate)} />}
+              onCallStarted={() => recordPhoneCall(editingCandidate)} /> : undefined}
           />
-        </div>}
+        </div>
 
-        <form id="lead-candidate-profile-form" className="lead-form-page__form lead-candidate-detail-panel" hidden={Boolean(editingCandidate && candidateDetailTab !== 'profile')} onSubmit={handleSaveCandidate}>
+        <form id="lead-candidate-profile-form" className="lead-form-page__form lead-candidate-detail-panel" hidden={candidateDetailTab !== 'profile'} onSubmit={handleSaveCandidate}>
           <div className="lead-form-page__content lead-candidate-form-page__content lead-candidate-quick-form">
             <section className="lead-form-card">
               <div className="lead-form-card__heading">
@@ -2144,7 +2150,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             </div>
           )}
 
-          <footer className={`lead-form-page__footer${editingCandidate ? ' lead-form-page__footer--fixed' : ''}`}>
+          <footer className="lead-form-page__footer lead-form-page__footer--fixed">
             <span>Dữ liệu chỉ được ghi nhận khi bấm Lưu dữ liệu.</span>
             <div>
               <button type="button" className="btn btn-outline" onClick={() => setShowForm(false)}>Hủy</button>
