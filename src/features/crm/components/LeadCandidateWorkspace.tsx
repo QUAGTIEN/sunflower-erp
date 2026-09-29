@@ -3,6 +3,7 @@ import { PageContextHeader } from '@/components/PageContextHeader';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  BarChart3,
   Building2,
   CalendarClock,
   Check,
@@ -633,6 +634,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   }, [initialInsightFilterId]);
   const [showForm, setShowForm] = useState(false);
   const [editingCandidateId, setEditingCandidateId] = useState('');
+  const [createdCandidateSnapshot, setCreatedCandidateSnapshot] = useState<LeadCandidateRecord | null>(null);
   const [candidateDetailTab, setCandidateDetailTab] = useState<CandidateDetailTab>('classification');
   const [form, setForm] = useState<CandidateFormState>(() => createEmptyCandidateForm(currentUser, candidateOwners));
   const [candidateFiles, setCandidateFiles] = useState<LeadCandidateFileRecord[]>([]);
@@ -1113,7 +1115,8 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   ];
 
   const editingCandidate = editingCandidateId
-    ? accessibleCandidates.find(candidate => candidate.id === editingCandidateId) || null
+    ? accessibleCandidates.find(candidate => candidate.id === editingCandidateId)
+      || (createdCandidateSnapshot?.id === editingCandidateId ? createdCandidateSnapshot : null)
     : null;
   const scheduleCandidate = scheduleCandidateId
     ? accessibleCandidates.find(candidate => candidate.id === scheduleCandidateId) || null
@@ -1384,6 +1387,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   const openCreateForm = () => {
     setEditingCandidateId('');
+    setCreatedCandidateSnapshot(null);
     setCandidateDetailTab('profile');
     setForm(createEmptyCandidateForm(currentUser, candidateOwners));
     setCandidateFiles([]);
@@ -1396,6 +1400,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   const openEditForm = useCallback((candidate: LeadCandidateRecord, initialTab: CandidateDetailTab = 'classification') => {
     setEditingCandidateId(candidate.id);
+    setCreatedCandidateSnapshot(null);
     setCandidateDetailTab(initialTab);
     setForm({
       companyName: candidate.companyName,
@@ -1664,21 +1669,24 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         createdById: currentUser.uid,
         createdByName: currentUser.displayName
       };
-      if (normalizedTaxCode) {
-        await dbService.addDocumentIfAbsent(
+      const createdCandidate = (normalizedTaxCode
+        ? await dbService.addDocumentIfAbsent(
           'lead_candidates',
           createCandidateDocumentIdFromTaxCode(normalizedTaxCode),
           createPayload
-        );
-      } else {
-        await dbService.addDocument('lead_candidates', createPayload);
-      }
+        )
+        : await dbService.addDocument('lead_candidates', createPayload)) as LeadCandidateRecord;
       auditService.recordSafely(currentUser, {
         category: 'business', module: 'lead_candidates', action: 'candidate_created',
         summary: `Tạo dữ liệu khách hàng ${form.companyName.trim()}`,
-        targetType: 'lead_candidate', targetLabel: form.companyName.trim()
+        targetType: 'lead_candidate', targetId: createdCandidate.id, targetLabel: form.companyName.trim()
       });
-      setShowForm(false);
+      setCreatedCandidateSnapshot(createdCandidate);
+      setEditingCandidateId(createdCandidate.id);
+      setCandidateDetailTab('profile');
+      setCandidateFiles(createdCandidate.files || []);
+      setCustomFieldValues(createdCandidate.customFieldValues || {});
+      setSaveError('');
     } catch (error) {
       const errorCode = typeof error === 'object' && error !== null && 'code' in error
         ? String(error.code)
@@ -2585,12 +2593,13 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                           label={`Thao tác ${candidate.companyName}`}
                           actions={[
                             { label: 'Hẹn tiếp', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) },
-                            { label: 'Chấm điểm', onSelect: () => setScoringCandidateId(candidate.id) },
+                            { label: 'Chấm điểm', icon: <BarChart3 size={14} />, onSelect: () => setScoringCandidateId(candidate.id) },
                             { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate, 'profile') },
                             ...(currentUser.role === 'admin' ? [{ label: 'Giao việc', icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : []),
-                            { label: 'Tắt công việc', icon: <X size={14} />, onSelect: () => dismissScheduledTask(candidate), disabled: isBusy, danger: true }
+                            { label: 'Tắt công việc', icon: <X size={14} />, onSelect: () => dismissScheduledTask(candidate), disabled: isBusy, danger: true },
+                            ...(canManageCandidate(candidate) ? [{ label: 'Xóa khỏi danh sách', icon: <Trash2 size={14} />, onSelect: () => archiveCandidate(candidate), disabled: isBusy, danger: true }] : [])
                           ]}
                         />
                       </td>}
@@ -2705,11 +2714,11 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
                             ...(currentUser.role === 'sale' ? [{ label: 'Yêu cầu hỗ trợ', icon: <LifeBuoy size={14} />, onSelect: () => setSupportTarget({ id: candidate.id, label: candidate.companyName, module: 'customer_data' }) }] : []),
                             ...(canManageCandidate(candidate) ? [
                               ...(isActive ? [{ label: 'Hẹn lịch', icon: <CalendarClock size={14} />, onSelect: () => openScheduleForm(candidate) }] : []),
-                              { label: 'Chấm điểm', onSelect: () => setScoringCandidateId(candidate.id) },
+                              { label: 'Chấm điểm', icon: <BarChart3 size={14} />, onSelect: () => setScoringCandidateId(candidate.id) },
                               { label: 'Chỉnh sửa', icon: <Pencil size={14} />, onSelect: () => openEditForm(candidate, 'profile') },
                               ...(isActive ? [{ label: 'Chuyển thành Lead', icon: <CheckCircle2 size={14} />, onSelect: () => onStartConversion(candidate) }] : [])
                             ] : []),
-                            ...(currentUser.role === 'admin' ? [{ label: 'Xóa khỏi danh sách', icon: <Trash2 size={14} />, onSelect: () => archiveCandidate(candidate), danger: true }] : [])
+                            ...(canManageCandidate(candidate) ? [{ label: 'Xóa khỏi danh sách', icon: <Trash2 size={14} />, onSelect: () => archiveCandidate(candidate), danger: true }] : [])
                           ]}
                         />
                       </td>}
