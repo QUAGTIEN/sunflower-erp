@@ -1,6 +1,8 @@
 export type WorkScheduleStatus = 'not_started' | 'in_progress' | 'waiting_customer' | 'support_requested' | 'awaiting_confirmation' | 'paused' | 'cannot_process' | 'completed' | 'cancelled';
 export type WorkSchedulePriority = 'normal' | 'high' | 'urgent';
 export type WorkScheduleTaskType = 'assigned_task' | 'support_request' | 'personal_task';
+export type WorkScheduleGroupId = 'boss_to_staff' | 'staff_to_company' | 'staff_to_staff' | 'self' | 'automatic';
+export type WorkScheduleWorkType = 'technical' | 'business' | 'accounting' | 'delivery' | 'purchasing' | 'production' | 'design' | 'other';
 export type WorkScheduleDisplayStatus = 'in_progress' | 'not_started' | 'cannot_process' | 'completed';
 
 export type WorkScheduleReferenceType =
@@ -40,6 +42,7 @@ export interface WorkScheduleRecord {
   taskType: WorkScheduleTaskType;
   groupId: string;
   groupName: string;
+  workType: WorkScheduleWorkType;
   requestedById: string;
   requestedByName: string;
   createdAt: string;
@@ -60,14 +63,17 @@ export interface WorkScheduleGroupRecord {
 }
 
 export const DEFAULT_WORK_SCHEDULE_GROUPS: WorkScheduleGroupRecord[] = [
-  { id: 'boss', name: 'Công việc của sếp', order: 10, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'personnel', name: 'Công việc các nhân sự', order: 20, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'business', name: 'Công việc kinh doanh', order: 30, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'technical', name: 'Công việc kỹ thuật', order: 40, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'logistics', name: 'Công việc logistic', order: 50, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'workshop', name: 'Công việc xưởng', order: 60, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'delivery', name: 'Công việc vận chuyển', order: 70, active: true, system: true, createdAt: '', updatedAt: '' }
+  { id: 'boss_to_staff', name: 'Sếp giao cho nhân sự', order: 10, active: true, system: true, createdAt: '', updatedAt: '' },
+  { id: 'staff_to_company', name: 'Nhân sự giao việc lại cho công ty', order: 20, active: true, system: true, createdAt: '', updatedAt: '' },
+  { id: 'staff_to_staff', name: 'Nhân sự giao cho nhân sự khác', order: 30, active: true, system: true, createdAt: '', updatedAt: '' },
+  { id: 'self', name: 'Việc tự tạo cho chính mình', order: 40, active: true, system: true, createdAt: '', updatedAt: '' },
+  { id: 'automatic', name: 'Việc tự động nhảy', order: 50, active: true, system: true, createdAt: '', updatedAt: '' }
 ];
+export const WORK_SCHEDULE_WORK_TYPE_LABELS: Record<WorkScheduleWorkType, string> = {
+  technical: 'Kỹ thuật', business: 'Kinh doanh', accounting: 'Kế toán', delivery: 'Vận chuyển',
+  purchasing: 'Mua hàng', production: 'Sản xuất', design: 'Thiết kế', other: 'Khác'
+};
+const WORK_TYPE_VALUES = Object.keys(WORK_SCHEDULE_WORK_TYPE_LABELS) as WorkScheduleWorkType[];
 
 const STATUS_VALUES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused', 'cannot_process', 'completed', 'cancelled'];
 const REFERENCE_VALUES: WorkScheduleReferenceType[] = [
@@ -134,6 +140,9 @@ export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord 
     taskType: TASK_TYPE_VALUES.includes(source.taskType as WorkScheduleTaskType) ? source.taskType as WorkScheduleTaskType : 'assigned_task',
     groupId: asText(source.groupId),
     groupName: asText(source.groupName),
+    workType: WORK_TYPE_VALUES.includes(source.workType as WorkScheduleWorkType)
+      ? source.workType as WorkScheduleWorkType
+      : inferLegacyWorkType(source),
     requestedById: asText(source.requestedById),
     requestedByName: asText(source.requestedByName),
     createdAt: asText(source.createdAt),
@@ -160,9 +169,19 @@ export const normalizeWorkScheduleGroup = (value: unknown): WorkScheduleGroupRec
 export const mergeWorkScheduleGroups = (values: unknown): WorkScheduleGroupRecord[] => {
   const stored = Array.isArray(values) ? values.map(normalizeWorkScheduleGroup).filter(group => group.id) : [];
   const storedById = new Map(stored.map(group => [group.id, group]));
-  const defaults = DEFAULT_WORK_SCHEDULE_GROUPS.map(group => ({ ...group, ...(storedById.get(group.id) || {}) }));
-  const custom = stored.filter(group => !DEFAULT_WORK_SCHEDULE_GROUPS.some(defaultGroup => defaultGroup.id === group.id));
-  return [...defaults, ...custom].filter(group => group.active).sort((left, right) => left.order - right.order || left.name.localeCompare(right.name, 'vi-VN'));
+  return DEFAULT_WORK_SCHEDULE_GROUPS.map(group => ({ ...group, ...(storedById.get(group.id) || {}), name: group.name, active: true, system: true }));
+};
+
+const inferLegacyWorkType = (source: Record<string, unknown>): WorkScheduleWorkType => {
+  const value = `${asText(source.groupId)} ${asText(source.department)} ${asText(source.referenceType)}`.toLocaleLowerCase('vi-VN');
+  if (value.includes('kế toán') || value.includes('accountant')) return 'accounting';
+  if (value.includes('giao hàng') || value.includes('vận chuyển') || value.includes('delivery')) return 'delivery';
+  if (value.includes('mua hàng') || value.includes('logistic') || value.includes('purchaser')) return 'purchasing';
+  if (value.includes('sản xuất') || value.includes('xưởng') || value.includes('producer')) return 'production';
+  if (value.includes('thiết kế') || value.includes('designer')) return 'design';
+  if (value.includes('kỹ thuật') || value.includes('technical')) return 'technical';
+  if (value.includes('kinh doanh') || value.includes('business') || value.includes('sale') || value.includes('lead') || value.includes('customer')) return 'business';
+  return 'other';
 };
 
 export const getWorkScheduleDisplayStatus = (status: WorkScheduleStatus): WorkScheduleDisplayStatus => {
@@ -181,17 +200,13 @@ export const compareWorkScheduleItems = (left: WorkScheduleRecord, right: WorkSc
 };
 
 export const inferWorkScheduleGroupId = (item: Partial<WorkScheduleRecord>): string => {
-  if (item.groupId) return item.groupId;
-  if (item.taskType === 'support_request') return 'boss';
-  if (item.referenceType && item.referenceType !== 'none' && item.referenceType !== 'other') return 'business';
-  const department = String(item.department || '').toLocaleLowerCase('vi-VN');
-  if (department.includes('giao hàng') || department.includes('vận chuyển')) return 'delivery';
-  if (department.includes('sản xuất') || department.includes('xưởng')) return 'workshop';
-  if (department.includes('mua hàng') || department.includes('logistic')) return 'logistics';
-  if (department.includes('thiết kế') || department.includes('kỹ thuật')) return 'technical';
-  if (department.includes('sale') || department.includes('kinh doanh')) return 'business';
-  if (department.includes('giám đốc')) return 'boss';
-  return 'personnel';
+  if (DEFAULT_WORK_SCHEDULE_GROUPS.some(group => group.id === item.groupId)) return item.groupId!;
+  if (item.taskType === 'support_request') return 'staff_to_company';
+  if (item.assignedById && item.assignedById === item.assigneeId) return 'self';
+  if (item.taskType === 'personal_task') return 'self';
+  if (item.groupId === 'boss' && item.department === 'Ban giám đốc') return 'staff_to_company';
+  if (item.assignedById && item.assigneeId) return 'boss_to_staff';
+  return 'self';
 };
 
 export const normalizeWorkScheduleRecords = (values: unknown): WorkScheduleRecord[] => (

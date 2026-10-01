@@ -383,12 +383,34 @@ service cloud.firestore {
     // Shared work calendar. Admin assigns and manages schedules; employees
     // can create and maintain their own tasks.
     match /work_schedule_items/{documentId} {
+      function validWorkAssignee() {
+        return request.resource.data.assigneeId is string
+          && exists(/databases/$(database)/documents/users/$(request.resource.data.assigneeId))
+          && get(/databases/$(database)/documents/users/$(request.resource.data.assigneeId)).data.active == true;
+      }
+
+      function validStaffAssignment() {
+        return request.resource.data.assignedById == request.auth.uid
+          && validWorkAssignee()
+          && (
+            (request.resource.data.groupId == 'self'
+              && request.resource.data.assigneeId == request.auth.uid
+              && request.resource.data.taskType == 'personal_task')
+            || (request.resource.data.groupId == 'staff_to_company'
+              && request.resource.data.taskType == 'support_request'
+              && get(/databases/$(database)/documents/users/$(request.resource.data.assigneeId)).data.role == 'admin')
+            || (request.resource.data.groupId == 'staff_to_staff'
+              && request.resource.data.taskType == 'assigned_task'
+              && request.resource.data.assigneeId != request.auth.uid
+              && get(/databases/$(database)/documents/users/$(request.resource.data.assigneeId)).data.role != 'admin')
+          );
+      }
+
       allow read: if isAdmin()
-        || (isActive() && resource.data.assigneeId == request.auth.uid);
+        || (isActive() && (resource.data.assigneeId == request.auth.uid
+          || resource.data.assignedById == request.auth.uid));
       allow create: if isAdmin()
-        || (isActive()
-          && request.resource.data.assigneeId == request.auth.uid
-          && request.resource.data.assignedById == request.auth.uid);
+        || (isActive() && validStaffAssignment());
       allow update: if isAdmin()
         || (isActive()
           && resource.data.assigneeId == request.auth.uid
@@ -400,7 +422,7 @@ service cloud.firestore {
             'referenceLabel', 'notes', 'completedAt', 'updatedAt',
             'cannotProcessNote', 'cannotProcessAt',
             'cannotProcessById', 'cannotProcessByName',
-            'groupId', 'groupName', 'deleted', 'deletedAt'
+            'workType', 'priority', 'deleted', 'deletedAt'
           ]));
       allow delete: if isAdmin();
     }

@@ -22,7 +22,7 @@ export const AUDIT_PAGE_LABELS: Record<string, string> = {
   leads: 'Khách hàng tiềm năng',
   customer_data: 'Dữ liệu thô',
   commercial_map: 'Thương mại',
-  work_schedule: 'Lịch làm việc',
+  work_schedule: 'Công việc',
   sales: 'Tạo đơn hàng',
   sales_management: 'Quản lý Sale',
   design: 'Yêu cầu thiết kế',

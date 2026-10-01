@@ -60,7 +60,7 @@ export const WorkAssignmentDialog: React.FC<WorkAssignmentDialogProps> = ({ curr
         assigneeId: assignee.uid, assigneeName: assignee.displayName, department: 'Sale',
         assignedById: currentUser.uid, assignedByName: currentUser.displayName,
         requestedById: '', requestedByName: '', taskType: 'assigned_task', priority,
-        groupId: 'business', groupName: 'Công việc kinh doanh',
+        groupId: 'boss_to_staff', groupName: 'Sếp giao cho nhân sự', workType: 'business',
         startAt: start.toISOString(), endAt: dueDate.toISOString(), status: 'not_started', progress: 0,
         referenceType: referenceTypes[target.module], referenceId: target.id, referenceLabel: target.label,
         notes: '', createdAt: now.toISOString(), updatedAt: now.toISOString(), deleted: false

@@ -112,7 +112,7 @@ const PAGE_MODULE_PRELOADERS: Record<string, () => Promise<unknown>> = {
 const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   dashboard: { section: 'Tổng quan' },
   chat: { section: 'Kênh chat' },
-  work_schedule: { section: 'Lịch làm việc', current: 'Hôm nay' },
+  work_schedule: { section: 'Công việc', current: 'Danh sách' },
   commercial_map: { section: 'Thương mại', current: 'Tỉnh thành' },
   customer_data: { section: 'Dữ liệu thô', current: 'Tất cả dữ liệu' },
   leads: { section: 'Tiềm năng', current: 'Tổng quan' },
@@ -1046,11 +1046,11 @@ function AppShell() {
               data-page-id="work_schedule"
               className={`sidebar-item ${activePage === 'work_schedule' ? 'active' : ''}`}
               onClick={() => { setActivePage('work_schedule'); setIsSidebarOpen(false); }}
-              title={t('Lịch làm việc')}
+              title={t('Công việc')}
             >
               <div className="sidebar-item-content">
                 <CalendarDays size={16} />
-                <span className="sidebar-item-label">Lịch làm việc</span>
+                <span className="sidebar-item-label">Công việc</span>
               </div>
             </button>
           )}

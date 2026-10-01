@@ -1,22 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, ClipboardList, FolderCog, Plus, Search, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ClipboardList, Plus, Search, X } from 'lucide-react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataFilterButton, DataFilterPanel } from '@/components/DataWorkspaceFilters';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
 import {
   WORK_SCHEDULE_DEPARTMENT_LABELS,
+  DEFAULT_WORK_SCHEDULE_GROUPS,
   WORK_SCHEDULE_DISPLAY_STATUS_LABELS,
   WORK_SCHEDULE_PRIORITY_LABELS,
   WORK_SCHEDULE_REFERENCE_LABELS,
   WORK_SCHEDULE_STATUS_LABELS,
+  WORK_SCHEDULE_WORK_TYPE_LABELS,
   canPermanentlyDeleteWorkSchedule,
   compareWorkScheduleItems,
   getWorkScheduleDisplayStatus,
   getWeekStart,
   inferWorkScheduleGroupId,
   isScheduleOnDate,
-  mergeWorkScheduleGroups,
   normalizeWorkScheduleRecords,
   toDateKey,
   type WorkSchedulePriority,
@@ -24,13 +25,13 @@ import {
   type WorkScheduleReferenceType,
   type WorkScheduleStatus,
   type WorkScheduleDisplayStatus,
-  type WorkScheduleGroupRecord
+  type WorkScheduleWorkType
 } from '@/features/work-schedule/model/workScheduleModels';
 import './WorkSchedule.css';
 
 type CustomerEntity = { id: string; companyName?: string };
 type SourceModule = 'customer_data' | 'leads' | 'crm';
-type PeriodFilter = 'this_month' | 'next_30_days' | 'all';
+type PeriodFilter = 'this_month' | 'next_30_days' | 'range' | 'all';
 
 interface WorkScheduleProps {
   currentUser: UserProfile;
@@ -45,6 +46,7 @@ interface WorkScheduleProps {
 
 interface ScheduleFormState {
   groupId: string;
+  workType: WorkScheduleWorkType;
   title: string;
   assigneeId: string;
   dueAt: string;
@@ -59,6 +61,13 @@ interface ScheduleFormState {
 type RequiredTaskField = 'groupId' | 'title' | 'assigneeId' | 'dueAt' | 'description';
 
 const PAGE_SIZE = 10;
+const GROUP_DESCRIPTIONS: Record<string, string> = {
+  boss_to_staff: 'Công việc từ cấp quản lý',
+  staff_to_company: 'Yêu cầu gửi về công ty',
+  staff_to_staff: 'Công việc giữa đồng nghiệp',
+  self: 'Công việc cá nhân',
+  automatic: 'Dành cho quy trình tự động'
+};
 const ACTIVE_STATUSES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused'];
 const PAGE_REFERENCE_TIME = Date.now();
 const EDITABLE_STATUSES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'completed', 'cannot_process'];
@@ -70,7 +79,7 @@ const defaultDeadline = () => {
   return localDateTime(value);
 };
 const defaultForm = (assigneeId = '', groupId = ''): ScheduleFormState => ({
-  groupId, title: '', assigneeId, dueAt: defaultDeadline(), description: '', priority: 'normal',
+  groupId, workType: 'other', title: '', assigneeId, dueAt: defaultDeadline(), description: '', priority: 'normal',
   referenceType: 'none', referenceId: '', referenceLabel: '', status: 'not_started'
 });
 const roleDepartment = (role: UserProfile['role']) => WORK_SCHEDULE_DEPARTMENT_LABELS[role] || role;
@@ -85,15 +94,20 @@ const moduleFromReference = (referenceType: WorkScheduleReferenceType): SourceMo
   referenceType === 'lead_candidate' ? 'customer_data' : referenceType === 'lead' ? 'leads' : referenceType === 'customer' ? 'crm' : ''
 );
 const isTaskOverdue = (item: WorkScheduleRecord, referenceTime: number) => ACTIVE_STATUSES.includes(item.status) && new Date(item.endAt).getTime() < referenceTime;
-const isInPeriod = (item: WorkScheduleRecord, period: PeriodFilter, referenceTime: number) => {
+const isInPeriod = (item: WorkScheduleRecord, period: PeriodFilter, referenceTime: number, dateFrom: string, dateTo: string) => {
   if (period === 'all') return true;
   const due = new Date(item.endAt);
   if (!Number.isFinite(due.getTime())) return false;
+  if (period === 'range') {
+    const dueKey = toDateKey(due);
+    return (!dateFrom || dueKey >= dateFrom) && (!dateTo || dueKey <= dateTo);
+  }
   const reference = new Date(referenceTime);
   if (period === 'this_month') return due.getMonth() === reference.getMonth() && due.getFullYear() === reference.getFullYear();
   return due.getTime() >= referenceTime && due.getTime() <= referenceTime + 30 * 86_400_000;
 };
 const isErrorMessage = (value: string) => /^(Không thể|Vui lòng|Chưa có)|\bcòn \d+ công việc/.test(value);
+const csvCell = (value: string | number) => `"${String(value).replace(/^[=+@-]/, "'$&").replace(/"/g, '""')}"`;
 
 export const WorkSchedule: React.FC<WorkScheduleProps> = ({
   currentUser,
@@ -108,20 +122,20 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
   const isAdmin = currentUser.role === 'admin';
   const now = PAGE_REFERENCE_TIME;
   const [items, setItems] = useState<WorkScheduleRecord[]>([]);
-  const [groups, setGroups] = useState<WorkScheduleGroupRecord[]>(() => mergeWorkScheduleGroups([]));
-  const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId || 'boss');
+  const groups = DEFAULT_WORK_SCHEDULE_GROUPS;
+  const [selectedGroupId, setSelectedGroupId] = useState(initialGroupId || 'boss_to_staff');
   const [activeTab, setActiveTab] = useState<'tasks' | 'week'>('tasks');
   const [searchTerm, setSearchTerm] = useState('');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [moduleFilter, setModuleFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [workTypeFilter, setWorkTypeFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [statusFilter, setStatusFilter] = useState<'all' | WorkScheduleDisplayStatus>('all');
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [groupDialog, setGroupDialog] = useState<'create' | 'rename' | null>(null);
-  const [groupNameDraft, setGroupNameDraft] = useState('');
-  const [groupBusy, setGroupBusy] = useState(false);
-  const [groupError, setGroupError] = useState('');
   const [page, setPage] = useState(1);
   const [weekAnchor, setWeekAnchor] = useState(() => getWeekStart(new Date()));
   const [isLoading, setIsLoading] = useState(true);
@@ -129,7 +143,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<WorkScheduleRecord | null>(null);
   const [selectedItem, setSelectedItem] = useState<WorkScheduleRecord | null>(null);
-  const [form, setForm] = useState<ScheduleFormState>(() => defaultForm(isAdmin ? '' : currentUser.uid, 'boss'));
+  const [form, setForm] = useState<ScheduleFormState>(() => defaultForm(isAdmin ? '' : currentUser.uid, isAdmin ? 'boss_to_staff' : 'self'));
   const [formError, setFormError] = useState('');
   const [formFieldErrors, setFormFieldErrors] = useState<Partial<Record<RequiredTaskField, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -142,14 +156,11 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
   const loadItems = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [data, storedGroups] = await Promise.all([
-        isAdmin
-          ? dbService.getCollection('work_schedule_items')
-          : dbService.getCollectionByField('work_schedule_items', 'assigneeId', currentUser.uid),
-        dbService.getCollection('work_schedule_groups').catch(() => [])
+      const [data, created] = await Promise.all([
+        isAdmin ? dbService.getCollection('work_schedule_items') : dbService.getCollectionByField('work_schedule_items', 'assigneeId', currentUser.uid),
+        isAdmin ? Promise.resolve([]) : dbService.getCollectionByField('work_schedule_items', 'assignedById', currentUser.uid)
       ]);
-      setItems(normalizeWorkScheduleRecords(data).filter(item => !item.deleted));
-      setGroups(mergeWorkScheduleGroups(storedGroups));
+      setItems(normalizeWorkScheduleRecords([...new Map([...data, ...created].map(item => [item.id, item])).values()]).filter(item => !item.deleted));
     } catch {
       setMessage('Không thể tải danh sách công việc. Vui lòng thử lại.');
     } finally {
@@ -175,9 +186,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     date.setDate(date.getDate() + index);
     return date;
   }), [weekAnchor]);
-  const activeUsers = useMemo(() => users
-    .filter(user => user.active !== false)
-    .filter(user => isAdmin || user.uid === currentUser.uid), [currentUser.uid, isAdmin, users]);
+  const activeUsers = useMemo(() => users.filter(user => user.active !== false), [users]);
   const sourceOptions = useMemo(() => {
     if (form.referenceType === 'lead_candidate') return candidates;
     if (form.referenceType === 'lead') return leads;
@@ -185,6 +194,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     return [];
   }, [candidates, customers, form.referenceType, leads]);
   const selectedGroup = groups.find(group => group.id === selectedGroupId) || groups[0] || null;
+  const creatableGroups = groups.filter(group => group.id !== 'automatic' && (isAdmin ? ['boss_to_staff', 'self'].includes(group.id) : ['staff_to_company', 'staff_to_staff', 'self'].includes(group.id)));
   const effectiveGroupId = selectedGroup?.id || '';
   const groupCounts = useMemo(() => Object.fromEntries(groups.map(group => [
     group.id,
@@ -199,6 +209,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     support: groupItems.filter(item => item.status === 'support_requested').length
   }), [groupItems]);
   const activeFilterCount = (assigneeFilter !== 'all' ? 1 : 0)
+    + (workTypeFilter !== 'all' ? 1 : 0)
     + (moduleFilter !== 'all' ? 1 : 0)
     + (priorityFilter !== 'all' ? 1 : 0)
     + (statusFilter !== 'all' ? 1 : 0)
@@ -209,12 +220,13 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     if (assigneeFilter !== 'all' && item.assigneeId !== assigneeFilter) return false;
     if (moduleFilter !== 'all' && item.referenceType !== moduleFilter) return false;
     if (priorityFilter !== 'all' && item.priority !== priorityFilter) return false;
+    if (workTypeFilter !== 'all' && item.workType !== workTypeFilter) return false;
     if (statusFilter !== 'all' && getWorkScheduleDisplayStatus(item.status) !== statusFilter) return false;
-    if (!isInPeriod(item, periodFilter, now)) return false;
+    if (!isInPeriod(item, periodFilter, now, dateFrom, dateTo)) return false;
     return true;
   }).sort((leftItem, rightItem) => {
     return compareWorkScheduleItems(leftItem, rightItem);
-  }), [assigneeFilter, groupItems, moduleFilter, periodFilter, priorityFilter, searchTerm, statusFilter, now]);
+  }), [assigneeFilter, groupItems, moduleFilter, periodFilter, dateFrom, dateTo, priorityFilter, workTypeFilter, searchTerm, statusFilter, now]);
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -228,14 +240,33 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     setAssigneeFilter('all');
     setModuleFilter('all');
     setPriorityFilter('all');
+    setWorkTypeFilter('all');
     setStatusFilter('all');
     setPeriodFilter('all');
+    setDateFrom('');
+    setDateTo('');
     setPage(1);
   };
+  const exportTasks = () => {
+    const headings = ['Công việc', 'Nhóm công việc', 'Loại công việc', 'Người giao', 'Người nhận', 'Khách hàng / Phòng ban', 'Hạn xử lý', 'Ưu tiên', 'Trạng thái', 'Tiến độ'];
+    const rows = filteredItems.map(item => [
+      item.title, groups.find(group => group.id === inferWorkScheduleGroupId(item))?.name || '', WORK_SCHEDULE_WORK_TYPE_LABELS[item.workType],
+      item.assignedByName || 'Hệ thống', item.assigneeName, item.referenceLabel || item.department, dateTimeLabel(item.endAt),
+      WORK_SCHEDULE_PRIORITY_LABELS[item.priority], WORK_SCHEDULE_DISPLAY_STATUS_LABELS[getWorkScheduleDisplayStatus(item.status)], `${item.progress}%`
+    ]);
+    const csv = [headings, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cong-viec-${toDateKey(new Date())}.csv`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
   const openCreate = () => {
-    if (!selectedGroup) return;
+    if (!creatableGroups.length) return;
     setEditingItem(null);
-    setForm(defaultForm(isAdmin ? '' : currentUser.uid, selectedGroup.id));
+    const groupId = creatableGroups.some(group => group.id === selectedGroupId) ? selectedGroupId : creatableGroups[0].id;
+    setForm(defaultForm(groupId === 'self' ? currentUser.uid : '', groupId));
     setFormError('');
     setFormFieldErrors({});
     setMessage('');
@@ -245,6 +276,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     setEditingItem(item);
     setForm({
       groupId: inferWorkScheduleGroupId(item),
+      workType: item.workType,
       title: item.title, assigneeId: item.assigneeId, dueAt: localDateTime(new Date(item.endAt)),
       description: item.description, priority: item.priority, referenceType: item.referenceType,
       referenceId: item.referenceId, referenceLabel: item.referenceLabel, status: item.status
@@ -267,13 +299,14 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
   };
   const saveTask = async (event: React.FormEvent) => {
     event.preventDefault();
-    const assignee = activeUsers.find(user => user.uid === (isAdmin ? form.assigneeId : currentUser.uid));
+    const targetAssigneeId = editingItem?.assigneeId || (form.groupId === 'self' ? currentUser.uid : form.assigneeId);
+    const assignee = (editingItem ? users : activeUsers).find(user => user.uid === targetAssigneeId);
     const taskGroup = groups.find(group => group.id === form.groupId);
     const endAt = new Date(form.dueAt);
     const errors: Partial<Record<RequiredTaskField, string>> = {};
-    if (!taskGroup) errors.groupId = 'Vui lòng chọn nhóm công việc.';
+    if (!taskGroup || taskGroup.id === 'automatic' || (!editingItem && !creatableGroups.some(group => group.id === taskGroup.id))) errors.groupId = 'Vui lòng chọn nhóm công việc phù hợp.';
     if (!form.title.trim()) errors.title = 'Vui lòng nhập tên công việc.';
-    if (!assignee) errors.assigneeId = isAdmin ? 'Vui lòng chọn người thực hiện.' : 'Không tìm thấy tài khoản người phụ trách đang hoạt động.';
+    if (!assignee || (!editingItem && ((form.groupId === 'staff_to_company' && assignee.role !== 'admin') || (form.groupId === 'staff_to_staff' && (assignee.role === 'admin' || assignee.uid === currentUser.uid)) || (form.groupId === 'boss_to_staff' && (assignee.role === 'admin' || assignee.uid === currentUser.uid))))) errors.assigneeId = 'Vui lòng chọn người thực hiện phù hợp với nhóm công việc.';
     if (!form.dueAt || !Number.isFinite(endAt.getTime())) errors.dueAt = 'Vui lòng chọn thời hạn hợp lệ.';
     if (!form.description.trim()) errors.description = 'Vui lòng nhập nội dung công việc.';
     const firstInvalidField = (['groupId', 'title', 'assigneeId', 'dueAt', 'description'] as RequiredTaskField[]).find(field => errors[field]);
@@ -298,8 +331,9 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
       startAt: editingItem?.startAt || currentTime.toISOString(), endAt: endAt.toISOString(), status: taskStatus,
       progress: taskStatus === 'completed' ? 100 : taskStatus === 'not_started' ? 0 : 50,
       referenceType: form.referenceType, referenceId: form.referenceId, referenceLabel: form.referenceLabel,
-      notes: editingItem?.notes || '', priority: form.priority, taskType: editingItem?.taskType || 'assigned_task',
-      groupId: taskGroup.id, groupName: taskGroup.name,
+      notes: editingItem?.notes || '', priority: form.priority, taskType: editingItem?.taskType || (taskGroup.id === 'staff_to_company' ? 'support_request' : taskGroup.id === 'self' ? 'personal_task' : 'assigned_task'),
+      ...(editingItem ? {} : { groupId: taskGroup.id, groupName: taskGroup.name }),
+      workType: form.workType,
       updatedAt: currentTime.toISOString(), completedAt: taskStatus === 'completed' ? (editingItem?.completedAt || currentTime.toISOString()) : null,
       deleted: false
     };
@@ -328,7 +362,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
       });
       setIsFormOpen(false);
       setSelectedItem(normalized);
-      setMessage(editingItem ? 'Đã cập nhật công việc.' : 'Đã giao công việc.');
+      setMessage(editingItem ? 'Đã cập nhật công việc.' : taskGroup.id === 'self' ? 'Đã tạo công việc cá nhân.' : 'Đã giao công việc.');
     } catch (error) {
       const permissionDenied = typeof error === 'object' && error !== null && 'code' in error && error.code === 'permission-denied';
       setFormError(permissionDenied
@@ -436,69 +470,9 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     const module = moduleFromReference(item.referenceType);
     if (module && item.referenceId) onOpenRecord?.(module, item.referenceId);
   };
-  const openGroupDialog = (mode: 'create' | 'rename') => {
-    setGroupDialog(mode);
-    setGroupNameDraft(mode === 'rename' ? selectedGroup?.name || '' : '');
-    setGroupError('');
-  };
-  const saveGroup = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const name = groupNameDraft.trim();
-    if (!isAdmin || !name) {
-      setGroupError('Vui lòng nhập tên nhóm công việc.');
-      return;
-    }
-    const nowIso = new Date().toISOString();
-    const existing = groupDialog === 'rename' ? selectedGroup : null;
-    const group: WorkScheduleGroupRecord = existing ? {
-      ...existing, name, updatedAt: nowIso
-    } : {
-      id: `work-group-${Date.now()}`,
-      name,
-      order: Math.max(0, ...groups.map(item => item.order)) + 10,
-      active: true,
-      system: false,
-      createdAt: nowIso,
-      updatedAt: nowIso
-    };
-    setGroupBusy(true);
-    setGroupError('');
-    try {
-      await dbService.addDocument('work_schedule_groups', group);
-      setGroups(previous => [...previous.filter(item => item.id !== group.id), group].sort((left, right) => left.order - right.order));
-      setSelectedGroupId(group.id);
-      setGroupDialog(null);
-      setMessage(existing ? 'Đã đổi tên nhóm công việc.' : 'Đã thêm nhóm công việc.');
-    } catch {
-      setGroupError('Không thể lưu nhóm công việc. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    } finally {
-      setGroupBusy(false);
-    }
-  };
-  const deleteGroup = async () => {
-    if (!isAdmin || !selectedGroup || groupBusy) return;
-    const taskCount = groupCounts[selectedGroup.id] || 0;
-    if (taskCount > 0) {
-      setMessage(`Nhóm “${selectedGroup.name}” còn ${taskCount} công việc. Hãy chuyển công việc sang nhóm khác trước khi xóa.`);
-      return;
-    }
-    if (!window.confirm(`Xóa nhóm “${selectedGroup.name}”?`)) return;
-    setGroupBusy(true);
-    try {
-      await dbService.addDocument('work_schedule_groups', { ...selectedGroup, active: false, updatedAt: new Date().toISOString() });
-      const remaining = groups.filter(group => group.id !== selectedGroup.id);
-      setGroups(remaining);
-      setSelectedGroupId(remaining[0]?.id || '');
-      setMessage('Đã xóa nhóm công việc.');
-    } catch {
-      setMessage('Không thể xóa nhóm công việc. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    } finally {
-      setGroupBusy(false);
-    }
-  };
-
   return <div className="work-schedule-page">
-    <PageContextHeader section="Lịch làm việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Công việc'} />
+    <PageContextHeader section="Công việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Danh sách'} />
+    <header className="work-schedule-heading"><h1>Công việc</h1><p>Theo dõi, phân loại và điều phối công việc</p></header>
 
     <div className="work-schedule-tabs" role="tablist">
       <div className="work-schedule-tab-list">
@@ -510,59 +484,69 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     {message && <div className={`work-schedule-message ${isErrorMessage(message) ? 'is-error' : 'is-success'}`} role={isErrorMessage(message) ? 'alert' : 'status'}>{isErrorMessage(message) ? <AlertCircle size={17}/> : <CheckCircle2 size={17}/>}<span>{message}</span><button type="button" aria-label="Đóng thông báo" onClick={() => setMessage('')}><X size={15}/></button></div>}
 
     {activeTab === 'tasks' ? <>
+      <nav className="work-schedule-group-cards" aria-label="Nhóm công việc">
+        {groups.map(group => <button key={group.id} type="button" aria-pressed={effectiveGroupId === group.id} className={`work-schedule-group-card work-schedule-group-card--${group.id} ${effectiveGroupId === group.id ? 'is-active' : ''}`} onClick={() => { setSelectedGroupId(group.id); setPage(1); }}><span><b>{group.name}</b><small>{GROUP_DESCRIPTIONS[group.id]}</small></span><strong>{groupCounts[group.id] || 0}</strong></button>)}
+      </nav>
       <section className="work-schedule-card work-schedule-group-content">
-          <nav className="work-schedule-group-nav" aria-label="Nhóm công việc">
-            <div className="work-schedule-group-tabs">
-              {groups.map(group => <button key={group.id} type="button" className={effectiveGroupId === group.id ? 'is-active' : ''} onClick={() => { setSelectedGroupId(group.id); setPage(1); }}><span>{group.name}</span><strong>{groupCounts[group.id] || 0}</strong></button>)}
-            </div>
-            {isAdmin && <details className="work-schedule-group-menu"><summary><FolderCog size={14}/>Nhóm</summary><div><button type="button" onClick={() => openGroupDialog('create')}><Plus size={14}/>Thêm nhóm</button><button type="button" onClick={() => openGroupDialog('rename')} disabled={!selectedGroup}><FolderCog size={14}/>Quản lý nhóm đang chọn</button></div></details>}
-          </nav>
           <div className="work-schedule-toolbar">
             <label className="work-schedule-search"><Search size={15}/><input aria-label="Tìm công việc" placeholder="Tìm công việc, khách hàng..." value={searchTerm} onChange={event => setFilterAndFirstPage(setSearchTerm, event.target.value)}/></label>
-            <div className="work-schedule-status-filters" aria-label="Lọc nhanh theo trạng thái">{(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <button key={status} type="button" className={`work-schedule-status-filter work-schedule-status-filter--${status} ${statusFilter === status ? 'is-active' : ''}`} onClick={() => setFilterAndFirstPage(setStatusFilter, statusFilter === status ? 'all' : status)}><span>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</span><strong>{metrics[status]}</strong></button>)}</div>
             {isAdmin && <select className="work-schedule-assignee-select" aria-label="Nhân sự" value={assigneeFilter} onChange={event => setFilterAndFirstPage(setAssigneeFilter, event.target.value)}><option value="all">Nhân sự: Tất cả</option>{activeUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>}
+            <select className="work-schedule-assignee-select" aria-label="Trạng thái" value={statusFilter} onChange={event => setFilterAndFirstPage(setStatusFilter, event.target.value as 'all' | WorkScheduleDisplayStatus)}><option value="all">Tất cả trạng thái</option>{(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <option key={status} value={status}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</option>)}</select>
+            <select className="work-schedule-assignee-select" aria-label="Thời gian" value={periodFilter} onChange={event => setFilterAndFirstPage(setPeriodFilter, event.target.value as PeriodFilter)}><option value="all">Tất cả thời gian</option><option value="this_month">Tháng này</option><option value="next_30_days">30 ngày tới</option><option value="range">Khoảng ngày</option></select>
+            {periodFilter === 'range' && <span className="work-schedule-date-range"><input aria-label="Từ ngày" type="date" value={dateFrom} max={dateTo || undefined} onChange={event => { setDateFrom(event.target.value); setPage(1); }} /><span>–</span><input aria-label="Đến ngày" type="date" value={dateTo} min={dateFrom || undefined} onChange={event => { setDateTo(event.target.value); setPage(1); }} /></span>}
             <DataFilterButton activeCount={activeFilterCount} open={showFilters} onClick={() => setShowFilters(true)} />
-            <button type="button" className="btn btn-primary work-schedule-create" onClick={openCreate} disabled={!selectedGroup}><Plus size={15} />Tạo công việc</button>
+            <div className="work-schedule-view-switch" role="group" aria-label="Kiểu hiển thị"><button type="button" aria-pressed={viewMode === 'list'} className={viewMode === 'list' ? 'is-active' : ''} onClick={() => setViewMode('list')}>Danh sách</button><button type="button" aria-pressed={viewMode === 'kanban'} className={viewMode === 'kanban' ? 'is-active' : ''} onClick={() => setViewMode('kanban')}>Kanban</button></div>
+            <button type="button" className="btn btn-outline" onClick={exportTasks} disabled={!filteredItems.length}>Xuất</button>
+            <button type="button" className="btn btn-primary work-schedule-create" onClick={openCreate} disabled={!creatableGroups.length}><Plus size={15} />Tạo công việc</button>
             {(activeFilterCount > 0 || searchTerm) && <button type="button" className="work-schedule-clear" onClick={clearFilters}>Xóa bộ lọc</button>}
           </div>
+          <div className="work-schedule-status-filters" aria-label="Lọc nhanh theo trạng thái"><button type="button" className={`work-schedule-status-filter ${statusFilter === 'all' ? 'is-active' : ''}`} onClick={() => { setStatusFilter('all'); setPage(1); }}>Tất cả <strong>{groupItems.length}</strong></button>{(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <button key={status} type="button" className={`work-schedule-status-filter work-schedule-status-filter--${status} ${statusFilter === status ? 'is-active' : ''}`} onClick={() => setFilterAndFirstPage(setStatusFilter, statusFilter === status ? 'all' : status)}><span>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</span><strong>{metrics[status]}</strong></button>)}</div>
           {metrics.support > 0 && <div className="work-schedule-support-alert"><AlertCircle size={16}/><span><strong>{metrics.support} yêu cầu hỗ trợ</strong> đang chờ xử lí trong nhóm này</span></div>}
-          <div className="work-schedule-table-wrap">
+          {viewMode === 'list' ? <div className="work-schedule-table-wrap">
             <table className="work-schedule-table work-schedule-task-table">
-              <thead><tr><th>Công việc</th><th>Khách hàng</th><th>Hạn xử lý</th><th>Ưu tiên</th><th>Trạng thái</th></tr></thead>
+              <thead><tr><th>Công việc</th><th>Nhóm công việc</th><th>Loại công việc</th><th>Người giao</th><th>Người nhận</th><th>Khách hàng / Phòng ban</th><th>Hạn xử lý</th><th>Ưu tiên</th><th>Trạng thái</th><th>Tiến độ</th><th>Thao tác</th></tr></thead>
               <tbody>{!isLoading && pageItems.map(item => { const displayStatus = getWorkScheduleDisplayStatus(item.status); return <tr key={item.id} className={`${isTaskOverdue(item, now) ? 'is-overdue ' : ''}is-clickable`} tabIndex={0} role="button" aria-label={`Xem chi tiết công việc ${item.title}`} onClick={() => { setDetailError(''); setSelectedItem(item); }} onKeyDown={event => { if (event.currentTarget !== event.target) return; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDetailError(''); setSelectedItem(item); } }}>
                 <td><strong title={item.title}>{item.title}</strong><small title={item.description}>{item.description || 'Chưa có mô tả'}</small></td>
-                <td>{item.referenceLabel || '—'}</td>
+                <td title={groups.find(group => group.id === inferWorkScheduleGroupId(item))?.name || item.groupName}>{groups.find(group => group.id === inferWorkScheduleGroupId(item))?.name || item.groupName}</td>
+                <td>{WORK_SCHEDULE_WORK_TYPE_LABELS[item.workType]}</td>
+                <td title={item.assignedByName || 'Hệ thống'}>{item.assignedByName || 'Hệ thống'}</td>
+                <td title={item.assigneeName}>{item.assigneeName}</td>
+                <td title={item.referenceLabel || item.department}>{item.referenceLabel || item.department || '—'}</td>
                 <td><strong>{dateTimeLabel(item.endAt)}</strong>{isTaskOverdue(item, now) && <small className="work-schedule-text--danger">Đã quá hạn</small>}</td>
                 <td><span className={`work-schedule-priority work-schedule-priority--${item.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[item.priority]}</span></td>
-                <td><select aria-label={`Trạng thái ${item.title}`} className={`work-schedule-status-select work-schedule-status-select--${displayStatus}`} value={displayStatus} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()} onChange={event => requestStatusChange(item, event.target.value as WorkScheduleStatus)} disabled={detailBusy}>{EDITABLE_STATUSES.map(status => <option key={status} value={status}>{WORK_SCHEDULE_STATUS_LABELS[status]}</option>)}</select></td>
+                <td><span className={`work-schedule-status work-schedule-status--${displayStatus}`}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[displayStatus]}</span></td>
+                <td><div className="work-schedule-progress" aria-label={`${item.progress}% hoàn thành`}><span style={{ width: `${item.progress}%` }} /></div><small>{item.progress}%</small></td>
+                <td><button type="button" className="work-schedule-row-action" onClick={event => { event.stopPropagation(); setDetailError(''); setSelectedItem(item); }}>Xem</button></td>
               </tr>; })}</tbody>
             </table>
             {isLoading && <div className="work-schedule-empty">Đang tải công việc...</div>}
             {!isLoading && pageItems.length === 0 && <div className="work-schedule-empty"><span className="work-schedule-empty__icon" aria-hidden="true"><ClipboardList size={42}/></span><strong>Chưa có công việc phù hợp trong nhóm này.</strong><small>Hãy thử chọn nhóm khác hoặc thay đổi điều kiện lọc.</small></div>}
-          </div>
-          <footer className="work-schedule-pagination"><span>{filteredItems.length} công việc</span><div><span>{filteredItems.length === 0 ? '0–0' : `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredItems.length)}`} / {filteredItems.length}</span><button type="button" className="btn btn-outline btn-sm" disabled={currentPage <= 1} onClick={() => setPage(previous => Math.max(1, previous - 1))}>Trước</button><button type="button" className="btn btn-outline btn-sm" disabled={currentPage >= totalPages} onClick={() => setPage(previous => Math.min(totalPages, previous + 1))}>Sau</button></div></footer>
+          </div> : <div className="work-schedule-kanban">{(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <section key={status} className="work-schedule-kanban-column"><h3>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]} <span>{filteredItems.filter(item => getWorkScheduleDisplayStatus(item.status) === status).length}</span></h3>{filteredItems.filter(item => getWorkScheduleDisplayStatus(item.status) === status).map(item => <button key={item.id} type="button" className="work-schedule-kanban-card" onClick={() => { setDetailError(''); setSelectedItem(item); }}><strong title={item.title}>{item.title}</strong><span>{WORK_SCHEDULE_WORK_TYPE_LABELS[item.workType]} · {item.assigneeName}</span><small>{dateTimeLabel(item.endAt)}</small></button>)}{!isLoading && filteredItems.every(item => getWorkScheduleDisplayStatus(item.status) !== status) && <p>Chưa có công việc</p>}</section>)}</div>}
+          {viewMode === 'list' && <footer className="work-schedule-pagination"><span>{filteredItems.length} công việc</span><div><span>{filteredItems.length === 0 ? '0–0' : `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredItems.length)}`} / {filteredItems.length}</span><button type="button" className="btn btn-outline btn-sm" disabled={currentPage <= 1} onClick={() => setPage(previous => Math.max(1, previous - 1))}>Trước</button><button type="button" className="btn btn-outline btn-sm" disabled={currentPage >= totalPages} onClick={() => setPage(previous => Math.min(totalPages, previous + 1))}>Sau</button></div></footer>}
       </section>
 
       <DataFilterPanel open={showFilters} title="Lọc danh sách công việc" description="Lọc theo trạng thái, mức ưu tiên, phân hệ, nhân sự và thời gian." activeCount={activeFilterCount} onClose={() => setShowFilters(false)} onReset={clearFilters}>
         <label className="work-schedule-filter-field"><span>Trạng thái</span><select value={statusFilter} onChange={event => setFilterAndFirstPage(setStatusFilter, event.target.value as 'all' | WorkScheduleDisplayStatus)}><option value="all">Tất cả trạng thái</option>{(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <option key={status} value={status}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</option>)}</select></label>
         <label className="work-schedule-filter-field"><span>Mức độ ưu tiên</span><select value={priorityFilter} onChange={event => setFilterAndFirstPage(setPriorityFilter, event.target.value)}><option value="all">Tất cả ưu tiên</option><option value="urgent">Khẩn cấp</option><option value="high">Cao</option><option value="normal">Bình thường</option></select></label>
+        <label className="work-schedule-filter-field"><span>Loại công việc</span><select value={workTypeFilter} onChange={event => setFilterAndFirstPage(setWorkTypeFilter, event.target.value)}><option value="all">Tất cả loại công việc</option>{Object.entries(WORK_SCHEDULE_WORK_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label className="work-schedule-filter-field"><span>Phân hệ</span><select value={moduleFilter} onChange={event => setFilterAndFirstPage(setModuleFilter, event.target.value)}><option value="all">Tất cả phân hệ</option><option value="lead_candidate">Dữ liệu thô</option><option value="lead">Tiềm năng</option><option value="customer">Khách hàng</option><option value="po">Đơn hàng</option><option value="design_request">Thiết kế</option><option value="production_order">Sản xuất</option><option value="delivery">Giao hàng</option><option value="none">Không liên kết</option></select></label>
         {isAdmin && <label className="work-schedule-filter-field"><span>Người thực hiện</span><select value={assigneeFilter} onChange={event => setFilterAndFirstPage(setAssigneeFilter, event.target.value)}><option value="all">Tất cả nhân sự</option>{activeUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></label>}
-        <label className="work-schedule-filter-field"><span>Thời gian</span><select value={periodFilter} onChange={event => setFilterAndFirstPage(setPeriodFilter, event.target.value as PeriodFilter)}><option value="all">Tất cả thời gian</option><option value="this_month">Tháng này</option><option value="next_30_days">30 ngày tới</option></select></label>
+        <label className="work-schedule-filter-field"><span>Thời gian</span><select value={periodFilter} onChange={event => setFilterAndFirstPage(setPeriodFilter, event.target.value as PeriodFilter)}><option value="all">Tất cả thời gian</option><option value="this_month">Tháng này</option><option value="next_30_days">30 ngày tới</option><option value="range">Khoảng ngày</option></select></label>
+        {periodFilter === 'range' && <><label className="work-schedule-filter-field"><span>Từ ngày</span><input type="date" value={dateFrom} max={dateTo || undefined} onChange={event => { setDateFrom(event.target.value); setPage(1); }} /></label><label className="work-schedule-filter-field"><span>Đến ngày</span><input type="date" value={dateTo} min={dateFrom || undefined} onChange={event => { setDateTo(event.target.value); setPage(1); }} /></label></>}
       </DataFilterPanel>
     </> : <section className="work-schedule-card work-schedule-week-view">
       <div className="work-schedule-week-nav"><button type="button" className="btn btn-outline btn-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() - 7))}>Tuần trước</button><strong>{getDayLabel(weekDates[0])} – {getDayLabel(weekDates[6])}</strong><button type="button" className="btn btn-outline btn-sm" onClick={() => setWeekAnchor(previous => new Date(previous.getFullYear(), previous.getMonth(), previous.getDate() + 7))}>Tuần sau</button></div>
-      <div className="work-schedule-table-wrap"><table className="work-schedule-table work-schedule-week-table"><thead><tr><th>Nhân viên</th>{weekDates.map(date => <th key={toDateKey(date)}>{getDayLabel(date)}</th>)}</tr></thead><tbody>{activeUsers.map(user => <tr key={user.uid}><td><strong>{user.displayName}</strong><small>{roleDepartment(user.role)}</small></td>{weekDates.map(date => { const schedules = items.filter(item => item.assigneeId === user.uid && isScheduleOnDate(item, date)); return <td key={`${user.uid}-${toDateKey(date)}`}><button type="button" className="work-schedule-week-cell" onClick={() => { setStatusFilter('all'); setAssigneeFilter(user.uid); setActiveTab('tasks'); }}><strong>{schedules.length}</strong><span>{schedules.length ? 'công việc' : 'Trống'}</span></button></td>; })}</tr>)}</tbody></table></div>
+      <div className="work-schedule-table-wrap"><table className="work-schedule-table work-schedule-week-table"><thead><tr><th>Nhân viên</th>{weekDates.map(date => <th key={toDateKey(date)}>{getDayLabel(date)}</th>)}</tr></thead><tbody>{activeUsers.filter(user => isAdmin || user.uid === currentUser.uid).map(user => <tr key={user.uid}><td><strong>{user.displayName}</strong><small>{roleDepartment(user.role)}</small></td>{weekDates.map(date => { const schedules = items.filter(item => item.assigneeId === user.uid && isScheduleOnDate(item, date)); return <td key={`${user.uid}-${toDateKey(date)}`}><button type="button" className="work-schedule-week-cell" onClick={() => { setStatusFilter('all'); setAssigneeFilter(user.uid); setActiveTab('tasks'); }}><strong>{schedules.length}</strong><span>{schedules.length ? 'công việc' : 'Trống'}</span></button></td>; })}</tr>)}</tbody></table></div>
     </section>}
 
     {selectedItem && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget && !detailBusy) setSelectedItem(null); }}>
       <section className="work-schedule-detail" role="dialog" aria-modal="true" aria-labelledby="work-schedule-detail-title">
         <header><div><span>Chi tiết công việc</span><h2 id="work-schedule-detail-title">{selectedItem.title}</h2></div><button type="button" className="btn btn-outline" onClick={() => setSelectedItem(null)} disabled={detailBusy}>Đóng</button></header>
-        <div className="work-schedule-detail__grid"><div><span>Trạng thái</span><strong className={`work-schedule-status work-schedule-status--${getWorkScheduleDisplayStatus(selectedItem.status)}`}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[getWorkScheduleDisplayStatus(selectedItem.status)]}</strong></div><div><span>Mức ưu tiên</span><strong className={`work-schedule-priority work-schedule-priority--${selectedItem.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[selectedItem.priority]}</strong></div><div><span>Nhóm công việc</span><strong>{groups.find(group => group.id === inferWorkScheduleGroupId(selectedItem))?.name || selectedItem.groupName || 'Chưa phân nhóm'}</strong></div><div><span>Người thực hiện</span><strong>{selectedItem.assigneeName}</strong></div><div><span>Người giao việc</span><strong>{selectedItem.assignedByName || 'Tự tạo'}</strong></div><div><span>Thời hạn</span><strong>{dateTimeLabel(selectedItem.endAt)}</strong></div><div><span>Phân hệ</span><strong>{WORK_SCHEDULE_REFERENCE_LABELS[selectedItem.referenceType]}</strong></div></div>
+        <div className="work-schedule-detail__grid"><div><span>Trạng thái</span><strong className={`work-schedule-status work-schedule-status--${getWorkScheduleDisplayStatus(selectedItem.status)}`}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[getWorkScheduleDisplayStatus(selectedItem.status)]}</strong></div><div><span>Mức ưu tiên</span><strong className={`work-schedule-priority work-schedule-priority--${selectedItem.priority}`}>{WORK_SCHEDULE_PRIORITY_LABELS[selectedItem.priority]}</strong></div><div><span>Nhóm công việc</span><strong>{groups.find(group => group.id === inferWorkScheduleGroupId(selectedItem))?.name || selectedItem.groupName || 'Chưa phân nhóm'}</strong></div><div><span>Loại công việc</span><strong>{WORK_SCHEDULE_WORK_TYPE_LABELS[selectedItem.workType]}</strong></div><div><span>Người thực hiện</span><strong>{selectedItem.assigneeName}</strong></div><div><span>Người giao việc</span><strong>{selectedItem.assignedByName || 'Tự tạo'}</strong></div><div><span>Thời hạn</span><strong>{dateTimeLabel(selectedItem.endAt)}</strong></div><div><span>Phân hệ</span><strong>{WORK_SCHEDULE_REFERENCE_LABELS[selectedItem.referenceType]}</strong></div></div>
         <section className="work-schedule-status-control" aria-labelledby="work-status-title">
           <div><h3 id="work-status-title">Xác nhận tình trạng công việc</h3><p>Có thể thay đổi trạng thái bất cứ lúc nào.</p></div>
           <div className="work-schedule-status-options" role="group" aria-label="Chọn trạng thái công việc">
-            {EDITABLE_STATUSES.map(status => { const isActive = getWorkScheduleDisplayStatus(selectedItem.status) === status; return <button key={status} type="button" className={`work-schedule-status-option work-schedule-status-option--${status} ${isActive ? 'is-active' : ''}`} aria-pressed={isActive} onClick={() => requestStatusChange(selectedItem, status)} disabled={detailBusy || isActive}><span aria-hidden="true"/><strong>{WORK_SCHEDULE_STATUS_LABELS[status]}</strong></button>; })}
+            {EDITABLE_STATUSES.map(status => { const isActive = getWorkScheduleDisplayStatus(selectedItem.status) === status; return <button key={status} type="button" className={`work-schedule-status-option work-schedule-status-option--${status} ${isActive ? 'is-active' : ''}`} aria-pressed={isActive} onClick={() => requestStatusChange(selectedItem, status)} disabled={detailBusy || isActive || (!isAdmin && selectedItem.assigneeId !== currentUser.uid)}><span aria-hidden="true"/><strong>{WORK_SCHEDULE_STATUS_LABELS[status]}</strong></button>; })}
           </div>
         </section>
         <article><h3>Nội dung công việc</h3><p>{selectedItem.description || 'Chưa có nội dung.'}</p>{selectedItem.requestedByName && <p>Người yêu cầu hỗ trợ: <strong>{selectedItem.requestedByName}</strong></p>}{selectedItem.cannotProcessNote && <div className="work-schedule-failure-note"><strong>Lý do không xử lí được</strong><p>{selectedItem.cannotProcessNote}</p><small>{selectedItem.cannotProcessByName || selectedItem.assigneeName}{selectedItem.cannotProcessAt ? ` · ${dateTimeLabel(selectedItem.cannotProcessAt)}` : ''}</small></div>}</article>
@@ -570,7 +554,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
         <footer>
           {selectedItem.referenceId && moduleFromReference(selectedItem.referenceType) && <button type="button" className="btn btn-outline" onClick={() => openSource(selectedItem)} disabled={detailBusy}>Mở hồ sơ khách hàng</button>}
           {canPermanentlyDeleteWorkSchedule(currentUser.role, selectedItem.status) && <button type="button" className="btn btn-outline work-schedule-delete" onClick={() => void deleteCompletedTask(selectedItem)} disabled={detailBusy}>Xóa vĩnh viễn</button>}
-          <button type="button" className="btn btn-outline" onClick={() => openEdit(selectedItem)} disabled={detailBusy}>Chỉnh sửa</button>
+          {(isAdmin || selectedItem.assigneeId === currentUser.uid) && <button type="button" className="btn btn-outline" onClick={() => openEdit(selectedItem)} disabled={detailBusy}>Chỉnh sửa</button>}
         </footer>
       </section>
     </div>}
@@ -588,9 +572,10 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
         <header><div><strong id="work-schedule-form-title">{editingItem ? 'Cập nhật công việc' : 'Tạo công việc'}</strong><span>Nhập rõ nội dung, người phụ trách và thời hạn.</span></div><button type="button" className="btn btn-outline" onClick={() => setIsFormOpen(false)} disabled={saving}>Đóng</button></header>
         <div className="work-schedule-form-grid">
           {formError && <div className="work-schedule-form-error is-wide" role="alert">{formError}</div>}
-          <label>Nhóm công việc *<select name="groupId" aria-required="true" aria-invalid={Boolean(formFieldErrors.groupId)} value={form.groupId} onChange={event => updateFormField('groupId', event.target.value)}><option value="">Chọn nhóm công việc</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>{formFieldErrors.groupId && <small>{formFieldErrors.groupId}</small>}</label>
+          <label>Nhóm công việc *<select name="groupId" aria-required="true" aria-invalid={Boolean(formFieldErrors.groupId)} value={form.groupId} disabled={Boolean(editingItem)} onChange={event => { updateFormField('groupId', event.target.value); setForm(previous => ({ ...previous, groupId: event.target.value, assigneeId: event.target.value === 'self' ? currentUser.uid : '' })); }}><option value="">Chọn nhóm công việc</option>{editingItem && !creatableGroups.some(group => group.id === form.groupId) && <option value={form.groupId}>{groups.find(group => group.id === form.groupId)?.name || form.groupId}</option>}{creatableGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>{formFieldErrors.groupId && <small>{formFieldErrors.groupId}</small>}</label>
+          <label>Loại công việc *<select value={form.workType} onChange={event => updateFormField('workType', event.target.value as WorkScheduleWorkType)}>{Object.entries(WORK_SCHEDULE_WORK_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>Tên công việc *<input name="title" autoFocus aria-required="true" aria-invalid={Boolean(formFieldErrors.title)} value={form.title} onChange={event => updateFormField('title', event.target.value)} />{formFieldErrors.title && <small>{formFieldErrors.title}</small>}</label>
-          {isAdmin && <label>Người thực hiện *<select name="assigneeId" aria-required="true" aria-invalid={Boolean(formFieldErrors.assigneeId)} value={form.assigneeId} onChange={event => updateFormField('assigneeId', event.target.value)}><option value="">Chọn nhân sự</option>{users.filter(user => user.active !== false).map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>{formFieldErrors.assigneeId && <small>{formFieldErrors.assigneeId}</small>}</label>}
+          <label>Người thực hiện *<select name="assigneeId" aria-required="true" aria-invalid={Boolean(formFieldErrors.assigneeId)} value={editingItem?.assigneeId || (form.groupId === 'self' ? currentUser.uid : form.assigneeId)} disabled={form.groupId === 'self' || Boolean(editingItem)} onChange={event => updateFormField('assigneeId', event.target.value)}><option value="">Chọn nhân sự</option>{(editingItem ? users.filter(user => user.uid === editingItem.assigneeId) : activeUsers.filter(user => form.groupId === 'staff_to_company' ? user.role === 'admin' : form.groupId === 'self' ? user.uid === currentUser.uid : user.role !== 'admin' && user.uid !== currentUser.uid)).map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>{formFieldErrors.assigneeId && <small>{formFieldErrors.assigneeId}</small>}</label>
           <label>Thời hạn *<input name="dueAt" type="datetime-local" aria-required="true" aria-invalid={Boolean(formFieldErrors.dueAt)} value={form.dueAt} onChange={event => updateFormField('dueAt', event.target.value)} />{formFieldErrors.dueAt && <small>{formFieldErrors.dueAt}</small>}</label>
           <label className="is-wide">Nội dung công việc *<textarea name="description" rows={4} aria-required="true" aria-invalid={Boolean(formFieldErrors.description)} value={form.description} onChange={event => updateFormField('description', event.target.value)} />{formFieldErrors.description && <small>{formFieldErrors.description}</small>}</label>
           <label>Phân hệ liên kết<select value={form.referenceType} onChange={event => setForm(previous => ({ ...previous, referenceType: event.target.value as WorkScheduleReferenceType, referenceId: '', referenceLabel: '' }))}><option value="none">Không liên kết</option><option value="lead_candidate">Dữ liệu thô</option><option value="lead">Tiềm năng</option><option value="customer">Khách hàng</option></select></label>
@@ -601,12 +586,5 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
       </form>
     </div>}
 
-    {groupDialog && selectedGroup && <div className="work-schedule-modal-overlay" onMouseDown={event => { if (event.target === event.currentTarget && !groupBusy) setGroupDialog(null); }}>
-      <form className="work-schedule-modal work-schedule-group-modal" role="dialog" aria-modal="true" aria-labelledby="work-group-title" onSubmit={saveGroup}>
-        <header><div><strong id="work-group-title">{groupDialog === 'create' ? 'Thêm nhóm công việc' : 'Quản lý nhóm công việc'}</strong><span>{groupDialog === 'create' ? 'Tạo nhóm trước khi thêm công việc bên trong.' : `${groupCounts[selectedGroup.id] || 0} công việc đang thuộc nhóm này.`}</span></div><button type="button" className="btn btn-outline" onClick={() => setGroupDialog(null)} disabled={groupBusy}>Đóng</button></header>
-        <div className="work-schedule-form-grid"><label className="is-wide">Tên nhóm *<input autoFocus value={groupNameDraft} onChange={event => { setGroupNameDraft(event.target.value); setGroupError(''); }} /></label>{groupError && <div className="work-schedule-form-error is-wide" role="alert">{groupError}</div>}</div>
-        <footer>{groupDialog === 'rename' && <button type="button" className="btn btn-outline work-schedule-delete" onClick={() => void deleteGroup()} disabled={groupBusy || (groupCounts[selectedGroup.id] || 0) > 0}>Xóa nhóm</button>}<button type="button" className="btn btn-outline" onClick={() => setGroupDialog(null)} disabled={groupBusy}>Hủy</button><button type="submit" className="btn btn-primary" disabled={groupBusy}>{groupBusy ? 'Đang lưu...' : 'Lưu nhóm'}</button></footer>
-      </form>
-    </div>}
   </div>;
 };

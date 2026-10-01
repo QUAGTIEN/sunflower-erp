@@ -87,7 +87,7 @@ export const SupportRequestDialog: React.FC<SupportRequestDialogProps> = ({
         assigneeId: admins[0].uid, assigneeName: admins[0].displayName, department: 'Ban giám đốc',
         assignedById: currentUser.uid, assignedByName: currentUser.displayName,
         requestedById: currentUser.uid, requestedByName: currentUser.displayName,
-        groupId: 'boss', groupName: 'Công việc của sếp',
+        groupId: 'staff_to_company', groupName: 'Nhân sự giao việc lại cho công ty', workType: 'business',
         startAt: now, endAt: deadline.toISOString(), status: 'support_requested', progress: 0,
         referenceType: REFERENCE_TYPES[target.module], referenceId: target.id, referenceLabel: target.label,
         notes: '', priority, taskType: 'support_request', createdAt: now, updatedAt: now, deleted: false
@@ -127,7 +127,7 @@ export const SupportRequestDialog: React.FC<SupportRequestDialogProps> = ({
           <div className="support-request-dialog__sent">
             <LifeBuoy size={24} />
             <strong>Đã gửi tới Admin</strong>
-            <span>Yêu cầu cho {target.label} đã được đưa vào Lịch làm việc và gửi tới cấp quản lý.</span>
+            <span>Yêu cầu cho {target.label} đã được đưa vào Công việc và gửi tới cấp quản lý.</span>
           </div>
         ) : (
           <div className="support-request-dialog__body">

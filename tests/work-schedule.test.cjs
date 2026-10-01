@@ -30,14 +30,16 @@ test('new and existing work items keep their status codes with clear labels', ()
   assert.equal(blocked.cannotProcessByName, 'Khánh Ly');
 });
 
-test('work groups provide defaults and preserve stored changes', () => {
-  const { mergeWorkScheduleGroups, inferWorkScheduleGroupId } = loadScheduleModel();
+test('five assignment groups stay fixed and legacy tasks remain visible', () => {
+  const { mergeWorkScheduleGroups, inferWorkScheduleGroupId, normalizeWorkScheduleRecord } = loadScheduleModel();
   const defaults = mergeWorkScheduleGroups([]);
-  assert.deepEqual(defaults.map(group => group.id), ['boss', 'personnel', 'business', 'technical', 'logistics', 'workshop', 'delivery']);
-  const changed = mergeWorkScheduleGroups([{ id: 'business', name: 'Kinh doanh mới', order: 30, active: true }]);
-  assert.equal(changed.find(group => group.id === 'business').name, 'Kinh doanh mới');
-  assert.equal(inferWorkScheduleGroupId({ taskType: 'support_request' }), 'boss');
-  assert.equal(inferWorkScheduleGroupId({ referenceType: 'lead' }), 'business');
+  assert.deepEqual(defaults.map(group => group.id), ['boss_to_staff', 'staff_to_company', 'staff_to_staff', 'self', 'automatic']);
+  const changed = mergeWorkScheduleGroups([{ id: 'business', name: 'Kinh doanh cũ', order: 30, active: true }]);
+  assert.equal(changed.length, 5);
+  assert.equal(inferWorkScheduleGroupId({ taskType: 'support_request', groupId: 'boss' }), 'staff_to_company');
+  assert.equal(inferWorkScheduleGroupId({ taskType: 'personal_task', groupId: 'business' }), 'self');
+  assert.equal(inferWorkScheduleGroupId({ taskType: 'assigned_task', groupId: 'business', assignedById: 'admin', assigneeId: 'sale' }), 'boss_to_staff');
+  assert.equal(normalizeWorkScheduleRecord({ groupId: 'business' }).workType, 'business');
 });
 
 test('tasks sort by status before priority and deadline', () => {
@@ -79,6 +81,17 @@ test('support requests become managed work items', () => {
   assert.match(dialog, /status: 'support_requested'/);
   assert.match(dialog, /taskType: 'support_request'/);
   assert.match(dialog, /requestedById: currentUser\.uid/);
+  assert.match(dialog, /groupId: 'staff_to_company'/);
+});
+
+test('staff assignments are restricted by group in Firestore rules', () => {
+  const rules = read('firestore.rules').split('match /work_schedule_items/{documentId}')[1].split('match /work_schedule_groups/{documentId}')[0];
+  assert.match(rules, /resource\.data\.assignedById == request\.auth\.uid/);
+  assert.match(rules, /groupId == 'self'/);
+  assert.match(rules, /groupId == 'staff_to_company'/);
+  assert.match(rules, /groupId == 'staff_to_staff'/);
+  assert.match(rules, /validWorkAssignee\(\)/);
+  assert.doesNotMatch(rules.match(/request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\[([^]*?)\]\)/)?.[1] || '', /'groupId'/);
 });
 
 test('task status and priority use colored text without badge styling', () => {
@@ -98,8 +111,8 @@ test('work page requires a group and uses the shared funnel filter panel', () =>
   assert.match(page, /DataFilterButton/);
   assert.match(page, /DataFilterPanel/);
   assert.match(page, /Nhóm công việc \*/);
-  assert.match(page, /Thêm nhóm công việc/);
-  assert.match(page, /Quản lý nhóm công việc/);
+  assert.match(page, /work-schedule-group-cards/);
+  assert.match(page, /Loại công việc \*/);
   assert.match(rules, /match \/work_schedule_groups\/\{documentId\}/);
   for (const file of ['src/components/WorkAssignmentDialog.tsx', 'src/components/SupportRequestDialog.tsx', 'src/components/CallWorkspace.tsx']) {
     assert.match(read(file), /groupId:/);
@@ -110,11 +123,11 @@ test('work groups share one table workspace and status failure requires a note',
   const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');
   const rules = read('firestore.rules');
-  assert.match(page, /work-schedule-group-tabs/);
+  assert.match(page, /work-schedule-group-cards/);
   assert.doesNotMatch(page, /<aside className="work-schedule-groups"/);
   assert.doesNotMatch(page, /work-schedule-group-header/);
   assert.match(page, /work-schedule-status-filters/);
-  assert.match(page, /work-schedule-status-select/);
+  assert.match(page, /work-schedule-status--/);
   assert.match(page, /setSelectedItem\(previous => previous\?\.id === item\.id \? updated : previous\)/);
   assert.match(page, /Xác nhận tình trạng công việc/);
   assert.match(page, /Vui lòng nhập lý do không xử lí được/);
@@ -129,7 +142,7 @@ test('dashboard work-group navigation opens the matching schedule group', () => 
   const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
   const shell = read('src/app/AppShell.tsx');
   assert.match(page, /initialGroupId/);
-  assert.match(page, /useState\(initialGroupId \|\| 'boss'\)/);
+  assert.match(page, /useState\(initialGroupId \|\| 'boss_to_staff'\)/);
   assert.match(page, /onInitialGroupConsumed/);
   assert.match(shell, /setWorkScheduleGroupNavigation\(groupId\)/);
   assert.match(shell, /initialGroupId=\{workScheduleGroupNavigation\}/);
@@ -138,8 +151,9 @@ test('dashboard work-group navigation opens the matching schedule group', () => 
 test('work table stays compact with flat filters, colored statuses and an empty state', () => {
   const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');
-  assert.match(page, /<th>Công việc<\/th><th>Khách hàng<\/th><th>Hạn xử lý<\/th><th>Ưu tiên<\/th><th>Trạng thái<\/th>/);
-  assert.doesNotMatch(page, /<th>Thao tác<\/th>/);
+  assert.match(page, /<th>Công việc<\/th><th>Nhóm công việc<\/th><th>Loại công việc<\/th><th>Người giao<\/th><th>Người nhận<\/th>/);
+  assert.match(page, /<th>Thao tác<\/th>/);
+  assert.match(page, /work-schedule-kanban/);
   assert.match(page, /aria-label=\{`Xem chi tiết công việc/);
   assert.match(page, /work-schedule-filter-field/);
   assert.doesNotMatch(page, /<DataFilterSection/);

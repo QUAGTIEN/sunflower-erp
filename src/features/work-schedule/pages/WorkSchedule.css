@@ -6,6 +6,46 @@
   color: #172554;
 }
 
+.work-schedule-heading h1 { margin: 0; color: #172554; font-size: 20px; font-weight: 650; }
+.work-schedule-heading p { margin: 4px 0 0; color: #64748b; font-size: 12px; }
+
+.work-schedule-group-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.work-schedule-group-card {
+  display: flex;
+  min-width: 0;
+  min-height: 72px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  background: #fff;
+  padding: 14px 12px;
+  color: #172554;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.work-schedule-group-card > span { min-width: 0; line-height: 1.35; }
+.work-schedule-group-card b { display: block; font-size: 12px; font-weight: 650; }
+.work-schedule-group-card small { display: block; margin-top: 6px; color: #64748b; font-size: 11px; font-weight: 450; }
+.work-schedule-group-card > strong { flex: none; color: #244a98; font-size: 13px; }
+.work-schedule-group-card:hover { border-color: #91afe3; background: #f8fbff; }
+.work-schedule-group-card:focus-visible { outline: 2px solid #4f7fe0; outline-offset: 2px; }
+.work-schedule-group-card.is-active { border-color: #2759bb; background: #eef4ff; box-shadow: inset 3px 0 #2759bb; }
+.work-schedule-group-card--staff_to_company.is-active { background: #f6f3ff; }
+.work-schedule-group-card--staff_to_staff.is-active { background: #effaf5; }
+.work-schedule-group-card--self.is-active { background: #fff7ed; }
+.work-schedule-group-card--automatic.is-active { background: #fdf2f8; }
+
 .work-schedule-tabs {
   display: flex;
   min-height: 42px;
@@ -175,7 +215,7 @@
 .work-schedule-group-content {
   display: flex;
   min-width: 0;
-  min-height: 620px;
+  min-height: 0;
   flex-direction: column;
 }
 
@@ -266,6 +306,16 @@
   padding: 10px 12px;
 }
 
+.work-schedule-toolbar { flex-wrap: wrap; }
+.work-schedule-toolbar .work-schedule-search { max-width: 420px; }
+.work-schedule-view-switch { display: inline-flex; flex: none; gap: 2px; margin-left: auto; border: 1px solid var(--erp-border-color); border-radius: var(--erp-control-radius); padding: 2px; }
+.work-schedule-view-switch button { min-height: 30px !important; border: 0; background: transparent; padding: 4px 10px; color: #40516e; font: inherit; font-size: 12px; cursor: pointer; }
+.work-schedule-view-switch button.is-active { background: #eaf2ff; color: #17449d; font-weight: 650; }
+.work-schedule-view-switch button:focus-visible { outline: 2px solid #4f7fe0; }
+.work-schedule-date-range { display: inline-flex; min-width: 0; align-items: center; gap: 4px; color: #64748b; }
+.work-schedule-date-range input { width: 128px; min-width: 0; min-height: 36px; border: 1px solid var(--erp-border-color); border-radius: var(--erp-control-radius); background: #fff; padding: 5px; color: #27364c; font: inherit; font-size: 12px; }
+.work-schedule-group-content > .work-schedule-status-filters { flex: none; width: 100%; min-width: 0; overflow-x: auto; border-top: 1px solid var(--erp-border-color); padding: 8px 12px; }
+
 .work-schedule-search {
   display: flex;
   min-width: 0;
@@ -329,7 +379,8 @@
   font-size: 12px;
 }
 
-.work-schedule-filter-field select {
+.work-schedule-filter-field select,
+.work-schedule-filter-field input {
   width: 100%;
   min-height: 36px;
   border: 1px solid #cbd5e1;
@@ -427,7 +478,7 @@
 }
 
 .work-schedule-task-table {
-  min-width: 820px;
+  min-width: 1700px;
 }
 
 .work-schedule-table th,
@@ -455,11 +506,33 @@
   font-weight: 650;
 }
 
-.work-schedule-task-table th:nth-child(1) { width: 32%; }
-.work-schedule-task-table th:nth-child(2) { width: 24%; }
-.work-schedule-task-table th:nth-child(3) { width: 17%; }
-.work-schedule-task-table th:nth-child(4) { width: 12%; }
-.work-schedule-task-table th:nth-child(5) { width: 15%; }
+.work-schedule-task-table th:nth-child(1) { width: 15%; }
+.work-schedule-task-table th:nth-child(2) { width: 15%; }
+.work-schedule-task-table th:nth-child(3) { width: 8%; }
+.work-schedule-task-table th:nth-child(4) { width: 9%; }
+.work-schedule-task-table th:nth-child(5) { width: 9%; }
+.work-schedule-task-table th:nth-child(6) { width: 12%; }
+.work-schedule-task-table th:nth-child(7) { width: 11%; }
+.work-schedule-task-table th:nth-child(8) { width: 6%; }
+.work-schedule-task-table th:nth-child(9) { width: 8%; }
+.work-schedule-task-table th:nth-child(10) { width: 4%; }
+.work-schedule-task-table th:nth-child(11) { width: 3%; }
+
+.work-schedule-row-action { border: 0; background: transparent; padding: 3px; color: #17449d; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.work-schedule-row-action:hover { text-decoration: underline; }
+.work-schedule-progress { width: 100%; height: 6px; overflow: hidden; border-radius: 3px; background: #e7edf5; }
+.work-schedule-progress > span { display: block; height: 100%; border-radius: inherit; background: #2d75df; }
+.work-schedule-task-table td:has(.work-schedule-progress) > small { margin-top: 4px; text-align: right; }
+.work-schedule-kanban { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: 10px; min-height: 300px; padding: 12px; overflow-x: auto; border-top: 1px solid var(--erp-border-color); }
+.work-schedule-kanban-column { min-width: 0; border: 1px solid var(--erp-border-color); border-radius: 4px; background: #f8fafc; padding: 10px; }
+.work-schedule-kanban-column h3 { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 10px; font-size: 13px; }
+.work-schedule-kanban-column h3 span { color: #64748b; }
+.work-schedule-kanban-column > p { margin: 20px 0; color: #64748b; font-size: 12px; text-align: center; }
+.work-schedule-kanban-card { display: flex; width: 100%; align-items: flex-start; flex-direction: column; gap: 7px; margin-bottom: 8px; border: 1px solid var(--erp-border-color); border-radius: 4px; background: #fff; padding: 10px; color: #334155; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.work-schedule-kanban-card:hover { border-color: #91afe3; }
+.work-schedule-kanban-card:focus-visible { outline: 2px solid #4f7fe0; }
+.work-schedule-kanban-card strong { max-width: 100%; overflow: hidden; color: #172554; text-overflow: ellipsis; white-space: nowrap; }
+.work-schedule-kanban-card small { color: #64748b; }
 
 .work-schedule-table td > strong {
   display: block;
@@ -900,11 +973,14 @@
 }
 
 @media (max-width: 1100px) {
+  .work-schedule-group-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .work-schedule-group-tabs { min-height: 52px; }
   .work-schedule-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 700px) {
+  .work-schedule-group-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .work-schedule-kanban { grid-template-columns: repeat(4, 240px); }
   .work-schedule-status-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .work-schedule-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .work-schedule-toolbar .work-schedule-search { width: 100%; flex-basis: 100%; }

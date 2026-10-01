@@ -77,7 +77,7 @@ test('dashboard renders the focused overview and limits classification records t
   assert.match(dashboardPageSource, /Hàng đợi xử lý PO/);
   assert.match(dashboardPageSource, /Việc cần xử lý/);
   assert.match(dashboardPageSource, /Chiết khấu phải trả/);
-  assert.match(dashboardPageSource, /mergeWorkScheduleGroups/);
+  assert.match(dashboardPageSource, /DEFAULT_WORK_SCHEDULE_GROUPS/);
   assert.match(dashboardPageSource, /workGroupSummaries\.map/);
   assert.match(dashboardPageSource, /onNavigateWorkGroup\(summary\.group\.id\)/);
 });

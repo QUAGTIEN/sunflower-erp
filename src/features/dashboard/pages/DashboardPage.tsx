@@ -27,10 +27,9 @@ import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateMode
 import type { CustomerInsightModule } from '@/features/crm/model/customerInsightCatalog';
 import {
   WORK_SCHEDULE_PRIORITY_LABELS,
+  DEFAULT_WORK_SCHEDULE_GROUPS,
   inferWorkScheduleGroupId,
-  mergeWorkScheduleGroups,
   normalizeWorkScheduleRecords,
-  type WorkScheduleGroupRecord,
   type WorkScheduleRecord
 } from '@/features/work-schedule/model/workScheduleModels';
 import { CustomerInsightDashboard } from '@/features/dashboard/components/CustomerInsightDashboard';
@@ -244,7 +243,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [newReminderText, setNewReminderText] = useState('');
   const [newReminderDate, setNewReminderDate] = useState('');
   const [workScheduleItems, setWorkScheduleItems] = useState<WorkScheduleRecord[]>([]);
-  const [workScheduleGroups, setWorkScheduleGroups] = useState<WorkScheduleGroupRecord[]>(() => mergeWorkScheduleGroups([]));
+  const workScheduleGroups = DEFAULT_WORK_SCHEDULE_GROUPS;
 
   // Load reminders
   useEffect(() => {
@@ -262,14 +261,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   useEffect(() => {
     const loadWorkSchedule = async () => {
       try {
-        const [items, groups] = await Promise.all([
-          user.role === 'admin'
-            ? dbService.getCollection('work_schedule_items')
-            : dbService.getCollectionByField('work_schedule_items', 'assigneeId', user.uid),
-          dbService.getCollection('work_schedule_groups').catch(() => [])
-        ]);
+        const items = user.role === 'admin'
+          ? await dbService.getCollection('work_schedule_items')
+          : await dbService.getCollectionByField('work_schedule_items', 'assigneeId', user.uid);
         setWorkScheduleItems(normalizeWorkScheduleRecords(items).filter(item => !item.deleted));
-        setWorkScheduleGroups(mergeWorkScheduleGroups(groups));
       } catch (error) {
         console.error('Error loading work schedule overview:', error);
       }
