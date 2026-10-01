@@ -79,9 +79,6 @@ import {
   NOTIFICATION_SCHEMA_VERSION
 } from '@/domain/notificationModels';
 import {
-  LeadSalesWorkspace
-} from '@/features/crm/components/LeadFilterSystem';
-import {
   isLeadSystemProfileField
 } from '@/features/crm/model/leadProfileConfig';
 import { PageBackButton } from '@/components/PageBackButton';
@@ -343,9 +340,8 @@ export const Leads: React.FC<LeadsProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [leadPageSize, setLeadPageSize] = useState(25);
   const [leadCurrentPage, setLeadCurrentPage] = useState(1);
-  const [workspaceTab, setWorkspaceTab] = useState<'overview' | 'list' | 'performance'>('overview');
+  const [workspaceTab, setWorkspaceTab] = useState<'overview' | 'list'>('overview');
   const [leadListPrepared, setLeadListPrepared] = useState(false);
-  const [saleWorkspacePrepared, setSaleWorkspacePrepared] = useState(false);
   const [overviewSelection, setOverviewSelection] = useState<LeadOverviewSelection | null>(null);
   const [overviewDrilldown, setOverviewDrilldown] = useState<{ label: string; ids: string[] } | null>(null);
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
@@ -2017,11 +2013,6 @@ export const Leads: React.FC<LeadsProps> = ({
     setWorkspaceTab('list');
   };
 
-  const openSaleWorkspaceTab = () => {
-    setSaleWorkspacePrepared(true);
-    setWorkspaceTab('performance');
-  };
-
   const overviewCards = useMemo<Array<{ key: LeadOverviewSelection | null; label: string; count: number }>>(() => [
     { key: null, label: 'Tổng KH tiềm năng', count: leadOverview.total },
     { key: 'quoted', label: 'Đã gửi báo giá', count: leadOverview.quoted },
@@ -2476,13 +2467,12 @@ export const Leads: React.FC<LeadsProps> = ({
     <SystemFieldSurface table="leads" className="leads-page">
       <PageContextHeader
         section={t('Tiềm năng')}
-        current={workspaceTab === 'overview' ? 'Tổng quan' : workspaceTab === 'performance' ? t('Khách hàng của Sale') : 'Danh sách KH tiềm năng'}
+        current={workspaceTab === 'overview' ? 'Tổng quan' : 'Danh sách KH tiềm năng'}
       />
 
       <div className="lead-page-navigation lead-candidate-commandbar">
         <div className="lead-workspace-tabs content-tabs content-tabs--compact" role="tablist" aria-label="Không gian quản lý khách hàng tiềm năng">
           <button type="button" role="tab" aria-selected={workspaceTab === 'overview'} className={workspaceTab === 'overview' ? 'is-active' : ''} onClick={() => setWorkspaceTab('overview')}>Tổng quan</button>
-          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={openSaleWorkspaceTab}>Khách hàng của Sale</button>}
           <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={openLeadListTab}>Danh sách KH tiềm năng <span>{accessibleLeads.length}</span></button>
         </div>
         {workspaceTab === 'list' && (
@@ -2513,17 +2503,6 @@ export const Leads: React.FC<LeadsProps> = ({
           onOpenLead={openLeadById}
         />
       </div>
-      {currentUser.role === 'admin' && (saleWorkspacePrepared || workspaceTab === 'performance') ? (
-        <div className="lead-sales-surface" hidden={workspaceTab !== 'performance'}>
-          <LeadSalesWorkspace
-            leads={leads}
-            candidates={candidates}
-            saleUsers={saleUsers}
-            definitions={filterDefinitions}
-            onOpenLead={openLeadById}
-          />
-        </div>
-      ) : null}
       {(leadListPrepared || workspaceTab === 'list') && (
         <div className="lead-data-workspace" hidden={workspaceTab !== 'list'}>
           <DataFilterChipBar chips={leadFilterChips} onClear={clearFilters} />

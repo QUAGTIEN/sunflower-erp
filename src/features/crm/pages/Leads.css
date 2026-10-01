@@ -1478,7 +1478,6 @@
 }
 
 .lead-overview-surface[hidden],
-.lead-sales-surface[hidden],
 .lead-data-workspace[hidden] {
   display: none !important;
 }
