@@ -411,11 +411,6 @@ export const Leads: React.FC<LeadsProps> = ({
     setLeadCurrentPage(1);
   }, [initialInsightFilterId]);
 
-  useEffect(() => {
-    if (leadListPrepared) return undefined;
-    const frame = window.requestAnimationFrame(() => setLeadListPrepared(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, [leadListPrepared]);
   const [scheduleLeadId, setScheduleLeadId] = useState('');
   const [scheduleForm, setScheduleForm] = useState<LeadScheduleFormState>({
     nextFollowUpAt: tomorrowAtNine()
@@ -2474,18 +2469,18 @@ export const Leads: React.FC<LeadsProps> = ({
         )}
       </div>
 
-      {workspaceTab === 'overview' ? (
-        <LeadOverviewDashboard
-          leads={overviewLeads}
-          saleUsers={saleUsers}
-          currentUser={currentUser}
-          definitions={filterDefinitions}
-          metrics={overviewCards}
-          onMetricClick={key => openOverviewList(key as LeadOverviewSelection | null)}
-          onGroupClick={openOverviewDrilldown}
-          onOpenLead={openLeadById}
-        />
-      ) : workspaceTab === 'performance' && currentUser.role === 'admin' ? (
+      <LeadOverviewDashboard
+        hidden={workspaceTab !== 'overview'}
+        leads={overviewLeads}
+        saleUsers={saleUsers}
+        currentUser={currentUser}
+        definitions={filterDefinitions}
+        metrics={overviewCards}
+        onMetricClick={key => openOverviewList(key as LeadOverviewSelection | null)}
+        onGroupClick={openOverviewDrilldown}
+        onOpenLead={openLeadById}
+      />
+      {workspaceTab === 'performance' && currentUser.role === 'admin' ? (
         <LeadSalesWorkspace
           leads={leads}
           candidates={candidates}

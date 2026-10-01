@@ -4,7 +4,12 @@ import {
   signInWithEmailAndPassword,
   type User as FirebaseUser
 } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore';
 
 // Firebase Configuration from environment variables
 const firebaseConfig = {
@@ -32,7 +37,14 @@ export let firebaseAuth: ReturnType<typeof getAuth> | null = null;
 if (isFirebaseConfigured) {
   try {
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    firebaseDatabase = getFirestore(app);
+    try {
+      firebaseDatabase = initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      });
+    } catch {
+      // Reuse an existing Firestore instance during hot reload or duplicate initialization.
+      firebaseDatabase = getFirestore(app);
+    }
     firebaseAuth = getAuth(app);
   } catch (error) {
     console.error("Failed to initialize Firebase", error);

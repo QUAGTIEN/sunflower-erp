@@ -97,51 +97,97 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
       root.classList.toggle('erp-data-table-page', activeFrames.size > 0);
     };
 
+    let forceTableMeasurement = true;
     const prepareTables = () => {
       root.querySelectorAll<HTMLTableElement>('table').forEach((table, tableIndex) => {
+        if (table.offsetParent === null) {
+          table.dataset.erpResizeHidden = 'true';
+          return;
+        }
+        const becameVisible = table.dataset.erpResizeHidden === 'true';
+        delete table.dataset.erpResizeHidden;
         const tableKey = table.dataset.resizeKey || `table-${tableIndex}`;
         const isPrimaryDataTable = Boolean(table.closest('.erp-primary-data-table'));
         const storageVersion = isPrimaryDataTable ? `${TABLE_WIDTH_STORAGE_VERSION}:` : '';
         const storageKey = `sunflower:table-column-widths:${storageVersion}${userId}:${pageId}:${tableKey}`;
-        const widths = readWidths(storageKey);
         const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>('thead th:not(.is-resizable)'));
-        const measuredWidths = headers.map(header => {
+        const hasNewHeaders = headers.some(header => !header.classList.contains('erp-generic-resizable-header'));
+        const needsTableMeasurement = forceTableMeasurement
+          || becameVisible
+          || hasNewHeaders
+          || table.dataset.erpResizePrepared !== 'true';
+        const widths = needsTableMeasurement ? readWidths(storageKey) : {};
+        const measuredWidths = needsTableMeasurement ? headers.map(header => {
           const measuredWidth = Math.round(header.getBoundingClientRect().width);
           return isPrimaryDataTable ? getInitialColumnWidth(header, measuredWidth) : measuredWidth;
-        });
+        }) : [];
         const resolvedWidths = measuredWidths.map((width, columnIndex) => widths[String(columnIndex)] || width);
-        headers.forEach((header, columnIndex) => {
-          header.classList.add('erp-generic-resizable-header');
-          header.dataset.resizeStorageKey = storageKey;
-          header.dataset.resizeColumnIndex = String(columnIndex);
-          if (!header.title) header.title = header.textContent?.trim() || '';
-          const width = resolvedWidths[columnIndex];
-          if (width) header.style.setProperty('--erp-column-resized-width', `${width}px`);
-        });
-        if (isPrimaryDataTable) table.querySelectorAll<HTMLTableCellElement>('tbody td').forEach(cell => {
+        if (needsTableMeasurement) {
+          headers.forEach((header, columnIndex) => {
+            header.classList.add('erp-generic-resizable-header');
+            header.dataset.resizeStorageKey = storageKey;
+            header.dataset.resizeColumnIndex = String(columnIndex);
+            if (!header.title) header.title = header.textContent?.trim() || '';
+            const width = resolvedWidths[columnIndex];
+            if (width) header.style.setProperty('--erp-column-resized-width', `${width}px`);
+          });
+        }
+        if (isPrimaryDataTable) table.querySelectorAll<HTMLTableCellElement>('tbody td:not([data-erp-resize-prepared])').forEach(cell => {
+          cell.dataset.erpResizePrepared = 'true';
           if (cell.title || cell.querySelector('button, input, select, textarea')) return;
           const label = cell.textContent?.replace(/\s+/g, ' ').trim();
           if (label) cell.title = label;
         });
-        const minimumTableWidth = table.parentElement?.clientWidth || 0;
-        const tableWidth = widths.__tableWidth || resolvedWidths.reduce((total, width) => total + width, 0);
-        table.style.setProperty('--erp-table-resized-width', `${Math.max(minimumTableWidth, tableWidth)}px`);
+        if (needsTableMeasurement) {
+          const minimumTableWidth = table.parentElement?.clientWidth || 0;
+          const tableWidth = widths.__tableWidth || resolvedWidths.reduce((total, width) => total + width, 0);
+          table.style.setProperty('--erp-table-resized-width', `${Math.max(minimumTableWidth, tableWidth)}px`);
+          table.dataset.erpResizePrepared = 'true';
+        }
       });
+      forceTableMeasurement = false;
       prepareTableViewports();
     };
 
     prepareTables();
     let animationFrame = 0;
-    const schedulePrepare = () => {
+    let viewportAnimationFrame = 0;
+    const schedulePrepare = (forceMeasurement = false) => {
+      forceTableMeasurement = forceTableMeasurement || forceMeasurement;
       window.cancelAnimationFrame(animationFrame);
       animationFrame = window.requestAnimationFrame(prepareTables);
     };
-    const observer = new MutationObserver(schedulePrepare);
+    const scheduleViewportPrepare = () => {
+      window.cancelAnimationFrame(viewportAnimationFrame);
+      viewportAnimationFrame = window.requestAnimationFrame(prepareTableViewports);
+    };
+    const containsTableContent = (node: Node) => node instanceof Element && (
+      node.matches('table, thead, tbody, tr, th, td, .table-container, .customer-data-table-wrap, .crm-customer-table-wrap')
+      || Boolean(node.querySelector('table, th, td'))
+    );
+    const observer = new MutationObserver(records => {
+      const tableChanged = records.some(record => (
+        (record.target instanceof Element && Boolean(record.target.closest('table')))
+        || Array.from(record.addedNodes).some(containsTableContent)
+        || Array.from(record.removedNodes).some(containsTableContent)
+      ));
+      if (tableChanged) schedulePrepare(false);
+    });
     observer.observe(root, { childList: true, subtree: true });
-    const resizeObserver = new ResizeObserver(schedulePrepare);
+    let lastRootWidth = root.clientWidth;
+    const resizeObserver = new ResizeObserver(() => {
+      const currentRootWidth = root.clientWidth;
+      if (currentRootWidth !== lastRootWidth) {
+        lastRootWidth = currentRootWidth;
+        schedulePrepare(true);
+        return;
+      }
+      scheduleViewportPrepare();
+    });
     resizeObserver.observe(root);
-    root.addEventListener('scroll', schedulePrepare, { passive: true });
-    window.addEventListener('resize', schedulePrepare);
+    root.addEventListener('scroll', scheduleViewportPrepare, { passive: true });
+    const handleWindowResize = () => schedulePrepare(true);
+    window.addEventListener('resize', handleWindowResize);
 
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
@@ -187,11 +233,12 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
     root.addEventListener('pointerdown', onPointerDown);
     return () => {
       window.cancelAnimationFrame(animationFrame);
+      window.cancelAnimationFrame(viewportAnimationFrame);
       observer.disconnect();
       resizeObserver.disconnect();
       root.classList.remove('erp-data-table-page');
-      root.removeEventListener('scroll', schedulePrepare);
-      window.removeEventListener('resize', schedulePrepare);
+      root.removeEventListener('scroll', scheduleViewportPrepare);
+      window.removeEventListener('resize', handleWindowResize);
       root.removeEventListener('pointerdown', onPointerDown);
     };
   }, [pageId, userId]);

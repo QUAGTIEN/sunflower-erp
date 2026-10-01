@@ -89,7 +89,23 @@ export const useAdaptiveTableText = (pageId: string, userId: string) => {
       frame = window.requestAnimationFrame(updateText);
     };
     scheduleUpdate();
-    const mutationObserver = new MutationObserver(scheduleUpdate);
+    const containsTableContent = (node: Node) => node instanceof Element && (
+      node.matches('table, thead, tbody, tr, th, td')
+      || Boolean(node.querySelector('table, th, td'))
+    );
+    const mutationObserver = new MutationObserver(records => {
+      const tableChanged = records.some(record => {
+        const targetElement = record.target instanceof Element
+          ? record.target
+          : record.target.parentElement;
+        return (
+          Boolean(targetElement?.closest('table'))
+          || Array.from(record.addedNodes).some(containsTableContent)
+          || Array.from(record.removedNodes).some(containsTableContent)
+        );
+      });
+      if (tableChanged) scheduleUpdate();
+    });
     mutationObserver.observe(root, { childList: true, subtree: true, characterData: true });
     const resizeObserver = new ResizeObserver(scheduleUpdate);
     resizeObserver.observe(root);

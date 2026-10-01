@@ -137,7 +137,6 @@ export const auditService = {
       targetLabel: pageLabel,
       pageId
     });
-    this.updatePresenceSafely(actor, 'online', pageId);
   },
 
   async getUserEvents(userId: string): Promise<AuditEvent[]> {

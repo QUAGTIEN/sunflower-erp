@@ -681,11 +681,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     setAdminListPrepared(true);
     setAdminRawView('list');
   }, []);
-  useEffect(() => {
-    if (currentUser.role !== 'admin' || adminListPrepared) return undefined;
-    const frame = window.requestAnimationFrame(() => setAdminListPrepared(true));
-    return () => window.cancelAnimationFrame(frame);
-  }, [adminListPrepared, currentUser.role]);
 
   useEffect(() => {
     if (workspaceView !== 'management' || currentUser.role !== 'admin') return undefined;
@@ -2172,18 +2167,27 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   }
 
   const rawOverviewMode = adminRawView === 'priority' ? 'priority' : 'overview';
+  const rawPageContext = adminRawView === 'list'
+    ? (workspaceView === 'tasks' ? 'Công việc cần xử lý' : 'Tất cả dữ liệu')
+    : adminRawView === 'priority'
+      ? 'Bảng ưu tiên'
+      : adminRawView === 'scoring'
+        ? 'Thiết lập điểm tự động'
+        : 'Tổng quan';
 
   return <>
-    {adminRawView !== 'list' && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace">
-      <PageContextHeader section="Dữ liệu thô" current={adminRawView === 'priority' ? 'Bảng ưu tiên' : adminRawView === 'scoring' ? 'Thiết lập điểm tự động' : 'Tổng quan'} />
+    <PageContextHeader section="Dữ liệu thô" current={rawPageContext} />
+    <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={adminRawView === 'list'}>
       {adminRawView === 'overview' && <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Dữ liệu thô">
         <button type="button" role="tab" aria-selected={true} className="is-active" onClick={showRawOverview}>Tổng quan</button>
         <button type="button" role="tab" aria-selected={false} onClick={showRawList}>Tất cả dữ liệu <strong>{accessibleCandidates.length}</strong></button>
       </nav>}
-      {adminRawView === 'scoring' ? <RawDataScoringPage
+      {adminRawView === 'scoring' && <RawDataScoringPage
         currentUser={currentUser}
         onBack={showRawOverview}
-      /> : <RawDataOverview
+      />}
+      <RawDataOverview
+        hidden={adminRawView === 'scoring'}
         mode={rawOverviewMode}
         candidates={overviewCandidates}
         saleUsers={overviewSaleUsers}
@@ -2192,11 +2196,10 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
         onScoring={showRawScoring}
         onOverview={showRawOverview}
         onOpenCandidate={openRawCandidate}
-      />}
-    </SystemFieldSurface>}
+      />
+    </SystemFieldSurface>
 
     {(adminListPrepared || adminRawView === 'list') && <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={adminRawView !== 'list'}>
-      <PageContextHeader section="Dữ liệu thô" current={workspaceView === 'tasks' ? 'Công việc cần xử lý' : 'Tất cả dữ liệu'} />
       <div className="lead-candidate-commandbar">
         <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Không gian làm việc Sale">
           <button type="button" role="tab" aria-selected={false} onClick={showRawOverview}>Tổng quan</button>

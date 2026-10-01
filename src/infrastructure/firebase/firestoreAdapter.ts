@@ -15,6 +15,7 @@ import {
   type QueryConstraint
 } from 'firebase/firestore';
 import {
+  firebaseAuth,
   getFirebaseDatabase,
   isFirebaseRuntimeEnabled,
   reportFirebaseFailure
@@ -48,6 +49,30 @@ interface CollectionSubscriptionOptions {
   orderDirection?: 'asc' | 'desc';
   maxResults?: number;
 }
+
+interface CachedSubscriptionSnapshot {
+  userId: string;
+  data: any[];
+}
+
+const subscriptionSnapshotCache = new Map<string, CachedSubscriptionSnapshot>();
+
+const serializeSubscriptionValue = (value: unknown): string => {
+  try {
+    return JSON.stringify(value) ?? '';
+  } catch {
+    return String(value ?? '');
+  }
+};
+
+const getSubscriptionCacheKey = (colName: string, options?: CollectionSubscriptionOptions): string => [
+  colName,
+  options?.fieldName || '',
+  serializeSubscriptionValue(options?.fieldValue),
+  options?.orderByField || '',
+  options?.orderDirection || '',
+  options?.maxResults || ''
+].join('|');
 
 export const isDocumentAlreadyExistsError = (error: unknown): boolean => (
   typeof error === 'object'
@@ -249,7 +274,14 @@ export const dbService = {
 
   subscribeCollection(colName: string, callback: (data: any[]) => void, options?: CollectionSubscriptionOptions): () => void {
     if (isFirebaseRuntimeEnabled) {
-      if (!options) callback([]);
+      const cacheKey = getSubscriptionCacheKey(colName, options);
+      const currentUserId = firebaseAuth?.currentUser?.uid || '';
+      const cachedSnapshot = subscriptionSnapshotCache.get(cacheKey);
+      let deliveredCachedSnapshot = false;
+      if (currentUserId && cachedSnapshot?.userId === currentUserId) {
+        deliveredCachedSnapshot = true;
+        callback(cachedSnapshot.data);
+      }
 
       let active = true;
       let unsubscribeRemote: (() => void) | null = null;
@@ -276,16 +308,26 @@ export const dbService = {
           unsubscribeRemote = onSnapshot(collectionQuery, (snapshot) => {
             if (!active) return;
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            callback(normalizeCollectionRecords(colName, data));
+            const normalizedData = normalizeCollectionRecords(colName, data);
+            const snapshotUserId = firebaseAuth?.currentUser?.uid || '';
+            if (snapshotUserId) {
+              subscriptionSnapshotCache.set(cacheKey, {
+                userId: snapshotUserId,
+                data: normalizedData
+              });
+            }
+            callback(normalizedData);
           }, (error) => {
             if (!active) return;
             reportFirebaseFailure(`subscribing to ${colName}`, error);
-            if (options?.onError) options.onError(error); else callback([]);
+            if (options?.onError) options.onError(error);
+            else if (!deliveredCachedSnapshot) callback([]);
           });
         } catch (error) {
           if (!active) return;
           reportFirebaseFailure(`subscribing to ${colName}`, error);
-          if (options?.onError) options.onError(error); else callback([]);
+          if (options?.onError) options.onError(error);
+          else if (!deliveredCachedSnapshot) callback([]);
         }
       })();
 

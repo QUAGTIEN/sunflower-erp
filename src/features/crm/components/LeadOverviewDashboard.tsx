@@ -100,6 +100,7 @@ const getProvinceStatus = (lead: LeadRecord, definitions: LeadFilterDefinition[]
 };
 
 interface Props {
+  hidden?: boolean;
   leads: LeadRecord[];
   saleUsers: UserProfile[];
   currentUser: UserProfile;
@@ -111,7 +112,7 @@ interface Props {
 }
 
 export function LeadOverviewDashboard({
-  leads, saleUsers, currentUser, definitions, metrics, onMetricClick, onGroupClick, onOpenLead
+  hidden = false, leads, saleUsers, currentUser, definitions, metrics, onMetricClick, onGroupClick, onOpenLead
 }: Props) {
   const [selectedProvinceStatus, setSelectedProvinceStatus] = useState<ProvinceStatus>('total');
   const { opportunities, saleRows, provinces } = useMemo(() => {
@@ -227,7 +228,7 @@ export function LeadOverviewDashboard({
   const provinceMax = Math.max(1, ...provinceColumns.flatMap(province => province.series.map(series => series.leads.length)));
 
   return (
-    <section className="lead-insights" aria-label="Tổng quan khách hàng tiềm năng">
+    <section className="lead-insights" aria-label="Tổng quan khách hàng tiềm năng" hidden={hidden}>
       <section className="lead-insights__panel lead-insights__panel--general" aria-label="Chỉ số tổng quan khách hàng tiềm năng">
         <div className="lead-insights__metrics">
           {metricRows.map(metric => {

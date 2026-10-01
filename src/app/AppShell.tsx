@@ -1,23 +1,10 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useCallback, useState, useEffect, useRef } from 'react';
 import { authService, dbService, isFirebaseRuntimeEnabled, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
 import { Dashboard } from '@/features/dashboard';
-import { SalesManagementPage } from '@/features/sales-management';
-import { Crm, CustomerData, Leads } from '@/features/crm';
-import { Sales } from '@/features/sales';
-import { Design, DesignLibrary } from '@/features/design';
-import { Purchase, Suppliers } from '@/features/procurement';
-import { Inventory } from '@/features/inventory';
-import { Production } from '@/features/production';
-import { Delivery } from '@/features/delivery';
-import { Accounting } from '@/features/accounting';
-import { RecycleBin, UserManagement } from '@/features/administration';
-import { ChatPage } from '@/features/chat';
 import { useLanguage } from '@/context/LanguageContext';
 import { PageContextProvider } from '@/context/PageContext';
 import type { AppPageContext } from '@/context/PageContextState';
-import { CommercialMap } from '@/features/commercial-map';
-import { WorkSchedule } from '@/features/work-schedule';
 import {
   APP_LOGO_PATH,
   AUDIT_PAGE_LABELS,
@@ -68,6 +55,60 @@ import {
   CalendarDays
 } from 'lucide-react';
 
+const loadSalesManagementModule = () => import('@/features/sales-management');
+const loadCrmModule = () => import('@/features/crm');
+const loadSalesModule = () => import('@/features/sales');
+const loadDesignModule = () => import('@/features/design');
+const loadProcurementModule = () => import('@/features/procurement');
+const loadInventoryModule = () => import('@/features/inventory');
+const loadProductionModule = () => import('@/features/production');
+const loadDeliveryModule = () => import('@/features/delivery');
+const loadAccountingModule = () => import('@/features/accounting');
+const loadAdministrationModule = () => import('@/features/administration');
+const loadChatModule = () => import('@/features/chat');
+const loadCommercialMapModule = () => import('@/features/commercial-map');
+const loadWorkScheduleModule = () => import('@/features/work-schedule');
+
+const SalesManagementPage = lazy(() => loadSalesManagementModule().then(module => ({ default: module.SalesManagementPage })));
+const Crm = lazy(() => loadCrmModule().then(module => ({ default: module.Crm })));
+const CustomerData = lazy(() => loadCrmModule().then(module => ({ default: module.CustomerData })));
+const Leads = lazy(() => loadCrmModule().then(module => ({ default: module.Leads })));
+const Sales = lazy(() => loadSalesModule().then(module => ({ default: module.Sales })));
+const Design = lazy(() => loadDesignModule().then(module => ({ default: module.Design })));
+const DesignLibrary = lazy(() => loadDesignModule().then(module => ({ default: module.DesignLibrary })));
+const Purchase = lazy(() => loadProcurementModule().then(module => ({ default: module.Purchase })));
+const Suppliers = lazy(() => loadProcurementModule().then(module => ({ default: module.Suppliers })));
+const Inventory = lazy(() => loadInventoryModule().then(module => ({ default: module.Inventory })));
+const Production = lazy(() => loadProductionModule().then(module => ({ default: module.Production })));
+const Delivery = lazy(() => loadDeliveryModule().then(module => ({ default: module.Delivery })));
+const Accounting = lazy(() => loadAccountingModule().then(module => ({ default: module.Accounting })));
+const RecycleBin = lazy(() => loadAdministrationModule().then(module => ({ default: module.RecycleBin })));
+const UserManagement = lazy(() => loadAdministrationModule().then(module => ({ default: module.UserManagement })));
+const ChatPage = lazy(() => loadChatModule().then(module => ({ default: module.ChatPage })));
+const CommercialMap = lazy(() => loadCommercialMapModule().then(module => ({ default: module.CommercialMap })));
+const WorkSchedule = lazy(() => loadWorkScheduleModule().then(module => ({ default: module.WorkSchedule })));
+
+const PAGE_MODULE_PRELOADERS: Record<string, () => Promise<unknown>> = {
+  chat: loadChatModule,
+  work_schedule: loadWorkScheduleModule,
+  commercial_map: loadCommercialMapModule,
+  customer_data: loadCrmModule,
+  leads: loadCrmModule,
+  crm: loadCrmModule,
+  sales: loadSalesModule,
+  sales_management: loadSalesManagementModule,
+  design: loadDesignModule,
+  design_library: loadDesignModule,
+  purchase: loadProcurementModule,
+  suppliers: loadProcurementModule,
+  inventory: loadInventoryModule,
+  production: loadProductionModule,
+  delivery: loadDeliveryModule,
+  accounting: loadAccountingModule,
+  recycle_bin: loadAdministrationModule,
+  users: loadAdministrationModule
+};
+
 const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   dashboard: { section: 'Tổng quan' },
   chat: { section: 'Kênh chat' },
@@ -107,7 +148,16 @@ function AppShell() {
   }, []);
 
   const handlePageContextChange = useCallback((context: AppPageContext) => {
-    setReportedPageContext({ ...context, pageId: activePage });
+    setReportedPageContext(previous => {
+      if (
+        previous?.pageId === activePage
+        && previous.section === context.section
+        && previous.current === context.current
+      ) {
+        return previous;
+      }
+      return { ...context, pageId: activePage };
+    });
   }, [activePage]);
 
   const pageContext = reportedPageContext?.pageId === activePage
@@ -141,6 +191,54 @@ function AppShell() {
   const provinceSynchronizationStartedRef = useRef(false);
   const businessSubscriptionsRef = useRef<Map<string, () => void>>(new Map());
   const businessSubscriptionUserIdRef = useRef('');
+  const activePageRef = useRef(activePage);
+
+  useEffect(() => {
+    activePageRef.current = activePage;
+  }, [activePage]);
+
+  const preloadPageModule = useCallback((pageId: string) => {
+    const preload = PAGE_MODULE_PRELOADERS[pageId];
+    if (preload) void preload().catch(() => undefined);
+  }, []);
+
+  const handleSidebarPreload = useCallback((event: React.SyntheticEvent<HTMLElement>) => {
+    const eventTarget = event.target;
+    if (!(eventTarget instanceof Element)) return;
+    const pageId = eventTarget.closest<HTMLButtonElement>('button[data-page-id]')?.dataset.pageId;
+    if (pageId) preloadPageModule(pageId);
+  }, [preloadPageModule]);
+
+  useEffect(() => {
+    if (!user) return;
+    const allowedPages = user.allowedPages || getDefaultPagesForRole(user.role);
+    const preferredOrder = [
+      'customer_data', 'leads', 'crm', 'sales', 'work_schedule', 'chat',
+      'commercial_map', 'sales_management', 'design', 'purchase', 'suppliers',
+      'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'
+    ];
+    const preloaders = Array.from(new Set(
+      preferredOrder
+        .filter(pageId => allowedPages.includes(pageId))
+        .map(pageId => PAGE_MODULE_PRELOADERS[pageId])
+        .filter((preload): preload is () => Promise<unknown> => Boolean(preload))
+    ));
+    let cancelled = false;
+    let preloadIndex = 0;
+    let preloadTimer = 0;
+    const preloadNext = () => {
+      if (cancelled || preloadIndex >= preloaders.length) return;
+      const preload = preloaders[preloadIndex++];
+      void preload().catch(() => undefined).finally(() => {
+        if (!cancelled) preloadTimer = window.setTimeout(preloadNext, 250);
+      });
+    };
+    preloadTimer = window.setTimeout(preloadNext, 1_200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(preloadTimer);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (user?.role !== 'admin' || provinceSynchronizationStartedRef.current) return;
@@ -230,17 +328,26 @@ function AppShell() {
 
   useEffect(() => {
     if (!user) return;
-    const heartbeat = window.setInterval(() => {
+    const pagePresenceTimer = window.setTimeout(() => {
       auditService.updatePresenceSafely(user, 'online', activePage);
+    }, 750);
+    return () => window.clearTimeout(pagePresenceTimer);
+  }, [activePage, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    auditService.updatePresenceSafely(user, 'online', activePageRef.current);
+    const heartbeat = window.setInterval(() => {
+      auditService.updatePresenceSafely(user, 'online', activePageRef.current);
     }, 90_000);
-    const markOffline = () => auditService.updatePresenceSafely(user, 'offline', activePage);
+    const markOffline = () => auditService.updatePresenceSafely(user, 'offline', activePageRef.current);
     window.addEventListener('beforeunload', markOffline);
     return () => {
       window.clearInterval(heartbeat);
       window.removeEventListener('beforeunload', markOffline);
-      auditService.updatePresenceSafely(user, 'offline', activePage);
+      auditService.updatePresenceSafely(user, 'offline', activePageRef.current);
     };
-  }, [activePage, user]);
+  }, [user]);
 
   // Keep only session-wide data live for the whole authenticated session.
   useEffect(() => {
@@ -904,9 +1011,10 @@ function AppShell() {
 
       {/* APP SIDEBAR NAVIGATION (Strictly Text Links, No Icons) */}
       <aside className={`app-sidebar ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-        <nav className="sidebar-menu">
+        <nav className="sidebar-menu" onPointerOver={handleSidebarPreload} onFocusCapture={handleSidebarPreload}>
           {isPageAllowed('dashboard') && (
             <button
+              data-page-id="dashboard"
               className={`sidebar-item ${activePage === 'dashboard' ? 'active' : ''}`}
               onClick={() => { setActivePage('dashboard'); setIsSidebarOpen(false); }}
               title={t('Tổng Quan Dashboards')}
@@ -920,6 +1028,7 @@ function AppShell() {
 
           {isPageAllowed('chat') && (
             <button
+              data-page-id="chat"
               className={`sidebar-item ${activePage === 'chat' ? 'active' : ''}`}
               onClick={() => { setActivePage('chat'); setIsSidebarOpen(false); }}
               title={t('Kênh Thảo Luận')}
@@ -934,6 +1043,7 @@ function AppShell() {
 
           {isPageAllowed('work_schedule') && (
             <button
+              data-page-id="work_schedule"
               className={`sidebar-item ${activePage === 'work_schedule' ? 'active' : ''}`}
               onClick={() => { setActivePage('work_schedule'); setIsSidebarOpen(false); }}
               title={t('Lịch làm việc')}
@@ -947,6 +1057,7 @@ function AppShell() {
 
           {isPageAllowed('sales_management') && (
             <button
+              data-page-id="sales_management"
               className={`sidebar-item ${activePage === 'sales_management' ? 'active' : ''}`}
               onClick={() => { setActivePage('sales_management'); setIsSidebarOpen(false); }}
               title={t('Quản lý Sale')}
@@ -960,6 +1071,7 @@ function AppShell() {
 
           {isPageAllowed('commercial_map') && (
             <button
+              data-page-id="commercial_map"
               className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
               onClick={() => { setActivePage('commercial_map'); setIsSidebarOpen(false); }}
               title={t('Thương mại')}
@@ -973,6 +1085,7 @@ function AppShell() {
 
           {isPageAllowed('customer_data') && (
             <button
+              data-page-id="customer_data"
               className={`sidebar-item ${activePage === 'customer_data' ? 'active' : ''}`}
               onClick={() => { setActivePage('customer_data'); setIsSidebarOpen(false); }}
               title={t('Dữ liệu thô')}
@@ -986,6 +1099,7 @@ function AppShell() {
 
           {isPageAllowed('leads') && (
             <button
+              data-page-id="leads"
               className={`sidebar-item ${activePage === 'leads' ? 'active' : ''}`}
               onClick={() => { setActivePage('leads'); setIsSidebarOpen(false); }}
               title={t('Khách Hàng Tiềm Năng (Lead)')}
@@ -999,6 +1113,7 @@ function AppShell() {
 
           {isPageAllowed('crm') && (
             <button
+              data-page-id="crm"
               className={`sidebar-item ${activePage === 'crm' ? 'active' : ''}`}
               onClick={() => { setActivePage('crm'); setIsSidebarOpen(false); }}
               title={t('Khách Hàng Hợp Tác')}
@@ -1012,6 +1127,7 @@ function AppShell() {
 
           {isPageAllowed('sales') && (
             <button
+              data-page-id="sales"
               className={`sidebar-item ${activePage === 'sales' ? 'active' : ''}`}
               onClick={() => { setActivePage('sales'); setIsSidebarOpen(false); }}
               title={t('Tạo đơn hàng')}
@@ -1026,6 +1142,7 @@ function AppShell() {
           {isPageAllowed('design') && (
             <>
               <button
+                data-page-id="design"
                 className={`sidebar-item ${activePage === 'design' ? 'active' : ''}`}
                 onClick={() => { setActivePage('design'); setIsSidebarOpen(false); }}
                 title={t('Yêu Cầu Thiết Kế')}
@@ -1036,6 +1153,7 @@ function AppShell() {
                 </div>
               </button>
               <button
+                data-page-id="design_library"
                 className={`sidebar-item ${activePage === 'design_library' ? 'active' : ''}`}
                 onClick={() => { setActivePage('design_library'); setIsSidebarOpen(false); }}
                 title={t('Kho Thiết Kế & Layout')}
@@ -1050,6 +1168,7 @@ function AppShell() {
 
           {isPageAllowed('purchase') && (
             <button
+              data-page-id="purchase"
               className={`sidebar-item ${activePage === 'purchase' ? 'active' : ''}`}
               onClick={() => { setActivePage('purchase'); setIsSidebarOpen(false); }}
               title={t('Mua Hàng')}
@@ -1063,6 +1182,7 @@ function AppShell() {
 
           {isPageAllowed('suppliers') && (
             <button
+              data-page-id="suppliers"
               className={`sidebar-item ${activePage === 'suppliers' ? 'active' : ''}`}
               onClick={() => { setActivePage('suppliers'); setIsSidebarOpen(false); }}
               title={t('Danh Sách Nhà Cung Cấp')}
@@ -1076,6 +1196,7 @@ function AppShell() {
 
           {isPageAllowed('inventory') && (
             <button
+              data-page-id="inventory"
               className={`sidebar-item ${activePage === 'inventory' ? 'active' : ''}`}
               onClick={() => { setActivePage('inventory'); setIsSidebarOpen(false); }}
               title={t('Kho Nguyên Vật Tư')}
@@ -1089,6 +1210,7 @@ function AppShell() {
 
           {isPageAllowed('production') && (
             <button
+              data-page-id="production"
               className={`sidebar-item ${activePage === 'production' ? 'active' : ''}`}
               onClick={() => { setActivePage('production'); setIsSidebarOpen(false); }}
               title={t('Lệnh Sản Xuất (LSX)')}
@@ -1102,6 +1224,7 @@ function AppShell() {
 
           {isPageAllowed('delivery') && (
             <button
+              data-page-id="delivery"
               className={`sidebar-item ${activePage === 'delivery' ? 'active' : ''}`}
               onClick={() => { setActivePage('delivery'); setIsSidebarOpen(false); }}
               title={t('Kế Hoạch Giao Hàng')}
@@ -1115,6 +1238,7 @@ function AppShell() {
 
           {isPageAllowed('accounting') && (
             <button
+              data-page-id="accounting"
               className={`sidebar-item ${activePage === 'accounting' ? 'active' : ''}`}
               onClick={() => { setActivePage('accounting'); setIsSidebarOpen(false); }}
               title={t('Kế Toán & Lãi Gộp')}
@@ -1128,6 +1252,7 @@ function AppShell() {
 
           {isPageAllowed('recycle_bin') && (
             <button
+              data-page-id="recycle_bin"
               className={`sidebar-item ${activePage === 'recycle_bin' ? 'active' : ''}`}
               onClick={() => { setActivePage('recycle_bin'); setIsSidebarOpen(false); }}
               title={t('Thùng Rác')}
@@ -1141,6 +1266,7 @@ function AppShell() {
 
           {isPageAllowed('users') && (
             <button
+              data-page-id="users"
               className={`sidebar-item ${activePage === 'users' ? 'active' : ''}`}
               onClick={() => { setActivePage('users'); setIsSidebarOpen(false); }}
               title={t('Quản Lý Tài Khoản')}
@@ -1322,7 +1448,9 @@ function AppShell() {
 
       {/* APP MAIN CONTENT PORTAL */}
       <main className="app-main">
-        {renderPageContent()}
+        <Suspense fallback={<div className="card" role="status">Đang tải phân hệ...</div>}>
+          {renderPageContent()}
+        </Suspense>
       </main>
     </div>
     </PageContextProvider>

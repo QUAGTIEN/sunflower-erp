@@ -41,6 +41,7 @@ import {
 import './RawDataOverview.css';
 
 type Props = {
+  hidden?: boolean;
   mode: 'overview' | 'priority';
   candidates: LeadCandidateRecord[];
   saleUsers: UserProfile[];
@@ -93,7 +94,7 @@ const normalizeRules = (value: unknown): RawPriorityRules => {
   };
 };
 
-export const RawDataOverview = memo(function RawDataOverview({ mode, candidates, saleUsers, canConfigureScoring, onPriority, onScoring, onOverview, onOpenCandidate }: Props) {
+export const RawDataOverview = memo(function RawDataOverview({ hidden = false, mode, candidates, saleUsers, canConfigureScoring, onPriority, onScoring, onOverview, onOpenCandidate }: Props) {
   const [calls, setCalls] = useState<PhoneCallRecord[]>([]);
   const [callsLoading, setCallsLoading] = useState(true);
   const [callsError, setCallsError] = useState(false);
@@ -204,7 +205,7 @@ export const RawDataOverview = memo(function RawDataOverview({ mode, candidates,
   const safePage = Math.min(page, totalPages);
   const visible = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
   const resetFilters = () => { setSearch(''); setSale('all'); setSource('all'); setSector('all'); setPage(1); };
-  return <div className="raw-overview">
+  return <div className="raw-overview" hidden={hidden}>
     {mode === 'priority' && <div className="raw-overview__actions"><button type="button" className="btn btn-outline" onClick={onOverview}>Quay lại Tổng quan</button></div>}
     {callsError && <p className="raw-overview__notice" role="alert">Chưa tải được lịch sử cuộc gọi; số đã gọi và vùng ưu tiên có thể chưa đầy đủ. Vui lòng tải lại trang.</p>}
     {mode === 'overview' ? <>
