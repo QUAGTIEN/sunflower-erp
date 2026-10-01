@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, CheckCircle2, ClipboardList, Plus, Search, X } from 'lucide-react';
+import { AlertCircle, Building2, CheckCircle2, ClipboardList, Plus, Search, Settings2, UserRound, UsersRound, X } from 'lucide-react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataFilterButton, DataFilterPanel } from '@/components/DataWorkspaceFilters';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -61,13 +61,13 @@ interface ScheduleFormState {
 type RequiredTaskField = 'groupId' | 'title' | 'assigneeId' | 'dueAt' | 'description';
 
 const PAGE_SIZE = 10;
-const GROUP_DESCRIPTIONS: Record<string, string> = {
-  boss_to_staff: 'Công việc từ cấp quản lý',
-  staff_to_company: 'Yêu cầu gửi về công ty',
-  staff_to_staff: 'Công việc giữa đồng nghiệp',
-  self: 'Công việc cá nhân',
-  automatic: 'Dành cho quy trình tự động'
-};
+const GROUP_ICONS = {
+  boss_to_staff: UsersRound,
+  staff_to_company: Building2,
+  staff_to_staff: UsersRound,
+  self: UserRound,
+  automatic: Settings2
+} as const;
 const ACTIVE_STATUSES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused'];
 const PAGE_REFERENCE_TIME = Date.now();
 const EDITABLE_STATUSES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'completed', 'cannot_process'];
@@ -107,7 +107,6 @@ const isInPeriod = (item: WorkScheduleRecord, period: PeriodFilter, referenceTim
   return due.getTime() >= referenceTime && due.getTime() <= referenceTime + 30 * 86_400_000;
 };
 const isErrorMessage = (value: string) => /^(Không thể|Vui lòng|Chưa có)|\bcòn \d+ công việc/.test(value);
-const csvCell = (value: string | number) => `"${String(value).replace(/^[=+@-]/, "'$&").replace(/"/g, '""')}"`;
 
 export const WorkSchedule: React.FC<WorkScheduleProps> = ({
   currentUser,
@@ -246,21 +245,6 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     setDateFrom('');
     setDateTo('');
     setPage(1);
-  };
-  const exportTasks = () => {
-    const headings = ['Công việc', 'Nhóm công việc', 'Loại công việc', 'Người giao', 'Người nhận', 'Khách hàng / Phòng ban', 'Hạn xử lý', 'Ưu tiên', 'Trạng thái', 'Tiến độ'];
-    const rows = filteredItems.map(item => [
-      item.title, groups.find(group => group.id === inferWorkScheduleGroupId(item))?.name || '', WORK_SCHEDULE_WORK_TYPE_LABELS[item.workType],
-      item.assignedByName || 'Hệ thống', item.assigneeName, item.referenceLabel || item.department, dateTimeLabel(item.endAt),
-      WORK_SCHEDULE_PRIORITY_LABELS[item.priority], WORK_SCHEDULE_DISPLAY_STATUS_LABELS[getWorkScheduleDisplayStatus(item.status)], `${item.progress}%`
-    ]);
-    const csv = [headings, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `cong-viec-${toDateKey(new Date())}.csv`;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
   const openCreate = () => {
     if (!creatableGroups.length) return;
@@ -472,7 +456,6 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
   };
   return <div className="work-schedule-page">
     <PageContextHeader section="Công việc" current={activeTab === 'week' ? 'Lịch tuần' : 'Danh sách'} />
-    <header className="work-schedule-heading"><h1>Công việc</h1><p>Theo dõi, phân loại và điều phối công việc</p></header>
 
     <div className="work-schedule-tabs" role="tablist">
       <div className="work-schedule-tab-list">
@@ -485,18 +468,17 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
 
     {activeTab === 'tasks' ? <>
       <nav className="work-schedule-group-cards" aria-label="Nhóm công việc">
-        {groups.map(group => <button key={group.id} type="button" aria-pressed={effectiveGroupId === group.id} className={`work-schedule-group-card work-schedule-group-card--${group.id} ${effectiveGroupId === group.id ? 'is-active' : ''}`} onClick={() => { setSelectedGroupId(group.id); setPage(1); }}><span><b>{group.name}</b><small>{GROUP_DESCRIPTIONS[group.id]}</small></span><strong>{groupCounts[group.id] || 0}</strong></button>)}
+        {groups.map(group => { const GroupIcon = GROUP_ICONS[group.id as keyof typeof GROUP_ICONS]; return <button key={group.id} type="button" aria-pressed={effectiveGroupId === group.id} className={`work-schedule-group-card work-schedule-group-card--${group.id} ${effectiveGroupId === group.id ? 'is-active' : ''}`} onClick={() => { setSelectedGroupId(group.id); setPage(1); }}><span className="work-schedule-group-card__icon" aria-hidden="true">{GroupIcon && <GroupIcon size={18} />}</span><span className="work-schedule-group-card__name" title={group.name}>{group.name}</span><strong className="work-schedule-group-card__count" aria-label={`${groupCounts[group.id] || 0} công việc`}>{groupCounts[group.id] || 0}</strong></button>; })}
       </nav>
       <section className="work-schedule-card work-schedule-group-content">
           <div className="work-schedule-toolbar">
-            <label className="work-schedule-search"><Search size={15}/><input aria-label="Tìm công việc" placeholder="Tìm công việc, khách hàng..." value={searchTerm} onChange={event => setFilterAndFirstPage(setSearchTerm, event.target.value)}/></label>
+            <label className="work-schedule-search"><Search size={17} aria-hidden="true"/><input aria-label="Tìm công việc, khách hàng, người nhận" placeholder="Tìm công việc, khách hàng, người nhận..." value={searchTerm} onChange={event => setFilterAndFirstPage(setSearchTerm, event.target.value)}/></label>
             {isAdmin && <select className="work-schedule-assignee-select" aria-label="Nhân sự" value={assigneeFilter} onChange={event => setFilterAndFirstPage(setAssigneeFilter, event.target.value)}><option value="all">Nhân sự: Tất cả</option>{activeUsers.map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select>}
             <select className="work-schedule-assignee-select" aria-label="Trạng thái" value={statusFilter} onChange={event => setFilterAndFirstPage(setStatusFilter, event.target.value as 'all' | WorkScheduleDisplayStatus)}><option value="all">Tất cả trạng thái</option>{(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => <option key={status} value={status}>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</option>)}</select>
             <select className="work-schedule-assignee-select" aria-label="Thời gian" value={periodFilter} onChange={event => setFilterAndFirstPage(setPeriodFilter, event.target.value as PeriodFilter)}><option value="all">Tất cả thời gian</option><option value="this_month">Tháng này</option><option value="next_30_days">30 ngày tới</option><option value="range">Khoảng ngày</option></select>
             {periodFilter === 'range' && <span className="work-schedule-date-range"><input aria-label="Từ ngày" type="date" value={dateFrom} max={dateTo || undefined} onChange={event => { setDateFrom(event.target.value); setPage(1); }} /><span>–</span><input aria-label="Đến ngày" type="date" value={dateTo} min={dateFrom || undefined} onChange={event => { setDateTo(event.target.value); setPage(1); }} /></span>}
             <DataFilterButton activeCount={activeFilterCount} open={showFilters} onClick={() => setShowFilters(true)} />
             <div className="work-schedule-view-switch" role="group" aria-label="Kiểu hiển thị"><button type="button" aria-pressed={viewMode === 'list'} className={viewMode === 'list' ? 'is-active' : ''} onClick={() => setViewMode('list')}>Danh sách</button><button type="button" aria-pressed={viewMode === 'kanban'} className={viewMode === 'kanban' ? 'is-active' : ''} onClick={() => setViewMode('kanban')}>Kanban</button></div>
-            <button type="button" className="btn btn-outline" onClick={exportTasks} disabled={!filteredItems.length}>Xuất</button>
             <button type="button" className="btn btn-primary work-schedule-create" onClick={openCreate} disabled={!creatableGroups.length}><Plus size={15} />Tạo công việc</button>
             {(activeFilterCount > 0 || searchTerm) && <button type="button" className="work-schedule-clear" onClick={clearFilters}>Xóa bộ lọc</button>}
           </div>

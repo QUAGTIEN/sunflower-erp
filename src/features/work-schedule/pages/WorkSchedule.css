@@ -6,9 +6,6 @@
   color: #172554;
 }
 
-.work-schedule-heading h1 { margin: 0; color: #172554; font-size: 20px; font-weight: 650; }
-.work-schedule-heading p { margin: 4px 0 0; color: #64748b; font-size: 12px; }
-
 .work-schedule-group-cards {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -18,14 +15,13 @@
 .work-schedule-group-card {
   display: flex;
   min-width: 0;
-  min-height: 72px;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
+  min-height: 64px;
+  align-items: center;
+  gap: 10px;
   border: 1px solid var(--erp-border-color);
   border-radius: var(--erp-control-radius);
   background: #fff;
-  padding: 14px 12px;
+  padding: 10px 12px;
   color: #172554;
   font: inherit;
   font-size: 12px;
@@ -34,17 +30,40 @@
   cursor: pointer;
 }
 
-.work-schedule-group-card > span { min-width: 0; line-height: 1.35; }
-.work-schedule-group-card b { display: block; font-size: 12px; font-weight: 650; }
-.work-schedule-group-card small { display: block; margin-top: 6px; color: #64748b; font-size: 11px; font-weight: 450; }
-.work-schedule-group-card > strong { flex: none; color: #244a98; font-size: 13px; }
+.work-schedule-group-card__icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: var(--erp-control-radius);
+  background: #edf4ff;
+  color: #2563eb;
+}
+.work-schedule-group-card__name {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.work-schedule-group-card__count {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef3fa;
+  color: #244a98;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .work-schedule-group-card:hover { border-color: #91afe3; background: #f8fbff; }
 .work-schedule-group-card:focus-visible { outline: 2px solid #4f7fe0; outline-offset: 2px; }
-.work-schedule-group-card.is-active { border-color: #2759bb; background: #eef4ff; box-shadow: inset 3px 0 #2759bb; }
-.work-schedule-group-card--staff_to_company.is-active { background: #f6f3ff; }
-.work-schedule-group-card--staff_to_staff.is-active { background: #effaf5; }
-.work-schedule-group-card--self.is-active { background: #fff7ed; }
-.work-schedule-group-card--automatic.is-active { background: #fdf2f8; }
+.work-schedule-group-card.is-active { border-color: #2759bb; background: #f4f8ff; box-shadow: inset 3px 0 #2759bb; }
+.work-schedule-group-card.is-active .work-schedule-group-card__count { background: #dce9ff; }
 
 .work-schedule-tabs {
   display: flex;
@@ -307,7 +326,7 @@
 }
 
 .work-schedule-toolbar { flex-wrap: wrap; }
-.work-schedule-toolbar .work-schedule-search { max-width: 420px; }
+.work-schedule-toolbar .work-schedule-search { max-width: 460px; }
 .work-schedule-view-switch { display: inline-flex; flex: none; gap: 2px; margin-left: auto; border: 1px solid var(--erp-border-color); border-radius: var(--erp-control-radius); padding: 2px; }
 .work-schedule-view-switch button { min-height: 30px !important; border: 0; background: transparent; padding: 4px 10px; color: #40516e; font: inherit; font-size: 12px; cursor: pointer; }
 .work-schedule-view-switch button.is-active { background: #eaf2ff; color: #17449d; font-weight: 650; }
@@ -320,17 +339,22 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 7px;
-  min-height: 36px;
+  gap: 10px;
+  min-height: 40px;
   border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 0 10px;
+  border-radius: var(--erp-control-radius);
+  background: #fff;
+  padding: 0 12px;
   color: #64748b;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
+.work-schedule-search:hover { border-color: #91afe3; }
+.work-schedule-search:focus-within { border-color: #4f7fe0; box-shadow: 0 0 0 2px var(--erp-focus-ring); }
+
 .work-schedule-toolbar .work-schedule-search {
-  width: min(420px, 32%);
-  flex: 1 1 300px;
+  width: min(460px, 34%);
+  flex: 1 1 320px;
 }
 
 .work-schedule-status-filters {
@@ -404,9 +428,12 @@
   box-shadow: none !important;
   color: #1e293b;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
 }
+
+.app-main .work-schedule-search input:focus { outline: 0; box-shadow: none; }
+.work-schedule-search input::placeholder { color: #7b8ba5; opacity: 1; }
 
 .work-schedule-filter-field {
   display: flex;
