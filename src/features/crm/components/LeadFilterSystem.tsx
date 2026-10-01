@@ -621,13 +621,13 @@ const LEAD_STAGE_LABELS: Record<string, string> = {
   converted: 'Đã chuyển đổi'
 };
 
-export const LeadSalesWorkspace: React.FC<{
+export const LeadSalesWorkspace = React.memo(function LeadSalesWorkspace({ leads, candidates, saleUsers, definitions, onOpenLead }: {
   leads: LeadRecord[];
   candidates: LeadCandidateRecord[];
   saleUsers: UserProfile[];
   definitions: LeadFilterDefinition[];
   onOpenLead: (leadId: string) => void;
-}> = ({ leads, candidates, saleUsers, definitions, onOpenLead }) => {
+}) {
   const currentYear = new Date().getFullYear();
   const [selectedSaleId, setSelectedSaleId] = useState(saleUsers[0]?.uid || '');
   const [year, setYear] = useState(currentYear);
@@ -740,4 +740,4 @@ export const LeadSalesWorkspace: React.FC<{
       </div>
     </section>
   );
-};
+});

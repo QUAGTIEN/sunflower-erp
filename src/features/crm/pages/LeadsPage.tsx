@@ -345,6 +345,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const [leadCurrentPage, setLeadCurrentPage] = useState(1);
   const [workspaceTab, setWorkspaceTab] = useState<'overview' | 'list' | 'performance'>('overview');
   const [leadListPrepared, setLeadListPrepared] = useState(false);
+  const [saleWorkspacePrepared, setSaleWorkspacePrepared] = useState(false);
   const [overviewSelection, setOverviewSelection] = useState<LeadOverviewSelection | null>(null);
   const [overviewDrilldown, setOverviewDrilldown] = useState<{ label: string; ids: string[] } | null>(null);
   const [candidates, setCandidates] = useState<LeadCandidateRecord[]>([]);
@@ -798,10 +799,39 @@ export const Leads: React.FC<LeadsProps> = ({
 
   const overviewDrilldownIds = useMemo(() => overviewDrilldown ? new Set(overviewDrilldown.ids) : null, [overviewDrilldown]);
 
+  const listReady = leadListPrepared || workspaceTab === 'list';
+  const orderedLeads = useMemo(() => {
+    if (!listReady) return [];
+    return [...accessibleLeads].sort((left, right) => {
+      const leftSchedule = getLeadScheduleTime(left);
+      const rightSchedule = getLeadScheduleTime(right);
+      if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
+      return String(right.updatedAt || right.createdAt).localeCompare(String(left.updatedAt || left.createdAt));
+    });
+  }, [accessibleLeads, listReady]);
+
   const filteredLeads = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
-    return accessibleLeads.filter(lead => {
-      const leadFilterValues = getLeadFilterValues(lead, filterDefinitions);
+    const activeClassificationFilters = Object.entries(dynamicFilters)
+      .filter(([fieldId, values]) => visibleFilterIds.has(fieldId) && values.length > 0);
+    const activeCustomFilters = customFieldDefinitions.filter(definition => (
+      definition.active && (customFieldFilters[definition.id] || []).length > 0
+    ));
+    const hasAdvancedFilters = countAdvancedFilters(advancedFilters) > 0;
+    if (
+      !normalizedSearch
+      && !overviewSelection
+      && !overviewDrilldownIds
+      && activeClassificationFilters.length === 0
+      && insightFilters.length === 0
+      && activeCustomFilters.length === 0
+      && !hasAdvancedFilters
+    ) return orderedLeads;
+
+    return orderedLeads.filter(lead => {
+      const leadFilterValues: Record<string, string[]> = normalizedSearch || activeClassificationFilters.length > 0
+        ? getLeadFilterValues(lead, filterDefinitions)
+        : {};
       const matchesSearch = !normalizedSearch || matchesEverySearchTerm(normalizedSearch, [
         lead.companyName,
         lead.contactPerson,
@@ -832,15 +862,13 @@ export const Leads: React.FC<LeadsProps> = ({
         }),
         ...getEntityCustomFieldSearchValues(customFieldDefinitions, lead.customFieldValues)
       ]);
-      const matchesClassifications = Object.entries(dynamicFilters)
-        .filter(([fieldId, selectedValues]) => visibleFilterIds.has(fieldId) && selectedValues.length > 0)
+      const matchesClassifications = activeClassificationFilters
         .every(([fieldId, selectedValues]) => {
           const currentValues = leadFilterValues[fieldId] || [];
           return selectedValues.some(value => currentValues.includes(value));
         });
-      const matchesCustomFields = customFieldDefinitions.filter(definition => definition.active).every(definition => {
+      const matchesCustomFields = activeCustomFilters.every(definition => {
         const selected = customFieldFilters[definition.id] || [];
-        if (selected.length === 0) return true;
         const tokens = getEntityCustomFieldFilterTokens(definition, lead.customFieldValues?.[definition.id]);
         return selected.some(value => tokens.includes(value));
       });
@@ -850,15 +878,10 @@ export const Leads: React.FC<LeadsProps> = ({
         && matchesClassifications
         && matchesCustomerInsightValues(lead.customerInsightValues || [], insightFilters)
         && matchesCustomFields
-        && matchesAdvancedFilters(lead, advancedFilterFields, advancedFilters);
-    }).sort((left, right) => {
-      const leftSchedule = getLeadScheduleTime(left);
-      const rightSchedule = getLeadScheduleTime(right);
-      if (leftSchedule !== rightSchedule) return leftSchedule - rightSchedule;
-      return String(right.updatedAt || right.createdAt).localeCompare(String(left.updatedAt || left.createdAt));
+        && (!hasAdvancedFilters || matchesAdvancedFilters(lead, advancedFilterFields, advancedFilters));
     });
   }, [
-    accessibleLeads,
+    orderedLeads,
     advancedFilterFields,
     advancedFilters,
     dynamicFilters,
@@ -1018,10 +1041,10 @@ export const Leads: React.FC<LeadsProps> = ({
     setShowLeadForm(true);
   }, [customFieldDefinitions, enterLeadProfileHistory, filterDefinitions]);
 
-  const openLeadById = (leadId: string) => {
+  const openLeadById = useCallback((leadId: string) => {
     const lead = leads.find(entry => entry.id === leadId);
     if (lead) openEditForm(lead);
-  };
+  }, [leads, openEditForm]);
 
   useEffect(() => {
     if (!initialLeadId) return;
@@ -1953,7 +1976,7 @@ export const Leads: React.FC<LeadsProps> = ({
     }
   };
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchTerm('');
     setDynamicFilters({});
     setInsightFilters([]);
@@ -1962,9 +1985,9 @@ export const Leads: React.FC<LeadsProps> = ({
     setOverviewSelection(null);
     setOverviewDrilldown(null);
     setLeadCurrentPage(1);
-  };
+  }, []);
 
-  const openOverviewList = (selection: LeadOverviewSelection | null) => {
+  const openOverviewList = useCallback((selection: LeadOverviewSelection | null) => {
     clearFilters();
     setOverviewDrilldown({
       label: selection ? LEAD_OVERVIEW_LABELS[selection] : 'Tổng KH tiềm năng',
@@ -1974,14 +1997,18 @@ export const Leads: React.FC<LeadsProps> = ({
     });
     setLeadListPrepared(true);
     setWorkspaceTab('list');
-  };
+  }, [clearFilters, filterDefinitions, overviewLeads]);
 
-  const openOverviewDrilldown = (label: string, matchingLeads: LeadRecord[]) => {
+  const openOverviewDrilldown = useCallback((label: string, matchingLeads: LeadRecord[]) => {
     clearFilters();
     setOverviewDrilldown({ label, ids: matchingLeads.map(lead => lead.id) });
     setLeadListPrepared(true);
     setWorkspaceTab('list');
-  };
+  }, [clearFilters]);
+
+  const handleOverviewMetricClick = useCallback((key: string | null) => {
+    openOverviewList(key as LeadOverviewSelection | null);
+  }, [openOverviewList]);
 
   const openLeadListTab = () => {
     setOverviewSelection(null);
@@ -1990,14 +2017,19 @@ export const Leads: React.FC<LeadsProps> = ({
     setWorkspaceTab('list');
   };
 
-  const overviewCards: Array<{ key: LeadOverviewSelection | null; label: string; count: number }> = [
+  const openSaleWorkspaceTab = () => {
+    setSaleWorkspacePrepared(true);
+    setWorkspaceTab('performance');
+  };
+
+  const overviewCards = useMemo<Array<{ key: LeadOverviewSelection | null; label: string; count: number }>>(() => [
     { key: null, label: 'Tổng KH tiềm năng', count: leadOverview.total },
     { key: 'quoted', label: 'Đã gửi báo giá', count: leadOverview.quoted },
     { key: 'pending', label: 'Đang chờ chốt', count: leadOverview.pending },
     { key: 'won', label: 'Đã chốt', count: leadOverview.won },
     { key: 'lost', label: 'Không thành công', count: leadOverview.lost },
     { key: 'converted', label: 'Đã thành khách hàng', count: leadOverview.converted }
-  ];
+  ], [leadOverview]);
 
   const getClassificationLabel = (lead: LeadRecord, fieldId: string, fallback = '—') => {
     const optionIds = getLeadFilterValues(lead, filterDefinitions)[fieldId] || [];
@@ -2450,7 +2482,7 @@ export const Leads: React.FC<LeadsProps> = ({
       <div className="lead-page-navigation lead-candidate-commandbar">
         <div className="lead-workspace-tabs content-tabs content-tabs--compact" role="tablist" aria-label="Không gian quản lý khách hàng tiềm năng">
           <button type="button" role="tab" aria-selected={workspaceTab === 'overview'} className={workspaceTab === 'overview' ? 'is-active' : ''} onClick={() => setWorkspaceTab('overview')}>Tổng quan</button>
-          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={() => setWorkspaceTab('performance')}>Khách hàng của Sale</button>}
+          {currentUser.role === 'admin' && <button type="button" role="tab" aria-selected={workspaceTab === 'performance'} className={workspaceTab === 'performance' ? 'is-active' : ''} onClick={openSaleWorkspaceTab}>Khách hàng của Sale</button>}
           <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={openLeadListTab}>Danh sách KH tiềm năng <span>{accessibleLeads.length}</span></button>
         </div>
         {workspaceTab === 'list' && (
@@ -2469,25 +2501,28 @@ export const Leads: React.FC<LeadsProps> = ({
         )}
       </div>
 
-      <LeadOverviewDashboard
-        hidden={workspaceTab !== 'overview'}
-        leads={overviewLeads}
-        saleUsers={saleUsers}
-        currentUser={currentUser}
-        definitions={filterDefinitions}
-        metrics={overviewCards}
-        onMetricClick={key => openOverviewList(key as LeadOverviewSelection | null)}
-        onGroupClick={openOverviewDrilldown}
-        onOpenLead={openLeadById}
-      />
-      {workspaceTab === 'performance' && currentUser.role === 'admin' ? (
-        <LeadSalesWorkspace
-          leads={leads}
-          candidates={candidates}
+      <div className="lead-overview-surface" hidden={workspaceTab !== 'overview'}>
+        <LeadOverviewDashboard
+          leads={overviewLeads}
           saleUsers={saleUsers}
+          currentUser={currentUser}
           definitions={filterDefinitions}
+          metrics={overviewCards}
+          onMetricClick={handleOverviewMetricClick}
+          onGroupClick={openOverviewDrilldown}
           onOpenLead={openLeadById}
         />
+      </div>
+      {currentUser.role === 'admin' && (saleWorkspacePrepared || workspaceTab === 'performance') ? (
+        <div className="lead-sales-surface" hidden={workspaceTab !== 'performance'}>
+          <LeadSalesWorkspace
+            leads={leads}
+            candidates={candidates}
+            saleUsers={saleUsers}
+            definitions={filterDefinitions}
+            onOpenLead={openLeadById}
+          />
+        </div>
       ) : null}
       {(leadListPrepared || workspaceTab === 'list') && (
         <div className="lead-data-workspace" hidden={workspaceTab !== 'list'}>

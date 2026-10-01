@@ -1477,6 +1477,12 @@
   padding: 16px 0 4px;
 }
 
+.lead-overview-surface[hidden],
+.lead-sales-surface[hidden],
+.lead-data-workspace[hidden] {
+  display: none !important;
+}
+
 .lead-data-workspace {
   width: 100%;
   max-width: 100%;
