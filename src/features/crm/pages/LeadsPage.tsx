@@ -89,6 +89,7 @@ import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/Wo
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
 import { EntityCustomFieldsGrid, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
@@ -416,14 +417,10 @@ export const Leads: React.FC<LeadsProps> = ({
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [returningLeadId, setReturningLeadId] = useState('');
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
-  const [storedVisibleColumnIds, setStoredVisibleColumnIds] = useState<string[] | null>(() => {
-    try {
-      const stored = window.localStorage.getItem(`sunflower:lead-columns:${currentUser.uid}`);
-      const parsed = stored ? JSON.parse(stored) : null;
-      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : null;
-    } catch {
-      return null;
-    }
+  const { selectedIds: storedVisibleColumnIds, setSelectedIds: setStoredVisibleColumnIds, canEditColumns } = useSharedTableColumns({
+    layoutId: 'leads',
+    legacySelectionKey: `sunflower:lead-columns:${currentUser.uid}`,
+    legacyWidthKey: `sunflower:lead-column-widths:${currentUser.uid}`
   });
 
   const clearPurgedCustomField = (fieldId: string) => setCustomFieldValues(previous => {
@@ -566,15 +563,11 @@ export const Leads: React.FC<LeadsProps> = ({
   );
 
   const saveVisibleLeadColumns = (selectedIds: string[]) => {
+    if (!canEditColumns) return;
     const availableIds = new Set(leadColumnOptions.map(column => column.id));
     const requiredIds = leadColumnOptions.filter(column => column.required).map(column => column.id);
     const nextIds = Array.from(new Set([...requiredIds, ...selectedIds.filter(id => availableIds.has(id))]));
     setStoredVisibleColumnIds(nextIds);
-    try {
-      window.localStorage.setItem(`sunflower:lead-columns:${currentUser.uid}`, JSON.stringify(nextIds));
-    } catch {
-      // The current page state stays usable when the browser blocks local storage.
-    }
     setShowColumnCustomizer(false);
   };
   const {
@@ -584,7 +577,7 @@ export const Leads: React.FC<LeadsProps> = ({
     columns: leadColumnOptions,
     selectedIds: storedVisibleColumnIds || Array.from(visibleLeadColumnIds),
     onOrderChange: saveVisibleLeadColumns,
-    widthStorageKey: `sunflower:lead-column-widths:${currentUser.uid}`,
+    layoutId: 'leads',
     lockedStartIds: ['index', 'company'],
     lockedEndIds: ['actions']
   });
@@ -2482,9 +2475,9 @@ export const Leads: React.FC<LeadsProps> = ({
               <input value={searchTerm} onChange={event => { setSearchTerm(event.target.value); setLeadCurrentPage(1); }} placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')} />
             </div>
             <DataFilterButton activeCount={leadActiveFilterCount} open={showLeadFilters} onClick={() => setShowLeadFilters(true)} />
-            <button type="button" className="lead-candidate-column-button" aria-label={t('Tùy chỉnh cột')} title={t('Tùy chỉnh cột')} onClick={() => setShowColumnCustomizer(true)}>
+            {canEditColumns && <button type="button" className="lead-candidate-column-button" aria-label={t('Tùy chỉnh cột')} title={t('Tùy chỉnh cột')} onClick={() => setShowColumnCustomizer(true)}>
               <Settings2 size={16} />
-            </button>
+            </button>}
             {(searchTerm || leadActiveFilterCount > 0) && <button type="button" className="btn btn-outline lead-toolbar-reset" onClick={clearFilters}><X size={14} /> Đặt lại</button>}
             <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm Lead')}</button>
           </section>

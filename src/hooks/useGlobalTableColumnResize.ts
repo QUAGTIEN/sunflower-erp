@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import type { TableColumnLayoutManager } from '@/context/TableColumnLayoutContext';
+import { getGenericTableLayoutId, readLegacyColumnWidths } from '@/domain/tableColumnLayout';
 
 const MIN_COLUMN_WIDTH = 64;
 const TABLE_WIDTH_STORAGE_VERSION = 'v3';
@@ -13,19 +15,8 @@ const getInitialColumnWidth = (header: HTMLTableCellElement, measuredWidth: numb
   return Math.max(measuredWidth, labelWidth);
 };
 
-const readWidths = (storageKey: string): Record<string, number> => {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(storageKey) || '{}');
-    if (!parsed || typeof parsed !== 'object') return {};
-    return Object.fromEntries(Object.entries(parsed).filter((entry): entry is [string, number] => (
-      typeof entry[1] === 'number' && Number.isFinite(entry[1])
-    )));
-  } catch {
-    return {};
-  }
-};
-
-export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
+export const useGlobalTableColumnResize = (pageId: string, userId: string, manager: TableColumnLayoutManager) => {
+  const { layouts, canEditColumns, saveLayout, migrateLayout } = manager;
   useEffect(() => {
     if (!userId) return;
     const root = document.querySelector<HTMLElement>('.app-main');
@@ -106,17 +97,27 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         }
         const becameVisible = table.dataset.erpResizeHidden === 'true';
         delete table.dataset.erpResizeHidden;
+        const configuredHeader = table.querySelector<HTMLTableCellElement>('th.reorderable-table-header');
+        if (configuredHeader) {
+          const layoutId = configuredHeader.dataset.tableLayoutId || '';
+          const tableWidth = layouts[layoutId]?.widths.__tableWidth;
+          if (tableWidth) table.style.setProperty('--erp-table-resized-width', `${tableWidth}px`);
+          else table.style.removeProperty('--erp-table-resized-width');
+          return;
+        }
         const tableKey = table.dataset.resizeKey || `table-${tableIndex}`;
         const isPrimaryDataTable = Boolean(table.closest('.erp-primary-data-table'));
         const storageVersion = isPrimaryDataTable ? `${TABLE_WIDTH_STORAGE_VERSION}:` : '';
         const storageKey = `sunflower:table-column-widths:${storageVersion}${userId}:${pageId}:${tableKey}`;
-        const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>('thead th:not(.is-resizable)'));
+        const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>('thead th'));
+        const layoutId = getGenericTableLayoutId(pageId, table.dataset.resizeKey || `${tableKey}:${table.className}:${headers.length}`);
+        if (canEditColumns) migrateLayout(layoutId, { widths: readLegacyColumnWidths(storageKey) });
         const hasNewHeaders = headers.some(header => !header.classList.contains('erp-generic-resizable-header'));
         const needsTableMeasurement = forceTableMeasurement
           || becameVisible
           || hasNewHeaders
           || table.dataset.erpResizePrepared !== 'true';
-        const widths = needsTableMeasurement ? readWidths(storageKey) : {};
+        const widths = needsTableMeasurement ? layouts[layoutId]?.widths || {} : {};
         const measuredWidths = needsTableMeasurement ? headers.map(header => {
           const measuredWidth = Math.round(header.getBoundingClientRect().width);
           return isPrimaryDataTable ? getInitialColumnWidth(header, measuredWidth) : measuredWidth;
@@ -125,7 +126,8 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
         if (needsTableMeasurement) {
           headers.forEach((header, columnIndex) => {
             header.classList.add('erp-generic-resizable-header');
-            header.dataset.resizeStorageKey = storageKey;
+            header.classList.toggle('is-readonly', !canEditColumns);
+            header.dataset.tableLayoutId = layoutId;
             header.dataset.resizeColumnIndex = String(columnIndex);
             if (!header.title) header.title = header.textContent?.trim() || '';
             const width = resolvedWidths[columnIndex];
@@ -189,7 +191,9 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
     const handleWindowResize = () => schedulePrepare(true);
     window.addEventListener('resize', handleWindowResize);
 
+    let resizeCleanup: (() => void) | null = null;
     const onPointerDown = (event: PointerEvent) => {
+      if (!canEditColumns) return;
       const target = event.target;
       if (!(target instanceof Element)) return;
       const header = target.closest<HTMLTableCellElement>('th.erp-generic-resizable-header');
@@ -202,29 +206,32 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
       const startWidth = bounds.width;
       const table = header.closest('table');
       const startTableWidth = table?.getBoundingClientRect().width || 0;
+      const initialHeaderWidth = header.style.getPropertyValue('--erp-column-resized-width');
+      const initialTableWidth = table?.style.getPropertyValue('--erp-table-resized-width') || '';
       let finalWidth = startWidth;
       let finalTableWidth = startTableWidth;
       const onPointerMove = (moveEvent: PointerEvent) => {
-        finalWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(startWidth + moveEvent.clientX - startX));
+        finalWidth = Math.min(4096, Math.max(MIN_COLUMN_WIDTH, Math.round(startWidth + moveEvent.clientX - startX)));
         finalTableWidth = Math.max(MIN_COLUMN_WIDTH, Math.round(startTableWidth + finalWidth - startWidth));
         header.style.setProperty('--erp-column-resized-width', `${finalWidth}px`);
         table?.style.setProperty('--erp-table-resized-width', `${finalTableWidth}px`);
       };
       const onPointerUp = () => {
+        resizeCleanup?.();
+        const layoutId = header.dataset.tableLayoutId;
+        const columnIndex = header.dataset.resizeColumnIndex;
+        if (!layoutId || columnIndex === undefined) return;
+        saveLayout(layoutId, { widths: { [columnIndex]: finalWidth, __tableWidth: finalTableWidth } });
+      };
+      resizeCleanup?.();
+      resizeCleanup = () => {
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', onPointerUp);
-        const storageKey = header.dataset.resizeStorageKey;
-        const columnIndex = header.dataset.resizeColumnIndex;
-        if (!storageKey || columnIndex === undefined) return;
-        try {
-          window.localStorage.setItem(storageKey, JSON.stringify({
-            ...readWidths(storageKey),
-            [columnIndex]: finalWidth,
-            __tableWidth: finalTableWidth
-          }));
-        } catch {
-          // The resized width remains active for the current page session.
-        }
+        if (initialHeaderWidth) header.style.setProperty('--erp-column-resized-width', initialHeaderWidth);
+        else header.style.removeProperty('--erp-column-resized-width');
+        if (initialTableWidth) table?.style.setProperty('--erp-table-resized-width', initialTableWidth);
+        else table?.style.removeProperty('--erp-table-resized-width');
+        resizeCleanup = null;
       };
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp, { once: true });
@@ -232,6 +239,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
 
     root.addEventListener('pointerdown', onPointerDown);
     return () => {
+      resizeCleanup?.();
       window.cancelAnimationFrame(animationFrame);
       window.cancelAnimationFrame(viewportAnimationFrame);
       observer.disconnect();
@@ -241,5 +249,5 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string) => {
       window.removeEventListener('resize', handleWindowResize);
       root.removeEventListener('pointerdown', onPointerDown);
     };
-  }, [pageId, userId]);
+  }, [pageId, userId, layouts, canEditColumns, saveLayout, migrateLayout]);
 };

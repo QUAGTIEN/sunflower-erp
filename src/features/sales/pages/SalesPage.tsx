@@ -13,6 +13,7 @@ import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -138,21 +139,19 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
   const [showSalesFilters, setShowSalesFilters] = useState(false);
   const [showSalesColumnCustomizer, setShowSalesColumnCustomizer] = useState(false);
 
-  const [salesVisibleColumns, setSalesVisibleColumns] = useState<string[]>(() => {
-    try {
-      const stored = window.localStorage.getItem(`sunflower:sales-customer-columns:${currentUser.uid}`);
-      const parsed = stored ? JSON.parse(stored) : null;
-      if (Array.isArray(parsed)) return Array.from(new Set(['customer', 'actions', ...parsed.filter((id): id is string => typeof id === 'string')]));
-    } catch { /* Keep defaults when storage is unavailable. */ }
-    return SALES_CUSTOMER_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id);
+  const { selectedIds: sharedSalesColumns, setSelectedIds: setSalesVisibleColumns, canEditColumns } = useSharedTableColumns({
+    layoutId: 'sales-customer-orders',
+    legacySelectionKey: `sunflower:sales-customer-columns:${currentUser.uid}`,
+    legacyWidthKey: `sunflower:sales-customer-column-widths:v3:${currentUser.uid}`
   });
+  const salesVisibleColumns = Array.from(new Set(['customer', 'actions', ...(sharedSalesColumns || SALES_CUSTOMER_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id))]));
   const salesVisibleColumnSet = new Set(salesVisibleColumns);
   const salesVisibleColumnCount = SALES_CUSTOMER_COLUMNS.filter(column => salesVisibleColumnSet.has(column.id)).length;
   const salesActiveFilterCount = salesStatusFilters.length + salesOwnerFilters.length;
   const saveSalesVisibleColumns = (selectedIds: string[]) => {
+    if (!canEditColumns) return;
     const next = Array.from(new Set(['customer', 'actions', ...selectedIds]));
     setSalesVisibleColumns(next);
-    try { window.localStorage.setItem(`sunflower:sales-customer-columns:${currentUser.uid}`, JSON.stringify(next)); } catch { /* State remains active. */ }
     setShowSalesColumnCustomizer(false);
   };
   const {
@@ -162,7 +161,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
     columns: SALES_CUSTOMER_COLUMNS,
     selectedIds: salesVisibleColumns,
     onOrderChange: saveSalesVisibleColumns,
-    widthStorageKey: `sunflower:sales-customer-column-widths:v3:${currentUser.uid}`,
+    layoutId: 'sales-customer-orders',
     lockedStartIds: ['customer'],
     lockedEndIds: ['actions']
   });
@@ -927,7 +926,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
             />
             {!selectedOrderCustomer && <>
               {activeListView === 'orders' && <DataFilterButton activeCount={salesActiveFilterCount} open={showSalesFilters} onClick={() => setShowSalesFilters(true)} />}
-              {activeListView === 'orders' && <button type="button" className="data-filter-button" onClick={() => setShowSalesColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>}
+              {canEditColumns && activeListView === 'orders' && <button type="button" className="data-filter-button" onClick={() => setShowSalesColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>}
             </>}
           </div>
 

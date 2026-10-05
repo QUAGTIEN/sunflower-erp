@@ -39,6 +39,7 @@ import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/Wo
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
 import { EntityCustomFieldsGrid, EntityCustomFieldsReadOnly } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
@@ -300,14 +301,10 @@ export const Crm: React.FC<CrmProps> = ({
   const [customerNoteDraft, setCustomerNoteDraft] = useState('');
   const [isSavingCustomerNote, setIsSavingCustomerNote] = useState(false);
   const [customerNoteFeedback, setCustomerNoteFeedback] = useState('');
-  const [storedVisibleColumnIds, setStoredVisibleColumnIds] = useState<string[] | null>(() => {
-    try {
-      const stored = window.localStorage.getItem(`sunflower:customer-columns:${currentUser.uid}`);
-      const parsed = stored ? JSON.parse(stored) : null;
-      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : null;
-    } catch {
-      return null;
-    }
+  const { selectedIds: storedVisibleColumnIds, setSelectedIds: setStoredVisibleColumnIds, canEditColumns } = useSharedTableColumns({
+    layoutId: 'customers',
+    legacySelectionKey: `sunflower:customer-columns:${currentUser.uid}`,
+    legacyWidthKey: `sunflower:customer-column-widths:${currentUser.uid}`
   });
 
 
@@ -395,15 +392,11 @@ export const Crm: React.FC<CrmProps> = ({
   );
 
   const saveVisibleCustomerColumns = (selectedIds: string[]) => {
+    if (!canEditColumns) return;
     const availableIds = new Set(customerColumnOptions.map(column => column.id));
     const requiredIds = customerColumnOptions.filter(column => column.required).map(column => column.id);
     const nextIds = Array.from(new Set([...requiredIds, ...selectedIds.filter(id => availableIds.has(id))]));
     setStoredVisibleColumnIds(nextIds);
-    try {
-      window.localStorage.setItem(`sunflower:customer-columns:${currentUser.uid}`, JSON.stringify(nextIds));
-    } catch {
-      // The current page state stays usable when the browser blocks local storage.
-    }
     setShowColumnCustomizer(false);
   };
   const {
@@ -413,7 +406,7 @@ export const Crm: React.FC<CrmProps> = ({
     columns: customerColumnOptions,
     selectedIds: storedVisibleColumnIds || Array.from(visibleCustomerColumnIds),
     onOrderChange: saveVisibleCustomerColumns,
-    widthStorageKey: `sunflower:customer-column-widths:${currentUser.uid}`,
+    layoutId: 'customers',
     lockedStartIds: ['index', 'company'],
     lockedEndIds: ['actions']
   });
@@ -2847,9 +2840,9 @@ export const Crm: React.FC<CrmProps> = ({
                   <>
                     <div className="crm-list-search"><Search size={16} /><input type="text" placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')} value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCustomerPage(1); }} /></div>
                     <DataFilterButton activeCount={activeFilterCount} open={showListFilters} onClick={() => setShowListFilters(true)} />
-                    <button type="button" className="lead-candidate-column-button" aria-label={t('Tùy chỉnh cột')} title={t('Tùy chỉnh cột')} onClick={() => setShowColumnCustomizer(true)}>
+                    {canEditColumns && <button type="button" className="lead-candidate-column-button" aria-label={t('Tùy chỉnh cột')} title={t('Tùy chỉnh cột')} onClick={() => setShowColumnCustomizer(true)}>
                       <Settings2 size={16} />
-                    </button>
+                    </button>}
                     {(searchTerm || activeFilterCount > 0) && (
                       <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}><X size={14} /> {t('Đặt lại')}</button>
                     )}

@@ -525,15 +525,15 @@ input[type='checkbox']:disabled {
 }
 
 /* Resizable grids grow by the sum of their columns, like a spreadsheet. */
-.app-main table:has(th.is-resizable),
+.app-main table:has(th.reorderable-table-header),
 .app-main table:has(th.erp-generic-resizable-header) {
   width: var(--erp-table-resized-width, 100%) !important;
   min-width: var(--erp-table-resized-width, 100%) !important;
   max-width: none !important;
 }
 
-.app-main table:has(th.is-resizable) th,
-.app-main table:has(th.is-resizable) td,
+.app-main table:has(th.reorderable-table-header) th,
+.app-main table:has(th.reorderable-table-header) td,
 .app-main table:has(th.erp-generic-resizable-header) th,
 .app-main table:has(th.erp-generic-resizable-header) td {
   max-width: none;
@@ -670,7 +670,7 @@ input[type='checkbox']:disabled {
   display: none !important;
 }
 
-.reorderable-table-header.is-resizable {
+.reorderable-table-header {
   position: relative;
   width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
   min-width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
@@ -697,6 +697,22 @@ input[type='checkbox']:disabled {
 
 .erp-generic-resizable-header:hover::after {
   border-right: 2px solid #6687c7;
+}
+
+.erp-generic-resizable-header.is-readonly::after { display: none; }
+
+.erp-column-layout-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid #fecaca;
+  border-radius: var(--erp-control-radius);
+  background: #fff7f7;
+  color: #991b1b;
+  font-size: 13px;
 }
 
 .reorderable-table-header.is-resizable::after {

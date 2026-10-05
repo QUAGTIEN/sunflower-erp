@@ -6,6 +6,7 @@ import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -124,20 +125,18 @@ export const Design: React.FC<DesignProps> = ({
   const [priorityFilters, setPriorityFilters] = useState<string[]>([]);
   const [showDesignFilters, setShowDesignFilters] = useState(false);
   const [showDesignColumnCustomizer, setShowDesignColumnCustomizer] = useState(false);
-  const [designVisibleColumns, setDesignVisibleColumns] = useState<string[]>(() => {
-    try {
-      const stored = window.localStorage.getItem(`sunflower:design-columns:${currentUser.uid}`);
-      const parsed = stored ? JSON.parse(stored) : null;
-      if (Array.isArray(parsed)) return Array.from(new Set(['request', 'actions', ...parsed.filter((id): id is string => typeof id === 'string')]));
-    } catch { /* Keep defaults when storage is unavailable. */ }
-    return DESIGN_LIST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id);
+  const { selectedIds: sharedDesignColumns, setSelectedIds: setDesignVisibleColumns, canEditColumns } = useSharedTableColumns({
+    layoutId: 'design-requests',
+    legacySelectionKey: `sunflower:design-columns:${currentUser.uid}`,
+    legacyWidthKey: `sunflower:design-column-widths:v3:${currentUser.uid}`
   });
+  const designVisibleColumns = Array.from(new Set(['request', 'actions', ...(sharedDesignColumns || DESIGN_LIST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id))]));
   const designVisibleColumnSet = new Set(designVisibleColumns);
   const designActiveFilterCount = statusFilters.length + designerFilters.length + priorityFilters.length;
   const saveDesignVisibleColumns = (selectedIds: string[]) => {
+    if (!canEditColumns) return;
     const next = Array.from(new Set(['request', 'actions', ...selectedIds]));
     setDesignVisibleColumns(next);
-    try { window.localStorage.setItem(`sunflower:design-columns:${currentUser.uid}`, JSON.stringify(next)); } catch { /* State remains active. */ }
     setShowDesignColumnCustomizer(false);
   };
   const {
@@ -147,7 +146,7 @@ export const Design: React.FC<DesignProps> = ({
     columns: DESIGN_LIST_COLUMNS,
     selectedIds: designVisibleColumns,
     onOrderChange: saveDesignVisibleColumns,
-    widthStorageKey: `sunflower:design-column-widths:v3:${currentUser.uid}`,
+    layoutId: 'design-requests',
     lockedStartIds: ['request'],
     lockedEndIds: ['actions']
   });
@@ -554,7 +553,7 @@ export const Design: React.FC<DesignProps> = ({
             />
           </div>
           <DataFilterButton activeCount={designActiveFilterCount} open={showDesignFilters} onClick={() => setShowDesignFilters(true)} />
-          <button type="button" className="data-filter-button" onClick={() => setShowDesignColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
+          {canEditColumns && <button type="button" className="data-filter-button" onClick={() => setShowDesignColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>}
         </div>
 
         <DataFilterChipBar

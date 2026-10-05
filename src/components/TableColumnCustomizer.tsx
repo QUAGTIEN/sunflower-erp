@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
+import { useTableColumnLayouts } from '@/context/TableColumnLayoutContext';
 import './TableColumnCustomizer.css';
 
 export interface TableColumnOption {
@@ -123,8 +124,9 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
   );
 };
 
-export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = props => (
-  props.open
+export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = props => {
+  const { canEditColumns } = useTableColumnLayouts();
+  return props.open && canEditColumns
     ? <TableColumnCustomizerDialog key={JSON.stringify(props.selectedIds)} {...props} />
-    : null
-);
+    : null;
+};

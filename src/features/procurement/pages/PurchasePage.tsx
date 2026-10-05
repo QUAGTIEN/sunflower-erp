@@ -6,6 +6,7 @@ import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -88,20 +89,6 @@ const PURCHASE_ORDER_COLUMNS: TableColumnOption[] = [
   { id: 'actions', label: 'Thao tác', required: true, group: 'Điều khiển bảng' }
 ];
 
-const readVisibleColumns = (storageKey: string, columns: TableColumnOption[]): string[] => {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
-    if (Array.isArray(parsed)) {
-      const availableIds = new Set(columns.map(column => column.id));
-      return Array.from(new Set([
-        ...columns.filter(column => column.required).map(column => column.id),
-        ...parsed.filter((id): id is string => typeof id === 'string' && availableIds.has(id))
-      ]));
-    }
-  } catch { /* Keep defaults when storage is unavailable. */ }
-  return columns.filter(column => column.required || column.defaultVisible).map(column => column.id);
-};
-
 export const Purchase: React.FC<PurchaseProps> = ({
   pos,
   purchaseOrders,
@@ -126,21 +113,29 @@ export const Purchase: React.FC<PurchaseProps> = ({
   const [assignedPurchaserId, setAssignedPurchaserId] = useState('');
   const [sourcingType, setSourcingType] = useState<SourcingType>('subcontract');
   const [isSaving, setIsSaving] = useState(false);
-  const requestColumnsStorageKey = `sunflower:purchase-request-columns:${currentUser.uid}`;
-  const orderColumnsStorageKey = `sunflower:purchase-order-columns:${currentUser.uid}`;
-  const [requestVisibleColumns, setRequestVisibleColumns] = useState<string[]>(() => readVisibleColumns(requestColumnsStorageKey, PURCHASE_REQUEST_COLUMNS));
-  const [orderVisibleColumns, setOrderVisibleColumns] = useState<string[]>(() => readVisibleColumns(orderColumnsStorageKey, PURCHASE_ORDER_COLUMNS));
+  const { selectedIds: sharedRequestColumns, setSelectedIds: setRequestVisibleColumns, canEditColumns } = useSharedTableColumns({
+    layoutId: 'purchase-requests',
+    legacySelectionKey: `sunflower:purchase-request-columns:${currentUser.uid}`,
+    legacyWidthKey: `sunflower:purchase-request-column-widths:v3:${currentUser.uid}`
+  });
+  const { selectedIds: sharedOrderColumns, setSelectedIds: setOrderVisibleColumns } = useSharedTableColumns({
+    layoutId: 'purchase-orders',
+    legacySelectionKey: `sunflower:purchase-order-columns:${currentUser.uid}`,
+    legacyWidthKey: `sunflower:purchase-order-column-widths:v3:${currentUser.uid}`
+  });
+  const requestVisibleColumns = Array.from(new Set(['request', 'actions', ...(sharedRequestColumns || PURCHASE_REQUEST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id))]));
+  const orderVisibleColumns = Array.from(new Set(['order', 'actions', ...(sharedOrderColumns || PURCHASE_ORDER_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id))]));
 
   const saveRequestVisibleColumns = (selectedIds: string[]) => {
+    if (!canEditColumns) return;
     const next = Array.from(new Set(['request', 'actions', ...selectedIds]));
     setRequestVisibleColumns(next);
-    try { window.localStorage.setItem(requestColumnsStorageKey, JSON.stringify(next)); } catch { /* State remains active. */ }
     setShowPurchaseColumnCustomizer(false);
   };
   const saveOrderVisibleColumns = (selectedIds: string[]) => {
+    if (!canEditColumns) return;
     const next = Array.from(new Set(['order', 'actions', ...selectedIds]));
     setOrderVisibleColumns(next);
-    try { window.localStorage.setItem(orderColumnsStorageKey, JSON.stringify(next)); } catch { /* State remains active. */ }
     setShowPurchaseColumnCustomizer(false);
   };
   const requestVisibleColumnSet = new Set(requestVisibleColumns);
@@ -152,7 +147,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
     columns: PURCHASE_REQUEST_COLUMNS,
     selectedIds: requestVisibleColumns,
     onOrderChange: saveRequestVisibleColumns,
-    widthStorageKey: `sunflower:purchase-request-column-widths:v3:${currentUser.uid}`,
+    layoutId: 'purchase-requests',
     lockedStartIds: ['request'],
     lockedEndIds: ['actions']
   });
@@ -163,7 +158,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
     columns: PURCHASE_ORDER_COLUMNS,
     selectedIds: orderVisibleColumns,
     onOrderChange: saveOrderVisibleColumns,
-    widthStorageKey: `sunflower:purchase-order-column-widths:v3:${currentUser.uid}`,
+    layoutId: 'purchase-orders',
     lockedStartIds: ['order'],
     lockedEndIds: ['actions']
   });
@@ -470,7 +465,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
         <div className="purchase-toolbar">
           <div className="purchase-search"><Search size={16} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={activeListView === 'requests' ? t('Tìm mã PO, khách hàng, mã hàng, vật liệu hoặc NCC...') : t('Tìm mã đơn mua, NCC, PO khách hàng hoặc mặt hàng...')} /></div>
           <DataFilterButton activeCount={purchaseActiveFilterCount} open={showPurchaseFilters} onClick={() => setShowPurchaseFilters(true)} />
-          <button type="button" className="data-filter-button" onClick={() => setShowPurchaseColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
+          {canEditColumns && <button type="button" className="data-filter-button" onClick={() => setShowPurchaseColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>}
         </div>
 
         <DataFilterChipBar

@@ -4,6 +4,7 @@ import { auditService } from '@/services/auditService';
 import { Dashboard } from '@/features/dashboard';
 import { useLanguage } from '@/context/LanguageContext';
 import { PageContextProvider } from '@/context/PageContext';
+import { TableColumnLayoutContext, useTableColumnLayoutManager } from '@/context/TableColumnLayoutContext';
 import type { AppPageContext } from '@/context/PageContextState';
 import {
   APP_LOGO_PATH,
@@ -165,7 +166,8 @@ function AppShell() {
     : (DEFAULT_PAGE_CONTEXTS[activePage] ?? { section: activePage });
 
   const isPageAllowed = (pageId: string): boolean => canAccessPage(user, pageId);
-  useGlobalTableColumnResize(activePage, user?.uid || '');
+  const tableColumnLayouts = useTableColumnLayoutManager(user);
+  useGlobalTableColumnResize(activePage, user?.uid || '', tableColumnLayouts);
   useAdaptiveTableText(activePage, user?.uid || '');
 
   // Dynamic channels state
@@ -1001,6 +1003,7 @@ function AppShell() {
   const unreadChannelCount = getUnreadChannelMessagesTotal();
 
   return (
+    <TableColumnLayoutContext.Provider value={tableColumnLayouts}>
     <PageContextProvider onChange={handlePageContextChange}>
     <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {/* Mobile backdrop overlay */}
@@ -1448,12 +1451,14 @@ function AppShell() {
 
       {/* APP MAIN CONTENT PORTAL */}
       <main className="app-main">
+        {tableColumnLayouts.error && <div className="erp-column-layout-error" role="alert"><span>{tableColumnLayouts.error}</span><button type="button" className="btn btn-outline btn-sm" onClick={tableColumnLayouts.retry}>Thử lại</button></div>}
         <Suspense fallback={<div className="card" role="status">Đang tải phân hệ...</div>}>
           {renderPageContent()}
         </Suspense>
       </main>
     </div>
     </PageContextProvider>
+    </TableColumnLayoutContext.Provider>
   );
 }
 

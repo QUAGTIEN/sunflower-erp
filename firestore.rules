@@ -241,6 +241,25 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // One company-wide layout per table. Employees may consume layouts, but
+    // only an authenticated administrator may change order, visibility or width.
+    match /table_column_layouts/{documentId} {
+      allow read: if isActive();
+      allow create, update: if isAdmin()
+        && documentId.matches('^[a-zA-Z0-9:_-]{1,180}$')
+        && request.resource.data.keys().hasAll(['id', 'schemaVersion', 'updatedAt', 'updatedById'])
+        && request.resource.data.keys().hasOnly(['id', 'schemaVersion', 'selectedIds', 'widths', 'updatedAt', 'updatedById', 'createdAt'])
+        && request.resource.data.id == documentId
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedById == request.auth.uid
+        && (!('selectedIds' in request.resource.data)
+          || (request.resource.data.selectedIds is list && request.resource.data.selectedIds.size() <= 256))
+        && (!('widths' in request.resource.data)
+          || (request.resource.data.widths is map && request.resource.data.widths.size() <= 256));
+      allow delete: if false;
+    }
+
     match /raw_data_priority_rules/{documentId} {
       allow read: if isActive();
       allow create, update: if isAdmin();

@@ -73,6 +73,7 @@ import { LeadCandidateScoreDialog } from './LeadCandidateScoreDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
 import { EntityCustomFieldsGrid, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
 import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager';
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
@@ -265,31 +266,6 @@ const getAvailableColumns = (
     defaultVisible: false
   })))
 ]);
-
-const getDefaultVisibleColumns = (isAdmin: boolean): Record<CandidateWorkspaceView, CandidateColumnId[]> => ({
-  management: [],
-  tasks: getAvailableColumns('tasks', isAdmin).filter(column => column.required || column.defaultVisible !== false).map(column => column.id),
-  all: getAvailableColumns('all', isAdmin).filter(column => column.required || column.defaultVisible !== false).map(column => column.id)
-});
-
-const loadVisibleColumns = (userId: string, isAdmin: boolean) => {
-  const defaults = getDefaultVisibleColumns(isAdmin);
-  try {
-    const stored = window.localStorage.getItem(`sunflower:lead-candidate-columns:${userId}`);
-    if (!stored) return defaults;
-    const parsed = JSON.parse(stored) as Partial<Record<CandidateWorkspaceView, string[]>>;
-    return (['management', 'tasks', 'all'] as CandidateWorkspaceView[]).reduce<Record<CandidateWorkspaceView, CandidateColumnId[]>>((result, view) => {
-      const available = getAvailableColumns(view, isAdmin);
-      const availableIds = new Set(available.map(column => column.id));
-      const requiredIds = available.filter(column => column.required).map(column => column.id);
-      const storedIds = Array.isArray(parsed[view]) ? parsed[view].filter((id): id is CandidateColumnId => availableIds.has(id as CandidateColumnId) || id.startsWith('custom:')) : [];
-      result[view] = Array.from(new Set([...requiredIds, ...(storedIds.length > 0 ? storedIds : defaults[view])]));
-      return result;
-    }, { management: [], tasks: [], all: [] });
-  } catch {
-    return defaults;
-  }
-};
 
 const CONTACT_STATUS_LABELS: Record<LeadCandidateContactResult, string> = {
   not_contacted: 'Chưa liên hệ',
@@ -611,14 +587,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [showDataFilters, setShowDataFilters] = useState(false);
 
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
-  const [visibleColumnsByView, setVisibleColumnsByView] = useState(() => loadVisibleColumns(currentUser.uid, currentUser.role === 'admin'));
-  const [hasStoredColumnPreferences, setHasStoredColumnPreferences] = useState(() => {
-    try {
-      return Boolean(window.localStorage.getItem(`sunflower:lead-candidate-columns:${currentUser.uid}`));
-    } catch {
-      return false;
-    }
-  });
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
   useEffect(() => {
@@ -725,27 +693,26 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     customFieldDefinitions,
     inlineSystemFieldConfiguration.fields
   );
+  const candidateColumnLayoutId = `lead-candidates:${workspaceView}`;
+  const { selectedIds: sharedVisibleColumns, setSelectedIds: setSharedVisibleColumns, canEditColumns } = useSharedTableColumns({
+    layoutId: candidateColumnLayoutId,
+    legacySelectionKey: `sunflower:lead-candidate-columns:${currentUser.uid}`,
+    legacySelectionView: workspaceView,
+    legacyWidthKey: `sunflower:lead-candidate-column-widths:v2:${currentUser.uid}:${workspaceView}`
+  });
   const visibleColumnSet = new Set([
-    ...visibleColumnsByView[workspaceView],
-    ...(!hasStoredColumnPreferences
-      ? customFieldDefinitions.filter(definition => definition.active && definition.defaultVisible).map(definition => `custom:${definition.id}`)
-      : [])
+    ...availableColumnOptions.filter(column => column.required).map(column => column.id),
+    ...(sharedVisibleColumns || availableColumnOptions.filter(column => column.defaultVisible !== false).map(column => column.id))
   ]);
   const saveVisibleColumns = (selectedIds: string[]) => {
+    if (!canEditColumns) return;
     const availableIds = new Set(availableColumnOptions.map(column => column.id));
     const requiredIds = availableColumnOptions.filter(column => column.required).map(column => column.id);
     const nextIds = Array.from(new Set([
       ...requiredIds,
       ...selectedIds.filter((id): id is CandidateColumnId => availableIds.has(id as CandidateColumnId))
     ]));
-    const nextPreferences = { ...visibleColumnsByView, [workspaceView]: nextIds };
-    setVisibleColumnsByView(nextPreferences);
-    setHasStoredColumnPreferences(true);
-    try {
-      window.localStorage.setItem(`sunflower:lead-candidate-columns:${currentUser.uid}`, JSON.stringify(nextPreferences));
-    } catch {
-      // The table still works with the in-memory preference when browser storage is unavailable.
-    }
+    setSharedVisibleColumns(nextIds);
     setShowColumnCustomizer(false);
   };
   const {
@@ -756,7 +723,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     columns: availableColumnOptions,
     selectedIds: Array.from(visibleColumnSet),
     onOrderChange: saveVisibleColumns,
-    widthStorageKey: `sunflower:lead-candidate-column-widths:v2:${currentUser.uid}:${workspaceView}`,
+    layoutId: candidateColumnLayoutId,
     lockedStartIds: workspaceView === 'all' ? ['select', 'index', 'company'] : ['index', 'company'],
     lockedEndIds: ['actions']
   });
@@ -2248,9 +2215,9 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
             <option value="next_contact_asc">Lịch gọi gần nhất</option>
           </select>
           <DataFilterButton activeCount={activeFilterCount} open={showDataFilters} onClick={() => setShowDataFilters(true)} />
-          <button type="button" className="lead-candidate-column-button" aria-label="Tùy chỉnh cột" title="Tùy chỉnh cột" onClick={() => setShowColumnCustomizer(true)}>
+          {canEditColumns && <button type="button" className="lead-candidate-column-button" aria-label="Tùy chỉnh cột" title="Tùy chỉnh cột" onClick={() => setShowColumnCustomizer(true)}>
             <Settings2 size={16} />
-          </button>
+          </button>}
           {workspaceView === 'all' && <button type="button" className="btn btn-primary lead-candidate-add-button" onClick={openCreateForm}>
             <Plus size={15} /> Thêm dữ liệu
           </button>}

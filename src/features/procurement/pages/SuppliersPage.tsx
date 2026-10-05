@@ -5,6 +5,7 @@ import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
+import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
 import {
   DataFilterButton,
   DataFilterCheckboxGroup,
@@ -121,20 +122,6 @@ const SUPPLIER_LIST_COLUMNS: TableColumnOption[] = [
   { id: 'rating', label: 'Đánh giá', defaultVisible: true, group: 'Đánh giá' }
 ];
 
-const readSupplierVisibleColumns = (storageKey: string): string[] => {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
-    if (Array.isArray(parsed)) {
-      const availableIds = new Set(SUPPLIER_LIST_COLUMNS.map(column => column.id));
-      return Array.from(new Set([
-        'supplier',
-        ...parsed.filter((id): id is string => typeof id === 'string' && availableIds.has(id))
-      ]));
-    }
-  } catch { /* Keep defaults when storage is unavailable. */ }
-  return SUPPLIER_LIST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id);
-};
-
 export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUser, users }) => {
   const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
@@ -151,13 +138,17 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
   const [activityNote, setActivityNote] = useState('');
   const [contactDraft, setContactDraft] = useState({ name: '', role: '', phone: '', email: '' });
   const [historyMonth, setHistoryMonth] = useState('all');
-  const supplierColumnsStorageKey = `sunflower:supplier-columns:${currentUser.uid}`;
-  const [supplierVisibleColumns, setSupplierVisibleColumns] = useState<string[]>(() => readSupplierVisibleColumns(supplierColumnsStorageKey));
+  const { selectedIds: sharedSupplierColumns, setSelectedIds: setSupplierVisibleColumns, canEditColumns } = useSharedTableColumns({
+    layoutId: 'suppliers',
+    legacySelectionKey: `sunflower:supplier-columns:${currentUser.uid}`,
+    legacyWidthKey: `sunflower:supplier-column-widths:v3:${currentUser.uid}`
+  });
+  const supplierVisibleColumns = Array.from(new Set(['supplier', ...(sharedSupplierColumns || SUPPLIER_LIST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id))]));
   const supplierVisibleColumnSet = new Set(supplierVisibleColumns);
   const saveSupplierVisibleColumns = (selectedIds: string[]) => {
+    if (!canEditColumns) return;
     const next = Array.from(new Set(['supplier', ...selectedIds]));
     setSupplierVisibleColumns(next);
-    try { window.localStorage.setItem(supplierColumnsStorageKey, JSON.stringify(next)); } catch { /* State remains active. */ }
     setShowSupplierColumnCustomizer(false);
   };
   const {
@@ -167,7 +158,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     columns: SUPPLIER_LIST_COLUMNS,
     selectedIds: supplierVisibleColumns,
     onOrderChange: saveSupplierVisibleColumns,
-    widthStorageKey: `sunflower:supplier-column-widths:v3:${currentUser.uid}`,
+    layoutId: 'suppliers',
     lockedStartIds: ['supplier']
   });
   const supplierColumnLabels = Object.fromEntries(SUPPLIER_LIST_COLUMNS.map(column => [column.id, t(column.label)]));
@@ -532,7 +523,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
       <section className="supplier-toolbar">
         <div className="purchase-search"><Search size={16} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={t('Tìm NCC, MST, liên hệ, mặt hàng, mã PO hoặc đơn mua...')} /></div>
         <DataFilterButton activeCount={supplierActiveFilterCount} open={showSupplierFilters} onClick={() => setShowSupplierFilters(true)} />
-        <button type="button" className="data-filter-button" onClick={() => setShowSupplierColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>
+        {canEditColumns && <button type="button" className="data-filter-button" onClick={() => setShowSupplierColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>}
         <button type="button" className="btn btn-primary" onClick={openCreateForm}><Plus size={16} /> {t('Thêm NCC')}</button>
       </section>
 
