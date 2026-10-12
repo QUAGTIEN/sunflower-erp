@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import type { TableColumnOption } from '@/components/TableColumnCustomizer';
 import { useTableColumnLayouts } from '@/context/TableColumnLayoutContext';
+import { getTableColumnBaseWidth } from '@/shared/utils/tableColumnSizing';
 
 interface UseReorderableTableColumnsOptions {
   columns: TableColumnOption[];
@@ -129,9 +130,12 @@ export const useReorderableTableColumns = ({
         event.preventDefault();
         event.stopPropagation();
         const startX = event.clientX;
-        const startWidth = bounds.width;
         const table = header.closest('table');
-        const startTableWidth = table?.getBoundingClientRect().width || 0;
+        const fillsLastColumn = table?.classList.contains('erp-table-last-column-fill');
+        const startWidth = fillsLastColumn ? getTableColumnBaseWidth(header) : bounds.width;
+        const startTableWidth = table && fillsLastColumn
+          ? Number.parseFloat(table.style.getPropertyValue('--erp-table-resized-width'))
+          : table?.getBoundingClientRect().width || 0;
         const initialHeaderWidth = header.style.getPropertyValue('--erp-column-resized-width');
         const initialTableWidth = table?.style.getPropertyValue('--erp-table-resized-width') || '';
         let finalWidth = startWidth;

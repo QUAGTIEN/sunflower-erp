@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { TableColumnLayoutManager } from '@/context/TableColumnLayoutContext';
 import { getGenericTableLayoutId, readLegacyColumnWidths } from '@/domain/tableColumnLayout';
+import { getTableColumnBaseWidth, syncTableColumnFill } from '@/shared/utils/tableColumnSizing';
 
 const MIN_COLUMN_WIDTH = 64;
 const TABLE_WIDTH_STORAGE_VERSION = 'v3';
@@ -103,6 +104,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
           const tableWidth = layouts[layoutId]?.widths.__tableWidth;
           if (tableWidth) table.style.setProperty('--erp-table-resized-width', `${tableWidth}px`);
           else table.style.removeProperty('--erp-table-resized-width');
+          syncTableColumnFill(table);
           return;
         }
         const tableKey = table.dataset.resizeKey || `table-${tableIndex}`;
@@ -119,7 +121,8 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
           || table.dataset.erpResizePrepared !== 'true';
         const widths = needsTableMeasurement ? layouts[layoutId]?.widths || {} : {};
         const measuredWidths = needsTableMeasurement ? headers.map(header => {
-          const measuredWidth = Math.round(header.getBoundingClientRect().width);
+          const previousWidth = Number.parseFloat(header.style.getPropertyValue('--erp-column-resized-width'));
+          const measuredWidth = previousWidth || Math.round(header.getBoundingClientRect().width);
           return isPrimaryDataTable ? getInitialColumnWidth(header, measuredWidth) : measuredWidth;
         }) : [];
         const resolvedWidths = measuredWidths.map((width, columnIndex) => widths[String(columnIndex)] || width);
@@ -146,6 +149,7 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
           table.style.setProperty('--erp-table-resized-width', `${Math.max(minimumTableWidth, tableWidth)}px`);
           table.dataset.erpResizePrepared = 'true';
         }
+        syncTableColumnFill(table);
       });
       forceTableMeasurement = false;
       prepareTableViewports();
@@ -203,9 +207,12 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
       event.preventDefault();
       event.stopPropagation();
       const startX = event.clientX;
-      const startWidth = bounds.width;
       const table = header.closest('table');
-      const startTableWidth = table?.getBoundingClientRect().width || 0;
+      const fillsLastColumn = table?.classList.contains('erp-table-last-column-fill');
+      const startWidth = fillsLastColumn ? getTableColumnBaseWidth(header) : bounds.width;
+      const startTableWidth = table && fillsLastColumn
+        ? Number.parseFloat(table.style.getPropertyValue('--erp-table-resized-width'))
+        : table?.getBoundingClientRect().width || 0;
       const initialHeaderWidth = header.style.getPropertyValue('--erp-column-resized-width');
       const initialTableWidth = table?.style.getPropertyValue('--erp-table-resized-width') || '';
       let finalWidth = startWidth;

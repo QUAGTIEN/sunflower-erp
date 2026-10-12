@@ -127,12 +127,12 @@ test('employee tables use company selections instead of their old private prefer
   assert.equal(result.canEditColumns, false);
 });
 
-function headerProps(canEditColumns) {
+function headerProps(canEditColumns, saveLayout = () => true) {
   let result;
   const moved = [];
   const layouts = { leads: { id: 'leads', schemaVersion: 1, widths: { email: 220 } } };
   const hook = loader({ '@/context/TableColumnLayoutContext': {
-    useTableColumnLayouts: () => ({ layouts, canEditColumns, saveLayout: () => true })
+    useTableColumnLayouts: () => ({ layouts, canEditColumns, saveLayout })
   } })('src/hooks/useReorderableTableColumns.ts');
   function Harness() {
     result = hook.useReorderableTableColumns({
@@ -175,4 +175,108 @@ test('Firestore layout rules restrict writes to admins and never allow employee 
   assert.match(block, /updatedById == request\.auth\.uid/);
   assert.match(block, /allow delete: if false/);
   assert.match(rules, /match \/\{document=\*\*\} \{\s*allow read, write: if false/);
+});
+
+const sizing = loader()('src/shared/utils/tableColumnSizing.ts');
+function inlineStyle(initial = {}) {
+  const values = new Map(Object.entries(initial));
+  return {
+    getPropertyValue: key => values.get(key) || '',
+    setProperty: (key, value) => values.set(key, value),
+    removeProperty: key => values.delete(key)
+  };
+}
+function column(baseWidth, displayedWidth = baseWidth) {
+  return {
+    colSpan: 1, rowSpan: 1,
+    style: inlineStyle({ '--erp-column-base-width': `${baseWidth}px` }),
+    getBoundingClientRect: () => ({ width: displayedWidth, right: 1600 })
+  };
+}
+function grid(headers, storedTotal = 2500) {
+  const classes = new Set();
+  return {
+    tHead: { rows: [{ cells: headers }] },
+    classList: { contains: name => classes.has(name), toggle: (name, enabled) => enabled ? classes.add(name) : classes.delete(name) },
+    style: inlineStyle({ '--erp-table-resized-width': `${storedTotal}px` }),
+    querySelector: () => null
+  };
+}
+function withSizingWindow(run) {
+  const previous = global.window;
+  const listeners = new Map();
+  global.window = {
+    getComputedStyle: header => ({ getPropertyValue: key => key === '--erp-column-base-width'
+      ? header.style.getPropertyValue('--erp-column-resized-width') || header.style.getPropertyValue(key)
+      : header.style.getPropertyValue(key) }),
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: name => listeners.delete(name)
+  };
+  try { run(listeners); } finally { global.window = previous; }
+}
+
+test('two-column fill retains the first width and excludes the last displayed filler', () => withSizingWindow(() => {
+  const headers = [column(280), column(96, 1320)];
+  const table = grid(headers);
+  sizing.syncTableColumnFill(table);
+  assert.equal(table.classList.contains('erp-table-last-column-fill'), true);
+  assert.equal(table.style.getPropertyValue('--erp-table-resized-width'), '376px');
+  assert.equal(headers[0].style.getPropertyValue('--erp-column-base-width'), '280px');
+  assert.equal(sizing.getTableColumnBaseWidth(headers[1]), 96);
+}));
+
+test('hiding and restoring columns recomputes the total without using an old saved table width', () => withSizingWindow(() => {
+  const headers = [column(280), column(200), column(220), column(96, 804)];
+  const table = grid(headers);
+  sizing.syncTableColumnFill(table);
+  assert.equal(table.style.getPropertyValue('--erp-table-resized-width'), '796px');
+  table.tHead.rows[0].cells = [headers[0], headers[3]];
+  sizing.syncTableColumnFill(table);
+  assert.equal(table.style.getPropertyValue('--erp-table-resized-width'), '376px');
+  table.tHead.rows[0].cells = headers;
+  sizing.syncTableColumnFill(table);
+  assert.equal(table.style.getPropertyValue('--erp-table-resized-width'), '796px');
+}));
+
+test('wide tables retain all configured widths for horizontal scrolling', () => withSizingWindow(() => {
+  const table = grid([column(1200), column(900), column(96)]);
+  sizing.syncTableColumnFill(table);
+  assert.equal(table.style.getPropertyValue('--erp-table-resized-width'), '2196px');
+}));
+
+test('one-column and empty-body tables use the same fill without requiring data rows', () => withSizingWindow(() => {
+  const table = grid([column(280, 1600)]);
+  sizing.syncTableColumnFill(table);
+  assert.equal(table.style.getPropertyValue('--erp-table-resized-width'), '280px');
+  assert.equal(table.classList.contains('erp-table-last-column-fill'), true);
+}));
+
+test('grouped headers and explicit colgroups keep their existing sizing contract', () => withSizingWindow(() => {
+  for (const table of [grid([{ ...column(280), colSpan: 2 }]), grid([column(280)]), grid([])]) {
+    if (table.tHead.rows[0].cells[0]?.colSpan === 1) table.querySelector = () => ({});
+    sizing.syncTableColumnFill(table);
+    assert.equal(table.classList.contains('erp-table-last-column-fill'), false);
+    assert.equal(table.style.getPropertyValue('--erp-table-resized-width'), '2500px');
+  }
+}));
+
+test('resizing a filled last column saves its base width, never the viewport filler', () => withSizingWindow(listeners => {
+  const writes = [];
+  const { result } = headerProps(true, (id, patch) => writes.push({ id, patch }));
+  const table = grid([column(280), column(96, 1320)], 376);
+  table.classList.toggle('erp-table-last-column-fill', true);
+  const header = table.tHead.rows[0].cells[1];
+  header.closest = () => table;
+  result.getHeaderProps('actions', 'Thao tác').onPointerDown({
+    currentTarget: header, clientX: 1600, preventDefault() {}, stopPropagation() {}
+  });
+  listeners.get('pointermove')({ clientX: 1620 });
+  listeners.get('pointerup')();
+  assert.deepEqual(writes[0], { id: 'leads', patch: { widths: { actions: 116, __tableWidth: 396 } } });
+}));
+
+test('shared fill CSS assigns spare space only to the last header', () => {
+  const css = fs.readFileSync(path.join(root, 'src/styles/ErpUiStandards.css'), 'utf8');
+  assert.match(css, /table\.erp-table-last-column-fill:has\(th\)\s*\{\s*width: max\(100%, var\(--erp-table-resized-width, 0px\)\) !important/);
+  assert.match(css, /table\.erp-table-last-column-fill > thead > tr > th:last-child\s*\{\s*width: auto !important/);
 });

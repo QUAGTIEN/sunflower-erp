@@ -671,6 +671,7 @@ input[type='checkbox']:disabled {
 }
 
 .reorderable-table-header {
+  --erp-column-base-width: var(--erp-column-resized-width, var(--erp-data-column-width));
   position: relative;
   width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
   min-width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
@@ -678,6 +679,7 @@ input[type='checkbox']:disabled {
 }
 
 .erp-generic-resizable-header {
+  --erp-column-base-width: var(--erp-column-resized-width, 120px);
   position: relative;
   width: var(--erp-column-resized-width, 120px) !important;
   min-width: var(--erp-column-resized-width, 120px) !important;
@@ -848,23 +850,27 @@ input[type='checkbox']:disabled {
 
 /* Dynamic entity grids reserve the most space for the business identity. */
 .app-main table.has-dynamic-columns th {
+  --erp-column-base-width: var(--erp-column-resized-width, var(--erp-data-column-width));
   width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
   min-width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
   max-width: var(--erp-column-resized-width, var(--erp-data-column-width)) !important;
 }
 
 .app-main table.has-dynamic-columns th[data-system-field='companyName'] {
+  --erp-column-base-width: var(--erp-column-resized-width, var(--erp-entity-column-width));
   width: var(--erp-column-resized-width, var(--erp-entity-column-width)) !important;
   min-width: var(--erp-column-resized-width, var(--erp-entity-column-width)) !important;
 }
 
 .app-main table.has-dynamic-columns th:last-child {
+  --erp-column-base-width: var(--erp-column-resized-width, var(--erp-action-column-width));
   width: var(--erp-column-resized-width, var(--erp-action-column-width)) !important;
   min-width: var(--erp-column-resized-width, var(--erp-action-column-width)) !important;
 }
 
 .app-main table.has-dynamic-columns th.erp-table-index-column,
 .app-main table.has-dynamic-columns td.erp-table-index-column {
+  --erp-column-base-width: 52px;
   width: 52px !important;
   min-width: 52px !important;
   max-width: 52px !important;
@@ -875,12 +881,30 @@ input[type='checkbox']:disabled {
 
 .app-main table.has-dynamic-columns th.lead-candidate-select-column,
 .app-main table.has-dynamic-columns td.lead-candidate-select-column {
+  --erp-column-base-width: 36px;
   width: 36px !important;
   min-width: 36px !important;
   max-width: 36px !important;
   padding-right: 4px !important;
   padding-left: 4px !important;
   text-align: center;
+}
+
+/* Fill only the final column; preceding columns keep the administrator's widths. */
+.app-main :is(.design-request-table, .sales-order-customer-table) th:last-child {
+  --erp-column-base-width: var(--erp-column-resized-width, 96px);
+}
+
+.app-main table.erp-table-last-column-fill:has(th) {
+  width: max(100%, var(--erp-table-resized-width, 0px)) !important;
+  min-width: max(100%, var(--erp-table-resized-width, 0px)) !important;
+  table-layout: fixed !important;
+}
+
+.app-main table.erp-table-last-column-fill > thead > tr > th:last-child {
+  width: auto !important;
+  min-width: var(--erp-column-base-width) !important;
+  max-width: none !important;
 }
 
 .app-main table td {
