@@ -3094,23 +3094,15 @@ export const Crm: React.FC<CrmProps> = ({
               </div>
               <div className="customer-catalog-preview__table" role="table" aria-label={t('Sản phẩm của khách hàng')}>
                 <div className="customer-catalog-preview__row customer-catalog-preview__head" role="row">
-                  <span role="columnheader">{t('Mã SP')}</span><span role="columnheader">{t('Tên sản phẩm')}</span><span role="columnheader">{t('Quy cách')}</span><span role="columnheader">{t('Thao tác')}</span>
+                  <span role="columnheader">{t('Mã sản phẩm')}</span><span role="columnheader">{t('Tên sản phẩm')}</span>
                 </div>
                 {selectedCustomerProducts.slice(0, 4).map(product => <div key={product.key} className="customer-catalog-preview__row" role="row">
-                  <div role="cell"><button type="button" className="customer-detail-text-button" title={product.productCode} onClick={() => setCustomerHistoryTab('products')}>{product.productCode || '—'}</button></div>
-                  <div role="cell" className="customer-catalog-preview__identity">
-                    {product.previewImage && <button type="button" className="customer-catalog-preview__image" onClick={() => setPreviewImage(product.previewImage)} aria-label={`${t('Xem ảnh')}: ${product.productName}`}><img src={product.previewImage} alt="" /></button>}
-                    <span title={product.productName}>{product.productName}</span>
-                  </div>
-                  <span role="cell" title={[product.specification, product.material].filter(Boolean).join(' · ')}>{product.specification || product.material || '—'}</span>
-                  <div role="cell"><RowActionMenu actions={[
-                    { label: t('Xem chi tiết'), onSelect: () => setCustomerHistoryTab('products') },
-                    ...(product.record && (currentUser.role === 'admin' || currentUser.role === 'sale') ? [{ label: t('Chỉnh sửa'), onSelect: () => handleOpenEditProduct(product.record) }] : [])
-                  ]} /></div>
+                  <span role="cell" title={product.productCode}>{product.productCode || '—'}</span>
+                  <span role="cell" title={product.productName}>{product.productName || '—'}</span>
                 </div>)}
               </div>
               {selectedCustomerProducts.length === 0 && <p className="customer-detail-empty">{t('Chưa có mã sản phẩm.')}</p>}
-              <button type="button" className="customer-detail-text-button customer-detail-card-link" onClick={() => setCustomerHistoryTab('products')}>{t('Xem tất cả sản phẩm')} ({selectedCustomerProducts.length})</button>
+              <button type="button" className="customer-detail-text-button customer-detail-card-link" aria-label={t('Xem chi tiết toàn bộ sản phẩm của khách hàng')} onClick={() => setCustomerHistoryTab('products')}>{t('Xem chi tiết')} ({selectedCustomerProducts.length})</button>
             </section>
             <section className="card customer-repository-preview">
               <div className="customer-detail-card-heading">
