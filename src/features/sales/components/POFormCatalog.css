@@ -1,35 +1,95 @@
 .po-form-workspace--catalog .po-form-body-container {
   display: flex !important;
   flex-direction: column;
+  align-items: stretch;
+  min-height: 0;
   gap: var(--erp-page-gap);
-  padding: 12px;
+  padding: 16px;
+  overflow: auto;
 }
+.po-form-workspace--catalog .po-form-body-container > *,
+.po-form-workspace--catalog .po-order-main > * { flex-shrink: 0; }
+.po-form-workspace--catalog .po-form-header { box-shadow: none; flex-wrap: wrap; }
 .po-form-workspace--catalog .po-form-heading p { display: none; }
 .po-form-workspace--catalog .po-order-sidebar {
   display: grid !important;
+  flex: 0 0 auto;
   width: 100%;
+  min-width: 0;
   min-height: 0;
+  height: auto;
+  box-sizing: border-box;
+  align-content: start;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px 12px !important;
+  gap: 12px !important;
   padding: 12px !important;
   border: 1px solid var(--erp-border-color) !important;
   border-radius: var(--erp-control-radius);
   background: #fff !important;
 }
-.po-form-workspace--catalog .po-order-sidebar > h3 { grid-column: 1 / -1; }
+.po-form-workspace--catalog .po-order-sidebar > h3 {
+  grid-column: 1 / -1;
+  margin: -12px -12px 0 !important;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius) var(--erp-control-radius) 0 0;
+  background: #f0f5fc;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+}
+.po-form-workspace--catalog .po-order-sidebar > h3 svg { display: none; }
+.po-form-workspace--catalog .po-order-sidebar > .form-group {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+.po-form-workspace--catalog .po-order-sidebar label { margin: 0; }
 .po-form-workspace--catalog .po-order-sidebar > .form-group:first-of-type { grid-column: span 2; }
 .po-form-workspace--catalog .po-order-sidebar > .form-group:last-of-type { grid-column: span 3; }
 .po-form-workspace--catalog .po-order-sidebar input,
-.po-form-workspace--catalog .po-order-sidebar select { min-height: var(--erp-control-height); }
+.po-form-workspace--catalog .po-order-sidebar select { min-width: 0; min-height: var(--erp-control-height); box-sizing: border-box; }
 .po-form-workspace--catalog .po-order-sidebar textarea { min-height: var(--erp-control-height); height: var(--erp-control-height); resize: vertical; }
 .po-form-workspace--catalog .po-customer-rank-help { display: none; }
-.po-form-workspace--catalog .po-order-main { width: 100%; padding: 0 !important; }
+.po-form-workspace--catalog .po-order-main { flex: 0 0 auto; width: 100%; min-height: 0; padding: 0 !important; }
+.po-form-workspace--catalog .po-draft-notice { align-items: center; padding: 8px 12px; border-radius: var(--erp-control-radius); }
+.po-form-workspace--catalog .po-draft-notice > svg { display: none; }
+.po-form-workspace--catalog .po-draft-notice > div { min-width: 0; }
 .po-form-workspace--catalog .po-grid-input[readonly] { border-color: transparent; background: transparent; color: var(--erp-table-text); cursor: default; }
 .po-form-workspace--catalog .po-attachments-card,
 .po-form-workspace--catalog .po-items-card,
 .po-form-workspace--catalog .po-assignment-card { border-radius: var(--erp-control-radius); box-shadow: none; }
 .po-form-workspace--catalog .po-items-card-actions .btn { white-space: nowrap; }
+.po-form-workspace--catalog .po-items-card { padding: 0; }
+.po-form-workspace--catalog .po-items-card-header { margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--erp-border-color); background: #f0f5fc; flex-wrap: wrap; }
+.po-form-workspace--catalog .po-items-card-header > div:first-child { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
+.po-form-workspace--catalog .po-items-card-header span { margin: 0; }
+.po-form-workspace--catalog .po-items-card .po-inline-grid-container { width: auto; margin: 12px; border-radius: var(--erp-control-radius); }
+.po-form-workspace--catalog .po-items-card.is-focus-mode { padding: 0; }
+.po-form-workspace--catalog .po-items-card .po-items-overview-table { min-width: 1620px; }
+.po-form-workspace--catalog .po-items-card .po-inline-grid th { font-size: 13px; }
+.po-form-workspace--catalog .po-items-card .po-inline-grid td { font-size: 13px; }
+.po-form-workspace--catalog .po-items-card .po-grid-input { min-width: 0; font-size: 13px; }
+.po-form-workspace--catalog .po-items-card .po-grid-input[type='number'] { text-align: right; }
+.po-form-workspace--catalog .po-source-text { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.po-form-workspace--catalog .po-item-index-cell strong { margin: 0; }
+.po-form-workspace--catalog .po-product-code-control { display: flex !important; min-width: 0; align-items: center; gap: 4px; }
+.po-form-workspace--catalog .po-product-code-control input { min-width: 0; }
+.po-form-workspace--catalog .po-discount-editor { display: grid !important; grid-template-columns: minmax(0, 1fr) 64px; overflow: visible; }
+.po-form-workspace--catalog .po-discount-hint { display: none; }
+.po-form-workspace--catalog .po-catalog-row-actions { display: flex !important; align-items: center; justify-content: center; gap: 4px; overflow: visible; }
+.po-form-workspace--catalog .po-catalog-row-actions button { min-width: 0; min-height: 32px; padding: 4px 6px; border: 0; background: transparent; color: var(--erp-table-link); font-size: 13px; cursor: pointer; }
+.po-form-workspace--catalog .po-catalog-row-actions button:hover { background: #eff6ff; }
+.po-form-workspace--catalog .po-catalog-row-actions .po-catalog-row-delete { color: #dc2626; }
+.po-form-workspace--catalog .po-catalog-row-actions .po-catalog-row-delete:hover { background: #fef2f2; }
+.po-form-workspace--catalog .po-catalog-row-actions button:focus-visible { outline: 2px solid #93b4ed; outline-offset: -2px; }
+.po-form-workspace--catalog .po-item-detail-grid { display: grid !important; overflow: visible !important; white-space: normal !important; }
+.po-form-workspace--catalog .po-catalog-row-files { padding: 12px 18px; white-space: normal; }
+.po-form-workspace--catalog .po-catalog-row-files h4 { margin: 0 0 8px; font-size: 13px; color: #172554; }
+.po-form-workspace--catalog .po-items-footer { position: static; margin: 0; padding: 0 12px 12px; }
 .po-form-workspace--catalog .po-total-summary-card { border-radius: var(--erp-control-radius) !important; }
+.po-form-workspace--catalog .po-total-summary-card > div > span:first-child { text-transform: none; }
+.po-form-workspace--catalog .po-total-summary-card > div > :last-child { white-space: normal; overflow-wrap: anywhere; }
 .po-inherited-details { display: grid !important; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; padding: 8px 0 12px; overflow: visible !important; white-space: normal !important; }
 .po-inherited-details section { min-width: 0; }
 .po-inherited-details h4 { margin: 0 0 8px; color: #172554; font-size: 13px; }
@@ -40,7 +100,7 @@
 .po-inherited-details p { margin: 0; white-space: pre-wrap; }
 .po-inherited-files { display: flex; flex-wrap: wrap; gap: 8px; }
 .po-inherited-files .btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.po-catalog-picker-overlay { z-index: 1200; }
+.po-catalog-picker-overlay { z-index: 1300; }
 .po-catalog-picker { display: flex; width: min(1200px, 95vw); max-height: 85vh; flex-direction: column; border: 1px solid var(--erp-border-color); border-radius: var(--erp-control-radius); background: #fff; box-shadow: 0 16px 48px rgb(15 23 42 / 20%); }
 .po-catalog-picker > header,
 .po-catalog-picker > footer { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; padding: 16px; }
@@ -48,7 +108,7 @@
 .po-catalog-picker > header > div { min-width: 0; }
 .po-catalog-picker h2 { margin: 0 0 4px; color: #172554; font-size: 18px; }
 .po-catalog-picker > header span { color: var(--erp-table-secondary-text); font-size: 13px; overflow-wrap: anywhere; }
-.po-catalog-picker__filters { display: flex; gap: 12px; padding: 12px 16px; }
+.po-catalog-picker__filters { display: flex; flex: 0 0 auto; gap: 12px; padding: 12px 16px; }
 .po-catalog-picker__filters input { min-width: 0; flex: 1; }
 .po-catalog-picker__filters select { width: min(260px, 35%); }
 .po-catalog-picker__table { min-height: 0; overflow: auto; padding: 0 16px; }
@@ -64,17 +124,28 @@
 .po-catalog-picker__table tr.is-selected > td { background: #eff6ff; }
 .po-catalog-picker input[type='checkbox'],
 .po-catalog-picker input[type='radio'] { width: 16px; height: 16px; min-height: 16px; margin: 0; padding: 0; accent-color: var(--color-primary); }
-.po-catalog-picker :is(input, select, button):focus-visible { outline: 2px solid var(--erp-table-link); outline-offset: 2px; }
+.po-catalog-picker :is(input, select, button):focus-visible { outline: 2px solid #93b4ed; outline-offset: 2px; }
+.po-catalog-picker .po-catalog-picker__filters :is(input, select):focus {
+  border-color: #6687c7;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--erp-focus-ring);
+}
 .po-catalog-picker > footer { border-top: 1px solid var(--erp-border-color); margin-top: 12px; }
 .po-catalog-picker > footer span { margin-right: auto; color: #172554; font-size: 13px; }
 @media (max-width: 900px) {
   .po-form-workspace--catalog .po-order-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .po-form-workspace--catalog .po-order-sidebar > .form-group:first-of-type { grid-column: 1 / -1; }
   .po-form-workspace--catalog .po-order-sidebar > .form-group:last-of-type { grid-column: 1 / -1; }
+  .po-form-workspace--catalog .po-total-summary-card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .po-form-workspace--catalog .po-item-detail-grid { grid-template-columns: minmax(0, 1fr); }
   .po-inherited-details { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 600px) {
   .po-form-workspace--catalog .po-order-sidebar { grid-template-columns: minmax(0, 1fr); }
   .po-form-workspace--catalog .po-order-sidebar > .form-group:first-of-type { grid-column: auto; }
+  .po-form-workspace--catalog .po-form-body-container { padding: 8px; }
+  .po-form-workspace--catalog .po-items-card-actions { justify-content: flex-start; }
+  .po-form-workspace--catalog .po-items-card .po-inline-grid-container { margin: 8px; }
   .po-inherited-details dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .po-catalog-picker__filters { flex-direction: column; }
   .po-catalog-picker__filters select { width: 100%; }

@@ -23,7 +23,6 @@ const PO_GRID_DEFAULT_ZOOM = 100;
 const PO_GRID_MIN_ZOOM = 75;
 const PO_GRID_MAX_ZOOM = 125;
 const PO_GRID_ZOOM_STEP = 5;
-const PO_GRID_ZOOM_STORAGE_KEY = 'sunflower:po-grid-zoom';
 
 const getDraftSafeLink = (value: unknown) => {
   if (typeof value !== 'string') return '';
@@ -98,17 +97,7 @@ export default function POFormFullScreen({
   const [showAttachments, setShowAttachments] = useState(false);
   const [expandedItemIds, setExpandedItemIds] = useState<string[]>([]);
   const [isTableFocusMode, setIsTableFocusMode] = useState(false);
-  const [tableZoom, setTableZoom] = useState<number>(() => {
-    if (typeof window === 'undefined') return PO_GRID_DEFAULT_ZOOM;
-    try {
-      const storedZoom = Number(window.localStorage.getItem(PO_GRID_ZOOM_STORAGE_KEY));
-      if (!Number.isFinite(storedZoom)) return PO_GRID_DEFAULT_ZOOM;
-      const normalizedZoom = Math.round(storedZoom / PO_GRID_ZOOM_STEP) * PO_GRID_ZOOM_STEP;
-      return Math.min(PO_GRID_MAX_ZOOM, Math.max(PO_GRID_MIN_ZOOM, normalizedZoom));
-    } catch {
-      return PO_GRID_DEFAULT_ZOOM;
-    }
-  });
+  const [tableZoom, setTableZoom] = useState(PO_GRID_DEFAULT_ZOOM);
 
   // Search popup state for history/catalog
   const [searchPopupOpen, setSearchPopupOpen] = useState(false);
@@ -162,6 +151,7 @@ export default function POFormFullScreen({
     setDraftRestored(false);
     setSaveError('');
     setIsSaving(false);
+    setTableZoom(PO_GRID_DEFAULT_ZOOM);
 
     if (po) {
       setCustomerId(po.customerId || '');
@@ -397,14 +387,6 @@ export default function POFormFullScreen({
     contractFile,
     quoteFile
   ]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(PO_GRID_ZOOM_STORAGE_KEY, String(tableZoom));
-    } catch {
-      // Keep the selected zoom for this session when storage is unavailable.
-    }
-  }, [tableZoom]);
 
   useEffect(() => {
     if (!isOpen || !isTableFocusMode) return undefined;
@@ -1035,6 +1017,44 @@ export default function POFormFullScreen({
             </div>
   </>;
 
+  const statusNotices = <>
+            {saveError && (
+              <div className="po-save-error" role="alert">
+                {saveError}
+              </div>
+            )}
+            {draftRestored && (
+              <div className="po-draft-notice" role="status">
+                <History size={18} />
+                <div>
+                  <strong>Đã khôi phục bản nháp chưa lưu</strong>
+                  <span>Nội dung, mã hàng và phân công đã được giữ lại. Các tệp vừa chọn từ máy tính cần được chọn lại.</span>
+                </div>
+                <button type="button" className="btn btn-sm btn-outline" onClick={handleDiscardDraft}>
+                  Bỏ bản nháp
+                </button>
+              </div>
+            )}
+            {templatePo && (
+              <div className="repeat-order-banner">
+                <History size={18} />
+                <div>
+                  <strong>Đang tạo đơn đặt lại từ {templatePo.poCode}</strong>
+                  <span>Hệ thống đã lấy lại mã hàng, quy cách và mẫu thiết kế. Đơn giá hiện hành, số lượng, ngày giao và người phụ trách phải được xác nhận lại trước khi lưu.</span>
+                </div>
+              </div>
+            )}
+            {isPreparedAssignment && (
+              <div className="prepared-order-banner" role="status">
+                <CheckSquare size={18} />
+                <div>
+                  <strong>{t('Thông tin đơn đầu tiên đã được chuẩn bị từ CRM')}</strong>
+                  <span>{t('Mặt hàng, giá, ngày giao và tệp liên quan đã được điền sẵn. Hãy bổ sung phân công phòng ban rồi lưu để phát hành PO.')}</span>
+                </div>
+              </div>
+            )}
+  </>;
+
   return (
     <div className="modal-overlay-fullscreen">
       <div className={`modal-content-fullscreen po-form-workspace ${usesCatalogProducts ? 'po-form-workspace--catalog' : ''}`}>
@@ -1049,7 +1069,7 @@ export default function POFormFullScreen({
                   ? `${t('Chỉnh sửa đơn hàng PO')}: ${po.poCode}`
                   : templatePo
                     ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
-                    : t('Tạo mới đơn hàng khách hàng (PO)')}
+                    : t('Tạo đơn hàng khách hàng (PO)')}
               </h2>
               <p>
                 {isCustomerOnboarding
@@ -1095,6 +1115,8 @@ export default function POFormFullScreen({
           overflowY: 'auto'
         }} className="po-form-body-container">
 
+          {usesCatalogProducts && statusNotices}
+
           {/* LEFT SIDEBAR PANEL: Info, Files */}
           <div className="po-order-sidebar" style={{
             borderRight: '1px solid var(--color-border)',
@@ -1107,11 +1129,11 @@ export default function POFormFullScreen({
           }}>
             <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Layers size={16} />
-              <span>{t('Thông Tin Khách Hàng')}</span>
+              <span>{usesCatalogProducts ? t('Thông tin đơn hàng') : t('Thông Tin Khách Hàng')}</span>
             </h3>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Chọn Khách Hàng *')}</label>
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Khách hàng *')}</label>
               <select
                 value={customerId}
                 onChange={(e) => {
@@ -1139,7 +1161,7 @@ export default function POFormFullScreen({
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng Khách Hàng *')}</label>
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng khách hàng *')}</label>
               <select
                 value={customerRank}
                 onChange={(e) => setCustomerRank(e.target.value)}
@@ -1155,7 +1177,7 @@ export default function POFormFullScreen({
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Mã PO Khách Hàng (Số PO)')}</label>
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số PO khách hàng')}</label>
               <input
                 type="text"
                 value={customerPoCode}
@@ -1166,7 +1188,7 @@ export default function POFormFullScreen({
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày Giao Hàng Dự Kiến *')}</label>
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày giao dự kiến *')}</label>
               <input
                 type="date"
                 value={expectedDeliveryDate}
@@ -1177,7 +1199,7 @@ export default function POFormFullScreen({
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi Chú Đơn Hàng')}</label>
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi chú đơn hàng')}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -1198,41 +1220,7 @@ export default function POFormFullScreen({
             flexDirection: 'column',
             gap: '20px'
           }}>
-            {saveError && (
-              <div className="po-save-error" role="alert">
-                {saveError}
-              </div>
-            )}
-            {draftRestored && (
-              <div className="po-draft-notice" role="status">
-                <History size={18} />
-                <div>
-                  <strong>Đã khôi phục bản nháp chưa lưu</strong>
-                  <span>Nội dung, mã hàng và phân công đã được giữ lại. Các tệp vừa chọn từ máy tính cần được chọn lại.</span>
-                </div>
-                <button type="button" className="btn btn-sm btn-outline" onClick={handleDiscardDraft}>
-                  Bỏ bản nháp
-                </button>
-              </div>
-            )}
-            {templatePo && (
-              <div className="repeat-order-banner">
-                <History size={18} />
-                <div>
-                  <strong>Đang tạo đơn đặt lại từ {templatePo.poCode}</strong>
-                  <span>Hệ thống đã lấy lại mã hàng, quy cách và mẫu thiết kế. Đơn giá hiện hành, số lượng, ngày giao và người phụ trách phải được xác nhận lại trước khi lưu.</span>
-                </div>
-              </div>
-            )}
-            {isPreparedAssignment && (
-              <div className="prepared-order-banner" role="status">
-                <CheckSquare size={18} />
-                <div>
-                  <strong>{t('Thông tin đơn đầu tiên đã được chuẩn bị từ CRM')}</strong>
-                  <span>{t('Mặt hàng, giá, ngày giao và tệp liên quan đã được điền sẵn. Hãy bổ sung phân công phòng ban rồi lưu để phát hành PO.')}</span>
-                </div>
-              </div>
-            )}
+            {!usesCatalogProducts && statusNotices}
             {/* INLINE EDITING EXCEL-LIKE GRID */}
             <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
               <div className="po-items-card-header">
@@ -1292,7 +1280,7 @@ export default function POFormFullScreen({
                     <tr>
                       <th style={{ width: '64px', textAlign: 'center' }}>STT</th>
                       <th style={{ width: '130px' }}>{t('Mã sản phẩm')}</th>
-                      <th style={{ width: '180px' }}>{t('Tên hàng *')}</th>
+                      <th style={{ width: '180px' }}>{usesCatalogProducts ? t('Tên sản phẩm') : t('Tên hàng *')}</th>
                       <th style={{ width: '180px' }}>{t('Quy cách / Chất liệu')}</th>
                       <th style={{ width: '70px' }}>{t('ĐVT')}</th>
                       <th style={{ width: '80px' }}>{t('Số lượng')}</th>
@@ -1301,7 +1289,7 @@ export default function POFormFullScreen({
                       <th style={{ width: '190px' }}>{t('Chiết khấu')}</th>
                       <th style={{ width: '125px' }}>{t('Thành tiền (gồm VAT)')}</th>
                       <th style={{ width: '85px' }}>{t('KPI PO')}</th>
-                      <th style={{ width: '140px' }}>{t('File liên quan')}</th>
+                      <th style={{ width: usesCatalogProducts ? '180px' : '140px' }}>{usesCatalogProducts ? t('Thao tác') : t('File liên quan')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1315,12 +1303,79 @@ export default function POFormFullScreen({
                       const lockedFields = usesCatalogProducts && (requiresRegisteredProducts || Boolean(item.customerProductId));
                       const technicalSummary = getCustomerProductSpecSummary(item.specifications || {}, item.productType || '');
                       const productAssets = Array.isArray(item.productFiles) ? (item.productFiles as ProductAttachment[]).filter(file => file && typeof file.url === 'string' && file.url) : [];
+                      const rowAttachments = (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {/* Multiple image thumbnails */}
+                              {imagesList.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                  {imagesList.map((img: string, imgIdx: number) => (
+                                    <div key={imgIdx} style={{ position: 'relative', width: '32px', height: '32px' }}>
+                                      <img
+                                        src={img}
+                                        alt="layout"
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--color-border)' }}
+                                        onClick={() => setPreviewImage(img)}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => deleteRowImage(index, imgIdx)}
+                                        style={{
+                                          position: 'absolute',
+                                          top: '-4px',
+                                          right: '-4px',
+                                          backgroundColor: '#ef4444',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: '50%',
+                                          width: '12px',
+                                          height: '12px',
+                                          fontSize: '8px',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Upload triggers */}
+                              {imagesList.length < 5 && (
+                                <label style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '11px',
+                                  color: 'var(--color-primary)',
+                                  cursor: 'pointer',
+                                  padding: '2px 4px',
+                                  border: '1px dashed var(--color-primary)',
+                                  borderRadius: '4px',
+                                  width: 'fit-content'
+                                }}>
+                                  <Upload size={10} />
+                                  <span>+ {t('File')}</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) => handleRowFileChange(e, index)}
+                                    style={{ display: 'none' }}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                      );
                       return (
                         <React.Fragment key={itemKey}>
                         <tr>
                           <td className="po-item-index-cell">
                             <strong>{index + 1}</strong>
-                            <div className="po-row-actions">
+                            {!usesCatalogProducts && <div className="po-row-actions">
                               <button
                                 type="button"
                                 className={`po-detail-toggle ${isExpanded ? 'is-active' : ''}`}
@@ -1338,88 +1393,34 @@ export default function POFormFullScreen({
                               >
                                 <Trash2 size={14} />
                               </button>
-                            </div>
+                            </div>}
                           </td>
-                           <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <input
-                                type="text"
-                                className="po-grid-input"
-                                value={item.productCode}
-                              readOnly={lockedFields}
-                                onChange={(e) => handleUpdateRowField(index, 'productCode', e.target.value)}
-                                placeholder="Mã..."
-                                list={`product-codes-list-${index}`}
-                              />
-                              <datalist id={`product-codes-list-${index}`}>
-                                {catalogProducts.map((p: any) => (
-                                  <option key={p.id} value={p.productCode}>{p.productName}</option>
-                                ))}
+                          <td>
+                            {lockedFields ? <span className="po-source-text" title={item.productCode}>{item.productCode || '—'}</span> : <div className="po-product-code-control">
+                              <input type="text" className="po-grid-input" value={item.productCode || ''} onChange={event => handleUpdateRowField(index, 'productCode', event.target.value)} placeholder={t('Mã sản phẩm')} list={`product-codes-list-${index}`} />
+                              <datalist id={`product-codes-list-${index}`}>{catalogProducts.map(product => <option key={product.id} value={product.productCode}>{product.productName}</option>)}</datalist>
+                              {!usesCatalogProducts && <button type="button" className="btn btn-outline" onClick={() => openSearchPopup(index)}>{t('Chọn')}</button>}
+                            </div>}
+                          </td>
+                          <td>
+                            {lockedFields ? <span className="po-source-text" title={item.productName}>{item.productName || '—'}</span> : <>
+                              <input type="text" className="po-grid-input" value={item.productName || ''} onChange={event => handleUpdateRowField(index, 'productName', event.target.value)} placeholder={t('Tên sản phẩm')} list={`product-names-list-${index}`} />
+                              <datalist id={`product-names-list-${index}`}>{catalogProducts.map(product => <option key={product.id} value={product.productName}>{product.productCode}</option>)}</datalist>
+                            </>}
+                          </td>
+                          <td>
+                            {lockedFields ? <span className="po-source-text" title={[item.size, item.material].filter(Boolean).join(' · ')}>{[item.size, item.material].filter(Boolean).join(' · ') || '—'}</span> : <>
+                              <div className="po-item-spec-cell">
+                                <input type="text" className="po-grid-input" value={item.size || ''} onChange={event => handleUpdateRowField(index, 'size', event.target.value)} placeholder={t('Quy cách')} />
+                                <input type="text" className="po-grid-input" value={item.material || ''} onChange={event => handleUpdateRowField(index, 'material', event.target.value)} placeholder={t('Chất liệu')} list={`materials-suggest-${index}`} />
+                              </div>
+                              <datalist id={`materials-suggest-${index}`}>
+                                <option value="Decal Giấy Fasson AW0339F" /><option value="Decal Nhựa PVC Avery Dennison" /><option value="Màng BOPP bóng 12mic" /><option value="Giấy Ford" />
                               </datalist>
-                              <button
-                                type="button"
-                                className="btn btn-outline"
-                                style={{ padding: '4px 6px', height: '28px', border: '1px solid var(--color-border)' }}
-                                onClick={() => openSearchPopup(index)}
-                                title={t('Tìm kiếm nhanh')}
-                              >
-                                <Search size={12} />
-                              </button>
-                            </div>
+                            </>}
                           </td>
                           <td>
-                            <input
-                              type="text"
-                              className="po-grid-input"
-                              value={item.productName}
-                              readOnly={lockedFields}
-                              onChange={(e) => handleUpdateRowField(index, 'productName', e.target.value)}
-                              placeholder="Tên nhãn..."
-                              list={`product-names-list-${index}`}
-                            />
-                            {/* Datalist for dropdown suggestion */}
-                            <datalist id={`product-names-list-${index}`}>
-                              {catalogProducts.map((p: any) => (
-                                <option key={p.id} value={p.productName}>{p.productCode}</option>
-                              ))}
-                            </datalist>
-                          </td>
-                          <td>
-                            <div className="po-item-spec-cell">
-                              <input
-                                type="text"
-                                className="po-grid-input"
-                                value={item.size}
-                                readOnly={lockedFields}
-                                onChange={(e) => handleUpdateRowField(index, 'size', e.target.value)}
-                                placeholder={t('Quy cách')}
-                              />
-                            <input
-                              type="text"
-                              className="po-grid-input"
-                              value={item.material}
-                              readOnly={lockedFields}
-                              onChange={(e) => handleUpdateRowField(index, 'material', e.target.value)}
-                              placeholder={t('Chất liệu')}
-                              list="materials-suggest"
-                            />
-                            </div>
-                            <datalist id="materials-suggest">
-                              <option value="Decal Giấy Fasson AW0339F" />
-                              <option value="Decal Nhựa PVC Avery Dennison" />
-                              <option value="Màng BOPP bóng 12mic" />
-                              <option value="Giấy Ford" />
-                            </datalist>
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="po-grid-input"
-                              value={item.unit}
-                              readOnly={usesCatalogProducts && (requiresRegisteredProducts || Boolean(item.customerProductId))}
-                              onChange={(e) => handleUpdateRowField(index, 'unit', e.target.value)}
-                              placeholder="cái"
-                            />
+                            {lockedFields ? <span className="po-source-text" title={item.unit}>{item.unit || '—'}</span> : <input type="text" className="po-grid-input" value={item.unit || ''} onChange={event => handleUpdateRowField(index, 'unit', event.target.value)} placeholder={t('ĐVT')} />}
                           </td>
                           <td>
                             <input
@@ -1495,76 +1496,17 @@ export default function POFormFullScreen({
                             </span>
                           </td>
                           <td>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {/* Multiple image thumbnails */}
-                              {imagesList.length > 0 && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                  {imagesList.map((img: string, imgIdx: number) => (
-                                    <div key={imgIdx} style={{ position: 'relative', width: '32px', height: '32px' }}>
-                                      <img
-                                        src={img}
-                                        alt="layout"
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--color-border)' }}
-                                        onClick={() => setPreviewImage(img)}
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => deleteRowImage(index, imgIdx)}
-                                        style={{
-                                          position: 'absolute',
-                                          top: '-4px',
-                                          right: '-4px',
-                                          backgroundColor: '#ef4444',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: '50%',
-                                          width: '12px',
-                                          height: '12px',
-                                          fontSize: '8px',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          cursor: 'pointer'
-                                        }}
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Upload triggers */}
-                              {imagesList.length < 5 && (
-                                <label style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontSize: '11px',
-                                  color: 'var(--color-primary)',
-                                  cursor: 'pointer',
-                                  padding: '2px 4px',
-                                  border: '1px dashed var(--color-primary)',
-                                  borderRadius: '4px',
-                                  width: 'fit-content'
-                                }}>
-                                  <Upload size={10} />
-                                  <span>+ {t('File')}</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={(e) => handleRowFileChange(e, index)}
-                                    style={{ display: 'none' }}
-                                  />
-                                </label>
-                              )}
-                            </div>
+                            {usesCatalogProducts ? <div className="po-catalog-row-actions">
+                              <button type="button" aria-expanded={isExpanded} onClick={() => toggleItemDetails(itemKey)}>{isExpanded ? t('Thu gọn') : t('Chi tiết')}</button>
+                              <button type="button" onClick={() => openSearchPopup(index)} aria-label={`${t('Đổi sản phẩm')}: ${item.productCode || index + 1}`}>{t('Đổi')}</button>
+                              <button type="button" className="po-catalog-row-delete" onClick={() => handleRemoveRow(index)} aria-label={`${t('Xóa dòng')}: ${item.productCode || index + 1}`}>{t('Xóa')}</button>
+                            </div> : rowAttachments}
                           </td>
                         </tr>
                         {isExpanded && (
                           <tr className="po-item-detail-row">
                             <td colSpan={12}>
+                              {usesCatalogProducts && <section className="po-catalog-row-files"><h4>{t('Ảnh thiết kế / layout')}</h4>{rowAttachments}</section>}
                               {(technicalSummary.length > 0 || productAssets.length > 0 || item.productNote) && <div className="po-inherited-details">
                                 {technicalSummary.length > 0 && <section><h4>{t('Thông số kỹ thuật')}</h4><dl>{technicalSummary.map(field => <div key={field.id}><dt>{t(field.label)}</dt><dd>{t(field.value)}</dd></div>)}</dl></section>}
                                 {productAssets.length > 0 && <section><h4>{t('Tệp của sản phẩm')}</h4><div className="po-inherited-files">{productAssets.map((file, fileIndex) => <button key={file.id || fileIndex} type="button" className="btn btn-outline" onClick={() => openCustomerProductAsset(file.url)} title={file.name}>{file.name || t('Xem tệp')}</button>)}</div></section>}
