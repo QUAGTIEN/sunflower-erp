@@ -31,7 +31,6 @@ import {
   withCalculatedPOFinancials
 } from '@/domain/poFinancials';
 import {
-  getPOBadgeClass,
   getPOHistoryStatusLabel,
   getPOQueueLabel,
   getPOQueueStatus,
@@ -905,11 +904,11 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
 
           {activeListView === 'orders' && selectedOrderCustomer && (
             <div className="sales-customer-po-header">
-              <div>
+              <div className="sales-customer-po-header__identity">
                 <PageBackButton onClick={() => { setSelectedOrderCustomerId(''); setSearchTerm(''); }} />
-                <div>
-                  <strong>{selectedOrderCustomer.companyName}</strong>
-                  <span>{getCustomerCode(selectedOrderCustomer)} · {customerPOs.length} PO</span>
+                <div className="sales-customer-po-header__heading">
+                  <h1 title={selectedOrderCustomer.companyName}>{selectedOrderCustomer.companyName}</h1>
+                  <span className="sales-customer-po-header__count">{customerPOs.length} PO</span>
                 </div>
               </div>
               {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
@@ -983,7 +982,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
                           <td>{totalQuantity.toLocaleString('vi-VN')}</td>
                           <td>{Number(po.netAmount || po.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
                           <td>{formatDate(po.expectedDeliveryDate, t('vi-VN'))}</td>
-                          <td><span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span></td>
+                          <td><span className={`sales-status-label sales-status-label--${getPOQueueStatus(po)}`}>{t(getPOQueueLabel(po))}</span></td>
                           <td>{po.createdBy || '—'}</td>
                           <td>{formatDateTime(po.updatedAt || po.createdAt, t('vi-VN'), '—')}</td>
                           <td>
