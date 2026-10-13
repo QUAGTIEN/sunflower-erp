@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { CircleDot, Droplets, FileText, Layers, Paperclip, Ruler, Save, Settings2, Square, Upload, type LucideIcon } from 'lucide-react';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { useLanguage } from '@/context/LanguageContext';
@@ -19,6 +20,11 @@ interface Props {
   onClose: () => void;
   onCreated: (products: CustomerProductRecord[], product: CustomerProductRecord) => void;
 }
+
+const GROUP_ICONS: Record<string, LucideIcon> = {
+  size: Ruler, corner: Square, format: Layers, core: CircleDot,
+  processing: Settings2, paper: Layers, adhesive: Droplets, printing: FileText
+};
 
 const readFileData = (file: File): Promise<string> => new Promise((resolve, reject) => {
   const reader = new FileReader();
@@ -70,13 +76,13 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
   const isLabel = isRoll || draft.productType === 'tem_trang_to' || draft.productType === 'tem_mau_to';
   // Presentation groups retain the field IDs, options and values used by existing POs.
   const labelGroups = [
-    { key: 'size', title: 'A. Kích thước', ids: ['width', 'height'] },
-    { key: 'corner', title: 'B. Bo góc / kiểu góc', ids: ['dieCut', 'corner'] },
-    { key: 'format', title: isRoll ? 'C. Quy cách cuộn' : 'C. Quy cách tờ', ids: ['qtyPerRoll', 'metersPerRoll', 'gap', 'windDirection', 'sheetType', 'qtyPerSheet', 'qtyPerPack'] },
-    { key: 'core', title: 'Loại lõi và kích thước', ids: ['coreType', 'core'] },
-    { key: 'processing', title: 'D. Gia công', ids: ['perforated'] },
-    { key: 'paper', title: 'E. Giấy / nguyên vật liệu', ids: ['paperCode', 'paperType'] },
-    { key: 'adhesive', title: 'F. Loại keo', ids: ['adhesive'] },
+    { key: 'size', title: 'Kích thước', ids: ['width', 'height', 'gap'] },
+    { key: 'corner', title: 'Bo góc / kiểu góc', ids: ['dieCut', 'corner'] },
+    { key: 'format', title: isRoll ? 'Quy cách cuộn' : 'Quy cách tờ', ids: ['qtyPerRoll', 'metersPerRoll', 'windDirection', 'sheetType', 'qtyPerSheet', 'qtyPerPack'] },
+    { key: 'core', title: 'Lõi cuộn', ids: ['coreType', 'core'] },
+    { key: 'processing', title: 'Gia công', ids: ['perforated'] },
+    { key: 'paper', title: 'Giấy / nguyên vật liệu', ids: ['paperCode', 'paperType'] },
+    { key: 'adhesive', title: 'Loại keo', ids: ['adhesive'] },
     { key: 'printing', title: 'In và hoàn thiện', ids: ['colors', 'processing'] }
   ];
   const groups = isLabel
@@ -143,22 +149,22 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
     if (field.type === 'select') return <fieldset className={`customer-product-editor__field customer-product-editor__option-field customer-product-editor__option-field--${field.id}`} key={field.id}>
       <legend>{t(field.label)}{field.required ? ' *' : ''}</legend>
       <div className="customer-product-editor__choices">
-        {field.options?.map(option => <label key={option}>
+        {field.options?.map(option => <label key={option} className={value === option ? 'is-selected' : ''}>
           <input type="radio" name={`product-spec-${field.id}`} value={option} checked={value === option} required={field.required} onChange={() => updateSpec(field.id, option)} />
           <span>{t(option)}</span>
         </label>)}
         {value && !field.required && <button type="button" className="customer-product-editor__clear" onClick={() => updateSpec(field.id, '')} aria-label={`${t('Bỏ chọn')}: ${t(field.label)}`}>{t('Bỏ chọn')}</button>}
       </div>
     </fieldset>;
-    if (field.type === 'checkboxes') return <div className="customer-product-editor__field" key={field.id}>
+    if (field.type === 'checkboxes') return <div className={`customer-product-editor__field customer-product-editor__field--${field.id}`} key={field.id}>
       <span>{t(field.label)}</span><div className="customer-product-editor__choices">
-        {field.options?.map(option => <label key={option}><input type="checkbox" checked={Array.isArray(field.value) && field.value.includes(option)} onChange={event => {
+        {field.options?.map(option => <label key={option} className={Array.isArray(field.value) && field.value.includes(option) ? 'is-selected' : ''}><input type="checkbox" checked={Array.isArray(field.value) && field.value.includes(option)} onChange={event => {
           const values = Array.isArray(field.value) ? field.value : [];
           updateSpec(field.id, event.target.checked ? [...values, option] : values.filter(item => item !== option));
         }} />{t(option)}</label>)}
       </div>
     </div>;
-    return <label className="customer-product-editor__field" key={field.id}>
+    return <label className={`customer-product-editor__field customer-product-editor__field--${field.id}`} key={field.id}>
       <span>{t(field.label)}{field.required ? ' *' : ''}</span>
       <input type={field.type} value={value} min={field.required ? 0.01 : 0} step="any" required={field.required} onChange={event => updateSpec(field.id, event.target.value)} />
     </label>;
@@ -173,8 +179,8 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
     {!permitted ? <div role="alert">{t('Bạn không có quyền tạo sản phẩm cho khách hàng này.')}</div> :
     <form onSubmit={submit}>
       <fieldset disabled={isSaving || isUploading} className="customer-product-editor__body">
-        <section className="card customer-product-editor__section">
-          <h2>{t('Thông tin chung')}</h2>
+        <section className="card customer-product-editor__section customer-product-editor__general-section">
+          <h2><FileText aria-hidden="true" />{t('Thông tin chung')}</h2>
           <div className="customer-product-editor__grid customer-product-editor__general">
             <label><span>{t('Mã sản phẩm')} *</span><input autoFocus maxLength={100} required value={draft.productCode} onChange={event => patch({ productCode: event.target.value })} /></label>
             <label><span>{t('Tên sản phẩm')} *</span><input maxLength={250} required value={draft.productName} onChange={event => patch({ productName: event.target.value })} /></label>
@@ -188,20 +194,25 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
             {!isLabel && <label className="customer-product-editor__wide"><span>{t('Chất liệu')}</span><input maxLength={250} value={draft.material} onChange={event => patch({ material: event.target.value })} /></label>}
           </div>
         </section>
-        <section className="card customer-product-editor__section">
-          <h2>{t('Thông số kỹ thuật')}</h2>
-          <div className={`customer-product-editor__spec-groups ${isLabel ? isRoll ? 'is-label is-roll' : 'is-label is-sheet' : ''}`}>{groups.map(group => <section key={group.key} className={`customer-product-editor__spec-group customer-product-editor__spec-group--${group.key}`}>
-            <h3>{t(group.title)}</h3><div className="customer-product-editor__grid">{group.fields.map(renderSpec)}
-              {group.key === 'paper' && <label><span>{t('Chất liệu')}</span><input maxLength={250} value={draft.material} onChange={event => patch({ material: event.target.value })} /></label>}
+        <div aria-label={t('Thông số kỹ thuật')} className={`customer-product-editor__spec-groups ${isLabel ? isRoll ? 'is-label is-roll' : 'is-label is-sheet' : ''}`}>
+          {groups.map((group, index) => {
+            const Icon = GROUP_ICONS[group.key] || FileText;
+            return <section key={group.key} className={`customer-product-editor__spec-group customer-product-editor__spec-group--${group.key}`}>
+            <h3><Icon aria-hidden="true" /><span>{index + 1}. {t(group.title)}</span></h3><div className="customer-product-editor__grid">
+              {group.key === 'paper' ? <>
+                {group.fields.filter(field => field.id !== 'paperType').map(renderSpec)}
+                <label><span>{t('Chất liệu')}</span><input maxLength={250} value={draft.material} onChange={event => patch({ material: event.target.value })} /></label>
+                {group.fields.filter(field => field.id === 'paperType').map(renderSpec)}
+              </> : group.fields.map(renderSpec)}
             </div>
-          </section>)}</div>
-        </section>
-        <section className="card customer-product-editor__section">
-          <h2>{t('Tệp đính kèm và ghi chú')}</h2>
+          </section>;
+          })}
+        <section className="customer-product-editor__spec-group customer-product-editor__spec-group--attachments">
+          <h3><Paperclip aria-hidden="true" /><span>{groups.length + 1}. {t('Tệp đính kèm và ghi chú')}</span></h3>
           <div className="customer-product-editor__grid customer-product-editor__attachments">
-            <label><span>{t('File thiết kế')}</span><span className="customer-product-editor__upload"><input aria-label={t('Chọn tệp thiết kế')} type="file" multiple accept="image/*,.pdf" onChange={event => void upload(event, 'design')} /><span>{t('Chọn tệp')}</span></span></label>
-            <label><span>{t('Ảnh chiều tem ra')}</span><span className="customer-product-editor__upload"><input aria-label={t('Chọn ảnh chiều tem ra')} type="file" multiple accept="image/*" onChange={event => void upload(event, 'direction')} /><span>{t('Chọn ảnh')}</span></span></label>
-            <label><span>{t('Ghi chú')}</span><textarea maxLength={2000} rows={2} value={draft.note} onChange={event => patch({ note: event.target.value })} /></label>
+            <label><span>{t('File thiết kế')}</span><span className="customer-product-editor__upload"><input aria-label={t('Chọn tệp thiết kế')} type="file" multiple accept="image/*,.pdf" onChange={event => void upload(event, 'design')} /><Upload aria-hidden="true" /><span>{t('Chọn tệp')}</span></span></label>
+            <label><span>{t('Ảnh chiều tem ra')}</span><span className="customer-product-editor__upload"><input aria-label={t('Chọn ảnh chiều tem ra')} type="file" multiple accept="image/*" onChange={event => void upload(event, 'direction')} /><Upload aria-hidden="true" /><span>{t('Chọn ảnh')}</span></span></label>
+            <label className="customer-product-editor__wide"><span>{t('Ghi chú')}</span><textarea maxLength={2000} rows={2} value={draft.note} onChange={event => patch({ note: event.target.value })} /></label>
             <details className="customer-product-editor__links customer-product-editor__wide">
               <summary>{t('Thêm đường dẫn')}</summary>
               <div className="customer-product-editor__grid">
@@ -217,6 +228,7 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
             </li>)}</ul>}
           </div>
         </section>
+        </div>
         <details className="card customer-product-editor__section">
           <summary>{t('Giá và nhà cung cấp')}</summary>
           <div className="customer-product-editor__grid">
@@ -233,7 +245,7 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
       <footer className="customer-product-editor__footer">
         <span role={error ? 'alert' : 'status'} className={error ? 'customer-product-editor__error' : ''}>{error || (isUploading ? t('Đang xử lý tệp...') : '')}</span>
         <button type="button" className="btn btn-outline" disabled={isSaving || isUploading} onClick={close}>{t('Hủy')}</button>
-        <button type="submit" className="btn btn-primary" disabled={isSaving || isUploading}>{isSaving ? t('Đang lưu...') : t('Lưu mã sản phẩm')}</button>
+        <button type="submit" className="btn btn-primary" disabled={isSaving || isUploading}><Save aria-hidden="true" />{isSaving ? t('Đang lưu...') : t('Lưu mã sản phẩm')}</button>
       </footer>
     </form>}
   </div>;
