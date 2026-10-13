@@ -66,12 +66,14 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
   const [linkUrl, setLinkUrl] = useState('');
   const dirty = JSON.stringify(draft) !== initialDraft || Boolean(linkName || linkUrl);
   const types = [...new Map([...CUSTOMER_PRODUCT_TYPES, ...classifications.filter(type => type.id && type.name)].map(type => [type.id, type])).values()];
-  const isLabel = ['tem_trang_cuon', 'tem_mau_cuon', 'tem_trang_to', 'tem_mau_to'].includes(draft.productType);
+  const isRoll = draft.productType === 'tem_trang_cuon' || draft.productType === 'tem_mau_cuon';
+  const isLabel = isRoll || draft.productType === 'tem_trang_to' || draft.productType === 'tem_mau_to';
   // Presentation groups retain the field IDs, options and values used by existing POs.
   const labelGroups = [
     { key: 'size', title: 'A. Kích thước', ids: ['width', 'height'] },
     { key: 'corner', title: 'B. Bo góc / kiểu góc', ids: ['dieCut', 'corner'] },
-    { key: 'format', title: draft.productType.endsWith('_cuon') ? 'C. Quy cách cuộn' : 'C. Quy cách tờ', ids: ['qtyPerRoll', 'metersPerRoll', 'coreType', 'core', 'gap', 'windDirection', 'sheetType', 'qtyPerSheet', 'qtyPerPack'] },
+    { key: 'format', title: isRoll ? 'C. Quy cách cuộn' : 'C. Quy cách tờ', ids: ['qtyPerRoll', 'metersPerRoll', 'gap', 'windDirection', 'sheetType', 'qtyPerSheet', 'qtyPerPack'] },
+    { key: 'core', title: 'Loại lõi và kích thước', ids: ['coreType', 'core'] },
     { key: 'processing', title: 'D. Gia công', ids: ['perforated'] },
     { key: 'paper', title: 'E. Giấy / nguyên vật liệu', ids: ['paperCode', 'paperType'] },
     { key: 'adhesive', title: 'F. Loại keo', ids: ['adhesive'] },
@@ -188,9 +190,9 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
         </section>
         <section className="card customer-product-editor__section">
           <h2>{t('Thông số kỹ thuật')}</h2>
-          <div className={`customer-product-editor__spec-groups ${isLabel ? 'is-label' : ''}`}>{groups.map(group => <section key={group.key} className={`customer-product-editor__spec-group customer-product-editor__spec-group--${group.key}`}>
+          <div className={`customer-product-editor__spec-groups ${isLabel ? isRoll ? 'is-label is-roll' : 'is-label is-sheet' : ''}`}>{groups.map(group => <section key={group.key} className={`customer-product-editor__spec-group customer-product-editor__spec-group--${group.key}`}>
             <h3>{t(group.title)}</h3><div className="customer-product-editor__grid">{group.fields.map(renderSpec)}
-              {group.key === 'paper' && <label className="customer-product-editor__wide"><span>{t('Chất liệu')}</span><input maxLength={250} value={draft.material} onChange={event => patch({ material: event.target.value })} /></label>}
+              {group.key === 'paper' && <label><span>{t('Chất liệu')}</span><input maxLength={250} value={draft.material} onChange={event => patch({ material: event.target.value })} /></label>}
             </div>
           </section>)}</div>
         </section>
