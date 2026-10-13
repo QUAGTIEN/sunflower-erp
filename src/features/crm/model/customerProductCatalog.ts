@@ -130,8 +130,26 @@ export function getProductSpecFields(type: string): ProductSpecField[] {
 
 export const getCustomerProductSize = (product: Pick<CustomerProductRecord, 'size' | 'specifications'>) => {
   const specs = product.specifications || {};
-  return product.size || (specs.width && specs.height ? `${specs.width} × ${specs.height} mm` : String(specs.size || ''));
+  return specs.width && specs.height ? `${specs.width} × ${specs.height} mm` : String(specs.size || product.size || '');
 };
+
+export function findCustomerProductForOrderItem(item: Record<string, unknown>, products: CustomerProductRecord[]) {
+  if (item.customerProductId) return products.find(product => product.id === item.customerProductId);
+  const code = normalizeProductCode(item.productCode);
+  return code ? products.find(product => getCustomerProductCodes(product).includes(code)) : undefined;
+}
+
+export function getCustomerProductSpecSummary(specifications: Record<string, unknown>, productType: string) {
+  const fields = Array.isArray(specifications.fields)
+    ? specifications.fields as ProductSpecField[] : getProductSpecFields(productType);
+  return fields.flatMap(field => {
+    if (!field || !field.id || (field.type as string) === 'file') return [];
+    const value = specifications[field.id] ?? field.value;
+    const text = Array.isArray(value) ? value.filter(item => typeof item === 'string' || typeof item === 'number').join(', ')
+      : typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    return text.trim() ? [{ id: field.id, label: field.label, value: text }] : [];
+  });
+}
 
 export function buildCustomerProduct(input: CustomerProductInput, id: string, now: string): CustomerProductRecord {
   if (!input.productCode.trim() || !input.productName.trim() || !input.productType || !input.unit.trim()) {
@@ -194,7 +212,14 @@ export function replaceCustomerProduct(customer: CustomerRecord, product: Custom
     throw new Error('Sản phẩm đã được thay đổi bởi người khác. Vui lòng mở lại hồ sơ trước khi lưu.');
   }
   if (hasCustomerProductCode(customer.products, product.productCode, product.id)) throw new Error('Mã sản phẩm đã tồn tại trong hồ sơ khách hàng.');
-  const next = { ...existing, ...product, catalogRevision: Number(existing.catalogRevision || 0) + 1, previousProductCodes: Array.from(new Set([
+  const specifications = { ...product.specifications };
+  if (Array.isArray(specifications.fields)) specifications.fields = specifications.fields.map(field => {
+    if (!field || typeof field !== 'object') return field;
+    const record = field as Record<string, unknown>;
+    return typeof record.id === 'string' && specifications[record.id] !== undefined
+      ? { ...record, value: specifications[record.id] } : record;
+  });
+  const next = { ...existing, ...product, specifications, size: getCustomerProductSize({ ...product, specifications }), catalogRevision: Number(existing.catalogRevision || 0) + 1, previousProductCodes: Array.from(new Set([
     ...(Array.isArray(existing.previousProductCodes) ? existing.previousProductCodes : []),
     ...(Array.isArray(product.previousProductCodes) ? product.previousProductCodes : []),
     ...(normalizeProductCode(existing.productCode) !== normalizeProductCode(product.productCode) ? [existing.productCode] : [])
@@ -208,11 +233,38 @@ export function replaceCustomerProduct(customer: CustomerRecord, product: Custom
 export function applyCustomerProductToOrderItem(item: Record<string, unknown>, product: CustomerProductRecord) {
   return {
     ...item, customerProductId: product.id, productCode: product.productCode, productName: product.productName,
+    customerProductVersion: getCustomerProductVersion(product),
     productType: product.productType, size: getCustomerProductSize(product), material: product.material || '',
     unit: product.unit || 'cái', price: Number(product.currentPrice || 0), vatRate: Number(product.vatRate ?? 8),
     supplierId: product.supplierId || '', supplierName: product.supplierName || '', purchasePrice: Number(product.purchasePrice || 0),
     workType: product.workType || (['muc_in', 'giay', 'may_in', 'may_quet'].includes(product.productType) ? 'mua_nvl' : 'gia_cong'),
     previewImages: structuredClone(product.previewImages || (product.layoutUrl ? [product.layoutUrl] : product.previewImage ? [product.previewImage] : [])),
-    specifications: structuredClone(product.specifications || {}), productFiles: structuredClone(product.files || [])
+    specifications: structuredClone(product.specifications || {}), productFiles: structuredClone(product.files || []),
+    productNote: product.note || '', leadTimeDays: Number(product.leadTimeDays || 0)
   };
+}
+
+/** Refresh catalog-owned fields without overwriting this order's commercial inputs. */
+export function refreshCustomerProductOrderItem(item: Record<string, unknown>, product: CustomerProductRecord) {
+  const snapshot = applyCustomerProductToOrderItem(item, product);
+  return {
+    ...snapshot,
+    price: item.price ?? snapshot.price,
+    vatRate: item.vatRate ?? snapshot.vatRate,
+    previewImages: [...new Set([
+      ...(Array.isArray(snapshot.previewImages) ? snapshot.previewImages : []),
+      ...(Array.isArray(item.previewImages) ? item.previewImages : [])
+    ].filter((value): value is string => typeof value === 'string' && Boolean(value)))]
+  };
+}
+
+export function synchronizeCustomerProductOrderItems(items: Record<string, unknown>[], customer: CustomerRecord) {
+  if (customer.deleted === true) throw new Error('Khách hàng không còn hoạt động.');
+  const products = getActiveCustomerProducts(customer);
+  if (!items.length) throw new Error('Vui lòng chọn ít nhất một sản phẩm.');
+  return items.map((item, index) => {
+    const product = findCustomerProductForOrderItem(item, products);
+    if (!product) throw new Error(`Dòng ${index + 1}: Mã sản phẩm không còn hợp lệ trong danh mục khách hàng. Vui lòng chọn lại.`);
+    return refreshCustomerProductOrderItem(item, product);
+  });
 }

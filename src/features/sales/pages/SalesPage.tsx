@@ -41,7 +41,8 @@ import {
 } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
-import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
+import { normalizeCustomerProduct, type CustomerRecord, type LeadRecord } from '@/features/crm/model/crmModels';
+import { synchronizeCustomerProductOrderItems } from '@/features/crm/model/customerProductCatalog';
 import '@/components/CustomerHistory.css';
 import {
   Plus,
@@ -523,6 +524,10 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
       setSelectedPO(null);
     } else {
       // Creating new PO
+      const latestCustomer = await dbService.getDocument('customers', poData.customerId) as CustomerRecord | null;
+      if (!latestCustomer) throw new Error(t('Không tìm thấy khách hàng. Vui lòng chọn lại.'));
+      const catalogCustomer = { ...latestCustomer, products: (latestCustomer.products || []).map(normalizeCustomerProduct) };
+      poData = { ...poData, items: synchronizeCustomerProductOrderItems(poData.items, catalogCustomer).map(withCalculatedPOFinancials) };
       const now = new Date();
       const yyyy = now.getFullYear();
       const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -551,6 +556,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
         ));
 
         poData.items.forEach((item: any, itemIndex: number) => {
+          if (item.designReuseRequested !== true) return;
           const matchedSourceItemIndex = (sourcePO?.items || []).findIndex((sourceItem: any) => (
             item.sourceItemId && sourceItem.itemId === item.sourceItemId
           ));

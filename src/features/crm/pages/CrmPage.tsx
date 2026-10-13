@@ -1319,6 +1319,7 @@ export const Crm: React.FC<CrmProps> = ({
       leadTimeDays: Number(productLeadTimeDays),
       layoutUrl: productLayoutBase64,
       specifications: specs,
+      size: getCustomerProductSize({ size: '', specifications: specs }),
       priceHistory: newPriceHistory,
       updatedAt: new Date().toISOString()
     };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Plus, Search, Trash2, X, Download, Folder, FileText,
   ChevronDown, ChevronUp, Upload, CheckSquare,
@@ -14,7 +14,9 @@ import {
 } from '@/features/crm/model/crmModels';
 import '@/components/CustomerHistory.css';
 import { formatDate, toDateInputValue } from '@/shared/utils/dateFormatting';
-import { applyCustomerProductToOrderItem, getActiveCustomerProducts, normalizeProductCode } from '@/features/crm/model/customerProductCatalog';
+import { applyCustomerProductToOrderItem, findCustomerProductForOrderItem, getActiveCustomerProducts, getCustomerProductSpecSummary, normalizeProductCode, openCustomerProductAsset, refreshCustomerProductOrderItem, type ProductAttachment } from '@/features/crm/model/customerProductCatalog';
+import { CustomerProductPicker } from './CustomerProductPicker';
+import './POFormCatalog.css';
 
 const PO_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const PO_GRID_DEFAULT_ZOOM = 100;
@@ -28,10 +30,18 @@ const getDraftSafeLink = (value: unknown) => {
   return value.startsWith('data:') ? '' : value;
 };
 
+const getDraftSafeValue = (value: unknown): unknown => {
+  if (typeof value === 'string') return getDraftSafeLink(value);
+  if (Array.isArray(value)) return value.map(getDraftSafeValue);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, getDraftSafeValue(item)]));
+  return value;
+};
 const getDraftSafeItems = (items: any[]) => items.map(item => ({
   ...item,
   previewImage: getDraftSafeLink(item.previewImage),
-  previewImages: (item.previewImages || []).map(getDraftSafeLink).filter(Boolean)
+  previewImages: (item.previewImages || []).map(getDraftSafeLink).filter(Boolean),
+  productFiles: getDraftSafeValue(item.productFiles || []),
+  specifications: getDraftSafeValue(item.specifications || {})
 }));
 
 interface POFormFullScreenProps {
@@ -105,7 +115,9 @@ export default function POFormFullScreen({
   const [searchRowIndex, setSearchRowIndex] = useState<number | null>(null);
   const [pastProducts, setPastProducts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const requiresRegisteredProducts = !po && !templatePo && workflowMode === 'standard';
+  const usesCatalogProducts = workflowMode === 'standard';
+  const requiresRegisteredProducts = !po && usesCatalogProducts;
+  const closeCatalogPicker = useCallback(() => setSearchPopupOpen(false), []);
 
   // Modal customer document repository state
   const [showRepoModal, setShowRepoModal] = useState(false);
@@ -123,6 +135,14 @@ export default function POFormFullScreen({
   const draftKey = !po && workflowMode === 'standard' && currentUser?.uid
     ? `sunflower:po-draft:${currentUser.uid}:${templatePo?.id || initialCustomerId || 'new'}`
     : '';
+  const orderItems = useMemo(() => {
+    if (!requiresRegisteredProducts) return poItems;
+    const products = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
+    return poItems.map(item => {
+      const product = findCustomerProductForOrderItem(item, products);
+      return product ? refreshCustomerProductOrderItem(item, product) : item;
+    });
+  }, [requiresRegisteredProducts, poItems, customerId, customers]);
 
   // Load initial data
   useEffect(() => {
@@ -198,31 +218,30 @@ export default function POFormFullScreen({
       setQuoteFile('');
 
       const repeatItems = (templatePo.items || []).map((item: any) => {
-        const catalogProduct = catalogProducts.find((product: any) => (
-          (item.customerProductId && product.id === item.customerProductId)
-          || (product.productCode && normalizeProductCode(product.productCode) === normalizeProductCode(item.productCode))
-        ));
+        const catalogProduct = findCustomerProductForOrderItem(item, catalogProducts);
         const previewImages = item.previewImages || (item.previewImage ? [item.previewImage] : []);
 
         return {
-          ...item,
+          ...(catalogProduct ? applyCustomerProductToOrderItem(item, catalogProduct) : item),
           ...(catalogProduct ? { customerProductId: catalogProduct.id } : {}),
           itemId: `item-${Math.random().toString(36).substr(2, 9)}`,
           price: Number(catalogProduct?.currentPrice || 0),
-          purchasePrice: 0,
+          purchasePrice: Number(catalogProduct?.purchasePrice || 0),
           discountType: item.discountType === 'amount' ? 'amount' : 'percent',
           discountRate: Number(sourceCustomer?.discountRate ?? item.discountRate ?? 0),
           discountAmount: item.discountType === 'amount' ? Number(item.discountAmount || 0) : 0,
-          vatRate: item.vatRate !== undefined ? item.vatRate : 8,
+          vatRate: catalogProduct?.vatRate ?? item.vatRate ?? 8,
           deliveryDate: defaultDeliveryDate,
           previewImages,
-          unit: item.unit || 'cái',
-          material: item.material || 'Decal Giấy Fasson AW0339F',
-          size: item.size || '',
+          unit: catalogProduct?.unit || item.unit || 'cái',
+          material: catalogProduct ? catalogProduct.material : item.material || '',
+          size: catalogProduct ? applyCustomerProductToOrderItem({}, catalogProduct).size : item.size || '',
           sourcePoId: templatePo.id,
           sourcePoCode: templatePo.poCode,
           sourceItemId: item.itemId,
-          designReuseRequested: previewImages.length > 0 || !!item.designLayouts?.length || !!templatePo.links?.aiLink || !!templatePo.links?.corelLink,
+          designReuseRequested: (!catalogProduct || (applyCustomerProductToOrderItem({}, catalogProduct).size === (item.size || '')
+            && (catalogProduct.material || '') === (item.material || '')))
+            && (previewImages.length > 0 || !!item.designLayouts?.length || !!templatePo.links?.aiLink || !!templatePo.links?.corelLink),
           pricingNeedsReview: true,
           purchaseNeedsReview: true
         };
@@ -233,7 +252,7 @@ export default function POFormFullScreen({
       setAssignments([]);
     } else {
       // Defaults for creation
-      const initialCustomer = customers.find(customer => customer.id === initialCustomerId) || customers[0];
+      const initialCustomer = customers.find(customer => customer.id === initialCustomerId);
       const preparedOrder = initialCustomer?.pendingOrderDraft;
       setCustomerId(initialCustomer?.id || '');
       setCustomerRank(initialCustomer?.customerRank || '');
@@ -530,6 +549,11 @@ export default function POFormFullScreen({
 
   // Add blank row
   const handleAddRow = () => {
+    if (usesCatalogProducts) {
+      setSearchRowIndex(-1);
+      setSearchPopupOpen(true);
+      return;
+    }
     const currentCustomer = customers.find(c => c.id === customerId);
     const discountRate = currentCustomer ? currentCustomer.discountRate : 0;
 
@@ -583,6 +607,8 @@ export default function POFormFullScreen({
   };
 
   const handleUpdateRowField = (index: number, field: string, value: any) => {
+    if (usesCatalogProducts && (requiresRegisteredProducts || poItems[index]?.customerProductId)
+      && ['productCode', 'productName', 'size', 'material', 'unit'].includes(field)) return;
     const updated = [...poItems];
     updated[index] = { ...updated[index], [field]: value };
 
@@ -654,6 +680,25 @@ export default function POFormFullScreen({
     setSearchRowIndex(rowIndex);
     setSearchQuery('');
     setSearchPopupOpen(true);
+  };
+
+  const addCatalogProducts = (ids: string[]) => {
+    const products = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
+    const selected = ids.map(id => products.find(product => product.id === id)).filter(product => Boolean(product));
+    if (!selected.length) return;
+    if (searchRowIndex !== null && searchRowIndex >= 0) {
+      setPoItems(previous => previous.map((item, index) => index === searchRowIndex ? applyCustomerProductToOrderItem(item, selected[0]!) : item));
+    } else {
+      const customer = customers.find(record => record.id === customerId);
+      const rows = selected.map(product => applyCustomerProductToOrderItem({
+        itemId: crypto.randomUUID(), quantity: 1, deliveryDate: expectedDeliveryDate, note: '',
+        discountType: customer?.discountType || 'percent', discountRate: Number(customer?.discountRate || 0),
+        discountAmount: Number(customer?.discountAmount || 0)
+      }, product!));
+      setPoItems(previous => [...previous, ...rows]);
+    }
+    setSearchPopupOpen(false);
+    setSearchRowIndex(null);
   };
 
   // Assignments helpers
@@ -753,10 +798,10 @@ export default function POFormFullScreen({
     // Validate that all items have a name and quantity
     const customerCatalog = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
     const preparedProductCodes = new Set<string>();
-    for (let i = 0; i < poItems.length; i++) {
-      const productCode = String(poItems[i].productCode || '').trim();
+    for (let i = 0; i < orderItems.length; i++) {
+      const productCode = String(orderItems[i].productCode || '').trim();
       if (requiresRegisteredProducts
-        && !customerCatalog.some(product => normalizeProductCode(product.productCode) === normalizeProductCode(productCode))) {
+        && !findCustomerProductForOrderItem(orderItems[i], customerCatalog)) {
         alert(t(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`));
         return;
       }
@@ -770,23 +815,23 @@ export default function POFormFullScreen({
         return;
       }
       if (normalizedProductCode) preparedProductCodes.add(normalizedProductCode);
-      if (!poItems[i].productName) {
+      if (!orderItems[i].productName) {
         alert(t(`Dòng ${i + 1}: Vui lòng nhập tên hàng!`));
         return;
       }
-      if (!poItems[i].quantity || poItems[i].quantity <= 0) {
+      if (!orderItems[i].quantity || orderItems[i].quantity <= 0) {
         alert(t(`Dòng ${i + 1}: Số lượng phải lớn hơn 0!`));
         return;
       }
-      if (templatePo && (!poItems[i].price || Number(poItems[i].price) <= 0)) {
+      if (templatePo && (!orderItems[i].price || Number(orderItems[i].price) <= 0)) {
         alert(`Dòng ${i + 1}: Vui lòng kiểm tra và nhập đơn giá hiện hành trước khi lưu đơn đặt lại.`);
         return;
       }
     }
 
-    const normalizedItems = poItems.map(item => {
-      const catalogProduct = customerCatalog.find(product => normalizeProductCode(product.productCode) === normalizeProductCode(item.productCode));
-      return withCalculatedPOFinancials(!po && catalogProduct ? { ...item, customerProductId: catalogProduct.id, productType: catalogProduct.productType } : item);
+    const normalizedItems = orderItems.map(item => {
+      const catalogProduct = findCustomerProductForOrderItem(item, customerCatalog);
+      return withCalculatedPOFinancials(requiresRegisteredProducts && catalogProduct ? refreshCustomerProductOrderItem(item, catalogProduct) : item);
     });
 
     // Calculate totals
@@ -867,7 +912,7 @@ export default function POFormFullScreen({
     let totalVat = 0;
     let totalAfterVat = 0;
 
-    poItems.forEach(item => {
+    orderItems.forEach(item => {
       const financials = calculatePOItemFinancials(item);
       totalQty += financials.quantity;
       totalBeforeVat += financials.amountBeforeVat;
@@ -879,6 +924,11 @@ export default function POFormFullScreen({
   };
 
   const footerTotals = calculateFooter();
+  const quantitiesByUnit = new Map<string, number>();
+  orderItems.forEach(item => {
+    const unit = String(item.unit || t('Chưa có ĐVT'));
+    quantitiesByUnit.set(unit, (quantitiesByUnit.get(unit) || 0) + (Number(item.quantity) || 0));
+  });
   const attachmentCount = [pdfFile, excelFile, aiFile, corelFile, contractFile, quoteFile].filter(Boolean).length;
 
   // Catalog products + past history filter
@@ -910,156 +960,7 @@ export default function POFormFullScreen({
     { value: 'admin', label: t('Ban Giám Đốc (ADMIN)') }
   ];
 
-  return (
-    <div className="modal-overlay-fullscreen">
-      <div className="modal-content-fullscreen po-form-workspace">
-        {/* HEADER */}
-        <div className="po-form-header">
-          <div className="po-form-heading">
-            <div>
-              <h2>
-                {isCustomerOnboarding
-                  ? t('Chuẩn bị đơn hàng đầu tiên')
-                  : po
-                  ? `${t('Chỉnh sửa đơn hàng PO')}: ${po.poCode}`
-                  : templatePo
-                    ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
-                    : t('Tạo mới đơn hàng khách hàng (PO)')}
-              </h2>
-              <p>
-                {isCustomerOnboarding
-                  ? t('Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại Sale PO.')
-                  : po
-                  ? `${t('Mã PO nội bộ:')} ${po.poCode}`
-                  : templatePo
-                    ? 'Kế thừa thông số và mẫu đã duyệt; giá, ngày giao và phân công cần kiểm tra lại.'
-                    : t('Khởi tạo tệp thông tin đơn hàng mới và phân công sản xuất')}
-              </p>
-            </div>
-          </div>
-          <div className="po-form-header-actions">
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={handleClose}
-              disabled={isSaving}
-            >
-              {t('Đóng / Hủy')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleSubmit}
-              disabled={isSaving}
-              aria-busy={isSaving}
-            >
-              <span>{isSaving
-                ? t('Đang lưu...')
-                : isCustomerOnboarding
-                  ? t('Lưu khách hàng & chuẩn bị PO')
-                  : t('Lưu Đơn Hàng PO')}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* SCROLLABLE BODY */}
-        <div style={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: '300px minmax(0, 1fr)',
-          overflowY: 'auto'
-        }} className="po-form-body-container">
-
-          {/* LEFT SIDEBAR PANEL: Info, Files */}
-          <div className="po-order-sidebar" style={{
-            borderRight: '1px solid var(--color-border)',
-            padding: '20px',
-            overflowY: 'visible',
-            backgroundColor: '#f8fafc',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Layers size={16} />
-              <span>{t('Thông Tin Khách Hàng')}</span>
-            </h3>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Chọn Khách Hàng *')}</label>
-              <select
-                value={customerId}
-                onChange={(e) => {
-                  const nextCustomerId = e.target.value;
-                  const nextCustomer = customers.find(customer => customer.id === nextCustomerId);
-                  setCustomerId(nextCustomerId);
-                  setCustomerRank(nextCustomer?.customerRank || '');
-                  setPoItems([]); // Reset items on customer change
-                  setPastProducts([]);
-                  setSearchPopupOpen(false);
-                  setSearchRowIndex(null);
-                }}
-                disabled={!!po || !!templatePo || Boolean(initialCustomerId)} // Linked onboarding/repeat orders must stay with the original customer
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              >
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.companyName} ({t('CK')}: {c.discountRate}%)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng Khách Hàng *')}</label>
-              <select
-                value={customerRank}
-                onChange={(e) => setCustomerRank(e.target.value)}
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              >
-                <option value="">{t('-- Chọn hạng khách hàng --')}</option>
-                {['A', 'B', 'C', 'D'].map(rank => (
-                  <option key={rank} value={rank}>{t('Hạng')} {rank}</option>
-                ))}
-              </select>
-              <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.')}</span>
-            </div>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Mã PO Khách Hàng (Số PO)')}</label>
-              <input
-                type="text"
-                value={customerPoCode}
-                onChange={(e) => setCustomerPoCode(e.target.value)}
-                placeholder={t('Ví dụ: VFT26-553...')}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày Giao Hàng Dự Kiến *')}</label>
-              <input
-                type="date"
-                value={expectedDeliveryDate}
-                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi Chú Đơn Hàng')}</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={t('Chi tiết giao hàng, yêu cầu riêng...')}
-                rows={3}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
-              />
-            </div>
-
+  const orderAttachments = <>
             {/* Document upload / repository repo link */}
             <div className="po-attachments-card">
               <button
@@ -1132,6 +1033,161 @@ export default function POFormFullScreen({
               </div>
               </div>}
             </div>
+  </>;
+
+  return (
+    <div className="modal-overlay-fullscreen">
+      <div className={`modal-content-fullscreen po-form-workspace ${usesCatalogProducts ? 'po-form-workspace--catalog' : ''}`}>
+        {/* HEADER */}
+        <div className="po-form-header">
+          <div className="po-form-heading">
+            <div>
+              <h2>
+                {isCustomerOnboarding
+                  ? t('Chuẩn bị đơn hàng đầu tiên')
+                  : po
+                  ? `${t('Chỉnh sửa đơn hàng PO')}: ${po.poCode}`
+                  : templatePo
+                    ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
+                    : t('Tạo mới đơn hàng khách hàng (PO)')}
+              </h2>
+              <p>
+                {isCustomerOnboarding
+                  ? t('Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại Sale PO.')
+                  : po
+                  ? `${t('Mã PO nội bộ:')} ${po.poCode}`
+                  : templatePo
+                    ? 'Kế thừa thông số và mẫu đã duyệt; giá, ngày giao và phân công cần kiểm tra lại.'
+                    : t('Khởi tạo tệp thông tin đơn hàng mới và phân công sản xuất')}
+              </p>
+            </div>
+          </div>
+          <div className="po-form-header-actions">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={handleClose}
+              disabled={isSaving}
+            >
+              {t('Quay lại')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSubmit}
+              disabled={isSaving}
+              aria-busy={isSaving}
+            >
+              <span>{isSaving
+                ? t('Đang lưu...')
+                : isCustomerOnboarding
+                  ? t('Lưu khách hàng & chuẩn bị PO')
+                  : t('Lưu Đơn Hàng PO')}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* SCROLLABLE BODY */}
+        <div style={{
+          flex: 1,
+          display: 'grid',
+          gridTemplateColumns: '300px minmax(0, 1fr)',
+          overflowY: 'auto'
+        }} className="po-form-body-container">
+
+          {/* LEFT SIDEBAR PANEL: Info, Files */}
+          <div className="po-order-sidebar" style={{
+            borderRight: '1px solid var(--color-border)',
+            padding: '20px',
+            overflowY: 'visible',
+            backgroundColor: '#f8fafc',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Layers size={16} />
+              <span>{t('Thông Tin Khách Hàng')}</span>
+            </h3>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Chọn Khách Hàng *')}</label>
+              <select
+                value={customerId}
+                onChange={(e) => {
+                  const nextCustomerId = e.target.value;
+                  if (nextCustomerId !== customerId && poItems.length && !window.confirm(t('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong PO. Bạn có muốn tiếp tục?'))) return;
+                  const nextCustomer = customers.find(customer => customer.id === nextCustomerId);
+                  setCustomerId(nextCustomerId);
+                  setCustomerRank(nextCustomer?.customerRank || '');
+                  setPoItems([]); // Reset items on customer change
+                  setPastProducts([]);
+                  setSearchPopupOpen(false);
+                  setSearchRowIndex(null);
+                }}
+                disabled={!!po || !!templatePo || Boolean(initialCustomerId)} // Linked onboarding/repeat orders must stay with the original customer
+                required
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+              >
+                <option value="">{t('Chọn khách hàng')}</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.companyName} ({t('CK')}: {c.discountRate}%)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng Khách Hàng *')}</label>
+              <select
+                value={customerRank}
+                onChange={(e) => setCustomerRank(e.target.value)}
+                required
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+              >
+                <option value="">{t('-- Chọn hạng khách hàng --')}</option>
+                {['A', 'B', 'C', 'D'].map(rank => (
+                  <option key={rank} value={rank}>{t('Hạng')} {rank}</option>
+                ))}
+              </select>
+              <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.')}</span>
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Mã PO Khách Hàng (Số PO)')}</label>
+              <input
+                type="text"
+                value={customerPoCode}
+                onChange={(e) => setCustomerPoCode(e.target.value)}
+                placeholder={t('Ví dụ: VFT26-553...')}
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày Giao Hàng Dự Kiến *')}</label>
+              <input
+                type="date"
+                value={expectedDeliveryDate}
+                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                required
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi Chú Đơn Hàng')}</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={t('Chi tiết giao hàng, yêu cầu riêng...')}
+                rows={3}
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+              />
+            </div>
+
+            {!usesCatalogProducts && orderAttachments}
           </div>
 
           {/* RIGHT GRID PANEL: Items Grid & Assignments */}
@@ -1181,7 +1237,7 @@ export default function POFormFullScreen({
             <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
               <div className="po-items-card-header">
                 <div>
-                  <h3>{t('Danh sách mã hàng cần in và sản xuất')}</h3>
+                  <h3>{usesCatalogProducts ? t('Sản phẩm trong đơn hàng') : t('Danh sách mã hàng cần in và sản xuất')}</h3>
                   <span>{poItems.length} {t('mã hàng')} · {currentCustomer?.companyName || t('Chưa chọn khách hàng')}</span>
                 </div>
                 <div className="po-items-card-actions">
@@ -1207,8 +1263,8 @@ export default function POFormFullScreen({
                   >
                     {isTableFocusMode ? t('Thu gọn') : t('Mở toàn màn hình')}
                   </button>
-                  <button type="button" className="btn btn-outline" onClick={handleAddRow}>
-                    {t('Thêm mã hàng')}
+                  <button type="button" className="btn btn-outline" onClick={handleAddRow} disabled={usesCatalogProducts && (!customerId || !catalogProducts.length)}>
+                    {usesCatalogProducts ? t('Chọn sản phẩm') : t('Thêm mã hàng')}
                   </button>
                 </div>
               </div>
@@ -1226,7 +1282,7 @@ export default function POFormFullScreen({
                 <div className="po-save-error" role="alert">{saveError}</div>
               )}
 
-              {!po && !templatePo && !isCustomerOnboarding && catalogProducts.length === 0 && <div className="po-catalog-empty" role="status">
+              {usesCatalogProducts && catalogProducts.length === 0 && <div className="po-catalog-empty" role="status">
                 <span>{t('Khách hàng chưa có mã sản phẩm. Hãy tạo mã trong hồ sơ khách hàng trước khi lập PO.')}</span>
                 {onOpenCustomerDetails && <button type="button" className="btn btn-outline" disabled={!customerId} onClick={() => { onClose(); onOpenCustomerDetails(customerId); }}>{t('Mở hồ sơ khách hàng')}</button>}
               </div>}
@@ -1249,13 +1305,16 @@ export default function POFormFullScreen({
                     </tr>
                   </thead>
                   <tbody>
-                    {poItems.map((item, index) => {
+                    {orderItems.map((item, index) => {
                       const financials = calculatePOItemFinancials(item);
 
                       // Backward compatibility for layouts
                       const imagesList = item.previewImages || (item.previewImage ? [item.previewImage] : []);
                       const itemKey = item.itemId || String(index);
                       const isExpanded = expandedItemIds.includes(itemKey);
+                      const lockedFields = usesCatalogProducts && (requiresRegisteredProducts || Boolean(item.customerProductId));
+                      const technicalSummary = getCustomerProductSpecSummary(item.specifications || {}, item.productType || '');
+                      const productAssets = Array.isArray(item.productFiles) ? (item.productFiles as ProductAttachment[]).filter(file => file && typeof file.url === 'string' && file.url) : [];
                       return (
                         <React.Fragment key={itemKey}>
                         <tr>
@@ -1287,6 +1346,7 @@ export default function POFormFullScreen({
                                 type="text"
                                 className="po-grid-input"
                                 value={item.productCode}
+                              readOnly={lockedFields}
                                 onChange={(e) => handleUpdateRowField(index, 'productCode', e.target.value)}
                                 placeholder="Mã..."
                                 list={`product-codes-list-${index}`}
@@ -1312,7 +1372,7 @@ export default function POFormFullScreen({
                               type="text"
                               className="po-grid-input"
                               value={item.productName}
-                                readOnly={requiresRegisteredProducts}
+                              readOnly={lockedFields}
                               onChange={(e) => handleUpdateRowField(index, 'productName', e.target.value)}
                               placeholder="Tên nhãn..."
                               list={`product-names-list-${index}`}
@@ -1330,6 +1390,7 @@ export default function POFormFullScreen({
                                 type="text"
                                 className="po-grid-input"
                                 value={item.size}
+                                readOnly={lockedFields}
                                 onChange={(e) => handleUpdateRowField(index, 'size', e.target.value)}
                                 placeholder={t('Quy cách')}
                               />
@@ -1337,6 +1398,7 @@ export default function POFormFullScreen({
                               type="text"
                               className="po-grid-input"
                               value={item.material}
+                              readOnly={lockedFields}
                               onChange={(e) => handleUpdateRowField(index, 'material', e.target.value)}
                               placeholder={t('Chất liệu')}
                               list="materials-suggest"
@@ -1354,6 +1416,7 @@ export default function POFormFullScreen({
                               type="text"
                               className="po-grid-input"
                               value={item.unit}
+                              readOnly={usesCatalogProducts && (requiresRegisteredProducts || Boolean(item.customerProductId))}
                               onChange={(e) => handleUpdateRowField(index, 'unit', e.target.value)}
                               placeholder="cái"
                             />
@@ -1501,7 +1564,12 @@ export default function POFormFullScreen({
                         </tr>
                         {isExpanded && (
                           <tr className="po-item-detail-row">
-                            <td colSpan={13}>
+                            <td colSpan={12}>
+                              {(technicalSummary.length > 0 || productAssets.length > 0 || item.productNote) && <div className="po-inherited-details">
+                                {technicalSummary.length > 0 && <section><h4>{t('Thông số kỹ thuật')}</h4><dl>{technicalSummary.map(field => <div key={field.id}><dt>{t(field.label)}</dt><dd>{t(field.value)}</dd></div>)}</dl></section>}
+                                {productAssets.length > 0 && <section><h4>{t('Tệp của sản phẩm')}</h4><div className="po-inherited-files">{productAssets.map((file, fileIndex) => <button key={file.id || fileIndex} type="button" className="btn btn-outline" onClick={() => openCustomerProductAsset(file.url)} title={file.name}>{file.name || t('Xem tệp')}</button>)}</div></section>}
+                                {item.productNote && <section><h4>{t('Ghi chú sản phẩm')}</h4><p>{item.productNote}</p></section>}
+                              </div>}
                               <div className="po-item-detail-grid">
                                 <div className="form-group">
                                   <label>{t('Ngày giao của mã hàng')}</label>
@@ -1553,8 +1621,8 @@ export default function POFormFullScreen({
                   fontSize: '13px'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{t('Tổng số lượng tem:')}</span>
-                    <strong style={{ fontSize: '14px' }}>{footerTotals.totalQty.toLocaleString()} {t('cái')}</strong>
+                    <span>{t('Số lượng theo ĐVT:')}</span>
+                    <strong style={{ fontSize: '14px' }}>{[...quantitiesByUnit].map(([unit, quantity]) => `${quantity.toLocaleString('vi-VN')} ${unit}`).join(' · ') || '—'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #cbd5e1', paddingBottom: '6px' }}>
                     <span>{t('Tổng tiền chưa VAT:')}</span>
@@ -1571,6 +1639,8 @@ export default function POFormFullScreen({
                 </div>
               </div>
             </div>
+
+            {usesCatalogProducts && orderAttachments}
 
             {/* DEPARTMENT WORK ASSIGNMENTS SECTION */}
             <div className="po-assignment-card" style={{
@@ -1765,7 +1835,12 @@ export default function POFormFullScreen({
         </div>
 
         {/* SEARCH MÃ HÀNG POPUP (Catalog & Past History) */}
-        {searchPopupOpen && searchRowIndex !== null && (
+        {searchPopupOpen && usesCatalogProducts && <CustomerProductPicker
+          companyName={currentCustomer?.companyName || ''} products={catalogProducts}
+          single={searchRowIndex !== null && searchRowIndex >= 0}
+          initialIds={searchRowIndex !== null && searchRowIndex >= 0 ? [findCustomerProductForOrderItem(poItems[searchRowIndex], catalogProducts)?.id || ''].filter(Boolean) : []}
+          t={t} onClose={closeCatalogPicker} onConfirm={addCatalogProducts} />}
+        {searchPopupOpen && !usesCatalogProducts && searchRowIndex !== null && (
           <div className="modal-overlay" style={{ zIndex: 1200 }}>
             <div className="modal-content" style={{ maxWidth: '750px', width: '90%' }}>
               <div className="modal-header">
