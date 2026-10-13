@@ -7,6 +7,9 @@ import { CustomerOverview } from '@/features/crm/components/CustomerOverview';
 import { CustomerOnboardingItems } from '@/features/crm/components/CustomerOnboardingItems';
 import { BusinessLocationFields } from '@/features/crm/components/BusinessLocationFields';
 import { CustomerNoteEditor } from '@/features/crm/components/CustomerNoteEditor';
+import { CustomerProductEditor } from '@/features/crm/components/CustomerProductEditor';
+import { updateCustomerProduct } from '@/features/crm/api/customerProductService';
+import { canManageCustomerProducts, getCustomerProductCodes, getCustomerProductOrderHistory, getCustomerProductSize, getCustomerProductVersion, hasCustomerProductCode, normalizeProductCode, openCustomerProductAsset, CUSTOMER_PRODUCT_TYPES } from '@/features/crm/model/customerProductCatalog';
 import {
   customerNoteHtmlToText,
   plainTextToNoteHtml,
@@ -297,6 +300,7 @@ export const Crm: React.FC<CrmProps> = ({
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
   const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'products'>('po');
+  const [showProductEditor, setShowProductEditor] = useState(false);
   const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(false);
   const [customerNoteDraft, setCustomerNoteDraft] = useState('');
   const [isSavingCustomerNote, setIsSavingCustomerNote] = useState(false);
@@ -321,6 +325,7 @@ export const Crm: React.FC<CrmProps> = ({
 
   // Dynamic categories and admin approvals states
   const [productClassifications, setProductClassifications] = useState<any[]>([]);
+  const availableProductClassifications = [...new Map([...CUSTOMER_PRODUCT_TYPES, ...productClassifications].map(type => [type.id, type])).values()];
   const [windDirections, setWindDirections] = useState<any[]>([]);
   const [editRequests, setEditRequests] = useState<any[]>([]);
 
@@ -702,7 +707,6 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   // Product List states
-  const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
 
@@ -1291,6 +1295,10 @@ export const Crm: React.FC<CrmProps> = ({
 
     const updatedProduct = {
       ...selectedProduct,
+      previousProductCodes: Array.from(new Set([
+        ...(Array.isArray(selectedProduct.previousProductCodes) ? selectedProduct.previousProductCodes : []),
+        ...(normalizeProductCode(productCode) !== normalizeProductCode(selectedProduct.productCode) ? [selectedProduct.productCode] : [])
+      ])),
       productCode: productCode.trim(),
       productName: productName.trim(),
       productType,
@@ -1313,18 +1321,13 @@ export const Crm: React.FC<CrmProps> = ({
     };
 
     if (currentUser.role === 'admin') {
-      const updatedProducts = (selectedCustomer.products || []).map((p: any) =>
-        p.id === selectedProduct.id ? updatedProduct : p
-      );
-
-      await dbService.updateDocument('customers', selectedCustomer.id, {
-        products: updatedProducts
-      });
-
-      setSelectedCustomer((prev: any) => ({
-        ...prev,
-        products: updatedProducts
-      }));
+      try {
+        const products = await updateCustomerProduct(selectedCustomer.id, updatedProduct, currentUser, getCustomerProductVersion(selectedProduct));
+        setSelectedCustomer((previous: CustomerRecord | null) => previous ? { ...previous, products } : previous);
+      } catch (error) {
+        alert(error instanceof Error && !('code' in error) ? error.message : t('Không thể lưu sản phẩm. Vui lòng thử lại.'));
+        return;
+      }
       alert(t('Cập nhật sản phẩm thành công.'));
     } else {
       await dbService.addDocument('edit_requests', {
@@ -1438,12 +1441,7 @@ export const Crm: React.FC<CrmProps> = ({
       } else if (req.type === 'product_details') {
         const cust = customers.find(c => c.id === req.targetId);
         if (cust) {
-          const updatedProducts = (cust.products || []).map((p: any) =>
-            p.id === req.productId ? req.updatedData : p
-          );
-          await dbService.updateDocument('customers', req.targetId, {
-            products: updatedProducts
-          });
+          await updateCustomerProduct(req.targetId, { ...req.updatedData, id: req.productId }, currentUser, req.originalData ? getCustomerProductVersion(req.originalData) : '');
           alert(t('Đã duyệt chỉnh sửa thông tin sản phẩm.'));
         } else {
           alert(t('Không tìm thấy thông tin khách hàng tương ứng.'));
@@ -1682,39 +1680,8 @@ export const Crm: React.FC<CrmProps> = ({
 
   // Product Helpers
   function hasDuplicateProductCode(code: string, excludedProductId = '') {
-    const normalizedCode = code.trim().toLocaleUpperCase('vi-VN');
-    if (!normalizedCode || !selectedCustomer) return false;
-    return (selectedCustomer.products || []).some((product: CustomerProductRecord) => (
-      !product.deleted
-      && product.id !== excludedProductId
-      && product.productCode.trim().toLocaleUpperCase('vi-VN') === normalizedCode
-    ));
+    return Boolean(code.trim() && selectedCustomer && hasCustomerProductCode(selectedCustomer.products || [], code, excludedProductId));
   }
-
-  const handleOpenAddProduct = () => {
-    setProductCode('');
-    setProductName('');
-    setProductType('tem_trang_cuon');
-    setCurrentPrice(0);
-    setProductMaterial('');
-    setProductUnit('cái');
-    setProductVatRate(8);
-    setProductSupplierId('');
-    setProductPurchasePrice(0);
-    setProductDiscountType('percent');
-    setProductDiscountRate(0);
-    setProductDiscountAmount(0);
-    setProductLeadTimeDays(0);
-    setSpecCustomRows([]);
-    setProductLayoutBase64('');
-    setSpecFields(loadSpecsToFields('tem_trang_cuon'));
-    setShowAddProductModal(true);
-  };
-
-  const handleAddProductTypeChange = (type: any) => {
-    setProductType(type);
-    setSpecFields(loadSpecsToFields(type));
-  };
 
   const handleEditProductTypeChange = (type: any) => {
     if (window.confirm(t('Thay đổi loại sản phẩm sẽ reset các thông số kỹ thuật về mặc định. Bạn có muốn tiếp tục?'))) {
@@ -1731,118 +1698,6 @@ export const Crm: React.FC<CrmProps> = ({
       setProductLayoutBase64(event.target?.result as string);
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleAddProductSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomer || !productCode || !productName || !currentPrice) return;
-    if (hasDuplicateProductCode(productCode)) {
-      alert(t(`Mã hàng ${productCode.trim()} đã tồn tại trong hồ sơ khách hàng.`));
-      return;
-    }
-
-    const specs: any = { fields: specFields };
-    // Flatten fields for backwards compatibility
-    specFields.forEach(f => {
-      let val = f.value;
-      if (f.type === 'number') {
-        val = Number(val);
-      }
-      specs[f.id] = val;
-
-      // Keep support for both core/windingCore for color rolls
-      if (f.id === 'core') {
-        specs.windingCore = val;
-      }
-      if (f.id === 'windingCore') {
-        specs.core = val;
-      }
-
-      // Map other special fields for legacy compatibility
-      if (f.id === 'colors') {
-        specs.colors = val;
-      }
-      if (f.id === 'processing') {
-        specs.processing = val;
-      }
-      if (f.id === 'ribbonType') {
-        specs.ribbonType = val;
-      }
-      if (f.id === 'direction') {
-        specs.direction = val;
-      }
-      if (f.id === 'size') {
-        specs.size = val;
-      }
-      if (f.id === 'color') {
-        specs.color = val;
-      }
-      if (f.id === 'corner') {
-        specs.corner = val;
-      }
-      if (f.id === 'lamination') {
-        specs.lamination = val;
-      }
-      if (f.id === 'finished') {
-        specs.finished = val;
-      }
-      if (f.id === 'sheetType') {
-        specs.sheetType = val;
-      }
-      if (f.id === 'dieCut') {
-        specs.dieCut = val;
-      }
-      if (f.id === 'perforated') {
-        specs.perforated = val;
-      }
-      if (f.id === 'windDirection') {
-        specs.windDirection = val;
-      }
-      if (f.id === 'windDirectionFiles') {
-        specs.windDirectionFiles = val;
-      }
-    });
-
-    specs.custom = specFields.filter(f => f.id.startsWith('custom_')).map(f => ({ key: f.label, value: f.value }));
-
-    const newProduct = {
-      id: `prod-${Math.random().toString(36).substr(2, 9)}`,
-      productCode: productCode.trim(),
-      productName: productName.trim(),
-      productType,
-      currentPrice: Number(currentPrice),
-      salePrice: Number(currentPrice),
-      material: productMaterial,
-      unit: productUnit,
-      vatRate: Number(productVatRate),
-      supplierId: productSupplierId,
-      supplierName: suppliers.find(supplier => supplier.id === productSupplierId)?.supplierName || '',
-      purchasePrice: Number(productPurchasePrice),
-      discountType: productDiscountType,
-      discountRate: Number(productDiscountRate),
-      discountAmount: Number(productDiscountAmount),
-      leadTimeDays: Number(productLeadTimeDays),
-      layoutUrl: productLayoutBase64,
-      specifications: specs,
-      priceHistory: [
-        { date: new Date().toISOString().split('T')[0], price: Number(currentPrice) }
-      ],
-      createdAt: new Date().toISOString()
-    };
-
-    const updatedProducts = [...(selectedCustomer.products || []), newProduct];
-
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      products: updatedProducts
-    });
-
-    setSelectedCustomer((prev: any) => ({
-      ...prev,
-      products: updatedProducts
-    }));
-
-    setShowAddProductModal(false);
-    onRefresh();
   };
 
   const handleDeleteProduct = async (productId: string) => {
@@ -2397,28 +2252,28 @@ export const Crm: React.FC<CrmProps> = ({
   const matchedSampleKeys = new Set<string>();
   const selectedCustomerProducts = [
     ...storedCustomerProducts.map(product => {
+      const productCodes = getCustomerProductCodes(product);
       const matchingSample = selectedCustomerSamples.find(sample => (
-        (product.productCode && sample.productCode === product.productCode)
+        (product.productCode && productCodes.includes(normalizeProductCode(sample.productCode)))
         || (!product.productCode && normalizeFilterValue(sample.productName) === normalizeFilterValue(product.productName))
       ));
+      selectedCustomerSamples.filter(sample => productCodes.includes(normalizeProductCode(sample.productCode))).forEach(sample => matchedSampleKeys.add(sample.key));
       if (matchingSample) matchedSampleKeys.add(matchingSample.key);
-      const assets = [product.layoutUrl, ...(product.designLayouts || []), ...(product.files || [])]
+      const orderHistory = getCustomerProductOrderHistory(product, selectedCustomer ? getCustomerOrders(selectedCustomer.id) : []);
+      const assets = Array.from(new Set([product.layoutUrl, ...(product.designLayouts || []), ...(product.files || [])]
         .map(getProductAssetSource)
-        .filter(Boolean);
+        .filter(Boolean)));
       return {
         key: product.id,
         record: product,
         productCode: product.productCode,
         productName: product.productName,
         material: product.material || matchingSample?.material || '',
-        specification: product.size || matchingSample?.specification || '',
+        specification: getCustomerProductSize(product) || matchingSample?.specification || '',
         unit: product.unit || matchingSample?.unit || 'cái',
-        orderCount: matchingSample?.orderCount || 0,
-        totalQuantity: matchingSample?.totalQuantity || 0,
-        lastPoId: matchingSample?.lastPoId || '',
-        lastPoCode: matchingSample?.lastPoCode || '',
+        ...orderHistory,
         lastOrderedAt: matchingSample?.lastOrderedAt || '',
-        previewImage: assets[0] || matchingSample?.previewImage || '',
+        previewImage: product.layoutUrl || assets.find(asset => asset.startsWith('data:image/')) || matchingSample?.previewImage || '',
         assetCount: assets.length || (matchingSample?.previewImage ? 1 : 0)
       };
     }),
@@ -2774,6 +2629,26 @@ export const Crm: React.FC<CrmProps> = ({
     </div>
   );
 
+  if (showProductEditor && selectedCustomer) return <CustomerProductEditor
+    key={selectedCustomer.id}
+    customer={selectedCustomer}
+    currentUser={currentUser}
+    classifications={productClassifications}
+    suppliers={suppliers}
+    onClose={() => setShowProductEditor(false)}
+    onCreated={(products, product) => {
+      setSelectedCustomer((previous: CustomerRecord | null) => previous ? { ...previous, products } : previous);
+      setCustomerHistoryTab('products');
+      setShowProductEditor(false);
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: 'crm', action: 'customer_product_created',
+        summary: `Tạo mã sản phẩm ${product.productCode} cho ${selectedCustomer.companyName}`,
+        targetType: 'customer', targetId: selectedCustomer.id, targetLabel: selectedCustomer.companyName
+      });
+      onRefresh();
+    }}
+  />;
+
   return (
     <SystemFieldSurface table="customers" className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
       <PageContextHeader section={t('Khách hàng')} current={filterType === 'overview' ? 'Tổng quan' : t('Tất cả')} />
@@ -2985,6 +2860,7 @@ export const Crm: React.FC<CrmProps> = ({
                                 <RowActionMenu
                                   label={`${t('Thao tác')} ${customer.companyName}`}
                                   actions={[
+                                    ...(canManageCustomerProducts(currentUser, customer) ? [{ label: t('Tạo mã sản phẩm'), onSelect: () => { openCustomerDetail(customer); setShowProductEditor(true); } }] : []),
                                     ...((currentUser.role === 'admin' || currentUser.role === 'sale') ? [{ label: t('Tạo PO'), icon: <ClipboardPlus size={14} />, onSelect: () => onPreparedOrderCreated?.(customer.id) }] : []),
                                     { label: t('Chi tiết'), icon: <Eye size={14} />, onSelect: () => openCustomerDetail(customer) },
                                     ...(currentUser.role === 'admin' ? [{ label: t('Giao việc'), icon: <ClipboardCheck size={14} />, onSelect: () => setAssignmentTarget({ id: customer.id, label: customer.companyName, module: 'crm' }) }] : []),
@@ -3187,6 +3063,7 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
 
           <div className="card customer-order-history-card">
+            <div className="customer-product-catalog-toolbar">
             <div className="customer-order-history-tabs content-tabs" role="tablist" aria-label={t('Lịch sử giao dịch khách hàng')}>
               <button
                 type="button"
@@ -3206,6 +3083,8 @@ export const Crm: React.FC<CrmProps> = ({
               >
                 {t('Danh sách sản phẩm')} <span>{selectedCustomerProducts.length}</span>
               </button>
+            </div>
+            {canManageCustomerProducts(currentUser, selectedCustomer) && <button type="button" className="btn btn-primary" onClick={() => setShowProductEditor(true)}>{t('Tạo mã sản phẩm')}</button>}
             </div>
 
             {customerHistoryTab === 'po' ? (
@@ -3253,6 +3132,7 @@ export const Crm: React.FC<CrmProps> = ({
                   <thead>
                     <tr>
                       <th>{t('Sản phẩm / mã hàng')}</th>
+                      <th>{t('Loại sản phẩm')}</th>
                       <th>{t('Quy cách & NVL')}</th>
                       <th>{t('Lịch sử đặt')}</th>
                       <th>{t('Hình ảnh / tệp')}</th>
@@ -3268,6 +3148,7 @@ export const Crm: React.FC<CrmProps> = ({
                             <div><strong title={product.productName}>{product.productName}</strong><small>{product.productCode || t('Chưa có mã hàng')}</small></div>
                           </div>
                         </td>
+                        <td>{product.record ? (productClassifications.find(type => type.id === product.record?.productType)?.name || CUSTOMER_PRODUCT_TYPES.find(type => type.id === product.record?.productType)?.name || product.record.productType || '—') : '—'}</td>
                         <td><div className="customer-sample-spec"><strong title={product.material}>{product.material || t('Chưa có NVL')}</strong><span title={product.specification}>{product.specification || t('Chưa có quy cách')}</span></div></td>
                         <td>
                           <div className="customer-sample-spec">
@@ -3278,7 +3159,15 @@ export const Crm: React.FC<CrmProps> = ({
                           </div>
                         </td>
                         <td>
-                          {product.previewImage ? (
+                          {product.record && Array.isArray(product.record.files) && product.record.files.length > 0 ? <RowActionMenu
+                            label={t('Tệp sản phẩm')}
+                            actions={product.record.files.map((file, index) => {
+                              const asset = typeof file === 'object' && file ? file as Record<string, unknown> : {};
+                              const url = getProductAssetSource(file);
+                              return { label: String(asset.name || asset.fileName || `Tệp ${index + 1}`), onSelect: () => openCustomerProductAsset(url) };
+                            })}
+                          /> :
+                          product.previewImage ? (
                             <button type="button" className="customer-product-asset-button" onClick={() => setPreviewImage(product.previewImage)}>
                               {t('Xem ảnh')} · {product.assetCount} {t('tệp')}
                             </button>
@@ -3291,6 +3180,7 @@ export const Crm: React.FC<CrmProps> = ({
                         </td>
                       </tr>
                     ))}
+                    {selectedCustomerProducts.length === 0 && <tr><td colSpan={6}>{t('Chưa có mã sản phẩm.')}</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -3754,365 +3644,6 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
         </div>
       )}
-      {/* ADD PRODUCT MODAL */}
-      {showAddProductModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('THÊM MÃ SẢN PHẨM KHÁCH HÀNG MỚI')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowAddProductModal(false)}>{t('Đóng')}</button>
-            </div>
-            <form onSubmit={handleAddProductSubmit}>
-              <div className="modal-body" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label>{t('Mã Sản Phẩm')} *</label>
-                    <input type="text" value={productCode} onChange={e => setProductCode(e.target.value)} required placeholder="VD: 5.07.016" />
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Tên Hàng Hóa')} *</label>
-                    <input type="text" value={productName} onChange={e => setProductName(e.target.value)} required placeholder="VD: Tem dán dạng cuộn" />
-                  </div>
-                </div>
-
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
-                  <div className="form-group">
-                    <label>{t('Phân Loại Sản Phẩm')} *</label>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <select value={productType} onChange={e => handleAddProductTypeChange(e.target.value as any)} style={{ flex: 1 }}>
-                        {productClassifications.map(c => (
-                          <option key={c.id} value={c.id}>{t(c.name)}</option>
-                        ))}
-                      </select>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={triggerAddClassification} title={t('Thêm')}>
-                        {t('+')}
-                      </button>
-                      <button type="button" className="btn btn-sm btn-outline" onClick={() => triggerEditClassification(productType)} title={t('Sửa')}>
-                        {t('Sửa')}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Đơn Giá Bán Hiện Tại (đ)')} *</label>
-                    <input type="number" min="0" value={currentPrice} onChange={e => setCurrentPrice(Number(e.target.value))} required />
-                  </div>
-                </div>
-
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
-                  <div className="form-group">
-                    <label>{t('Chất Liệu')}</label>
-                    <input
-                      type="text"
-                      value={productMaterial}
-                      onChange={e => setProductMaterial(e.target.value)}
-                      placeholder={t('VD: Decal Giấy Fasson AW0339F')}
-                      list="materials-suggest-crm"
-                    />
-                    <datalist id="materials-suggest-crm">
-                      <option value="Decal Giấy Fasson AW0339F" />
-                      <option value="Decal Nhựa PVC Avery Dennison" />
-                      <option value="Màng BOPP bóng 12mic" />
-                      <option value="Giấy Ford" />
-                    </datalist>
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Tải Ảnh Layout Thiết Kế Mẫu')}</label>
-                    <input type="file" accept="image/*" onChange={handleProductLayoutChange} style={{ fontSize: '12px' }} />
-                    {productLayoutBase64 && (
-                      <img src={productLayoutBase64} alt="Preview" style={{ maxHeight: '80px', marginTop: '8px', borderRadius: '4px', display: 'block' }} />
-                    )}
-                  </div>
-                </div>
-
-                {renderProductCommercialFields()}
-
-                <span style={{ display: 'block', borderBottom: '1px solid var(--color-border-light)', margin: '16px 0' }}></span>
-                <h4 style={{ color: 'var(--color-primary)', marginBottom: '10px' }}>{t('MÔ TẢ THÔNG SỐ KỸ THUẬT')}</h4>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '10px' }}>
-                  {specFields.map((field) => {
-                    const isEditingLabel = editingLabelId === field.id;
-
-                    return (
-                      <div key={field.id} className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <label
-                            style={{
-                              fontWeight: 600,
-                              fontSize: '13px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              width: '100%'
-                            }}
-                            onDoubleClick={() => handleStartEditLabel(field.id, field.label)}
-                            title={t('Nhấp đúp chuột để sửa tên')}
-                          >
-                            {isEditingLabel ? (
-                              <input
-                                type="text"
-                                value={tempLabelText}
-                                onChange={e => setTempLabelText(e.target.value)}
-                                onBlur={() => handleSaveLabel(field.id)}
-                                onKeyDown={e => {
-                                  if (e.key === 'Enter') handleSaveLabel(field.id);
-                                  else if (e.key === 'Escape') setEditingLabelId(null);
-                                }}
-                                autoFocus
-                                onClick={e => e.stopPropagation()}
-                                style={{
-                                  fontSize: '12.5px',
-                                  padding: '2px 6px',
-                                  border: '1px solid var(--color-primary)',
-                                  borderRadius: '4px',
-                                  width: '100%'
-                                }}
-                              />
-                            ) : (
-                              <>
-                                <span style={{ textDecoration: 'underline dotted var(--color-primary)' }}>{field.label}</span>
-                                <span style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginLeft: '6px', fontWeight: 'normal' }}>({t('nhấn đúp để sửa')})</span>
-                              </>
-                            )}
-                          </label>
-
-                          {/* Delete field button */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteField(field.id)}
-                            style={{
-                              border: 'none',
-                              background: 'none',
-                              color: 'var(--color-danger, #ef4444)',
-                              cursor: 'pointer',
-                              padding: '2px 4px',
-                              fontSize: '12px'
-                            }}
-                            title={t('Xóa thông số này')}
-                          >
-                            ❌
-                          </button>
-                        </div>
-
-                        {/* Render input based on field type */}
-                        {field.type === 'number' && (
-                          <input
-                            type="number"
-                            value={field.value}
-                            onChange={e => handleUpdateFieldValue(field.id, Number(e.target.value))}
-                          />
-                        )}
-
-                        {field.type === 'text' && (
-                          <input
-                            type="text"
-                            value={field.value}
-                            onChange={e => handleUpdateFieldValue(field.id, e.target.value)}
-                          />
-                        )}
-
-                        {field.type === 'select' && field.id === 'windDirection' && (
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            <select
-                              value={field.value}
-                              onChange={e => handleUpdateFieldValue(field.id, e.target.value)}
-                              style={{ flex: 1 }}
-                            >
-                              {windDirections.map(w => (
-                                <option key={w.id} value={w.name}>{w.name}</option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline"
-                              onClick={triggerAddWindDirection}
-                              title={t('Thêm')}
-                            >
-                              {t('+')}
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline"
-                              onClick={() => {
-                                const matched = windDirections.find(w => w.name === field.value);
-                                if (matched) triggerEditWindDirection(matched.id);
-                              }}
-                              title={t('Sửa')}
-                            >
-                              {t('Sửa')}
-                            </button>
-                          </div>
-                        )}
-
-                        {field.type === 'select' && field.id !== 'windDirection' && (
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            <select
-                              value={field.value}
-                              onChange={e => handleUpdateFieldValue(field.id, e.target.value)}
-                              style={{ flex: 1 }}
-                            >
-                              {field.options?.map((opt: string) => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                            {field.id.startsWith('custom_') && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline"
-                                onClick={() => handleEditDropdownOptions(field.id)}
-                                title={t('Sửa danh sách lựa chọn')}
-                              >
-                                {t('Sửa mục')}
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {field.type === 'checkboxes' && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '12.5px', marginTop: '6px' }}>
-                            {field.options?.map((proc: string) => {
-                              const checked = Array.isArray(field.value) ? field.value.includes(proc) : false;
-                              return (
-                                <label key={proc} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'normal', cursor: 'pointer' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={e => {
-                                      const currentList = Array.isArray(field.value) ? field.value : [];
-                                      if (e.target.checked) {
-                                        handleUpdateFieldValue(field.id, [...currentList, proc]);
-                                      } else {
-                                        handleUpdateFieldValue(field.id, currentList.filter((p: any) => p !== proc));
-                                      }
-                                    }}
-                                  />
-                                  <span>{proc}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {field.type === 'file' && (
-                          <div style={{ marginTop: '4px' }}>
-                            <input
-                              type="file"
-                              multiple
-                              onChange={e => handleWindDirectionFilesChangeForField(field.id, e)}
-                              style={{ fontSize: '12px' }}
-                            />
-                            {Array.isArray(field.value) && field.value.length > 0 && (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                                {field.value.map((f: any, idx: number) => (
-                                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', border: '1px solid var(--color-border-light)', borderRadius: '4px', backgroundColor: 'var(--color-bg-light)' }}>
-                                    <span style={{ fontSize: '12px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-                                    <button
-                                      type="button"
-                                      style={{ border: 'none', background: 'transparent', color: 'red', cursor: 'pointer' }}
-                                      onClick={() => {
-                                        const updatedFiles = field.value.filter((_: any, i: number) => i !== idx);
-                                        handleUpdateFieldValue(field.id, updatedFiles);
-                                      }}
-                                    >
-                                      X
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'flex-start' }}>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={handleAddField}
-                  >
-                    + {t('Thêm Nhập Liệu')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={handleAddSelectField}
-                  >
-                    + {t('Thêm Dropdown')}
-                  </button>
-                </div>
-
-                {/* Custom Specifications / Choices Section */}
-                <div style={{ marginTop: '16px', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h5 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '13.5px', fontWeight: 600 }}>
-                      {t('LỰA CHỌN & THÔNG SỐ BỔ SUNG')}
-                    </h5>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline"
-                      onClick={() => setSpecCustomRows([...specCustomRows, { key: '', value: '' }])}
-                      style={{ fontSize: '11px', padding: '2px 8px' }}
-                    >
-                      + {t('Thêm Dòng')}
-                    </button>
-                  </div>
-                  {specCustomRows.length === 0 ? (
-                    <p style={{ fontSize: '11.5px', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
-                      {t('Chưa có thông số bổ sung nào.')}
-                    </p>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {specCustomRows.map((row, idx) => (
-                        <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <input
-                            type="text"
-                            value={row.key}
-                            onChange={e => {
-                              const updated = [...specCustomRows];
-                              updated[idx].key = e.target.value;
-                              setSpecCustomRows(updated);
-                            }}
-                            placeholder={t('Tên thông số (VD: Độ bám dính)')}
-                            style={{ flex: 1, padding: '4px 8px', fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
-                            required
-                          />
-                          <input
-                            type="text"
-                            value={row.value}
-                            onChange={e => {
-                              const updated = [...specCustomRows];
-                              updated[idx].value = e.target.value;
-                              setSpecCustomRows(updated);
-                            }}
-                            placeholder={t('Giá trị (VD: Cao)')}
-                            style={{ flex: 1, padding: '4px 8px', fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setSpecCustomRows(specCustomRows.filter((_, i) => i !== idx))}
-                            style={{ border: 'none', background: 'transparent', color: 'red', cursor: 'pointer', padding: '0 4px', fontSize: '14px', fontWeight: 'bold' }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAddProductModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Lưu Sản Phẩm')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* REQUOTE PRODUCT PRICE MODAL */}
       {showRequoteModal && selectedProduct && (
         <div className="modal-overlay">
@@ -4225,7 +3756,7 @@ export const Crm: React.FC<CrmProps> = ({
                     <label>{t('Phân Loại Sản Phẩm')} *</label>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                       <select value={productType} onChange={e => handleEditProductTypeChange(e.target.value as any)} style={{ flex: 1 }}>
-                        {productClassifications.map(c => (
+                        {availableProductClassifications.map(c => (
                           <option key={c.id} value={c.id}>{t(c.name)}</option>
                         ))}
                       </select>

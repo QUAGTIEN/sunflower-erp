@@ -1683,6 +1683,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
           users={users}
           currentUser={currentUser}
           t={t}
+          onOpenCustomerDetails={onOpenCustomerDetails}
         />
       )}
 

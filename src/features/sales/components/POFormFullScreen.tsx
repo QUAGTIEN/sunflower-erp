@@ -14,6 +14,7 @@ import {
 } from '@/features/crm/model/crmModels';
 import '@/components/CustomerHistory.css';
 import { formatDate, toDateInputValue } from '@/shared/utils/dateFormatting';
+import { applyCustomerProductToOrderItem, getActiveCustomerProducts, normalizeProductCode } from '@/features/crm/model/customerProductCatalog';
 
 const PO_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const PO_GRID_DEFAULT_ZOOM = 100;
@@ -46,6 +47,7 @@ interface POFormFullScreenProps {
   currentUser: any;
   t: (key: string) => string;
   workflowMode?: 'standard' | 'customer_onboarding';
+  onOpenCustomerDetails?: (customerId: string) => void;
 }
 
 export default function POFormFullScreen({
@@ -60,7 +62,8 @@ export default function POFormFullScreen({
   users,
   currentUser,
   t,
-  workflowMode = 'standard'
+  workflowMode = 'standard',
+  onOpenCustomerDetails
 }: POFormFullScreenProps) {
   const [customerId, setCustomerId] = useState('');
   const [customerRank, setCustomerRank] = useState('');
@@ -102,6 +105,7 @@ export default function POFormFullScreen({
   const [searchRowIndex, setSearchRowIndex] = useState<number | null>(null);
   const [pastProducts, setPastProducts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const requiresRegisteredProducts = !po && !templatePo && workflowMode === 'standard';
 
   // Modal customer document repository state
   const [showRepoModal, setShowRepoModal] = useState(false);
@@ -175,7 +179,7 @@ export default function POFormFullScreen({
       setAssignments(po.assignments || []);
     } else if (templatePo) {
       const sourceCustomer = customers.find(customer => customer.id === templatePo.customerId);
-      const catalogProducts = sourceCustomer?.products || [];
+      const catalogProducts = getActiveCustomerProducts(sourceCustomer);
       const defaultDeliveryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       setCustomerId(templatePo.customerId || '');
@@ -195,12 +199,14 @@ export default function POFormFullScreen({
 
       const repeatItems = (templatePo.items || []).map((item: any) => {
         const catalogProduct = catalogProducts.find((product: any) => (
-          product.productCode && product.productCode === item.productCode
+          (item.customerProductId && product.id === item.customerProductId)
+          || (product.productCode && normalizeProductCode(product.productCode) === normalizeProductCode(item.productCode))
         ));
         const previewImages = item.previewImages || (item.previewImage ? [item.previewImage] : []);
 
         return {
           ...item,
+          ...(catalogProduct ? { customerProductId: catalogProduct.id } : {}),
           itemId: `item-${Math.random().toString(36).substr(2, 9)}`,
           price: Number(catalogProduct?.currentPrice || 0),
           purchasePrice: 0,
@@ -394,7 +400,8 @@ export default function POFormFullScreen({
 
   // Load repeat order products history for selected customer
   useEffect(() => {
-    if (!customerId) return;
+    if (!customerId || requiresRegisteredProducts) return;
+    let cancelled = false;
     const fetchPastProducts = async () => {
       try {
         const allPOs = await dbService.getCollection('pos');
@@ -421,13 +428,14 @@ export default function POFormFullScreen({
             uniqueItems.push(item);
           }
         });
-        setPastProducts(uniqueItems);
+        if (!cancelled) setPastProducts(uniqueItems);
       } catch (err) {
         console.error("Error fetching past products:", err);
       }
     };
     fetchPastProducts();
-  }, [customerId]);
+    return () => { cancelled = true; };
+  }, [customerId, requiresRegisteredProducts]);
 
   if (!isOpen) return null;
 
@@ -586,29 +594,16 @@ export default function POFormFullScreen({
     // Auto-populate all other fields when code or name matches CRM catalog product
     if (field === 'productCode' || field === 'productName') {
       const currentCustomer = customers.find(c => c.id === customerId);
-      const catalogProducts = currentCustomer?.products || [];
+      const catalogProducts = getActiveCustomerProducts(currentCustomer);
       const matchedProd = catalogProducts.find((p: any) =>
         field === 'productCode'
-          ? p.productCode === value
+          ? normalizeProductCode(p.productCode) === normalizeProductCode(value)
           : p.productName === value
       );
       if (matchedProd) {
-        updated[index] = {
-          ...updated[index],
-          productCode: matchedProd.productCode || matchedProd.code || 'MANUAL',
-          productName: matchedProd.productName || matchedProd.name || '',
-          size: getProductSize(matchedProd),
-          material: matchedProd.material || matchedProd.specifications?.material || (matchedProd.productType === 'tem_trang_cuon' ? 'Decal Giấy Fasson AW0339F' : 'Decal nhựa PVC'),
-          unit: matchedProd.unit || 'cái',
-          price: matchedProd.currentPrice || matchedProd.price || 0,
-          supplierId: matchedProd.supplierId || '',
-          supplierName: matchedProd.supplierName || '',
-          purchasePrice: matchedProd.purchasePrice || 0,
-          workType: matchedProd.workType || (matchedProd.productType === 'muc_in' ? 'mua_nvl' : 'gia_cong'),
-          previewImages: matchedProd.previewImages || (matchedProd.layoutUrl ? [matchedProd.layoutUrl] : (matchedProd.previewImage ? [matchedProd.previewImage] : [])),
-          specifications: matchedProd.specifications || {}
-        };
+        updated[index] = applyCustomerProductToOrderItem(updated[index], matchedProd);
       } else if (field === 'productCode') {
+        updated[index].customerProductId = '';
         if (value.includes('5.07.006') || value === 'MUC_IN') {
           updated[index].workType = 'mua_nvl';
         } else {
@@ -624,9 +619,17 @@ export default function POFormFullScreen({
   const handleSelectSearchedProduct = (product: any) => {
     if (searchRowIndex === null) return;
 
+    const catalogProduct = getActiveCustomerProducts(customers.find(customer => customer.id === customerId))
+      .find(candidate => normalizeProductCode(candidate.productCode) === normalizeProductCode(product.productCode));
+    if (requiresRegisteredProducts && !catalogProduct) {
+      alert(t('Mã này chưa được đăng ký cho khách hàng. Hãy tạo mã sản phẩm trong hồ sơ khách hàng trước.'));
+      return;
+    }
+
     const updated = [...poItems];
-    updated[searchRowIndex] = {
+    updated[searchRowIndex] = catalogProduct && (!product.poCode || requiresRegisteredProducts) ? applyCustomerProductToOrderItem(updated[searchRowIndex], catalogProduct) : {
       ...updated[searchRowIndex],
+      customerProductId: '',
       productCode: product.productCode || product.code || 'MANUAL',
       productName: product.productName || product.name || '',
       size: getProductSize(product),
@@ -748,9 +751,15 @@ export default function POFormFullScreen({
     }
 
     // Validate that all items have a name and quantity
+    const customerCatalog = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
     const preparedProductCodes = new Set<string>();
     for (let i = 0; i < poItems.length; i++) {
       const productCode = String(poItems[i].productCode || '').trim();
+      if (requiresRegisteredProducts
+        && !customerCatalog.some(product => normalizeProductCode(product.productCode) === normalizeProductCode(productCode))) {
+        alert(t(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`));
+        return;
+      }
       if (workflowMode === 'customer_onboarding' && !productCode) {
         alert(t(`Dòng ${i + 1}: Vui lòng nhập mã hàng để lưu vào hồ sơ khách hàng!`));
         return;
@@ -775,7 +784,10 @@ export default function POFormFullScreen({
       }
     }
 
-    const normalizedItems = poItems.map(item => withCalculatedPOFinancials(item));
+    const normalizedItems = poItems.map(item => {
+      const catalogProduct = customerCatalog.find(product => normalizeProductCode(product.productCode) === normalizeProductCode(item.productCode));
+      return withCalculatedPOFinancials(!po && catalogProduct ? { ...item, customerProductId: catalogProduct.id, productType: catalogProduct.productType } : item);
+    });
 
     // Calculate totals
     let totalBeforeVat = 0;
@@ -876,7 +888,7 @@ export default function POFormFullScreen({
     && !templatePo
     && !isCustomerOnboarding
     && Boolean(currentCustomer?.pendingOrderDraft);
-  const catalogProducts = currentCustomer?.products || [];
+  const catalogProducts = getActiveCustomerProducts(currentCustomer);
 
   const filteredCatalog = catalogProducts.filter((p: any) =>
     (p.productCode && p.productCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -983,6 +995,9 @@ export default function POFormFullScreen({
                   setCustomerId(nextCustomerId);
                   setCustomerRank(nextCustomer?.customerRank || '');
                   setPoItems([]); // Reset items on customer change
+                  setPastProducts([]);
+                  setSearchPopupOpen(false);
+                  setSearchRowIndex(null);
                 }}
                 disabled={!!po || !!templatePo || Boolean(initialCustomerId)} // Linked onboarding/repeat orders must stay with the original customer
                 required
@@ -1211,12 +1226,16 @@ export default function POFormFullScreen({
                 <div className="po-save-error" role="alert">{saveError}</div>
               )}
 
+              {!po && !templatePo && !isCustomerOnboarding && catalogProducts.length === 0 && <div className="po-catalog-empty" role="status">
+                <span>{t('Khách hàng chưa có mã sản phẩm. Hãy tạo mã trong hồ sơ khách hàng trước khi lập PO.')}</span>
+                {onOpenCustomerDetails && <button type="button" className="btn btn-outline" disabled={!customerId} onClick={() => { onClose(); onOpenCustomerDetails(customerId); }}>{t('Mở hồ sơ khách hàng')}</button>}
+              </div>}
               <div className="po-inline-grid-container">
                 <table className="po-inline-grid po-items-overview-table" style={{ zoom: tableZoom / 100 }}>
                   <thead>
                     <tr>
                       <th style={{ width: '64px', textAlign: 'center' }}>STT</th>
-                      <th style={{ width: '130px' }}>{t('Mã hàng')}</th>
+                      <th style={{ width: '130px' }}>{t('Mã sản phẩm')}</th>
                       <th style={{ width: '180px' }}>{t('Tên hàng *')}</th>
                       <th style={{ width: '180px' }}>{t('Quy cách / Chất liệu')}</th>
                       <th style={{ width: '70px' }}>{t('ĐVT')}</th>
@@ -1293,6 +1312,7 @@ export default function POFormFullScreen({
                               type="text"
                               className="po-grid-input"
                               value={item.productName}
+                                readOnly={requiresRegisteredProducts}
                               onChange={(e) => handleUpdateRowField(index, 'productName', e.target.value)}
                               placeholder="Tên nhãn..."
                               list={`product-names-list-${index}`}
@@ -1769,17 +1789,20 @@ export default function POFormFullScreen({
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', height: '320px', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: requiresRegisteredProducts ? '1fr' : '1fr 1fr', gap: '16px', height: '320px', overflow: 'hidden' }}>
                   {/* Catalog list */}
                   <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f8fafc', fontWeight: 600, fontSize: '13px', color: 'var(--color-primary)' }}>
-                      {t('Danh Mục Đã Đăng Ký (Catalog)')}
+                      {t('Sản phẩm của khách hàng')}
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
                       {filteredCatalog.map((prod: any) => (
                         <div
                           key={prod.id}
                           className="chat-suggestion-item"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleSelectSearchedProduct(prod); } }}
                           onClick={() => handleSelectSearchedProduct(prod)}
                           style={{ borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', padding: '8px', cursor: 'pointer' }}
                         >
@@ -1788,8 +1811,8 @@ export default function POFormFullScreen({
                             <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{prod.productName}</div>
                           </div>
                           <div style={{ textAlign: 'right', fontSize: '12px' }}>
-                            <div style={{ fontWeight: 600 }}>{prod.currentPrice?.toLocaleString()} đ</div>
-                            <div style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>{prod.specifications ? `${prod.specifications.width}x${prod.specifications.height}mm` : ''}</div>
+                            <div style={{ fontWeight: 600 }}>{Number(prod.currentPrice) > 0 ? `${Number(prod.currentPrice).toLocaleString('vi-VN')} đ` : t('Chưa có giá')}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>{getProductSize(prod)}</div>
                           </div>
                         </div>
                       ))}
@@ -1802,7 +1825,7 @@ export default function POFormFullScreen({
                   </div>
 
                   {/* History list */}
-                  <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
+                  {!requiresRegisteredProducts && <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f8fafc', fontWeight: 600, fontSize: '13px', color: 'var(--color-success-dark)' }}>
                       {t('Lịch Sử Đã Đặt Đơn Hàng Cũ (History)')}
                     </div>
@@ -1833,7 +1856,7 @@ export default function POFormFullScreen({
                         </div>
                       )}
                     </div>
-                  </div>
+                  </div>}
                 </div>
               </div>
               <div className="modal-footer">
