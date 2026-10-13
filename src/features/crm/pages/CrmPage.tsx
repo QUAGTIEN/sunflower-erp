@@ -2674,7 +2674,7 @@ export const Crm: React.FC<CrmProps> = ({
 
   return (
     <SystemFieldSurface table="customers" className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
-      <PageContextHeader section={t('Khách hàng')} current={filterType === 'overview' ? 'Tổng quan' : t('Tất cả')} />
+      <PageContextHeader section={t('Khách hàng')} current={selectedCustomer ? t('Chi tiết khách hàng') : filterType === 'overview' ? 'Tổng quan' : t('Tất cả')} />
 
       {currentUser.role === 'admin' && (editRequests.some(r => r.status === 'pending') || customers.some(c => c.deleteRequested && !c.deleted)) && (
         <div className="card" style={{ border: '2px solid var(--color-primary-light)', backgroundColor: '#f0fdf4', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
@@ -2931,42 +2931,33 @@ export const Crm: React.FC<CrmProps> = ({
        {selectedCustomer && (
         <div className={`customer-details-grid customer-detail-workspace customer-detail-workspace--${customerHistoryTab}`}>
           <div className="customer-detail-header">
-            <PageBackButton iconOnly onClick={closeCustomerDetail} />
+            <PageBackButton onClick={() => {
+              if (customerHistoryTab !== 'overview') {
+                setCustomerHistoryTab('overview');
+                return;
+              }
+              closeCustomerDetail();
+            }} />
             <div className="customer-detail-heading">
               <div className="customer-detail-heading__title">
-                <span className="customer-code-badge">{selectedCustomer.customerCode || selectedCustomer.id}</span>
-                <h1>{selectedCustomer.companyName}</h1>
-                <span className={`customer-rank-badge ${selectedCustomer.customerRank ? 'has-rank' : ''}`}>
-                  {selectedCustomer.customerRank ? `Hạng ${selectedCustomer.customerRank}` : t('Chưa xếp hạng')}
-                </span>
+                <h1 title={selectedCustomer.companyName}>{selectedCustomer.companyName}</h1>
               </div>
-              <p className="customer-detail-contact-line">
-                {[selectedCustomer.phone, selectedCustomer.email, users.find(user => user.uid === selectedCustomer.assignedSaleId)?.displayName].filter(Boolean).join(' · ') || t('Chưa cập nhật liên hệ')}
-              </p>
             </div>
-            {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
-              <div className="crm-detail-actions">
+            <div className="crm-detail-actions">
+              <button type="button" className="btn btn-outline" aria-expanded={isCompanyInfoExpanded} aria-controls="customer-company-information" onClick={() => setIsCompanyInfoExpanded(value => !value)}>{t('Thông tin doanh nghiệp')}</button>
+              {(currentUser.role === 'admin' || currentUser.role === 'sale') && <>
                 <PhoneCallCell toolbar phone={detailCallPhone || selectedCustomer.phone} companyName={selectedCustomer.companyName}
                   subjectKey={customerCallSubjectKey(selectedCustomer)} historyKeys={customerCallHistoryKeys(selectedCustomer, leads)}
                   auditModule="crm" targetType="customer" targetId={selectedCustomer.id} currentUser={currentUser}
                   canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!selectedCustomer.assignedSaleId || selectedCustomer.assignedSaleId === currentUser.uid))} />
-                <button type="button" className="btn btn-primary" onClick={() => openEditModal(selectedCustomer)}><Pencil size={15} /><span>{t('Chỉnh sửa hồ sơ')}</span></button>
-                <button type="button" className="btn btn-outline btn-symbol-sm crm-detail-delete" onClick={() => handleDeleteCustomer(selectedCustomer.id)} title={t('Xóa khách hàng')}><Trash2 size={15} /></button>
-              </div>
-            )}
+                <button type="button" className="btn btn-primary" onClick={() => openEditModal(selectedCustomer)}>{t('Chỉnh sửa hồ sơ')}</button>
+                <button type="button" className="btn btn-outline btn-symbol-sm crm-detail-delete" onClick={() => handleDeleteCustomer(selectedCustomer.id)} title={t('Xóa khách hàng')} aria-label={t('Xóa khách hàng')}><Trash2 size={18} aria-hidden="true" /></button>
+              </>}
+            </div>
           </div>
 
-          <nav className="customer-detail-navigation" aria-label={t('Hồ sơ khách hàng')}>
-            <div className="content-tabs">
-              {([
-                ['overview', 'Tổng quan'], ['products', 'Sản phẩm'], ['po', 'Đơn hàng (PO)'], ['notes', 'Ghi chú'], ['files', 'Kho lưu trữ']
-              ] as const).map(([tab, label]) => <button key={tab} type="button" className={customerHistoryTab === tab ? 'is-active' : ''} aria-current={customerHistoryTab === tab ? 'page' : undefined} onClick={() => setCustomerHistoryTab(tab)}>{t(label)}</button>)}
-            </div>
-            <button type="button" className="btn btn-outline" aria-expanded={isCompanyInfoExpanded} onClick={() => setIsCompanyInfoExpanded(value => !value)}>{t('Thông tin doanh nghiệp')}</button>
-          </nav>
-
           <div className="customer-profile-column">
-            <section className="card customer-company-card" hidden={!isCompanyInfoExpanded}>
+            <section id="customer-company-information" className="card customer-company-card" hidden={!isCompanyInfoExpanded}>
               <div className="crm-company-accordion-row">
                 <button
                   type="button"
