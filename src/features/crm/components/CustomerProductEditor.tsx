@@ -66,7 +66,20 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
   const [linkUrl, setLinkUrl] = useState('');
   const dirty = JSON.stringify(draft) !== initialDraft || Boolean(linkName || linkUrl);
   const types = [...new Map([...CUSTOMER_PRODUCT_TYPES, ...classifications.filter(type => type.id && type.name)].map(type => [type.id, type])).values()];
-  const groups = [...new Set(draft.fields.map(field => field.group))];
+  const isLabel = ['tem_trang_cuon', 'tem_mau_cuon', 'tem_trang_to', 'tem_mau_to'].includes(draft.productType);
+  // Presentation groups retain the field IDs, options and values used by existing POs.
+  const labelGroups = [
+    { key: 'size', title: 'A. Kích thước', ids: ['width', 'height'] },
+    { key: 'corner', title: 'B. Bo góc / kiểu góc', ids: ['dieCut', 'corner'] },
+    { key: 'format', title: draft.productType.endsWith('_cuon') ? 'C. Quy cách cuộn' : 'C. Quy cách tờ', ids: ['qtyPerRoll', 'metersPerRoll', 'coreType', 'core', 'gap', 'windDirection', 'sheetType', 'qtyPerSheet', 'qtyPerPack'] },
+    { key: 'processing', title: 'D. Gia công', ids: ['perforated'] },
+    { key: 'paper', title: 'E. Giấy / nguyên vật liệu', ids: ['paperCode', 'paperType'] },
+    { key: 'adhesive', title: 'F. Loại keo', ids: ['adhesive'] },
+    { key: 'printing', title: 'In và hoàn thiện', ids: ['colors', 'processing'] }
+  ];
+  const groups = isLabel
+    ? labelGroups.map(group => ({ ...group, fields: draft.fields.filter(field => group.ids.includes(field.id)) })).filter(group => group.fields.length)
+    : [...new Set(draft.fields.map(field => field.group))].map((group, index) => ({ key: `general-${index}`, title: group, fields: draft.fields.filter(field => field.group === group) }));
   const permitted = canManageCustomerProducts(currentUser, customer);
 
   useEffect(() => {
@@ -125,6 +138,16 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
 
   const renderSpec = (field: ProductSpecField) => {
     const value = typeof field.value === 'string' ? field.value : '';
+    if (field.type === 'select') return <fieldset className={`customer-product-editor__field customer-product-editor__option-field customer-product-editor__option-field--${field.id}`} key={field.id}>
+      <legend>{t(field.label)}{field.required ? ' *' : ''}</legend>
+      <div className="customer-product-editor__choices">
+        {field.options?.map(option => <label key={option}>
+          <input type="radio" name={`product-spec-${field.id}`} value={option} checked={value === option} required={field.required} onChange={() => updateSpec(field.id, option)} />
+          <span>{t(option)}</span>
+        </label>)}
+        {value && !field.required && <button type="button" className="customer-product-editor__clear" onClick={() => updateSpec(field.id, '')} aria-label={`${t('Bỏ chọn')}: ${t(field.label)}`}>{t('Bỏ chọn')}</button>}
+      </div>
+    </fieldset>;
     if (field.type === 'checkboxes') return <div className="customer-product-editor__field" key={field.id}>
       <span>{t(field.label)}</span><div className="customer-product-editor__choices">
         {field.options?.map(option => <label key={option}><input type="checkbox" checked={Array.isArray(field.value) && field.value.includes(option)} onChange={event => {
@@ -135,9 +158,7 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
     </div>;
     return <label className="customer-product-editor__field" key={field.id}>
       <span>{t(field.label)}{field.required ? ' *' : ''}</span>
-      {field.type === 'select' ? <select value={value} onChange={event => updateSpec(field.id, event.target.value)}>
-        <option value="">{t('Chọn')}</option>{field.options?.map(option => <option key={option}>{t(option)}</option>)}
-      </select> : <input type={field.type} value={value} min={field.required ? 0.01 : 0} step="any" required={field.required} onChange={event => updateSpec(field.id, event.target.value)} />}
+      <input type={field.type} value={value} min={field.required ? 0.01 : 0} step="any" required={field.required} onChange={event => updateSpec(field.id, event.target.value)} />
     </label>;
   };
 
@@ -151,8 +172,8 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
     <form onSubmit={submit}>
       <fieldset disabled={isSaving || isUploading} className="customer-product-editor__body">
         <section className="card customer-product-editor__section">
-          <h2>{t('Thông tin sản phẩm')}</h2>
-          <div className="customer-product-editor__grid">
+          <h2>{t('Thông tin chung')}</h2>
+          <div className="customer-product-editor__grid customer-product-editor__general">
             <label><span>{t('Mã sản phẩm')} *</span><input autoFocus maxLength={100} required value={draft.productCode} onChange={event => patch({ productCode: event.target.value })} /></label>
             <label><span>{t('Tên sản phẩm')} *</span><input maxLength={250} required value={draft.productName} onChange={event => patch({ productName: event.target.value })} /></label>
             <label><span>{t('Loại sản phẩm')} *</span><select value={draft.productType} onChange={event => {
@@ -162,29 +183,36 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
               patch({ productType: next, fields: getProductSpecFields(next) });
             }}>{types.map(type => <option key={type.id} value={type.id}>{t(type.name)}</option>)}</select></label>
             <label><span>{t('Đơn vị tính')} *</span><input required maxLength={40} value={draft.unit} onChange={event => patch({ unit: event.target.value })} /></label>
-            <label className="customer-product-editor__wide"><span>{t('Chất liệu')}</span><input maxLength={250} value={draft.material} onChange={event => patch({ material: event.target.value })} /></label>
+            {!isLabel && <label className="customer-product-editor__wide"><span>{t('Chất liệu')}</span><input maxLength={250} value={draft.material} onChange={event => patch({ material: event.target.value })} /></label>}
           </div>
         </section>
         <section className="card customer-product-editor__section">
           <h2>{t('Thông số kỹ thuật')}</h2>
-          <div className="customer-product-editor__spec-groups">{groups.map(group => <section key={group}>
-            <h3>{t(group)}</h3><div className="customer-product-editor__grid">{draft.fields.filter(field => field.group === group).map(renderSpec)}</div>
+          <div className={`customer-product-editor__spec-groups ${isLabel ? 'is-label' : ''}`}>{groups.map(group => <section key={group.key} className={`customer-product-editor__spec-group customer-product-editor__spec-group--${group.key}`}>
+            <h3>{t(group.title)}</h3><div className="customer-product-editor__grid">{group.fields.map(renderSpec)}
+              {group.key === 'paper' && <label className="customer-product-editor__wide"><span>{t('Chất liệu')}</span><input maxLength={250} value={draft.material} onChange={event => patch({ material: event.target.value })} /></label>}
+            </div>
           </section>)}</div>
         </section>
         <section className="card customer-product-editor__section">
-          <h2>{t('Tệp và ghi chú')}</h2>
-          <div className="customer-product-editor__grid">
-            <label><span>{t('Tệp thiết kế')}</span><input type="file" multiple accept="image/*,.pdf" onChange={event => void upload(event, 'design')} /></label>
-            <label><span>{t('Ảnh chiều tem ra')}</span><input type="file" multiple accept="image/*" onChange={event => void upload(event, 'direction')} /></label>
-            <label><span>{t('Tên tệp liên kết')}</span><input value={linkName} onChange={event => setLinkName(event.target.value)} /></label>
-            <label><span>{t('Đường dẫn Drive / OneDrive')}</span><input type="url" value={linkUrl} onChange={event => setLinkUrl(event.target.value)} /></label>
-            <div className="customer-product-editor__wide"><button type="button" className="btn btn-outline" onClick={addLink} disabled={!linkUrl.trim()}>{t('Thêm đường dẫn')}</button></div>
+          <h2>{t('Tệp đính kèm và ghi chú')}</h2>
+          <div className="customer-product-editor__grid customer-product-editor__attachments">
+            <label><span>{t('File thiết kế')}</span><span className="customer-product-editor__upload"><input aria-label={t('Chọn tệp thiết kế')} type="file" multiple accept="image/*,.pdf" onChange={event => void upload(event, 'design')} /><span>{t('Chọn tệp')}</span></span></label>
+            <label><span>{t('Ảnh chiều tem ra')}</span><span className="customer-product-editor__upload"><input aria-label={t('Chọn ảnh chiều tem ra')} type="file" multiple accept="image/*" onChange={event => void upload(event, 'direction')} /><span>{t('Chọn ảnh')}</span></span></label>
+            <label><span>{t('Ghi chú')}</span><textarea maxLength={2000} rows={2} value={draft.note} onChange={event => patch({ note: event.target.value })} /></label>
+            <details className="customer-product-editor__links customer-product-editor__wide">
+              <summary>{t('Thêm đường dẫn')}</summary>
+              <div className="customer-product-editor__grid">
+                <label><span>{t('Tên tệp liên kết')}</span><input value={linkName} onChange={event => setLinkName(event.target.value)} /></label>
+                <label><span>{t('Đường dẫn Drive / OneDrive')}</span><input type="url" value={linkUrl} onChange={event => setLinkUrl(event.target.value)} /></label>
+                <button type="button" className="btn btn-outline" onClick={addLink} disabled={!linkUrl.trim()}>{t('Thêm đường dẫn')}</button>
+              </div>
+            </details>
             {draft.files.length > 0 && <ul className="customer-product-editor__assets customer-product-editor__wide">{draft.files.map(file => <li key={file.id}>
               {file.mimeType?.startsWith('image/') && <img src={file.url} alt={file.name} />}
               <a href={file.url} target="_blank" rel="noopener noreferrer" title={file.name} onClick={event => { event.preventDefault(); openCustomerProductAsset(file.url); }}>{file.name}</a>
               <button type="button" className="btn btn-outline btn-sm" onClick={() => patch({ files: draft.files.filter(item => item.id !== file.id) })}>{t('Xóa')}</button>
             </li>)}</ul>}
-            <label className="customer-product-editor__wide"><span>{t('Ghi chú')}</span><textarea maxLength={2000} rows={3} value={draft.note} onChange={event => patch({ note: event.target.value })} /></label>
           </div>
         </section>
         <details className="card customer-product-editor__section">

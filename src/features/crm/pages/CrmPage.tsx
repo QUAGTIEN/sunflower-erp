@@ -99,6 +99,7 @@ import {
 } from '@/domain/systemFilterConfig';
 import { useSystemFilterConfiguration } from '@/hooks/useSystemFilterConfiguration';
 import '@/components/CustomerHistory.css';
+import './CustomerDetailWorkspace.css';
 import {
   Plus,
   Trash2,
@@ -299,7 +300,9 @@ export const Crm: React.FC<CrmProps> = ({
   const [detailCallPhone, setDetailCallPhone] = useState('');
   const [supportTarget, setSupportTarget] = useState<SupportRequestTarget | null>(null);
   const [assignmentTarget, setAssignmentTarget] = useState<WorkAssignmentTarget | null>(null);
-  const [customerHistoryTab, setCustomerHistoryTab] = useState<'po' | 'products'>('po');
+  const [customerHistoryTab, setCustomerHistoryTab] = useState<'overview' | 'po' | 'products' | 'notes' | 'files'>('overview');
+  const [repositoryPreviewFolder, setRepositoryPreviewFolder] = useState('');
+  const [repositoryUploadOpen, setRepositoryUploadOpen] = useState(false);
   const [showProductEditor, setShowProductEditor] = useState(false);
   const [isCompanyInfoExpanded, setIsCompanyInfoExpanded] = useState(false);
   const [customerNoteDraft, setCustomerNoteDraft] = useState('');
@@ -1882,7 +1885,9 @@ export const Crm: React.FC<CrmProps> = ({
 
   const openCustomerDetail = (customer: CustomerRecord, callPhone = customer.phone) => {
     setDetailCallPhone(callPhone);
-    setCustomerHistoryTab('po');
+    setCustomerHistoryTab('overview');
+    setRepositoryPreviewFolder('');
+    setRepositoryUploadOpen(false);
     setIsCompanyInfoExpanded(false);
     setCustomerNoteDraft(sanitizeCustomerNoteHtml(customer.noteHtml || plainTextToNoteHtml(customer.note || '')));
     setCustomerNoteFeedback('');
@@ -1935,6 +1940,24 @@ export const Crm: React.FC<CrmProps> = ({
       (DOCUMENT_REPOSITORY_FOLDER_IDS[documentRecord.category] || 'other') === activeRepositoryFolder.id
     ))
     : [];
+
+  const repositoryPreviewItems = selectedCustomer ? [
+    ...(selectedCustomer.files || []).filter((file: Record<string, unknown>) => file.name !== '.placeholder').map((file: Record<string, unknown>) => ({
+      id: `file-${file.id}`, name: String(file.name || t('Tệp tài liệu')),
+      folderId: resolveCustomerFileFolderId(file, customerRepositoryFolders),
+      date: String(file.createdAt || ''), source: String(file.base64 || file.data || file.url || '')
+    })),
+    ...(selectedCustomer.contracts || []).map((contract: Record<string, unknown>) => ({
+      id: `contract-${contract.id}`, name: String(contract.contractNo || t('Hợp đồng chưa có số')),
+      folderId: 'contracts', date: String(contract.signDate || contract.createdAt || ''), source: String(contract.fileUrl || '')
+    })),
+    ...(selectedCustomer.documents || []).map((documentRecord: Record<string, unknown>) => ({
+      id: `document-${documentRecord.id}`, name: String(documentRecord.name || t('Tài liệu chưa đặt tên')),
+      folderId: DOCUMENT_REPOSITORY_FOLDER_IDS[String(documentRecord.category)] || 'other',
+      date: String(documentRecord.createdAt || ''), source: String(documentRecord.url || '')
+    }))
+  ] as Array<{ id: string; name: string; folderId: string; date: string; source: string }> : [];
+  const visibleRepositoryPreview = repositoryPreviewItems.filter(item => !repositoryPreviewFolder || item.folderId === repositoryPreviewFolder);
 
   const getCustomerOrderValue = (customerId: string) => getCustomerOrders(customerId)
     .reduce((total, order) => total + Number(order.netAmount || order.totalAmount || 0), 0);
@@ -2906,9 +2929,9 @@ export const Crm: React.FC<CrmProps> = ({
 
       {/* SELECTED CUSTOMER DETAIL */}
        {selectedCustomer && (
-        <div className="customer-details-grid">
+        <div className={`customer-details-grid customer-detail-workspace customer-detail-workspace--${customerHistoryTab}`}>
           <div className="customer-detail-header">
-            <PageBackButton onClick={closeCustomerDetail} />
+            <PageBackButton iconOnly onClick={closeCustomerDetail} />
             <div className="customer-detail-heading">
               <div className="customer-detail-heading__title">
                 <span className="customer-code-badge">{selectedCustomer.customerCode || selectedCustomer.id}</span>
@@ -2917,7 +2940,9 @@ export const Crm: React.FC<CrmProps> = ({
                   {selectedCustomer.customerRank ? `Hạng ${selectedCustomer.customerRank}` : t('Chưa xếp hạng')}
                 </span>
               </div>
-              <p>{t('Hồ sơ khách hàng, lịch sử PO, các mẫu đã đặt và tài liệu liên quan.')}</p>
+              <p className="customer-detail-contact-line">
+                {[selectedCustomer.phone, selectedCustomer.email, users.find(user => user.uid === selectedCustomer.assignedSaleId)?.displayName].filter(Boolean).join(' · ') || t('Chưa cập nhật liên hệ')}
+              </p>
             </div>
             {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
               <div className="crm-detail-actions">
@@ -2931,8 +2956,17 @@ export const Crm: React.FC<CrmProps> = ({
             )}
           </div>
 
+          <nav className="customer-detail-navigation" aria-label={t('Hồ sơ khách hàng')}>
+            <div className="content-tabs">
+              {([
+                ['overview', 'Tổng quan'], ['products', 'Sản phẩm'], ['po', 'Đơn hàng (PO)'], ['notes', 'Ghi chú'], ['files', 'Kho lưu trữ']
+              ] as const).map(([tab, label]) => <button key={tab} type="button" className={customerHistoryTab === tab ? 'is-active' : ''} aria-current={customerHistoryTab === tab ? 'page' : undefined} onClick={() => setCustomerHistoryTab(tab)}>{t(label)}</button>)}
+            </div>
+            <button type="button" className="btn btn-outline" aria-expanded={isCompanyInfoExpanded} onClick={() => setIsCompanyInfoExpanded(value => !value)}>{t('Thông tin doanh nghiệp')}</button>
+          </nav>
+
           <div className="customer-profile-column">
-            <section className="card customer-company-card">
+            <section className="card customer-company-card" hidden={!isCompanyInfoExpanded}>
               <div className="crm-company-accordion-row">
                 <button
                   type="button"
@@ -3025,11 +3059,10 @@ export const Crm: React.FC<CrmProps> = ({
               )}
             </section>
 
-            <section className="card customer-note-card">
+            <section className="card customer-note-card" hidden={customerHistoryTab !== 'overview' && customerHistoryTab !== 'notes'}>
               <div className="card-header customer-note-card__header">
                 <div>
                   <span className="card-title">{t('Ghi chú khách hàng')}</span>
-                  <small>{t('Thông tin cần nhớ khi trao đổi và xử lý đơn hàng')}</small>
                 </div>
               </div>
               <CustomerNoteEditor
@@ -3062,32 +3095,64 @@ export const Crm: React.FC<CrmProps> = ({
             </section>
           </div>
 
-          <div className="card customer-order-history-card">
+          {customerHistoryTab === 'overview' && <>
+            <section className="card customer-catalog-preview">
+              <div className="customer-detail-card-heading">
+                <h2>{t('Sản phẩm của khách hàng')}</h2>
+                {canManageCustomerProducts(currentUser, selectedCustomer) && <button type="button" className="btn btn-primary" onClick={() => setShowProductEditor(true)}>{t('Tạo mã sản phẩm')}</button>}
+              </div>
+              <div className="customer-catalog-preview__table" role="table" aria-label={t('Sản phẩm của khách hàng')}>
+                <div className="customer-catalog-preview__row customer-catalog-preview__head" role="row">
+                  <span role="columnheader">{t('Mã SP')}</span><span role="columnheader">{t('Tên sản phẩm')}</span><span role="columnheader">{t('Quy cách')}</span><span role="columnheader">{t('Thao tác')}</span>
+                </div>
+                {selectedCustomerProducts.slice(0, 4).map(product => <div key={product.key} className="customer-catalog-preview__row" role="row">
+                  <div role="cell"><button type="button" className="customer-detail-text-button" title={product.productCode} onClick={() => setCustomerHistoryTab('products')}>{product.productCode || '—'}</button></div>
+                  <div role="cell" className="customer-catalog-preview__identity">
+                    {product.previewImage && <button type="button" className="customer-catalog-preview__image" onClick={() => setPreviewImage(product.previewImage)} aria-label={`${t('Xem ảnh')}: ${product.productName}`}><img src={product.previewImage} alt="" /></button>}
+                    <span title={product.productName}>{product.productName}</span>
+                  </div>
+                  <span role="cell" title={[product.specification, product.material].filter(Boolean).join(' · ')}>{product.specification || product.material || '—'}</span>
+                  <div role="cell"><RowActionMenu actions={[
+                    { label: t('Xem chi tiết'), onSelect: () => setCustomerHistoryTab('products') },
+                    ...(product.record && (currentUser.role === 'admin' || currentUser.role === 'sale') ? [{ label: t('Chỉnh sửa'), onSelect: () => handleOpenEditProduct(product.record) }] : [])
+                  ]} /></div>
+                </div>)}
+              </div>
+              {selectedCustomerProducts.length === 0 && <p className="customer-detail-empty">{t('Chưa có mã sản phẩm.')}</p>}
+              <button type="button" className="customer-detail-text-button customer-detail-card-link" onClick={() => setCustomerHistoryTab('products')}>{t('Xem tất cả sản phẩm')} ({selectedCustomerProducts.length})</button>
+            </section>
+            <section className="card customer-repository-preview">
+              <div className="customer-detail-card-heading">
+                <h2>{t('Kho lưu trữ khách hàng')}</h2>
+                {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" className="btn btn-outline" onClick={() => { setRepositoryUploadOpen(true); setCustomerHistoryTab('files'); }}>{t('Thêm tệp')}</button>}
+              </div>
+              <div className="content-tabs customer-repository-preview__tabs" aria-label={t('Thư mục tài liệu')}>
+                <button type="button" className={!repositoryPreviewFolder ? 'is-active' : ''} aria-pressed={!repositoryPreviewFolder} onClick={() => setRepositoryPreviewFolder('')}>{t('Tất cả')} ({repositoryPreviewItems.length})</button>
+                {customerRepositoryFolders.map(folder => <button key={folder.id} type="button" className={repositoryPreviewFolder === folder.id ? 'is-active' : ''} aria-pressed={repositoryPreviewFolder === folder.id} onClick={() => setRepositoryPreviewFolder(folder.id)}>{folder.name} ({repositoryPreviewItems.filter(item => item.folderId === folder.id).length})</button>)}
+              </div>
+              <div className="customer-repository-preview__files">
+                {visibleRepositoryPreview.slice(0, 4).map(file => <div key={file.id} className="customer-repository-preview__file">
+                  <FileText size={24} aria-hidden="true" />
+                  <div>
+                    {file.source ? <a href={file.source} target="_blank" rel="noreferrer" download={file.source.startsWith('data:') ? file.name : undefined} title={file.name}>{file.name}</a> : <strong title={file.name}>{file.name}</strong>}
+                    <small>{customerRepositoryFolders.find(folder => folder.id === file.folderId)?.name || t('Tài liệu')} · {formatDate(file.date)}</small>
+                  </div>
+                  <RowActionMenu actions={[{ label: t('Quản lý tài liệu'), onSelect: () => { setActiveRepositoryFolderId(file.folderId); setSelectedFolderForUpload(file.folderId); setCustomerHistoryTab('files'); } }]} />
+                </div>)}
+                {visibleRepositoryPreview.length === 0 && <p className="customer-detail-empty">{t('Chưa có tài liệu.')}</p>}
+              </div>
+              <button type="button" className="customer-detail-text-button customer-detail-card-link" onClick={() => setCustomerHistoryTab('files')}>{t('Xem tất cả tệp')} ({repositoryPreviewItems.length})</button>
+            </section>
+          </>}
+
+          <div className="card customer-order-history-card" hidden={!['overview', 'po', 'products'].includes(customerHistoryTab)}>
             <div className="customer-product-catalog-toolbar">
-            <div className="customer-order-history-tabs content-tabs" role="tablist" aria-label={t('Lịch sử giao dịch khách hàng')}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={customerHistoryTab === 'po'}
-                className={customerHistoryTab === 'po' ? 'is-active' : ''}
-                onClick={() => setCustomerHistoryTab('po')}
-              >
-                {t('PO')} <span>{getCustomerOrders(selectedCustomer.id).length}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={customerHistoryTab === 'products'}
-                className={customerHistoryTab === 'products' ? 'is-active' : ''}
-                onClick={() => setCustomerHistoryTab('products')}
-              >
-                {t('Danh sách sản phẩm')} <span>{selectedCustomerProducts.length}</span>
-              </button>
-            </div>
-            {canManageCustomerProducts(currentUser, selectedCustomer) && <button type="button" className="btn btn-primary" onClick={() => setShowProductEditor(true)}>{t('Tạo mã sản phẩm')}</button>}
+              <h2>{customerHistoryTab === 'products' ? t('Sản phẩm của khách hàng') : t('Danh sách đơn hàng (PO)')}</h2>
+              {customerHistoryTab === 'overview' && <button type="button" className="btn btn-outline" onClick={() => setCustomerHistoryTab('po')}>{t('Xem tất cả')} ({getCustomerOrders(selectedCustomer.id).length})</button>}
+              {customerHistoryTab === 'products' && canManageCustomerProducts(currentUser, selectedCustomer) && <button type="button" className="btn btn-primary" onClick={() => setShowProductEditor(true)}>{t('Tạo mã sản phẩm')}</button>}
             </div>
 
-            {customerHistoryTab === 'po' ? (
+            {customerHistoryTab !== 'products' ? (
               <div className="table-container customer-order-history-table">
                 <table>
                   <thead>
@@ -3100,7 +3165,7 @@ export const Crm: React.FC<CrmProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {getCustomerOrders(selectedCustomer.id).map(po => (
+                    {getCustomerOrders(selectedCustomer.id).slice(0, customerHistoryTab === 'overview' ? 5 : undefined).map(po => (
                       <tr
                         key={po.id}
                         className="customer-po-history-row"
@@ -3123,6 +3188,7 @@ export const Crm: React.FC<CrmProps> = ({
                         </td>
                       </tr>
                     ))}
+                    {getCustomerOrders(selectedCustomer.id).length === 0 && <tr><td colSpan={5}>{t('Chưa phát sinh đơn hàng.')}</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -3187,11 +3253,10 @@ export const Crm: React.FC<CrmProps> = ({
             )}
           </div>
 
-          <section className="card customer-file-repository-card">
+          <section className="card customer-file-repository-card" hidden={customerHistoryTab !== 'files'}>
             <div className="card-header customer-file-repository-header">
               <div>
                 <span className="card-title">{t('Kho lưu trữ khách hàng')}</span>
-                <small>{t('Hợp đồng, biên bản, báo giá và các tài liệu liên quan của khách hàng.')}</small>
               </div>
               {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeRepositoryFolder?.id === 'contracts' && (
                 <button type="button" className="btn btn-outline" onClick={() => setShowAddContractModal(true)}>{t('Thêm hợp đồng')}</button>
@@ -3276,7 +3341,7 @@ export const Crm: React.FC<CrmProps> = ({
                 </div>
 
                 {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeRepositoryFolder && (
-                  <details className="customer-drive-upload-panel">
+                  <details className="customer-drive-upload-panel" open={repositoryUploadOpen} onToggle={event => setRepositoryUploadOpen(event.currentTarget.open)}>
                     <summary>{t('Thêm tài liệu vào thư mục này')}</summary>
                     <form onSubmit={handleUploadRepoFile}>
                       <label>
