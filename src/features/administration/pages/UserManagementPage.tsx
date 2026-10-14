@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -98,143 +99,161 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!displayName || !email || temporaryPassword.length < 8) return;
+    return runMutationAction("UserManagementPage.tsx:handleAddUser", async () => {
+      e.preventDefault();
+      if (!displayName || !email || temporaryPassword.length < 8) return;
 
-    const emailTrim = email.trim().toLowerCase();
+      const emailTrim = email.trim().toLowerCase();
 
-    // Check if email already exists
-    const exists = users.some(u => u.email.toLowerCase() === emailTrim);
-    if (exists) {
-      alert(t('Email này đã được đăng ký trên hệ thống.'));
-      return;
-    }
+      // Check if email already exists
+      const exists = users.some(u => u.email.toLowerCase() === emailTrim);
+      if (exists) {
+        alert(t('Email này đã được đăng ký trên hệ thống.'));
+        return;
+      }
 
-    setIsSubmitting(true);
-    try {
-      await adminUserService.create({
-        displayName: displayName.trim(),
-        email: emailTrim,
-        password: temporaryPassword,
-        role,
-        active,
-        allowedPages
-      });
-      auditService.recordSafely(currentUser, {
-        category: 'administration',
-        module: 'account',
-        action: 'account_created',
-        summary: `Tạo tài khoản ${displayName.trim()}`,
-        targetType: 'user',
-        targetLabel: displayName.trim()
-      });
-      setShowAddModal(false);
-      onRefresh();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : t('Không thể tạo tài khoản.'));
-    } finally {
-      setIsSubmitting(false);
-    }
+      setIsSubmitting(true);
+      try {
+        await adminUserService.create({
+          displayName: displayName.trim(),
+          email: emailTrim,
+          password: temporaryPassword,
+          role,
+          active,
+          allowedPages
+        });
+        auditService.recordSafely(currentUser, {
+          category: 'administration',
+          module: 'account',
+          action: 'account_created',
+          summary: `Tạo tài khoản ${displayName.trim()}`,
+          targetType: 'user',
+          targetLabel: displayName.trim()
+        });
+        setShowAddModal(false);
+        onRefresh();
+
+        showSuccessToast("Đã thêm thành công");
+      } catch (error) {
+        showErrorToast();
+        alert(error instanceof Error ? error.message : t('Không thể tạo tài khoản.'));
+      } finally {
+        setIsSubmitting(false);
+      }
+    }, e);
   };
 
   const handleEditUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUser) return;
+    return runMutationAction("UserManagementPage.tsx:handleEditUser", async () => {
+      e.preventDefault();
+      if (!selectedUser) return;
 
-    // Prevent deactivating oneself
-    if (selectedUser.uid === currentUser.uid && !active) {
-      alert(t('Bạn không thể tự vô hiệu hóa tài khoản của chính mình.'));
-      return;
-    }
+      // Prevent deactivating oneself
+      if (selectedUser.uid === currentUser.uid && !active) {
+        alert(t('Bạn không thể tự vô hiệu hóa tài khoản của chính mình.'));
+        return;
+      }
 
-    // Prevent changing ones own role
-    if (selectedUser.uid === currentUser.uid && role !== 'admin') {
-      alert(t('Bạn không thể tự thay đổi vai trò Admin của chính mình.'));
-      return;
-    }
+      // Prevent changing ones own role
+      if (selectedUser.uid === currentUser.uid && role !== 'admin') {
+        alert(t('Bạn không thể tự thay đổi vai trò Admin của chính mình.'));
+        return;
+      }
 
-    setIsSubmitting(true);
-    try {
-      await adminUserService.update({
-        uid: selectedUser.uid,
-        displayName: displayName.trim(),
-        role,
-        active,
-        allowedPages
-      });
-      auditService.recordSafely(currentUser, {
-        category: 'administration',
-        module: 'account',
-        action: 'account_updated',
-        summary: `Cập nhật tài khoản ${selectedUser.displayName}`,
-        targetType: 'user',
-        targetId: selectedUser.uid,
-        targetLabel: selectedUser.displayName
-      });
-      setShowEditModal(false);
-      setSelectedUser(null);
-      onRefresh();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : t('Không thể cập nhật tài khoản.'));
-    } finally {
-      setIsSubmitting(false);
-    }
+      setIsSubmitting(true);
+      try {
+        await adminUserService.update({
+          uid: selectedUser.uid,
+          displayName: displayName.trim(),
+          role,
+          active,
+          allowedPages
+        });
+        auditService.recordSafely(currentUser, {
+          category: 'administration',
+          module: 'account',
+          action: 'account_updated',
+          summary: `Cập nhật tài khoản ${selectedUser.displayName}`,
+          targetType: 'user',
+          targetId: selectedUser.uid,
+          targetLabel: selectedUser.displayName
+        });
+        setShowEditModal(false);
+        setSelectedUser(null);
+        onRefresh();
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        alert(error instanceof Error ? error.message : t('Không thể cập nhật tài khoản.'));
+      } finally {
+        setIsSubmitting(false);
+      }
+    }, e);
   };
 
   const handleToggleStatus = async (user: UserProfile) => {
-    if (user.uid === currentUser.uid) {
-      alert(t('Bạn không thể tự khóa tài khoản của chính mình.'));
-      return;
-    }
-
-    if (window.confirm(t(`Bạn có chắc chắn muốn thay đổi trạng thái tài khoản ${user.displayName}?`))) {
-      setIsSubmitting(true);
-      try {
-        await adminUserService.setActive(user.uid, !user.active);
-        auditService.recordSafely(currentUser, {
-          category: 'administration',
-          module: 'account',
-          action: user.active ? 'account_locked' : 'account_activated',
-          summary: `${user.active ? 'Khóa' : 'Kích hoạt'} tài khoản ${user.displayName}`,
-          targetType: 'user',
-          targetId: user.uid,
-          targetLabel: user.displayName
-        });
-        onRefresh();
-      } catch (error) {
-        alert(error instanceof Error ? error.message : t('Không thể thay đổi trạng thái tài khoản.'));
-      } finally {
-        setIsSubmitting(false);
+    return runMutationAction("UserManagementPage.tsx:handleToggleStatus", async () => {
+      if (user.uid === currentUser.uid) {
+        alert(t('Bạn không thể tự khóa tài khoản của chính mình.'));
+        return;
       }
-    }
+
+      if (window.confirm(t(`Bạn có chắc chắn muốn thay đổi trạng thái tài khoản ${user.displayName}?`))) {
+        setIsSubmitting(true);
+        try {
+          await adminUserService.setActive(user.uid, !user.active);
+          auditService.recordSafely(currentUser, {
+            category: 'administration',
+            module: 'account',
+            action: user.active ? 'account_locked' : 'account_activated',
+            summary: `${user.active ? 'Khóa' : 'Kích hoạt'} tài khoản ${user.displayName}`,
+            targetType: 'user',
+            targetId: user.uid,
+            targetLabel: user.displayName
+          });
+          onRefresh();
+
+          showSuccessToast("Đã lưu thành công");
+        } catch (error) {
+          alert(error instanceof Error ? error.message : t('Không thể thay đổi trạng thái tài khoản.'));
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    }, user);
   };
 
   const handleDeleteUser = async (userToDelete: UserProfile) => {
-    if (userToDelete.uid === currentUser.uid) {
-      alert(t('Bạn không thể tự xóa tài khoản của chính mình.'));
-      return;
-    }
-
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản người dùng này?'))) {
-      setIsSubmitting(true);
-      try {
-        await adminUserService.delete(userToDelete.uid);
-        auditService.recordSafely(currentUser, {
-          category: 'administration',
-          module: 'account',
-          action: 'account_deleted',
-          summary: `Xóa tài khoản ${userToDelete.displayName}`,
-          targetType: 'user',
-          targetId: userToDelete.uid,
-          targetLabel: userToDelete.displayName
-        });
-        onRefresh();
-      } catch (error) {
-        alert(error instanceof Error ? error.message : t('Không thể xóa tài khoản.'));
-      } finally {
-        setIsSubmitting(false);
+    return runMutationAction("UserManagementPage.tsx:handleDeleteUser", async () => {
+      if (userToDelete.uid === currentUser.uid) {
+        alert(t('Bạn không thể tự xóa tài khoản của chính mình.'));
+        return;
       }
-    }
+
+      if (window.confirm(t('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản người dùng này?'))) {
+        setIsSubmitting(true);
+        try {
+          await adminUserService.delete(userToDelete.uid);
+          auditService.recordSafely(currentUser, {
+            category: 'administration',
+            module: 'account',
+            action: 'account_deleted',
+            summary: `Xóa tài khoản ${userToDelete.displayName}`,
+            targetType: 'user',
+            targetId: userToDelete.uid,
+            targetLabel: userToDelete.displayName
+          });
+          onRefresh();
+
+          showSuccessToast("Đã xóa thành công");
+        } catch (error) {
+          alert(error instanceof Error ? error.message : t('Không thể xóa tài khoản.'));
+        } finally {
+          setIsSubmitting(false);
+        }
+      }
+    }, userToDelete);
   };
 
   // Search and filter logic

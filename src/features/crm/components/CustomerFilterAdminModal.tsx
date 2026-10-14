@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState } from 'react';
 import { Eye, EyeOff, Pencil, Save, Settings2, X } from 'lucide-react';
 import type { CustomerFilterDefinition } from '@/features/crm/model/customerFilterConfig';
@@ -13,22 +14,27 @@ export const CustomerFilterAdminModal: React.FC<{
   const [saveError, setSaveError] = useState('');
 
   const persistDefinition = async (definition: CustomerFilterDefinition) => {
-    setSaveError('');
-    setSaving(true);
-    try {
-      await onSaveDefinition(definition);
-      return true;
-    } catch (error) {
-      const code = typeof error === 'object' && error !== null && 'code' in error
-        ? String(error.code)
-        : '';
-      setSaveError(code.includes('permission-denied')
-        ? 'Firebase chưa cấp quyền quản trị bộ lọc khách hàng. Hãy kiểm tra và xuất bản Firestore Rules mới nhất.'
-        : 'Không thể lưu cấu hình lúc này. Vui lòng thử lại hoặc kiểm tra kết nối Firebase.');
-      return false;
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("CustomerFilterAdminModal.tsx:persistDefinition", async () => {
+      setSaveError('');
+      setSaving(true);
+      try {
+        await onSaveDefinition(definition);
+
+        showSuccessToast("Đã lưu thành công");
+        return true;
+      } catch (error) {
+        showErrorToast();
+        const code = typeof error === 'object' && error !== null && 'code' in error
+          ? String(error.code)
+          : '';
+        setSaveError(code.includes('permission-denied')
+          ? 'Firebase chưa cấp quyền quản trị bộ lọc khách hàng. Hãy kiểm tra và xuất bản Firestore Rules mới nhất.'
+          : 'Không thể lưu cấu hình lúc này. Vui lòng thử lại hoặc kiểm tra kết nối Firebase.');
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    }, definition);
   };
 
   const startEdit = (definition: CustomerFilterDefinition) => {
@@ -38,23 +44,27 @@ export const CustomerFilterAdminModal: React.FC<{
   };
 
   const toggleDefinitionActive = async (definition: CustomerFilterDefinition) => {
-    const saved = await persistDefinition({ ...definition, active: !definition.active });
-    if (saved && editingId === definition.id) {
-      setDraft(previous => previous ? { ...previous, active: !definition.active } : previous);
-    }
+    return runMutationAction("CustomerFilterAdminModal.tsx:toggleDefinitionActive", async () => {
+      const saved = await persistDefinition({ ...definition, active: !definition.active });
+      if (saved && editingId === definition.id) {
+        setDraft(previous => previous ? { ...previous, active: !definition.active } : previous);
+      }
+    }, definition);
   };
 
   const saveDraft = async () => {
-    if (!draft?.name.trim()) return;
-    const saved = await persistDefinition({
-      ...draft,
-      name: draft.name.trim(),
-      description: draft.description.trim()
-    });
-    if (saved) {
-      setEditingId('');
-      setDraft(null);
-    }
+    return runMutationAction("CustomerFilterAdminModal.tsx:saveDraft", async () => {
+      if (!draft?.name.trim()) return;
+      const saved = await persistDefinition({
+        ...draft,
+        name: draft.name.trim(),
+        description: draft.description.trim()
+      });
+      if (saved) {
+        setEditingId('');
+        setDraft(null);
+      }
+    }, undefined);
   };
 
   return (

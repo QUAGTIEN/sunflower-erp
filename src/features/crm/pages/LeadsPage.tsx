@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1047,25 +1048,29 @@ export const Leads: React.FC<LeadsProps> = ({
   }, [initialLeadId, leads, onInitialLeadOpened, openEditForm]);
 
   const saveClassification = async (lead: LeadRecord, values: string[]) => {
-    const canManage = currentUser.role === 'admin'
-      || (currentUser.role === 'sale' && lead.assignedSaleId === currentUser.uid);
-    if (!canManage) throw new Error('Not allowed to classify this lead');
-    const now = new Date().toISOString();
-    await dbService.updateDocument('leads', lead.id, {
-      customerInsightValues: values,
-      updatedAt: now,
-      updatedBy: currentUser.displayName
-    });
-    if (editingLeadId === lead.id) updateForm('customerInsightValues', values);
-    auditService.recordSafely(currentUser, {
-      category: 'business',
-      module: 'leads',
-      action: 'lead_classification_updated',
-      summary: `Cập nhật phân loại ${lead.companyName} · ${values.length}/${CUSTOMER_INSIGHT_ITEMS.length} mục`,
-      targetType: 'lead',
-      targetId: lead.id,
-      targetLabel: lead.companyName
-    });
+    return runMutationAction("LeadsPage.tsx:saveClassification", async () => {
+      const canManage = currentUser.role === 'admin'
+        || (currentUser.role === 'sale' && lead.assignedSaleId === currentUser.uid);
+      if (!canManage) throw new Error('Not allowed to classify this lead');
+      const now = new Date().toISOString();
+      await requireConfirmedMutation(dbService.updateDocument('leads', lead.id, {
+        customerInsightValues: values,
+        updatedAt: now,
+        updatedBy: currentUser.displayName
+      }));
+      if (editingLeadId === lead.id) updateForm('customerInsightValues', values);
+      auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'leads',
+        action: 'lead_classification_updated',
+        summary: `Cập nhật phân loại ${lead.companyName} · ${values.length}/${CUSTOMER_INSIGHT_ITEMS.length} mục`,
+        targetType: 'lead',
+        targetId: lead.id,
+        targetLabel: lead.companyName
+      });
+
+      showSuccessToast("Đã lưu thành công");
+    }, lead);
   };
 
   const openScheduleForm = (lead: LeadRecord) => {
@@ -1082,74 +1087,79 @@ export const Leads: React.FC<LeadsProps> = ({
   };
 
   const handleSaveSchedule = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!scheduleLead || !scheduleForm.nextFollowUpAt) return;
-    if (!scheduleLead.assignedSaleId) {
-      setScheduleError('Vui lòng phân công Sale phụ trách trước khi đặt lịch hẹn.');
-      return;
-    }
+    return runMutationAction("LeadsPage.tsx:handleSaveSchedule", async () => {
+      event.preventDefault();
+      if (!scheduleLead || !scheduleForm.nextFollowUpAt) return;
+      if (!scheduleLead.assignedSaleId) {
+        setScheduleError('Vui lòng phân công Sale phụ trách trước khi đặt lịch hẹn.');
+        return;
+      }
 
-    const nextFollowUpAt = new Date(scheduleForm.nextFollowUpAt).toISOString();
-    const now = new Date().toISOString();
-    const eventKey = `leads:scheduled:${scheduleLead.id}`;
-    const activityNote = `Đặt lịch chăm sóc: ${formatDateTime(nextFollowUpAt)}`;
+      const nextFollowUpAt = new Date(scheduleForm.nextFollowUpAt).toISOString();
+      const now = new Date().toISOString();
+      const eventKey = `leads:scheduled:${scheduleLead.id}`;
+      const activityNote = `Đặt lịch chăm sóc: ${formatDateTime(nextFollowUpAt)}`;
 
-    setSavingSchedule(true);
-    setScheduleError('');
-    try {
-      await Promise.all([
-        dbService.updateDocument('leads', scheduleLead.id, {
-          reminderTime: nextFollowUpAt,
-          nextFollowUpAt,
-          followUpHandledAt: '',
-          followUpHandledById: '',
-          followUpHandledByName: '',
-          activities: [{
-            id: `activity-schedule-${now}`,
-            type: 'schedule',
-            note: activityNote,
-            occurredAt: now,
+      setSavingSchedule(true);
+      setScheduleError('');
+      try {
+        await Promise.all([
+          requireConfirmedMutation(dbService.updateDocument('leads', scheduleLead.id, {
+            reminderTime: nextFollowUpAt,
+            nextFollowUpAt,
+            followUpHandledAt: '',
+            followUpHandledById: '',
+            followUpHandledByName: '',
+            activities: [{
+              id: `activity-schedule-${now}`,
+              type: 'schedule',
+              note: activityNote,
+              occurredAt: now,
+              createdById: currentUser.uid,
+              createdByName: currentUser.displayName
+            }, ...(scheduleLead.activities || [])],
+            updatedAt: now,
+            updatedBy: currentUser.displayName
+          })),
+          dbService.addDocument('notifications', {
+            id: getNotificationDocumentId(scheduleLead.assignedSaleId, eventKey),
+            schemaVersion: NOTIFICATION_SCHEMA_VERSION,
+            recipientId: scheduleLead.assignedSaleId,
+            module: 'leads',
+            eventType: 'lead_follow_up_scheduled',
+            eventKey,
+            entityId: scheduleLead.id,
+            entityCode: scheduleLead.companyName,
+            title: 'Lịch chăm sóc Lead mới',
+            message: `${scheduleLead.companyName} được hẹn chăm sóc vào ${formatDateTime(nextFollowUpAt)}.`,
+            createdAt: now,
             createdById: currentUser.uid,
-            createdByName: currentUser.displayName
-          }, ...(scheduleLead.activities || [])],
-          updatedAt: now,
-          updatedBy: currentUser.displayName
-        }),
-        dbService.addDocument('notifications', {
-          id: getNotificationDocumentId(scheduleLead.assignedSaleId, eventKey),
-          schemaVersion: NOTIFICATION_SCHEMA_VERSION,
-          recipientId: scheduleLead.assignedSaleId,
-          module: 'leads',
-          eventType: 'lead_follow_up_scheduled',
-          eventKey,
-          entityId: scheduleLead.id,
-          entityCode: scheduleLead.companyName,
-          title: 'Lịch chăm sóc Lead mới',
-          message: `${scheduleLead.companyName} được hẹn chăm sóc vào ${formatDateTime(nextFollowUpAt)}.`,
-          createdAt: now,
-          createdById: currentUser.uid,
-          source: 'manual',
-          readAt: null
-        })
-      ]);
+            source: 'manual',
+            readAt: null
+          })
+        ]);
 
-      auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'leads',
-        action: 'lead_follow_up_scheduled',
-        summary: `Đặt lịch chăm sóc Lead ${scheduleLead.companyName}`,
-        targetType: 'lead',
-        targetId: scheduleLead.id,
-        targetLabel: scheduleLead.companyName,
-        changes: [{ field: 'nextFollowUpAt', label: 'Lịch chăm sóc', before: scheduleLead.nextFollowUpAt, after: nextFollowUpAt }]
-      });
-      closeScheduleForm();
-    } catch (error) {
-      console.error('[Leads] Could not save follow-up schedule.', error);
-      setScheduleError('Không thể lưu lịch hẹn. Vui lòng thử lại.');
-    } finally {
-      setSavingSchedule(false);
-    }
+        auditService.recordSafely(currentUser, {
+          category: 'business',
+          module: 'leads',
+          action: 'lead_follow_up_scheduled',
+          summary: `Đặt lịch chăm sóc Lead ${scheduleLead.companyName}`,
+          targetType: 'lead',
+          targetId: scheduleLead.id,
+          targetLabel: scheduleLead.companyName,
+          changes: [{ field: 'nextFollowUpAt', label: 'Lịch chăm sóc', before: scheduleLead.nextFollowUpAt, after: nextFollowUpAt }]
+        });
+        closeScheduleForm();
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        console.error('[Leads] Could not save follow-up schedule.', error);
+        setScheduleError('Không thể lưu lịch hẹn. Vui lòng thử lại.');
+      } finally {
+        setSavingSchedule(false);
+      }
+    }, event);
   };
 
   const openCreateFormFromCandidate = useCallback((candidate: LeadCandidateRecord) => {
@@ -1320,382 +1330,406 @@ export const Leads: React.FC<LeadsProps> = ({
   };
 
   const handleAddLeadRepositoryFolder = async () => {
-    if (!selectedLead || currentUser.role !== 'admin') return;
-    const name = newLeadFolderName.trim();
-    if (!name) return;
-    const folders = getCustomerRepositoryFolders(selectedLead);
-    if (folders.some(folder => folder.name.trim().toLocaleLowerCase('vi-VN') === name.toLocaleLowerCase('vi-VN'))) {
-      window.alert(t('Thư mục này đã tồn tại.'));
-      return;
-    }
-    const now = new Date().toISOString();
-    const newFolder: CustomerRepositoryFolder = {
-      id: createCustomerFolderId(name, folders.map(folder => folder.id)),
-      name,
-      parentId: null,
-      order: Math.max(0, ...folders.map(folder => Number(folder.order) || 0)) + 10,
-      active: true,
-      createdAt: now,
-      createdById: currentUser.uid,
-      updatedAt: '',
-      updatedById: ''
-    };
-    await dbService.updateDocument('leads', selectedLead.id, {
-      fileFolders: [...folders, newFolder],
-      updatedAt: now,
-      updatedBy: currentUser.displayName
-    });
-    setNewLeadFolderName('');
-    setActiveLeadFolderId(newFolder.id);
+    return runMutationAction("LeadsPage.tsx:handleAddLeadRepositoryFolder", async () => {
+      if (!selectedLead || currentUser.role !== 'admin') return;
+      const name = newLeadFolderName.trim();
+      if (!name) return;
+      const folders = getCustomerRepositoryFolders(selectedLead);
+      if (folders.some(folder => folder.name.trim().toLocaleLowerCase('vi-VN') === name.toLocaleLowerCase('vi-VN'))) {
+        window.alert(t('Thư mục này đã tồn tại.'));
+        return;
+      }
+      const now = new Date().toISOString();
+      const newFolder: CustomerRepositoryFolder = {
+        id: createCustomerFolderId(name, folders.map(folder => folder.id)),
+        name,
+        parentId: null,
+        order: Math.max(0, ...folders.map(folder => Number(folder.order) || 0)) + 10,
+        active: true,
+        createdAt: now,
+        createdById: currentUser.uid,
+        updatedAt: '',
+        updatedById: ''
+      };
+      await requireConfirmedMutation(dbService.updateDocument('leads', selectedLead.id, {
+        fileFolders: [...folders, newFolder],
+        updatedAt: now,
+        updatedBy: currentUser.displayName
+      }));
+      setNewLeadFolderName('');
+      setActiveLeadFolderId(newFolder.id);
+
+      showSuccessToast("Đã thêm thành công");
+    }, undefined);
   };
 
   const handleRenameLeadRepositoryFolder = async (folderId: string) => {
-    if (!selectedLead || currentUser.role !== 'admin') return;
-    const name = leadFolderNameDraft.trim();
-    if (!name) return;
-    const folders = getCustomerRepositoryFolders(selectedLead);
-    if (folders.some(folder => folder.id !== folderId && folder.name.trim().toLocaleLowerCase('vi-VN') === name.toLocaleLowerCase('vi-VN'))) {
-      window.alert(t('Tên thư mục này đã tồn tại.'));
-      return;
-    }
-    const now = new Date().toISOString();
-    const nextFolders = folders.map(folder => folder.id === folderId ? {
-      ...folder,
-      name,
-      updatedAt: now,
-      updatedById: currentUser.uid
-    } : folder);
-    await dbService.updateDocument('leads', selectedLead.id, {
-      fileFolders: nextFolders,
-      updatedAt: now,
-      updatedBy: currentUser.displayName
-    });
-    setRenamingLeadFolderId('');
-    setLeadFolderNameDraft('');
+    return runMutationAction("LeadsPage.tsx:handleRenameLeadRepositoryFolder", async () => {
+      if (!selectedLead || currentUser.role !== 'admin') return;
+      const name = leadFolderNameDraft.trim();
+      if (!name) return;
+      const folders = getCustomerRepositoryFolders(selectedLead);
+      if (folders.some(folder => folder.id !== folderId && folder.name.trim().toLocaleLowerCase('vi-VN') === name.toLocaleLowerCase('vi-VN'))) {
+        window.alert(t('Tên thư mục này đã tồn tại.'));
+        return;
+      }
+      const now = new Date().toISOString();
+      const nextFolders = folders.map(folder => folder.id === folderId ? {
+        ...folder,
+        name,
+        updatedAt: now,
+        updatedById: currentUser.uid
+      } : folder);
+      await requireConfirmedMutation(dbService.updateDocument('leads', selectedLead.id, {
+        fileFolders: nextFolders,
+        updatedAt: now,
+        updatedBy: currentUser.displayName
+      }));
+      setRenamingLeadFolderId('');
+      setLeadFolderNameDraft('');
+
+      showSuccessToast("Đã lưu thành công");
+    }, folderId);
   };
 
   const handleUploadLeadRepositoryFile = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedLead || !activeLeadRepositoryFolder) return;
-    const link = leadRepositoryFileLink.trim();
-    if ((!leadRepositoryFile && !link) || !leadRepositoryFileName.trim()) {
-      window.alert(t('Vui lòng nhập tên và chọn tệp hoặc đường dẫn chia sẻ.'));
-      return;
-    }
-    if (link && !/^https?:\/\//i.test(link)) {
-      window.alert(t('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.'));
-      return;
-    }
-    const now = new Date().toISOString();
-    const file: LeadFileRecord = {
-      id: `lead-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: leadRepositoryFileName.trim(),
-      folderId: activeLeadRepositoryFolder.id,
-      folder: activeLeadRepositoryFolder.name,
-      url: link,
-      data: leadRepositoryFile,
-      createdAt: now,
-      createdById: currentUser.uid,
-      createdBy: currentUser.displayName
-    };
-    await dbService.updateDocument('leads', selectedLead.id, {
-      files: [...(selectedLead.files || []), file],
-      fileFolders: getCustomerRepositoryFolders(selectedLead),
-      updatedAt: now,
-      updatedBy: currentUser.displayName
-    });
-    setUploadingFiles(previous => [...previous.filter(entry => entry.id !== file.id), file]);
-    setLeadRepositoryFile('');
-    setLeadRepositoryFileName('');
-    setLeadRepositoryFileLink('');
+    return runMutationAction("LeadsPage.tsx:handleUploadLeadRepositoryFile", async () => {
+      event.preventDefault();
+      if (!selectedLead || !activeLeadRepositoryFolder) return;
+      const link = leadRepositoryFileLink.trim();
+      if ((!leadRepositoryFile && !link) || !leadRepositoryFileName.trim()) {
+        window.alert(t('Vui lòng nhập tên và chọn tệp hoặc đường dẫn chia sẻ.'));
+        return;
+      }
+      if (link && !/^https?:\/\//i.test(link)) {
+        window.alert(t('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.'));
+        return;
+      }
+      const now = new Date().toISOString();
+      const file: LeadFileRecord = {
+        id: `lead-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: leadRepositoryFileName.trim(),
+        folderId: activeLeadRepositoryFolder.id,
+        folder: activeLeadRepositoryFolder.name,
+        url: link,
+        data: leadRepositoryFile,
+        createdAt: now,
+        createdById: currentUser.uid,
+        createdBy: currentUser.displayName
+      };
+      await requireConfirmedMutation(dbService.updateDocument('leads', selectedLead.id, {
+        files: [...(selectedLead.files || []), file],
+        fileFolders: getCustomerRepositoryFolders(selectedLead),
+        updatedAt: now,
+        updatedBy: currentUser.displayName
+      }));
+      setUploadingFiles(previous => [...previous.filter(entry => entry.id !== file.id), file]);
+      setLeadRepositoryFile('');
+      setLeadRepositoryFileName('');
+      setLeadRepositoryFileLink('');
+
+      showSuccessToast("Đã lưu thành công");
+    }, event);
   };
 
   const handleDeleteLeadRepositoryFile = async (fileId: string) => {
-    if (!selectedLead || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
-    if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) return;
-    await dbService.updateDocument('leads', selectedLead.id, {
-      files: (selectedLead.files || []).filter(file => file.id !== fileId),
-      updatedAt: new Date().toISOString(),
-      updatedBy: currentUser.displayName
-    });
-    setUploadingFiles(previous => previous.filter(file => file.id !== fileId));
+    return runMutationAction("LeadsPage.tsx:handleDeleteLeadRepositoryFile", async () => {
+      if (!selectedLead || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
+      if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) return;
+      await requireConfirmedMutation(dbService.updateDocument('leads', selectedLead.id, {
+        files: (selectedLead.files || []).filter(file => file.id !== fileId),
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser.displayName
+      }));
+      setUploadingFiles(previous => previous.filter(file => file.id !== fileId));
+
+      showSuccessToast("Đã xóa thành công");
+    }, fileId);
   };
 
   const handleDeleteLeadRepositoryFolder = async (folderId: string) => {
-    if (!selectedLead || currentUser.role !== 'admin') return;
-    const folders = getCustomerRepositoryFolders(selectedLead);
-    const folder = folders.find(item => item.id === folderId);
-    if (!folder) return;
-    if ((selectedLead.files || []).some(file => resolveCustomerFileFolderId(file, folders) === folderId)) {
-      window.alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
-      return;
-    }
-    if (folders.length === 1) {
-      window.alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
-      return;
-    }
-    if (!window.confirm(`${t('Xóa thư mục')} “${folder.name}”?`)) return;
-    const nextFolders = folders.filter(item => item.id !== folderId);
-    await dbService.updateDocument('leads', selectedLead.id, {
-      fileFolders: nextFolders,
-      updatedAt: new Date().toISOString(),
-      updatedBy: currentUser.displayName
-    });
-    setActiveLeadFolderId(nextFolders[0]?.id || '');
+    return runMutationAction("LeadsPage.tsx:handleDeleteLeadRepositoryFolder", async () => {
+      if (!selectedLead || currentUser.role !== 'admin') return;
+      const folders = getCustomerRepositoryFolders(selectedLead);
+      const folder = folders.find(item => item.id === folderId);
+      if (!folder) return;
+      if ((selectedLead.files || []).some(file => resolveCustomerFileFolderId(file, folders) === folderId)) {
+        window.alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
+        return;
+      }
+      if (folders.length === 1) {
+        window.alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
+        return;
+      }
+      if (!window.confirm(`${t('Xóa thư mục')} “${folder.name}”?`)) return;
+      const nextFolders = folders.filter(item => item.id !== folderId);
+      await requireConfirmedMutation(dbService.updateDocument('leads', selectedLead.id, {
+        fileFolders: nextFolders,
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser.displayName
+      }));
+      setActiveLeadFolderId(nextFolders[0]?.id || '');
+
+      showSuccessToast("Đã xóa thành công");
+    }, folderId);
   };
 
   const handleSaveLead = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const normalizedTaxCode = normalizeTaxCode(form.taxCode);
-    if (!form.companyName.trim() || !normalizedTaxCode) return;
-    const missingCustomFields = getMissingRequiredEntityFields(profileFormCustomFieldDefinitions, customFieldValues, currentUser.role);
-    if (missingCustomFields.length > 0) {
-      setTaxCodeSaveError(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
-      return;
-    }
-    const [latestLeadData, latestCustomerData, latestCandidateData] = await Promise.all([
-      currentUser.role === 'sale'
-        ? dbService.getCollectionByField('leads', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
-        : dbService.getCollection('leads'),
-      currentUser.role === 'sale'
-        ? dbService.getCollectionByField('customers', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
-        : dbService.getCollection('customers'),
-      currentUser.role === 'sale'
-        ? dbService.getCollectionByField('lead_candidates', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
-        : dbService.getCollection('lead_candidates')
-    ]);
-    const latestLeads = latestLeadData as LeadRecord[];
-    const latestCandidates = latestCandidateData as LeadCandidateRecord[];
-    const conversionCandidate = convertingCandidateId
-      ? latestCandidates.find(candidate => candidate.id === convertingCandidateId) || null
-      : null;
-    const reusableLead = conversionCandidate
-      ? latestLeads.find(lead => (
-          lead.returnedToRawData
-          && (
-            lead.id === conversionCandidate.returnedFromLeadId
-            || lead.returnedToRawDataCandidateId === conversionCandidate.id
-            || normalizeTaxCode(lead.taxCode) === normalizedTaxCode
-          )
-        )) || null
-      : null;
-    const latestConflict = findTaxCodeConflict(
-      form.taxCode,
-      latestLeads,
-      latestCustomerData as CustomerRecord[],
-      editingLeadId || reusableLead?.id || '',
-      editingLead?.convertedCustomerId || ''
-    );
-    if (latestConflict) {
-      setTaxCodeSaveError(describeTaxCodeConflict(latestConflict));
-      return;
-    }
-    const latestCandidateConflict = findCandidateDuplicate(
-      {
-        companyName: form.companyName,
-        phone: form.phone,
-        taxCode: normalizedTaxCode
-      },
-      latestCandidates,
-      [],
-      [],
-      convertingCandidateId || editingLead?.sourceCandidateId || ''
-    );
-    if (latestCandidateConflict?.reason === 'taxCode') {
-      setTaxCodeSaveError(`Mã số thuế này đang nằm trong Dữ liệu khách hàng của doanh nghiệp “${latestCandidateConflict.companyName}”.`);
-      return;
-    }
-
-    const assignedSale = saleUsers.find(user => user.uid === form.assignedSaleId);
-    const discoveredById = form.discoveredById
-      || (currentUser.role === 'sale' ? currentUser.uid : form.assignedSaleId);
-    const discoveredBy = saleUsers.find(user => user.uid === discoveredById);
-    const currentFilterValues = editingLead
-      ? getLeadFilterValues(editingLead, filterDefinitions)
-      : {};
-    const provinceOptionId = findLeadFilterOptionId(filterDefinitions, LEAD_FILTER_IDS.province, form.province);
-    const selectedProvinceValues = formFilterValues[LEAD_FILTER_IDS.province] || [];
-    const selectedProvince = selectedProvinceValues.length > 0
-      ? findLeadFilterParentOption(filterDefinitions, LEAD_FILTER_IDS.province, selectedProvinceValues.at(-1) || '')
-      : undefined;
-    const provinceFilterValues = selectedProvince?.id === provinceOptionId
-      ? selectedProvinceValues
-      : [provinceOptionId].filter(Boolean);
-    const industrialParkOptionId = findLeadFilterOptionId(
-      filterDefinitions,
-      LEAD_FILTER_IDS.industrialPark,
-      form.industrialPark
-    );
-    const profileFilterValues = {
-      ...currentFilterValues,
-      ...formFilterValues,
-      [LEAD_FILTER_IDS.companySize]: form.companySize ? [form.companySize] : [],
-      [LEAD_FILTER_IDS.province]: provinceFilterValues,
-      [LEAD_FILTER_IDS.industrialPark]: [industrialParkOptionId].filter(Boolean),
-      [LEAD_FILTER_IDS.source]: [findLeadFilterOptionId(filterDefinitions, LEAD_FILTER_IDS.source, form.source)].filter(Boolean)
-    };
-    const now = new Date().toISOString();
-    const payload = {
-      name: form.companyName.trim(),
-      companyName: form.companyName.trim(),
-      contactPerson: form.contactPerson.trim(),
-      contactPosition: form.contactPosition.trim(),
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      website: form.website.trim(),
-      businessSector: form.businessSector.trim(),
-      industry: form.industry.trim(),
-      taxCode: normalizedTaxCode,
-      address: form.address.trim(),
-      province: form.province.trim(),
-      ward: form.ward.trim(),
-      industrialPark: form.industrialPark.trim(),
-      companySize: form.companySize,
-      source: form.source,
-      sourceUrl: form.sourceUrl.trim(),
-      potentialValue: Number(form.potentialValue),
-      expectedProducts: form.expectedProducts.trim(),
-      closingProbability: Number(form.closingProbability),
-      expectedCloseAt: form.expectedCloseAt,
-      lastContactResult: form.lastContactResult.trim(),
-      nextGoal: form.nextGoal.trim(),
-      careNote: form.careNote.trim(),
-      customerInsightValues: form.customerInsightValues,
-      stage: form.stage,
-      filterValues: profileFilterValues,
-      profileValues: formProfileValues,
-      customFieldValues,
-      assignedSaleId: form.assignedSaleId,
-      assignedSaleName: assignedSale?.displayName || '',
-      discoveredById,
-      discoveredByName: discoveredBy?.displayName || currentUser.displayName,
-      sourceCandidateId: convertingCandidateId || editingLead?.sourceCandidateId || '',
-      reminderTime: form.nextFollowUpAt ? new Date(form.nextFollowUpAt).toISOString() : '',
-      nextFollowUpAt: form.nextFollowUpAt ? new Date(form.nextFollowUpAt).toISOString() : '',
-      followUpHandledAt: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledAt || ''),
-      followUpHandledById: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledById || ''),
-      followUpHandledByName: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledByName || ''),
-      note: form.note.trim(),
-      files: uploadingFiles,
-      updatedAt: now,
-      updatedBy: currentUser.displayName
-    };
-
-    let savedLeadId = editingLeadId;
-    if (editingLeadId) {
-      await dbService.updateDocument('leads', editingLeadId, payload);
-    } else if (reusableLead) {
-      savedLeadId = reusableLead.id;
-      await dbService.updateDocument('leads', reusableLead.id, {
-        ...payload,
-        returnedToRawData: false,
-        returnedToRawDataAt: '',
-        returnedToRawDataCandidateId: '',
-        returnedToRawDataById: '',
-        returnedToRawDataByName: '',
-        activities: [{
-          id: `activity-returned-to-lead-${now}`,
-          type: 'returned_to_lead',
-          note: 'Tiếp nhận lại từ Dữ liệu thô',
-          occurredAt: now,
-          createdById: currentUser.uid,
-          createdByName: currentUser.displayName
-        }, ...(reusableLead.activities || [])]
-      });
-    } else {
-      try {
-        const createdLead = await dbService.addDocumentIfAbsent(
-          'leads',
-          createLeadDocumentIdFromTaxCode(normalizedTaxCode),
-          {
-            ...payload,
-            activities: [{
-              id: `activity-${now}`,
-              type: 'created',
-              note: 'Khởi tạo khách hàng tiềm năng',
-              occurredAt: now,
-              createdById: currentUser.uid,
-              createdByName: currentUser.displayName
-            }],
-            createdAt: now,
-            createdById: currentUser.uid
-          }
-        );
-        savedLeadId = createdLead.id;
-      } catch (error) {
-        if (!isDocumentAlreadyExistsError(error)) {
-          setTaxCodeSaveError('Không thể xác minh mã số thuế trên hệ thống. Lead chưa được lưu; vui lòng thử lại.');
-          return;
-        }
-        const existingLead = (error as { existingDocument?: LeadRecord }).existingDocument;
-        setTaxCodeSaveError(existingLead
-          ? describeTaxCodeConflict({
-              id: existingLead.id,
-              recordType: 'lead',
-              companyName: existingLead.companyName,
-              assignedSaleId: existingLead.assignedSaleId,
-              assignedSaleName: existingLead.assignedSaleName
-            })
-          : 'Mã số thuế này vừa được một Sale khác đăng ký. Vui lòng kiểm tra lại.');
+    return runMutationAction("LeadsPage.tsx:handleSaveLead", async () => {
+      event.preventDefault();
+      const normalizedTaxCode = normalizeTaxCode(form.taxCode);
+      if (!form.companyName.trim() || !normalizedTaxCode) return;
+      const missingCustomFields = getMissingRequiredEntityFields(profileFormCustomFieldDefinitions, customFieldValues, currentUser.role);
+      if (missingCustomFields.length > 0) {
+        setTaxCodeSaveError(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
         return;
       }
-    }
+      const [latestLeadData, latestCustomerData, latestCandidateData] = await Promise.all([
+        currentUser.role === 'sale'
+          ? dbService.getCollectionByField('leads', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+          : dbService.getCollection('leads'),
+        currentUser.role === 'sale'
+          ? dbService.getCollectionByField('customers', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+          : dbService.getCollection('customers'),
+        currentUser.role === 'sale'
+          ? dbService.getCollectionByField('lead_candidates', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+          : dbService.getCollection('lead_candidates')
+      ]);
+      const latestLeads = latestLeadData as LeadRecord[];
+      const latestCandidates = latestCandidateData as LeadCandidateRecord[];
+      const conversionCandidate = convertingCandidateId
+        ? latestCandidates.find(candidate => candidate.id === convertingCandidateId) || null
+        : null;
+      const reusableLead = conversionCandidate
+        ? latestLeads.find(lead => (
+            lead.returnedToRawData
+            && (
+              lead.id === conversionCandidate.returnedFromLeadId
+              || lead.returnedToRawDataCandidateId === conversionCandidate.id
+              || normalizeTaxCode(lead.taxCode) === normalizedTaxCode
+            )
+          )) || null
+        : null;
+      const latestConflict = findTaxCodeConflict(
+        form.taxCode,
+        latestLeads,
+        latestCustomerData as CustomerRecord[],
+        editingLeadId || reusableLead?.id || '',
+        editingLead?.convertedCustomerId || ''
+      );
+      if (latestConflict) {
+        setTaxCodeSaveError(describeTaxCodeConflict(latestConflict));
+        return;
+      }
+      const latestCandidateConflict = findCandidateDuplicate(
+        {
+          companyName: form.companyName,
+          phone: form.phone,
+          taxCode: normalizedTaxCode
+        },
+        latestCandidates,
+        [],
+        [],
+        convertingCandidateId || editingLead?.sourceCandidateId || ''
+      );
+      if (latestCandidateConflict?.reason === 'taxCode') {
+        setTaxCodeSaveError(`Mã số thuế này đang nằm trong Dữ liệu khách hàng của doanh nghiệp “${latestCandidateConflict.companyName}”.`);
+        return;
+      }
 
-    if (convertingCandidateId && savedLeadId) {
-      const candidate = candidates.find(item => item.id === convertingCandidateId);
-      const conversionLog = {
-        id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        occurredAt: now,
-        outcome: 'task_completed' as const,
-        eventType: 'activity' as const,
-        activityType: 'note' as const,
-        contactResult: '' as const,
-        potentialLevel: '' as const,
-        description: `Chuyển thành Lead ${savedLeadId}`,
-        note: '',
-        nextContactAt: '',
-        createdById: currentUser.uid,
-        createdByName: currentUser.displayName
+      const assignedSale = saleUsers.find(user => user.uid === form.assignedSaleId);
+      const discoveredById = form.discoveredById
+        || (currentUser.role === 'sale' ? currentUser.uid : form.assignedSaleId);
+      const discoveredBy = saleUsers.find(user => user.uid === discoveredById);
+      const currentFilterValues = editingLead
+        ? getLeadFilterValues(editingLead, filterDefinitions)
+        : {};
+      const provinceOptionId = findLeadFilterOptionId(filterDefinitions, LEAD_FILTER_IDS.province, form.province);
+      const selectedProvinceValues = formFilterValues[LEAD_FILTER_IDS.province] || [];
+      const selectedProvince = selectedProvinceValues.length > 0
+        ? findLeadFilterParentOption(filterDefinitions, LEAD_FILTER_IDS.province, selectedProvinceValues.at(-1) || '')
+        : undefined;
+      const provinceFilterValues = selectedProvince?.id === provinceOptionId
+        ? selectedProvinceValues
+        : [provinceOptionId].filter(Boolean);
+      const industrialParkOptionId = findLeadFilterOptionId(
+        filterDefinitions,
+        LEAD_FILTER_IDS.industrialPark,
+        form.industrialPark
+      );
+      const profileFilterValues = {
+        ...currentFilterValues,
+        ...formFilterValues,
+        [LEAD_FILTER_IDS.companySize]: form.companySize ? [form.companySize] : [],
+        [LEAD_FILTER_IDS.province]: provinceFilterValues,
+        [LEAD_FILTER_IDS.industrialPark]: [industrialParkOptionId].filter(Boolean),
+        [LEAD_FILTER_IDS.source]: [findLeadFilterOptionId(filterDefinitions, LEAD_FILTER_IDS.source, form.source)].filter(Boolean)
       };
-      await dbService.updateDocument('lead_candidates', convertingCandidateId, {
-        status: 'converted',
-        convertedLeadId: savedLeadId,
-        convertedAt: now,
-        lastContactAt: now,
-        contactAttempts: (candidate?.contactAttempts || 0) + 1,
-        nextContactAt: '',
-        queuedNextContactAt: '',
-        taskStatus: 'dismissed',
-        workStatus: 'completed',
-        workQueueHidden: true,
-        taskDismissedAt: now,
-        contactLogs: [conversionLog, ...(candidate?.contactLogs || [])].slice(0, 50),
+      const now = new Date().toISOString();
+      const payload = {
+        name: form.companyName.trim(),
+        companyName: form.companyName.trim(),
+        contactPerson: form.contactPerson.trim(),
+        contactPosition: form.contactPosition.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        website: form.website.trim(),
+        businessSector: form.businessSector.trim(),
+        industry: form.industry.trim(),
+        taxCode: normalizedTaxCode,
+        address: form.address.trim(),
+        province: form.province.trim(),
+        ward: form.ward.trim(),
+        industrialPark: form.industrialPark.trim(),
+        companySize: form.companySize,
+        source: form.source,
+        sourceUrl: form.sourceUrl.trim(),
+        potentialValue: Number(form.potentialValue),
+        expectedProducts: form.expectedProducts.trim(),
+        closingProbability: Number(form.closingProbability),
+        expectedCloseAt: form.expectedCloseAt,
+        lastContactResult: form.lastContactResult.trim(),
+        nextGoal: form.nextGoal.trim(),
+        careNote: form.careNote.trim(),
+        customerInsightValues: form.customerInsightValues,
+        stage: form.stage,
+        filterValues: profileFilterValues,
+        profileValues: formProfileValues,
+        customFieldValues,
+        assignedSaleId: form.assignedSaleId,
+        assignedSaleName: assignedSale?.displayName || '',
+        discoveredById,
+        discoveredByName: discoveredBy?.displayName || currentUser.displayName,
+        sourceCandidateId: convertingCandidateId || editingLead?.sourceCandidateId || '',
+        reminderTime: form.nextFollowUpAt ? new Date(form.nextFollowUpAt).toISOString() : '',
+        nextFollowUpAt: form.nextFollowUpAt ? new Date(form.nextFollowUpAt).toISOString() : '',
+        followUpHandledAt: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledAt || ''),
+        followUpHandledById: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledById || ''),
+        followUpHandledByName: form.nextFollowUpAt ? '' : (editingLead?.followUpHandledByName || ''),
+        note: form.note.trim(),
+        files: uploadingFiles,
+        updatedAt: now,
         updatedBy: currentUser.displayName
-      });
-    }
+      };
 
-    auditService.recordSafely(currentUser, {
-      category: 'business',
-      module: 'leads',
-      action: editingLeadId ? 'lead_updated' : 'lead_created',
-      summary: `${editingLeadId ? 'Cập nhật' : 'Tạo'} Lead ${form.companyName.trim()}`,
-      targetType: 'lead',
-      targetId: savedLeadId || '',
-      targetLabel: form.companyName.trim()
-    });
-    if (convertingCandidateId) {
+      let savedLeadId = editingLeadId;
+      if (editingLeadId) {
+        await requireConfirmedMutation(dbService.updateDocument('leads', editingLeadId, payload));
+      } else if (reusableLead) {
+        savedLeadId = reusableLead.id;
+        await requireConfirmedMutation(dbService.updateDocument('leads', reusableLead.id, {
+          ...payload,
+          returnedToRawData: false,
+          returnedToRawDataAt: '',
+          returnedToRawDataCandidateId: '',
+          returnedToRawDataById: '',
+          returnedToRawDataByName: '',
+          activities: [{
+            id: `activity-returned-to-lead-${now}`,
+            type: 'returned_to_lead',
+            note: 'Tiếp nhận lại từ Dữ liệu thô',
+            occurredAt: now,
+            createdById: currentUser.uid,
+            createdByName: currentUser.displayName
+          }, ...(reusableLead.activities || [])]
+        }));
+      } else {
+        try {
+          const createdLead = await dbService.addDocumentIfAbsent(
+            'leads',
+            createLeadDocumentIdFromTaxCode(normalizedTaxCode),
+            {
+              ...payload,
+              activities: [{
+                id: `activity-${now}`,
+                type: 'created',
+                note: 'Khởi tạo khách hàng tiềm năng',
+                occurredAt: now,
+                createdById: currentUser.uid,
+                createdByName: currentUser.displayName
+              }],
+              createdAt: now,
+              createdById: currentUser.uid
+            }
+          );
+          savedLeadId = createdLead.id;
+        } catch (error) {
+          if (!isDocumentAlreadyExistsError(error)) {
+            setTaxCodeSaveError('Không thể xác minh mã số thuế trên hệ thống. Lead chưa được lưu; vui lòng thử lại.');
+            return;
+          }
+          const existingLead = (error as { existingDocument?: LeadRecord }).existingDocument;
+          setTaxCodeSaveError(existingLead
+            ? describeTaxCodeConflict({
+                id: existingLead.id,
+                recordType: 'lead',
+                companyName: existingLead.companyName,
+                assignedSaleId: existingLead.assignedSaleId,
+                assignedSaleName: existingLead.assignedSaleName
+              })
+            : 'Mã số thuế này vừa được một Sale khác đăng ký. Vui lòng kiểm tra lại.');
+          return;
+        }
+      }
+
+      if (convertingCandidateId && savedLeadId) {
+        const candidate = candidates.find(item => item.id === convertingCandidateId);
+        const conversionLog = {
+          id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          occurredAt: now,
+          outcome: 'task_completed' as const,
+          eventType: 'activity' as const,
+          activityType: 'note' as const,
+          contactResult: '' as const,
+          potentialLevel: '' as const,
+          description: `Chuyển thành Lead ${savedLeadId}`,
+          note: '',
+          nextContactAt: '',
+          createdById: currentUser.uid,
+          createdByName: currentUser.displayName
+        };
+        await requireConfirmedMutation(dbService.updateDocument('lead_candidates', convertingCandidateId, {
+          status: 'converted',
+          convertedLeadId: savedLeadId,
+          convertedAt: now,
+          lastContactAt: now,
+          contactAttempts: (candidate?.contactAttempts || 0) + 1,
+          nextContactAt: '',
+          queuedNextContactAt: '',
+          taskStatus: 'dismissed',
+          workStatus: 'completed',
+          workQueueHidden: true,
+          taskDismissedAt: now,
+          contactLogs: [conversionLog, ...(candidate?.contactLogs || [])].slice(0, 50),
+          updatedBy: currentUser.displayName
+        }));
+      }
+
       auditService.recordSafely(currentUser, {
         category: 'business',
-        module: 'lead_candidates',
-        action: 'candidate_converted_to_lead',
-        summary: `Chuyển dữ liệu khách hàng thành Lead ${form.companyName.trim()}`,
-        targetType: 'lead_candidate',
-        targetId: convertingCandidateId,
+        module: 'leads',
+        action: editingLeadId ? 'lead_updated' : 'lead_created',
+        summary: `${editingLeadId ? 'Cập nhật' : 'Tạo'} Lead ${form.companyName.trim()}`,
+        targetType: 'lead',
+        targetId: savedLeadId || '',
         targetLabel: form.companyName.trim()
       });
-    }
+      if (convertingCandidateId) {
+        auditService.recordSafely(currentUser, {
+          category: 'business',
+          module: 'lead_candidates',
+          action: 'candidate_converted_to_lead',
+          summary: `Chuyển dữ liệu khách hàng thành Lead ${form.companyName.trim()}`,
+          targetType: 'lead_candidate',
+          targetId: convertingCandidateId,
+          targetLabel: form.companyName.trim()
+        });
+      }
 
-    closeLeadForm();
+      closeLeadForm();
+
+      showSuccessToast("Đã lưu thành công");
+    }, event);
   };
 
   const findDuplicateCustomer = (lead: LeadRecord) => {
@@ -1720,249 +1754,264 @@ export const Leads: React.FC<LeadsProps> = ({
   };
 
   const handleReturnLeadToRawData = async (lead: LeadRecord) => {
-    const canManage = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
-    if (!canManage || lead.stage === 'converted' || lead.convertedCustomerId) return;
-    if (!window.confirm(`Chuyển Lead “${lead.companyName}” về Dữ liệu thô? Lead sẽ rời danh sách tiềm năng và có thể được tiếp nhận lại sau.`)) return;
+    return runMutationAction("LeadsPage.tsx:handleReturnLeadToRawData", async () => {
+      const canManage = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
+      if (!canManage || lead.stage === 'converted' || lead.convertedCustomerId) return;
+      if (!window.confirm(`Chuyển Lead “${lead.companyName}” về Dữ liệu thô? Lead sẽ rời danh sách tiềm năng và có thể được tiếp nhận lại sau.`)) return;
 
-    setReturningLeadId(lead.id);
-    try {
-      const latestCandidates = await (currentUser.role === 'sale'
-        ? dbService.getCollectionByField('lead_candidates', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
-        : dbService.getCollection('lead_candidates')) as LeadCandidateRecord[];
-      const linkedCandidate = latestCandidates.find(candidate => (
-        candidate.id === lead.sourceCandidateId
-        || candidate.convertedLeadId === lead.id
-        || candidate.returnedFromLeadId === lead.id
-      )) || null;
-      const duplicate = findCandidateDuplicate(
-        {
-          companyName: lead.companyName,
-          phone: lead.phone,
-          taxCode: lead.taxCode
-        },
-        latestCandidates,
-        [],
-        customers,
-        linkedCandidate?.id || ''
-      );
-      if (duplicate) {
-        const duplicateType = duplicate.recordType === 'customer' ? 'Khách hàng' : 'Dữ liệu thô';
-        window.alert(`${duplicateType} “${duplicate.companyName}” đã tồn tại. Vui lòng kiểm tra trước khi chuyển.`);
-        return;
-      }
+      setReturningLeadId(lead.id);
+      try {
+        const latestCandidates = await (currentUser.role === 'sale'
+          ? dbService.getCollectionByField('lead_candidates', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+          : dbService.getCollection('lead_candidates')) as LeadCandidateRecord[];
+        const linkedCandidate = latestCandidates.find(candidate => (
+          candidate.id === lead.sourceCandidateId
+          || candidate.convertedLeadId === lead.id
+          || candidate.returnedFromLeadId === lead.id
+        )) || null;
+        const duplicate = findCandidateDuplicate(
+          {
+            companyName: lead.companyName,
+            phone: lead.phone,
+            taxCode: lead.taxCode
+          },
+          latestCandidates,
+          [],
+          customers,
+          linkedCandidate?.id || ''
+        );
+        if (duplicate) {
+          const duplicateType = duplicate.recordType === 'customer' ? 'Khách hàng' : 'Dữ liệu thô';
+          window.alert(`${duplicateType} “${duplicate.companyName}” đã tồn tại. Vui lòng kiểm tra trước khi chuyển.`);
+          return;
+        }
 
-      const now = new Date().toISOString();
-      const nextContactAt = lead.nextFollowUpAt || '';
-      const returnLog = {
-        id: `activity-returned-from-lead-${now}`,
-        occurredAt: now,
-        outcome: 'not_contacted' as const,
-        eventType: 'activity' as const,
-        activityType: 'note' as const,
-        contactResult: 'not_contacted' as const,
-        potentialLevel: '' as const,
-        description: `Chuyển về Dữ liệu thô từ Lead ${lead.id}`,
-        note: '',
-        nextContactAt,
-        createdById: currentUser.uid,
-        createdByName: currentUser.displayName
-      };
-      const candidatePayload = {
-        schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
-        companyName: lead.companyName.trim(),
-        contactPerson: lead.contactPerson.trim(),
-        contactPosition: (lead.contactPosition || '').trim(),
-        phone: lead.phone.trim(),
-        email: lead.email.trim(),
-        taxCode: normalizeTaxCode(lead.taxCode),
-        address: lead.address.trim(),
-        province: lead.province.trim(),
-        ward: (lead.ward || '').trim(),
-        industrialPark: (lead.industrialPark || '').trim(),
-        website: (lead.website || '').trim(),
-        businessSector: (lead.businessSector || '').trim(),
-        industry: (lead.industry || '').trim(),
-        expectedProducts: (lead.expectedProducts || '').trim(),
-        files: lead.files || [],
-        source: linkedCandidate?.source || mapLeadSourceToCandidateSource(lead.source),
-        sourceUrl: lead.sourceUrl || linkedCandidate?.sourceUrl || '',
-        note: lead.note.trim(),
-        status: 'new' as const,
-        assignedSaleId: lead.assignedSaleId,
-        assignedSaleName: lead.assignedSaleName,
-        discoveredById: lead.discoveredById || lead.createdById,
-        discoveredByName: lead.discoveredByName || currentUser.displayName,
-        nextContactAt,
-        queuedNextContactAt: '',
-        taskStatus: nextContactAt ? 'pending' as const : 'dismissed' as const,
-        taskSource: nextContactAt ? 'sale_created' as const : '' as const,
-        taskAssignedAt: nextContactAt ? now : '',
-        taskAssignedById: nextContactAt ? currentUser.uid : '',
-        taskAssignedByName: nextContactAt ? currentUser.displayName : '',
-        taskCompletedAt: '',
-        taskCompletedById: '',
-        taskCompletedByName: '',
-        taskDismissedAt: '',
-        workQueueHidden: !nextContactAt,
-        workStatus: nextContactAt ? 'pending' as const : 'not_contacted' as const,
-        archived: false,
-        archivedAt: '',
-        archivedById: '',
-        archivedByName: '',
-        convertedLeadId: '',
-        convertedAt: '',
-        returnedFromLeadId: lead.id,
-        updatedBy: currentUser.displayName
-      };
-
-      let candidateId = linkedCandidate?.id || '';
-      if (linkedCandidate) {
-        await dbService.updateDocument('lead_candidates', linkedCandidate.id, {
-          ...candidatePayload,
-          contactLogs: [returnLog, ...(linkedCandidate.contactLogs || [])].slice(0, 50)
-        });
-      } else {
-        const createPayload = {
-          ...candidatePayload,
-          contactAttempts: 0,
-          lastContactAt: '',
-          lastContactOutcome: '',
-          lastContactNote: '',
-          contactLogs: [returnLog],
+        const now = new Date().toISOString();
+        const nextContactAt = lead.nextFollowUpAt || '';
+        const returnLog = {
+          id: `activity-returned-from-lead-${now}`,
+          occurredAt: now,
+          outcome: 'not_contacted' as const,
+          eventType: 'activity' as const,
+          activityType: 'note' as const,
           contactResult: 'not_contacted' as const,
-          potentialLevel: 'unrated' as const,
-          pinned: false,
-          createdAt: now,
+          potentialLevel: '' as const,
+          description: `Chuyển về Dữ liệu thô từ Lead ${lead.id}`,
+          note: '',
+          nextContactAt,
           createdById: currentUser.uid,
           createdByName: currentUser.displayName
         };
-        const createdCandidate = candidatePayload.taxCode
-          ? await dbService.addDocumentIfAbsent(
-              'lead_candidates',
-              createCandidateDocumentIdFromTaxCode(candidatePayload.taxCode),
-              createPayload
-            )
-          : await dbService.addDocument('lead_candidates', createPayload);
-        candidateId = createdCandidate.id;
+        const candidatePayload = {
+          schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
+          companyName: lead.companyName.trim(),
+          contactPerson: lead.contactPerson.trim(),
+          contactPosition: (lead.contactPosition || '').trim(),
+          phone: lead.phone.trim(),
+          email: lead.email.trim(),
+          taxCode: normalizeTaxCode(lead.taxCode),
+          address: lead.address.trim(),
+          province: lead.province.trim(),
+          ward: (lead.ward || '').trim(),
+          industrialPark: (lead.industrialPark || '').trim(),
+          website: (lead.website || '').trim(),
+          businessSector: (lead.businessSector || '').trim(),
+          industry: (lead.industry || '').trim(),
+          expectedProducts: (lead.expectedProducts || '').trim(),
+          files: lead.files || [],
+          source: linkedCandidate?.source || mapLeadSourceToCandidateSource(lead.source),
+          sourceUrl: lead.sourceUrl || linkedCandidate?.sourceUrl || '',
+          note: lead.note.trim(),
+          status: 'new' as const,
+          assignedSaleId: lead.assignedSaleId,
+          assignedSaleName: lead.assignedSaleName,
+          discoveredById: lead.discoveredById || lead.createdById,
+          discoveredByName: lead.discoveredByName || currentUser.displayName,
+          nextContactAt,
+          queuedNextContactAt: '',
+          taskStatus: nextContactAt ? 'pending' as const : 'dismissed' as const,
+          taskSource: nextContactAt ? 'sale_created' as const : '' as const,
+          taskAssignedAt: nextContactAt ? now : '',
+          taskAssignedById: nextContactAt ? currentUser.uid : '',
+          taskAssignedByName: nextContactAt ? currentUser.displayName : '',
+          taskCompletedAt: '',
+          taskCompletedById: '',
+          taskCompletedByName: '',
+          taskDismissedAt: '',
+          workQueueHidden: !nextContactAt,
+          workStatus: nextContactAt ? 'pending' as const : 'not_contacted' as const,
+          archived: false,
+          archivedAt: '',
+          archivedById: '',
+          archivedByName: '',
+          convertedLeadId: '',
+          convertedAt: '',
+          returnedFromLeadId: lead.id,
+          updatedBy: currentUser.displayName
+        };
+
+        let candidateId = linkedCandidate?.id || '';
+        if (linkedCandidate) {
+          await requireConfirmedMutation(dbService.updateDocument('lead_candidates', linkedCandidate.id, {
+            ...candidatePayload,
+            contactLogs: [returnLog, ...(linkedCandidate.contactLogs || [])].slice(0, 50)
+          }));
+        } else {
+          const createPayload = {
+            ...candidatePayload,
+            contactAttempts: 0,
+            lastContactAt: '',
+            lastContactOutcome: '',
+            lastContactNote: '',
+            contactLogs: [returnLog],
+            contactResult: 'not_contacted' as const,
+            potentialLevel: 'unrated' as const,
+            pinned: false,
+            createdAt: now,
+            createdById: currentUser.uid,
+            createdByName: currentUser.displayName
+          };
+          const createdCandidate = candidatePayload.taxCode
+            ? await dbService.addDocumentIfAbsent(
+                'lead_candidates',
+                createCandidateDocumentIdFromTaxCode(candidatePayload.taxCode),
+                createPayload
+              )
+            : await dbService.addDocument('lead_candidates', createPayload);
+          candidateId = createdCandidate.id;
+        }
+
+        await requireConfirmedMutation(dbService.updateDocument('leads', lead.id, {
+          returnedToRawData: true,
+          returnedToRawDataAt: now,
+          returnedToRawDataCandidateId: candidateId,
+          returnedToRawDataById: currentUser.uid,
+          returnedToRawDataByName: currentUser.displayName,
+          reminderTime: '',
+          nextFollowUpAt: '',
+          activities: [{
+            id: `activity-returned-to-raw-data-${now}`,
+            type: 'returned_to_raw_data',
+            note: `Chuyển về Dữ liệu thô (${candidateId})`,
+            occurredAt: now,
+            createdById: currentUser.uid,
+            createdByName: currentUser.displayName
+          }, ...(lead.activities || [])],
+          updatedBy: currentUser.displayName
+        }));
+
+        auditService.recordSafely(currentUser, {
+          category: 'business',
+          module: 'leads',
+          action: 'lead_returned_to_raw_data',
+          summary: `Chuyển Lead ${lead.companyName} về Dữ liệu thô`,
+          targetType: 'lead',
+          targetId: lead.id,
+          targetLabel: lead.companyName,
+          changes: [{ field: 'returnedToRawDataCandidateId', label: 'Dữ liệu thô', after: candidateId }]
+        });
+        setSelectedLeadId('');
+        setEditingLeadId('');
+        setShowLeadForm(false);
+        onNavigateToCustomerData();
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        console.error('[Leads] Could not return lead to raw data.', error);
+        window.alert(isDocumentAlreadyExistsError(error)
+          ? 'Doanh nghiệp này vừa được tạo trong Dữ liệu thô. Vui lòng kiểm tra lại danh sách.'
+          : 'Không thể chuyển Lead về Dữ liệu thô. Vui lòng thử lại hoặc kiểm tra quyền tài khoản.');
+      } finally {
+        setReturningLeadId('');
       }
-
-      await dbService.updateDocument('leads', lead.id, {
-        returnedToRawData: true,
-        returnedToRawDataAt: now,
-        returnedToRawDataCandidateId: candidateId,
-        returnedToRawDataById: currentUser.uid,
-        returnedToRawDataByName: currentUser.displayName,
-        reminderTime: '',
-        nextFollowUpAt: '',
-        activities: [{
-          id: `activity-returned-to-raw-data-${now}`,
-          type: 'returned_to_raw_data',
-          note: `Chuyển về Dữ liệu thô (${candidateId})`,
-          occurredAt: now,
-          createdById: currentUser.uid,
-          createdByName: currentUser.displayName
-        }, ...(lead.activities || [])],
-        updatedBy: currentUser.displayName
-      });
-
-      auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'leads',
-        action: 'lead_returned_to_raw_data',
-        summary: `Chuyển Lead ${lead.companyName} về Dữ liệu thô`,
-        targetType: 'lead',
-        targetId: lead.id,
-        targetLabel: lead.companyName,
-        changes: [{ field: 'returnedToRawDataCandidateId', label: 'Dữ liệu thô', after: candidateId }]
-      });
-      setSelectedLeadId('');
-      setEditingLeadId('');
-      setShowLeadForm(false);
-      onNavigateToCustomerData();
-    } catch (error) {
-      console.error('[Leads] Could not return lead to raw data.', error);
-      window.alert(isDocumentAlreadyExistsError(error)
-        ? 'Doanh nghiệp này vừa được tạo trong Dữ liệu thô. Vui lòng kiểm tra lại danh sách.'
-        : 'Không thể chuyển Lead về Dữ liệu thô. Vui lòng thử lại hoặc kiểm tra quyền tài khoản.');
-    } finally {
-      setReturningLeadId('');
-    }
+    }, lead);
   };
 
   const handleMarkFollowUpHandled = async (lead: LeadRecord) => {
-    if (!lead.nextFollowUpAt || !Number.isFinite(getLeadScheduleTime(lead))) return;
-    const canHandle = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
-    if (!canHandle) return;
+    return runMutationAction("LeadsPage.tsx:handleMarkFollowUpHandled", async () => {
+      if (!lead.nextFollowUpAt || !Number.isFinite(getLeadScheduleTime(lead))) return;
+      const canHandle = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
+      if (!canHandle) return;
 
-    const now = new Date().toISOString();
-    const handledSchedule = lead.nextFollowUpAt;
-    try {
-      await dbService.updateDocument('leads', lead.id, {
-        reminderTime: '',
-        nextFollowUpAt: '',
-        lastFollowUpAt: handledSchedule,
-        followUpHandledAt: now,
-        followUpHandledById: currentUser.uid,
-        followUpHandledByName: currentUser.displayName,
-        activities: [{
-          id: `activity-follow-up-handled-${now}`,
-          type: 'follow_up_handled',
-          note: `Đã xử lý lịch chăm sóc ${formatDateTime(handledSchedule)}`,
-          occurredAt: now,
-          createdById: currentUser.uid,
-          createdByName: currentUser.displayName
-        }, ...(lead.activities || [])],
-        updatedAt: now,
-        updatedBy: currentUser.displayName
-      });
+      const now = new Date().toISOString();
+      const handledSchedule = lead.nextFollowUpAt;
+      try {
+        await requireConfirmedMutation(dbService.updateDocument('leads', lead.id, {
+          reminderTime: '',
+          nextFollowUpAt: '',
+          lastFollowUpAt: handledSchedule,
+          followUpHandledAt: now,
+          followUpHandledById: currentUser.uid,
+          followUpHandledByName: currentUser.displayName,
+          activities: [{
+            id: `activity-follow-up-handled-${now}`,
+            type: 'follow_up_handled',
+            note: `Đã xử lý lịch chăm sóc ${formatDateTime(handledSchedule)}`,
+            occurredAt: now,
+            createdById: currentUser.uid,
+            createdByName: currentUser.displayName
+          }, ...(lead.activities || [])],
+          updatedAt: now,
+          updatedBy: currentUser.displayName
+        }));
 
-      auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'leads',
-        action: 'lead_follow_up_handled',
-        summary: `Đã xử lý lịch chăm sóc Lead ${lead.companyName}`,
-        targetType: 'lead',
-        targetId: lead.id,
-        targetLabel: lead.companyName,
-        changes: [{ field: 'nextFollowUpAt', label: 'Lịch chăm sóc', before: handledSchedule, after: 'Đã xử lý' }]
-      });
-    } catch (error) {
-      console.error('[Leads] Could not mark follow-up as handled.', error);
-      window.alert('Không thể đánh dấu lịch chăm sóc đã xử lý. Vui lòng thử lại.');
-    }
+        auditService.recordSafely(currentUser, {
+          category: 'business',
+          module: 'leads',
+          action: 'lead_follow_up_handled',
+          summary: `Đã xử lý lịch chăm sóc Lead ${lead.companyName}`,
+          targetType: 'lead',
+          targetId: lead.id,
+          targetLabel: lead.companyName,
+          changes: [{ field: 'nextFollowUpAt', label: 'Lịch chăm sóc', before: handledSchedule, after: 'Đã xử lý' }]
+        });
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        console.error('[Leads] Could not mark follow-up as handled.', error);
+        window.alert('Không thể đánh dấu lịch chăm sóc đã xử lý. Vui lòng thử lại.');
+      }
+    }, lead);
   };
 
   const handleDeleteLead = async (lead: LeadRecord) => {
-    const canDelete = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
-    if (!canDelete) return;
-    if (!window.confirm(`Đưa Lead “${lead.companyName}” vào Thùng rác?`)) return;
+    return runMutationAction("LeadsPage.tsx:handleDeleteLead", async () => {
+      const canDelete = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
+      if (!canDelete) return;
+      if (!window.confirm(`Đưa Lead “${lead.companyName}” vào Thùng rác?`)) return;
 
-    const now = new Date().toISOString();
-    try {
-      await dbService.updateDocument('leads', lead.id, {
-        deleted: true,
-        deletedAt: now,
-        deletedById: currentUser.uid,
-        deletedByName: currentUser.displayName,
-        updatedAt: now,
-        updatedBy: currentUser.displayName
-      });
-      if (selectedLeadId === lead.id) setSelectedLeadId('');
-      if (editingLeadId === lead.id) setShowLeadForm(false);
+      const now = new Date().toISOString();
+      try {
+        await requireConfirmedMutation(dbService.updateDocument('leads', lead.id, {
+          deleted: true,
+          deletedAt: now,
+          deletedById: currentUser.uid,
+          deletedByName: currentUser.displayName,
+          updatedAt: now,
+          updatedBy: currentUser.displayName
+        }));
+        if (selectedLeadId === lead.id) setSelectedLeadId('');
+        if (editingLeadId === lead.id) setShowLeadForm(false);
 
-      auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'leads',
-        action: 'lead_deleted',
-        summary: `Đưa Lead ${lead.companyName} vào Thùng rác`,
-        targetType: 'lead',
-        targetId: lead.id,
-        targetLabel: lead.companyName
-      });
-    } catch (error) {
-      console.error('[Leads] Could not delete lead.', error);
-      window.alert('Không thể xóa Lead. Vui lòng thử lại hoặc kiểm tra quyền tài khoản.');
-    }
+        auditService.recordSafely(currentUser, {
+          category: 'business',
+          module: 'leads',
+          action: 'lead_deleted',
+          summary: `Đưa Lead ${lead.companyName} vào Thùng rác`,
+          targetType: 'lead',
+          targetId: lead.id,
+          targetLabel: lead.companyName
+        });
+
+        showSuccessToast("Đã xóa Lead");
+      } catch (error) {
+        showErrorToast();
+        console.error('[Leads] Could not delete lead.', error);
+        window.alert('Không thể xóa Lead. Vui lòng thử lại hoặc kiểm tra quyền tài khoản.');
+      }
+    }, lead);
   };
 
   const clearFilters = useCallback(() => {

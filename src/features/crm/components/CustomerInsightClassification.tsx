@@ -1,3 +1,4 @@
+import { runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useMemo, useState } from 'react';
 import {
   BarChart3,
@@ -68,18 +69,20 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
   };
 
   const save = async () => {
-    if (!canEdit || !hasChanges || saving) return;
-    setSaving(true);
-    setMessage('');
-    try {
-      await onSave(draft);
-      setSavedValues(draft);
-      setMessage('Đã lưu phân loại khách hàng.');
-    } catch {
-      setMessage('Không thể lưu phân loại. Vui lòng kiểm tra kết nối và thử lại.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("CustomerInsightClassification.tsx:save", async () => {
+      if (!canEdit || !hasChanges || saving) return;
+      setSaving(true);
+      setMessage('');
+      try {
+        await onSave(draft);
+        setSavedValues(draft);
+        setMessage('Đã lưu phân loại khách hàng.');
+      } catch {
+        setMessage('Không thể lưu phân loại. Vui lòng kiểm tra kết nối và thử lại.');
+      } finally {
+        setSaving(false);
+      }
+    }, undefined);
   };
 
   return <main className="customer-classification" aria-label={`Phân loại ${companyName}`}>

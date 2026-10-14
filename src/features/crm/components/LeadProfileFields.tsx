@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState } from 'react';
 import { ArrowDown, ArrowUp, Eye, EyeOff, LockKeyhole, Pencil, Plus, Save, Settings2 } from 'lucide-react';
 import type {
@@ -204,54 +205,69 @@ export const LeadProfileStructureEditor: React.FC<LeadProfileStructureEditorProp
   };
 
   const saveDraft = async () => {
-    if (!draft.name.trim()) return;
-    const needsOptions = draft.type === 'single_select' || draft.type === 'multi_select';
-    if (needsOptions && draft.options.filter(option => option.active).length === 0) return;
-    setSaving(true);
-    setSaveError('');
-    try {
-      await onSaveDefinition({ ...draft, name: draft.name.trim() });
-      setEditingId('');
-    } catch {
-      setSaveError('Không thể lưu cấu trúc trường. Vui lòng thử lại.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("LeadProfileFields.tsx:saveDraft", async () => {
+      if (!draft.name.trim()) return;
+      const needsOptions = draft.type === 'single_select' || draft.type === 'multi_select';
+      if (needsOptions && draft.options.filter(option => option.active).length === 0) return;
+      setSaving(true);
+      setSaveError('');
+      try {
+        await onSaveDefinition({ ...draft, name: draft.name.trim() });
+        setEditingId('');
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setSaveError('Không thể lưu cấu trúc trường. Vui lòng thử lại.');
+      } finally {
+        setSaving(false);
+      }
+    }, undefined);
   };
 
   const toggleActive = async (definition: LeadProfileFieldDefinition) => {
-    const protectedField = definition.systemKey === 'companyName' || definition.systemKey === 'taxCode';
-    if (protectedField) return;
-    setSaving(true);
-    setSaveError('');
-    try {
-      await onSaveDefinition({ ...definition, active: !definition.active });
-      if (editingId === definition.id) setEditingId('');
-    } catch {
-      setSaveError('Không thể thay đổi trạng thái trường. Vui lòng thử lại.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("LeadProfileFields.tsx:toggleActive", async () => {
+      const protectedField = definition.systemKey === 'companyName' || definition.systemKey === 'taxCode';
+      if (protectedField) return;
+      setSaving(true);
+      setSaveError('');
+      try {
+        await onSaveDefinition({ ...definition, active: !definition.active });
+        if (editingId === definition.id) setEditingId('');
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setSaveError('Không thể thay đổi trạng thái trường. Vui lòng thử lại.');
+      } finally {
+        setSaving(false);
+      }
+    }, definition);
   };
 
   const moveDefinition = async (definition: LeadProfileFieldDefinition, direction: -1 | 1) => {
-    const currentIndex = definitions.findIndex(item => item.id === definition.id);
-    const adjacentDefinition = definitions[currentIndex + direction];
-    if (!adjacentDefinition) return;
-    const reorderedDefinitions = [...definitions];
-    reorderedDefinitions[currentIndex] = adjacentDefinition;
-    reorderedDefinitions[currentIndex + direction] = definition;
-    setSaving(true);
-    setSaveError('');
-    try {
-      await Promise.all(reorderedDefinitions.map((item, index) => (
-        onSaveDefinition({ ...item, order: (index + 1) * 10 })
-      )));
-    } catch {
-      setSaveError('Không thể thay đổi thứ tự trường. Vui lòng thử lại.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("LeadProfileFields.tsx:moveDefinition", async () => {
+      const currentIndex = definitions.findIndex(item => item.id === definition.id);
+      const adjacentDefinition = definitions[currentIndex + direction];
+      if (!adjacentDefinition) return;
+      const reorderedDefinitions = [...definitions];
+      reorderedDefinitions[currentIndex] = adjacentDefinition;
+      reorderedDefinitions[currentIndex + direction] = definition;
+      setSaving(true);
+      setSaveError('');
+      try {
+        await Promise.all(reorderedDefinitions.map((item, index) => (
+          onSaveDefinition({ ...item, order: (index + 1) * 10 })
+        )));
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setSaveError('Không thể thay đổi thứ tự trường. Vui lòng thử lại.');
+      } finally {
+        setSaving(false);
+      }
+    }, definition);
   };
 
   const usesOptions = draft.type === 'single_select' || draft.type === 'multi_select';

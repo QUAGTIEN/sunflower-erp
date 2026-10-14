@@ -26,6 +26,19 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Detailed Vietnamese to English Translation Dictionary
   const dict: { [key: string]: string } = {
+    'Đã lưu thành công': 'Saved successfully',
+    'Đã thêm thành công': 'Added successfully',
+    'Đã xóa thành công': 'Deleted successfully',
+    'Đã xóa Lead': 'Lead deleted',
+    'Đã xóa dữ liệu': 'Record deleted',
+    'Đã khôi phục thành công': 'Restored successfully',
+    'Đã sao chép thành công': 'Copied successfully',
+    'Đã gửi yêu cầu': 'Request sent',
+    'Đã duyệt thành công': 'Approved successfully',
+    'Đã từ chối yêu cầu': 'Request declined',
+    'Đã lưu cấu hình cột': 'Column layout saved',
+    'Không thể lưu. Vui lòng thử lại.': 'Could not save. Please try again.',
+    'Không thể lưu cấu hình cột.': 'Could not save column layout.',
     // Brand & Sidebar Logo
     'SUNFLOWER ERP': 'SUNFLOWER',
     'SUNFLOWER LABEL MANUFACTURING ERP': 'SUNFLOWER LABEL MANUFACTURING',

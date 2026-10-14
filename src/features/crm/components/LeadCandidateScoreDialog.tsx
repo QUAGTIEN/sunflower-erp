@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
@@ -71,40 +72,45 @@ export function LeadCandidateScoreDialog({ candidate, currentUser, onClose }: Pr
   const priorityLevel = getLeadCandidatePriorityLevel(effectiveScore);
 
   const save = async () => {
-    if (saving || rulesLoading) return;
-    if (mode === 'manual' && !reason.trim()) {
-      setError('Vui lòng nhập lý do khi chấm điểm thủ công.');
-      return;
-    }
-    setSaving(true);
-    setError('');
-    const now = new Date().toISOString();
-    try {
-      await dbService.updateDocument('lead_candidates', candidate.id, {
-        scoringMode: mode,
-        automaticScore: automatic.automaticScore,
-        manualScore: normalizeLeadCandidateScore(manualScore),
-        effectiveScore,
-        priorityLevel,
-        manualScoreReason: mode === 'manual' ? reason.trim() : '',
-        scoreBreakdown: automatic.breakdown,
-        scoreCalculatedAt: now,
-        scoreUpdatedById: currentUser.uid,
-        scoreUpdatedByName: currentUser.displayName,
-        updatedAt: now,
-        updatedBy: currentUser.displayName
-      });
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'lead_candidates', action: 'candidate_priority_score_updated',
-        summary: `Chấm điểm ${candidate.companyName}: ${effectiveScore} điểm (${mode === 'manual' ? 'thủ công' : 'tự động'})`,
-        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
-      });
-      onClose();
-    } catch {
-      setError('Không thể lưu điểm lúc này. Vui lòng thử lại.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("LeadCandidateScoreDialog.tsx:save", async () => {
+      if (saving || rulesLoading) return;
+      if (mode === 'manual' && !reason.trim()) {
+        setError('Vui lòng nhập lý do khi chấm điểm thủ công.');
+        return;
+      }
+      setSaving(true);
+      setError('');
+      const now = new Date().toISOString();
+      try {
+        await requireConfirmedMutation(dbService.updateDocument('lead_candidates', candidate.id, {
+          scoringMode: mode,
+          automaticScore: automatic.automaticScore,
+          manualScore: normalizeLeadCandidateScore(manualScore),
+          effectiveScore,
+          priorityLevel,
+          manualScoreReason: mode === 'manual' ? reason.trim() : '',
+          scoreBreakdown: automatic.breakdown,
+          scoreCalculatedAt: now,
+          scoreUpdatedById: currentUser.uid,
+          scoreUpdatedByName: currentUser.displayName,
+          updatedAt: now,
+          updatedBy: currentUser.displayName
+        }));
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'lead_candidates', action: 'candidate_priority_score_updated',
+          summary: `Chấm điểm ${candidate.companyName}: ${effectiveScore} điểm (${mode === 'manual' ? 'thủ công' : 'tự động'})`,
+          targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
+        });
+        onClose();
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setError('Không thể lưu điểm lúc này. Vui lòng thử lại.');
+      } finally {
+        setSaving(false);
+      }
+    }, undefined);
   };
 
   return <div className="candidate-score-dialog__backdrop" onMouseDown={event => { if (event.target === event.currentTarget) requestClose(); }}>

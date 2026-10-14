@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -87,50 +88,54 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
 
   // Handle invoice payment
   const handlePaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedInvoice) return;
+    return runMutationAction("AccountingPage.tsx:handlePaymentSubmit", async () => {
+      e.preventDefault();
+      if (!selectedInvoice) return;
 
-    const currentPaid = Number(selectedInvoice.paidAmount) || 0;
-    const newPaid = currentPaid + Number(paymentAmount);
-    const invoiceTotal = Number(selectedInvoice.amount);
+      const currentPaid = Number(selectedInvoice.paidAmount) || 0;
+      const newPaid = currentPaid + Number(paymentAmount);
+      const invoiceTotal = Number(selectedInvoice.amount);
 
-    let status = 'partially_paid';
-    if (newPaid >= invoiceTotal) {
-      status = 'paid';
-    }
-
-    // Update in database
-    await dbService.updateDocument('invoices', selectedInvoice.id, {
-      paidAmount: newPaid,
-      status: status,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
-
-    // A fully paid receivable moves the customer PO to the discount-closing queue.
-    if (status === 'paid') {
-      const linkedPo = pos.find(p => p.id === selectedInvoice.poId);
-      if (linkedPo && selectedInvoice.type === 'receivable') {
-        const logs = [
-          ...(linkedPo.historyLogs || []),
-          {
-            status: 'waiting_discount',
-            updatedBy: currentUser.displayName,
-            updatedAt: new Date().toISOString(),
-            note: t('Đã hoàn thành thu hồi công nợ hóa đơn')
-          }
-        ];
-        await dbService.updateDocument('pos', linkedPo.id, {
-          ...getPOQueueUpdate('waiting_discount', { accountingProgress: 'paid' }),
-          historyLogs: logs
-        });
+      let status = 'partially_paid';
+      if (newPaid >= invoiceTotal) {
+        status = 'paid';
       }
-    }
 
-    setSelectedInvoice(null);
-    setPaymentAmount(0);
-    fetchAccountingData();
-    onRefresh();
+      // Update in database
+      await requireConfirmedMutation(dbService.updateDocument('invoices', selectedInvoice.id, {
+        paidAmount: newPaid,
+        status: status,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      }));
+
+      // A fully paid receivable moves the customer PO to the discount-closing queue.
+      if (status === 'paid') {
+        const linkedPo = pos.find(p => p.id === selectedInvoice.poId);
+        if (linkedPo && selectedInvoice.type === 'receivable') {
+          const logs = [
+            ...(linkedPo.historyLogs || []),
+            {
+              status: 'waiting_discount',
+              updatedBy: currentUser.displayName,
+              updatedAt: new Date().toISOString(),
+              note: t('Đã hoàn thành thu hồi công nợ hóa đơn')
+            }
+          ];
+          await requireConfirmedMutation(dbService.updateDocument('pos', linkedPo.id, {
+            ...getPOQueueUpdate('waiting_discount', { accountingProgress: 'paid' }),
+            historyLogs: logs
+          }));
+        }
+      }
+
+      setSelectedInvoice(null);
+      setPaymentAmount(0);
+      fetchAccountingData();
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   // Costing calculations for PO
@@ -182,16 +187,20 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
   };
 
   const handleSaveCustomCost = async () => {
-    if (customCostModalPo) {
-      await dbService.updateDocument('pos', customCostModalPo.id, {
-        transportCost: Number(tempTransportCost),
-        laborCost: Number(tempLaborCost),
-        otherCost: Number(tempOtherCost)
-      });
-      setCustomCostModalPo(null);
-      fetchAccountingData();
-      onRefresh();
-    }
+    return runMutationAction("AccountingPage.tsx:handleSaveCustomCost", async () => {
+      if (customCostModalPo) {
+        await requireConfirmedMutation(dbService.updateDocument('pos', customCostModalPo.id, {
+          transportCost: Number(tempTransportCost),
+          laborCost: Number(tempLaborCost),
+          otherCost: Number(tempOtherCost)
+        }));
+        setCustomCostModalPo(null);
+        fetchAccountingData();
+        onRefresh();
+
+        showSuccessToast("Đã lưu thành công");
+      }
+    }, undefined);
   };
 
   const printWorkOrder = (po: any) => {
@@ -274,73 +283,77 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
   };
 
   const handleAddInvoiceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addInvoiceCode || !addAmount) return;
+    return runMutationAction("AccountingPage.tsx:handleAddInvoiceSubmit", async () => {
+      e.preventDefault();
+      if (!addInvoiceCode || !addAmount) return;
 
-    let partnerName = '';
-    if (addType === 'receivable') {
-      const c = customers.find(cust => cust.id === addPartnerId);
-      partnerName = c?.companyName || addPartnerName || t('Khách Hàng');
-    } else {
-      const s = suppliers.find(sup => sup.id === addPartnerId);
-      partnerName = s?.supplierName || addPartnerName || t('Nhà Cung Cấp');
-    }
+      let partnerName = '';
+      if (addType === 'receivable') {
+        const c = customers.find(cust => cust.id === addPartnerId);
+        partnerName = c?.companyName || addPartnerName || t('Khách Hàng');
+      } else {
+        const s = suppliers.find(sup => sup.id === addPartnerId);
+        partnerName = s?.supplierName || addPartnerName || t('Nhà Cung Cấp');
+      }
 
-    const linkedPo = pos.find(p => p.id === addPoId);
-    const finalAmount = Number(addAmount);
-    const finalPaid = Number(addPaidAmount);
-    const finalStatus = finalPaid >= finalAmount ? 'paid' : finalPaid > 0 ? 'partially_paid' : 'unpaid';
+      const linkedPo = pos.find(p => p.id === addPoId);
+      const finalAmount = Number(addAmount);
+      const finalPaid = Number(addPaidAmount);
+      const finalStatus = finalPaid >= finalAmount ? 'paid' : finalPaid > 0 ? 'partially_paid' : 'unpaid';
 
-    const finalAccId = addAssignedAccountantId || (currentUser.role === 'accountant' ? currentUser.uid : '');
-    const finalAccName = accountants.find(u => u.uid === finalAccId)?.displayName || (currentUser.role === 'accountant' ? currentUser.displayName : '');
+      const finalAccId = addAssignedAccountantId || (currentUser.role === 'accountant' ? currentUser.uid : '');
+      const finalAccName = accountants.find(u => u.uid === finalAccId)?.displayName || (currentUser.role === 'accountant' ? currentUser.displayName : '');
 
-    await dbService.addDocument('invoices', {
-      invoiceCode: addInvoiceCode,
-      poId: addPoId || '',
-      poCode: linkedPo?.poCode || 'N/A',
-      customerId: addPartnerId || '',
-      companyName: partnerName,
-      type: addType,
-      amount: finalAmount,
-      paidAmount: finalPaid,
-      dueDate: new Date(addDueDate).toISOString(),
-      status: finalStatus,
-      assignedAccountantId: finalAccId,
-      assignedAccountantName: finalAccName,
-      createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      createdAt: new Date().toISOString()
-    });
-
-    if (addType === 'receivable' && linkedPo) {
-      const nextStatus = finalStatus === 'paid' ? 'waiting_discount' : 'waiting_receivable';
-      await dbService.updateDocument('pos', linkedPo.id, {
-        ...getPOQueueUpdate(nextStatus, {
-          accountingProgress: finalStatus === 'paid' ? 'paid' : 'invoiced'
-        }),
-        historyLogs: [
-          ...(linkedPo.historyLogs || []),
-          {
-            status: nextStatus,
-            updatedBy: currentUser.displayName,
-            updatedAt: new Date().toISOString(),
-            note: `Đã ghi nhận hóa đơn ${addInvoiceCode}.`
-          }
-        ]
+      await dbService.addDocument('invoices', {
+        invoiceCode: addInvoiceCode,
+        poId: addPoId || '',
+        poCode: linkedPo?.poCode || 'N/A',
+        customerId: addPartnerId || '',
+        companyName: partnerName,
+        type: addType,
+        amount: finalAmount,
+        paidAmount: finalPaid,
+        dueDate: new Date(addDueDate).toISOString(),
+        status: finalStatus,
+        assignedAccountantId: finalAccId,
+        assignedAccountantName: finalAccName,
+        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        createdAt: new Date().toISOString()
       });
-    }
 
-    setShowAddInvoiceModal(false);
-    setAddInvoiceCode('');
-    setAddPoId('');
-    setAddPartnerId('');
-    setAddPartnerName('');
-    setAddAmount(0);
-    setAddPaidAmount(0);
-    setAddDueDate('');
-    setAddAssignedAccountantId('');
+      if (addType === 'receivable' && linkedPo) {
+        const nextStatus = finalStatus === 'paid' ? 'waiting_discount' : 'waiting_receivable';
+        await requireConfirmedMutation(dbService.updateDocument('pos', linkedPo.id, {
+          ...getPOQueueUpdate(nextStatus, {
+            accountingProgress: finalStatus === 'paid' ? 'paid' : 'invoiced'
+          }),
+          historyLogs: [
+            ...(linkedPo.historyLogs || []),
+            {
+              status: nextStatus,
+              updatedBy: currentUser.displayName,
+              updatedAt: new Date().toISOString(),
+              note: `Đã ghi nhận hóa đơn ${addInvoiceCode}.`
+            }
+          ]
+        }));
+      }
 
-    fetchAccountingData();
-    onRefresh();
+      setShowAddInvoiceModal(false);
+      setAddInvoiceCode('');
+      setAddPoId('');
+      setAddPartnerId('');
+      setAddPartnerName('');
+      setAddAmount(0);
+      setAddPaidAmount(0);
+      setAddDueDate('');
+      setAddAssignedAccountantId('');
+
+      fetchAccountingData();
+      onRefresh();
+
+      showSuccessToast("Đã thêm thành công");
+    }, e);
   };
 
   const handleOpenEditInvoice = (inv: any) => {
@@ -358,56 +371,64 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
   };
 
   const handleEditInvoiceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedInvoice || !editInvoiceCode) return;
+    return runMutationAction("AccountingPage.tsx:handleEditInvoiceSubmit", async () => {
+      e.preventDefault();
+      if (!selectedInvoice || !editInvoiceCode) return;
 
-    let partnerName = '';
-    if (editType === 'receivable') {
-      const c = customers.find(cust => cust.id === editPartnerId);
-      partnerName = c?.companyName || editPartnerName || t('Khách Hàng');
-    } else {
-      const s = suppliers.find(sup => sup.id === editPartnerId);
-      partnerName = s?.supplierName || editPartnerName || t('Nhà Cung Cấp');
-    }
+      let partnerName = '';
+      if (editType === 'receivable') {
+        const c = customers.find(cust => cust.id === editPartnerId);
+        partnerName = c?.companyName || editPartnerName || t('Khách Hàng');
+      } else {
+        const s = suppliers.find(sup => sup.id === editPartnerId);
+        partnerName = s?.supplierName || editPartnerName || t('Nhà Cung Cấp');
+      }
 
-    const linkedPo = pos.find(p => p.id === editPoId);
-    const finalPaid = Number(editPaidAmount);
-    const finalAmount = Number(editAmount);
-    const finalStatus = finalPaid >= finalAmount ? 'paid' : finalPaid > 0 ? 'partially_paid' : 'unpaid';
+      const linkedPo = pos.find(p => p.id === editPoId);
+      const finalPaid = Number(editPaidAmount);
+      const finalAmount = Number(editAmount);
+      const finalStatus = finalPaid >= finalAmount ? 'paid' : finalPaid > 0 ? 'partially_paid' : 'unpaid';
 
-    const finalAccName = accountants.find(u => u.uid === editAssignedAccountantId)?.displayName || '';
+      const finalAccName = accountants.find(u => u.uid === editAssignedAccountantId)?.displayName || '';
 
-    await dbService.updateDocument('invoices', selectedInvoice.id, {
-      invoiceCode: editInvoiceCode,
-      poId: editPoId,
-      poCode: linkedPo?.poCode || 'N/A',
-      customerId: editPartnerId,
-      companyName: partnerName,
-      type: editType,
-      amount: finalAmount,
-      paidAmount: finalPaid,
-      dueDate: new Date(editDueDate).toISOString(),
-      status: finalStatus,
-      assignedAccountantId: editAssignedAccountantId,
-      assignedAccountantName: finalAccName,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
+      await requireConfirmedMutation(dbService.updateDocument('invoices', selectedInvoice.id, {
+        invoiceCode: editInvoiceCode,
+        poId: editPoId,
+        poCode: linkedPo?.poCode || 'N/A',
+        customerId: editPartnerId,
+        companyName: partnerName,
+        type: editType,
+        amount: finalAmount,
+        paidAmount: finalPaid,
+        dueDate: new Date(editDueDate).toISOString(),
+        status: finalStatus,
+        assignedAccountantId: editAssignedAccountantId,
+        assignedAccountantName: finalAccName,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      }));
 
-    setShowEditInvoiceModal(false);
-    setSelectedInvoice(null);
-    setEditAssignedAccountantId('');
-    fetchAccountingData();
-    onRefresh();
+      setShowEditInvoiceModal(false);
+      setSelectedInvoice(null);
+      setEditAssignedAccountantId('');
+      fetchAccountingData();
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   const handleDeleteInvoice = async (invId: string) => {
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa hóa đơn này khỏi hệ thống?'))) {
-      await dbService.deleteDocument('invoices', invId);
-      setSelectedInvoice(null);
-      fetchAccountingData();
-      onRefresh();
-    }
+    return runMutationAction("AccountingPage.tsx:handleDeleteInvoice", async () => {
+      if (window.confirm(t('Bạn có chắc chắn muốn xóa hóa đơn này khỏi hệ thống?'))) {
+        await requireConfirmedMutation(dbService.deleteDocument('invoices', invId));
+        setSelectedInvoice(null);
+        fetchAccountingData();
+        onRefresh();
+
+        showSuccessToast("Đã xóa thành công");
+      }
+    }, invId);
   };
 
   // Compile costing profit margin percentage data for top 5 POs

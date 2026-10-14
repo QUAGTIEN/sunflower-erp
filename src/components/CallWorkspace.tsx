@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { useEffect, useRef, useState } from 'react';
 import { CalendarDays, CheckCircle2, ClipboardList, Clock3, FileText, History, Mail, MessageCircle, Package, Phone, PhoneMissed, PhoneOff, RotateCcw, SignalHigh, SignalLow, SignalMedium, StickyNote, UserRound, X, type LucideIcon } from 'lucide-react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -180,59 +181,64 @@ export function CallWorkspace({ phone, companyName, subjectKey, targetType, targ
   };
 
   const saveWrap = async () => {
-    if (!canRecord || !callId || busy) return;
-    const validationError = validateCallWrap(result, draft);
-    if (validationError) { setError(validationError); return; }
-    const selectedResult = result as CallResult;
-    const followUpDate = new Date(draft.followUpAt);
-    const summary = callSummaryNote(draft);
-    setBusy(true);
-    setError('');
-    let callSaved = confirmed;
-    try {
-      if (!confirmed) {
-        await dbService.updateDocument('call_history', callId, {
-          result: selectedResult, note: summary, confirmedAt: new Date().toISOString(),
-          confirmedById: currentUser.uid, confirmedByName: currentUser.displayName
-        });
-        callSaved = true;
-        setConfirmed(true);
-        localStorage.setItem(storageKey, JSON.stringify({ draft, callId, startedAt, confirmed: true, result: selectedResult }));
-        auditService.recordSafely(currentUser, {
-          category: 'business', module: auditModule, action: 'phone_call_confirmed',
-          summary: `${currentUser.displayName} xác nhận cuộc gọi ${companyName}: ${CALL_RESULT_LABELS[selectedResult]}`,
-          targetType, targetId, targetLabel: companyName,
-          changes: [{ field: 'result', label: 'Kết quả cuộc gọi', before: CALL_RESULT_LABELS.pending, after: CALL_RESULT_LABELS[selectedResult] }]
-        });
-      }
-      if (draft.nextAction !== 'none') {
-        const now = new Date().toISOString();
-        const taskId = `call-follow-up-${callId}`;
-        await dbService.addDocument('work_schedule_items', {
-            id: taskId, title: `${CALL_NEXT_ACTION_LABELS[draft.nextAction]} · ${companyName}`,
-            description: draft.followUpNote.trim(), stage: '', assigneeId: currentUser.uid,
-            assigneeName: currentUser.displayName, department: 'Sale',
-            assignedById: currentUser.uid, assignedByName: currentUser.displayName,
-            requestedById: '', requestedByName: '', startAt: now,
-            endAt: followUpDate.toISOString(), status: 'not_started', progress: 0,
-            referenceType: targetType, referenceId: targetId, referenceLabel: companyName,
-            notes: `Tạo từ cuộc gọi ${callId}`, priority: 'normal', taskType: 'personal_task',
-            groupId: 'self', groupName: 'Việc tự tạo cho chính mình', workType: 'business',
-            createdAt: now, updatedAt: now, deleted: false
-        });
-      }
-      localStorage.removeItem(storageKey);
-      setCompleted(true);
-      setCallId('');
-      setStartedAt('');
-      setDraft({ ...EMPTY_CALL_DRAFT });
-      setConfirmed(false);
-      setResult('');
-      setView('notes');
-      setMessage(draft.nextAction === 'none' ? 'Đã lưu kết quả cuộc gọi.' : 'Đã lưu kết quả và tạo lịch làm việc.');
-    } catch {
-      setError(callSaved ? 'Đã lưu kết quả nhưng chưa tạo được lịch. Vui lòng thử lại.' : 'Không hoàn tất được cuộc gọi. Vui lòng thử lại.');
-    } finally { setBusy(false); }
+    return runMutationAction("CallWorkspace.tsx:saveWrap", async () => {
+      if (!canRecord || !callId || busy) return;
+      const validationError = validateCallWrap(result, draft);
+      if (validationError) { setError(validationError); return; }
+      const selectedResult = result as CallResult;
+      const followUpDate = new Date(draft.followUpAt);
+      const summary = callSummaryNote(draft);
+      setBusy(true);
+      setError('');
+      let callSaved = confirmed;
+      try {
+        if (!confirmed) {
+          await requireConfirmedMutation(dbService.updateDocument('call_history', callId, {
+            result: selectedResult, note: summary, confirmedAt: new Date().toISOString(),
+            confirmedById: currentUser.uid, confirmedByName: currentUser.displayName
+          }));
+          callSaved = true;
+          setConfirmed(true);
+          localStorage.setItem(storageKey, JSON.stringify({ draft, callId, startedAt, confirmed: true, result: selectedResult }));
+          auditService.recordSafely(currentUser, {
+            category: 'business', module: auditModule, action: 'phone_call_confirmed',
+            summary: `${currentUser.displayName} xác nhận cuộc gọi ${companyName}: ${CALL_RESULT_LABELS[selectedResult]}`,
+            targetType, targetId, targetLabel: companyName,
+            changes: [{ field: 'result', label: 'Kết quả cuộc gọi', before: CALL_RESULT_LABELS.pending, after: CALL_RESULT_LABELS[selectedResult] }]
+          });
+        }
+        if (draft.nextAction !== 'none') {
+          const now = new Date().toISOString();
+          const taskId = `call-follow-up-${callId}`;
+          await dbService.addDocument('work_schedule_items', {
+              id: taskId, title: `${CALL_NEXT_ACTION_LABELS[draft.nextAction]} · ${companyName}`,
+              description: draft.followUpNote.trim(), stage: '', assigneeId: currentUser.uid,
+              assigneeName: currentUser.displayName, department: 'Sale',
+              assignedById: currentUser.uid, assignedByName: currentUser.displayName,
+              requestedById: '', requestedByName: '', startAt: now,
+              endAt: followUpDate.toISOString(), status: 'not_started', progress: 0,
+              referenceType: targetType, referenceId: targetId, referenceLabel: companyName,
+              notes: `Tạo từ cuộc gọi ${callId}`, priority: 'normal', taskType: 'personal_task',
+              groupId: 'self', groupName: 'Việc tự tạo cho chính mình', workType: 'business',
+              createdAt: now, updatedAt: now, deleted: false
+          });
+        }
+        localStorage.removeItem(storageKey);
+        setCompleted(true);
+        setCallId('');
+        setStartedAt('');
+        setDraft({ ...EMPTY_CALL_DRAFT });
+        setConfirmed(false);
+        setResult('');
+        setView('notes');
+        setMessage(draft.nextAction === 'none' ? 'Đã lưu kết quả cuộc gọi.' : 'Đã lưu kết quả và tạo lịch làm việc.');
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setError(callSaved ? 'Đã lưu kết quả nhưng chưa tạo được lịch. Vui lòng thử lại.' : 'Không hoàn tất được cuộc gọi. Vui lòng thử lại.');
+      } finally { setBusy(false); }
+    }, undefined);
   };
 
   return <div className="phone-call-dialog-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !busy) onClose(); }}>

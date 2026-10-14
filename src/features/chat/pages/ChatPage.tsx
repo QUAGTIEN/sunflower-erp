@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
@@ -102,36 +103,44 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [editChannelMembers, setEditChannelMembers] = useState<string[]>([]);
 
   const handleCreateChannelSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newChannelName.trim()) return;
+    return runMutationAction("ChatPage.tsx:handleCreateChannelSubmit", async () => {
+      e.preventDefault();
+      if (!newChannelName.trim()) return;
 
-    const newChannel = {
-      name: newChannelName.trim(),
-      desc: newChannelDesc.trim(),
-      members: [...newChannelMembers, currentUser.uid], // Creator is always a member
-      roles: [],
-      createdBy: currentUser.uid,
-      createdAt: new Date().toISOString()
-    };
+      const newChannel = {
+        name: newChannelName.trim(),
+        desc: newChannelDesc.trim(),
+        members: [...newChannelMembers, currentUser.uid], // Creator is always a member
+        roles: [],
+        createdBy: currentUser.uid,
+        createdAt: new Date().toISOString()
+      };
 
-    const created = await dbService.addDocument('channels', newChannel);
-    if (created) {
-      setActiveChannelId(created.id);
-    }
-    setShowCreateModal(false);
+      const created = await dbService.addDocument('channels', newChannel);
+      if (created) {
+        setActiveChannelId(created.id);
+      }
+      setShowCreateModal(false);
+
+      showSuccessToast("Đã thêm thành công");
+    }, e);
   };
 
   const handleEditChannelSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editChannelName.trim() || !activeChannelId) return;
+    return runMutationAction("ChatPage.tsx:handleEditChannelSubmit", async () => {
+      e.preventDefault();
+      if (!editChannelName.trim() || !activeChannelId) return;
 
-    await dbService.updateDocument('channels', activeChannelId, {
-      name: editChannelName.trim(),
-      desc: editChannelDesc.trim(),
-      members: editChannelMembers
-    });
+      await requireConfirmedMutation(dbService.updateDocument('channels', activeChannelId, {
+        name: editChannelName.trim(),
+        desc: editChannelDesc.trim(),
+        members: editChannelMembers
+      }));
 
-    setShowEditModal(false);
+      setShowEditModal(false);
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   const handleToggleMember = (userId: string, isEdit: boolean) => {
@@ -212,26 +221,31 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   };
 
   const handleDeleteMessage = async (message: { id: string; senderName?: string; attachments?: ChatAttachmentRecord[] }) => {
-    if (currentUser.role !== 'admin') return;
-    if (!window.confirm(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.'))) return;
+    return runMutationAction("ChatPage.tsx:handleDeleteMessage", async () => {
+      if (currentUser.role !== 'admin') return;
+      if (!window.confirm(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.'))) return;
 
-    try {
-      await dbService.deleteDocument('messages', message.id);
-      await deleteChatAttachments(message.attachments || []);
-      auditService.recordSafely(currentUser, {
-        category: 'administration',
-        module: 'system',
-        action: 'chat_message_deleted',
-        summary: `Xóa tin nhắn của ${message.senderName || 'người dùng'} trong kênh chat`,
-        targetType: 'message',
-        targetId: message.id,
-        targetLabel: activeChannel?.name || activeChannelId,
-        pageId: 'chat'
-      });
-    } catch (error) {
-      console.error('[Chat] Could not delete message.', error);
-      window.alert(t('Không thể xóa tin nhắn. Vui lòng thử lại.'));
-    }
+      try {
+        await requireConfirmedMutation(dbService.deleteDocument('messages', message.id));
+        await deleteChatAttachments(message.attachments || []);
+        auditService.recordSafely(currentUser, {
+          category: 'administration',
+          module: 'system',
+          action: 'chat_message_deleted',
+          summary: `Xóa tin nhắn của ${message.senderName || 'người dùng'} trong kênh chat`,
+          targetType: 'message',
+          targetId: message.id,
+          targetLabel: activeChannel?.name || activeChannelId,
+          pageId: 'chat'
+        });
+
+        showSuccessToast("Đã xóa thành công");
+      } catch (error) {
+        showErrorToast();
+        console.error('[Chat] Could not delete message.', error);
+        window.alert(t('Không thể xóa tin nhắn. Vui lòng thử lại.'));
+      }
+    }, message);
   };
 
   // Auto-complete suggestions states

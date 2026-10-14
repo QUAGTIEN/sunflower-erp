@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
@@ -97,53 +98,61 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
   };
 
   const handleAdjustStock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedItem || adjustQty <= 0) return;
+    return runMutationAction("InventoryPage.tsx:handleAdjustStock", async () => {
+      e.preventDefault();
+      if (!selectedItem || adjustQty <= 0) return;
 
-    let newQty = Number(selectedItem.qtyInStock);
-    if (adjustType === 'add') {
-      newQty += Number(adjustQty);
-    } else {
-      newQty = Math.max(0, newQty - Number(adjustQty));
-    }
+      let newQty = Number(selectedItem.qtyInStock);
+      if (adjustType === 'add') {
+        newQty += Number(adjustQty);
+      } else {
+        newQty = Math.max(0, newQty - Number(adjustQty));
+      }
 
-    await dbService.updateDocument('inventory', selectedItem.id, {
-      qtyInStock: newQty,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
+      await requireConfirmedMutation(dbService.updateDocument('inventory', selectedItem.id, {
+        qtyInStock: newQty,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      }));
 
-    setShowAdjustModal(false);
-    refreshAllData();
-    onRefresh();
+      setShowAdjustModal(false);
+      refreshAllData();
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addName) return;
+    return runMutationAction("InventoryPage.tsx:handleAddSubmit", async () => {
+      e.preventDefault();
+      if (!addName) return;
 
-    await dbService.addDocument('inventory', {
-      materialName: addName,
-      category: addCategory,
-      qtyInStock: Number(addQty),
-      qtyReserved: 0,
-      minQtyAlert: Number(addMinAlert),
-      unit: addUnit,
-      defaultSupplierId: addSupplierId || '',
-      createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      createdAt: new Date().toISOString()
-    });
+      await dbService.addDocument('inventory', {
+        materialName: addName,
+        category: addCategory,
+        qtyInStock: Number(addQty),
+        qtyReserved: 0,
+        minQtyAlert: Number(addMinAlert),
+        unit: addUnit,
+        defaultSupplierId: addSupplierId || '',
+        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        createdAt: new Date().toISOString()
+      });
 
-    setShowAddModal(false);
-    setAddName('');
-    setAddCategory('paper');
-    setAddQty(0);
-    setAddMinAlert(50);
-    setAddUnit('m²');
-    setAddSupplierId('');
+      setShowAddModal(false);
+      setAddName('');
+      setAddCategory('paper');
+      setAddQty(0);
+      setAddMinAlert(50);
+      setAddUnit('m²');
+      setAddSupplierId('');
 
-    refreshAllData();
-    onRefresh();
+      refreshAllData();
+      onRefresh();
+
+      showSuccessToast("Đã thêm thành công");
+    }, e);
   };
 
   const handleOpenEdit = (item: any) => {
@@ -157,31 +166,39 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedItem || !editName) return;
+    return runMutationAction("InventoryPage.tsx:handleEditSubmit", async () => {
+      e.preventDefault();
+      if (!selectedItem || !editName) return;
 
-    await dbService.updateDocument('inventory', selectedItem.id, {
-      materialName: editName,
-      category: editCategory,
-      minQtyAlert: Number(editMinAlert),
-      unit: editUnit,
-      defaultSupplierId: editSupplierId || '',
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
+      await requireConfirmedMutation(dbService.updateDocument('inventory', selectedItem.id, {
+        materialName: editName,
+        category: editCategory,
+        minQtyAlert: Number(editMinAlert),
+        unit: editUnit,
+        defaultSupplierId: editSupplierId || '',
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      }));
 
-    setShowEditModal(false);
-    setSelectedItem(null);
-    refreshAllData();
-    onRefresh();
+      setShowEditModal(false);
+      setSelectedItem(null);
+      refreshAllData();
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   const handleDeleteItem = async (itemId: string) => {
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa vật tư này khỏi danh mục kho?'))) {
-      await dbService.deleteDocument('inventory', itemId);
-      refreshAllData();
-      onRefresh();
-    }
+    return runMutationAction("InventoryPage.tsx:handleDeleteItem", async () => {
+      if (window.confirm(t('Bạn có chắc chắn muốn xóa vật tư này khỏi danh mục kho?'))) {
+        await requireConfirmedMutation(dbService.deleteDocument('inventory', itemId));
+        refreshAllData();
+        onRefresh();
+
+        showSuccessToast("Đã xóa thành công");
+      }
+    }, itemId);
   };
 
   const handleOpenAddExport = () => {
@@ -197,53 +214,57 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
   };
 
   const handleAddExportSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedMaterialId || exportQty <= 0) return;
+    return runMutationAction("InventoryPage.tsx:handleAddExportSubmit", async () => {
+      e.preventDefault();
+      if (!selectedMaterialId || exportQty <= 0) return;
 
-    const material = inventoryList.find(i => i.id === selectedMaterialId);
-    if (!material) return;
+      const material = inventoryList.find(i => i.id === selectedMaterialId);
+      if (!material) return;
 
-    if (material.qtyInStock < exportQty) {
-      alert(`Số lượng tồn kho không đủ để xuất! (Hiện có: ${material.qtyInStock} ${material.unit})`);
-      return;
-    }
+      if (material.qtyInStock < exportQty) {
+        alert(`Số lượng tồn kho không đủ để xuất! (Hiện có: ${material.qtyInStock} ${material.unit})`);
+        return;
+      }
 
-    const pxkCode = `PXK-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const pxkCode = `PXK-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const newExport = {
-      pxkCode,
-      exportDate: new Date().toISOString(),
-      reason: exportReason,
-      linkedCode: exportPoCode || 'Không có',
-      exportedBy: currentUser.displayName,
-      items: [
-        {
-          materialId: selectedMaterialId,
-          materialName: material.materialName,
-          quantity: Number(exportQty),
-          unit: material.unit
-        }
-      ],
-      createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      createdAt: new Date().toISOString()
-    };
+      const newExport = {
+        pxkCode,
+        exportDate: new Date().toISOString(),
+        reason: exportReason,
+        linkedCode: exportPoCode || 'Không có',
+        exportedBy: currentUser.displayName,
+        items: [
+          {
+            materialId: selectedMaterialId,
+            materialName: material.materialName,
+            quantity: Number(exportQty),
+            unit: material.unit
+          }
+        ],
+        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        createdAt: new Date().toISOString()
+      };
 
-    // Deduct stock quantity
-    const newQty = Number(material.qtyInStock) - Number(exportQty);
-    await dbService.updateDocument('inventory', material.id, {
-      qtyInStock: newQty,
-      updatedAt: new Date().toISOString()
-    });
+      // Deduct stock quantity
+      const newQty = Number(material.qtyInStock) - Number(exportQty);
+      await requireConfirmedMutation(dbService.updateDocument('inventory', material.id, {
+        qtyInStock: newQty,
+        updatedAt: new Date().toISOString()
+      }));
 
-    // Save export slip
-    await dbService.addDocument('warehouse_exports', newExport);
+      // Save export slip
+      await dbService.addDocument('warehouse_exports', newExport);
 
-    setShowAddExportModal(false);
-    setExportPoCode('');
-    setExportQty(1);
+      setShowAddExportModal(false);
+      setExportPoCode('');
+      setExportQty(1);
 
-    refreshAllData();
-    onRefresh();
+      refreshAllData();
+      onRefresh();
+
+      showSuccessToast("Đã thêm thành công");
+    }, e);
   };
 
   const getCategoryLabel = (cat: string) => {

@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Eye, EyeOff, Pencil, Plus, Save, Search, Settings2, UserRoundSearch, X } from 'lucide-react';
 import {
@@ -321,17 +322,22 @@ export const LeadFilterAdminModal: React.FC<{
   };
 
   const persistDefinition = async (definition: LeadFilterDefinition) => {
-    setSaveError('');
-    setSaving(true);
-    try {
-      await onSaveDefinition(definition);
-      return true;
-    } catch (error) {
-      setSaveError(getSaveErrorMessage(error));
-      return false;
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("LeadFilterSystem.tsx:persistDefinition", async () => {
+      setSaveError('');
+      setSaving(true);
+      try {
+        await onSaveDefinition(definition);
+
+        showSuccessToast("Đã lưu thành công");
+        return true;
+      } catch (error) {
+        showErrorToast();
+        setSaveError(getSaveErrorMessage(error));
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    }, definition);
   };
 
   const startCreate = () => {
@@ -414,17 +420,19 @@ export const LeadFilterAdminModal: React.FC<{
   };
 
   const saveDraft = async () => {
-    if (!draft.name.trim()) return;
-    const optionLabels = optionLines.split('\n').map(line => line.trim()).filter(Boolean);
-    if (draft.id !== LEAD_FILTER_IDS.province && optionLabels.length === 0) return;
-    const saved = await persistDefinition({
-      ...draft,
-      name: draft.name.trim(),
-      group: draft.group || 'Phân loại khách hàng tiềm năng',
-      type: draft.id === LEAD_FILTER_IDS.province ? 'single_select' : draft.type,
-      showInQuickFilter: true
-    });
-    if (saved) setEditingId('');
+    return runMutationAction("LeadFilterSystem.tsx:saveDraft", async () => {
+      if (!draft.name.trim()) return;
+      const optionLabels = optionLines.split('\n').map(line => line.trim()).filter(Boolean);
+      if (draft.id !== LEAD_FILTER_IDS.province && optionLabels.length === 0) return;
+      const saved = await persistDefinition({
+        ...draft,
+        name: draft.name.trim(),
+        group: draft.group || 'Phân loại khách hàng tiềm năng',
+        type: draft.id === LEAD_FILTER_IDS.province ? 'single_select' : draft.type,
+        showInQuickFilter: true
+      });
+      if (saved) setEditingId('');
+    }, undefined);
   };
 
   const updateWardRegionLines = (provinceId: string, wardId: string, value: string) => {
@@ -471,8 +479,10 @@ export const LeadFilterAdminModal: React.FC<{
   };
 
   const toggleDefinitionActive = async (definition: LeadFilterDefinition) => {
-    const saved = await persistDefinition({ ...definition, active: !definition.active });
-    if (saved && editingId === definition.id) setEditingId('');
+    return runMutationAction("LeadFilterSystem.tsx:toggleDefinitionActive", async () => {
+      const saved = await persistDefinition({ ...definition, active: !definition.active });
+      if (saved && editingId === definition.id) setEditingId('');
+    }, definition);
   };
 
   const activeProvinceOptions = draft.id === LEAD_FILTER_IDS.province

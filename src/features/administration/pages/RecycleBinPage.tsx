@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
@@ -127,66 +128,72 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
   }, []);
 
   const handleRestore = async (item: DeletedItem) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn khôi phục "${item.name}" (${item.typeLabel})?`)) {
-      return;
-    }
-    try {
-      if (item.collection === 'customer_products') {
-        const { customerId, product } = item.originalData as DeletedProductData;
-        const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
-        if (customer) {
-          const updatedProducts = (customer.products || []).map(toRecycleRecord).filter((entry): entry is RecycleRecord => Boolean(entry)).map(p => {
-            if (p.id === product.id) {
-              const restoredProduct = { ...p };
-              delete restoredProduct.deleted;
-              delete restoredProduct.deletedAt;
-              return restoredProduct;
-            }
-            return p;
-          });
-          await dbService.updateDocument('customers', customerId, { products: updatedProducts });
-          alert('Đã khôi phục sản phẩm thành công!');
-          onRefresh();
-          return;
-        }
+    return runMutationAction("RecycleBinPage.tsx:handleRestore", async () => {
+      if (!window.confirm(`Bạn có chắc chắn muốn khôi phục "${item.name}" (${item.typeLabel})?`)) {
+        return;
       }
+      try {
+        if (item.collection === 'customer_products') {
+          const { customerId, product } = item.originalData as DeletedProductData;
+          const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
+          if (customer) {
+            const updatedProducts = (customer.products || []).map(toRecycleRecord).filter((entry): entry is RecycleRecord => Boolean(entry)).map(p => {
+              if (p.id === product.id) {
+                const restoredProduct = { ...p };
+                delete restoredProduct.deleted;
+                delete restoredProduct.deletedAt;
+                return restoredProduct;
+              }
+              return p;
+            });
+            await requireConfirmedMutation(dbService.updateDocument('customers', customerId, { products: updatedProducts }));
+            showSuccessToast("Đã khôi phục thành công");
+            onRefresh();
+            return;
+          }
+        }
 
-      await dbService.updateDocument(item.collection, item.id, { deleted: false });
-      alert('Đã khôi phục thành công!');
-      onRefresh();
-    } catch (err) {
-      console.error(err);
-      alert('Có lỗi xảy ra khi khôi phục.');
-    }
+        await requireConfirmedMutation(dbService.updateDocument(item.collection, item.id, { deleted: false }));
+        showSuccessToast("Đã khôi phục thành công");
+        onRefresh();
+      } catch (err) {
+        showErrorToast();
+        console.error(err);
+        alert('Có lỗi xảy ra khi khôi phục.');
+      }
+    }, item);
   };
 
   const handleHardDelete = async (item: DeletedItem) => {
-    if (!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN "${item.name}" (${item.typeLabel})? Hành động này không thể hoàn tác.`)) {
-      return;
-    }
-    try {
-      if (item.collection === 'customer_products') {
-        const { customerId, product } = item.originalData as DeletedProductData;
-        const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
-        if (customer) {
-          const updatedProducts = (customer.products || [])
-            .map(toRecycleRecord)
-            .filter((entry): entry is RecycleRecord => Boolean(entry))
-            .filter(entry => entry.id !== product.id);
-          await dbService.updateDocument('customers', customerId, { products: updatedProducts });
-          alert('Đã xóa vĩnh viễn sản phẩm thành công!');
-          onRefresh();
-          return;
-        }
+    return runMutationAction("RecycleBinPage.tsx:handleHardDelete", async () => {
+      if (!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN "${item.name}" (${item.typeLabel})? Hành động này không thể hoàn tác.`)) {
+        return;
       }
+      try {
+        if (item.collection === 'customer_products') {
+          const { customerId, product } = item.originalData as DeletedProductData;
+          const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
+          if (customer) {
+            const updatedProducts = (customer.products || [])
+              .map(toRecycleRecord)
+              .filter((entry): entry is RecycleRecord => Boolean(entry))
+              .filter(entry => entry.id !== product.id);
+            await requireConfirmedMutation(dbService.updateDocument('customers', customerId, { products: updatedProducts }));
+            showSuccessToast("Đã xóa thành công");
+            onRefresh();
+            return;
+          }
+        }
 
-      await dbService.deleteDocument(item.collection, item.id);
-      alert('Đã xóa vĩnh viễn thành công!');
-      onRefresh();
-    } catch (err) {
-      console.error(err);
-      alert('Có lỗi xảy ra khi xóa vĩnh viễn.');
-    }
+        await requireConfirmedMutation(dbService.deleteDocument(item.collection, item.id));
+        showSuccessToast("Đã xóa thành công");
+        onRefresh();
+      } catch (err) {
+        showErrorToast();
+        console.error(err);
+        alert('Có lỗi xảy ra khi xóa vĩnh viễn.');
+      }
+    }, item);
   };
 
   const filtered = deletedItems.filter(item => {

@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
@@ -256,120 +257,136 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
   };
 
   const handleSaveSupplier = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!form.supplierName.trim()) return;
-    const assignedPurchaser = purchasers.find(user => user.uid === form.assignedPurchaserId);
-    const current = suppliers.find(supplier => supplier.id === editingSupplierId);
-    const primaryContact: SupplierContactRecord = {
-      id: current?.contacts.find(contact => contact.primary)?.id || `supplier-contact-${Date.now()}`,
-      name: form.contactPerson.trim(),
-      role: 'Liên hệ chính',
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      primary: true
-    };
-    const payload = {
-      supplierCode: form.supplierCode.trim() || `NCC-${String(suppliers.length + 1).padStart(4, '0')}`,
-      supplierName: form.supplierName.trim(),
-      taxCode: form.taxCode.trim(),
-      contactPerson: form.contactPerson.trim(),
-      phone: form.phone.trim(),
-      email: form.email.trim(),
-      address: form.address.trim(),
-      province: form.province.trim(),
-      categories: parseCategories(form.categoriesText),
-      serviceTypes: form.serviceTypes,
-      paymentTerms: form.paymentTerms.trim(),
-      bankName: form.bankName.trim(),
-      bankAccount: form.bankAccount.trim(),
-      assignedPurchaserId: form.assignedPurchaserId,
-      assignedPurchaserName: assignedPurchaser?.displayName || '',
-      status: current?.status || 'active',
-      rating: Number(form.rating),
-      note: form.note.trim(),
-      contacts: [primaryContact, ...(current?.contacts || []).filter(contact => !contact.primary)],
-      updatedBy: currentUser.displayName
-    };
+    return runMutationAction("SuppliersPage.tsx:handleSaveSupplier", async () => {
+      event.preventDefault();
+      if (!form.supplierName.trim()) return;
+      const assignedPurchaser = purchasers.find(user => user.uid === form.assignedPurchaserId);
+      const current = suppliers.find(supplier => supplier.id === editingSupplierId);
+      const primaryContact: SupplierContactRecord = {
+        id: current?.contacts.find(contact => contact.primary)?.id || `supplier-contact-${Date.now()}`,
+        name: form.contactPerson.trim(),
+        role: 'Liên hệ chính',
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        primary: true
+      };
+      const payload = {
+        supplierCode: form.supplierCode.trim() || `NCC-${String(suppliers.length + 1).padStart(4, '0')}`,
+        supplierName: form.supplierName.trim(),
+        taxCode: form.taxCode.trim(),
+        contactPerson: form.contactPerson.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        address: form.address.trim(),
+        province: form.province.trim(),
+        categories: parseCategories(form.categoriesText),
+        serviceTypes: form.serviceTypes,
+        paymentTerms: form.paymentTerms.trim(),
+        bankName: form.bankName.trim(),
+        bankAccount: form.bankAccount.trim(),
+        assignedPurchaserId: form.assignedPurchaserId,
+        assignedPurchaserName: assignedPurchaser?.displayName || '',
+        status: current?.status || 'active',
+        rating: Number(form.rating),
+        note: form.note.trim(),
+        contacts: [primaryContact, ...(current?.contacts || []).filter(contact => !contact.primary)],
+        updatedBy: currentUser.displayName
+      };
 
-    if (editingSupplierId) {
-      await dbService.updateDocument('suppliers', editingSupplierId, payload);
-    } else {
-      const created = await dbService.addDocument('suppliers', {
-        ...payload,
-        contracts: [],
-        documents: [],
-        activities: [],
-        createdAt: new Date().toISOString(),
-        createdBy: currentUser.displayName,
-        deleted: false
-      });
-      setSelectedSupplierId(created.id);
-    }
-    setShowForm(false);
+      if (editingSupplierId) {
+        await requireConfirmedMutation(dbService.updateDocument('suppliers', editingSupplierId, payload));
+      } else {
+        const created = await dbService.addDocument('suppliers', {
+          ...payload,
+          contracts: [],
+          documents: [],
+          activities: [],
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser.displayName,
+          deleted: false
+        });
+        setSelectedSupplierId(created.id);
+      }
+      setShowForm(false);
+
+      showSuccessToast("Đã lưu thành công");
+    }, event);
   };
 
   const handleAddActivity = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedSupplier || !activityNote.trim()) return;
-    const now = new Date().toISOString();
-    const activity = {
-      id: `supplier-activity-${now}`,
-      type: 'note',
-      note: activityNote.trim(),
-      occurredAt: now,
-      createdById: currentUser.uid,
-      createdByName: currentUser.displayName
-    };
-    await dbService.updateDocument('suppliers', selectedSupplier.id, {
-      activities: [activity, ...selectedSupplier.activities],
-      updatedBy: currentUser.displayName
-    });
-    setActivityNote('');
+    return runMutationAction("SuppliersPage.tsx:handleAddActivity", async () => {
+      event.preventDefault();
+      if (!selectedSupplier || !activityNote.trim()) return;
+      const now = new Date().toISOString();
+      const activity = {
+        id: `supplier-activity-${now}`,
+        type: 'note',
+        note: activityNote.trim(),
+        occurredAt: now,
+        createdById: currentUser.uid,
+        createdByName: currentUser.displayName
+      };
+      await requireConfirmedMutation(dbService.updateDocument('suppliers', selectedSupplier.id, {
+        activities: [activity, ...selectedSupplier.activities],
+        updatedBy: currentUser.displayName
+      }));
+      setActivityNote('');
+
+      showSuccessToast("Đã thêm thành công");
+    }, event);
   };
 
   const handleAddContact = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedSupplier || !contactDraft.name.trim()) return;
-    const now = new Date().toISOString();
-    const contact: SupplierContactRecord = {
-      id: `supplier-contact-${now}`,
-      name: contactDraft.name.trim(),
-      role: contactDraft.role.trim(),
-      phone: contactDraft.phone.trim(),
-      email: contactDraft.email.trim(),
-      primary: false
-    };
-    await dbService.updateDocument('suppliers', selectedSupplier.id, {
-      contacts: [...selectedSupplier.contacts, contact],
-      updatedBy: currentUser.displayName
-    });
-    setContactDraft({ name: '', role: '', phone: '', email: '' });
+    return runMutationAction("SuppliersPage.tsx:handleAddContact", async () => {
+      event.preventDefault();
+      if (!selectedSupplier || !contactDraft.name.trim()) return;
+      const now = new Date().toISOString();
+      const contact: SupplierContactRecord = {
+        id: `supplier-contact-${now}`,
+        name: contactDraft.name.trim(),
+        role: contactDraft.role.trim(),
+        phone: contactDraft.phone.trim(),
+        email: contactDraft.email.trim(),
+        primary: false
+      };
+      await requireConfirmedMutation(dbService.updateDocument('suppliers', selectedSupplier.id, {
+        contacts: [...selectedSupplier.contacts, contact],
+        updatedBy: currentUser.displayName
+      }));
+      setContactDraft({ name: '', role: '', phone: '', email: '' });
+
+      showSuccessToast("Đã thêm thành công");
+    }, event);
   };
 
   const handleUploadDocument = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!selectedSupplier) return;
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const data = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-    const now = new Date().toISOString();
-    const document: SupplierDocumentRecord = {
-      id: `supplier-document-${now}`,
-      name: file.name,
-      category: 'other',
-      data,
-      uploadedAt: now,
-      uploadedBy: currentUser.displayName
-    };
-    await dbService.updateDocument('suppliers', selectedSupplier.id, {
-      documents: [document, ...selectedSupplier.documents],
-      updatedBy: currentUser.displayName
-    });
-    event.target.value = '';
+    return runMutationAction("SuppliersPage.tsx:handleUploadDocument", async () => {
+      if (!selectedSupplier) return;
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const data = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const now = new Date().toISOString();
+      const document: SupplierDocumentRecord = {
+        id: `supplier-document-${now}`,
+        name: file.name,
+        category: 'other',
+        data,
+        uploadedAt: now,
+        uploadedBy: currentUser.displayName
+      };
+      await requireConfirmedMutation(dbService.updateDocument('suppliers', selectedSupplier.id, {
+        documents: [document, ...selectedSupplier.documents],
+        updatedBy: currentUser.displayName
+      }));
+      event.target.value = '';
+
+      showSuccessToast("Đã lưu thành công");
+    }, event);
   };
 
   if (selectedSupplier) {

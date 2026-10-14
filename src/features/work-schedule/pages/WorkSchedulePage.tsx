@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Building2, CheckCircle2, ClipboardList, Plus, Search, Settings2, UserRound, UsersRound, X } from 'lucide-react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -282,140 +283,150 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     setForm(previous => ({ ...previous, referenceId: id, referenceLabel: selected?.companyName || '' }));
   };
   const saveTask = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const targetAssigneeId = editingItem?.assigneeId || (form.groupId === 'self' ? currentUser.uid : form.assigneeId);
-    const assignee = (editingItem ? users : activeUsers).find(user => user.uid === targetAssigneeId);
-    const taskGroup = groups.find(group => group.id === form.groupId);
-    const endAt = new Date(form.dueAt);
-    const errors: Partial<Record<RequiredTaskField, string>> = {};
-    if (!taskGroup || taskGroup.id === 'automatic' || (!editingItem && !creatableGroups.some(group => group.id === taskGroup.id))) errors.groupId = 'Vui lòng chọn nhóm công việc phù hợp.';
-    if (!form.title.trim()) errors.title = 'Vui lòng nhập tên công việc.';
-    if (!assignee || (!editingItem && ((form.groupId === 'staff_to_company' && assignee.role !== 'admin') || (form.groupId === 'staff_to_staff' && (assignee.role === 'admin' || assignee.uid === currentUser.uid)) || (form.groupId === 'boss_to_staff' && (assignee.role === 'admin' || assignee.uid === currentUser.uid))))) errors.assigneeId = 'Vui lòng chọn người thực hiện phù hợp với nhóm công việc.';
-    if (!form.dueAt || !Number.isFinite(endAt.getTime())) errors.dueAt = 'Vui lòng chọn thời hạn hợp lệ.';
-    if (!form.description.trim()) errors.description = 'Vui lòng nhập nội dung công việc.';
-    const firstInvalidField = (['groupId', 'title', 'assigneeId', 'dueAt', 'description'] as RequiredTaskField[]).find(field => errors[field]);
-    if (firstInvalidField || !assignee || !taskGroup) {
-      setFormFieldErrors(errors);
-      setFormError('Hãy bổ sung các trường được đánh dấu để lưu công việc.');
-      if (firstInvalidField) event.currentTarget.querySelector<HTMLElement>(`[name="${firstInvalidField}"]`)?.focus();
-      return;
-    }
-    setFormFieldErrors({});
-    setFormError('');
-    setSaving(true);
-    setMessage('');
-    const currentTime = new Date();
-    const taskStatus: WorkScheduleStatus = editingItem ? form.status : 'not_started';
-    const payload = {
-      title: form.title.trim(), description: form.description.trim(), stage: '', assigneeId: assignee.uid,
-      assigneeName: assignee.displayName, department: roleDepartment(assignee.role),
-      assignedById: editingItem?.assignedById || currentUser.uid,
-      assignedByName: editingItem?.assignedByName || currentUser.displayName,
-      requestedById: editingItem?.requestedById || '', requestedByName: editingItem?.requestedByName || '',
-      startAt: editingItem?.startAt || currentTime.toISOString(), endAt: endAt.toISOString(), status: taskStatus,
-      progress: taskStatus === 'completed' ? 100 : taskStatus === 'not_started' ? 0 : 50,
-      referenceType: form.referenceType, referenceId: form.referenceId, referenceLabel: form.referenceLabel,
-      notes: editingItem?.notes || '', priority: form.priority, taskType: editingItem?.taskType || (taskGroup.id === 'staff_to_company' ? 'support_request' : taskGroup.id === 'self' ? 'personal_task' : 'assigned_task'),
-      ...(editingItem ? {} : { groupId: taskGroup.id, groupName: taskGroup.name }),
-      workType: form.workType,
-      updatedAt: currentTime.toISOString(), completedAt: taskStatus === 'completed' ? (editingItem?.completedAt || currentTime.toISOString()) : null,
-      deleted: false
-    };
-    try {
-      const saved = editingItem
-        ? await dbService.updateDocument('work_schedule_items', editingItem.id, payload).then(() => ({ ...editingItem, ...payload }))
-        : await dbService.addDocument('work_schedule_items', { id: `schedule-${currentTime.getTime()}-${currentUser.uid}`, ...payload, createdAt: currentTime.toISOString() });
-      const normalized = normalizeWorkScheduleRecords([saved])[0];
-      setItems(previous => editingItem ? previous.map(item => item.id === editingItem.id ? normalized : item) : [...previous, normalized]);
-      if (normalized.assigneeId !== currentUser.uid) {
-        void dbService.addDocument('notifications', {
-          id: `task-${normalized.id}-${normalized.assigneeId}-${currentTime.getTime()}`,
-          schemaVersion: 1, recipientId: normalized.assigneeId, module: 'system',
-          eventType: editingItem ? 'work_schedule_updated' : 'work_schedule_assigned',
-          eventKey: `work_schedule:${normalized.id}:${editingItem ? 'updated' : 'assigned'}:${currentTime.getTime()}`,
-          entityId: normalized.id, entityCode: normalized.referenceLabel || normalized.title,
-          title: editingItem ? 'Công việc được cập nhật' : 'Bạn được giao công việc',
-          message: `${normalized.title} · hạn ${dateTimeLabel(normalized.endAt)}`,
-          createdAt: currentTime.toISOString(), createdById: currentUser.uid, source: 'manual', readAt: null
-        }).catch(() => undefined);
+    return runMutationAction("WorkSchedulePage.tsx:saveTask", async () => {
+      event.preventDefault();
+      const targetAssigneeId = editingItem?.assigneeId || (form.groupId === 'self' ? currentUser.uid : form.assigneeId);
+      const assignee = (editingItem ? users : activeUsers).find(user => user.uid === targetAssigneeId);
+      const taskGroup = groups.find(group => group.id === form.groupId);
+      const endAt = new Date(form.dueAt);
+      const errors: Partial<Record<RequiredTaskField, string>> = {};
+      if (!taskGroup || taskGroup.id === 'automatic' || (!editingItem && !creatableGroups.some(group => group.id === taskGroup.id))) errors.groupId = 'Vui lòng chọn nhóm công việc phù hợp.';
+      if (!form.title.trim()) errors.title = 'Vui lòng nhập tên công việc.';
+      if (!assignee || (!editingItem && ((form.groupId === 'staff_to_company' && assignee.role !== 'admin') || (form.groupId === 'staff_to_staff' && (assignee.role === 'admin' || assignee.uid === currentUser.uid)) || (form.groupId === 'boss_to_staff' && (assignee.role === 'admin' || assignee.uid === currentUser.uid))))) errors.assigneeId = 'Vui lòng chọn người thực hiện phù hợp với nhóm công việc.';
+      if (!form.dueAt || !Number.isFinite(endAt.getTime())) errors.dueAt = 'Vui lòng chọn thời hạn hợp lệ.';
+      if (!form.description.trim()) errors.description = 'Vui lòng nhập nội dung công việc.';
+      const firstInvalidField = (['groupId', 'title', 'assigneeId', 'dueAt', 'description'] as RequiredTaskField[]).find(field => errors[field]);
+      if (firstInvalidField || !assignee || !taskGroup) {
+        setFormFieldErrors(errors);
+        setFormError('Hãy bổ sung các trường được đánh dấu để lưu công việc.');
+        if (firstInvalidField) event.currentTarget.querySelector<HTMLElement>(`[name="${firstInvalidField}"]`)?.focus();
+        return;
       }
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'system', action: editingItem ? 'work_schedule_updated' : 'work_schedule_created',
-        summary: `${editingItem ? 'Cập nhật' : 'Tạo'} công việc “${normalized.title}”`,
-        targetType: 'work_schedule', targetId: normalized.id, targetLabel: normalized.title, pageId: 'work_schedule'
-      });
-      setIsFormOpen(false);
-      setSelectedItem(normalized);
-      setMessage(editingItem ? 'Đã cập nhật công việc.' : taskGroup.id === 'self' ? 'Đã tạo công việc cá nhân.' : 'Đã giao công việc.');
-    } catch (error) {
-      const permissionDenied = typeof error === 'object' && error !== null && 'code' in error && error.code === 'permission-denied';
-      setFormError(permissionDenied
-        ? 'Tài khoản chưa được cấp quyền lưu công việc. Vui lòng liên hệ quản trị viên.'
-        : 'Không thể lưu công việc. Vui lòng kiểm tra kết nối và thử lại.');
-    } finally {
-      setSaving(false);
-    }
+      setFormFieldErrors({});
+      setFormError('');
+      setSaving(true);
+      setMessage('');
+      const currentTime = new Date();
+      const taskStatus: WorkScheduleStatus = editingItem ? form.status : 'not_started';
+      const payload = {
+        title: form.title.trim(), description: form.description.trim(), stage: '', assigneeId: assignee.uid,
+        assigneeName: assignee.displayName, department: roleDepartment(assignee.role),
+        assignedById: editingItem?.assignedById || currentUser.uid,
+        assignedByName: editingItem?.assignedByName || currentUser.displayName,
+        requestedById: editingItem?.requestedById || '', requestedByName: editingItem?.requestedByName || '',
+        startAt: editingItem?.startAt || currentTime.toISOString(), endAt: endAt.toISOString(), status: taskStatus,
+        progress: taskStatus === 'completed' ? 100 : taskStatus === 'not_started' ? 0 : 50,
+        referenceType: form.referenceType, referenceId: form.referenceId, referenceLabel: form.referenceLabel,
+        notes: editingItem?.notes || '', priority: form.priority, taskType: editingItem?.taskType || (taskGroup.id === 'staff_to_company' ? 'support_request' : taskGroup.id === 'self' ? 'personal_task' : 'assigned_task'),
+        ...(editingItem ? {} : { groupId: taskGroup.id, groupName: taskGroup.name }),
+        workType: form.workType,
+        updatedAt: currentTime.toISOString(), completedAt: taskStatus === 'completed' ? (editingItem?.completedAt || currentTime.toISOString()) : null,
+        deleted: false
+      };
+      try {
+        const saved = editingItem
+          ? await requireConfirmedMutation(dbService.updateDocument('work_schedule_items', editingItem.id, payload)).then(() => ({ ...editingItem, ...payload }))
+          : await dbService.addDocument('work_schedule_items', { id: `schedule-${currentTime.getTime()}-${currentUser.uid}`, ...payload, createdAt: currentTime.toISOString() });
+        const normalized = normalizeWorkScheduleRecords([saved])[0];
+        setItems(previous => editingItem ? previous.map(item => item.id === editingItem.id ? normalized : item) : [...previous, normalized]);
+        if (normalized.assigneeId !== currentUser.uid) {
+          void dbService.addDocument('notifications', {
+            id: `task-${normalized.id}-${normalized.assigneeId}-${currentTime.getTime()}`,
+            schemaVersion: 1, recipientId: normalized.assigneeId, module: 'system',
+            eventType: editingItem ? 'work_schedule_updated' : 'work_schedule_assigned',
+            eventKey: `work_schedule:${normalized.id}:${editingItem ? 'updated' : 'assigned'}:${currentTime.getTime()}`,
+            entityId: normalized.id, entityCode: normalized.referenceLabel || normalized.title,
+            title: editingItem ? 'Công việc được cập nhật' : 'Bạn được giao công việc',
+            message: `${normalized.title} · hạn ${dateTimeLabel(normalized.endAt)}`,
+            createdAt: currentTime.toISOString(), createdById: currentUser.uid, source: 'manual', readAt: null
+          }).catch(() => undefined);
+        }
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'system', action: editingItem ? 'work_schedule_updated' : 'work_schedule_created',
+          summary: `${editingItem ? 'Cập nhật' : 'Tạo'} công việc “${normalized.title}”`,
+          targetType: 'work_schedule', targetId: normalized.id, targetLabel: normalized.title, pageId: 'work_schedule'
+        });
+        setIsFormOpen(false);
+        setSelectedItem(normalized);
+        setMessage(editingItem ? 'Đã cập nhật công việc.' : taskGroup.id === 'self' ? 'Đã tạo công việc cá nhân.' : 'Đã giao công việc.');
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        const permissionDenied = typeof error === 'object' && error !== null && 'code' in error && error.code === 'permission-denied';
+        setFormError(permissionDenied
+          ? 'Tài khoản chưa được cấp quyền lưu công việc. Vui lòng liên hệ quản trị viên.'
+          : 'Không thể lưu công việc. Vui lòng kiểm tra kết nối và thử lại.');
+      } finally {
+        setSaving(false);
+      }
+    }, event);
   };
-  const updateStatus = async (item: WorkScheduleRecord, status: WorkScheduleStatus, failureNote = '') => {
-    const trimmedFailureNote = failureNote.trim();
-    const activeAdmins = users.filter(user => user.role === 'admin' && user.active !== false);
-    if (status === 'cannot_process' && !trimmedFailureNote) {
-      setStatusNoteError('Vui lòng nhập lý do không xử lí được.');
-      return;
-    }
-    if (status === 'cannot_process' && !isAdmin && activeAdmins.length === 0) {
-      setStatusNoteError('Chưa có tài khoản quản lý đang hoạt động để nhận thông báo.');
-      return;
-    }
-    setDetailBusy(true);
-    setDetailError('');
-    setMessage('');
-    try {
-      const updatedAt = new Date().toISOString();
-      const completedAt = status === 'completed' ? updatedAt : null;
-      const progress = status === 'completed' ? 100 : status === 'not_started' ? 0 : 50;
-      const failureFields = status === 'cannot_process' ? {
-        cannotProcessNote: trimmedFailureNote,
-        cannotProcessAt: updatedAt,
-        cannotProcessById: currentUser.uid,
-        cannotProcessByName: currentUser.displayName
-      } : {};
-      await dbService.updateDocument('work_schedule_items', item.id, { status, progress, updatedAt, completedAt, ...failureFields });
-      if (status === 'cannot_process' && !isAdmin) {
-        const eventKey = `work_schedule:cannot_process:${item.id}:${updatedAt}`;
-        await Promise.all(activeAdmins.map(admin => dbService.addDocument('notifications', {
-          id: `work-status-${item.id}-${admin.uid}-${Date.now()}`,
-          schemaVersion: 1,
-          recipientId: admin.uid,
-          module: 'system',
-          eventType: 'work_schedule_cannot_process',
-          eventKey,
-          entityId: item.id,
-          entityCode: item.referenceLabel || item.title,
-          title: `${currentUser.displayName} không thể xử lí công việc`,
-          message: `${item.title} · ${trimmedFailureNote}`,
-          createdAt: updatedAt,
-          createdById: currentUser.uid,
-          source: 'manual',
-          readAt: null
-        })));
+  const updateStatus = async (item: WorkScheduleRecord, status: WorkScheduleStatus, failureNote: string = '') => {
+    return runMutationAction("WorkSchedulePage.tsx:updateStatus", async () => {
+      const trimmedFailureNote = failureNote.trim();
+      const activeAdmins = users.filter(user => user.role === 'admin' && user.active !== false);
+      if (status === 'cannot_process' && !trimmedFailureNote) {
+        setStatusNoteError('Vui lòng nhập lý do không xử lí được.');
+        return;
       }
-      const updated = { ...item, status, progress, updatedAt, completedAt: completedAt || undefined, ...failureFields };
-      setItems(previous => previous.map(current => current.id === item.id ? updated : current));
-      setSelectedItem(previous => previous?.id === item.id ? updated : previous);
-      setStatusNoteItem(null);
-      setStatusNote('');
-      setStatusNoteError('');
-      setMessage(`Đã chuyển công việc sang trạng thái ${WORK_SCHEDULE_STATUS_LABELS[status].toLowerCase()}.`);
-    } catch {
-      const errorMessage = status === 'cannot_process'
-        ? 'Không thể lưu trạng thái hoặc gửi thông báo cho quản lý. Vui lòng thử lại.'
-        : 'Không thể cập nhật trạng thái công việc. Vui lòng thử lại.';
-      if (statusNoteItem) setStatusNoteError(errorMessage);
-      else setDetailError(errorMessage);
-    } finally {
-      setDetailBusy(false);
-    }
+      if (status === 'cannot_process' && !isAdmin && activeAdmins.length === 0) {
+        setStatusNoteError('Chưa có tài khoản quản lý đang hoạt động để nhận thông báo.');
+        return;
+      }
+      setDetailBusy(true);
+      setDetailError('');
+      setMessage('');
+      try {
+        const updatedAt = new Date().toISOString();
+        const completedAt = status === 'completed' ? updatedAt : null;
+        const progress = status === 'completed' ? 100 : status === 'not_started' ? 0 : 50;
+        const failureFields = status === 'cannot_process' ? {
+          cannotProcessNote: trimmedFailureNote,
+          cannotProcessAt: updatedAt,
+          cannotProcessById: currentUser.uid,
+          cannotProcessByName: currentUser.displayName
+        } : {};
+        await requireConfirmedMutation(dbService.updateDocument('work_schedule_items', item.id, { status, progress, updatedAt, completedAt, ...failureFields }));
+        if (status === 'cannot_process' && !isAdmin) {
+          const eventKey = `work_schedule:cannot_process:${item.id}:${updatedAt}`;
+          await Promise.all(activeAdmins.map(admin => dbService.addDocument('notifications', {
+            id: `work-status-${item.id}-${admin.uid}-${Date.now()}`,
+            schemaVersion: 1,
+            recipientId: admin.uid,
+            module: 'system',
+            eventType: 'work_schedule_cannot_process',
+            eventKey,
+            entityId: item.id,
+            entityCode: item.referenceLabel || item.title,
+            title: `${currentUser.displayName} không thể xử lí công việc`,
+            message: `${item.title} · ${trimmedFailureNote}`,
+            createdAt: updatedAt,
+            createdById: currentUser.uid,
+            source: 'manual',
+            readAt: null
+          })));
+        }
+        const updated = { ...item, status, progress, updatedAt, completedAt: completedAt || undefined, ...failureFields };
+        setItems(previous => previous.map(current => current.id === item.id ? updated : current));
+        setSelectedItem(previous => previous?.id === item.id ? updated : previous);
+        setStatusNoteItem(null);
+        setStatusNote('');
+        setStatusNoteError('');
+        setMessage(`Đã chuyển công việc sang trạng thái ${WORK_SCHEDULE_STATUS_LABELS[status].toLowerCase()}.`);
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        const errorMessage = status === 'cannot_process'
+          ? 'Không thể lưu trạng thái hoặc gửi thông báo cho quản lý. Vui lòng thử lại.'
+          : 'Không thể cập nhật trạng thái công việc. Vui lòng thử lại.';
+        if (statusNoteItem) setStatusNoteError(errorMessage);
+        else setDetailError(errorMessage);
+      } finally {
+        setDetailBusy(false);
+      }
+    }, item);
   };
   const requestStatusChange = (item: WorkScheduleRecord, status: WorkScheduleStatus) => {
     if (getWorkScheduleDisplayStatus(item.status) === status) return;
@@ -428,27 +439,32 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
     void updateStatus(item, status);
   };
   const deleteCompletedTask = async (item: WorkScheduleRecord) => {
-    if (!canPermanentlyDeleteWorkSchedule(currentUser.role, item.status) || detailBusy) return;
-    if (!window.confirm(`Xóa vĩnh viễn công việc “${item.title}”? Thao tác này không thể hoàn tác.`)) return;
-    setDetailBusy(true);
-    setDetailError('');
-    setMessage('');
-    try {
-      const deleted = await dbService.deleteDocument('work_schedule_items', item.id);
-      if (!deleted) throw new Error('Work schedule item was not deleted');
-      setItems(previous => previous.filter(current => current.id !== item.id));
-      setSelectedItem(null);
-      setMessage('Đã xóa vĩnh viễn công việc.');
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'system', action: 'work_schedule_deleted',
-        summary: `Xóa vĩnh viễn công việc “${item.title}”`,
-        targetType: 'work_schedule', targetId: item.id, targetLabel: item.title, pageId: 'work_schedule'
-      });
-    } catch {
-      setDetailError('Không thể xóa công việc. Vui lòng thử lại.');
-    } finally {
-      setDetailBusy(false);
-    }
+    return runMutationAction("WorkSchedulePage.tsx:deleteCompletedTask", async () => {
+      if (!canPermanentlyDeleteWorkSchedule(currentUser.role, item.status) || detailBusy) return;
+      if (!window.confirm(`Xóa vĩnh viễn công việc “${item.title}”? Thao tác này không thể hoàn tác.`)) return;
+      setDetailBusy(true);
+      setDetailError('');
+      setMessage('');
+      try {
+        const deleted = await requireConfirmedMutation(dbService.deleteDocument('work_schedule_items', item.id));
+        if (!deleted) throw new Error('Work schedule item was not deleted');
+        setItems(previous => previous.filter(current => current.id !== item.id));
+        setSelectedItem(null);
+        setMessage('Đã xóa vĩnh viễn công việc.');
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'system', action: 'work_schedule_deleted',
+          summary: `Xóa vĩnh viễn công việc “${item.title}”`,
+          targetType: 'work_schedule', targetId: item.id, targetLabel: item.title, pageId: 'work_schedule'
+        });
+
+        showSuccessToast("Đã xóa thành công");
+      } catch {
+        showErrorToast();
+        setDetailError('Không thể xóa công việc. Vui lòng thử lại.');
+      } finally {
+        setDetailBusy(false);
+      }
+    }, item);
   };
   const openSource = (item: WorkScheduleRecord) => {
     const module = moduleFromReference(item.referenceType);

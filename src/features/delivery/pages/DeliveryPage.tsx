@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -358,147 +359,159 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   };
 
   const handleCreateVehicle = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const normalizedPlate = newVehicle.plate.trim().toUpperCase();
-    if (!normalizedPlate || !newVehicle.vehicleName.trim() || !newVehicle.driverName.trim() || newVehicle.capacityKg <= 0) {
-      alert('Vui lòng nhập đầy đủ biển số, tên xe, tải trọng và tài xế.');
-      return;
-    }
-    if (vehicles.some(vehicle => vehicle.plate.toUpperCase() === normalizedPlate)) {
-      alert('Biển số xe đã tồn tại trong danh mục.');
-      return;
-    }
+    return runMutationAction("DeliveryPage.tsx:handleCreateVehicle", async () => {
+      event.preventDefault();
+      const normalizedPlate = newVehicle.plate.trim().toUpperCase();
+      if (!normalizedPlate || !newVehicle.vehicleName.trim() || !newVehicle.driverName.trim() || newVehicle.capacityKg <= 0) {
+        alert('Vui lòng nhập đầy đủ biển số, tên xe, tải trọng và tài xế.');
+        return;
+      }
+      if (vehicles.some(vehicle => vehicle.plate.toUpperCase() === normalizedPlate)) {
+        alert('Biển số xe đã tồn tại trong danh mục.');
+        return;
+      }
 
-    await dbService.addDocument('delivery_vehicles', {
-      id: `vehicle-${Date.now()}`,
-      ...newVehicle,
-      plate: normalizedPlate,
-      capacityKg: Number(newVehicle.capacityKg),
-      createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      createdAt: new Date().toISOString()
-    });
-    setNewVehicle({
-      plate: '',
-      vehicleName: '',
-      capacityKg: 1000,
-      driverName: '',
-      driverPhone: '',
-      status: 'ready',
-      suitableRegions: ['Hà Nội']
-    });
-    setShowVehicleModal(false);
-    await fetchVehicles();
+      await dbService.addDocument('delivery_vehicles', {
+        id: `vehicle-${Date.now()}`,
+        ...newVehicle,
+        plate: normalizedPlate,
+        capacityKg: Number(newVehicle.capacityKg),
+        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        createdAt: new Date().toISOString()
+      });
+      setNewVehicle({
+        plate: '',
+        vehicleName: '',
+        capacityKg: 1000,
+        driverName: '',
+        driverPhone: '',
+        status: 'ready',
+        suitableRegions: ['Hà Nội']
+      });
+      setShowVehicleModal(false);
+      await fetchVehicles();
+
+      showSuccessToast("Đã thêm thành công");
+    }, event);
   };
 
   const updateVehicleStatus = async (vehicle: DeliveryVehicle, status: DeliveryVehicle['status']) => {
-    await dbService.updateDocument('delivery_vehicles', vehicle.id, {
-      status,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-    });
-    await fetchVehicles();
+    return runMutationAction("DeliveryPage.tsx:updateVehicleStatus", async () => {
+      await requireConfirmedMutation(dbService.updateDocument('delivery_vehicles', vehicle.id, {
+        status,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+      }));
+      await fetchVehicles();
+
+      showSuccessToast("Đã lưu thành công");
+    }, vehicle);
   };
 
   const handleCreateTrip = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (selectedOrderIds.length === 0) {
-      alert('Vui lòng chọn ít nhất một đơn hàng để giao!');
-      return;
-    }
-    if (!deliveryDate || !selectedVehicle) {
-      alert('Vui lòng chọn ngày giao và xe vận chuyển.');
-      return;
-    }
-    if (selectedVehicle.status !== 'ready') {
-      alert(`Xe ${selectedVehicle.plate} hiện không sẵn sàng để xếp chuyến.`);
-      return;
-    }
-    if (selectedEstimatedWeight > selectedVehicle.capacityKg) {
-      alert(`Tải ước tính ${selectedEstimatedWeight.toLocaleString('vi-VN')} kg vượt tải trọng ${selectedVehicle.capacityKg.toLocaleString('vi-VN')} kg của xe.`);
-      return;
-    }
-    const conflictingTrip = activeTrips.find(trip => (
-      (trip.vehicleId === selectedVehicle.id || trip.vehiclePlate === selectedVehicle.plate) &&
-      toDateInputValue(trip.deliveryDate) === deliveryDate
-    ));
-    if (conflictingTrip) {
-      alert(`Xe ${selectedVehicle.plate} đã được phân cho chuyến ${conflictingTrip.delCode} trong ngày này.`);
-      return;
-    }
-    const duplicatedOrder = selectedOrderIds.find(poId => scheduledOrderIds.has(poId));
-    if (duplicatedOrder) {
-      const duplicatedPo = pos.find(po => po.id === duplicatedOrder);
-      alert(`Đơn ${duplicatedPo?.poCode || duplicatedOrder} đã nằm trong một chuyến đang hoạt động.`);
-      return;
-    }
-
-    const delCode = `DEL-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const tripOrders = selectedOrderIds.map((poId, index) => {
-      const po = pos.find(p => p.id === poId);
-      const totalRemaining = getOrderRemainingQuantity(po);
-      return {
-        poId,
-        customerId: po?.customerId || '',
-        customerName: po?.customerName || '',
-        deliveryAddress: po?.shippingInfo?.deliveryAddress || po?.deliveryAddress || (po?.notes?.includes('địa chỉ') ? po.notes : 'Kho khách hàng theo hồ sơ CRM'),
-        deliveredQty: totalRemaining,
-        estimatedWeightKg: estimateOrderWeightKg(po),
-        stopSequence: index + 1,
-        status: 'pending',
-        signatureImage: '',
-        note: ''
-      };
-    });
-
-    const newTrip = {
-      delCode,
-      deliveryDate: new Date(deliveryDate).toISOString(),
-      region,
-      timeWindowStart,
-      timeWindowEnd,
-      priority: tripPriority,
-      vehicleId: selectedVehicle.id,
-      driverName: selectedVehicle.driverName || driverName,
-      vehiclePlate: selectedVehicle.plate || vehiclePlate,
-      capacityKg: selectedVehicle.capacityKg,
-      estimatedLoadKg: selectedEstimatedWeight,
-      loadFactor: selectedLoadFactor,
-      estimatedDistanceKm: Number(estimatedDistanceKm || 0),
-      estimatedCost: Number(estimatedCost || 0),
-      note: tripNote,
-      assignedSaleId,
-      status: 'planning',
-      orders: tripOrders,
-      createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      createdAt: new Date().toISOString()
-    };
-
-    await dbService.addDocument('deliveries', newTrip);
-
-    // Record the planning hand-off without advancing the PO to "delivering".
-    // The PO is advanced only when the dispatcher actually starts the trip.
-    for (const poId of selectedOrderIds) {
-      const po = pos.find(p => p.id === poId);
-      if (po) {
-        const updatedLogs = [
-          ...(po.historyLogs || []),
-          {
-            status: 'waiting_delivery',
-            updatedBy: currentUser.displayName,
-            updatedAt: new Date().toISOString(),
-            note: `Đã xếp vào chuyến ${delCode}, tuyến ${region}, xe ${selectedVehicle.plate}, tài xế ${selectedVehicle.driverName}.`
-          }
-        ];
-        await dbService.updateDocument('pos', po.id, {
-          historyLogs: updatedLogs
-        });
+    return runMutationAction("DeliveryPage.tsx:handleCreateTrip", async () => {
+      e.preventDefault();
+      if (selectedOrderIds.length === 0) {
+        alert('Vui lòng chọn ít nhất một đơn hàng để giao!');
+        return;
       }
-    }
+      if (!deliveryDate || !selectedVehicle) {
+        alert('Vui lòng chọn ngày giao và xe vận chuyển.');
+        return;
+      }
+      if (selectedVehicle.status !== 'ready') {
+        alert(`Xe ${selectedVehicle.plate} hiện không sẵn sàng để xếp chuyến.`);
+        return;
+      }
+      if (selectedEstimatedWeight > selectedVehicle.capacityKg) {
+        alert(`Tải ước tính ${selectedEstimatedWeight.toLocaleString('vi-VN')} kg vượt tải trọng ${selectedVehicle.capacityKg.toLocaleString('vi-VN')} kg của xe.`);
+        return;
+      }
+      const conflictingTrip = activeTrips.find(trip => (
+        (trip.vehicleId === selectedVehicle.id || trip.vehiclePlate === selectedVehicle.plate) &&
+        toDateInputValue(trip.deliveryDate) === deliveryDate
+      ));
+      if (conflictingTrip) {
+        alert(`Xe ${selectedVehicle.plate} đã được phân cho chuyến ${conflictingTrip.delCode} trong ngày này.`);
+        return;
+      }
+      const duplicatedOrder = selectedOrderIds.find(poId => scheduledOrderIds.has(poId));
+      if (duplicatedOrder) {
+        const duplicatedPo = pos.find(po => po.id === duplicatedOrder);
+        alert(`Đơn ${duplicatedPo?.poCode || duplicatedOrder} đã nằm trong một chuyến đang hoạt động.`);
+        return;
+      }
 
-    setShowAddTripModal(false);
-    setActiveTab('trips');
-    await fetchDeliveries();
-    onRefresh();
+      const delCode = `DEL-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const tripOrders = selectedOrderIds.map((poId, index) => {
+        const po = pos.find(p => p.id === poId);
+        const totalRemaining = getOrderRemainingQuantity(po);
+        return {
+          poId,
+          customerId: po?.customerId || '',
+          customerName: po?.customerName || '',
+          deliveryAddress: po?.shippingInfo?.deliveryAddress || po?.deliveryAddress || (po?.notes?.includes('địa chỉ') ? po.notes : 'Kho khách hàng theo hồ sơ CRM'),
+          deliveredQty: totalRemaining,
+          estimatedWeightKg: estimateOrderWeightKg(po),
+          stopSequence: index + 1,
+          status: 'pending',
+          signatureImage: '',
+          note: ''
+        };
+      });
+
+      const newTrip = {
+        delCode,
+        deliveryDate: new Date(deliveryDate).toISOString(),
+        region,
+        timeWindowStart,
+        timeWindowEnd,
+        priority: tripPriority,
+        vehicleId: selectedVehicle.id,
+        driverName: selectedVehicle.driverName || driverName,
+        vehiclePlate: selectedVehicle.plate || vehiclePlate,
+        capacityKg: selectedVehicle.capacityKg,
+        estimatedLoadKg: selectedEstimatedWeight,
+        loadFactor: selectedLoadFactor,
+        estimatedDistanceKm: Number(estimatedDistanceKm || 0),
+        estimatedCost: Number(estimatedCost || 0),
+        note: tripNote,
+        assignedSaleId,
+        status: 'planning',
+        orders: tripOrders,
+        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        createdAt: new Date().toISOString()
+      };
+
+      await dbService.addDocument('deliveries', newTrip);
+
+      // Record the planning hand-off without advancing the PO to "delivering".
+      // The PO is advanced only when the dispatcher actually starts the trip.
+      for (const poId of selectedOrderIds) {
+        const po = pos.find(p => p.id === poId);
+        if (po) {
+          const updatedLogs = [
+            ...(po.historyLogs || []),
+            {
+              status: 'waiting_delivery',
+              updatedBy: currentUser.displayName,
+              updatedAt: new Date().toISOString(),
+              note: `Đã xếp vào chuyến ${delCode}, tuyến ${region}, xe ${selectedVehicle.plate}, tài xế ${selectedVehicle.driverName}.`
+            }
+          ];
+          await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+            historyLogs: updatedLogs
+          }));
+        }
+      }
+
+      setShowAddTripModal(false);
+      setActiveTab('trips');
+      await fetchDeliveries();
+      onRefresh();
+
+      showSuccessToast("Đã thêm thành công");
+    }, e);
   };
 
   const handleOpenEditTrip = (trip: any) => {
@@ -520,217 +533,233 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   };
 
   const handleEditTripSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTrip) return;
-    if (editSelectedOrderIds.length === 0) {
-      alert('Vui lòng chọn ít nhất một đơn hàng để giao!');
-      return;
-    }
+    return runMutationAction("DeliveryPage.tsx:handleEditTripSubmit", async () => {
+      e.preventDefault();
+      if (!selectedTrip) return;
+      if (editSelectedOrderIds.length === 0) {
+        alert('Vui lòng chọn ít nhất một đơn hàng để giao!');
+        return;
+      }
 
-    const editVehicle = vehicles.find(vehicle => vehicle.id === editVehicleId);
-    if (!editVehicle) {
-      alert('Vui lòng chọn xe vận chuyển trong danh mục.');
-      return;
-    }
-    const editEstimatedLoadKg = editSelectedOrderIds.reduce(
-      (sum, poId) => sum + estimateOrderWeightKg(pos.find(po => po.id === poId)),
-      0
-    );
-    if (editEstimatedLoadKg > editVehicle.capacityKg) {
-      alert(`Tải ước tính vượt tải trọng ${editVehicle.capacityKg.toLocaleString('vi-VN')} kg của xe.`);
-      return;
-    }
-    const editConflict = activeTrips.find(trip => (
-      trip.id !== selectedTrip.id &&
-      (trip.vehicleId === editVehicle.id || trip.vehiclePlate === editVehicle.plate) &&
-      toDateInputValue(trip.deliveryDate) === editDeliveryDate
-    ));
-    if (editConflict) {
-      alert(`Xe ${editVehicle.plate} đã được phân cho chuyến ${editConflict.delCode} trong ngày này.`);
-      return;
-    }
+      const editVehicle = vehicles.find(vehicle => vehicle.id === editVehicleId);
+      if (!editVehicle) {
+        alert('Vui lòng chọn xe vận chuyển trong danh mục.');
+        return;
+      }
+      const editEstimatedLoadKg = editSelectedOrderIds.reduce(
+        (sum, poId) => sum + estimateOrderWeightKg(pos.find(po => po.id === poId)),
+        0
+      );
+      if (editEstimatedLoadKg > editVehicle.capacityKg) {
+        alert(`Tải ước tính vượt tải trọng ${editVehicle.capacityKg.toLocaleString('vi-VN')} kg của xe.`);
+        return;
+      }
+      const editConflict = activeTrips.find(trip => (
+        trip.id !== selectedTrip.id &&
+        (trip.vehicleId === editVehicle.id || trip.vehiclePlate === editVehicle.plate) &&
+        toDateInputValue(trip.deliveryDate) === editDeliveryDate
+      ));
+      if (editConflict) {
+        alert(`Xe ${editVehicle.plate} đã được phân cho chuyến ${editConflict.delCode} trong ngày này.`);
+        return;
+      }
 
-    const tripOrders = editSelectedOrderIds.map((poId, index) => {
-      const po = pos.find(p => p.id === poId);
-      const existingOrder = selectedTrip.orders.find((o: any) => o.poId === poId);
-      const totalRemaining = getOrderRemainingQuantity(po);
-      return {
-        poId,
-        customerId: po?.customerId || existingOrder?.customerId || '',
-        customerName: po?.customerName || existingOrder?.customerName || '',
-        deliveryAddress: po?.shippingInfo?.deliveryAddress || po?.deliveryAddress || existingOrder?.deliveryAddress || 'Kho khách hàng theo hồ sơ CRM',
-        deliveredQty: existingOrder ? existingOrder.deliveredQty : totalRemaining,
-        estimatedWeightKg: estimateOrderWeightKg(po),
-        stopSequence: index + 1,
-        status: existingOrder?.status || 'pending',
-        signatureImage: existingOrder?.signatureImage || '',
-        note: existingOrder?.note || ''
-      };
-    });
+      const tripOrders = editSelectedOrderIds.map((poId, index) => {
+        const po = pos.find(p => p.id === poId);
+        const existingOrder = selectedTrip.orders.find((o: any) => o.poId === poId);
+        const totalRemaining = getOrderRemainingQuantity(po);
+        return {
+          poId,
+          customerId: po?.customerId || existingOrder?.customerId || '',
+          customerName: po?.customerName || existingOrder?.customerName || '',
+          deliveryAddress: po?.shippingInfo?.deliveryAddress || po?.deliveryAddress || existingOrder?.deliveryAddress || 'Kho khách hàng theo hồ sơ CRM',
+          deliveredQty: existingOrder ? existingOrder.deliveredQty : totalRemaining,
+          estimatedWeightKg: estimateOrderWeightKg(po),
+          stopSequence: index + 1,
+          status: existingOrder?.status || 'pending',
+          signatureImage: existingOrder?.signatureImage || '',
+          note: existingOrder?.note || ''
+        };
+      });
 
-    await dbService.updateDocument('deliveries', selectedTrip.id, {
-      region: editRegion,
-      vehicleId: editVehicle.id,
-      driverName: editVehicle.driverName || editDriverName,
-      vehiclePlate: editVehicle.plate || editVehiclePlate,
-      capacityKg: editVehicle.capacityKg,
-      estimatedLoadKg: editEstimatedLoadKg,
-      loadFactor: Math.round((editEstimatedLoadKg / editVehicle.capacityKg) * 100),
-      deliveryDate: new Date(editDeliveryDate).toISOString(),
-      timeWindowStart: editTimeWindowStart,
-      timeWindowEnd: editTimeWindowEnd,
-      priority: editTripPriority,
-      estimatedDistanceKm: Number(editEstimatedDistanceKm || 0),
-      estimatedCost: Number(editEstimatedCost || 0),
-      note: editTripNote,
-      orders: tripOrders,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
+      await requireConfirmedMutation(dbService.updateDocument('deliveries', selectedTrip.id, {
+        region: editRegion,
+        vehicleId: editVehicle.id,
+        driverName: editVehicle.driverName || editDriverName,
+        vehiclePlate: editVehicle.plate || editVehiclePlate,
+        capacityKg: editVehicle.capacityKg,
+        estimatedLoadKg: editEstimatedLoadKg,
+        loadFactor: Math.round((editEstimatedLoadKg / editVehicle.capacityKg) * 100),
+        deliveryDate: new Date(editDeliveryDate).toISOString(),
+        timeWindowStart: editTimeWindowStart,
+        timeWindowEnd: editTimeWindowEnd,
+        priority: editTripPriority,
+        estimatedDistanceKm: Number(editEstimatedDistanceKm || 0),
+        estimatedCost: Number(editEstimatedCost || 0),
+        note: editTripNote,
+        orders: tripOrders,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      }));
 
-    setShowEditTripModal(false);
-    setSelectedTrip(null);
-    fetchDeliveries();
-    onRefresh();
+      setShowEditTripModal(false);
+      setSelectedTrip(null);
+      fetchDeliveries();
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   const handleDeleteTrip = async (tripId: string) => {
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa chuyến xe giao hàng này?'))) {
-      const trip = deliveries.find(d => d.id === tripId);
-      await dbService.deleteDocument('deliveries', tripId);
+    return runMutationAction("DeliveryPage.tsx:handleDeleteTrip", async () => {
+      if (window.confirm(t('Bạn có chắc chắn muốn xóa chuyến xe giao hàng này?'))) {
+        const trip = deliveries.find(d => d.id === tripId);
+        await requireConfirmedMutation(dbService.deleteDocument('deliveries', tripId));
+
+        if (trip?.vehicleId) {
+          await requireConfirmedMutation(dbService.updateDocument('delivery_vehicles', trip.vehicleId, {
+            status: 'ready',
+            updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+          }));
+        }
+
+        if (trip) {
+          for (const ord of trip.orders) {
+            const po = pos.find(p => p.id === ord.poId);
+            if (po && isPOInQueue(po, 'waiting_delivery')) {
+              const updatedLogs = [
+                ...(po.historyLogs || []),
+                {
+                  status: 'waiting_delivery',
+                  updatedBy: currentUser.displayName,
+                  updatedAt: new Date().toISOString(),
+                  note: `Đã hủy chuyến giao hàng ${trip.delCode}. Trạng thái PO quay lại chờ xe giao.`
+                }
+              ];
+              await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+                ...getPOQueueUpdate('waiting_delivery', {
+                  deliveryStage: 'customer_outbound',
+                  deliveryProgress: 'pending'
+                }),
+                historyLogs: updatedLogs
+              }));
+            }
+          }
+        }
+
+        setSelectedTrip(null);
+        await Promise.all([fetchDeliveries(), fetchVehicles()]);
+        onRefresh();
+
+        showSuccessToast("Đã xóa thành công");
+      }
+    }, tripId);
+  };
+
+  const updateTripStatus = async (tripId: string, newStatus: string) => {
+    return runMutationAction("DeliveryPage.tsx:updateTripStatus", async () => {
+      const trip = deliveries.find(item => item.id === tripId) || selectedTrip;
+      const now = new Date().toISOString();
+      const milestoneFields = newStatus === 'delivering'
+        ? { departedAt: now }
+        : newStatus === 'completed'
+          ? { completedAt: now }
+          : {};
+
+      await requireConfirmedMutation(dbService.updateDocument('deliveries', tripId, {
+        status: newStatus,
+        ...milestoneFields,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: now
+      }));
 
       if (trip?.vehicleId) {
-        await dbService.updateDocument('delivery_vehicles', trip.vehicleId, {
-          status: 'ready',
+        await requireConfirmedMutation(dbService.updateDocument('delivery_vehicles', trip.vehicleId, {
+          status: ['loading', 'delivering'].includes(newStatus) ? 'running' : 'ready',
           updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-        });
+        }));
       }
 
-      if (trip) {
-        for (const ord of trip.orders) {
-          const po = pos.find(p => p.id === ord.poId);
-          if (po && isPOInQueue(po, 'waiting_delivery')) {
-            const updatedLogs = [
+      if (newStatus === 'delivering' && trip?.orders) {
+        for (const order of trip.orders) {
+          const po = pos.find(item => item.id === order.poId);
+          if (!po || !isPOInQueue(po, 'waiting_delivery')) continue;
+          await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+            ...getPOQueueUpdate('waiting_delivery', {
+              deliveryStage: 'customer_outbound',
+              deliveryProgress: 'delivering'
+            }),
+            historyLogs: [
               ...(po.historyLogs || []),
               {
                 status: 'waiting_delivery',
                 updatedBy: currentUser.displayName,
+                updatedAt: now,
+                note: `Chuyến ${trip.delCode} đã xuất phát. Xe ${trip.vehiclePlate}, tuyến ${trip.region}.`
+              }
+            ]
+          }));
+        }
+      }
+
+      setSelectedTrip((prev: any) => prev ? { ...prev, status: newStatus } : null);
+      await Promise.all([fetchDeliveries(), fetchVehicles()]);
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, tripId);
+  };
+
+  const handleRevertTripStatus = async (trip: any) => {
+    return runMutationAction("DeliveryPage.tsx:handleRevertTripStatus", async () => {
+      if (!window.confirm(t('Bạn có chắc chắn muốn hoãn chuyến giao hàng này? Trạng thái các đơn hàng liên kết sẽ quay về "Đã đóng gói".'))) return;
+
+      // 1. Mark the trip as postponed and release the vehicle.
+      await requireConfirmedMutation(dbService.updateDocument('deliveries', trip.id, {
+        status: 'postponed',
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      }));
+
+      if (trip.vehicleId) {
+        await requireConfirmedMutation(dbService.updateDocument('delivery_vehicles', trip.vehicleId, {
+          status: 'ready',
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+        }));
+      }
+
+      // 2. Revert PO statuses to packed
+      if (trip.orders) {
+        for (const ord of trip.orders) {
+          const po = pos.find(p => p.id === ord.poId);
+          if (po) {
+            const updatedLogs = [
+                ...(po.historyLogs || []),
+              {
+                status: 'waiting_delivery',
+                updatedBy: currentUser.displayName,
                 updatedAt: new Date().toISOString(),
-                note: `Đã hủy chuyến giao hàng ${trip.delCode}. Trạng thái PO quay lại chờ xe giao.`
+                note: `Hoãn chuyến giao hàng ${trip.delCode}. Trạng thái PO quay lại chờ xe giao.`
               }
             ];
-            await dbService.updateDocument('pos', po.id, {
+            await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
               ...getPOQueueUpdate('waiting_delivery', {
                 deliveryStage: 'customer_outbound',
                 deliveryProgress: 'pending'
               }),
               historyLogs: updatedLogs
-            });
+            }));
           }
         }
       }
 
-      setSelectedTrip(null);
+      setSelectedTrip((prev: any) => prev ? { ...prev, status: 'postponed' } : null);
       await Promise.all([fetchDeliveries(), fetchVehicles()]);
       onRefresh();
-    }
-  };
 
-  const updateTripStatus = async (tripId: string, newStatus: string) => {
-    const trip = deliveries.find(item => item.id === tripId) || selectedTrip;
-    const now = new Date().toISOString();
-    const milestoneFields = newStatus === 'delivering'
-      ? { departedAt: now }
-      : newStatus === 'completed'
-        ? { completedAt: now }
-        : {};
-
-    await dbService.updateDocument('deliveries', tripId, {
-      status: newStatus,
-      ...milestoneFields,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: now
-    });
-
-    if (trip?.vehicleId) {
-      await dbService.updateDocument('delivery_vehicles', trip.vehicleId, {
-        status: ['loading', 'delivering'].includes(newStatus) ? 'running' : 'ready',
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-      });
-    }
-
-    if (newStatus === 'delivering' && trip?.orders) {
-      for (const order of trip.orders) {
-        const po = pos.find(item => item.id === order.poId);
-        if (!po || !isPOInQueue(po, 'waiting_delivery')) continue;
-        await dbService.updateDocument('pos', po.id, {
-          ...getPOQueueUpdate('waiting_delivery', {
-            deliveryStage: 'customer_outbound',
-            deliveryProgress: 'delivering'
-          }),
-          historyLogs: [
-            ...(po.historyLogs || []),
-            {
-              status: 'waiting_delivery',
-              updatedBy: currentUser.displayName,
-              updatedAt: now,
-              note: `Chuyến ${trip.delCode} đã xuất phát. Xe ${trip.vehiclePlate}, tuyến ${trip.region}.`
-            }
-          ]
-        });
-      }
-    }
-
-    setSelectedTrip((prev: any) => prev ? { ...prev, status: newStatus } : null);
-    await Promise.all([fetchDeliveries(), fetchVehicles()]);
-    onRefresh();
-  };
-
-  const handleRevertTripStatus = async (trip: any) => {
-    if (!window.confirm(t('Bạn có chắc chắn muốn hoãn chuyến giao hàng này? Trạng thái các đơn hàng liên kết sẽ quay về "Đã đóng gói".'))) return;
-
-    // 1. Mark the trip as postponed and release the vehicle.
-    await dbService.updateDocument('deliveries', trip.id, {
-      status: 'postponed',
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
-
-    if (trip.vehicleId) {
-      await dbService.updateDocument('delivery_vehicles', trip.vehicleId, {
-        status: 'ready',
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-      });
-    }
-
-    // 2. Revert PO statuses to packed
-    if (trip.orders) {
-      for (const ord of trip.orders) {
-        const po = pos.find(p => p.id === ord.poId);
-        if (po) {
-          const updatedLogs = [
-              ...(po.historyLogs || []),
-            {
-              status: 'waiting_delivery',
-              updatedBy: currentUser.displayName,
-              updatedAt: new Date().toISOString(),
-              note: `Hoãn chuyến giao hàng ${trip.delCode}. Trạng thái PO quay lại chờ xe giao.`
-            }
-          ];
-          await dbService.updateDocument('pos', po.id, {
-            ...getPOQueueUpdate('waiting_delivery', {
-              deliveryStage: 'customer_outbound',
-              deliveryProgress: 'pending'
-            }),
-            historyLogs: updatedLogs
-          });
-        }
-      }
-    }
-
-    setSelectedTrip((prev: any) => prev ? { ...prev, status: 'postponed' } : null);
-    await Promise.all([fetchDeliveries(), fetchVehicles()]);
-    onRefresh();
+      showSuccessToast("Đã lưu thành công");
+    }, trip);
   };
 
   // Sign canvas drawing helpers
@@ -771,90 +800,94 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   };
 
   const saveSignature = async () => {
-    const canvas = canvasRef.current;
-    if (!canvas || !selectedTrip || !signingPo) return;
+    return runMutationAction("DeliveryPage.tsx:saveSignature", async () => {
+      const canvas = canvasRef.current;
+      if (!canvas || !selectedTrip || !signingPo) return;
 
-    const signatureBase64 = canvas.toDataURL('image/png');
+      const signatureBase64 = canvas.toDataURL('image/png');
 
-    // Accumulate total items quantity delivered
-    let currentTripDeliveredQty = 0;
+      // Accumulate total items quantity delivered
+      let currentTripDeliveredQty = 0;
 
-    // Update PO items with newly delivered quantities
-    const updatedItems = signingPo.items.map((item: any) => {
-      const itemId = item.itemId || item.productCode;
-      const currentDel = Number(deliveredQuantities[itemId]) || 0;
-      currentTripDeliveredQty += currentDel;
-      return {
-        ...item,
-        qtyDelivered: (Number(item.qtyDelivered) || 0) + currentDel
-      };
-    });
-
-    // Check if fully delivered
-    const isAllFullyDelivered = updatedItems.every((item: any) => (Number(item.qtyDelivered) || 0) >= Number(item.quantity));
-    const finalPoStatus = isAllFullyDelivered ? 'waiting_invoice' : 'waiting_delivery';
-
-    // Save updated items and status to PO
-    const poLogs = [
-      ...(signingPo.historyLogs || []),
-      {
-        status: finalPoStatus,
-        updatedBy: currentUser.displayName,
-        updatedAt: new Date().toISOString(),
-        note: `Báo cáo giao hàng lẻ: ${signingPo.items.map((item: any) => {
-          const itemId = item.itemId || item.productCode;
-          const qty = deliveredQuantities[itemId] || 0;
-          return `${item.productName} (Giao +${qty})`;
-        }).join(', ')}. Chữ ký lưu trên hệ thống.`
-      }
-    ];
-
-    await dbService.updateDocument('pos', signingPo.id, {
-      items: updatedItems,
-      ...getPOQueueUpdate(finalPoStatus, {
-        deliveryStage: 'customer_outbound',
-        deliveryProgress: isAllFullyDelivered ? 'delivered' : 'partial'
-      }),
-      historyLogs: poLogs
-    });
-
-    // Update trip details
-    const updatedOrders = selectedTrip.orders.map((ord: any) => {
-      if (ord.poId === signingOrderPoId) {
+      // Update PO items with newly delivered quantities
+      const updatedItems = signingPo.items.map((item: any) => {
+        const itemId = item.itemId || item.productCode;
+        const currentDel = Number(deliveredQuantities[itemId]) || 0;
+        currentTripDeliveredQty += currentDel;
         return {
-          ...ord,
-          status: 'success',
-          deliveredQty: currentTripDeliveredQty,
-          signatureImage: signatureBase64,
-          note: isAllFullyDelivered ? 'Giao hoàn tất đơn' : 'Giao hàng một phần'
+          ...item,
+          qtyDelivered: (Number(item.qtyDelivered) || 0) + currentDel
         };
-      }
-      return ord;
-    });
-
-    const allStopsCompleted = updatedOrders.every((order: any) => order.status === 'success');
-    await dbService.updateDocument('deliveries', selectedTrip.id, {
-      orders: updatedOrders,
-      ...(allStopsCompleted ? { status: 'completed', completedAt: new Date().toISOString() } : {}),
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-    });
-
-    if (allStopsCompleted && selectedTrip.vehicleId) {
-      await dbService.updateDocument('delivery_vehicles', selectedTrip.vehicleId, {
-        status: 'ready',
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
       });
-    }
 
-    setShowSignatureModal(false);
-    setSigningPo(null);
-    setSelectedTrip((prev: any) => ({
-      ...prev,
-      orders: updatedOrders,
-      ...(allStopsCompleted ? { status: 'completed', completedAt: new Date().toISOString() } : {})
-    }));
-    await Promise.all([fetchDeliveries(), fetchVehicles()]);
-    onRefresh();
+      // Check if fully delivered
+      const isAllFullyDelivered = updatedItems.every((item: any) => (Number(item.qtyDelivered) || 0) >= Number(item.quantity));
+      const finalPoStatus = isAllFullyDelivered ? 'waiting_invoice' : 'waiting_delivery';
+
+      // Save updated items and status to PO
+      const poLogs = [
+        ...(signingPo.historyLogs || []),
+        {
+          status: finalPoStatus,
+          updatedBy: currentUser.displayName,
+          updatedAt: new Date().toISOString(),
+          note: `Báo cáo giao hàng lẻ: ${signingPo.items.map((item: any) => {
+            const itemId = item.itemId || item.productCode;
+            const qty = deliveredQuantities[itemId] || 0;
+            return `${item.productName} (Giao +${qty})`;
+          }).join(', ')}. Chữ ký lưu trên hệ thống.`
+        }
+      ];
+
+      await requireConfirmedMutation(dbService.updateDocument('pos', signingPo.id, {
+        items: updatedItems,
+        ...getPOQueueUpdate(finalPoStatus, {
+          deliveryStage: 'customer_outbound',
+          deliveryProgress: isAllFullyDelivered ? 'delivered' : 'partial'
+        }),
+        historyLogs: poLogs
+      }));
+
+      // Update trip details
+      const updatedOrders = selectedTrip.orders.map((ord: any) => {
+        if (ord.poId === signingOrderPoId) {
+          return {
+            ...ord,
+            status: 'success',
+            deliveredQty: currentTripDeliveredQty,
+            signatureImage: signatureBase64,
+            note: isAllFullyDelivered ? 'Giao hoàn tất đơn' : 'Giao hàng một phần'
+          };
+        }
+        return ord;
+      });
+
+      const allStopsCompleted = updatedOrders.every((order: any) => order.status === 'success');
+      await requireConfirmedMutation(dbService.updateDocument('deliveries', selectedTrip.id, {
+        orders: updatedOrders,
+        ...(allStopsCompleted ? { status: 'completed', completedAt: new Date().toISOString() } : {}),
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+      }));
+
+      if (allStopsCompleted && selectedTrip.vehicleId) {
+        await requireConfirmedMutation(dbService.updateDocument('delivery_vehicles', selectedTrip.vehicleId, {
+          status: 'ready',
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+        }));
+      }
+
+      setShowSignatureModal(false);
+      setSigningPo(null);
+      setSelectedTrip((prev: any) => ({
+        ...prev,
+        orders: updatedOrders,
+        ...(allStopsCompleted ? { status: 'completed', completedAt: new Date().toISOString() } : {})
+      }));
+      await Promise.all([fetchDeliveries(), fetchVehicles()]);
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, undefined);
   };
 
   const handleOpenSignature = (poId: string) => {
@@ -888,33 +921,37 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   };
 
   const handleForceClosePO = async (po: any) => {
-    const missingItems = po.items?.map((item: any) => {
-      const remaining = Number(item.quantity) - (Number(item.qtyDelivered) || 0);
-      return `${item.productName} (Thiếu ${remaining?.toLocaleString()} tem)`;
-    }).join(', ') || '';
+    return runMutationAction("DeliveryPage.tsx:handleForceClosePO", async () => {
+      const missingItems = po.items?.map((item: any) => {
+        const remaining = Number(item.quantity) - (Number(item.qtyDelivered) || 0);
+        return `${item.productName} (Thiếu ${remaining?.toLocaleString()} tem)`;
+      }).join(', ') || '';
 
-    if (window.confirm(t(`Bạn có chắc chắn muốn Force Close đóng đơn hàng PO này do dung sai sản xuất?\nChi tiết thiếu: ${missingItems}`))) {
-      const now = new Date().toISOString();
-      const updatedLogs = [
-        ...(po.historyLogs || []),
-        {
-          status: 'waiting_invoice',
-          updatedBy: currentUser.displayName,
-          updatedAt: now,
-          note: `Force Close đơn hàng theo số lượng thực tế đã giao. Lý do: Dung sai hao hụt sản xuất trong mức khách hàng chấp nhận.`
-        }
-      ];
+      if (window.confirm(t(`Bạn có chắc chắn muốn Force Close đóng đơn hàng PO này do dung sai sản xuất?\nChi tiết thiếu: ${missingItems}`))) {
+        const now = new Date().toISOString();
+        const updatedLogs = [
+          ...(po.historyLogs || []),
+          {
+            status: 'waiting_invoice',
+            updatedBy: currentUser.displayName,
+            updatedAt: now,
+            note: `Force Close đơn hàng theo số lượng thực tế đã giao. Lý do: Dung sai hao hụt sản xuất trong mức khách hàng chấp nhận.`
+          }
+        ];
 
-      await dbService.updateDocument('pos', po.id, {
-        ...getPOQueueUpdate('waiting_invoice', {
-          deliveryStage: 'customer_outbound',
-          deliveryProgress: 'delivered_with_tolerance'
-        }),
-        historyLogs: updatedLogs
-      });
+        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+          ...getPOQueueUpdate('waiting_invoice', {
+            deliveryStage: 'customer_outbound',
+            deliveryProgress: 'delivered_with_tolerance'
+          }),
+          historyLogs: updatedLogs
+        }));
 
-      onRefresh();
-    }
+        onRefresh();
+
+        showSuccessToast("Đã lưu thành công");
+      }
+    }, po);
   };
 
   return (

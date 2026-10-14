@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
@@ -274,178 +275,190 @@ export const Purchase: React.FC<PurchaseProps> = ({
   };
 
   const handleUpdateRequestStatus = async (request: ProcurementRequestRecord, status: ProcurementStatus) => {
-    const purchaser = purchasers.find(user => user.uid === (request.assignedPurchaserId || assignedPurchaserId));
-    await dbService.updateDocument('procurement_requests', request.id, {
-      status,
-      assignedPurchaserId: request.assignedPurchaserId || assignedPurchaserId,
-      assignedPurchaserName: request.assignedPurchaserName || purchaser?.displayName || '',
-      updatedBy: currentUser.displayName
-    });
+    return runMutationAction("PurchasePage.tsx:handleUpdateRequestStatus", async () => {
+      const purchaser = purchasers.find(user => user.uid === (request.assignedPurchaserId || assignedPurchaserId));
+      await requireConfirmedMutation(dbService.updateDocument('procurement_requests', request.id, {
+        status,
+        assignedPurchaserId: request.assignedPurchaserId || assignedPurchaserId,
+        assignedPurchaserName: request.assignedPurchaserName || purchaser?.displayName || '',
+        updatedBy: currentUser.displayName
+      }));
+
+      showSuccessToast("Đã lưu thành công");
+    }, request);
   };
 
   const handleCreatePurchaseOrder = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedRequest || !supplierId || unitPrice <= 0 || !expectedReceiveDate) return;
-    const supplier = suppliers.find(candidate => candidate.id === supplierId);
-    if (!supplier) return;
-    setIsSaving(true);
-    try {
-      const now = new Date().toISOString();
-      const purchaser = purchasers.find(user => user.uid === assignedPurchaserId);
-      const purCode = `PUR-${now.slice(2, 7).replace('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const totalPrice = selectedRequest.quantity * unitPrice;
-      const createdOrder = await dbService.addDocument('purchase_orders', {
-        purCode,
-        procurementRequestId: selectedRequest.id,
-        supplierId: supplier.id,
-        supplierName: supplier.supplierName,
-        linkedPoId: selectedRequest.poId,
-        linkedPoCode: selectedRequest.poCode,
-        sourcingType,
-        items: [{
-          poItemId: selectedRequest.poItemId,
-          productCode: selectedRequest.productCode,
-          productName: selectedRequest.productName,
-          materialName: selectedRequest.material || selectedRequest.productName,
-          size: selectedRequest.size,
-          quantity: selectedRequest.quantity,
-          unit: selectedRequest.unit,
-          unitPrice,
-          totalPrice
-        }],
-        totalPrice,
-        status: 'ordered',
-        expectedReceiveDate: new Date(`${expectedReceiveDate}T00:00:00`).toISOString(),
-        actualReceiveDate: '',
-        assignedPurchaserId,
-        assignedPurchaserName: purchaser?.displayName || '',
-        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        createdAt: now
-      });
-
-      await dbService.updateDocument('procurement_requests', selectedRequest.id, {
-        sourcingType,
-        status: 'ordered',
-        selectedSupplierId: supplier.id,
-        selectedSupplierName: supplier.supplierName,
-        selectedUnitPrice: unitPrice,
-        assignedPurchaserId,
-        assignedPurchaserName: purchaser?.displayName || '',
-        purchaseOrderId: createdOrder.id,
-        purchaseOrderCode: purCode,
-        updatedBy: currentUser.displayName
-      });
-
-      const po = pos.find(candidate => asText(candidate.id) === selectedRequest.poId);
-      if (po) {
-        const updatedItems = asArray(po.items).map((item, index) => (
-          asText(item.itemId) === selectedRequest.poItemId || index === selectedRequest.poItemIndex
-            ? {
-                ...item,
-                sourcingType,
-                supplierId: supplier.id,
-                supplierName: supplier.supplierName,
-                purchasePrice: unitPrice,
-                purchaseNeedsReview: false
-              }
-            : item
-        ));
-        await dbService.updateDocument('pos', selectedRequest.poId, {
-          items: updatedItems,
-          purchaseProgress: 'supplier_ordered',
-          historyLogs: [
-            ...asArray(po.historyLogs),
-            {
-              status: asText(po.status),
-              updatedBy: currentUser.displayName,
-              updatedAt: now,
-              note: `Mua hàng đã chọn ${supplier.supplierName} cho ${selectedRequest.productName}; đơn mua ${purCode}, giá ${unitPrice.toLocaleString('vi-VN')} đ/${selectedRequest.unit}.`
-            }
-          ]
+    return runMutationAction("PurchasePage.tsx:handleCreatePurchaseOrder", async () => {
+      event.preventDefault();
+      if (!selectedRequest || !supplierId || unitPrice <= 0 || !expectedReceiveDate) return;
+      const supplier = suppliers.find(candidate => candidate.id === supplierId);
+      if (!supplier) return;
+      setIsSaving(true);
+      try {
+        const now = new Date().toISOString();
+        const purchaser = purchasers.find(user => user.uid === assignedPurchaserId);
+        const purCode = `PUR-${now.slice(2, 7).replace('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+        const totalPrice = selectedRequest.quantity * unitPrice;
+        const createdOrder = await dbService.addDocument('purchase_orders', {
+          purCode,
+          procurementRequestId: selectedRequest.id,
+          supplierId: supplier.id,
+          supplierName: supplier.supplierName,
+          linkedPoId: selectedRequest.poId,
+          linkedPoCode: selectedRequest.poCode,
+          sourcingType,
+          items: [{
+            poItemId: selectedRequest.poItemId,
+            productCode: selectedRequest.productCode,
+            productName: selectedRequest.productName,
+            materialName: selectedRequest.material || selectedRequest.productName,
+            size: selectedRequest.size,
+            quantity: selectedRequest.quantity,
+            unit: selectedRequest.unit,
+            unitPrice,
+            totalPrice
+          }],
+          totalPrice,
+          status: 'ordered',
+          expectedReceiveDate: new Date(`${expectedReceiveDate}T00:00:00`).toISOString(),
+          actualReceiveDate: '',
+          assignedPurchaserId,
+          assignedPurchaserName: purchaser?.displayName || '',
+          createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          createdAt: now
         });
-      }
 
-      setSelectedRequestId('');
-      onRefresh();
-    } finally {
-      setIsSaving(false);
-    }
+        await requireConfirmedMutation(dbService.updateDocument('procurement_requests', selectedRequest.id, {
+          sourcingType,
+          status: 'ordered',
+          selectedSupplierId: supplier.id,
+          selectedSupplierName: supplier.supplierName,
+          selectedUnitPrice: unitPrice,
+          assignedPurchaserId,
+          assignedPurchaserName: purchaser?.displayName || '',
+          purchaseOrderId: createdOrder.id,
+          purchaseOrderCode: purCode,
+          updatedBy: currentUser.displayName
+        }));
+
+        const po = pos.find(candidate => asText(candidate.id) === selectedRequest.poId);
+        if (po) {
+          const updatedItems = asArray(po.items).map((item, index) => (
+            asText(item.itemId) === selectedRequest.poItemId || index === selectedRequest.poItemIndex
+              ? {
+                  ...item,
+                  sourcingType,
+                  supplierId: supplier.id,
+                  supplierName: supplier.supplierName,
+                  purchasePrice: unitPrice,
+                  purchaseNeedsReview: false
+                }
+              : item
+          ));
+          await requireConfirmedMutation(dbService.updateDocument('pos', selectedRequest.poId, {
+            items: updatedItems,
+            purchaseProgress: 'supplier_ordered',
+            historyLogs: [
+              ...asArray(po.historyLogs),
+              {
+                status: asText(po.status),
+                updatedBy: currentUser.displayName,
+                updatedAt: now,
+                note: `Mua hàng đã chọn ${supplier.supplierName} cho ${selectedRequest.productName}; đơn mua ${purCode}, giá ${unitPrice.toLocaleString('vi-VN')} đ/${selectedRequest.unit}.`
+              }
+            ]
+          }));
+        }
+
+        setSelectedRequestId('');
+        onRefresh();
+
+        showSuccessToast("Đã thêm thành công");
+      } finally {
+        setIsSaving(false);
+      }
+    }, event);
   };
 
   const handleReceiveOrder = async (order: UnknownRecord) => {
-    if (!window.confirm(`${t('Xác nhận đã nhận đủ hàng cho')} ${asText(order.purCode)}?`)) return;
-    const now = new Date().toISOString();
-    const request = procurementRequests.find(candidate => candidate.id === asText(order.procurementRequestId));
-    const orderItems = asArray(order.items);
+    return runMutationAction("PurchasePage.tsx:handleReceiveOrder", async () => {
+      if (!window.confirm(`${t('Xác nhận đã nhận đủ hàng cho')} ${asText(order.purCode)}?`)) return;
+      const now = new Date().toISOString();
+      const request = procurementRequests.find(candidate => candidate.id === asText(order.procurementRequestId));
+      const orderItems = asArray(order.items);
 
-    if (asText(order.sourcingType) === 'raw_material') {
-      const inventory = await dbService.getCollection('inventory');
-      for (const item of orderItems) {
-        const materialName = asText(item.materialName ?? item.productName);
-        const match = inventory.find(candidate => normalizeSearchText(candidate.materialName) === normalizeSearchText(materialName));
-        if (match) {
-          await dbService.updateDocument('inventory', match.id, {
-            qtyInStock: asNumber(match.qtyInStock) + asNumber(item.quantity),
-            updatedAt: now
-          });
-        } else {
-          await dbService.addDocument('inventory', {
-            materialName,
-            category: normalizeSearchText(materialName).includes('muc') ? 'ink' : normalizeSearchText(materialName).includes('mang') ? 'film' : 'paper',
-            qtyInStock: asNumber(item.quantity),
-            qtyReserved: 0,
-            minQtyAlert: 50,
-            unit: asText(item.unit),
-            defaultSupplierId: asText(order.supplierId),
-            createdAt: now
-          });
+      if (asText(order.sourcingType) === 'raw_material') {
+        const inventory = await dbService.getCollection('inventory');
+        for (const item of orderItems) {
+          const materialName = asText(item.materialName ?? item.productName);
+          const match = inventory.find(candidate => normalizeSearchText(candidate.materialName) === normalizeSearchText(materialName));
+          if (match) {
+            await requireConfirmedMutation(dbService.updateDocument('inventory', match.id, {
+              qtyInStock: asNumber(match.qtyInStock) + asNumber(item.quantity),
+              updatedAt: now
+            }));
+          } else {
+            await dbService.addDocument('inventory', {
+              materialName,
+              category: normalizeSearchText(materialName).includes('muc') ? 'ink' : normalizeSearchText(materialName).includes('mang') ? 'film' : 'paper',
+              qtyInStock: asNumber(item.quantity),
+              qtyReserved: 0,
+              minQtyAlert: 50,
+              unit: asText(item.unit),
+              defaultSupplierId: asText(order.supplierId),
+              createdAt: now
+            });
+          }
         }
       }
-    }
 
-    const invoiceExists = invoices.some(invoice => (
-      invoice.type === 'payable' && asText(invoice.poId) === asText(order.id)
-    ));
-    if (!invoiceExists) {
-      await dbService.addDocument('invoices', {
-        invoiceCode: `INV-${asText(order.purCode).replace('PUR-', '')}`,
-        poId: asText(order.id),
-        poCode: asText(order.purCode),
-        customerId: asText(order.supplierId),
-        customerName: asText(order.supplierName),
-        type: 'payable',
-        amount: asNumber(order.totalPrice),
-        paidAmount: 0,
-        status: 'unpaid',
-        dueDate: new Date(Date.parse(now) + 30 * 86_400_000).toISOString(),
-        createdAt: now
-      });
-    }
-
-    await dbService.updateDocument('purchase_orders', asText(order.id), {
-      status: 'received',
-      actualReceiveDate: now,
-      updatedBy: currentUser.displayName
-    });
-    if (request) {
-      await dbService.updateDocument('procurement_requests', request.id, {
-        status: 'received',
-        updatedBy: currentUser.displayName
-      });
-      const po = pos.find(candidate => asText(candidate.id) === request.poId);
-      if (po) {
-        await dbService.updateDocument('pos', request.poId, {
-          purchaseProgress: 'materials_received',
-          historyLogs: [...asArray(po.historyLogs), {
-            status: asText(po.status),
-            updatedBy: currentUser.displayName,
-            updatedAt: now,
-            note: `Đã nhận hàng từ ${asText(order.supplierName)} theo đơn ${asText(order.purCode)}.`
-          }]
+      const invoiceExists = invoices.some(invoice => (
+        invoice.type === 'payable' && asText(invoice.poId) === asText(order.id)
+      ));
+      if (!invoiceExists) {
+        await dbService.addDocument('invoices', {
+          invoiceCode: `INV-${asText(order.purCode).replace('PUR-', '')}`,
+          poId: asText(order.id),
+          poCode: asText(order.purCode),
+          customerId: asText(order.supplierId),
+          customerName: asText(order.supplierName),
+          type: 'payable',
+          amount: asNumber(order.totalPrice),
+          paidAmount: 0,
+          status: 'unpaid',
+          dueDate: new Date(Date.parse(now) + 30 * 86_400_000).toISOString(),
+          createdAt: now
         });
       }
-    }
-    onRefresh();
+
+      await requireConfirmedMutation(dbService.updateDocument('purchase_orders', asText(order.id), {
+        status: 'received',
+        actualReceiveDate: now,
+        updatedBy: currentUser.displayName
+      }));
+      if (request) {
+        await requireConfirmedMutation(dbService.updateDocument('procurement_requests', request.id, {
+          status: 'received',
+          updatedBy: currentUser.displayName
+        }));
+        const po = pos.find(candidate => asText(candidate.id) === request.poId);
+        if (po) {
+          await requireConfirmedMutation(dbService.updateDocument('pos', request.poId, {
+            purchaseProgress: 'materials_received',
+            historyLogs: [...asArray(po.historyLogs), {
+              status: asText(po.status),
+              updatedBy: currentUser.displayName,
+              updatedAt: now,
+              note: `Đã nhận hàng từ ${asText(order.supplierName)} theo đơn ${asText(order.purCode)}.`
+            }]
+          }));
+        }
+      }
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, order);
   };
 
   return (

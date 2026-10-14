@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
@@ -223,94 +224,60 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
     itemIdx: number,
     update: { discountType?: PODiscountType; discountRate?: number; discountAmount?: number }
   ) => {
-    if (!selectedPO) return;
-
-    const updatedItems = selectedPO.items.map((item: any, idx: number) => {
-      if (idx === itemIdx) {
-        return withCalculatedPOFinancials({ ...item, ...update });
-      }
-      return item;
-    });
-
-    let totalBeforeVat = 0;
-    let totalAfterVat = 0;
-    let discountAmount = 0;
-
-    updatedItems.forEach((item: any) => {
-      const financials = calculatePOItemFinancials(item);
-      totalBeforeVat += financials.amountBeforeVat;
-      totalAfterVat += financials.amountWithVat;
-      discountAmount += financials.discountAmount;
-    });
-
-    const updatedPO = {
-      ...selectedPO,
-      items: updatedItems,
-      totalAmount: Math.round(totalBeforeVat),
-      discountAmount: Math.round(discountAmount),
-      netAmount: Math.round(totalAfterVat),
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    };
-
-    await dbService.updateDocument('pos', selectedPO.id, {
-      items: updatedItems,
-      totalAmount: updatedPO.totalAmount,
-      discountAmount: updatedPO.discountAmount,
-      netAmount: updatedPO.netAmount,
-      updatedBy: updatedPO.updatedBy,
-      updatedAt: updatedPO.updatedAt
-    });
-
-    setSelectedPO(updatedPO);
-    onRefresh();
-  };
-
-  const handleUpdateItemNotes = async (itemIdx: number, fieldName: 'saleNotes' | 'designNotes', value: string) => {
-    if (!selectedPO) return;
-
-    const updatedItems = selectedPO.items.map((item: any, idx: number) => {
-      if (idx === itemIdx) {
-        return { ...item, [fieldName]: value };
-      }
-      return item;
-    });
-
-    const updatedPO = {
-      ...selectedPO,
-      items: updatedItems,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    };
-
-    await dbService.updateDocument('pos', selectedPO.id, {
-      items: updatedItems,
-      updatedBy: updatedPO.updatedBy,
-      updatedAt: updatedPO.updatedAt
-    });
-
-    setSelectedPO(updatedPO);
-  };
-
-  const handleUploadItemFiles = async (itemIdx: number, fieldName: 'saleLayouts' | 'designLayouts', files: FileList | null) => {
-    if (!selectedPO || !files) return;
-
-    const base64Promises = Array.from(files).map((file) => {
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-        reader.readAsDataURL(file);
-      });
-    });
-
-    try {
-      const base64Files = await Promise.all(base64Promises);
+    return runMutationAction("SalesPage.tsx:handleUpdateItemDiscount", async () => {
+      if (!selectedPO) return;
 
       const updatedItems = selectedPO.items.map((item: any, idx: number) => {
         if (idx === itemIdx) {
-          const currentFiles = item[fieldName] || [];
-          return { ...item, [fieldName]: [...currentFiles, ...base64Files] };
+          return withCalculatedPOFinancials({ ...item, ...update });
+        }
+        return item;
+      });
+
+      let totalBeforeVat = 0;
+      let totalAfterVat = 0;
+      let discountAmount = 0;
+
+      updatedItems.forEach((item: any) => {
+        const financials = calculatePOItemFinancials(item);
+        totalBeforeVat += financials.amountBeforeVat;
+        totalAfterVat += financials.amountWithVat;
+        discountAmount += financials.discountAmount;
+      });
+
+      const updatedPO = {
+        ...selectedPO,
+        items: updatedItems,
+        totalAmount: Math.round(totalBeforeVat),
+        discountAmount: Math.round(discountAmount),
+        netAmount: Math.round(totalAfterVat),
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      };
+
+      await requireConfirmedMutation(dbService.updateDocument('pos', selectedPO.id, {
+        items: updatedItems,
+        totalAmount: updatedPO.totalAmount,
+        discountAmount: updatedPO.discountAmount,
+        netAmount: updatedPO.netAmount,
+        updatedBy: updatedPO.updatedBy,
+        updatedAt: updatedPO.updatedAt
+      }));
+
+      setSelectedPO(updatedPO);
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, itemIdx, { busy: false });
+  };
+
+  const handleUpdateItemNotes = async (itemIdx: number, fieldName: 'saleNotes' | 'designNotes', value: string) => {
+    return runMutationAction("SalesPage.tsx:handleUpdateItemNotes", async () => {
+      if (!selectedPO) return;
+
+      const updatedItems = selectedPO.items.map((item: any, idx: number) => {
+        if (idx === itemIdx) {
+          return { ...item, [fieldName]: value };
         }
         return item;
       });
@@ -322,117 +289,180 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
         updatedAt: new Date().toISOString()
       };
 
-      await dbService.updateDocument('pos', selectedPO.id, {
+      await requireConfirmedMutation(dbService.updateDocument('pos', selectedPO.id, {
         items: updatedItems,
         updatedBy: updatedPO.updatedBy,
         updatedAt: updatedPO.updatedAt
-      });
+      }));
 
       setSelectedPO(updatedPO);
-    } catch (err) {
-      console.error(err);
-      alert(t('Lỗi khi tải file lên.'));
-    }
+
+      showSuccessToast("Đã lưu thành công");
+    }, itemIdx, { busy: false });
+  };
+
+  const handleUploadItemFiles = async (itemIdx: number, fieldName: 'saleLayouts' | 'designLayouts', files: FileList | null) => {
+    return runMutationAction("SalesPage.tsx:handleUploadItemFiles", async () => {
+      if (!selectedPO || !files) return;
+
+      const base64Promises = Array.from(files).map((file) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+          reader.readAsDataURL(file);
+        });
+      });
+
+      try {
+        const base64Files = await Promise.all(base64Promises);
+
+        const updatedItems = selectedPO.items.map((item: any, idx: number) => {
+          if (idx === itemIdx) {
+            const currentFiles = item[fieldName] || [];
+            return { ...item, [fieldName]: [...currentFiles, ...base64Files] };
+          }
+          return item;
+        });
+
+        const updatedPO = {
+          ...selectedPO,
+          items: updatedItems,
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          updatedAt: new Date().toISOString()
+        };
+
+        await requireConfirmedMutation(dbService.updateDocument('pos', selectedPO.id, {
+          items: updatedItems,
+          updatedBy: updatedPO.updatedBy,
+          updatedAt: updatedPO.updatedAt
+        }));
+
+        setSelectedPO(updatedPO);
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (err) {
+        showErrorToast();
+        console.error(err);
+        alert(t('Lỗi khi tải file lên.'));
+      }
+    }, itemIdx, { busy: false });
   };
 
   const handleRemoveItemFile = async (itemIdx: number, fieldName: 'saleLayouts' | 'designLayouts', fileIdx: number) => {
-    if (!selectedPO) return;
+    return runMutationAction("SalesPage.tsx:handleRemoveItemFile", async () => {
+      if (!selectedPO) return;
 
-    const updatedItems = selectedPO.items.map((item: any, idx: number) => {
-      if (idx === itemIdx) {
-        const currentFiles = item[fieldName] || [];
-        return { ...item, [fieldName]: currentFiles.filter((_: any, i: number) => i !== fileIdx) };
-      }
-      return item;
-    });
+      const updatedItems = selectedPO.items.map((item: any, idx: number) => {
+        if (idx === itemIdx) {
+          const currentFiles = item[fieldName] || [];
+          return { ...item, [fieldName]: currentFiles.filter((_: any, i: number) => i !== fileIdx) };
+        }
+        return item;
+      });
 
-    const updatedPO = {
-      ...selectedPO,
-      items: updatedItems,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    };
+      const updatedPO = {
+        ...selectedPO,
+        items: updatedItems,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      };
 
-    await dbService.updateDocument('pos', selectedPO.id, {
-      items: updatedItems,
-      updatedBy: updatedPO.updatedBy,
-      updatedAt: updatedPO.updatedAt
-    });
+      await requireConfirmedMutation(dbService.updateDocument('pos', selectedPO.id, {
+        items: updatedItems,
+        updatedBy: updatedPO.updatedBy,
+        updatedAt: updatedPO.updatedAt
+      }));
 
-    setSelectedPO(updatedPO);
+      setSelectedPO(updatedPO);
+
+      showSuccessToast("Đã xóa thành công");
+    }, itemIdx, { busy: false });
   };
 
   const handleAddChecklistItem = async () => {
-    if (!selectedPO || !newChecklistText.trim()) return;
+    return runMutationAction("SalesPage.tsx:handleAddChecklistItem", async () => {
+      if (!selectedPO || !newChecklistText.trim()) return;
 
-    const newItem = {
-      id: `task-${Math.random().toString(36).substr(2, 9)}`,
-      content: newChecklistText.trim(),
-      completed: false,
-      updatedAt: new Date().toISOString(),
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-    };
+      const newItem = {
+        id: `task-${Math.random().toString(36).substr(2, 9)}`,
+        content: newChecklistText.trim(),
+        completed: false,
+        updatedAt: new Date().toISOString(),
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+      };
 
-    const updatedChecklist = [...(selectedPO.internalChecklist || []), newItem];
+      const updatedChecklist = [...(selectedPO.internalChecklist || []), newItem];
 
-    const updatedPO = {
-      ...selectedPO,
-      internalChecklist: updatedChecklist
-    };
+      const updatedPO = {
+        ...selectedPO,
+        internalChecklist: updatedChecklist
+      };
 
-    await dbService.updateDocument('pos', selectedPO.id, {
-      internalChecklist: updatedChecklist
-    });
+      await requireConfirmedMutation(dbService.updateDocument('pos', selectedPO.id, {
+        internalChecklist: updatedChecklist
+      }));
 
-    setSelectedPO(updatedPO);
-    setNewChecklistText('');
-    onRefresh();
+      setSelectedPO(updatedPO);
+      setNewChecklistText('');
+      onRefresh();
+
+      showSuccessToast("Đã thêm thành công");
+    }, undefined);
   };
 
   const handleToggleChecklistItem = async (taskId: string) => {
-    if (!selectedPO) return;
+    return runMutationAction("SalesPage.tsx:handleToggleChecklistItem", async () => {
+      if (!selectedPO) return;
 
-    const updatedChecklist = (selectedPO.internalChecklist || []).map((item: any) => {
-      if (item.id === taskId) {
-        return {
-          ...item,
-          completed: !item.completed,
-          updatedAt: new Date().toISOString(),
-          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-        };
-      }
-      return item;
-    });
+      const updatedChecklist = (selectedPO.internalChecklist || []).map((item: any) => {
+        if (item.id === taskId) {
+          return {
+            ...item,
+            completed: !item.completed,
+            updatedAt: new Date().toISOString(),
+            updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+          };
+        }
+        return item;
+      });
 
-    const updatedPO = {
-      ...selectedPO,
-      internalChecklist: updatedChecklist
-    };
+      const updatedPO = {
+        ...selectedPO,
+        internalChecklist: updatedChecklist
+      };
 
-    await dbService.updateDocument('pos', selectedPO.id, {
-      internalChecklist: updatedChecklist
-    });
+      await requireConfirmedMutation(dbService.updateDocument('pos', selectedPO.id, {
+        internalChecklist: updatedChecklist
+      }));
 
-    setSelectedPO(updatedPO);
-    onRefresh();
+      setSelectedPO(updatedPO);
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, taskId, { busy: false });
   };
 
   const handleRemoveChecklistItem = async (taskId: string) => {
-    if (!selectedPO) return;
+    return runMutationAction("SalesPage.tsx:handleRemoveChecklistItem", async () => {
+      if (!selectedPO) return;
 
-    const updatedChecklist = (selectedPO.internalChecklist || []).filter((item: any) => item.id !== taskId);
+      const updatedChecklist = (selectedPO.internalChecklist || []).filter((item: any) => item.id !== taskId);
 
-    const updatedPO = {
-      ...selectedPO,
-      internalChecklist: updatedChecklist
-    };
+      const updatedPO = {
+        ...selectedPO,
+        internalChecklist: updatedChecklist
+      };
 
-    await dbService.updateDocument('pos', selectedPO.id, {
-      internalChecklist: updatedChecklist
-    });
+      await requireConfirmedMutation(dbService.updateDocument('pos', selectedPO.id, {
+        internalChecklist: updatedChecklist
+      }));
 
-    setSelectedPO(updatedPO);
-    onRefresh();
+      setSelectedPO(updatedPO);
+      onRefresh();
+
+      showSuccessToast("Đã xóa thành công");
+    }, taskId);
   };
 
   const handleOpenEditModal = (po: any) => {
@@ -457,283 +487,293 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
   };
 
   const handleDeletePO = async (poId: string) => {
-    const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
-    if (password === 'admin123' || password === '123456') {
-      await dbService.updateDocument('pos', poId, {
-        deleted: true,
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: new Date().toISOString()
-      });
-      setSelectedPO(null);
-      onRefresh();
-      alert(t('Đã chuyển đơn hàng PO vào Kho Rác.'));
-    } else if (password !== null) {
-      alert(t('Mật khẩu không chính xác. Xóa thất bại.'));
-    }
+    return runMutationAction("SalesPage.tsx:handleDeletePO", async () => {
+      const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
+      if (password === 'admin123' || password === '123456') {
+        await requireConfirmedMutation(dbService.updateDocument('pos', poId, {
+          deleted: true,
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          updatedAt: new Date().toISOString()
+        }));
+        setSelectedPO(null);
+        onRefresh();
+        showSuccessToast("Đã xóa thành công");
+      } else if (password !== null) {
+        alert(t('Mật khẩu không chính xác. Xóa thất bại.'));
+      }
+    }, poId);
   };
 
   const handleSavePO = async (poData: any) => {
-    if (poData.id) {
-      // Editing existing PO
-      const subtotal = poData.totalAmount;
-      const discountAmount = poData.discountAmount;
-      const netAmount = poData.netAmount;
+    return runMutationAction("SalesPage.tsx:handleSavePO", async () => {
+      if (poData.id) {
+        // Editing existing PO
+        const subtotal = poData.totalAmount;
+        const discountAmount = poData.discountAmount;
+        const netAmount = poData.netAmount;
 
-      const updatedLogs = [
-        ...(selectedPO.historyLogs || []),
-        {
-          status: selectedPO.status,
-          updatedBy: currentUser.displayName,
-          updatedAt: new Date().toISOString(),
-          note: `${t('Chỉnh sửa thông số đơn hàng PO')} (Tổng trị giá: ${subtotal.toLocaleString()} đ)`
-        }
-      ];
-
-      await dbService.updateDocument('pos', poData.id, {
-        expectedDeliveryDate: poData.expectedDeliveryDate,
-        notes: poData.notes,
-        customerPoCode: poData.customerPoCode,
-        customerRank: poData.customerRank,
-        customerSnapshot: poData.customerSnapshot || selectedPO.customerSnapshot,
-        items: poData.items,
-        assignments: poData.assignments || [],
-        totalAmount: subtotal,
-        discountAmount,
-        netAmount,
-        links: poData.links,
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: new Date().toISOString(),
-        historyLogs: updatedLogs
-      });
-      await syncDesignRequestsForPO({
-        ...selectedPO,
-        ...poData,
-        id: poData.id,
-        items: poData.items,
-        assignments: poData.assignments || []
-      }, currentUser);
-      await synchronizeProcurementRequestsForPO({
-        ...selectedPO,
-        ...poData,
-        id: poData.id,
-        items: poData.items
-      }, currentUser);
-
-      setShowEditModal(false);
-      setSelectedPO(null);
-    } else {
-      // Creating new PO
-      const latestCustomer = await dbService.getDocument('customers', poData.customerId) as CustomerRecord | null;
-      if (!latestCustomer) throw new Error(t('Không tìm thấy khách hàng. Vui lòng chọn lại.'));
-      const catalogCustomer = { ...latestCustomer, products: (latestCustomer.products || []).map(normalizeCustomerProduct) };
-      poData = { ...poData, items: synchronizeCustomerProductOrderItems(poData.items, catalogCustomer).map(withCalculatedPOFinancials) };
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const prefix = `PO-${yyyy}${mm}-`;
-
-      const monthPOs = pos.filter(p => p.poCode && p.poCode.startsWith(prefix));
-      let maxSeq = 0;
-      monthPOs.forEach(p => {
-        const parts = p.poCode.split('-');
-        if (parts.length === 3) {
-          const seq = parseInt(parts[2], 10);
-          if (!isNaN(seq) && seq > maxSeq) {
-            maxSeq = seq;
-          }
-        }
-      });
-      const nextSeq = String(maxSeq + 1).padStart(4, '0');
-      const poCode = `${prefix}${nextSeq}`;
-
-      const reusableDesignByItemIndex = new Map<number, { design: DesignRecord; version: DesignVersion }>();
-      if (poData.repeatSourcePoId && poData.designReuseRequested) {
-        const sourcePO = pos.find(candidate => candidate.id === poData.repeatSourcePoId);
-        const designList = (await dbService.getCollection('designs')) as DesignRecord[];
-        const approvedSourceDesigns = designList.filter(design => (
-          design.poId === poData.repeatSourcePoId && design.status === 'approved'
-        ));
-
-        poData.items.forEach((item: any, itemIndex: number) => {
-          if (item.designReuseRequested !== true) return;
-          const matchedSourceItemIndex = (sourcePO?.items || []).findIndex((sourceItem: any) => (
-            item.sourceItemId && sourceItem.itemId === item.sourceItemId
-          ));
-          const sourceItemIndex = matchedSourceItemIndex >= 0 ? matchedSourceItemIndex : itemIndex;
-          const sourceItemId = item.sourceItemId || sourcePO?.items?.[sourceItemIndex]?.itemId;
-          const design = approvedSourceDesigns.find(candidate => (
-            (sourceItemId && candidate.itemId === sourceItemId)
-            || candidate.itemIndex === sourceItemIndex
-            || (!candidate.itemId && candidate.itemIndex === undefined && sourceItemIndex === 0)
-          ));
-          if (!design) return;
-          const version = design.versions?.find(candidate => candidate.versionNumber === design.currentVersion)
-            || design.versions?.[design.versions.length - 1]
-            || (design.fileUrl ? {
-              versionNumber: design.currentVersion || 1,
-              previewImage: design.fileUrl,
-              aiLink: design.aiLink || '',
-              corelLink: design.corelLink || '',
-              comment: design.notes || '',
-              createdAt: design.updatedAt || design.createdAt || ''
-            } : null);
-          if (version?.previewImage) reusableDesignByItemIndex.set(itemIndex, { design, version });
-        });
-      }
-
-      const initialStatus: POQueueStatus = 'waiting_design';
-      const newItems = poData.items.map((item: any, index: number) => {
-        const reusable = reusableDesignByItemIndex.get(index);
-        return reusable ? {
-            ...item,
-            previewImage: reusable.version.previewImage || item.previewImage || '',
-            previewImages: reusable.version.previewImage
-              ? Array.from(new Set([reusable.version.previewImage, ...(item.previewImages || [])]))
-              : (item.previewImages || []),
-            designReuseStatus: 'pending_verification'
-          }
-          : { ...item, designReuseStatus: '' };
-      });
-      const reusedItemCount = reusableDesignByItemIndex.size;
-      const allItemsReused = newItems.length > 0 && reusedItemCount === newItems.length;
-
-      const newPO = {
-        poCode,
-        customerPoCode: poData.customerPoCode || poCode,
-        customerId: poData.customerId,
-        customerName: poData.customerName,
-        customerRank: poData.customerRank,
-        customerSnapshot: poData.customerSnapshot,
-        saleId: currentUser.uid,
-        orderDate: new Date().toISOString(),
-        expectedDeliveryDate: poData.expectedDeliveryDate,
-        status: initialStatus,
-        workflowVersion: 2,
-        designProgress: allItemsReused ? 'customer_approval_pending' : reusedItemCount > 0 ? 'in_progress' : 'request_pending',
-        items: newItems,
-        assignments: poData.assignments || [],
-        totalAmount: poData.totalAmount,
-        discountAmount: poData.discountAmount,
-        netAmount: poData.netAmount,
-        links: poData.links,
-        notes: poData.notes,
-        orderType: poData.orderType || 'new',
-        repeatSourcePoId: poData.repeatSourcePoId || '',
-        repeatSourcePoCode: poData.repeatSourcePoCode || '',
-        designReuseRequested: Boolean(poData.designReuseRequested),
-        designReuseStatus: allItemsReused ? 'pending_verification' : reusedItemCount > 0 ? 'partially_reused' : (poData.designReuseRequested ? 'source_not_approved' : ''),
-        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        createdAt: new Date().toISOString(),
-        updatedBy: '',
-        updatedAt: '',
-        historyLogs: [
+        const updatedLogs = [
+          ...(selectedPO.historyLogs || []),
           {
-            status: initialStatus,
+            status: selectedPO.status,
             updatedBy: currentUser.displayName,
             updatedAt: new Date().toISOString(),
-            note: reusedItemCount > 0
-              ? `Tạo đơn đặt lại từ ${poData.repeatSourcePoCode}. Đã kế thừa ${reusedItemCount}/${newItems.length} mẫu thiết kế đã duyệt; từng mặt hàng được chuyển sang bước phù hợp.`
-              : poData.repeatSourcePoCode
-                ? `Tạo đơn đặt lại từ ${poData.repeatSourcePoCode}. Đã kế thừa thông số; chưa tìm thấy mẫu thiết kế đã duyệt để tự động sử dụng.`
-                : 'Khởi tạo đơn hàng mới trên ERP'
+            note: `${t('Chỉnh sửa thông số đơn hàng PO')} (Tổng trị giá: ${subtotal.toLocaleString()} đ)`
           }
-        ]
-      };
+        ];
 
-      const createdPO = await dbService.addDocument('pos', newPO);
-      await synchronizeProcurementRequestsForPO({ ...newPO, id: createdPO.id }, currentUser);
-      const createdDesignRequests = await syncDesignRequestsForPO({
-        ...newPO,
-        id: createdPO.id
-      }, currentUser);
-      for (const [itemIndex, reusable] of reusableDesignByItemIndex.entries()) {
-        const request = createdDesignRequests.find(candidate => candidate.itemIndex === itemIndex);
-        if (!request) continue;
-        const reusedVersion = {
-          ...reusable.version,
-          versionNumber: 1,
-          comment: `Tái sử dụng từ ${poData.repeatSourcePoCode} - mẫu v${reusable.version.versionNumber}. ${reusable.version.comment || ''}`.trim(),
-          feedbackFromClient: '',
-          feedbackAt: '',
-          createdAt: new Date().toISOString(),
-          createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-          reusedFromDesignId: reusable.design.id,
-          reusedFromPoId: poData.repeatSourcePoId,
-          reusedFromVersion: reusable.version.versionNumber
-        };
-        await dbService.addDocument('designs', {
-          id: `design-${request.id}`,
-          poId: createdPO.id,
-          poCode,
-          designRequestId: request.id,
-          itemId: request.itemId,
-          itemIndex,
-          customerReferenceCode: newPO.customerPoCode || poCode,
-          designerId: currentUser.role === 'designer' ? currentUser.uid : 'u-designer',
-          status: 'client_pending',
-          currentVersion: 1,
-          versions: [reusedVersion],
-          reusedFromDesignId: reusable.design.id,
-          reusedFromPoId: poData.repeatSourcePoId,
-          createdAt: new Date().toISOString()
+        await requireConfirmedMutation(dbService.updateDocument('pos', poData.id, {
+          expectedDeliveryDate: poData.expectedDeliveryDate,
+          notes: poData.notes,
+          customerPoCode: poData.customerPoCode,
+          customerRank: poData.customerRank,
+          customerSnapshot: poData.customerSnapshot || selectedPO.customerSnapshot,
+          items: poData.items,
+          assignments: poData.assignments || [],
+          totalAmount: subtotal,
+          discountAmount,
+          netAmount,
+          links: poData.links,
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          updatedAt: new Date().toISOString(),
+          historyLogs: updatedLogs
+        }));
+        await syncDesignRequestsForPO({
+          ...selectedPO,
+          ...poData,
+          id: poData.id,
+          items: poData.items,
+          assignments: poData.assignments || []
+        }, currentUser);
+        await synchronizeProcurementRequestsForPO({
+          ...selectedPO,
+          ...poData,
+          id: poData.id,
+          items: poData.items
+        }, currentUser);
+
+        setShowEditModal(false);
+        setSelectedPO(null);
+      } else {
+        // Creating new PO
+        const latestCustomer = await dbService.getDocument('customers', poData.customerId) as CustomerRecord | null;
+        if (!latestCustomer) throw new Error(t('Không tìm thấy khách hàng. Vui lòng chọn lại.'));
+        const catalogCustomer = { ...latestCustomer, products: (latestCustomer.products || []).map(normalizeCustomerProduct) };
+        poData = { ...poData, items: synchronizeCustomerProductOrderItems(poData.items, catalogCustomer).map(withCalculatedPOFinancials) };
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const prefix = `PO-${yyyy}${mm}-`;
+
+        const monthPOs = pos.filter(p => p.poCode && p.poCode.startsWith(prefix));
+        let maxSeq = 0;
+        monthPOs.forEach(p => {
+          const parts = p.poCode.split('-');
+          if (parts.length === 3) {
+            const seq = parseInt(parts[2], 10);
+            if (!isNaN(seq) && seq > maxSeq) {
+              maxSeq = seq;
+            }
+          }
         });
+        const nextSeq = String(maxSeq + 1).padStart(4, '0');
+        const poCode = `${prefix}${nextSeq}`;
+
+        const reusableDesignByItemIndex = new Map<number, { design: DesignRecord; version: DesignVersion }>();
+        if (poData.repeatSourcePoId && poData.designReuseRequested) {
+          const sourcePO = pos.find(candidate => candidate.id === poData.repeatSourcePoId);
+          const designList = (await dbService.getCollection('designs')) as DesignRecord[];
+          const approvedSourceDesigns = designList.filter(design => (
+            design.poId === poData.repeatSourcePoId && design.status === 'approved'
+          ));
+
+          poData.items.forEach((item: any, itemIndex: number) => {
+            if (item.designReuseRequested !== true) return;
+            const matchedSourceItemIndex = (sourcePO?.items || []).findIndex((sourceItem: any) => (
+              item.sourceItemId && sourceItem.itemId === item.sourceItemId
+            ));
+            const sourceItemIndex = matchedSourceItemIndex >= 0 ? matchedSourceItemIndex : itemIndex;
+            const sourceItemId = item.sourceItemId || sourcePO?.items?.[sourceItemIndex]?.itemId;
+            const design = approvedSourceDesigns.find(candidate => (
+              (sourceItemId && candidate.itemId === sourceItemId)
+              || candidate.itemIndex === sourceItemIndex
+              || (!candidate.itemId && candidate.itemIndex === undefined && sourceItemIndex === 0)
+            ));
+            if (!design) return;
+            const version = design.versions?.find(candidate => candidate.versionNumber === design.currentVersion)
+              || design.versions?.[design.versions.length - 1]
+              || (design.fileUrl ? {
+                versionNumber: design.currentVersion || 1,
+                previewImage: design.fileUrl,
+                aiLink: design.aiLink || '',
+                corelLink: design.corelLink || '',
+                comment: design.notes || '',
+                createdAt: design.updatedAt || design.createdAt || ''
+              } : null);
+            if (version?.previewImage) reusableDesignByItemIndex.set(itemIndex, { design, version });
+          });
+        }
+
+        const initialStatus: POQueueStatus = 'waiting_design';
+        const newItems = poData.items.map((item: any, index: number) => {
+          const reusable = reusableDesignByItemIndex.get(index);
+          return reusable ? {
+              ...item,
+              previewImage: reusable.version.previewImage || item.previewImage || '',
+              previewImages: reusable.version.previewImage
+                ? Array.from(new Set([reusable.version.previewImage, ...(item.previewImages || [])]))
+                : (item.previewImages || []),
+              designReuseStatus: 'pending_verification'
+            }
+            : { ...item, designReuseStatus: '' };
+        });
+        const reusedItemCount = reusableDesignByItemIndex.size;
+        const allItemsReused = newItems.length > 0 && reusedItemCount === newItems.length;
+
+        const newPO = {
+          poCode,
+          customerPoCode: poData.customerPoCode || poCode,
+          customerId: poData.customerId,
+          customerName: poData.customerName,
+          customerRank: poData.customerRank,
+          customerSnapshot: poData.customerSnapshot,
+          saleId: currentUser.uid,
+          orderDate: new Date().toISOString(),
+          expectedDeliveryDate: poData.expectedDeliveryDate,
+          status: initialStatus,
+          workflowVersion: 2,
+          designProgress: allItemsReused ? 'customer_approval_pending' : reusedItemCount > 0 ? 'in_progress' : 'request_pending',
+          items: newItems,
+          assignments: poData.assignments || [],
+          totalAmount: poData.totalAmount,
+          discountAmount: poData.discountAmount,
+          netAmount: poData.netAmount,
+          links: poData.links,
+          notes: poData.notes,
+          orderType: poData.orderType || 'new',
+          repeatSourcePoId: poData.repeatSourcePoId || '',
+          repeatSourcePoCode: poData.repeatSourcePoCode || '',
+          designReuseRequested: Boolean(poData.designReuseRequested),
+          designReuseStatus: allItemsReused ? 'pending_verification' : reusedItemCount > 0 ? 'partially_reused' : (poData.designReuseRequested ? 'source_not_approved' : ''),
+          createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          createdAt: new Date().toISOString(),
+          updatedBy: '',
+          updatedAt: '',
+          historyLogs: [
+            {
+              status: initialStatus,
+              updatedBy: currentUser.displayName,
+              updatedAt: new Date().toISOString(),
+              note: reusedItemCount > 0
+                ? `Tạo đơn đặt lại từ ${poData.repeatSourcePoCode}. Đã kế thừa ${reusedItemCount}/${newItems.length} mẫu thiết kế đã duyệt; từng mặt hàng được chuyển sang bước phù hợp.`
+                : poData.repeatSourcePoCode
+                  ? `Tạo đơn đặt lại từ ${poData.repeatSourcePoCode}. Đã kế thừa thông số; chưa tìm thấy mẫu thiết kế đã duyệt để tự động sử dụng.`
+                  : 'Khởi tạo đơn hàng mới trên ERP'
+            }
+          ]
+        };
+
+        const createdPO = await dbService.addDocument('pos', newPO);
+        await synchronizeProcurementRequestsForPO({ ...newPO, id: createdPO.id }, currentUser);
+        const createdDesignRequests = await syncDesignRequestsForPO({
+          ...newPO,
+          id: createdPO.id
+        }, currentUser);
+        for (const [itemIndex, reusable] of reusableDesignByItemIndex.entries()) {
+          const request = createdDesignRequests.find(candidate => candidate.itemIndex === itemIndex);
+          if (!request) continue;
+          const reusedVersion = {
+            ...reusable.version,
+            versionNumber: 1,
+            comment: `Tái sử dụng từ ${poData.repeatSourcePoCode} - mẫu v${reusable.version.versionNumber}. ${reusable.version.comment || ''}`.trim(),
+            feedbackFromClient: '',
+            feedbackAt: '',
+            createdAt: new Date().toISOString(),
+            createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+            reusedFromDesignId: reusable.design.id,
+            reusedFromPoId: poData.repeatSourcePoId,
+            reusedFromVersion: reusable.version.versionNumber
+          };
+          await dbService.addDocument('designs', {
+            id: `design-${request.id}`,
+            poId: createdPO.id,
+            poCode,
+            designRequestId: request.id,
+            itemId: request.itemId,
+            itemIndex,
+            customerReferenceCode: newPO.customerPoCode || poCode,
+            designerId: currentUser.role === 'designer' ? currentUser.uid : 'u-designer',
+            status: 'client_pending',
+            currentVersion: 1,
+            versions: [reusedVersion],
+            reusedFromDesignId: reusable.design.id,
+            reusedFromPoId: poData.repeatSourcePoId,
+            createdAt: new Date().toISOString()
+          });
+        }
+        await requireConfirmedMutation(dbService.updateDocument('customers', poData.customerId, {
+          lastOrderAt: new Date().toISOString(),
+          customerRank: poData.customerRank,
+          pendingOrderDraft: null
+        }));
+
+        setShowAddModal(false);
+        setRepeatSourcePO(null);
+        setInitialCustomerId('');
+        setActiveListView('orders');
       }
-      await dbService.updateDocument('customers', poData.customerId, {
-        lastOrderAt: new Date().toISOString(),
-        customerRank: poData.customerRank,
-        pendingOrderDraft: null
-      });
 
-      setShowAddModal(false);
-      setRepeatSourcePO(null);
-      setInitialCustomerId('');
-      setActiveListView('orders');
-    }
+      if (poData.id) {
+        await requireConfirmedMutation(dbService.updateDocument('customers', poData.customerId, {
+          customerRank: poData.customerRank
+        }));
+      }
 
-    if (poData.id) {
-      await dbService.updateDocument('customers', poData.customerId, {
-        customerRank: poData.customerRank
-      });
-    }
+      onRefresh();
 
-    onRefresh();
+      showSuccessToast("Đã lưu thành công");
+    }, poData);
   };
 
   const updatePOStatus = async (poId: string, newStatus: POQueueStatus) => {
-    const po = pos.find(p => p.id === poId);
-    if (!po) return;
+    return runMutationAction("SalesPage.tsx:updatePOStatus", async () => {
+      const po = pos.find(p => p.id === poId);
+      if (!po) return;
 
-    const updatedLogs = [
-      ...(po.historyLogs || []),
-      {
-        status: newStatus,
-        updatedBy: currentUser.displayName,
-        updatedAt: new Date().toISOString(),
-        note: `Cập nhật hàng đợi đơn hàng sang: ${getPOQueueLabel(newStatus)}`
+      const updatedLogs = [
+        ...(po.historyLogs || []),
+        {
+          status: newStatus,
+          updatedBy: currentUser.displayName,
+          updatedAt: new Date().toISOString(),
+          note: `Cập nhật hàng đợi đơn hàng sang: ${getPOQueueLabel(newStatus)}`
+        }
+      ];
+
+      const queueExtras = newStatus === 'waiting_delivery'
+        ? { deliveryStage: po.deliveryStage || 'customer_outbound' }
+        : {};
+
+      await requireConfirmedMutation(dbService.updateDocument('pos', poId, {
+        ...getPOQueueUpdate(newStatus, queueExtras),
+        historyLogs: updatedLogs
+      }));
+
+      // Entering the receivable queue means the sales invoice has been issued.
+      // Create a receivable only when none exists, preventing duplicate invoices.
+      if (newStatus === 'waiting_receivable') {
+        await ensureReceivableInvoice(po, `${currentUser.displayName} (${currentUser.role.toUpperCase()})`);
       }
-    ];
 
-    const queueExtras = newStatus === 'waiting_delivery'
-      ? { deliveryStage: po.deliveryStage || 'customer_outbound' }
-      : {};
+      setSelectedPO((prev: any) => prev ? {
+        ...prev,
+        ...getPOQueueUpdate(newStatus, queueExtras),
+        historyLogs: updatedLogs
+      } : null);
+      onRefresh();
 
-    await dbService.updateDocument('pos', poId, {
-      ...getPOQueueUpdate(newStatus, queueExtras),
-      historyLogs: updatedLogs
-    });
-
-    // Entering the receivable queue means the sales invoice has been issued.
-    // Create a receivable only when none exists, preventing duplicate invoices.
-    if (newStatus === 'waiting_receivable') {
-      await ensureReceivableInvoice(po, `${currentUser.displayName} (${currentUser.role.toUpperCase()})`);
-    }
-
-    setSelectedPO((prev: any) => prev ? {
-      ...prev,
-      ...getPOQueueUpdate(newStatus, queueExtras),
-      historyLogs: updatedLogs
-    } : null);
-    onRefresh();
+      showSuccessToast("Đã lưu thành công");
+    }, poId);
   };
 
   const normalizedSearchTerm = searchTerm.trim().toLocaleLowerCase('vi-VN');

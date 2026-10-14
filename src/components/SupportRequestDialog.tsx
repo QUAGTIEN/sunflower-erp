@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useState } from 'react';
 import { LifeBuoy, X } from 'lucide-react';
 import {
@@ -62,58 +63,63 @@ export const SupportRequestDialog: React.FC<SupportRequestDialogProps> = ({
   if (!target) return null;
 
   const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const message = note.trim();
-    if (!message) {
-      setError('Vui lòng nhập nội dung cần hỗ trợ.');
-      return;
-    }
-    const admins = users.filter(user => user.role === 'admin' && user.active !== false);
-    if (admins.length === 0) {
-      setError('Chưa có tài khoản Admin đang hoạt động để nhận yêu cầu.');
-      return;
-    }
+    return runMutationAction("SupportRequestDialog.tsx:submit", async () => {
+      event.preventDefault();
+      const message = note.trim();
+      if (!message) {
+        setError('Vui lòng nhập nội dung cần hỗ trợ.');
+        return;
+      }
+      const admins = users.filter(user => user.role === 'admin' && user.active !== false);
+      if (admins.length === 0) {
+        setError('Chưa có tài khoản Admin đang hoạt động để nhận yêu cầu.');
+        return;
+      }
 
-    const now = new Date().toISOString();
-    const requestKey = `support:${target.module}:${target.id}:${currentUser.uid}:${Date.now()}`;
-    setSaving(true);
-    setError('');
-    try {
-      const taskId = `schedule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const deadline = new Date(dueAt);
-      if (!Number.isFinite(deadline.getTime())) throw new Error('Invalid deadline');
-      await dbService.addDocument('work_schedule_items', {
-        id: taskId, title: `Hỗ trợ ${target.label}`, description: message, stage: '',
-        assigneeId: admins[0].uid, assigneeName: admins[0].displayName, department: 'Ban giám đốc',
-        assignedById: currentUser.uid, assignedByName: currentUser.displayName,
-        requestedById: currentUser.uid, requestedByName: currentUser.displayName,
-        groupId: 'staff_to_company', groupName: 'Nhân sự giao việc lại cho công ty', workType: 'business',
-        startAt: now, endAt: deadline.toISOString(), status: 'support_requested', progress: 0,
-        referenceType: REFERENCE_TYPES[target.module], referenceId: target.id, referenceLabel: target.label,
-        notes: '', priority, taskType: 'support_request', createdAt: now, updatedAt: now, deleted: false
-      });
-      await Promise.all(admins.map(admin => dbService.addDocument('notifications', {
-        id: getNotificationDocumentId(admin.uid, requestKey),
-        schemaVersion: NOTIFICATION_SCHEMA_VERSION,
-        recipientId: admin.uid,
-        module: target.module,
-        eventType: 'support_request',
-        eventKey: requestKey,
-        entityId: target.id,
-        entityCode: target.label,
-        title: `${currentUser.displayName} cần hỗ trợ`,
-        message: `${target.label} · ${message}`,
-        createdAt: now,
-        createdById: currentUser.uid,
-        source: 'manual',
-        readAt: null
-      })));
-      setSent(true);
-    } catch {
-      setError('Không thể gửi yêu cầu hỗ trợ. Vui lòng kiểm tra kết nối và thử lại.');
-    } finally {
-      setSaving(false);
-    }
+      const now = new Date().toISOString();
+      const requestKey = `support:${target.module}:${target.id}:${currentUser.uid}:${Date.now()}`;
+      setSaving(true);
+      setError('');
+      try {
+        const taskId = `schedule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const deadline = new Date(dueAt);
+        if (!Number.isFinite(deadline.getTime())) throw new Error('Invalid deadline');
+        await dbService.addDocument('work_schedule_items', {
+          id: taskId, title: `Hỗ trợ ${target.label}`, description: message, stage: '',
+          assigneeId: admins[0].uid, assigneeName: admins[0].displayName, department: 'Ban giám đốc',
+          assignedById: currentUser.uid, assignedByName: currentUser.displayName,
+          requestedById: currentUser.uid, requestedByName: currentUser.displayName,
+          groupId: 'staff_to_company', groupName: 'Nhân sự giao việc lại cho công ty', workType: 'business',
+          startAt: now, endAt: deadline.toISOString(), status: 'support_requested', progress: 0,
+          referenceType: REFERENCE_TYPES[target.module], referenceId: target.id, referenceLabel: target.label,
+          notes: '', priority, taskType: 'support_request', createdAt: now, updatedAt: now, deleted: false
+        });
+        await Promise.all(admins.map(admin => dbService.addDocument('notifications', {
+          id: getNotificationDocumentId(admin.uid, requestKey),
+          schemaVersion: NOTIFICATION_SCHEMA_VERSION,
+          recipientId: admin.uid,
+          module: target.module,
+          eventType: 'support_request',
+          eventKey: requestKey,
+          entityId: target.id,
+          entityCode: target.label,
+          title: `${currentUser.displayName} cần hỗ trợ`,
+          message: `${target.label} · ${message}`,
+          createdAt: now,
+          createdById: currentUser.uid,
+          source: 'manual',
+          readAt: null
+        })));
+        setSent(true);
+
+        showSuccessToast("Đã thêm thành công");
+      } catch {
+        showErrorToast();
+        setError('Không thể gửi yêu cầu hỗ trợ. Vui lòng kiểm tra kết nối và thử lại.');
+      } finally {
+        setSaving(false);
+      }
+    }, event);
   };
 
   return (

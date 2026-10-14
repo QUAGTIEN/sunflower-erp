@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { canEditTableColumns, mergeTableColumnLayout, normalizeTableColumnLayout, type TableColumnLayout, type TableColumnLayoutPatch } from '@/domain/tableColumnLayout';
 import { saveTableColumnLayout, TABLE_COLUMN_LAYOUT_COLLECTION } from '@/services/tableColumnLayoutService';
@@ -96,13 +97,17 @@ export const useTableColumnLayoutManager = (user: UserProfile | null): TableColu
         confirmedRef.current[id] = onlyIfAbsent
           ? normalizeTableColumnLayout(fields) || mergeTableColumnLayout(id, confirmedRef.current[id], patch)
           : { ...mergeTableColumnLayout(id, confirmedRef.current[id], patch), updatedAt: fields.updatedAt, updatedById: user.uid };
-        if (pendingRef.current.get(id)?.sequence === sequence) pendingRef.current.delete(id);
+        if (pendingRef.current.get(id)?.sequence === sequence) {
+          pendingRef.current.delete(id);
+          if (!onlyIfAbsent) showSuccessToast('Đã lưu cấu hình cột');
+        }
         failedSaveRef.current = null;
       } catch {
         if (generation !== generationRef.current) return;
         if (pendingRef.current.get(id)?.sequence === sequence) pendingRef.current.delete(id);
         failedSaveRef.current = { id, patch, onlyIfAbsent };
         setError('Không thể lưu cấu hình cột. Thay đổi chưa được đồng bộ. Vui lòng thử lại.');
+        if (!onlyIfAbsent) showErrorToast('Không thể lưu cấu hình cột.');
       }
       publish();
     });

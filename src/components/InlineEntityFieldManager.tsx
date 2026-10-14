@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ENTITY_FIELD_ROLES,
@@ -142,56 +143,61 @@ export const InlineEntityFieldManager: React.FC<{
   };
 
   const saveDefinition = async () => {
-    if (!draft?.name.trim()) { setError('Tên trường không được để trống.'); return; }
-    const existing = sectionDefinitions.find(definition => definition.id === draft.id);
-    const options = SELECT_TYPES.includes(draft.type) ? parseOptions(draft.optionText, existing?.options) : [];
-    if (SELECT_TYPES.includes(draft.type) && options.filter(option => option.active).length === 0) {
-      setError('Trường dạng danh sách cần ít nhất một lựa chọn.');
-      return;
-    }
-    const labels = options.filter(option => option.active).map(option => option.label.toLocaleLowerCase('vi-VN'));
-    if (new Set(labels).size !== labels.length) { setError('Các lựa chọn không được trùng tên.'); return; }
+    return runMutationAction("InlineEntityFieldManager.tsx:saveDefinition", async () => {
+      if (!draft?.name.trim()) { setError('Tên trường không được để trống.'); return; }
+      const existing = sectionDefinitions.find(definition => definition.id === draft.id);
+      const options = SELECT_TYPES.includes(draft.type) ? parseOptions(draft.optionText, existing?.options) : [];
+      if (SELECT_TYPES.includes(draft.type) && options.filter(option => option.active).length === 0) {
+        setError('Trường dạng danh sách cần ít nhất một lựa chọn.');
+        return;
+      }
+      const labels = options.filter(option => option.active).map(option => option.label.toLocaleLowerCase('vi-VN'));
+      if (new Set(labels).size !== labels.length) { setError('Các lựa chọn không được trùng tên.'); return; }
 
-    setSaving(true);
-    setError('');
-    const now = new Date().toISOString();
-    const id = draft.id || `custom_${slugifyEntityFieldKey(draft.name) || 'field'}_${Date.now().toString(36)}`;
-    const definition = normalizeEntityFieldDefinition({
-      ...existing,
-      id,
-      fieldKey: existing?.fieldKey || slugifyEntityFieldKey(draft.name) || id,
-      table,
-      section,
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      type: draft.type,
-      options,
-      required: draft.required,
-      active: draft.active,
-      defaultVisible: draft.defaultVisible,
-      searchable: draft.searchable,
-      filterable: true,
-      viewRoles: draft.viewRoles,
-      editRoles: draft.editRoles.filter(role => draft.viewRoles.includes(role)),
-      order: existing?.order ?? Math.max(0, ...definitions.filter(item => item.table === table).map(item => item.order)) + 10,
-      createdAt: existing?.createdAt || now,
-      createdById: existing?.createdById || currentUser.uid,
-      createdByName: existing?.createdByName || currentUser.displayName,
-      updatedAt: now,
-      updatedById: currentUser.uid,
-      updatedByName: currentUser.displayName
-    });
-    try {
-      await manageFieldConfiguration(currentUser, {
-        action: 'save', table, definition, expectedUpdatedAt: draft.expectedUpdatedAt
+      setSaving(true);
+      setError('');
+      const now = new Date().toISOString();
+      const id = draft.id || `custom_${slugifyEntityFieldKey(draft.name) || 'field'}_${Date.now().toString(36)}`;
+      const definition = normalizeEntityFieldDefinition({
+        ...existing,
+        id,
+        fieldKey: existing?.fieldKey || slugifyEntityFieldKey(draft.name) || id,
+        table,
+        section,
+        name: draft.name.trim(),
+        description: draft.description.trim(),
+        type: draft.type,
+        options,
+        required: draft.required,
+        active: draft.active,
+        defaultVisible: draft.defaultVisible,
+        searchable: draft.searchable,
+        filterable: true,
+        viewRoles: draft.viewRoles,
+        editRoles: draft.editRoles.filter(role => draft.viewRoles.includes(role)),
+        order: existing?.order ?? Math.max(0, ...definitions.filter(item => item.table === table).map(item => item.order)) + 10,
+        createdAt: existing?.createdAt || now,
+        createdById: existing?.createdById || currentUser.uid,
+        createdByName: existing?.createdByName || currentUser.displayName,
+        updatedAt: now,
+        updatedById: currentUser.uid,
+        updatedByName: currentUser.displayName
       });
-      setDraft(null);
-      setManageOpen(true);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Không thể lưu trường tùy chỉnh.');
-    } finally {
-      setSaving(false);
-    }
+      try {
+        await manageFieldConfiguration(currentUser, {
+          action: 'save', table, definition, expectedUpdatedAt: draft.expectedUpdatedAt
+        });
+        setDraft(null);
+        setManageOpen(true);
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (saveError) {
+        showErrorToast();
+        setError(saveError instanceof Error ? saveError.message : 'Không thể lưu trường tùy chỉnh.');
+      } finally {
+        setSaving(false);
+      }
+    }, undefined);
   };
 
   const editSystemField = (field: SystemFieldOverride) => {
@@ -201,21 +207,26 @@ export const InlineEntityFieldManager: React.FC<{
   };
 
   const saveSystemField = async () => {
-    if (!systemDraft?.label.trim()) { setError('Tên trường không được để trống.'); return; }
-    setSaving(true);
-    setError('');
-    try {
-      await manageFieldConfiguration(currentUser, {
-        action: 'system', table, expectedUpdatedAt: systemConfiguration.updatedAt,
-        fields: Object.fromEntries(systemConfiguration.fields.map(field => [field.key, field.key === systemDraft.key ? systemDraft : field]))
-      });
-      setSystemDraft(null);
-      setManageOpen(true);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Không thể lưu trường hệ thống.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("InlineEntityFieldManager.tsx:saveSystemField", async () => {
+      if (!systemDraft?.label.trim()) { setError('Tên trường không được để trống.'); return; }
+      setSaving(true);
+      setError('');
+      try {
+        await manageFieldConfiguration(currentUser, {
+          action: 'system', table, expectedUpdatedAt: systemConfiguration.updatedAt,
+          fields: Object.fromEntries(systemConfiguration.fields.map(field => [field.key, field.key === systemDraft.key ? systemDraft : field]))
+        });
+        setSystemDraft(null);
+        setManageOpen(true);
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (saveError) {
+        showErrorToast();
+        setError(saveError instanceof Error ? saveError.message : 'Không thể lưu trường hệ thống.');
+      } finally {
+        setSaving(false);
+      }
+    }, undefined);
   };
 
   const confirmPermanentDelete = (name: string) => window.prompt(
@@ -223,35 +234,45 @@ export const InlineEntityFieldManager: React.FC<{
   ) === 'XÓA';
 
   const purgeCustomField = async (definition: EntityFieldDefinition) => {
-    if (!confirmPermanentDelete(definition.name)) return;
-    setSaving(true);
-    setError('');
-    try {
-      await manageFieldConfiguration(currentUser, {
-        action: 'purge', table, id: definition.id, expectedUpdatedAt: definition.updatedAt
-      });
-      onCustomFieldPurged?.(definition.id);
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Không thể xóa trường.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("InlineEntityFieldManager.tsx:purgeCustomField", async () => {
+      if (!confirmPermanentDelete(definition.name)) return;
+      setSaving(true);
+      setError('');
+      try {
+        await manageFieldConfiguration(currentUser, {
+          action: 'purge', table, id: definition.id, expectedUpdatedAt: definition.updatedAt
+        });
+        onCustomFieldPurged?.(definition.id);
+
+        showSuccessToast("Đã xóa thành công");
+      } catch (deleteError) {
+        showErrorToast();
+        setError(deleteError instanceof Error ? deleteError.message : 'Không thể xóa trường.');
+      } finally {
+        setSaving(false);
+      }
+    }, definition);
   };
 
   const purgeSystemField = async (field: SystemFieldOverride) => {
-    if (!confirmPermanentDelete(field.label)) return;
-    setSaving(true);
-    setError('');
-    try {
-      await manageFieldConfiguration(currentUser, {
-        action: 'purge_system', table, key: field.key, expectedUpdatedAt: systemConfiguration.updatedAt
-      });
-      onSystemFieldPurged?.(field.key);
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Không thể xóa trường.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("InlineEntityFieldManager.tsx:purgeSystemField", async () => {
+      if (!confirmPermanentDelete(field.label)) return;
+      setSaving(true);
+      setError('');
+      try {
+        await manageFieldConfiguration(currentUser, {
+          action: 'purge_system', table, key: field.key, expectedUpdatedAt: systemConfiguration.updatedAt
+        });
+        onSystemFieldPurged?.(field.key);
+
+        showSuccessToast("Đã xóa thành công");
+      } catch (deleteError) {
+        showErrorToast();
+        setError(deleteError instanceof Error ? deleteError.message : 'Không thể xóa trường.');
+      } finally {
+        setSaving(false);
+      }
+    }, field);
   };
 
   return <>

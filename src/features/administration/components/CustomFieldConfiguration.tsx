@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
@@ -114,57 +115,67 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
   }), [allDefinitions, searchTerm, selectedTable, statusFilter]);
 
   const saveDefinition = async () => {
-    if (!draft?.name.trim()) { setError('Tên trường không được để trống.'); return; }
-    const existing = allDefinitions.find(definition => definition.id === draft.id);
-    const options = SELECT_TYPES.includes(draft.type) ? parseOptions(draft.optionText, existing?.options) : [];
-    if (SELECT_TYPES.includes(draft.type) && options.length === 0) { setError('Trường dạng danh sách cần ít nhất một lựa chọn.'); return; }
-    const activeOptionLabels = options.filter(option => option.active).map(option => option.label.toLocaleLowerCase('vi-VN'));
-    if (new Set(activeOptionLabels).size !== activeOptionLabels.length) { setError('Các lựa chọn trong danh sách không được trùng tên.'); return; }
-    if (!draft.viewRoles.includes('admin') || !draft.editRoles.includes('admin')) { setError('Giám đốc/Admin luôn phải có quyền xem và sửa.'); return; }
-    setSaving(true);
-    setError('');
-    const now = new Date().toISOString();
-    const id = draft.id || createId(draft.name);
-    const definition = normalizeEntityFieldDefinition({
-      ...existing,
-      id,
-      fieldKey: existing?.fieldKey || slugifyEntityFieldKey(draft.name) || id,
-      table: draft.table,
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      type: draft.type,
-      options,
-      required: draft.required,
-      active: draft.active,
-      defaultVisible: draft.defaultVisible,
-      searchable: draft.searchable,
-      filterable: draft.filterable,
-      viewRoles: draft.viewRoles,
-      editRoles: draft.editRoles.filter(role => draft.viewRoles.includes(role)),
-      order: existing?.order ?? Math.max(0, ...allDefinitions.filter(item => item.table === draft.table).map(item => item.order)) + 10,
-      createdAt: existing?.createdAt || now,
-      createdById: existing?.createdById || currentUser.uid,
-      createdByName: existing?.createdByName || currentUser.displayName,
-      updatedAt: now,
-      updatedById: currentUser.uid,
-      updatedByName: currentUser.displayName
-    });
-    try {
-      await manageFieldConfiguration(currentUser, { action: 'save', table: definition.table, definition, expectedUpdatedAt: draft.expectedUpdatedAt });
-      setDraft(null);
-    } catch (saveError) {
-      console.error(saveError);
-      setError(saveError instanceof Error ? saveError.message : 'Không thể lưu trường tùy chỉnh.');
-    } finally { setSaving(false); }
+    return runMutationAction("CustomFieldConfiguration.tsx:saveDefinition", async () => {
+      if (!draft?.name.trim()) { setError('Tên trường không được để trống.'); return; }
+      const existing = allDefinitions.find(definition => definition.id === draft.id);
+      const options = SELECT_TYPES.includes(draft.type) ? parseOptions(draft.optionText, existing?.options) : [];
+      if (SELECT_TYPES.includes(draft.type) && options.length === 0) { setError('Trường dạng danh sách cần ít nhất một lựa chọn.'); return; }
+      const activeOptionLabels = options.filter(option => option.active).map(option => option.label.toLocaleLowerCase('vi-VN'));
+      if (new Set(activeOptionLabels).size !== activeOptionLabels.length) { setError('Các lựa chọn trong danh sách không được trùng tên.'); return; }
+      if (!draft.viewRoles.includes('admin') || !draft.editRoles.includes('admin')) { setError('Giám đốc/Admin luôn phải có quyền xem và sửa.'); return; }
+      setSaving(true);
+      setError('');
+      const now = new Date().toISOString();
+      const id = draft.id || createId(draft.name);
+      const definition = normalizeEntityFieldDefinition({
+        ...existing,
+        id,
+        fieldKey: existing?.fieldKey || slugifyEntityFieldKey(draft.name) || id,
+        table: draft.table,
+        name: draft.name.trim(),
+        description: draft.description.trim(),
+        type: draft.type,
+        options,
+        required: draft.required,
+        active: draft.active,
+        defaultVisible: draft.defaultVisible,
+        searchable: draft.searchable,
+        filterable: draft.filterable,
+        viewRoles: draft.viewRoles,
+        editRoles: draft.editRoles.filter(role => draft.viewRoles.includes(role)),
+        order: existing?.order ?? Math.max(0, ...allDefinitions.filter(item => item.table === draft.table).map(item => item.order)) + 10,
+        createdAt: existing?.createdAt || now,
+        createdById: existing?.createdById || currentUser.uid,
+        createdByName: existing?.createdByName || currentUser.displayName,
+        updatedAt: now,
+        updatedById: currentUser.uid,
+        updatedByName: currentUser.displayName
+      });
+      try {
+        await manageFieldConfiguration(currentUser, { action: 'save', table: definition.table, definition, expectedUpdatedAt: draft.expectedUpdatedAt });
+        setDraft(null);
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (saveError) {
+        showErrorToast();
+        console.error(saveError);
+        setError(saveError instanceof Error ? saveError.message : 'Không thể lưu trường tùy chỉnh.');
+      } finally { setSaving(false); }
+    }, undefined);
   };
 
   const changeDefinition = async (definition: EntityFieldDefinition, action: 'archive' | 'restore' | 'remove') => {
-    if (action !== 'restore' && !window.confirm(action === 'remove' ? 'Xóa trường khỏi sử dụng? Chỉ trường chưa có dữ liệu mới được xóa; cấu hình được giữ để có thể khôi phục.' : 'Ngừng sử dụng trường? Dữ liệu đã nhập vẫn được giữ trong hồ sơ.')) return;
-    setSaving(true); setError('');
-    try {
-      await manageFieldConfiguration(currentUser, { action, table: definition.table, id: definition.id, expectedUpdatedAt: definition.updatedAt });
-    } catch (error) { setError(error instanceof Error ? error.message : 'Không thể cập nhật trường.'); }
-    finally { setSaving(false); }
+    return runMutationAction("CustomFieldConfiguration.tsx:changeDefinition", async () => {
+      if (action !== 'restore' && !window.confirm(action === 'remove' ? 'Xóa trường khỏi sử dụng? Chỉ trường chưa có dữ liệu mới được xóa; cấu hình được giữ để có thể khôi phục.' : 'Ngừng sử dụng trường? Dữ liệu đã nhập vẫn được giữ trong hồ sơ.')) return;
+      setSaving(true); setError('');
+      try {
+        await manageFieldConfiguration(currentUser, { action, table: definition.table, id: definition.id, expectedUpdatedAt: definition.updatedAt });
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast(); setError(error instanceof Error ? error.message : 'Không thể cập nhật trường.'); }
+      finally { setSaving(false); }
+    }, definition);
   };
 
   const duplicateDefinition = (definition: EntityFieldDefinition) => {
@@ -173,11 +184,16 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
   };
 
   const moveDefinition = async (definition: EntityFieldDefinition, direction: -1 | 1) => {
-    setSaving(true); setError('');
-    try {
-      await manageFieldConfiguration(currentUser, { action: 'move', table: definition.table, id: definition.id, direction, expectedUpdatedAt: definition.updatedAt });
-    } catch (error) { setError(error instanceof Error ? error.message : 'Không thể đổi thứ tự.'); }
-    finally { setSaving(false); }
+    return runMutationAction("CustomFieldConfiguration.tsx:moveDefinition", async () => {
+      setSaving(true); setError('');
+      try {
+        await manageFieldConfiguration(currentUser, { action: 'move', table: definition.table, id: definition.id, direction, expectedUpdatedAt: definition.updatedAt });
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast(); setError(error instanceof Error ? error.message : 'Không thể đổi thứ tự.'); }
+      finally { setSaving(false); }
+    }, definition);
   };
 
   const closeDraft = () => {

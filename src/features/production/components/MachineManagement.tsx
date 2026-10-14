@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -122,59 +123,67 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
   };
 
   const handleSave = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (saving) return;
+    return runMutationAction("MachineManagement.tsx:handleSave", async () => {
+      event.preventDefault();
+      if (saving) return;
 
-    const normalizedCode = form.code.trim().toLocaleLowerCase('vi');
-    const normalizedName = form.name.trim().toLocaleLowerCase('vi');
-    const duplicate = machines.find(machine => (
-      machine.id !== editingMachine?.id &&
-      (machine.code.trim().toLocaleLowerCase('vi') === normalizedCode ||
-        machine.name.trim().toLocaleLowerCase('vi') === normalizedName)
-    ));
-    if (duplicate) {
-      window.alert(`Mã máy hoặc tên máy đã tồn tại (${duplicate.code} - ${duplicate.name}).`);
-      return;
-    }
-
-    const payload = {
-      code: form.code.trim().toUpperCase(),
-      name: form.name.trim(),
-      type: form.type.trim(),
-      colorCount: Math.max(0, Number(form.colorCount) || 0),
-      maxWidthMm: Math.max(0, Number(form.maxWidthMm) || 0),
-      capacityPerHour: Math.max(0, Number(form.capacityPerHour) || 0),
-      supportedMaterials: form.supportedMaterials
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean),
-      status: form.status,
-      notes: form.notes.trim()
-    };
-
-    setSaving(true);
-    try {
-      if (editingMachine) {
-        await dbService.updateDocument('machines', editingMachine.id, payload);
-      } else {
-        await dbService.addDocument('machines', payload);
+      const normalizedCode = form.code.trim().toLocaleLowerCase('vi');
+      const normalizedName = form.name.trim().toLocaleLowerCase('vi');
+      const duplicate = machines.find(machine => (
+        machine.id !== editingMachine?.id &&
+        (machine.code.trim().toLocaleLowerCase('vi') === normalizedCode ||
+          machine.name.trim().toLocaleLowerCase('vi') === normalizedName)
+      ));
+      if (duplicate) {
+        window.alert(`Mã máy hoặc tên máy đã tồn tại (${duplicate.code} - ${duplicate.name}).`);
+        return;
       }
-      setShowModal(false);
-      setEditingMachine(null);
-      setForm(EMPTY_FORM);
-    } finally {
-      setSaving(false);
-    }
+
+      const payload = {
+        code: form.code.trim().toUpperCase(),
+        name: form.name.trim(),
+        type: form.type.trim(),
+        colorCount: Math.max(0, Number(form.colorCount) || 0),
+        maxWidthMm: Math.max(0, Number(form.maxWidthMm) || 0),
+        capacityPerHour: Math.max(0, Number(form.capacityPerHour) || 0),
+        supportedMaterials: form.supportedMaterials
+          .split(',')
+          .map(item => item.trim())
+          .filter(Boolean),
+        status: form.status,
+        notes: form.notes.trim()
+      };
+
+      setSaving(true);
+      try {
+        if (editingMachine) {
+          await requireConfirmedMutation(dbService.updateDocument('machines', editingMachine.id, payload));
+        } else {
+          await dbService.addDocument('machines', payload);
+        }
+        setShowModal(false);
+        setEditingMachine(null);
+        setForm(EMPTY_FORM);
+
+        showSuccessToast("Đã lưu thành công");
+      } finally {
+        setSaving(false);
+      }
+    }, event);
   };
 
   const handleDeactivate = async (machine: ProductionMachine) => {
-    const runningCommands = getMachineCommands(machine, activeCommands);
-    if (runningCommands.length > 0) {
-      window.alert(`Không thể ngừng ${machine.name} vì đang có ${runningCommands.length} LSX hoạt động.`);
-      return;
-    }
-    if (!window.confirm(`Ngừng sử dụng ${machine.code} - ${machine.name}? Dữ liệu LSX cũ vẫn được giữ nguyên.`)) return;
-    await dbService.updateDocument('machines', machine.id, { status: 'inactive' });
+    return runMutationAction("MachineManagement.tsx:handleDeactivate", async () => {
+      const runningCommands = getMachineCommands(machine, activeCommands);
+      if (runningCommands.length > 0) {
+        window.alert(`Không thể ngừng ${machine.name} vì đang có ${runningCommands.length} LSX hoạt động.`);
+        return;
+      }
+      if (!window.confirm(`Ngừng sử dụng ${machine.code} - ${machine.name}? Dữ liệu LSX cũ vẫn được giữ nguyên.`)) return;
+      await requireConfirmedMutation(dbService.updateDocument('machines', machine.id, { status: 'inactive' }));
+
+      showSuccessToast("Đã lưu thành công");
+    }, machine);
   };
 
   if (view === 'schedule') {

@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -1234,120 +1235,130 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   ));
 
   const addSelectedCandidatesToWorkQueue = async () => {
-    const candidatesToQueue = getSelectedCandidates();
-    if (candidatesToQueue.length === 0) return;
-    const assignedAt = new Date().toISOString();
+    return runMutationAction("LeadCandidateWorkspace.tsx:addSelectedCandidatesToWorkQueue", async () => {
+      const candidatesToQueue = getSelectedCandidates();
+      if (candidatesToQueue.length === 0) return;
+      const assignedAt = new Date().toISOString();
 
-    setSavingBatchQueue(true);
-    setBatchQueueError('');
-    try {
-      await Promise.all(candidatesToQueue.map(candidate => {
-        const targetTaskSource: LeadCandidateTaskSource = currentUser.role === 'admin'
-          ? 'admin_assigned'
-          : 'sale_created';
-        if (!candidate.workQueueHidden && candidate.taskSource === targetTaskSource) {
-          return Promise.resolve(true);
+      setSavingBatchQueue(true);
+      setBatchQueueError('');
+      try {
+        await Promise.all(candidatesToQueue.map(candidate => {
+          const targetTaskSource: LeadCandidateTaskSource = currentUser.role === 'admin'
+            ? 'admin_assigned'
+            : 'sale_created';
+          if (!candidate.workQueueHidden && candidate.taskSource === targetTaskSource) {
+            return Promise.resolve(true);
+          }
+          const log = buildCandidateLog(candidate, {
+            eventType: 'activity',
+            activityType: 'note',
+            description: 'Đưa vào Công việc cần xử lý'
+          });
+          return requireConfirmedMutation(dbService.updateDocument('lead_candidates', candidate.id, {
+            schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
+            ...buildTaskAssignment(candidate, assignedAt),
+            workQueueHidden: false,
+            taskStatus: 'pending',
+            taskDismissedAt: '',
+            contactLogs: prependCandidateLog(candidate, log),
+            updatedBy: currentUser.displayName
+          }));
+        }));
+        if (currentUser.role === 'admin') {
+          const notificationOperations = candidatesToQueue.flatMap(candidate => {
+            const assignee = saleUsers.find(user => user.uid === candidate.assignedSaleId);
+            return assignee ? [createAdminAssignmentNotification(candidate, assignee, assignedAt)] : [];
+          });
+          await Promise.all(notificationOperations);
         }
-        const log = buildCandidateLog(candidate, {
-          eventType: 'activity',
-          activityType: 'note',
-          description: 'Đưa vào Công việc cần xử lý'
-        });
-        return dbService.updateDocument('lead_candidates', candidate.id, {
-          schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
-          ...buildTaskAssignment(candidate, assignedAt),
-          workQueueHidden: false,
-          taskStatus: 'pending',
-          taskDismissedAt: '',
-          contactLogs: prependCandidateLog(candidate, log),
-          updatedBy: currentUser.displayName
-        });
-      }));
-      if (currentUser.role === 'admin') {
-        const notificationOperations = candidatesToQueue.flatMap(candidate => {
-          const assignee = saleUsers.find(user => user.uid === candidate.assignedSaleId);
-          return assignee ? [createAdminAssignmentNotification(candidate, assignee, assignedAt)] : [];
-        });
-        await Promise.all(notificationOperations);
+        setSelectedQueueCandidateIds([]);
+        setWorkspaceView('tasks');
+        candidatesToQueue.forEach(candidate => auditService.recordSafely(currentUser, {
+          category: 'business',
+          module: 'lead_candidates',
+          action: 'candidate_added_to_work_queue',
+          summary: `Đưa ${candidate.companyName} vào Công việc cần xử lý`,
+          targetType: 'lead_candidate',
+          targetId: candidate.id,
+          targetLabel: candidate.companyName
+        }));
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setBatchQueueError('Không thể chuyển một số dữ liệu sang Công việc cần xử lý. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      } finally {
+        setSavingBatchQueue(false);
       }
-      setSelectedQueueCandidateIds([]);
-      setWorkspaceView('tasks');
-      candidatesToQueue.forEach(candidate => auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'lead_candidates',
-        action: 'candidate_added_to_work_queue',
-        summary: `Đưa ${candidate.companyName} vào Công việc cần xử lý`,
-        targetType: 'lead_candidate',
-        targetId: candidate.id,
-        targetLabel: candidate.companyName
-      }));
-    } catch {
-      setBatchQueueError('Không thể chuyển một số dữ liệu sang Công việc cần xử lý. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    } finally {
-      setSavingBatchQueue(false);
-    }
+    }, undefined);
   };
 
   const assignSelectedCandidatesToSale = async () => {
-    const assignee = saleUsers.find(user => user.uid === batchAssigneeId);
-    if (!assignee) {
-      setBatchQueueError('Vui lòng chọn Sale nhận bàn giao.');
-      return;
-    }
+    return runMutationAction("LeadCandidateWorkspace.tsx:assignSelectedCandidatesToSale", async () => {
+      const assignee = saleUsers.find(user => user.uid === batchAssigneeId);
+      if (!assignee) {
+        setBatchQueueError('Vui lòng chọn Sale nhận bàn giao.');
+        return;
+      }
 
-    const candidatesToAssign = getSelectedCandidates();
-    if (candidatesToAssign.length === 0) return;
-    const assignedAt = new Date().toISOString();
+      const candidatesToAssign = getSelectedCandidates();
+      if (candidatesToAssign.length === 0) return;
+      const assignedAt = new Date().toISOString();
 
-    setSavingBatchQueue(true);
-    setBatchQueueError('');
-    try {
-      await Promise.all(candidatesToAssign.map(candidate => {
-        if (
-          !candidate.workQueueHidden
-          && candidate.assignedSaleId === assignee.uid
-          && candidate.taskSource === 'admin_assigned'
-        ) {
-          return Promise.resolve(true);
-        }
-        const log = buildCandidateLog(candidate, {
-          eventType: 'activity',
-          activityType: 'note',
-          description: `Bàn giao cho Sale · Phụ trách: ${assignee.displayName}`
-        });
-        return dbService.updateDocument('lead_candidates', candidate.id, {
-          schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
-          assignedSaleId: assignee.uid,
-          assignedSaleName: assignee.displayName,
-          ...buildTaskAssignment(candidate, assignedAt),
-          workQueueHidden: false,
-          taskStatus: 'pending',
-          taskDismissedAt: '',
-          contactLogs: prependCandidateLog(candidate, log),
-          updatedBy: currentUser.displayName
-        });
-      }));
-      await Promise.all(candidatesToAssign.map(candidate => (
-        createAdminAssignmentNotification(candidate, assignee, assignedAt)
-      )));
-      setSelectedQueueCandidateIds([]);
-      setBatchAssigneeId('');
-      setWorkspaceView('tasks');
-      candidatesToAssign.forEach(candidate => auditService.recordSafely(currentUser, {
-        category: 'business',
-        module: 'lead_candidates',
-        action: 'candidate_assigned_to_sale',
-        summary: `Bàn giao ${candidate.companyName} cho ${assignee.displayName}`,
-        targetType: 'lead_candidate',
-        targetId: candidate.id,
-        targetLabel: candidate.companyName,
-        changes: [{ field: 'assignedSale', label: 'Sale phụ trách', before: candidate.assignedSaleName || 'Chưa phân công', after: assignee.displayName }]
-      }));
-    } catch {
-      setBatchQueueError('Không thể bàn giao một số dữ liệu cho Sale. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    } finally {
-      setSavingBatchQueue(false);
-    }
+      setSavingBatchQueue(true);
+      setBatchQueueError('');
+      try {
+        await Promise.all(candidatesToAssign.map(candidate => {
+          if (
+            !candidate.workQueueHidden
+            && candidate.assignedSaleId === assignee.uid
+            && candidate.taskSource === 'admin_assigned'
+          ) {
+            return Promise.resolve(true);
+          }
+          const log = buildCandidateLog(candidate, {
+            eventType: 'activity',
+            activityType: 'note',
+            description: `Bàn giao cho Sale · Phụ trách: ${assignee.displayName}`
+          });
+          return requireConfirmedMutation(dbService.updateDocument('lead_candidates', candidate.id, {
+            schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
+            assignedSaleId: assignee.uid,
+            assignedSaleName: assignee.displayName,
+            ...buildTaskAssignment(candidate, assignedAt),
+            workQueueHidden: false,
+            taskStatus: 'pending',
+            taskDismissedAt: '',
+            contactLogs: prependCandidateLog(candidate, log),
+            updatedBy: currentUser.displayName
+          }));
+        }));
+        await Promise.all(candidatesToAssign.map(candidate => (
+          createAdminAssignmentNotification(candidate, assignee, assignedAt)
+        )));
+        setSelectedQueueCandidateIds([]);
+        setBatchAssigneeId('');
+        setWorkspaceView('tasks');
+        candidatesToAssign.forEach(candidate => auditService.recordSafely(currentUser, {
+          category: 'business',
+          module: 'lead_candidates',
+          action: 'candidate_assigned_to_sale',
+          summary: `Bàn giao ${candidate.companyName} cho ${assignee.displayName}`,
+          targetType: 'lead_candidate',
+          targetId: candidate.id,
+          targetLabel: candidate.companyName,
+          changes: [{ field: 'assignedSale', label: 'Sale phụ trách', before: candidate.assignedSaleName || 'Chưa phân công', after: assignee.displayName }]
+        }));
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setBatchQueueError('Không thể bàn giao một số dữ liệu cho Sale. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      } finally {
+        setSavingBatchQueue(false);
+      }
+    }, undefined);
   };
 
   const updateForm = <K extends keyof CandidateFormState>(field: K, value: CandidateFormState[K]) => {
@@ -1491,188 +1502,199 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   };
 
   const saveClassification = async (candidate: LeadCandidateRecord, values: string[]) => {
-    if (!canManageCandidate(candidate)) throw new Error('Not allowed to classify this candidate');
-    const now = new Date().toISOString();
-    await dbService.updateDocument('lead_candidates', candidate.id, {
-      customerInsightValues: values,
-      updatedAt: now,
-      updatedBy: currentUser.displayName
-    });
-    if (editingCandidateId === candidate.id) updateForm('customerInsightValues', values);
-    auditService.recordSafely(currentUser, {
-      category: 'business', module: 'lead_candidates', action: 'candidate_classification_updated',
-      summary: `Cập nhật phân loại ${candidate.companyName} · ${values.length}/${CUSTOMER_INSIGHT_ITEMS.length} mục`,
-      targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
-    });
+    return runMutationAction("LeadCandidateWorkspace.tsx:saveClassification", async () => {
+      if (!canManageCandidate(candidate)) throw new Error('Not allowed to classify this candidate');
+      const now = new Date().toISOString();
+      await requireConfirmedMutation(dbService.updateDocument('lead_candidates', candidate.id, {
+        customerInsightValues: values,
+        updatedAt: now,
+        updatedBy: currentUser.displayName
+      }));
+      if (editingCandidateId === candidate.id) updateForm('customerInsightValues', values);
+      auditService.recordSafely(currentUser, {
+        category: 'business', module: 'lead_candidates', action: 'candidate_classification_updated',
+        summary: `Cập nhật phân loại ${candidate.companyName} · ${values.length}/${CUSTOMER_INSIGHT_ITEMS.length} mục`,
+        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
+      });
+
+      showSuccessToast("Đã lưu thành công");
+    }, candidate);
   };
 
   const handleSaveCandidate = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!form.companyName.trim() || !form.assignedSaleId || hasBlockingDuplicate) return;
-    const missingCustomFields = getMissingRequiredEntityFields(profileCustomFieldDefinitions, customFieldValues, currentUser.role);
-    if (missingCustomFields.length > 0) {
-      setSaveError(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
-      return;
-    }
-
-    try {
-      const [latestLeads, latestCustomers, latestCandidates] = await Promise.all([
-        currentUser.role === 'sale'
-          ? dbService.getCollectionByField('leads', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
-          : dbService.getCollection('leads'),
-        currentUser.role === 'sale'
-          ? dbService.getCollectionByField('customers', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
-          : dbService.getCollection('customers'),
-        currentUser.role === 'admin'
-          ? dbService.getCollection('lead_candidates')
-          : Promise.resolve(candidates)
-      ]);
-      const latestDuplicate = findCandidateDuplicate(
-        {
-          companyName: form.companyName,
-          phone: form.phone,
-          taxCode: form.taxCode
-        },
-        latestCandidates as LeadCandidateRecord[],
-        latestLeads as LeadRecord[],
-        latestCustomers as CustomerRecord[],
-        editingCandidateId
-      );
-      if (latestDuplicate?.reason === 'taxCode') {
-        setSaveError(describeDuplicate(latestDuplicate));
+    return runMutationAction("LeadCandidateWorkspace.tsx:handleSaveCandidate", async () => {
+      event.preventDefault();
+      if (!form.companyName.trim() || !form.assignedSaleId || hasBlockingDuplicate) return;
+      const missingCustomFields = getMissingRequiredEntityFields(profileCustomFieldDefinitions, customFieldValues, currentUser.role);
+      if (missingCustomFields.length > 0) {
+        setSaveError(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
         return;
       }
 
-      const assignedSale = candidateOwners.find(user => user.uid === form.assignedSaleId);
-      const now = new Date().toISOString();
-      const normalizedTaxCode = normalizeTaxCode(form.taxCode);
-      const nextContactAt = form.nextContactAt ? new Date(form.nextContactAt).toISOString() : '';
-      const scheduleChanged = !editingCandidate || editingCandidate.nextContactAt !== nextContactAt;
-      const taskAssignment = nextContactAt ? buildTaskAssignment(editingCandidate) : null;
-      const scheduleLog = editingCandidate && scheduleChanged && nextContactAt
-        ? buildCandidateLog(editingCandidate, {
-          eventType: 'schedule',
-          description: `Đặt lịch liên hệ: ${formatShortDateTime(nextContactAt)}`,
+      try {
+        const [latestLeads, latestCustomers, latestCandidates] = await Promise.all([
+          currentUser.role === 'sale'
+            ? dbService.getCollectionByField('leads', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+            : dbService.getCollection('leads'),
+          currentUser.role === 'sale'
+            ? dbService.getCollectionByField('customers', 'assignedSaleId', currentUser.uid, { maxResults: 10000 })
+            : dbService.getCollection('customers'),
+          currentUser.role === 'admin'
+            ? dbService.getCollection('lead_candidates')
+            : Promise.resolve(candidates)
+        ]);
+        const latestDuplicate = findCandidateDuplicate(
+          {
+            companyName: form.companyName,
+            phone: form.phone,
+            taxCode: form.taxCode
+          },
+          latestCandidates as LeadCandidateRecord[],
+          latestLeads as LeadRecord[],
+          latestCustomers as CustomerRecord[],
+          editingCandidateId
+        );
+        if (latestDuplicate?.reason === 'taxCode') {
+          setSaveError(describeDuplicate(latestDuplicate));
+          return;
+        }
+
+        const assignedSale = candidateOwners.find(user => user.uid === form.assignedSaleId);
+        const now = new Date().toISOString();
+        const normalizedTaxCode = normalizeTaxCode(form.taxCode);
+        const nextContactAt = form.nextContactAt ? new Date(form.nextContactAt).toISOString() : '';
+        const scheduleChanged = !editingCandidate || editingCandidate.nextContactAt !== nextContactAt;
+        const taskAssignment = nextContactAt ? buildTaskAssignment(editingCandidate) : null;
+        const scheduleLog = editingCandidate && scheduleChanged && nextContactAt
+          ? buildCandidateLog(editingCandidate, {
+            eventType: 'schedule',
+            description: `Đặt lịch liên hệ: ${formatShortDateTime(nextContactAt)}`,
+            note: form.note.trim(),
+            nextContactAt
+          })
+          : null;
+        const payload = {
+          schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
+          companyName: form.companyName.trim(),
+          contactPerson: form.contactPerson.trim(),
+          contactPosition: form.contactPosition.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          taxCode: normalizedTaxCode,
+          address: form.address.trim(),
+          province: form.province.trim(),
+          ward: form.ward.trim(),
+          industrialPark: form.industrialPark.trim(),
+          website: form.website.trim(),
+          businessSector: form.businessSector.trim(),
+          expectedProducts: form.expectedProducts.trim(),
+          source: form.source,
+          sourceUrl: form.sourceUrl.trim(),
           note: form.note.trim(),
-          nextContactAt
-        })
-        : null;
-      const payload = {
-        schemaVersion: LEAD_CANDIDATE_SCHEMA_VERSION,
-        companyName: form.companyName.trim(),
-        contactPerson: form.contactPerson.trim(),
-        contactPosition: form.contactPosition.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim(),
-        taxCode: normalizedTaxCode,
-        address: form.address.trim(),
-        province: form.province.trim(),
-        ward: form.ward.trim(),
-        industrialPark: form.industrialPark.trim(),
-        website: form.website.trim(),
-        businessSector: form.businessSector.trim(),
-        expectedProducts: form.expectedProducts.trim(),
-        source: form.source,
-        sourceUrl: form.sourceUrl.trim(),
-        note: form.note.trim(),
-        customerInsightValues: form.customerInsightValues,
-        files: candidateFiles,
-        customFieldValues,
-        assignedSaleId: form.assignedSaleId,
-        assignedSaleName: assignedSale?.displayName || '',
-        discoveredById: editingCandidate?.discoveredById || currentUser.uid,
-        discoveredByName: editingCandidate?.discoveredByName || currentUser.displayName,
-        nextContactAt,
-        ...(scheduleChanged ? {
-          queuedNextContactAt: '',
-          taskStatus: 'pending' as LeadCandidateTaskStatus,
-          workStatus: nextContactAt
-            ? 'pending'
-            : editingCandidate?.contactResult === 'not_contacted' ? 'not_contacted' : 'completed',
-          taskCompletedAt: '',
-          taskCompletedById: '',
-          taskCompletedByName: '',
-          taskDismissedAt: '',
-          ...(taskAssignment || {}),
-          workQueueHidden: nextContactAt ? false : (editingCandidate?.workQueueHidden ?? true),
-          ...(scheduleLog && editingCandidate ? { contactLogs: prependCandidateLog(editingCandidate, scheduleLog) } : {})
-        } : {}),
-        updatedBy: currentUser.displayName
-      };
+          customerInsightValues: form.customerInsightValues,
+          files: candidateFiles,
+          customFieldValues,
+          assignedSaleId: form.assignedSaleId,
+          assignedSaleName: assignedSale?.displayName || '',
+          discoveredById: editingCandidate?.discoveredById || currentUser.uid,
+          discoveredByName: editingCandidate?.discoveredByName || currentUser.displayName,
+          nextContactAt,
+          ...(scheduleChanged ? {
+            queuedNextContactAt: '',
+            taskStatus: 'pending' as LeadCandidateTaskStatus,
+            workStatus: nextContactAt
+              ? 'pending'
+              : editingCandidate?.contactResult === 'not_contacted' ? 'not_contacted' : 'completed',
+            taskCompletedAt: '',
+            taskCompletedById: '',
+            taskCompletedByName: '',
+            taskDismissedAt: '',
+            ...(taskAssignment || {}),
+            workQueueHidden: nextContactAt ? false : (editingCandidate?.workQueueHidden ?? true),
+            ...(scheduleLog && editingCandidate ? { contactLogs: prependCandidateLog(editingCandidate, scheduleLog) } : {})
+          } : {}),
+          updatedBy: currentUser.displayName
+        };
 
-      if (editingCandidateId) {
-        await dbService.updateDocument('lead_candidates', editingCandidateId, payload);
+        if (editingCandidateId) {
+          await requireConfirmedMutation(dbService.updateDocument('lead_candidates', editingCandidateId, payload));
+          auditService.recordSafely(currentUser, {
+            category: 'business', module: 'lead_candidates', action: 'candidate_updated',
+            summary: `Cập nhật dữ liệu khách hàng ${form.companyName.trim()}`,
+            targetType: 'lead_candidate', targetId: editingCandidateId, targetLabel: form.companyName.trim()
+          });
+          setShowForm(false);
+
+          showSuccessToast("Đã lưu thành công");
+          return;
+        }
+
+        const createPayload = {
+          ...payload,
+          status: 'new' as const,
+          contactAttempts: 0,
+          lastContactAt: '',
+          lastContactOutcome: '',
+          lastContactNote: '',
+          contactLogs: [],
+          contactResult: 'not_contacted' as LeadCandidateContactResult,
+          potentialLevel: 'unrated' as LeadCandidatePotentialLevel,
+          workQueueHidden: !nextContactAt,
+          taskSource: nextContactAt
+            ? taskAssignment?.taskSource || 'sale_created'
+            : '' as LeadCandidateTaskSource,
+          taskAssignedAt: taskAssignment?.taskAssignedAt || '',
+          taskAssignedById: taskAssignment?.taskAssignedById || '',
+          taskAssignedByName: taskAssignment?.taskAssignedByName || '',
+          pinned: false,
+          archived: false,
+          archivedAt: '',
+          archivedById: '',
+          archivedByName: '',
+          convertedLeadId: '',
+          convertedAt: '',
+          createdAt: now,
+          createdById: currentUser.uid,
+          createdByName: currentUser.displayName
+        };
+        const createdCandidate = (normalizedTaxCode
+          ? await dbService.addDocumentIfAbsent(
+            'lead_candidates',
+            createCandidateDocumentIdFromTaxCode(normalizedTaxCode),
+            createPayload
+          )
+          : await dbService.addDocument('lead_candidates', createPayload)) as LeadCandidateRecord;
         auditService.recordSafely(currentUser, {
-          category: 'business', module: 'lead_candidates', action: 'candidate_updated',
-          summary: `Cập nhật dữ liệu khách hàng ${form.companyName.trim()}`,
-          targetType: 'lead_candidate', targetId: editingCandidateId, targetLabel: form.companyName.trim()
+          category: 'business', module: 'lead_candidates', action: 'candidate_created',
+          summary: `Tạo dữ liệu khách hàng ${form.companyName.trim()}`,
+          targetType: 'lead_candidate', targetId: createdCandidate.id, targetLabel: form.companyName.trim()
         });
-        setShowForm(false);
-        return;
-      }
+        setCreatedCandidateSnapshot(createdCandidate);
+        setEditingCandidateId(createdCandidate.id);
+        setCandidateDetailTab('profile');
+        setCandidateFiles(createdCandidate.files || []);
+        setCustomFieldValues(createdCandidate.customFieldValues || {});
+        setSaveError('');
 
-      const createPayload = {
-        ...payload,
-        status: 'new' as const,
-        contactAttempts: 0,
-        lastContactAt: '',
-        lastContactOutcome: '',
-        lastContactNote: '',
-        contactLogs: [],
-        contactResult: 'not_contacted' as LeadCandidateContactResult,
-        potentialLevel: 'unrated' as LeadCandidatePotentialLevel,
-        workQueueHidden: !nextContactAt,
-        taskSource: nextContactAt
-          ? taskAssignment?.taskSource || 'sale_created'
-          : '' as LeadCandidateTaskSource,
-        taskAssignedAt: taskAssignment?.taskAssignedAt || '',
-        taskAssignedById: taskAssignment?.taskAssignedById || '',
-        taskAssignedByName: taskAssignment?.taskAssignedByName || '',
-        pinned: false,
-        archived: false,
-        archivedAt: '',
-        archivedById: '',
-        archivedByName: '',
-        convertedLeadId: '',
-        convertedAt: '',
-        createdAt: now,
-        createdById: currentUser.uid,
-        createdByName: currentUser.displayName
-      };
-      const createdCandidate = (normalizedTaxCode
-        ? await dbService.addDocumentIfAbsent(
-          'lead_candidates',
-          createCandidateDocumentIdFromTaxCode(normalizedTaxCode),
-          createPayload
-        )
-        : await dbService.addDocument('lead_candidates', createPayload)) as LeadCandidateRecord;
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'lead_candidates', action: 'candidate_created',
-        summary: `Tạo dữ liệu khách hàng ${form.companyName.trim()}`,
-        targetType: 'lead_candidate', targetId: createdCandidate.id, targetLabel: form.companyName.trim()
-      });
-      setCreatedCandidateSnapshot(createdCandidate);
-      setEditingCandidateId(createdCandidate.id);
-      setCandidateDetailTab('profile');
-      setCandidateFiles(createdCandidate.files || []);
-      setCustomFieldValues(createdCandidate.customFieldValues || {});
-      setSaveError('');
-    } catch (error) {
-      const errorCode = typeof error === 'object' && error !== null && 'code' in error
-        ? String(error.code)
-        : '';
-      if (isDocumentAlreadyExistsError(error)) {
-        setSaveError('Mã số thuế này vừa được một Sale khác lưu vào Dữ liệu khách hàng.');
-      } else if (errorCode === 'permission-denied' || errorCode === 'firestore/permission-denied') {
-        setSaveError(normalizeTaxCode(form.taxCode)
-          ? 'Không thể lưu: mã số thuế có thể đã tồn tại ở hồ sơ của Sale khác hoặc Firestore Rules chưa được cập nhật.'
-          : 'Firebase chưa cấp quyền lưu Dữ liệu khách hàng. Admin cần xuất bản Firestore Rules mới nhất.');
-      } else if (errorCode === 'auth/session-expired' || errorCode === 'unauthenticated') {
-        setSaveError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.');
-      } else {
-        setSaveError('Không thể lưu dữ liệu khách hàng. Vui lòng kiểm tra kết nối và thử lại.');
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        const errorCode = typeof error === 'object' && error !== null && 'code' in error
+          ? String(error.code)
+          : '';
+        if (isDocumentAlreadyExistsError(error)) {
+          setSaveError('Mã số thuế này vừa được một Sale khác lưu vào Dữ liệu khách hàng.');
+        } else if (errorCode === 'permission-denied' || errorCode === 'firestore/permission-denied') {
+          setSaveError(normalizeTaxCode(form.taxCode)
+            ? 'Không thể lưu: mã số thuế có thể đã tồn tại ở hồ sơ của Sale khác hoặc Firestore Rules chưa được cập nhật.'
+            : 'Firebase chưa cấp quyền lưu Dữ liệu khách hàng. Admin cần xuất bản Firestore Rules mới nhất.');
+        } else if (errorCode === 'auth/session-expired' || errorCode === 'unauthenticated') {
+          setSaveError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.');
+        } else {
+          setSaveError('Không thể lưu dữ liệu khách hàng. Vui lòng kiểm tra kết nối và thử lại.');
+        }
       }
-    }
+    }, event);
   };
 
   const openScheduleForm = (candidate: LeadCandidateRecord, contactResult: LeadCandidateContactResult | '' = '') => {
@@ -1687,184 +1709,209 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   };
 
   const handleSaveSchedule = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!scheduleCandidate || !scheduleForm.nextContactAt) return;
-    const nextContactAt = new Date(scheduleForm.nextContactAt).toISOString();
-    setSavingSchedule(true);
-    setScheduleError('');
-    try {
-      const contactResult = scheduleContactResult || scheduleCandidate.contactResult;
-      const log = buildCandidateLog(scheduleCandidate, {
-        eventType: 'schedule',
-        outcome: CONTACT_RESULT_OUTCOMES[contactResult],
-        contactResult: scheduleContactResult || '',
-        description: scheduleContactResult === 'callback'
-          ? `Trạng thái: ${CONTACT_STATUS_LABELS.callback} · ${formatShortDateTime(nextContactAt)}`
-          : `Đặt lịch liên hệ: ${formatShortDateTime(nextContactAt)}`,
-        note: scheduleForm.note.trim(),
-        nextContactAt
-      });
-      await dbService.updateDocument('lead_candidates', scheduleCandidate.id, {
-        nextContactAt,
-        ...buildTaskAssignment(scheduleCandidate),
-        queuedNextContactAt: '',
-        taskStatus: 'pending',
-        workStatus: 'pending',
-        workQueueHidden: false,
-        taskCompletedAt: '',
-        taskCompletedById: '',
-        taskCompletedByName: '',
-        taskDismissedAt: '',
-        ...(scheduleContactResult ? {
-          contactResult: scheduleContactResult,
-          lastContactAt: log.occurredAt,
-          lastContactOutcome: CONTACT_RESULT_OUTCOMES[scheduleContactResult],
-          lastContactNote: scheduleForm.note.trim(),
-          contactAttempts: scheduleCandidate.contactAttempts + 1
-        } : {}),
-        contactLogs: prependCandidateLog(scheduleCandidate, log),
-        updatedBy: currentUser.displayName
-      });
-      setScheduleCandidateId('');
-      setScheduleContactResult('');
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'lead_candidates', action: 'follow_up_scheduled',
-        summary: `Đặt lịch liên hệ ${scheduleCandidate.companyName}`,
-        targetType: 'lead_candidate', targetId: scheduleCandidate.id, targetLabel: scheduleCandidate.companyName,
-        changes: [{ field: 'nextContactAt', label: 'Lịch hẹn', after: nextContactAt }]
-      });
-    } catch (error) {
-      const code = typeof error === 'object' && error !== null && 'code' in error
-        ? String(error.code)
-        : '';
-      setScheduleError(code.includes('permission-denied')
-        ? 'Firebase chưa cấp quyền đặt lịch. Admin cần xuất bản Firestore Rules mới nhất.'
-        : 'Không thể lưu lịch hẹn. Vui lòng thử lại.');
-    } finally {
-      setSavingSchedule(false);
-    }
+    return runMutationAction("LeadCandidateWorkspace.tsx:handleSaveSchedule", async () => {
+      event.preventDefault();
+      if (!scheduleCandidate || !scheduleForm.nextContactAt) return;
+      const nextContactAt = new Date(scheduleForm.nextContactAt).toISOString();
+      setSavingSchedule(true);
+      setScheduleError('');
+      try {
+        const contactResult = scheduleContactResult || scheduleCandidate.contactResult;
+        const log = buildCandidateLog(scheduleCandidate, {
+          eventType: 'schedule',
+          outcome: CONTACT_RESULT_OUTCOMES[contactResult],
+          contactResult: scheduleContactResult || '',
+          description: scheduleContactResult === 'callback'
+            ? `Trạng thái: ${CONTACT_STATUS_LABELS.callback} · ${formatShortDateTime(nextContactAt)}`
+            : `Đặt lịch liên hệ: ${formatShortDateTime(nextContactAt)}`,
+          note: scheduleForm.note.trim(),
+          nextContactAt
+        });
+        await requireConfirmedMutation(dbService.updateDocument('lead_candidates', scheduleCandidate.id, {
+          nextContactAt,
+          ...buildTaskAssignment(scheduleCandidate),
+          queuedNextContactAt: '',
+          taskStatus: 'pending',
+          workStatus: 'pending',
+          workQueueHidden: false,
+          taskCompletedAt: '',
+          taskCompletedById: '',
+          taskCompletedByName: '',
+          taskDismissedAt: '',
+          ...(scheduleContactResult ? {
+            contactResult: scheduleContactResult,
+            lastContactAt: log.occurredAt,
+            lastContactOutcome: CONTACT_RESULT_OUTCOMES[scheduleContactResult],
+            lastContactNote: scheduleForm.note.trim(),
+            contactAttempts: scheduleCandidate.contactAttempts + 1
+          } : {}),
+          contactLogs: prependCandidateLog(scheduleCandidate, log),
+          updatedBy: currentUser.displayName
+        }));
+        setScheduleCandidateId('');
+        setScheduleContactResult('');
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'lead_candidates', action: 'follow_up_scheduled',
+          summary: `Đặt lịch liên hệ ${scheduleCandidate.companyName}`,
+          targetType: 'lead_candidate', targetId: scheduleCandidate.id, targetLabel: scheduleCandidate.companyName,
+          changes: [{ field: 'nextContactAt', label: 'Lịch hẹn', after: nextContactAt }]
+        });
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        const code = typeof error === 'object' && error !== null && 'code' in error
+          ? String(error.code)
+          : '';
+        setScheduleError(code.includes('permission-denied')
+          ? 'Firebase chưa cấp quyền đặt lịch. Admin cần xuất bản Firestore Rules mới nhất.'
+          : 'Không thể lưu lịch hẹn. Vui lòng thử lại.');
+      } finally {
+        setSavingSchedule(false);
+      }
+    }, event);
   };
 
   const updateContactResult = async (candidate: LeadCandidateRecord, contactResult: LeadCandidateContactResult) => {
-    if (!canManageCandidate(candidate) || candidate.contactResult === contactResult) return;
-    if (contactResult === 'callback') {
-      openScheduleForm(candidate, contactResult);
-      return;
-    }
-    setActionError('');
-    setFieldActionCandidateId(`${candidate.id}:contact`);
-    try {
-      const log = buildCandidateLog(candidate, {
-        eventType: 'contact_result',
-        outcome: CONTACT_RESULT_OUTCOMES[contactResult],
-        activityType: contactResult === 'called' ? 'call' : contactResult === 'messaged' ? 'message' : '',
-        contactResult,
-        description: `Trạng thái: ${CONTACT_STATUS_LABELS[contactResult]}`
-      });
-      await dbService.updateDocument('lead_candidates', candidate.id, {
-        contactResult,
-        lastContactAt: contactResult === 'not_contacted' ? candidate.lastContactAt : log.occurredAt,
-        lastContactOutcome: CONTACT_RESULT_OUTCOMES[contactResult],
-        contactAttempts: contactResult === 'not_contacted' ? candidate.contactAttempts : candidate.contactAttempts + 1,
-        workStatus: contactResult === 'not_contacted' ? 'not_contacted' : 'completed',
-        contactLogs: prependCandidateLog(candidate, log),
-        updatedBy: currentUser.displayName
-      });
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'lead_candidates', action: 'contact_status_updated',
-        summary: `Cập nhật trạng thái liên hệ ${candidate.companyName}`,
-        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName,
-        changes: [{ field: 'contactResult', label: 'Trạng thái liên hệ', before: CONTACT_STATUS_LABELS[candidate.contactResult], after: CONTACT_STATUS_LABELS[contactResult] }]
-      });
-    } catch {
-      setActionError('Không thể cập nhật trạng thái liên hệ. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    } finally {
-      setFieldActionCandidateId('');
-    }
+    return runMutationAction("LeadCandidateWorkspace.tsx:updateContactResult", async () => {
+      if (!canManageCandidate(candidate) || candidate.contactResult === contactResult) return;
+      if (contactResult === 'callback') {
+        openScheduleForm(candidate, contactResult);
+        return;
+      }
+      setActionError('');
+      setFieldActionCandidateId(`${candidate.id}:contact`);
+      try {
+        const log = buildCandidateLog(candidate, {
+          eventType: 'contact_result',
+          outcome: CONTACT_RESULT_OUTCOMES[contactResult],
+          activityType: contactResult === 'called' ? 'call' : contactResult === 'messaged' ? 'message' : '',
+          contactResult,
+          description: `Trạng thái: ${CONTACT_STATUS_LABELS[contactResult]}`
+        });
+        await requireConfirmedMutation(dbService.updateDocument('lead_candidates', candidate.id, {
+          contactResult,
+          lastContactAt: contactResult === 'not_contacted' ? candidate.lastContactAt : log.occurredAt,
+          lastContactOutcome: CONTACT_RESULT_OUTCOMES[contactResult],
+          contactAttempts: contactResult === 'not_contacted' ? candidate.contactAttempts : candidate.contactAttempts + 1,
+          workStatus: contactResult === 'not_contacted' ? 'not_contacted' : 'completed',
+          contactLogs: prependCandidateLog(candidate, log),
+          updatedBy: currentUser.displayName
+        }));
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'lead_candidates', action: 'contact_status_updated',
+          summary: `Cập nhật trạng thái liên hệ ${candidate.companyName}`,
+          targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName,
+          changes: [{ field: 'contactResult', label: 'Trạng thái liên hệ', before: CONTACT_STATUS_LABELS[candidate.contactResult], after: CONTACT_STATUS_LABELS[contactResult] }]
+        });
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setActionError('Không thể cập nhật trạng thái liên hệ. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      } finally {
+        setFieldActionCandidateId('');
+      }
+    }, candidate, { busy: false });
   };
 
   const updatePotentialLevel = async (candidate: LeadCandidateRecord, potentialLevel: LeadCandidatePotentialLevel) => {
-    if (!canManageCandidate(candidate) || candidate.potentialLevel === potentialLevel) return;
-    setActionError('');
-    setFieldActionCandidateId(`${candidate.id}:potential`);
-    try {
-      const log = buildCandidateLog(candidate, {
-        eventType: 'potential_level',
-        potentialLevel,
-        description: `Đánh giá: ${POTENTIAL_LEVEL_LABELS[potentialLevel]}`
-      });
-      await dbService.updateDocument('lead_candidates', candidate.id, {
-        potentialLevel,
-        contactLogs: prependCandidateLog(candidate, log),
-        updatedBy: currentUser.displayName
-      });
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'lead_candidates', action: 'potential_updated',
-        summary: `Đánh giá tiềm năng ${candidate.companyName}`,
-        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName,
-        changes: [{ field: 'potentialLevel', label: 'Mức độ tiềm năng', before: POTENTIAL_LEVEL_LABELS[candidate.potentialLevel], after: POTENTIAL_LEVEL_LABELS[potentialLevel] }]
-      });
-    } catch {
-      setActionError('Không thể cập nhật mức độ tiềm năng. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    } finally {
-      setFieldActionCandidateId('');
-    }
+    return runMutationAction("LeadCandidateWorkspace.tsx:updatePotentialLevel", async () => {
+      if (!canManageCandidate(candidate) || candidate.potentialLevel === potentialLevel) return;
+      setActionError('');
+      setFieldActionCandidateId(`${candidate.id}:potential`);
+      try {
+        const log = buildCandidateLog(candidate, {
+          eventType: 'potential_level',
+          potentialLevel,
+          description: `Đánh giá: ${POTENTIAL_LEVEL_LABELS[potentialLevel]}`
+        });
+        await requireConfirmedMutation(dbService.updateDocument('lead_candidates', candidate.id, {
+          potentialLevel,
+          contactLogs: prependCandidateLog(candidate, log),
+          updatedBy: currentUser.displayName
+        }));
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'lead_candidates', action: 'potential_updated',
+          summary: `Đánh giá tiềm năng ${candidate.companyName}`,
+          targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName,
+          changes: [{ field: 'potentialLevel', label: 'Mức độ tiềm năng', before: POTENTIAL_LEVEL_LABELS[candidate.potentialLevel], after: POTENTIAL_LEVEL_LABELS[potentialLevel] }]
+        });
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setActionError('Không thể cập nhật mức độ tiềm năng. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      } finally {
+        setFieldActionCandidateId('');
+      }
+    }, candidate, { busy: false });
   };
 
   const dismissScheduledTask = async (candidate: LeadCandidateRecord) => {
-    const dismissedAt = new Date().toISOString();
-    const log = buildCandidateLog(candidate, {
-      eventType: 'activity',
-      activityType: 'note',
-      description: 'Tắt khỏi Công việc cần xử lý'
-    });
-    setActionError('');
-    setTaskActionCandidateId(candidate.id);
-    try {
-      await dbService.updateDocument('lead_candidates', candidate.id, {
-        workQueueHidden: true,
-        taskStatus: 'dismissed',
-        taskDismissedAt: dismissedAt,
-        contactLogs: prependCandidateLog(candidate, log),
-        updatedBy: currentUser.displayName
+    return runMutationAction("LeadCandidateWorkspace.tsx:dismissScheduledTask", async () => {
+      const dismissedAt = new Date().toISOString();
+      const log = buildCandidateLog(candidate, {
+        eventType: 'activity',
+        activityType: 'note',
+        description: 'Tắt khỏi Công việc cần xử lý'
       });
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'lead_candidates', action: 'candidate_task_dismissed',
-        summary: `Tắt ${candidate.companyName} khỏi Công việc cần xử lý`,
-        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
-      });
-    } catch {
-      setActionError('Không thể tắt công việc. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    } finally {
-      setTaskActionCandidateId('');
-    }
+      setActionError('');
+      setTaskActionCandidateId(candidate.id);
+      try {
+        await requireConfirmedMutation(dbService.updateDocument('lead_candidates', candidate.id, {
+          workQueueHidden: true,
+          taskStatus: 'dismissed',
+          taskDismissedAt: dismissedAt,
+          contactLogs: prependCandidateLog(candidate, log),
+          updatedBy: currentUser.displayName
+        }));
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'lead_candidates', action: 'candidate_task_dismissed',
+          summary: `Tắt ${candidate.companyName} khỏi Công việc cần xử lý`,
+          targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
+        });
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setActionError('Không thể tắt công việc. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      } finally {
+        setTaskActionCandidateId('');
+      }
+    }, candidate);
   };
 
   const archiveCandidate = async (candidate: LeadCandidateRecord) => {
-    if (!window.confirm(`Xóa “${candidate.companyName}” khỏi danh sách dữ liệu? Thông tin cũ vẫn được lưu an toàn.`)) return;
-    const archivedAt = new Date().toISOString();
-    setActionError('');
-    try {
-      await dbService.updateDocument('lead_candidates', candidate.id, {
-        archived: true,
-        archivedAt,
-        archivedById: currentUser.uid,
-        archivedByName: currentUser.displayName,
-        nextContactAt: '',
-        queuedNextContactAt: '',
-        taskStatus: 'dismissed',
-        workQueueHidden: true,
-        taskDismissedAt: archivedAt,
-        updatedBy: currentUser.displayName
-      });
-      auditService.recordSafely(currentUser, {
-        category: 'business', module: 'lead_candidates', action: 'candidate_archived',
-        summary: `Xóa ${candidate.companyName} khỏi danh sách dữ liệu`,
-        targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
-      });
-    } catch {
-      setActionError('Không thể xóa dữ liệu khỏi danh sách. Vui lòng kiểm tra quyền Firebase và thử lại.');
-    }
+    return runMutationAction("LeadCandidateWorkspace.tsx:archiveCandidate", async () => {
+      if (!window.confirm(`Xóa “${candidate.companyName}” khỏi danh sách dữ liệu? Thông tin cũ vẫn được lưu an toàn.`)) return;
+      const archivedAt = new Date().toISOString();
+      setActionError('');
+      try {
+        await requireConfirmedMutation(dbService.updateDocument('lead_candidates', candidate.id, {
+          archived: true,
+          archivedAt,
+          archivedById: currentUser.uid,
+          archivedByName: currentUser.displayName,
+          nextContactAt: '',
+          queuedNextContactAt: '',
+          taskStatus: 'dismissed',
+          workQueueHidden: true,
+          taskDismissedAt: archivedAt,
+          updatedBy: currentUser.displayName
+        }));
+        auditService.recordSafely(currentUser, {
+          category: 'business', module: 'lead_candidates', action: 'candidate_archived',
+          summary: `Xóa ${candidate.companyName} khỏi danh sách dữ liệu`,
+          targetType: 'lead_candidate', targetId: candidate.id, targetLabel: candidate.companyName
+        });
+
+        showSuccessToast("Đã xóa dữ liệu");
+      } catch {
+        showErrorToast();
+        setActionError('Không thể xóa dữ liệu khỏi danh sách. Vui lòng kiểm tra quyền Firebase và thử lại.');
+      }
+    }, candidate);
   };
 
   const clearDataFilters = () => {

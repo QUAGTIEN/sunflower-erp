@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { CircleDot, Droplets, FileText, Layers, Paperclip, Ruler, Save, Settings2, Square, Upload, type LucideIcon } from 'lucide-react';
 import { PageBackButton } from '@/components/PageBackButton';
@@ -131,17 +132,22 @@ export function CustomerProductEditor({ customer, currentUser, classifications, 
     } catch { setError(t('Vui lòng nhập đường dẫn http/https hợp lệ.')); }
   };
   const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (isSaving || isUploading || !permitted) return;
-    if (linkName || linkUrl) { setError(t('Hãy thêm hoặc xóa đường dẫn đang nhập trước khi lưu.')); return; }
-    setIsSaving(true); setError('');
-    try {
-      const result = await createCustomerProduct(customer.id, draft, currentUser);
-      onCreated(result.products, result.product);
-    } catch (failure) {
-      setError(failure instanceof Error && !('code' in failure)
-        ? failure.message : t('Không thể lưu mã sản phẩm. Vui lòng kiểm tra quyền truy cập và kết nối rồi thử lại.'));
-    } finally { setIsSaving(false); }
+    return runMutationAction("CustomerProductEditor.tsx:submit", async () => {
+      event.preventDefault();
+      if (isSaving || isUploading || !permitted) return;
+      if (linkName || linkUrl) { setError(t('Hãy thêm hoặc xóa đường dẫn đang nhập trước khi lưu.')); return; }
+      setIsSaving(true); setError('');
+      try {
+        const result = await createCustomerProduct(customer.id, draft, currentUser);
+        onCreated(result.products, result.product);
+
+        showSuccessToast("Đã thêm thành công");
+      } catch (failure) {
+        showErrorToast();
+        setError(failure instanceof Error && !('code' in failure)
+          ? failure.message : t('Không thể lưu mã sản phẩm. Vui lòng kiểm tra quyền truy cập và kết nối rồi thử lại.'));
+      } finally { setIsSaving(false); }
+    }, event);
   };
 
   const renderSpec = (field: ProductSpecField) => {

@@ -1,3 +1,4 @@
+import { runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Plus, Search, Trash2, X, Download, Folder, FileText,
@@ -762,136 +763,138 @@ export default function POFormFullScreen({
 
   // Form submit
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSaving) return;
-    if (!customerId) {
-      setShowOrderInfo(true);
-      alert(t('Vui lòng chọn khách hàng!'));
-      return;
-    }
-    if (!expectedDeliveryDate || Number.isNaN(Date.parse(expectedDeliveryDate))) {
-      setShowOrderInfo(true);
-      alert(t('Vui lòng chọn ngày giao hàng dự kiến hợp lệ!'));
-      return;
-    }
-    if (!['A', 'B', 'C', 'D'].includes(customerRank)) {
-      setShowOrderInfo(true);
-      alert(t('Vui lòng chọn hạng khách hàng A, B, C hoặc D!'));
-      return;
-    }
-    if (poItems.length === 0) {
-      alert(t('Vui lòng thêm ít nhất 1 mặt hàng vào PO!'));
-      return;
-    }
-
-    // Validate that all items have a name and quantity
-    const customerCatalog = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
-    const preparedProductCodes = new Set<string>();
-    for (let i = 0; i < orderItems.length; i++) {
-      const productCode = String(orderItems[i].productCode || '').trim();
-      if (requiresRegisteredProducts
-        && !findCustomerProductForOrderItem(orderItems[i], customerCatalog)) {
-        alert(t(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`));
+    return runMutationAction("POFormFullScreen.tsx:handleSubmit", async () => {
+      e.preventDefault();
+      if (isSaving) return;
+      if (!customerId) {
+        setShowOrderInfo(true);
+        alert(t('Vui lòng chọn khách hàng!'));
         return;
       }
-      if (workflowMode === 'customer_onboarding' && !productCode) {
-        alert(t(`Dòng ${i + 1}: Vui lòng nhập mã hàng để lưu vào hồ sơ khách hàng!`));
+      if (!expectedDeliveryDate || Number.isNaN(Date.parse(expectedDeliveryDate))) {
+        setShowOrderInfo(true);
+        alert(t('Vui lòng chọn ngày giao hàng dự kiến hợp lệ!'));
         return;
       }
-      const normalizedProductCode = productCode.toLocaleUpperCase('vi-VN');
-      if (workflowMode === 'customer_onboarding' && preparedProductCodes.has(normalizedProductCode)) {
-        alert(t(`Dòng ${i + 1}: Mã hàng ${productCode} đang bị trùng trong danh sách!`));
+      if (!['A', 'B', 'C', 'D'].includes(customerRank)) {
+        setShowOrderInfo(true);
+        alert(t('Vui lòng chọn hạng khách hàng A, B, C hoặc D!'));
         return;
       }
-      if (normalizedProductCode) preparedProductCodes.add(normalizedProductCode);
-      if (!orderItems[i].productName) {
-        alert(t(`Dòng ${i + 1}: Vui lòng nhập tên hàng!`));
+      if (poItems.length === 0) {
+        alert(t('Vui lòng thêm ít nhất 1 mặt hàng vào PO!'));
         return;
       }
-      if (!orderItems[i].quantity || orderItems[i].quantity <= 0) {
-        alert(t(`Dòng ${i + 1}: Số lượng phải lớn hơn 0!`));
+
+      // Validate that all items have a name and quantity
+      const customerCatalog = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
+      const preparedProductCodes = new Set<string>();
+      for (let i = 0; i < orderItems.length; i++) {
+        const productCode = String(orderItems[i].productCode || '').trim();
+        if (requiresRegisteredProducts
+          && !findCustomerProductForOrderItem(orderItems[i], customerCatalog)) {
+          alert(t(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`));
+          return;
+        }
+        if (workflowMode === 'customer_onboarding' && !productCode) {
+          alert(t(`Dòng ${i + 1}: Vui lòng nhập mã hàng để lưu vào hồ sơ khách hàng!`));
+          return;
+        }
+        const normalizedProductCode = productCode.toLocaleUpperCase('vi-VN');
+        if (workflowMode === 'customer_onboarding' && preparedProductCodes.has(normalizedProductCode)) {
+          alert(t(`Dòng ${i + 1}: Mã hàng ${productCode} đang bị trùng trong danh sách!`));
+          return;
+        }
+        if (normalizedProductCode) preparedProductCodes.add(normalizedProductCode);
+        if (!orderItems[i].productName) {
+          alert(t(`Dòng ${i + 1}: Vui lòng nhập tên hàng!`));
+          return;
+        }
+        if (!orderItems[i].quantity || orderItems[i].quantity <= 0) {
+          alert(t(`Dòng ${i + 1}: Số lượng phải lớn hơn 0!`));
+          return;
+        }
+        if (templatePo && (!orderItems[i].price || Number(orderItems[i].price) <= 0)) {
+          alert(`Dòng ${i + 1}: Vui lòng kiểm tra và nhập đơn giá hiện hành trước khi lưu đơn đặt lại.`);
+          return;
+        }
+      }
+
+      const normalizedItems = orderItems.map(item => {
+        const catalogProduct = findCustomerProductForOrderItem(item, customerCatalog);
+        return withCalculatedPOFinancials(requiresRegisteredProducts && catalogProduct ? refreshCustomerProductOrderItem(item, catalogProduct) : item);
+      });
+
+      // Calculate totals
+      let totalBeforeVat = 0;
+      let totalAfterVat = 0;
+
+      normalizedItems.forEach(item => {
+        const financials = calculatePOItemFinancials(item);
+        totalBeforeVat += financials.amountBeforeVat;
+        totalAfterVat += financials.amountWithVat;
+      });
+
+      const customerObj = customers.find(c => c.id === customerId);
+      if (!customerObj) {
+        alert(t('Không tìm thấy hồ sơ khách hàng. Vui lòng tải lại trang và chọn lại khách hàng.'));
         return;
       }
-      if (templatePo && (!orderItems[i].price || Number(orderItems[i].price) <= 0)) {
-        alert(`Dòng ${i + 1}: Vui lòng kiểm tra và nhập đơn giá hiện hành trước khi lưu đơn đặt lại.`);
-        return;
+
+      const normalizedCustomerRank = customerRank as CustomerRank;
+      const existingSnapshot = po?.customerId === customerId
+        ? po.customerSnapshot as CustomerSnapshot | undefined
+        : undefined;
+      const customerSnapshot: CustomerSnapshot = existingSnapshot
+        ? { ...existingSnapshot, customerRank: normalizedCustomerRank }
+        : createCustomerSnapshot(customerObj, normalizedCustomerRank);
+
+      const poData = {
+        id: po?.id || undefined,
+        customerId,
+        customerName: customerSnapshot.companyName,
+        customerRank: normalizedCustomerRank,
+        customerSnapshot,
+        customerPoCode,
+        expectedDeliveryDate: new Date(expectedDeliveryDate).toISOString(),
+        notes,
+        items: normalizedItems,
+        assignments,
+        totalAmount: totalBeforeVat, // For consistency, totalAmount is subtotal
+        discountAmount: normalizedItems.reduce((acc, item) => (
+          acc + Math.round(calculatePOItemFinancials(item).discountAmount)
+        ), 0),
+        netAmount: totalAfterVat, // Store final VAT-included total here or match DB convention
+        links: {
+          pdfLink: pdfFile,
+          excelLink: excelFile,
+          aiLink: aiFile,
+          corelLink: corelFile,
+          contractLink: contractFile,
+          quoteLink: quoteFile
+        },
+        orderType: templatePo ? 'repeat' : (po?.orderType || 'new'),
+        repeatSourcePoId: templatePo?.id || po?.repeatSourcePoId || '',
+        repeatSourcePoCode: templatePo?.poCode || po?.repeatSourcePoCode || '',
+        designReuseRequested: templatePo
+          ? poItems.some(item => item.designReuseRequested)
+          : Boolean(po?.designReuseRequested)
+      };
+
+      setIsSaving(true);
+      setSaveError('');
+      try {
+        await onSave(poData);
+        if (draftKey) window.localStorage.removeItem(draftKey);
+        setIsTableFocusMode(false);
+      } catch (error) {
+        console.error('Error saving PO:', error);
+        setSaveError('Không thể lưu đơn hàng. Vui lòng kiểm tra kết nối và thử lại.');
+        alert('Không thể lưu đơn hàng. Dữ liệu vẫn được giữ trong bản nháp để bạn thử lại.');
+      } finally {
+        setIsSaving(false);
       }
-    }
-
-    const normalizedItems = orderItems.map(item => {
-      const catalogProduct = findCustomerProductForOrderItem(item, customerCatalog);
-      return withCalculatedPOFinancials(requiresRegisteredProducts && catalogProduct ? refreshCustomerProductOrderItem(item, catalogProduct) : item);
-    });
-
-    // Calculate totals
-    let totalBeforeVat = 0;
-    let totalAfterVat = 0;
-
-    normalizedItems.forEach(item => {
-      const financials = calculatePOItemFinancials(item);
-      totalBeforeVat += financials.amountBeforeVat;
-      totalAfterVat += financials.amountWithVat;
-    });
-
-    const customerObj = customers.find(c => c.id === customerId);
-    if (!customerObj) {
-      alert(t('Không tìm thấy hồ sơ khách hàng. Vui lòng tải lại trang và chọn lại khách hàng.'));
-      return;
-    }
-
-    const normalizedCustomerRank = customerRank as CustomerRank;
-    const existingSnapshot = po?.customerId === customerId
-      ? po.customerSnapshot as CustomerSnapshot | undefined
-      : undefined;
-    const customerSnapshot: CustomerSnapshot = existingSnapshot
-      ? { ...existingSnapshot, customerRank: normalizedCustomerRank }
-      : createCustomerSnapshot(customerObj, normalizedCustomerRank);
-
-    const poData = {
-      id: po?.id || undefined,
-      customerId,
-      customerName: customerSnapshot.companyName,
-      customerRank: normalizedCustomerRank,
-      customerSnapshot,
-      customerPoCode,
-      expectedDeliveryDate: new Date(expectedDeliveryDate).toISOString(),
-      notes,
-      items: normalizedItems,
-      assignments,
-      totalAmount: totalBeforeVat, // For consistency, totalAmount is subtotal
-      discountAmount: normalizedItems.reduce((acc, item) => (
-        acc + Math.round(calculatePOItemFinancials(item).discountAmount)
-      ), 0),
-      netAmount: totalAfterVat, // Store final VAT-included total here or match DB convention
-      links: {
-        pdfLink: pdfFile,
-        excelLink: excelFile,
-        aiLink: aiFile,
-        corelLink: corelFile,
-        contractLink: contractFile,
-        quoteLink: quoteFile
-      },
-      orderType: templatePo ? 'repeat' : (po?.orderType || 'new'),
-      repeatSourcePoId: templatePo?.id || po?.repeatSourcePoId || '',
-      repeatSourcePoCode: templatePo?.poCode || po?.repeatSourcePoCode || '',
-      designReuseRequested: templatePo
-        ? poItems.some(item => item.designReuseRequested)
-        : Boolean(po?.designReuseRequested)
-    };
-
-    setIsSaving(true);
-    setSaveError('');
-    try {
-      await onSave(poData);
-      if (draftKey) window.localStorage.removeItem(draftKey);
-      setIsTableFocusMode(false);
-    } catch (error) {
-      console.error('Error saving PO:', error);
-      setSaveError('Không thể lưu đơn hàng. Vui lòng kiểm tra kết nối và thử lại.');
-      alert('Không thể lưu đơn hàng. Dữ liệu vẫn được giữ trong bản nháp để bạn thử lại.');
-    } finally {
-      setIsSaving(false);
-    }
+    }, e);
   };
 
   // Calculations for totals footer

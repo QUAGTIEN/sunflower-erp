@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
@@ -387,69 +388,74 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
   };
 
   const saveSelectedDefinition = async () => {
-    if (!systemDraft?.name.trim()) return;
-    const isLocationCatalog = leadDraft?.id === LEAD_FILTER_IDS.province
-      || leadDraft?.id === LEAD_FILTER_IDS.industrialPark;
-    const invalidOption = !isLocationCatalog
-      && leadDraft?.options.some(option => option.active && !option.label.trim());
-    const hasNoOption = !isLocationCatalog
-      && leadDraft?.options.every(option => !option.active);
-    const invalidRegion = leadDraft?.id === LEAD_FILTER_IDS.industrialPark
-      && leadDraft.options.some(province => (
-        (province.children || []).some(region => region.active && !region.label.trim())
-      ));
-    if (invalidOption || invalidRegion || hasNoOption) {
-      setSaveError(hasNoOption ? 'Tiêu chí mới cần có ít nhất một mục con.' : 'Tên mục con không được để trống.');
-      return;
-    }
-    setSaving(true);
-    setSaveError('');
-    setSaveSuccess('');
-    const savedSystemDefinition: SystemFilterDefinition = {
-      ...systemDraft,
-      name: systemDraft.name.trim(),
-      description: systemDraft.description.trim(),
-      scopes: systemDraft.scopes.filter(scope => systemDraft.availableScopes.includes(scope)),
-      controlType: leadDraft?.type === 'checkbox' ? 'boolean' : systemDraft.controlType,
-      updatedBy: currentUser.displayName,
-      updatedAt: new Date().toISOString()
-    };
-    try {
-      await dbService.addDocument('system_filter_definitions', savedSystemDefinition);
-      if (leadDraft) {
-        const storedLeadDefinition = storedLeadDefinitions.find(item => item.id === leadDraft.id);
-        await saveLeadDefinition({
-          ...leadDraft,
-          name: savedSystemDefinition.name,
-          active: savedSystemDefinition.active,
-          options: leadDraft.id === LEAD_FILTER_IDS.province
-            ? cloneOptions(storedLeadDefinition?.options || [])
-            : cloneOptions(leadDraft.options)
-        });
+    return runMutationAction("SystemConfigurationPage.tsx:saveSelectedDefinition", async () => {
+      if (!systemDraft?.name.trim()) return;
+      const isLocationCatalog = leadDraft?.id === LEAD_FILTER_IDS.province
+        || leadDraft?.id === LEAD_FILTER_IDS.industrialPark;
+      const invalidOption = !isLocationCatalog
+        && leadDraft?.options.some(option => option.active && !option.label.trim());
+      const hasNoOption = !isLocationCatalog
+        && leadDraft?.options.every(option => !option.active);
+      const invalidRegion = leadDraft?.id === LEAD_FILTER_IDS.industrialPark
+        && leadDraft.options.some(province => (
+          (province.children || []).some(region => region.active && !region.label.trim())
+        ));
+      if (invalidOption || invalidRegion || hasNoOption) {
+        setSaveError(hasNoOption ? 'Tiêu chí mới cần có ít nhất một mục con.' : 'Tên mục con không được để trống.');
+        return;
       }
-      const customerDefinition = customerDefinitions.find(item => item.id === savedSystemDefinition.id);
-      if (customerDefinition) {
-        await saveCustomerDefinition({
-          ...customerDefinition,
-          name: savedSystemDefinition.name,
-          description: savedSystemDefinition.description,
-          active: savedSystemDefinition.active
-        });
+      setSaving(true);
+      setSaveError('');
+      setSaveSuccess('');
+      const savedSystemDefinition: SystemFilterDefinition = {
+        ...systemDraft,
+        name: systemDraft.name.trim(),
+        description: systemDraft.description.trim(),
+        scopes: systemDraft.scopes.filter(scope => systemDraft.availableScopes.includes(scope)),
+        controlType: leadDraft?.type === 'checkbox' ? 'boolean' : systemDraft.controlType,
+        updatedBy: currentUser.displayName,
+        updatedAt: new Date().toISOString()
+      };
+      try {
+        await dbService.addDocument('system_filter_definitions', savedSystemDefinition);
+        if (leadDraft) {
+          const storedLeadDefinition = storedLeadDefinitions.find(item => item.id === leadDraft.id);
+          await saveLeadDefinition({
+            ...leadDraft,
+            name: savedSystemDefinition.name,
+            active: savedSystemDefinition.active,
+            options: leadDraft.id === LEAD_FILTER_IDS.province
+              ? cloneOptions(storedLeadDefinition?.options || [])
+              : cloneOptions(leadDraft.options)
+          });
+        }
+        const customerDefinition = customerDefinitions.find(item => item.id === savedSystemDefinition.id);
+        if (customerDefinition) {
+          await saveCustomerDefinition({
+            ...customerDefinition,
+            name: savedSystemDefinition.name,
+            description: savedSystemDefinition.description,
+            active: savedSystemDefinition.active
+          });
+        }
+        setStoredSystemDefinitions(previous => [
+          ...previous.filter(item => item.id !== savedSystemDefinition.id),
+          savedSystemDefinition
+        ]);
+        setSystemDraft(savedSystemDefinition);
+        setSaveSuccess('Đã lưu tiêu chí và toàn bộ mục con.');
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+        setSaveError(code.includes('permission-denied')
+          ? 'Firebase chưa cấp quyền quản trị cấu hình hệ thống. Hãy xuất bản Firestore Rules mới nhất.'
+          : 'Không thể lưu cấu hình lúc này. Vui lòng thử lại.');
+      } finally {
+        setSaving(false);
       }
-      setStoredSystemDefinitions(previous => [
-        ...previous.filter(item => item.id !== savedSystemDefinition.id),
-        savedSystemDefinition
-      ]);
-      setSystemDraft(savedSystemDefinition);
-      setSaveSuccess('Đã lưu tiêu chí và toàn bộ mục con.');
-    } catch (error) {
-      const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
-      setSaveError(code.includes('permission-denied')
-        ? 'Firebase chưa cấp quyền quản trị cấu hình hệ thống. Hãy xuất bản Firestore Rules mới nhất.'
-        : 'Không thể lưu cấu hình lúc này. Vui lòng thử lại.');
-    } finally {
-      setSaving(false);
-    }
+    }, undefined);
   };
 
   const selectedChildCount = leadDraft

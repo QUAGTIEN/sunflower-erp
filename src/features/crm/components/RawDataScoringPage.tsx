@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { useEffect, useMemo, useState } from 'react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
@@ -106,32 +107,37 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
   };
 
   const save = async () => {
-    if (!hasChanges || saving || loadFailed) return;
-    setSaving(true);
-    setMessage('');
-    setError('');
-    const normalized = normalizeLeadCandidateScoringRules(rules);
-    const now = new Date().toISOString();
-    const payload = { id: RULE_DOCUMENT_ID, ...normalized, updatedAt: now, updatedById: currentUser.uid, updatedByName: currentUser.displayName };
-    try {
-      if (exists) await dbService.updateDocument(RULE_COLLECTION, RULE_DOCUMENT_ID, payload);
-      else await dbService.addDocument(RULE_COLLECTION, payload);
-      setRules(normalized);
-      setSavedRules(cloneRules(normalized));
-      setExists(true);
-      setMessage('Đã lưu cấu hình điểm tự động.');
-      auditService.recordSafely(currentUser, {
-        category: 'administration', module: 'lead_candidates', action: 'candidate_scoring_rules_updated',
-        summary: `Cập nhật quy tắc chấm điểm ${CUSTOMER_INSIGHT_ITEMS.length} tiêu chí`,
-        targetType: 'raw_data_scoring_rules', targetId: RULE_DOCUMENT_ID, targetLabel: 'Quy tắc chấm điểm dữ liệu thô'
-      });
-    } catch (saveError) {
-      setError(getErrorCode(saveError).includes('permission-denied')
-        ? 'Tài khoản hiện tại không có quyền lưu cấu hình điểm.'
-        : 'Không thể lưu cấu hình điểm. Vui lòng kiểm tra kết nối và thử lại.');
-    } finally {
-      setSaving(false);
-    }
+    return runMutationAction("RawDataScoringPage.tsx:save", async () => {
+      if (!hasChanges || saving || loadFailed) return;
+      setSaving(true);
+      setMessage('');
+      setError('');
+      const normalized = normalizeLeadCandidateScoringRules(rules);
+      const now = new Date().toISOString();
+      const payload = { id: RULE_DOCUMENT_ID, ...normalized, updatedAt: now, updatedById: currentUser.uid, updatedByName: currentUser.displayName };
+      try {
+        if (exists) await requireConfirmedMutation(dbService.updateDocument(RULE_COLLECTION, RULE_DOCUMENT_ID, payload));
+        else await dbService.addDocument(RULE_COLLECTION, payload);
+        setRules(normalized);
+        setSavedRules(cloneRules(normalized));
+        setExists(true);
+        setMessage('Đã lưu cấu hình điểm tự động.');
+        auditService.recordSafely(currentUser, {
+          category: 'administration', module: 'lead_candidates', action: 'candidate_scoring_rules_updated',
+          summary: `Cập nhật quy tắc chấm điểm ${CUSTOMER_INSIGHT_ITEMS.length} tiêu chí`,
+          targetType: 'raw_data_scoring_rules', targetId: RULE_DOCUMENT_ID, targetLabel: 'Quy tắc chấm điểm dữ liệu thô'
+        });
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (saveError) {
+        showErrorToast();
+        setError(getErrorCode(saveError).includes('permission-denied')
+          ? 'Tài khoản hiện tại không có quyền lưu cấu hình điểm.'
+          : 'Không thể lưu cấu hình điểm. Vui lòng kiểm tra kết nối và thử lại.');
+      } finally {
+        setSaving(false);
+      }
+    }, undefined);
   };
 
   const statusLabel = loading

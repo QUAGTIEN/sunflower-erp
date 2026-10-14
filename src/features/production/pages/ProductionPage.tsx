@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
@@ -174,60 +175,64 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const handleCreateLsx = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!linkedPoId) return;
+    return runMutationAction("ProductionPage.tsx:handleCreateLsx", async () => {
+      e.preventDefault();
+      if (!linkedPoId) return;
 
-    const po = pos.find(p => p.id === linkedPoId);
-    if (!po) return;
-    if (!validateMachineAssignment(machineId, po)) return;
+      const po = pos.find(p => p.id === linkedPoId);
+      if (!po) return;
+      if (!validateMachineAssignment(machineId, po)) return;
 
-    const lsxCode = `LSX-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const lsxCode = `LSX-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const newLsx = {
-      lsxCode,
-      poId: linkedPoId,
-      poCode: po.poCode,
-      productName: po.items?.[0]?.productName || 'Tem nhãn',
-      qtyToProduce: Number(qtyToProduce),
-      machineId,
-      shift,
-      operatorId: currentUser.uid,
-      operatorName: operatorName,
-      status: 'producing',
-      scrapQty: 0,
-      notes,
-      productNameToBeCut: productNameToBeCut || po.items?.[0]?.productName || 'Tem nhãn',
-      paperCore,
-      paperMaterialCode,
-      paperQuantity: Number(paperQuantity),
-      deliveryDeadline: deliveryDeadline ? new Date(deliveryDeadline).toISOString() : po.expectedDeliveryDate,
-      startedAt: new Date().toISOString(),
-      completedAt: '',
-      createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      createdAt: new Date().toISOString()
-    };
+      const newLsx = {
+        lsxCode,
+        poId: linkedPoId,
+        poCode: po.poCode,
+        productName: po.items?.[0]?.productName || 'Tem nhãn',
+        qtyToProduce: Number(qtyToProduce),
+        machineId,
+        shift,
+        operatorId: currentUser.uid,
+        operatorName: operatorName,
+        status: 'producing',
+        scrapQty: 0,
+        notes,
+        productNameToBeCut: productNameToBeCut || po.items?.[0]?.productName || 'Tem nhãn',
+        paperCore,
+        paperMaterialCode,
+        paperQuantity: Number(paperQuantity),
+        deliveryDeadline: deliveryDeadline ? new Date(deliveryDeadline).toISOString() : po.expectedDeliveryDate,
+        startedAt: new Date().toISOString(),
+        completedAt: '',
+        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        createdAt: new Date().toISOString()
+      };
 
-    await dbService.addDocument('production_commands', newLsx);
+      await dbService.addDocument('production_commands', newLsx);
 
-    // Update customer PO status to "producing"
-    const updatedLogs = [
-      ...po.historyLogs,
-      {
-        status: 'waiting_production',
-        updatedBy: currentUser.displayName,
-        updatedAt: new Date().toISOString(),
-        note: `Phát hành Lệnh sản xuất ${lsxCode} giao phó thợ máy ${operatorName} đứng máy in ${machineId}.`
-      }
-    ];
+      // Update customer PO status to "producing"
+      const updatedLogs = [
+        ...po.historyLogs,
+        {
+          status: 'waiting_production',
+          updatedBy: currentUser.displayName,
+          updatedAt: new Date().toISOString(),
+          note: `Phát hành Lệnh sản xuất ${lsxCode} giao phó thợ máy ${operatorName} đứng máy in ${machineId}.`
+        }
+      ];
 
-    await dbService.updateDocument('pos', po.id, {
-      ...getPOQueueUpdate('waiting_production', { productionProgress: 'producing' }),
-      historyLogs: updatedLogs
-    });
+      await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+        ...getPOQueueUpdate('waiting_production', { productionProgress: 'producing' }),
+        historyLogs: updatedLogs
+      }));
 
-    setShowAddLsxModal(false);
-    setNotes('');
-    onRefresh();
+      setShowAddLsxModal(false);
+      setNotes('');
+      onRefresh();
+
+      showSuccessToast("Đã thêm thành công");
+    }, e);
   };
 
   const handleOpenEditLsx = (lsx: any) => {
@@ -246,63 +251,71 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const handleEditLsxSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLsx) return;
-    const linkedPo = pos.find(po => po.id === selectedLsx.poId);
-    if (!validateMachineAssignment(editMachineId, linkedPo, selectedLsx.id)) return;
+    return runMutationAction("ProductionPage.tsx:handleEditLsxSubmit", async () => {
+      e.preventDefault();
+      if (!selectedLsx) return;
+      const linkedPo = pos.find(po => po.id === selectedLsx.poId);
+      if (!validateMachineAssignment(editMachineId, linkedPo, selectedLsx.id)) return;
 
-    await dbService.updateDocument('production_commands', selectedLsx.id, {
-      machineId: editMachineId,
-      shift: editShift,
-      operatorName: editOperatorName,
-      qtyToProduce: Number(editQtyToProduce),
-      notes: editNotes,
-      productNameToBeCut: editProductNameToBeCut,
-      paperCore: editPaperCore,
-      paperMaterialCode: editPaperMaterialCode,
-      paperQuantity: Number(editPaperQuantity),
-      deliveryDeadline: editDeliveryDeadline ? new Date(editDeliveryDeadline).toISOString() : selectedLsx.deliveryDeadline,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
+      await requireConfirmedMutation(dbService.updateDocument('production_commands', selectedLsx.id, {
+        machineId: editMachineId,
+        shift: editShift,
+        operatorName: editOperatorName,
+        qtyToProduce: Number(editQtyToProduce),
+        notes: editNotes,
+        productNameToBeCut: editProductNameToBeCut,
+        paperCore: editPaperCore,
+        paperMaterialCode: editPaperMaterialCode,
+        paperQuantity: Number(editPaperQuantity),
+        deliveryDeadline: editDeliveryDeadline ? new Date(editDeliveryDeadline).toISOString() : selectedLsx.deliveryDeadline,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      }));
 
-    setShowEditLsxModal(false);
-    setSelectedLsx(null);
-    onRefresh();
+      setShowEditLsxModal(false);
+      setSelectedLsx(null);
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   const handleDeleteLsx = async (lsxId: string) => {
-    const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (admin123 hoặc 123456):'));
-    if (password !== 'admin123' && password !== '123456') {
-      alert(t('Mật khẩu không chính xác! Không thể xóa.'));
-      return;
-    }
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa lệnh sản xuất này?'))) {
-      const lsx = productionCommands.find(l => l.id === lsxId);
-      await dbService.updateDocument('production_commands', lsxId, { deleted: true });
-
-      if (lsx) {
-        const po = pos.find(p => p.id === lsx.poId);
-        if (po) {
-          const updatedLogs = [
-            ...po.historyLogs,
-            {
-              status: 'waiting_production',
-              updatedBy: currentUser.displayName,
-              updatedAt: new Date().toISOString(),
-              note: `Đã hủy lệnh sản xuất ${lsx.lsxCode}. Trạng thái PO quay lại chờ sản xuất.`
-            }
-          ];
-          await dbService.updateDocument('pos', po.id, {
-            ...getPOQueueUpdate('waiting_production', { productionProgress: 'pending' }),
-            historyLogs: updatedLogs
-          });
-        }
+    return runMutationAction("ProductionPage.tsx:handleDeleteLsx", async () => {
+      const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (admin123 hoặc 123456):'));
+      if (password !== 'admin123' && password !== '123456') {
+        alert(t('Mật khẩu không chính xác! Không thể xóa.'));
+        return;
       }
+      if (window.confirm(t('Bạn có chắc chắn muốn xóa lệnh sản xuất này?'))) {
+        const lsx = productionCommands.find(l => l.id === lsxId);
+        await requireConfirmedMutation(dbService.updateDocument('production_commands', lsxId, { deleted: true }));
 
-      setSelectedLsx(null);
-      onRefresh();
-    }
+        if (lsx) {
+          const po = pos.find(p => p.id === lsx.poId);
+          if (po) {
+            const updatedLogs = [
+              ...po.historyLogs,
+              {
+                status: 'waiting_production',
+                updatedBy: currentUser.displayName,
+                updatedAt: new Date().toISOString(),
+                note: `Đã hủy lệnh sản xuất ${lsx.lsxCode}. Trạng thái PO quay lại chờ sản xuất.`
+              }
+            ];
+            await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+              ...getPOQueueUpdate('waiting_production', { productionProgress: 'pending' }),
+              historyLogs: updatedLogs
+            }));
+          }
+        }
+
+        setSelectedLsx(null);
+        onRefresh();
+
+        showSuccessToast("Đã xóa thành công");
+      }
+    }, lsxId);
   };
 
   const activeCommands = sortNewestFirst(
@@ -331,79 +344,83 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const handleCompleteLsx = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLsx) return;
+    return runMutationAction("ProductionPage.tsx:handleCompleteLsx", async () => {
+      e.preventDefault();
+      if (!selectedLsx) return;
 
-    const now = new Date().toISOString();
+      const now = new Date().toISOString();
 
-    // Update LSX
-    await dbService.updateDocument('production_commands', selectedLsx.id, {
-      status: 'completed',
-      scrapQty: Number(scrapQty),
-      notes: `${selectedLsx.notes || ''} | Ghi chú hoàn thành: ${completionNotes}`,
-      completedAt: now,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: now
-    });
-
-    // Advance the PO to the delivery queue. Detailed LSX/QC progress stays in
-    // productionProgress instead of expanding the primary PO status list.
-    const po = pos.find(p => p.id === selectedLsx.poId);
-    if (po) {
-      const updatedLogs = [
-        ...po.historyLogs,
-        {
-          status: 'waiting_production',
-          updatedBy: currentUser.displayName,
-          updatedAt: now,
-          note: `Lệnh sản xuất ${selectedLsx.lsxCode} hoàn thành. Số lượng in phế phẩm hao hụt: ${scrapQty}.`
-        },
-        {
-          status: 'waiting_delivery',
-          updatedBy: 'Hệ thống sản xuất',
-          updatedAt: now,
-          note: 'QC đạt, đã đóng gói và chuyển sang hàng chờ giao cho khách.'
-        }
-      ];
-
-      await dbService.updateDocument('pos', po.id, {
-        ...getPOQueueUpdate('waiting_delivery', {
-          deliveryStage: 'customer_outbound',
-          productionProgress: 'completed',
-          deliveryProgress: 'pending'
-        }),
-        historyLogs: updatedLogs
-      });
-    }
-
-    // AUTO WAREHOUSE DEDUCTION FOR MATERIALS USED
-    const invList = await dbService.getCollection('inventory');
-    const completedQuantity = getProductionQuantity(selectedLsx);
-    const decalQtyNeeded = Math.round(completedQuantity * 0.015); // e.g. 150sqm for 10k items
-    const inkQtyNeeded = Math.round(completedQuantity * 0.0002 * 10) / 10; // e.g. 2kg
-
-    // Deduct Decal
-    const decalItem = invList.find((item: any) => item.category === 'paper');
-    if (decalItem) {
-      await dbService.updateDocument('inventory', decalItem.id, {
-        qtyInStock: Math.max(0, Number(decalItem.qtyInStock) - decalQtyNeeded),
+      // Update LSX
+      await requireConfirmedMutation(dbService.updateDocument('production_commands', selectedLsx.id, {
+        status: 'completed',
+        scrapQty: Number(scrapQty),
+        notes: `${selectedLsx.notes || ''} | Ghi chú hoàn thành: ${completionNotes}`,
+        completedAt: now,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
         updatedAt: now
-      });
-    }
+      }));
 
-    // Deduct Ink
-    const inkItem = invList.find((item: any) => item.category === 'ink');
-    if (inkItem) {
-      await dbService.updateDocument('inventory', inkItem.id, {
-        qtyInStock: Math.max(0, Number(inkItem.qtyInStock) - inkQtyNeeded),
-        updatedAt: now
-      });
-    }
+      // Advance the PO to the delivery queue. Detailed LSX/QC progress stays in
+      // productionProgress instead of expanding the primary PO status list.
+      const po = pos.find(p => p.id === selectedLsx.poId);
+      if (po) {
+        const updatedLogs = [
+          ...po.historyLogs,
+          {
+            status: 'waiting_production',
+            updatedBy: currentUser.displayName,
+            updatedAt: now,
+            note: `Lệnh sản xuất ${selectedLsx.lsxCode} hoàn thành. Số lượng in phế phẩm hao hụt: ${scrapQty}.`
+          },
+          {
+            status: 'waiting_delivery',
+            updatedBy: 'Hệ thống sản xuất',
+            updatedAt: now,
+            note: 'QC đạt, đã đóng gói và chuyển sang hàng chờ giao cho khách.'
+          }
+        ];
 
-    setSelectedLsx(null);
-    setScrapQty(0);
-    setCompletionNotes('');
-    onRefresh();
+        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+          ...getPOQueueUpdate('waiting_delivery', {
+            deliveryStage: 'customer_outbound',
+            productionProgress: 'completed',
+            deliveryProgress: 'pending'
+          }),
+          historyLogs: updatedLogs
+        }));
+      }
+
+      // AUTO WAREHOUSE DEDUCTION FOR MATERIALS USED
+      const invList = await dbService.getCollection('inventory');
+      const completedQuantity = getProductionQuantity(selectedLsx);
+      const decalQtyNeeded = Math.round(completedQuantity * 0.015); // e.g. 150sqm for 10k items
+      const inkQtyNeeded = Math.round(completedQuantity * 0.0002 * 10) / 10; // e.g. 2kg
+
+      // Deduct Decal
+      const decalItem = invList.find((item: any) => item.category === 'paper');
+      if (decalItem) {
+        await requireConfirmedMutation(dbService.updateDocument('inventory', decalItem.id, {
+          qtyInStock: Math.max(0, Number(decalItem.qtyInStock) - decalQtyNeeded),
+          updatedAt: now
+        }));
+      }
+
+      // Deduct Ink
+      const inkItem = invList.find((item: any) => item.category === 'ink');
+      if (inkItem) {
+        await requireConfirmedMutation(dbService.updateDocument('inventory', inkItem.id, {
+          qtyInStock: Math.max(0, Number(inkItem.qtyInStock) - inkQtyNeeded),
+          updatedAt: now
+        }));
+      }
+
+      setSelectedLsx(null);
+      setScrapQty(0);
+      setCompletionNotes('');
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   const handleOpenTransfer = (lsx: any) => {
@@ -415,98 +432,110 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const handleTransferSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLsx || !targetOperatorId) return;
+    return runMutationAction("ProductionPage.tsx:handleTransferSubmit", async () => {
+      e.preventDefault();
+      if (!selectedLsx || !targetOperatorId) return;
 
-    const targetOp = users.find(u => u.uid === targetOperatorId);
-    if (!targetOp) return;
+      const targetOp = users.find(u => u.uid === targetOperatorId);
+      if (!targetOp) return;
 
-    await dbService.updateDocument('production_commands', selectedLsx.id, {
-      status: 'transfer_pending',
-      proposedOperatorId: targetOperatorId,
-      proposedOperatorName: targetOp.displayName,
-      transferReason
-    });
+      await requireConfirmedMutation(dbService.updateDocument('production_commands', selectedLsx.id, {
+        status: 'transfer_pending',
+        proposedOperatorId: targetOperatorId,
+        proposedOperatorName: targetOp.displayName,
+        transferReason
+      }));
 
-    // Write a timeline log for the PO
-    const po = pos.find(p => p.id === selectedLsx.poId);
-    if (po) {
-      const updatedLogs = [
-        ...po.historyLogs,
-        {
-          status: 'waiting_production',
-          updatedBy: currentUser.displayName,
-          updatedAt: new Date().toISOString(),
-          note: `Thợ máy đề xuất chuyển lệnh sản xuất ${selectedLsx.lsxCode} sang thợ ${targetOp.displayName}. Lý do: ${transferReason}`
-        }
-      ];
-      await dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs });
-    }
+      // Write a timeline log for the PO
+      const po = pos.find(p => p.id === selectedLsx.poId);
+      if (po) {
+        const updatedLogs = [
+          ...po.historyLogs,
+          {
+            status: 'waiting_production',
+            updatedBy: currentUser.displayName,
+            updatedAt: new Date().toISOString(),
+            note: `Thợ máy đề xuất chuyển lệnh sản xuất ${selectedLsx.lsxCode} sang thợ ${targetOp.displayName}. Lý do: ${transferReason}`
+          }
+        ];
+        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
+      }
 
-    setShowTransferModal(false);
-    setSelectedLsx(null);
-    setTransferReason('');
-    setTargetOperatorId('');
-    onRefresh();
+      setShowTransferModal(false);
+      setSelectedLsx(null);
+      setTransferReason('');
+      setTargetOperatorId('');
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   const handleApproveTransfer = async (lsx: any) => {
-    if (!window.confirm(t('Bạn có chắc chắn muốn duyệt chuyển lệnh này sang thợ mới?'))) return;
+    return runMutationAction("ProductionPage.tsx:handleApproveTransfer", async () => {
+      if (!window.confirm(t('Bạn có chắc chắn muốn duyệt chuyển lệnh này sang thợ mới?'))) return;
 
-    // Log to PO history
-    const po = pos.find(p => p.id === lsx.poId);
-    if (po) {
-      const updatedLogs = [
-        ...po.historyLogs,
-        {
-          status: 'waiting_production',
-          updatedBy: currentUser.displayName,
-          updatedAt: new Date().toISOString(),
-          note: `Duyệt chuyển lệnh sản xuất ${lsx.lsxCode} từ thợ ${lsx.operatorName} sang thợ ${lsx.proposedOperatorName}. Lý do: ${lsx.transferReason}`
-        }
-      ];
-      await dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs });
-    }
+      // Log to PO history
+      const po = pos.find(p => p.id === lsx.poId);
+      if (po) {
+        const updatedLogs = [
+          ...po.historyLogs,
+          {
+            status: 'waiting_production',
+            updatedBy: currentUser.displayName,
+            updatedAt: new Date().toISOString(),
+            note: `Duyệt chuyển lệnh sản xuất ${lsx.lsxCode} từ thợ ${lsx.operatorName} sang thợ ${lsx.proposedOperatorName}. Lý do: ${lsx.transferReason}`
+          }
+        ];
+        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
+      }
 
-    // Update LSX
-    await dbService.updateDocument('production_commands', lsx.id, {
-      operatorId: lsx.proposedOperatorId,
-      operatorName: lsx.proposedOperatorName,
-      status: 'producing',
-      proposedOperatorId: '',
-      proposedOperatorName: '',
-      transferReason: ''
-    });
+      // Update LSX
+      await requireConfirmedMutation(dbService.updateDocument('production_commands', lsx.id, {
+        operatorId: lsx.proposedOperatorId,
+        operatorName: lsx.proposedOperatorName,
+        status: 'producing',
+        proposedOperatorId: '',
+        proposedOperatorName: '',
+        transferReason: ''
+      }));
 
-    onRefresh();
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, lsx);
   };
 
   const handleRejectTransfer = async (lsx: any) => {
-    if (!window.confirm(t('Bạn có chắc chắn muốn từ chối yêu cầu chuyển lệnh?'))) return;
+    return runMutationAction("ProductionPage.tsx:handleRejectTransfer", async () => {
+      if (!window.confirm(t('Bạn có chắc chắn muốn từ chối yêu cầu chuyển lệnh?'))) return;
 
-    // Log to PO history
-    const po = pos.find(p => p.id === lsx.poId);
-    if (po) {
-      const updatedLogs = [
-        ...po.historyLogs,
-        {
-          status: 'waiting_production',
-          updatedBy: currentUser.displayName,
-          updatedAt: new Date().toISOString(),
-          note: `Từ chối chuyển lệnh sản xuất ${lsx.lsxCode} của thợ ${lsx.operatorName}. Lệnh tiếp tục chạy.`
-        }
-      ];
-      await dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs });
-    }
+      // Log to PO history
+      const po = pos.find(p => p.id === lsx.poId);
+      if (po) {
+        const updatedLogs = [
+          ...po.historyLogs,
+          {
+            status: 'waiting_production',
+            updatedBy: currentUser.displayName,
+            updatedAt: new Date().toISOString(),
+            note: `Từ chối chuyển lệnh sản xuất ${lsx.lsxCode} của thợ ${lsx.operatorName}. Lệnh tiếp tục chạy.`
+          }
+        ];
+        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
+      }
 
-    await dbService.updateDocument('production_commands', lsx.id, {
-      status: 'producing',
-      proposedOperatorId: '',
-      proposedOperatorName: '',
-      transferReason: ''
-    });
+      await requireConfirmedMutation(dbService.updateDocument('production_commands', lsx.id, {
+        status: 'producing',
+        proposedOperatorId: '',
+        proposedOperatorName: '',
+        transferReason: ''
+      }));
 
-    onRefresh();
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, lsx);
   };
 
   const getPOItemImage = (poId: string) => {

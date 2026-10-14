@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
@@ -356,77 +357,93 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Reminder managers
   const handleAddReminderSubmit = async (poId: string, poCode: string) => {
-    if (!newReminderText.trim() || !newReminderDate) return;
-    const newRem = {
-      poId,
-      poCode,
-      message: newReminderText.trim(),
-      date: newReminderDate,
-      completed: false,
-      createdBy: user.displayName,
-      createdAt: new Date().toISOString()
-    };
-    try {
-      const created = await dbService.addDocument('reminders', newRem);
-      setReminders(prev => [...prev, created]);
-      setNewReminderText('');
-      setNewReminderDate('');
-      alert(t('Đã thêm nhắc nhở thành công!'));
-    } catch (err) {
-      console.error(err);
-    }
+    return runMutationAction("DashboardPage.tsx:handleAddReminderSubmit", async () => {
+      if (!newReminderText.trim() || !newReminderDate) return;
+      const newRem = {
+        poId,
+        poCode,
+        message: newReminderText.trim(),
+        date: newReminderDate,
+        completed: false,
+        createdBy: user.displayName,
+        createdAt: new Date().toISOString()
+      };
+      try {
+        const created = await dbService.addDocument('reminders', newRem);
+        setReminders(prev => [...prev, created]);
+        setNewReminderText('');
+        setNewReminderDate('');
+        showSuccessToast("Đã thêm thành công");
+      } catch (err) {
+        showErrorToast();
+        console.error(err);
+      }
+    }, poId);
   };
 
   const handleDeleteReminder = async (remId: string) => {
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa nhắc nhở này?'))) {
-      try {
-        await dbService.deleteDocument('reminders', remId);
-        setReminders(prev => prev.filter(r => r.id !== remId));
-      } catch (err) {
-        console.error(err);
+    return runMutationAction("DashboardPage.tsx:handleDeleteReminder", async () => {
+      if (window.confirm(t('Bạn có chắc chắn muốn xóa nhắc nhở này?'))) {
+        try {
+          await requireConfirmedMutation(dbService.deleteDocument('reminders', remId));
+          setReminders(prev => prev.filter(r => r.id !== remId));
+
+          showSuccessToast("Đã xóa thành công");
+        } catch (err) {
+          showErrorToast('Không thể xóa. Vui lòng thử lại.');
+          console.error(err);
+        }
       }
-    }
+    }, remId);
   };
 
   const handleToggleReminder = async (remId: string, completed: boolean) => {
-    try {
-      await dbService.updateDocument('reminders', remId, { completed });
-      setReminders(prev => prev.map(r => r.id === remId ? { ...r, completed } : r));
-    } catch (err) {
-      console.error(err);
-    }
+    return runMutationAction("DashboardPage.tsx:handleToggleReminder", async () => {
+      try {
+        await requireConfirmedMutation(dbService.updateDocument('reminders', remId, { completed }));
+        setReminders(prev => prev.map(r => r.id === remId ? { ...r, completed } : r));
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (err) {
+        showErrorToast();
+        console.error(err);
+      }
+    }, remId);
   };
 
   const handleUpdateStatus = async (poId: string, status: POQueueStatus) => {
-    try {
-      const targetPo = pos.find(p => p.id === poId);
-      if (!targetPo) return;
+    return runMutationAction("DashboardPage.tsx:handleUpdateStatus", async () => {
+      try {
+        const targetPo = pos.find(p => p.id === poId);
+        if (!targetPo) return;
 
-      const updatedLogs = [
-        ...targetPo.historyLogs,
-        {
-          status,
-          updatedBy: user.displayName,
+        const updatedLogs = [
+          ...targetPo.historyLogs,
+          {
+            status,
+            updatedBy: user.displayName,
+            updatedAt: new Date().toISOString(),
+            note: `Thay đổi hàng đợi từ Bảng Điều Khiển sang: ${getPOQueueLabel(status)}`
+          }
+        ];
+
+        await requireConfirmedMutation(dbService.updateDocument('pos', poId, {
+          ...getPOQueueUpdate(status, status === 'waiting_delivery'
+            ? { deliveryStage: targetPo.deliveryStage || 'customer_outbound' }
+            : {}),
+          updatedBy: `${user.displayName} (${user.role.toUpperCase()})`,
           updatedAt: new Date().toISOString(),
-          note: `Thay đổi hàng đợi từ Bảng Điều Khiển sang: ${getPOQueueLabel(status)}`
+          historyLogs: updatedLogs
+        }));
+        if (status === 'waiting_receivable') {
+          await ensureReceivableInvoice(targetPo, `${user.displayName} (${user.role.toUpperCase()})`);
         }
-      ];
-
-      await dbService.updateDocument('pos', poId, {
-        ...getPOQueueUpdate(status, status === 'waiting_delivery'
-          ? { deliveryStage: targetPo.deliveryStage || 'customer_outbound' }
-          : {}),
-        updatedBy: `${user.displayName} (${user.role.toUpperCase()})`,
-        updatedAt: new Date().toISOString(),
-        historyLogs: updatedLogs
-      });
-      if (status === 'waiting_receivable') {
-        await ensureReceivableInvoice(targetPo, `${user.displayName} (${user.role.toUpperCase()})`);
+        showSuccessToast("Đã lưu thành công");
+      } catch (err) {
+        showErrorToast();
+        console.error(err);
       }
-      alert(t('Cập nhật trạng thái thành công!'));
-    } catch (err) {
-      console.error(err);
-    }
+    }, poId);
   };
 
   const workGroupSummaries = useMemo(() => {

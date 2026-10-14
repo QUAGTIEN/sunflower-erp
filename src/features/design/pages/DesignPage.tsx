@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
@@ -268,47 +269,52 @@ export const Design: React.FC<DesignProps> = ({
   };
 
   const handleUpdateWorkStatus = async () => {
-    if (!selectedRequest || isSaving) return;
-    if (nextWorkStatus === 'waiting_info' && !statusNote.trim()) {
-      setActionError('Vui lòng ghi rõ thông tin còn thiếu để Sale có thể bổ sung.');
-      return;
-    }
-    if (nextWorkStatus === 'completed' && !selectedVersion) {
-      setActionError('Vui lòng tải lên ít nhất một phiên bản thiết kế trước khi đánh dấu đã hoàn thành.');
-      return;
-    }
-    setIsSaving(true);
-    setActionError('');
-    const now = new Date().toISOString();
-    const nextHistory = [
-      ...(selectedRequest.history || []),
-      {
-        type: 'work_status',
-        workStatus: nextWorkStatus,
-        approvalStatus: selectedRequest.approvalStatus || 'not_sent',
-        note: statusNote.trim(),
-        updatedBy: currentUser.displayName,
-        updatedAt: now
+    return runMutationAction("DesignPage.tsx:handleUpdateWorkStatus", async () => {
+      if (!selectedRequest || isSaving) return;
+      if (nextWorkStatus === 'waiting_info' && !statusNote.trim()) {
+        setActionError('Vui lòng ghi rõ thông tin còn thiếu để Sale có thể bổ sung.');
+        return;
       }
-    ];
-    try {
-      await dbService.updateDocument('design_requests', selectedRequest.id, {
-        workStatus: nextWorkStatus,
-        statusNote: statusNote.trim(),
-        startedAt: nextWorkStatus === 'in_progress' && !selectedRequest.startedAt ? now : selectedRequest.startedAt || '',
-        completedAt: nextWorkStatus === 'completed' ? now : '',
-        updatedBy: currentUser.displayName,
-        history: nextHistory
-      });
-      await updatePODesignProgress(selectedRequest, nextWorkStatus, statusNote.trim());
-      setStatusNote('');
-      onRefresh();
-    } catch (error) {
-      console.error('Unable to update design work status:', error);
-      setActionError('Không thể cập nhật tiến độ thiết kế. Vui lòng thử lại.');
-    } finally {
-      setIsSaving(false);
-    }
+      if (nextWorkStatus === 'completed' && !selectedVersion) {
+        setActionError('Vui lòng tải lên ít nhất một phiên bản thiết kế trước khi đánh dấu đã hoàn thành.');
+        return;
+      }
+      setIsSaving(true);
+      setActionError('');
+      const now = new Date().toISOString();
+      const nextHistory = [
+        ...(selectedRequest.history || []),
+        {
+          type: 'work_status',
+          workStatus: nextWorkStatus,
+          approvalStatus: selectedRequest.approvalStatus || 'not_sent',
+          note: statusNote.trim(),
+          updatedBy: currentUser.displayName,
+          updatedAt: now
+        }
+      ];
+      try {
+        await requireConfirmedMutation(dbService.updateDocument('design_requests', selectedRequest.id, {
+          workStatus: nextWorkStatus,
+          statusNote: statusNote.trim(),
+          startedAt: nextWorkStatus === 'in_progress' && !selectedRequest.startedAt ? now : selectedRequest.startedAt || '',
+          completedAt: nextWorkStatus === 'completed' ? now : '',
+          updatedBy: currentUser.displayName,
+          history: nextHistory
+        }));
+        await updatePODesignProgress(selectedRequest, nextWorkStatus, statusNote.trim());
+        setStatusNote('');
+        onRefresh();
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        console.error('Unable to update design work status:', error);
+        setActionError('Không thể cập nhật tiến độ thiết kế. Vui lòng thử lại.');
+      } finally {
+        setIsSaving(false);
+      }
+    }, undefined);
   };
 
   const handlePreviewFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -331,209 +337,219 @@ export const Design: React.FC<DesignProps> = ({
   };
 
   const handleAddVersion = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedRequest || isSaving) return;
-    if (!previewImage) {
-      setActionError('Vui lòng chọn ảnh xem trước của bản thiết kế.');
-      return;
-    }
-    setIsSaving(true);
-    setActionError('');
-    const now = new Date().toISOString();
-    const existingVersions = selectedDesignVersions;
-    const nextVersionNumber = Math.max(0, ...existingVersions.map(version => Number(version.versionNumber) || 0)) + 1;
-    const newVersion = {
-      versionNumber: nextVersionNumber,
-      previewImage,
-      aiLink: aiLink.trim(),
-      corelLink: corelLink.trim(),
-      comment: versionComment.trim(),
-      createdAt: now,
-      createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      feedbackFromClient: '',
-      feedbackAt: ''
-    };
-    try {
-      if (selectedDesign) {
-        await dbService.updateDocument('designs', selectedDesign.id, {
-          designRequestId: selectedRequest.id,
-          itemId: selectedRequest.itemId,
-          itemIndex: selectedRequest.itemIndex,
-          customerReferenceCode: selectedRequest.customerReferenceCode,
-          versions: [...existingVersions, newVersion],
-          currentVersion: nextVersionNumber,
-          status: 'client_pending',
-          designerId: currentUser.uid,
-          designerName: currentUser.displayName
-        });
-      } else {
-        await dbService.addDocument('designs', {
-          id: `design-${selectedRequest.id}`,
-          designRequestId: selectedRequest.id,
-          poId: selectedRequest.poId,
-          poCode: selectedRequest.poCode,
-          itemId: selectedRequest.itemId,
-          itemIndex: selectedRequest.itemIndex,
-          customerReferenceCode: selectedRequest.customerReferenceCode,
-          designerId: currentUser.uid,
-          designerName: currentUser.displayName,
-          versions: [newVersion],
-          currentVersion: 1,
-          status: 'client_pending',
-          createdAt: now
-        });
+    return runMutationAction("DesignPage.tsx:handleAddVersion", async () => {
+      event.preventDefault();
+      if (!selectedRequest || isSaving) return;
+      if (!previewImage) {
+        setActionError('Vui lòng chọn ảnh xem trước của bản thiết kế.');
+        return;
       }
-
-      const requestHistory = [
-        ...(selectedRequest.history || []),
-        {
-          type: 'version_uploaded',
-          workStatus: 'completed',
-          approvalStatus: 'waiting_client',
-          note: `Hoàn thành và tải lên phiên bản thiết kế v${nextVersionNumber}. ${versionComment.trim()}`.trim(),
-          updatedBy: currentUser.displayName,
-          updatedAt: now
+      setIsSaving(true);
+      setActionError('');
+      const now = new Date().toISOString();
+      const existingVersions = selectedDesignVersions;
+      const nextVersionNumber = Math.max(0, ...existingVersions.map(version => Number(version.versionNumber) || 0)) + 1;
+      const newVersion = {
+        versionNumber: nextVersionNumber,
+        previewImage,
+        aiLink: aiLink.trim(),
+        corelLink: corelLink.trim(),
+        comment: versionComment.trim(),
+        createdAt: now,
+        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        feedbackFromClient: '',
+        feedbackAt: ''
+      };
+      try {
+        if (selectedDesign) {
+          await requireConfirmedMutation(dbService.updateDocument('designs', selectedDesign.id, {
+            designRequestId: selectedRequest.id,
+            itemId: selectedRequest.itemId,
+            itemIndex: selectedRequest.itemIndex,
+            customerReferenceCode: selectedRequest.customerReferenceCode,
+            versions: [...existingVersions, newVersion],
+            currentVersion: nextVersionNumber,
+            status: 'client_pending',
+            designerId: currentUser.uid,
+            designerName: currentUser.displayName
+          }));
+        } else {
+          await dbService.addDocument('designs', {
+            id: `design-${selectedRequest.id}`,
+            designRequestId: selectedRequest.id,
+            poId: selectedRequest.poId,
+            poCode: selectedRequest.poCode,
+            itemId: selectedRequest.itemId,
+            itemIndex: selectedRequest.itemIndex,
+            customerReferenceCode: selectedRequest.customerReferenceCode,
+            designerId: currentUser.uid,
+            designerName: currentUser.displayName,
+            versions: [newVersion],
+            currentVersion: 1,
+            status: 'client_pending',
+            createdAt: now
+          });
         }
-      ];
-      await dbService.updateDocument('design_requests', selectedRequest.id, {
-        workStatus: 'completed',
-        approvalStatus: 'waiting_client',
-        completedAt: now,
-        statusNote: versionComment.trim(),
-        latestVersion: nextVersionNumber,
-        updatedBy: currentUser.displayName,
-        history: requestHistory
-      });
 
-      const po = pos.find(candidate => candidate.id === selectedRequest.poId);
-      if (po) {
-        const requestsForPO = designRequests
-          .filter(candidate => candidate.poId === selectedRequest.poId && candidate.archived !== true)
-          .map(candidate => candidate.id === selectedRequest.id
-            ? { ...candidate, workStatus: 'completed' as DesignWorkStatus, approvalStatus: 'waiting_client' as const }
-            : candidate);
-        const allDesignerWorkCompleted = requestsForPO.length > 0
-          && requestsForPO.every(candidate => candidate.workStatus === 'completed');
-        const updatedItems = (po.items || []).map((item: DesignPOItem, index: number) => (
-          (item.itemId || item.productCode || `item-${index + 1}`) === selectedRequest.itemId
-            ? {
-                ...item,
-                designNotes: versionComment.trim(),
-                designLayouts: Array.from(new Set([...(item.designLayouts || []), previewImage]))
-              }
-            : item
-        ));
-        await dbService.updateDocument('pos', po.id, {
-          ...getPOQueueUpdate('waiting_design', {
-            designProgress: allDesignerWorkCompleted ? 'customer_approval_pending' : 'in_progress'
-          }),
-          items: updatedItems,
-          historyLogs: [
-            ...(po.historyLogs || []),
-            {
-              status: 'waiting_design',
-              updatedBy: currentUser.displayName,
-              updatedAt: now,
-              note: `${selectedRequest.requestCode}: Designer đã hoàn thành v${nextVersionNumber}, chờ Sale gửi khách hàng duyệt.`
-            }
-          ]
-        });
-      }
-      setSelectedVersionNumber(nextVersionNumber);
-      resetVersionForm();
-      onRefresh();
-    } catch (error) {
-      console.error('Unable to add design version:', error);
-      setActionError('Không thể lưu phiên bản thiết kế. Vui lòng thử lại.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleClientFeedback = async (approved: boolean) => {
-    if (!selectedRequest || !selectedDesign || !selectedVersion || isSaving) return;
-    if (!approved && !feedbackText.trim()) {
-      setActionError('Vui lòng nhập nội dung khách hàng yêu cầu sửa.');
-      return;
-    }
-    setIsSaving(true);
-    setActionError('');
-    const now = new Date().toISOString();
-    const updatedVersions = selectedDesignVersions.map((version: DesignVersion) => (
-      version.versionNumber === selectedVersion.versionNumber
-        ? {
-            ...version,
-            feedbackFromClient: approved ? 'KHÁCH HÀNG ĐÃ DUYỆT MẪU' : `KHÁCH YÊU CẦU SỬA: ${feedbackText.trim()}`,
-            feedbackAt: now
-          }
-        : version
-    ));
-    const nextWorkStatus: DesignWorkStatus = approved ? 'completed' : 'queued';
-    const nextApprovalStatus = approved ? 'approved' : 'revision_requested';
-    try {
-      await dbService.updateDocument('designs', selectedDesign.id, {
-        status: approved ? 'approved' : 'rejected',
-        versions: updatedVersions
-      });
-      await dbService.updateDocument('design_requests', selectedRequest.id, {
-        workStatus: nextWorkStatus,
-        approvalStatus: nextApprovalStatus,
-        approvalNote: feedbackText.trim(),
-        completedAt: approved ? selectedRequest.completedAt || now : '',
-        updatedBy: currentUser.displayName,
-        history: [
+        const requestHistory = [
           ...(selectedRequest.history || []),
           {
-            type: 'client_feedback',
-            workStatus: nextWorkStatus,
-            approvalStatus: nextApprovalStatus,
-            note: approved ? 'Khách hàng đã duyệt mẫu.' : feedbackText.trim(),
+            type: 'version_uploaded',
+            workStatus: 'completed',
+            approvalStatus: 'waiting_client',
+            note: `Hoàn thành và tải lên phiên bản thiết kế v${nextVersionNumber}. ${versionComment.trim()}`.trim(),
             updatedBy: currentUser.displayName,
             updatedAt: now
           }
-        ]
-      });
+        ];
+        await requireConfirmedMutation(dbService.updateDocument('design_requests', selectedRequest.id, {
+          workStatus: 'completed',
+          approvalStatus: 'waiting_client',
+          completedAt: now,
+          statusNote: versionComment.trim(),
+          latestVersion: nextVersionNumber,
+          updatedBy: currentUser.displayName,
+          history: requestHistory
+        }));
 
-      const po = pos.find(candidate => candidate.id === selectedRequest.poId);
-      if (po) {
-        const requestsForPO = designRequests
-          .filter(candidate => candidate.poId === selectedRequest.poId && candidate.archived !== true)
-          .map(candidate => candidate.id === selectedRequest.id
-            ? { ...candidate, approvalStatus: nextApprovalStatus, workStatus: nextWorkStatus }
-            : candidate);
-        const allApproved = requestsForPO.length > 0 && requestsForPO.every(candidate => candidate.approvalStatus === 'approved');
-        const updatedItems = (po.items || []).map((item: DesignPOItem, index: number) => (
-          approved && (item.itemId || item.productCode || `item-${index + 1}`) === selectedRequest.itemId
-            ? { ...item, previewImage: selectedVersion.previewImage }
-            : item
-        ));
-        await dbService.updateDocument('pos', po.id, {
-          ...getPOQueueUpdate(allApproved ? 'waiting_production' : 'waiting_design', {
-            designProgress: allApproved ? 'approved' : approved ? 'partially_approved' : 'revision_requested',
-            productionProgress: allApproved ? 'pending' : po.productionProgress || ''
-          }),
-          items: updatedItems,
-          historyLogs: [
-            ...(po.historyLogs || []),
+        const po = pos.find(candidate => candidate.id === selectedRequest.poId);
+        if (po) {
+          const requestsForPO = designRequests
+            .filter(candidate => candidate.poId === selectedRequest.poId && candidate.archived !== true)
+            .map(candidate => candidate.id === selectedRequest.id
+              ? { ...candidate, workStatus: 'completed' as DesignWorkStatus, approvalStatus: 'waiting_client' as const }
+              : candidate);
+          const allDesignerWorkCompleted = requestsForPO.length > 0
+            && requestsForPO.every(candidate => candidate.workStatus === 'completed');
+          const updatedItems = (po.items || []).map((item: DesignPOItem, index: number) => (
+            (item.itemId || item.productCode || `item-${index + 1}`) === selectedRequest.itemId
+              ? {
+                  ...item,
+                  designNotes: versionComment.trim(),
+                  designLayouts: Array.from(new Set([...(item.designLayouts || []), previewImage]))
+                }
+              : item
+          ));
+          await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+            ...getPOQueueUpdate('waiting_design', {
+              designProgress: allDesignerWorkCompleted ? 'customer_approval_pending' : 'in_progress'
+            }),
+            items: updatedItems,
+            historyLogs: [
+              ...(po.historyLogs || []),
+              {
+                status: 'waiting_design',
+                updatedBy: currentUser.displayName,
+                updatedAt: now,
+                note: `${selectedRequest.requestCode}: Designer đã hoàn thành v${nextVersionNumber}, chờ Sale gửi khách hàng duyệt.`
+              }
+            ]
+          }));
+        }
+        setSelectedVersionNumber(nextVersionNumber);
+        resetVersionForm();
+        onRefresh();
+
+        showSuccessToast("Đã thêm thành công");
+      } catch (error) {
+        showErrorToast();
+        console.error('Unable to add design version:', error);
+        setActionError('Không thể lưu phiên bản thiết kế. Vui lòng thử lại.');
+      } finally {
+        setIsSaving(false);
+      }
+    }, event);
+  };
+
+  const handleClientFeedback = async (approved: boolean) => {
+    return runMutationAction("DesignPage.tsx:handleClientFeedback", async () => {
+      if (!selectedRequest || !selectedDesign || !selectedVersion || isSaving) return;
+      if (!approved && !feedbackText.trim()) {
+        setActionError('Vui lòng nhập nội dung khách hàng yêu cầu sửa.');
+        return;
+      }
+      setIsSaving(true);
+      setActionError('');
+      const now = new Date().toISOString();
+      const updatedVersions = selectedDesignVersions.map((version: DesignVersion) => (
+        version.versionNumber === selectedVersion.versionNumber
+          ? {
+              ...version,
+              feedbackFromClient: approved ? 'KHÁCH HÀNG ĐÃ DUYỆT MẪU' : `KHÁCH YÊU CẦU SỬA: ${feedbackText.trim()}`,
+              feedbackAt: now
+            }
+          : version
+      ));
+      const nextWorkStatus: DesignWorkStatus = approved ? 'completed' : 'queued';
+      const nextApprovalStatus = approved ? 'approved' : 'revision_requested';
+      try {
+        await requireConfirmedMutation(dbService.updateDocument('designs', selectedDesign.id, {
+          status: approved ? 'approved' : 'rejected',
+          versions: updatedVersions
+        }));
+        await requireConfirmedMutation(dbService.updateDocument('design_requests', selectedRequest.id, {
+          workStatus: nextWorkStatus,
+          approvalStatus: nextApprovalStatus,
+          approvalNote: feedbackText.trim(),
+          completedAt: approved ? selectedRequest.completedAt || now : '',
+          updatedBy: currentUser.displayName,
+          history: [
+            ...(selectedRequest.history || []),
             {
-              status: allApproved ? 'waiting_production' : 'waiting_design',
+              type: 'client_feedback',
+              workStatus: nextWorkStatus,
+              approvalStatus: nextApprovalStatus,
+              note: approved ? 'Khách hàng đã duyệt mẫu.' : feedbackText.trim(),
               updatedBy: currentUser.displayName,
-              updatedAt: now,
-              note: approved
-                ? `${selectedRequest.requestCode}: khách hàng đã duyệt mẫu${allApproved ? '; toàn bộ mặt hàng đã sẵn sàng chuyển sản xuất.' : '.'}`
-                : `${selectedRequest.requestCode}: khách hàng yêu cầu Designer sửa – ${feedbackText.trim()}`
+              updatedAt: now
             }
           ]
-        });
+        }));
+
+        const po = pos.find(candidate => candidate.id === selectedRequest.poId);
+        if (po) {
+          const requestsForPO = designRequests
+            .filter(candidate => candidate.poId === selectedRequest.poId && candidate.archived !== true)
+            .map(candidate => candidate.id === selectedRequest.id
+              ? { ...candidate, approvalStatus: nextApprovalStatus, workStatus: nextWorkStatus }
+              : candidate);
+          const allApproved = requestsForPO.length > 0 && requestsForPO.every(candidate => candidate.approvalStatus === 'approved');
+          const updatedItems = (po.items || []).map((item: DesignPOItem, index: number) => (
+            approved && (item.itemId || item.productCode || `item-${index + 1}`) === selectedRequest.itemId
+              ? { ...item, previewImage: selectedVersion.previewImage }
+              : item
+          ));
+          await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
+            ...getPOQueueUpdate(allApproved ? 'waiting_production' : 'waiting_design', {
+              designProgress: allApproved ? 'approved' : approved ? 'partially_approved' : 'revision_requested',
+              productionProgress: allApproved ? 'pending' : po.productionProgress || ''
+            }),
+            items: updatedItems,
+            historyLogs: [
+              ...(po.historyLogs || []),
+              {
+                status: allApproved ? 'waiting_production' : 'waiting_design',
+                updatedBy: currentUser.displayName,
+                updatedAt: now,
+                note: approved
+                  ? `${selectedRequest.requestCode}: khách hàng đã duyệt mẫu${allApproved ? '; toàn bộ mặt hàng đã sẵn sàng chuyển sản xuất.' : '.'}`
+                  : `${selectedRequest.requestCode}: khách hàng yêu cầu Designer sửa – ${feedbackText.trim()}`
+              }
+            ]
+          }));
+        }
+        setFeedbackText('');
+        onRefresh();
+
+        showSuccessToast("Đã lưu thành công");
+      } catch (error) {
+        showErrorToast();
+        console.error('Unable to save client feedback:', error);
+        setActionError('Không thể cập nhật phản hồi khách hàng. Vui lòng thử lại.');
+      } finally {
+        setIsSaving(false);
       }
-      setFeedbackText('');
-      onRefresh();
-    } catch (error) {
-      console.error('Unable to save client feedback:', error);
-      setActionError('Không thể cập nhật phản hồi khách hàng. Vui lòng thử lại.');
-    } finally {
-      setIsSaving(false);
-    }
+    }, approved);
   };
 
   return (

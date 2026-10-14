@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
 import type { EntityFieldTable } from '@/features/crm/model/entityFieldConfig';
 import { SYSTEM_FIELD_CATALOG, type SystemFieldOverride } from '@/features/crm/model/systemFieldConfig';
 import { useSystemFieldConfiguration } from '@/hooks/useSystemFieldConfiguration';
@@ -29,7 +30,8 @@ export function SystemFieldConfiguration({ table, currentUser, searchTerm = '', 
         fields: Object.fromEntries(fields.map(field => [field.key, field.key === draft.key ? draft : field]))
       });
       setSuccess('Đã lưu cấu hình. Tên và cột hiển thị được cập nhật trên bảng tương ứng.'); setDraft(null); onEditingChange(false);
-    } catch (error) { setSaveError(error instanceof Error ? error.message : 'Không thể lưu.'); }
+      showSuccessToast();
+    } catch (error) { showErrorToast(); setSaveError(error instanceof Error ? error.message : 'Không thể lưu.'); }
     finally { setSaving(false); }
   }
   if (loading) return <p className="field-config-notice" role="status">Đang tải trường hệ thống…</p>;

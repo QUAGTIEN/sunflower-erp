@@ -1,3 +1,4 @@
+import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
@@ -964,228 +965,243 @@ export const Crm: React.FC<CrmProps> = ({
   }));
 
   const handleAddCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!companyName.trim() || !customerRank) return;
-    const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
-    if (missingCustomFields.length > 0) {
-      alert(t(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`));
-      return;
-    }
+    return runMutationAction("CrmPage.tsx:handleAddCustomer", async () => {
+      e.preventDefault();
+      if (!companyName.trim() || !customerRank) return;
+      const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
+      if (missingCustomFields.length > 0) {
+        alert(t(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`));
+        return;
+      }
 
-    const taxCodeConflict = findTaxCodeConflict(
-      taxCode,
-      leads,
-      customers,
-      onboardingSourceLead?.id || ''
-    );
-    if (taxCodeConflict) {
-      alert(t(`Mã số thuế đã thuộc về ${taxCodeConflict.companyName}. Không thể tạo khách hàng trùng.`));
-      return;
-    }
+      const taxCodeConflict = findTaxCodeConflict(
+        taxCode,
+        leads,
+        customers,
+        onboardingSourceLead?.id || ''
+      );
+      if (taxCodeConflict) {
+        alert(t(`Mã số thuế đã thuộc về ${taxCodeConflict.companyName}. Không thể tạo khách hàng trùng.`));
+        return;
+      }
 
-    const normalizedItems = onboardingItems.map((item, index) => (
-      normalizePendingOrderItem(withCalculatedPOFinancials(item), index)
-    ));
-    const duplicateCodes = normalizedItems
-      .map(item => item.productCode.trim().toLocaleLowerCase('vi-VN'))
-      .filter((code, index, codes) => code && codes.indexOf(code) !== index);
+      const normalizedItems = onboardingItems.map((item, index) => (
+        normalizePendingOrderItem(withCalculatedPOFinancials(item), index)
+      ));
+      const duplicateCodes = normalizedItems
+        .map(item => item.productCode.trim().toLocaleLowerCase('vi-VN'))
+        .filter((code, index, codes) => code && codes.indexOf(code) !== index);
 
-    if (normalizedItems.some(item => !item.productCode.trim() || !item.productName.trim() || item.quantity <= 0)) {
-      alert(t('Vui lòng nhập đủ mã hàng, tên hàng và số lượng lớn hơn 0.'));
-      return;
-    }
-    if (duplicateCodes.length > 0) {
-      alert(t(`Mã hàng bị trùng: ${Array.from(new Set(duplicateCodes)).join(', ')}`));
-      return;
-    }
+      if (normalizedItems.some(item => !item.productCode.trim() || !item.productName.trim() || item.quantity <= 0)) {
+        alert(t('Vui lòng nhập đủ mã hàng, tên hàng và số lượng lớn hơn 0.'));
+        return;
+      }
+      if (duplicateCodes.length > 0) {
+        alert(t(`Mã hàng bị trùng: ${Array.from(new Set(duplicateCodes)).join(', ')}`));
+        return;
+      }
 
-    const itemFinancials = normalizedItems.map(item => calculatePOItemFinancials(item));
-    const pendingOrderDraft: CustomerPendingOrderDraft | null = normalizedItems.length > 0 ? {
-      customerPoCode: onboardingCustomerPoCode.trim(),
-      expectedDeliveryDate: onboardingExpectedDeliveryDate,
-      notes: onboardingOrderNotes.trim(),
-      items: normalizedItems,
-      links: {},
-      totalAmount: itemFinancials.reduce((total, item) => total + item.amountBeforeVat, 0),
-      discountAmount: itemFinancials.reduce((total, item) => total + item.discountAmount, 0),
-      netAmount: itemFinancials.reduce((total, item) => total + item.amountWithVat, 0),
-      preparedAt: new Date().toISOString(),
-      preparedById: currentUser.uid,
-      preparedBy: currentUser.displayName
-    } : null;
+      const itemFinancials = normalizedItems.map(item => calculatePOItemFinancials(item));
+      const pendingOrderDraft: CustomerPendingOrderDraft | null = normalizedItems.length > 0 ? {
+        customerPoCode: onboardingCustomerPoCode.trim(),
+        expectedDeliveryDate: onboardingExpectedDeliveryDate,
+        notes: onboardingOrderNotes.trim(),
+        items: normalizedItems,
+        links: {},
+        totalAmount: itemFinancials.reduce((total, item) => total + item.amountBeforeVat, 0),
+        discountAmount: itemFinancials.reduce((total, item) => total + item.discountAmount, 0),
+        netAmount: itemFinancials.reduce((total, item) => total + item.amountWithVat, 0),
+        preparedAt: new Date().toISOString(),
+        preparedById: currentUser.uid,
+        preparedBy: currentUser.displayName
+      } : null;
 
-    const createdCustomer = await dbService.addDocument(
-      'customers',
-      buildNewCustomerPayload(pendingOrderDraft, mapPreparedItemsToProducts(normalizedItems))
-    );
+      const createdCustomer = await dbService.addDocument(
+        'customers',
+        buildNewCustomerPayload(pendingOrderDraft, mapPreparedItemsToProducts(normalizedItems))
+      );
 
-    auditService.recordSafely(currentUser, {
-      category: 'business',
-      module: 'crm',
-      action: 'customer_created',
-      summary: `Tạo khách hàng ${companyName.trim()}`,
-      targetType: 'customer',
-      targetId: createdCustomer.id,
-      targetLabel: companyName.trim()
-    });
-
-    if (onboardingSourceLead) {
-      const now = new Date().toISOString();
-      const latestLead = await dbService.getDocument('leads', onboardingSourceLead.id) as LeadRecord | null;
-      await dbService.updateDocument('leads', onboardingSourceLead.id, {
-        stage: 'converted',
-        convertedCustomerId: createdCustomer.id,
-        convertedAt: now,
-        activities: [{
-          id: `activity-${now}`,
-          type: 'converted',
-          note: `Đã chuyển thành khách hàng ${customerCode.trim() || createdCustomer.id}`,
-          occurredAt: now,
-          createdById: currentUser.uid,
-          createdByName: currentUser.displayName
-        }, ...(latestLead?.activities || onboardingSourceLead.activities || [])],
-        updatedAt: now,
-        updatedBy: currentUser.displayName
+      auditService.recordSafely(currentUser, {
+        category: 'business',
+        module: 'crm',
+        action: 'customer_created',
+        summary: `Tạo khách hàng ${companyName.trim()}`,
+        targetType: 'customer',
+        targetId: createdCustomer.id,
+        targetLabel: companyName.trim()
       });
-    }
 
-    closeCustomerOnboarding();
-    onRefresh();
-    if (pendingOrderDraft) onPreparedOrderCreated?.(createdCustomer.id);
+      if (onboardingSourceLead) {
+        const now = new Date().toISOString();
+        const latestLead = await dbService.getDocument('leads', onboardingSourceLead.id) as LeadRecord | null;
+        await requireConfirmedMutation(dbService.updateDocument('leads', onboardingSourceLead.id, {
+          stage: 'converted',
+          convertedCustomerId: createdCustomer.id,
+          convertedAt: now,
+          activities: [{
+            id: `activity-${now}`,
+            type: 'converted',
+            note: `Đã chuyển thành khách hàng ${customerCode.trim() || createdCustomer.id}`,
+            occurredAt: now,
+            createdById: currentUser.uid,
+            createdByName: currentUser.displayName
+          }, ...(latestLead?.activities || onboardingSourceLead.activities || [])],
+          updatedAt: now,
+          updatedBy: currentUser.displayName
+        }));
+      }
+
+      closeCustomerOnboarding();
+      onRefresh();
+      if (pendingOrderDraft) onPreparedOrderCreated?.(createdCustomer.id);
+
+      showSuccessToast("Đã thêm thành công");
+    }, e);
   };
 
   // Edit customer
   const handleEditCustomer = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomer) return;
-    const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
-    if (missingCustomFields.length > 0) {
-      alert(t(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`));
-      return;
-    }
+    return runMutationAction("CrmPage.tsx:handleEditCustomer", async () => {
+      e.preventDefault();
+      if (!selectedCustomer) return;
+      const missingCustomFields = getMissingRequiredEntityFields(customFieldDefinitions, customFieldValues, currentUser.role);
+      if (missingCustomFields.length > 0) {
+        alert(t(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`));
+        return;
+      }
 
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      customerCode: customerCode.trim() || selectedCustomer.customerCode,
-      customerRank,
-      companyName,
-      website,
-      businessSector,
-      contactPerson,
-      contactPosition,
-      phone,
-      email,
-      address,
-      province,
-      ward,
-      industrialPark,
-      taxCode,
-      assignedSaleId,
-      discoveredById,
-      discoveredByName: users.find(user => user.uid === discoveredById)?.displayName || selectedCustomer.discoveredByName || '',
-      source,
-      sourceUrl,
-      expectedProducts,
-      customerInsightValues,
-      discountType,
-      discountRate: Number(discountRate),
-      discountAmount: Number(discountAmount),
-      debtLimit: Number(debtLimit),
-      paymentTerms,
-      note,
-      noteHtml: plainTextToNoteHtml(note),
-      customFieldValues,
-      procurementPhone,
-      warehousePhone,
-      bankAccount,
-      contacts: buildCustomerContacts(),
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-      updatedAt: new Date().toISOString()
-    });
+      await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+        customerCode: customerCode.trim() || selectedCustomer.customerCode,
+        customerRank,
+        companyName,
+        website,
+        businessSector,
+        contactPerson,
+        contactPosition,
+        phone,
+        email,
+        address,
+        province,
+        ward,
+        industrialPark,
+        taxCode,
+        assignedSaleId,
+        discoveredById,
+        discoveredByName: users.find(user => user.uid === discoveredById)?.displayName || selectedCustomer.discoveredByName || '',
+        source,
+        sourceUrl,
+        expectedProducts,
+        customerInsightValues,
+        discountType,
+        discountRate: Number(discountRate),
+        discountAmount: Number(discountAmount),
+        debtLimit: Number(debtLimit),
+        paymentTerms,
+        note,
+        noteHtml: plainTextToNoteHtml(note),
+        customFieldValues,
+        procurementPhone,
+        warehousePhone,
+        bankAccount,
+        contacts: buildCustomerContacts(),
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+        updatedAt: new Date().toISOString()
+      }));
 
-    auditService.recordSafely(currentUser, {
-      category: 'business',
-      module: 'crm',
-      action: 'customer_updated',
-      summary: `Cập nhật khách hàng ${companyName.trim() || selectedCustomer.companyName}`,
-      targetType: 'customer',
-      targetId: selectedCustomer.id,
-      targetLabel: companyName.trim() || selectedCustomer.companyName
-    });
-
-    setShowEditModal(false);
-    setSelectedCustomer(null);
-    onRefresh();
-  };
-
-  const handleSaveCustomerNote = async () => {
-    if (!selectedCustomer || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
-    const nextNoteHtml = sanitizeCustomerNoteHtml(customerNoteDraft).trim();
-    const nextNote = customerNoteHtmlToText(nextNoteHtml);
-    const previousNoteHtml = sanitizeCustomerNoteHtml(
-      selectedCustomer.noteHtml || plainTextToNoteHtml(String(selectedCustomer.note || ''))
-    ).trim();
-    if (nextNoteHtml === previousNoteHtml) return;
-
-    setIsSavingCustomerNote(true);
-    setCustomerNoteFeedback('');
-    try {
-      const updatedAt = new Date().toISOString();
-      const updatedBy = `${currentUser.displayName} (${currentUser.role.toUpperCase()})`;
-      await dbService.updateDocument('customers', selectedCustomer.id, {
-        note: nextNote,
-        noteHtml: nextNoteHtml,
-        updatedBy,
-        updatedAt
-      });
-      setSelectedCustomer((previous: any) => previous ? ({ ...previous, note: nextNote, noteHtml: nextNoteHtml, updatedBy, updatedAt }) : previous);
-      setCustomerNoteDraft(nextNoteHtml);
-      setCustomerNoteFeedback(t('Đã lưu ghi chú.'));
       auditService.recordSafely(currentUser, {
         category: 'business',
         module: 'crm',
-        action: 'customer_note_updated',
-        summary: `Cập nhật ghi chú khách hàng ${selectedCustomer.companyName}`,
+        action: 'customer_updated',
+        summary: `Cập nhật khách hàng ${companyName.trim() || selectedCustomer.companyName}`,
         targetType: 'customer',
         targetId: selectedCustomer.id,
-        targetLabel: selectedCustomer.companyName
+        targetLabel: companyName.trim() || selectedCustomer.companyName
       });
+
+      setShowEditModal(false);
+      setSelectedCustomer(null);
       onRefresh();
-    } catch {
-      setCustomerNoteFeedback(t('Không thể lưu ghi chú. Vui lòng thử lại.'));
-    } finally {
-      setIsSavingCustomerNote(false);
-    }
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
+  };
+
+  const handleSaveCustomerNote = async () => {
+    return runMutationAction("CrmPage.tsx:handleSaveCustomerNote", async () => {
+      if (!selectedCustomer || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
+      const nextNoteHtml = sanitizeCustomerNoteHtml(customerNoteDraft).trim();
+      const nextNote = customerNoteHtmlToText(nextNoteHtml);
+      const previousNoteHtml = sanitizeCustomerNoteHtml(
+        selectedCustomer.noteHtml || plainTextToNoteHtml(String(selectedCustomer.note || ''))
+      ).trim();
+      if (nextNoteHtml === previousNoteHtml) return;
+
+      setIsSavingCustomerNote(true);
+      setCustomerNoteFeedback('');
+      try {
+        const updatedAt = new Date().toISOString();
+        const updatedBy = `${currentUser.displayName} (${currentUser.role.toUpperCase()})`;
+        await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+          note: nextNote,
+          noteHtml: nextNoteHtml,
+          updatedBy,
+          updatedAt
+        }));
+        setSelectedCustomer((previous: any) => previous ? ({ ...previous, note: nextNote, noteHtml: nextNoteHtml, updatedBy, updatedAt }) : previous);
+        setCustomerNoteDraft(nextNoteHtml);
+        setCustomerNoteFeedback(t('Đã lưu ghi chú.'));
+        auditService.recordSafely(currentUser, {
+          category: 'business',
+          module: 'crm',
+          action: 'customer_note_updated',
+          summary: `Cập nhật ghi chú khách hàng ${selectedCustomer.companyName}`,
+          targetType: 'customer',
+          targetId: selectedCustomer.id,
+          targetLabel: selectedCustomer.companyName
+        });
+        onRefresh();
+
+        showSuccessToast("Đã lưu thành công");
+      } catch {
+        showErrorToast();
+        setCustomerNoteFeedback(t('Không thể lưu ghi chú. Vui lòng thử lại.'));
+      } finally {
+        setIsSavingCustomerNote(false);
+      }
+    }, undefined);
   };
 
   // Delete customer
   const handleDeleteCustomer = async (id: string) => {
-    if (currentUser.role === 'admin') {
-      const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
-      if (password === 'admin123' || password === '123456') {
-        await dbService.updateDocument('customers', id, {
-          deleted: true,
-          deleteRequested: false,
-          deleteRequestedAt: '',
-          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-          updatedAt: new Date().toISOString()
-        });
-        setSelectedCustomer(null);
-        onRefresh();
-        alert(t('Đã chuyển khách hàng vào Kho Rác.'));
-      } else if (password !== null) {
-        alert(t('Mật khẩu không chính xác. Xóa thất bại.'));
+    return runMutationAction("CrmPage.tsx:handleDeleteCustomer", async () => {
+      if (currentUser.role === 'admin') {
+        const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
+        if (password === 'admin123' || password === '123456') {
+          await requireConfirmedMutation(dbService.updateDocument('customers', id, {
+            deleted: true,
+            deleteRequested: false,
+            deleteRequestedAt: '',
+            updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+            updatedAt: new Date().toISOString()
+          }));
+          setSelectedCustomer(null);
+          onRefresh();
+          showSuccessToast("Đã xóa thành công");
+        } else if (password !== null) {
+          alert(t('Mật khẩu không chính xác. Xóa thất bại.'));
+        }
+      } else {
+        if (window.confirm(t('Bạn có muốn gửi yêu cầu xóa khách hàng này tới Admin phê duyệt?'))) {
+          await requireConfirmedMutation(dbService.updateDocument('customers', id, {
+            deleteRequested: true,
+            deleteRequestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+            deleteRequestedAt: new Date().toISOString()
+          }));
+          showSuccessToast("Đã gửi yêu cầu");
+          onRefresh();
+        }
       }
-    } else {
-      if (window.confirm(t('Bạn có muốn gửi yêu cầu xóa khách hàng này tới Admin phê duyệt?'))) {
-        await dbService.updateDocument('customers', id, {
-          deleteRequested: true,
-          deleteRequestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-          deleteRequestedAt: new Date().toISOString()
-        });
-        alert(t('Đã gửi yêu cầu xóa khách hàng tới Admin.'));
-        onRefresh();
-      }
-    }
+    }, id);
   };
 
   const handleOpenEditProduct = (prod: any) => {
@@ -1211,210 +1227,220 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   const handleEditProductSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomer || !selectedProduct) return;
-    if (!productCode.trim() || !productName.trim()) {
-      alert(t('Vui lòng nhập đầy đủ mã hàng và tên hàng.'));
-      return;
-    }
-    if (hasDuplicateProductCode(productCode, selectedProduct.id)) {
-      alert(t(`Mã hàng ${productCode.trim()} đã tồn tại trong hồ sơ khách hàng.`));
-      return;
-    }
-
-    const specs: any = { fields: specFields };
-    // Flatten fields for backwards compatibility
-    specFields.forEach(f => {
-      let val = f.value;
-      if (f.type === 'number') {
-        val = Number(val);
-      }
-      specs[f.id] = val;
-
-      // Keep support for both core/windingCore for color rolls
-      if (f.id === 'core') {
-        specs.windingCore = val;
-      }
-      if (f.id === 'windingCore') {
-        specs.core = val;
-      }
-
-      // Map other special fields for legacy compatibility
-      if (f.id === 'colors') {
-        specs.colors = val;
-      }
-      if (f.id === 'processing') {
-        specs.processing = val;
-      }
-      if (f.id === 'ribbonType') {
-        specs.ribbonType = val;
-      }
-      if (f.id === 'direction') {
-        specs.direction = val;
-      }
-      if (f.id === 'size') {
-        specs.size = val;
-      }
-      if (f.id === 'color') {
-        specs.color = val;
-      }
-      if (f.id === 'corner') {
-        specs.corner = val;
-      }
-      if (f.id === 'lamination') {
-        specs.lamination = val;
-      }
-      if (f.id === 'finished') {
-        specs.finished = val;
-      }
-      if (f.id === 'sheetType') {
-        specs.sheetType = val;
-      }
-      if (f.id === 'dieCut') {
-        specs.dieCut = val;
-      }
-      if (f.id === 'perforated') {
-        specs.perforated = val;
-      }
-      if (f.id === 'windDirection') {
-        specs.windDirection = val;
-      }
-      if (f.id === 'windDirectionFiles') {
-        specs.windDirectionFiles = val;
-      }
-    });
-
-    specs.custom = specFields.filter(f => f.id.startsWith('custom_')).map(f => ({ key: f.label, value: f.value }));
-
-    const priceChanged = Number(currentPrice) !== selectedProduct.currentPrice;
-    const newPriceHistory = [...(selectedProduct.priceHistory || [])];
-    if (priceChanged) {
-      newPriceHistory.push({
-        date: new Date().toISOString().split('T')[0],
-        price: Number(currentPrice),
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-      });
-    }
-
-    const updatedProduct = {
-      ...selectedProduct,
-      previousProductCodes: Array.from(new Set([
-        ...(Array.isArray(selectedProduct.previousProductCodes) ? selectedProduct.previousProductCodes : []),
-        ...(normalizeProductCode(productCode) !== normalizeProductCode(selectedProduct.productCode) ? [selectedProduct.productCode] : [])
-      ])),
-      productCode: productCode.trim(),
-      productName: productName.trim(),
-      productType,
-      currentPrice: Number(currentPrice),
-      salePrice: Number(currentPrice),
-      material: productMaterial,
-      unit: productUnit,
-      vatRate: Number(productVatRate),
-      supplierId: productSupplierId,
-      supplierName: suppliers.find(supplier => supplier.id === productSupplierId)?.supplierName || '',
-      purchasePrice: Number(productPurchasePrice),
-      discountType: productDiscountType,
-      discountRate: Number(productDiscountRate),
-      discountAmount: Number(productDiscountAmount),
-      leadTimeDays: Number(productLeadTimeDays),
-      layoutUrl: productLayoutBase64,
-      specifications: specs,
-      size: getCustomerProductSize({ size: '', specifications: specs }),
-      priceHistory: newPriceHistory,
-      updatedAt: new Date().toISOString()
-    };
-
-    if (currentUser.role === 'admin') {
-      try {
-        const products = await updateCustomerProduct(selectedCustomer.id, updatedProduct, currentUser, getCustomerProductVersion(selectedProduct));
-        setSelectedCustomer((previous: CustomerRecord | null) => previous ? { ...previous, products } : previous);
-      } catch (error) {
-        alert(error instanceof Error && !('code' in error) ? error.message : t('Không thể lưu sản phẩm. Vui lòng thử lại.'));
+    return runMutationAction("CrmPage.tsx:handleEditProductSubmit", async () => {
+      e.preventDefault();
+      if (!selectedCustomer || !selectedProduct) return;
+      if (!productCode.trim() || !productName.trim()) {
+        alert(t('Vui lòng nhập đầy đủ mã hàng và tên hàng.'));
         return;
       }
-      alert(t('Cập nhật sản phẩm thành công.'));
-    } else {
-      await dbService.addDocument('edit_requests', {
-        type: 'product_details',
-        targetId: selectedCustomer.id,
-        productId: selectedProduct.id,
-        fieldName: `${t('Sửa Sản phẩm')}: ${selectedProduct.productCode} - ${selectedProduct.productName}`,
-        originalData: selectedProduct,
-        updatedData: updatedProduct,
-        requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        requestedAt: new Date().toISOString(),
-        status: 'pending'
-      });
-      alert(t('Yêu cầu chỉnh sửa sản phẩm đã được gửi tới Admin duyệt.'));
-    }
+      if (hasDuplicateProductCode(productCode, selectedProduct.id)) {
+        alert(t(`Mã hàng ${productCode.trim()} đã tồn tại trong hồ sơ khách hàng.`));
+        return;
+      }
 
-    setShowEditProductModal(false);
-    setSelectedProduct(null);
-    onRefresh();
+      const specs: any = { fields: specFields };
+      // Flatten fields for backwards compatibility
+      specFields.forEach(f => {
+        let val = f.value;
+        if (f.type === 'number') {
+          val = Number(val);
+        }
+        specs[f.id] = val;
+
+        // Keep support for both core/windingCore for color rolls
+        if (f.id === 'core') {
+          specs.windingCore = val;
+        }
+        if (f.id === 'windingCore') {
+          specs.core = val;
+        }
+
+        // Map other special fields for legacy compatibility
+        if (f.id === 'colors') {
+          specs.colors = val;
+        }
+        if (f.id === 'processing') {
+          specs.processing = val;
+        }
+        if (f.id === 'ribbonType') {
+          specs.ribbonType = val;
+        }
+        if (f.id === 'direction') {
+          specs.direction = val;
+        }
+        if (f.id === 'size') {
+          specs.size = val;
+        }
+        if (f.id === 'color') {
+          specs.color = val;
+        }
+        if (f.id === 'corner') {
+          specs.corner = val;
+        }
+        if (f.id === 'lamination') {
+          specs.lamination = val;
+        }
+        if (f.id === 'finished') {
+          specs.finished = val;
+        }
+        if (f.id === 'sheetType') {
+          specs.sheetType = val;
+        }
+        if (f.id === 'dieCut') {
+          specs.dieCut = val;
+        }
+        if (f.id === 'perforated') {
+          specs.perforated = val;
+        }
+        if (f.id === 'windDirection') {
+          specs.windDirection = val;
+        }
+        if (f.id === 'windDirectionFiles') {
+          specs.windDirectionFiles = val;
+        }
+      });
+
+      specs.custom = specFields.filter(f => f.id.startsWith('custom_')).map(f => ({ key: f.label, value: f.value }));
+
+      const priceChanged = Number(currentPrice) !== selectedProduct.currentPrice;
+      const newPriceHistory = [...(selectedProduct.priceHistory || [])];
+      if (priceChanged) {
+        newPriceHistory.push({
+          date: new Date().toISOString().split('T')[0],
+          price: Number(currentPrice),
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+        });
+      }
+
+      const updatedProduct = {
+        ...selectedProduct,
+        previousProductCodes: Array.from(new Set([
+          ...(Array.isArray(selectedProduct.previousProductCodes) ? selectedProduct.previousProductCodes : []),
+          ...(normalizeProductCode(productCode) !== normalizeProductCode(selectedProduct.productCode) ? [selectedProduct.productCode] : [])
+        ])),
+        productCode: productCode.trim(),
+        productName: productName.trim(),
+        productType,
+        currentPrice: Number(currentPrice),
+        salePrice: Number(currentPrice),
+        material: productMaterial,
+        unit: productUnit,
+        vatRate: Number(productVatRate),
+        supplierId: productSupplierId,
+        supplierName: suppliers.find(supplier => supplier.id === productSupplierId)?.supplierName || '',
+        purchasePrice: Number(productPurchasePrice),
+        discountType: productDiscountType,
+        discountRate: Number(productDiscountRate),
+        discountAmount: Number(productDiscountAmount),
+        leadTimeDays: Number(productLeadTimeDays),
+        layoutUrl: productLayoutBase64,
+        specifications: specs,
+        size: getCustomerProductSize({ size: '', specifications: specs }),
+        priceHistory: newPriceHistory,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (currentUser.role === 'admin') {
+        try {
+          const products = await updateCustomerProduct(selectedCustomer.id, updatedProduct, currentUser, getCustomerProductVersion(selectedProduct));
+          setSelectedCustomer((previous: CustomerRecord | null) => previous ? { ...previous, products } : previous);
+        } catch (error) {
+          alert(error instanceof Error && !('code' in error) ? error.message : t('Không thể lưu sản phẩm. Vui lòng thử lại.'));
+          return;
+        }
+        showSuccessToast("Đã lưu thành công");
+      } else {
+        await dbService.addDocument('edit_requests', {
+          type: 'product_details',
+          targetId: selectedCustomer.id,
+          productId: selectedProduct.id,
+          fieldName: `${t('Sửa Sản phẩm')}: ${selectedProduct.productCode} - ${selectedProduct.productName}`,
+          originalData: selectedProduct,
+          updatedData: updatedProduct,
+          requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          requestedAt: new Date().toISOString(),
+          status: 'pending'
+        });
+        showSuccessToast("Đã gửi yêu cầu");
+      }
+
+      setShowEditProductModal(false);
+      setSelectedProduct(null);
+      onRefresh();
+    }, e);
   };
 
   const triggerAddClassification = async () => {
-    const name = prompt(t('Nhập tên phân loại sản phẩm mới:'));
-    if (!name || !name.trim()) return;
-    const cleanName = name.trim();
-    const id = `class-${Math.random().toString(36).substr(2, 9)}`;
-    const newClass = { id, name: cleanName };
-    await dbService.addDocument('product_classifications', newClass);
-    alert(t('Đã thêm phân loại sản phẩm mới.'));
+    return runMutationAction("CrmPage.tsx:triggerAddClassification", async () => {
+      const name = prompt(t('Nhập tên phân loại sản phẩm mới:'));
+      if (!name || !name.trim()) return;
+      const cleanName = name.trim();
+      const id = `class-${Math.random().toString(36).substr(2, 9)}`;
+      const newClass = { id, name: cleanName };
+      await dbService.addDocument('product_classifications', newClass);
+      showSuccessToast("Đã thêm thành công");
+    }, undefined);
   };
 
   const triggerAddWindDirection = async () => {
-    const name = prompt(t('Nhập tên hướng tem ra mới:'));
-    if (!name || !name.trim()) return;
-    const cleanName = name.trim();
-    const id = `wind-${Math.random().toString(36).substr(2, 9)}`;
-    const newWind = { id, name: cleanName };
-    await dbService.addDocument('wind_directions', newWind);
-    alert(t('Đã thêm hướng tem ra mới.'));
+    return runMutationAction("CrmPage.tsx:triggerAddWindDirection", async () => {
+      const name = prompt(t('Nhập tên hướng tem ra mới:'));
+      if (!name || !name.trim()) return;
+      const cleanName = name.trim();
+      const id = `wind-${Math.random().toString(36).substr(2, 9)}`;
+      const newWind = { id, name: cleanName };
+      await dbService.addDocument('wind_directions', newWind);
+      showSuccessToast("Đã thêm thành công");
+    }, undefined);
   };
 
   const handleEditClassification = async (id: string, newName: string) => {
-    const origClass = productClassifications.find(c => c.id === id);
-    if (!origClass) return;
-    if (currentUser.role === 'admin') {
-      await dbService.updateDocument('product_classifications', id, { name: newName });
-      alert(t('Đã cập nhật phân loại sản phẩm.'));
-    } else {
-      await dbService.addDocument('edit_requests', {
-        type: 'product_classification',
-        targetId: id,
-        fieldName: `${t('Sửa Phân loại sản phẩm')}: ${origClass.name}`,
-        originalData: { name: origClass.name },
-        updatedData: { name: newName },
-        requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        requestedAt: new Date().toISOString(),
-        status: 'pending'
-      });
-      alert(t('Yêu cầu sửa phân loại sản phẩm đã gửi tới Admin duyệt.'));
-    }
-    onRefresh();
+    return runMutationAction("CrmPage.tsx:handleEditClassification", async () => {
+      const origClass = productClassifications.find(c => c.id === id);
+      if (!origClass) return;
+      if (currentUser.role === 'admin') {
+        await requireConfirmedMutation(dbService.updateDocument('product_classifications', id, { name: newName }));
+        showSuccessToast("Đã lưu thành công");
+      } else {
+        await dbService.addDocument('edit_requests', {
+          type: 'product_classification',
+          targetId: id,
+          fieldName: `${t('Sửa Phân loại sản phẩm')}: ${origClass.name}`,
+          originalData: { name: origClass.name },
+          updatedData: { name: newName },
+          requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          requestedAt: new Date().toISOString(),
+          status: 'pending'
+        });
+        showSuccessToast("Đã gửi yêu cầu");
+      }
+      onRefresh();
+    }, id);
   };
 
   const handleEditWindDirection = async (id: string, newName: string) => {
-    const origWind = windDirections.find(w => w.id === id);
-    if (!origWind) return;
-    if (currentUser.role === 'admin') {
-      await dbService.updateDocument('wind_directions', id, { name: newName });
-      alert(t('Đã cập nhật hướng tem ra.'));
-    } else {
-      await dbService.addDocument('edit_requests', {
-        type: 'wind_direction',
-        targetId: id,
-        fieldName: `${t('Sửa Hướng tem ra')}: ${origWind.name}`,
-        originalData: { name: origWind.name },
-        updatedData: { name: newName },
-        requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        requestedAt: new Date().toISOString(),
-        status: 'pending'
-      });
-      alert(t('Yêu cầu sửa hướng tem ra đã gửi tới Admin duyệt.'));
-    }
-    onRefresh();
+    return runMutationAction("CrmPage.tsx:handleEditWindDirection", async () => {
+      const origWind = windDirections.find(w => w.id === id);
+      if (!origWind) return;
+      if (currentUser.role === 'admin') {
+        await requireConfirmedMutation(dbService.updateDocument('wind_directions', id, { name: newName }));
+        showSuccessToast("Đã lưu thành công");
+      } else {
+        await dbService.addDocument('edit_requests', {
+          type: 'wind_direction',
+          targetId: id,
+          fieldName: `${t('Sửa Hướng tem ra')}: ${origWind.name}`,
+          originalData: { name: origWind.name },
+          updatedData: { name: newName },
+          requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          requestedAt: new Date().toISOString(),
+          status: 'pending'
+        });
+        showSuccessToast("Đã gửi yêu cầu");
+      }
+      onRefresh();
+    }, id);
   };
 
   const triggerEditClassification = async (id: string) => {
@@ -1434,76 +1460,87 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   const handleApproveRequest = async (req: any) => {
-    try {
-      if (req.type === 'customer_profile') {
-        await dbService.updateDocument('customers', req.targetId, {
-          ...req.updatedData,
-          updatedBy: req.requestedBy,
-          updatedAt: new Date().toISOString()
-        });
-        alert(t('Đã duyệt chỉnh sửa hồ sơ khách hàng.'));
-      } else if (req.type === 'product_details') {
-        const cust = customers.find(c => c.id === req.targetId);
-        if (cust) {
-          await updateCustomerProduct(req.targetId, { ...req.updatedData, id: req.productId }, currentUser, req.originalData ? getCustomerProductVersion(req.originalData) : '');
-          alert(t('Đã duyệt chỉnh sửa thông tin sản phẩm.'));
-        } else {
-          alert(t('Không tìm thấy thông tin khách hàng tương ứng.'));
+    return runMutationAction("CrmPage.tsx:handleApproveRequest", async () => {
+      try {
+        let approved = false;
+        if (req.type === 'customer_profile') {
+          await requireConfirmedMutation(dbService.updateDocument('customers', req.targetId, {
+            ...req.updatedData,
+            updatedBy: req.requestedBy,
+            updatedAt: new Date().toISOString()
+          }));
+          approved = true;
+        } else if (req.type === 'product_details') {
+          const cust = customers.find(c => c.id === req.targetId);
+          if (cust) {
+            await updateCustomerProduct(req.targetId, { ...req.updatedData, id: req.productId }, currentUser, req.originalData ? getCustomerProductVersion(req.originalData) : '');
+            approved = true;
+          } else {
+            alert(t('Không tìm thấy thông tin khách hàng tương ứng.'));
+          }
+        } else if (req.type === 'product_classification') {
+          await requireConfirmedMutation(dbService.updateDocument('product_classifications', req.targetId, {
+            name: req.updatedData.name
+          }));
+          approved = true;
+        } else if (req.type === 'wind_direction') {
+          await requireConfirmedMutation(dbService.updateDocument('wind_directions', req.targetId, {
+            name: req.updatedData.name
+          }));
+          approved = true;
         }
-      } else if (req.type === 'product_classification') {
-        await dbService.updateDocument('product_classifications', req.targetId, {
-          name: req.updatedData.name
-        });
-        alert(t('Đã duyệt chỉnh sửa phân loại sản phẩm.'));
-      } else if (req.type === 'wind_direction') {
-        await dbService.updateDocument('wind_directions', req.targetId, {
-          name: req.updatedData.name
-        });
-        alert(t('Đã duyệt chỉnh sửa hướng tem ra.'));
-      }
 
-      await dbService.deleteDocument('edit_requests', req.id);
-      setShowCompareModal(false);
-      setSelectedEditRequest(null);
-      onRefresh();
-    } catch (error) {
-      console.error(error);
-      alert(t('Có lỗi xảy ra khi phê duyệt.'));
-    }
+        await requireConfirmedMutation(dbService.deleteDocument('edit_requests', req.id));
+        setShowCompareModal(false);
+        setSelectedEditRequest(null);
+        onRefresh();
+        if (approved) showSuccessToast("Đã duyệt thành công");
+      } catch (error) {
+        showErrorToast();
+        console.error(error);
+        alert(t('Có lỗi xảy ra khi phê duyệt.'));
+      }
+    }, req);
   };
 
   const handleRejectRequest = async (req: any) => {
-    if (window.confirm(t('Bạn có chắc chắn muốn từ chối yêu cầu này?'))) {
-      await dbService.deleteDocument('edit_requests', req.id);
-      setShowCompareModal(false);
-      setSelectedEditRequest(null);
-      alert(t('Đã từ chối và xóa yêu cầu.'));
-      onRefresh();
-    }
+    return runMutationAction("CrmPage.tsx:handleRejectRequest", async () => {
+      if (window.confirm(t('Bạn có chắc chắn muốn từ chối yêu cầu này?'))) {
+        await requireConfirmedMutation(dbService.deleteDocument('edit_requests', req.id));
+        setShowCompareModal(false);
+        setSelectedEditRequest(null);
+        showSuccessToast("Đã từ chối yêu cầu");
+        onRefresh();
+      }
+    }, req);
   };
 
   const handleApproveDeleteCustomer = async (cust: any) => {
-    if (window.confirm(t('Bạn có chắc muốn phê duyệt xóa khách hàng này?'))) {
-      await dbService.updateDocument('customers', cust.id, {
-        deleted: true,
-        deleteRequested: false,
-        deleteRequestedAt: ''
-      });
-      alert(t('Đã xóa khách hàng.'));
-      onRefresh();
-    }
+    return runMutationAction("CrmPage.tsx:handleApproveDeleteCustomer", async () => {
+      if (window.confirm(t('Bạn có chắc muốn phê duyệt xóa khách hàng này?'))) {
+        await requireConfirmedMutation(dbService.updateDocument('customers', cust.id, {
+          deleted: true,
+          deleteRequested: false,
+          deleteRequestedAt: ''
+        }));
+        showSuccessToast("Đã xóa thành công");
+        onRefresh();
+      }
+    }, cust);
   };
 
   const handleRejectDeleteCustomer = async (cust: any) => {
-    if (window.confirm(t('Từ chối yêu cầu xóa khách hàng này?'))) {
-      await dbService.updateDocument('customers', cust.id, {
-        deleteRequested: false,
-        deleteRequestedBy: '',
-        deleteRequestedAt: ''
-      });
-      alert(t('Đã từ chối yêu cầu xóa.'));
-      onRefresh();
-    }
+    return runMutationAction("CrmPage.tsx:handleRejectDeleteCustomer", async () => {
+      if (window.confirm(t('Từ chối yêu cầu xóa khách hàng này?'))) {
+        await requireConfirmedMutation(dbService.updateDocument('customers', cust.id, {
+          deleteRequested: false,
+          deleteRequestedBy: '',
+          deleteRequestedAt: ''
+        }));
+        showSuccessToast("Đã từ chối yêu cầu");
+        onRefresh();
+      }
+    }, cust);
   };
 
   const handleRepoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1524,162 +1561,182 @@ export const Crm: React.FC<CrmProps> = ({
 
   // Add folder
   const handleAddFolder = async () => {
-    if (!selectedCustomer || currentUser.role !== 'admin') return;
-    const folderNameTrim = newFolderName.trim();
-    if (!folderNameTrim) return;
+    return runMutationAction("CrmPage.tsx:handleAddFolder", async () => {
+      if (!selectedCustomer || currentUser.role !== 'admin') return;
+      const folderNameTrim = newFolderName.trim();
+      if (!folderNameTrim) return;
 
-    const folders = getCustomerRepositoryFolders(selectedCustomer);
-    const folderExists = folders.some(folder => folder.name.trim().toLocaleLowerCase('vi-VN') === folderNameTrim.toLocaleLowerCase('vi-VN'));
-    if (folderExists) {
-      alert(t('Thư mục này đã tồn tại.'));
-      return;
-    }
+      const folders = getCustomerRepositoryFolders(selectedCustomer);
+      const folderExists = folders.some(folder => folder.name.trim().toLocaleLowerCase('vi-VN') === folderNameTrim.toLocaleLowerCase('vi-VN'));
+      if (folderExists) {
+        alert(t('Thư mục này đã tồn tại.'));
+        return;
+      }
 
-    const now = new Date().toISOString();
-    const newFolder: CustomerRepositoryFolder = {
-      id: createCustomerFolderId(folderNameTrim, folders.map(folder => folder.id)),
-      name: folderNameTrim,
-      parentId: null,
-      order: (Math.max(0, ...folders.map(folder => Number(folder.order) || 0)) + 10),
-      active: true,
-      createdAt: now,
-      createdById: currentUser.uid,
-      updatedAt: '',
-      updatedById: ''
-    };
-    const nextFolders = [...folders, newFolder];
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      fileFolders: nextFolders,
-      updatedAt: now,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-    });
+      const now = new Date().toISOString();
+      const newFolder: CustomerRepositoryFolder = {
+        id: createCustomerFolderId(folderNameTrim, folders.map(folder => folder.id)),
+        name: folderNameTrim,
+        parentId: null,
+        order: (Math.max(0, ...folders.map(folder => Number(folder.order) || 0)) + 10),
+        active: true,
+        createdAt: now,
+        createdById: currentUser.uid,
+        updatedAt: '',
+        updatedById: ''
+      };
+      const nextFolders = [...folders, newFolder];
+      await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+        fileFolders: nextFolders,
+        updatedAt: now,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+      }));
 
-    setNewFolderName('');
-    setActiveRepositoryFolderId(newFolder.id);
-    setSelectedFolderForUpload(newFolder.id);
-    setSelectedCustomer((prev: any) => ({ ...prev, fileFolders: nextFolders }));
-    onRefresh();
+      setNewFolderName('');
+      setActiveRepositoryFolderId(newFolder.id);
+      setSelectedFolderForUpload(newFolder.id);
+      setSelectedCustomer((prev: any) => ({ ...prev, fileFolders: nextFolders }));
+      onRefresh();
+
+      showSuccessToast("Đã thêm thành công");
+    }, undefined);
   };
 
   const handleRenameRepoFolder = async (folderId: string) => {
-    if (!selectedCustomer || currentUser.role !== 'admin') return;
-    const nextName = folderNameDraft.trim();
-    if (!nextName) return;
-    const folders = getCustomerRepositoryFolders(selectedCustomer);
-    if (folders.some(folder => folder.id !== folderId && folder.name.trim().toLocaleLowerCase('vi-VN') === nextName.toLocaleLowerCase('vi-VN'))) {
-      alert(t('Tên thư mục này đã tồn tại.'));
-      return;
-    }
-    const now = new Date().toISOString();
-    const nextFolders = folders.map(folder => folder.id === folderId ? ({
-      ...folder,
-      name: nextName,
-      updatedAt: now,
-      updatedById: currentUser.uid
-    }) : folder);
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      fileFolders: nextFolders,
-      updatedAt: now,
-      updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-    });
-    setSelectedCustomer((previous: any) => previous ? ({ ...previous, fileFolders: nextFolders }) : previous);
-    setRenamingFolderId('');
-    setFolderNameDraft('');
-    onRefresh();
+    return runMutationAction("CrmPage.tsx:handleRenameRepoFolder", async () => {
+      if (!selectedCustomer || currentUser.role !== 'admin') return;
+      const nextName = folderNameDraft.trim();
+      if (!nextName) return;
+      const folders = getCustomerRepositoryFolders(selectedCustomer);
+      if (folders.some(folder => folder.id !== folderId && folder.name.trim().toLocaleLowerCase('vi-VN') === nextName.toLocaleLowerCase('vi-VN'))) {
+        alert(t('Tên thư mục này đã tồn tại.'));
+        return;
+      }
+      const now = new Date().toISOString();
+      const nextFolders = folders.map(folder => folder.id === folderId ? ({
+        ...folder,
+        name: nextName,
+        updatedAt: now,
+        updatedById: currentUser.uid
+      }) : folder);
+      await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+        fileFolders: nextFolders,
+        updatedAt: now,
+        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+      }));
+      setSelectedCustomer((previous: any) => previous ? ({ ...previous, fileFolders: nextFolders }) : previous);
+      setRenamingFolderId('');
+      setFolderNameDraft('');
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, folderId);
   };
 
   // Upload file to customer repo
   const handleUploadRepoFile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomer) return;
-    const normalizedLink = repoUploadLink.trim();
-    if (!selectedFolderForUpload || (!repoUploadFile && !normalizedLink) || !repoUploadFileName) {
-      alert(t('Vui lòng chọn thư mục, nhập tên và chọn tệp hoặc đường dẫn chia sẻ.'));
-      return;
-    }
-    if (normalizedLink && !/^https?:\/\//i.test(normalizedLink)) {
-      alert(t('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.'));
-      return;
-    }
+    return runMutationAction("CrmPage.tsx:handleUploadRepoFile", async () => {
+      e.preventDefault();
+      if (!selectedCustomer) return;
+      const normalizedLink = repoUploadLink.trim();
+      if (!selectedFolderForUpload || (!repoUploadFile && !normalizedLink) || !repoUploadFileName) {
+        alert(t('Vui lòng chọn thư mục, nhập tên và chọn tệp hoặc đường dẫn chia sẻ.'));
+        return;
+      }
+      if (normalizedLink && !/^https?:\/\//i.test(normalizedLink)) {
+        alert(t('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.'));
+        return;
+      }
 
-    const folders = getCustomerRepositoryFolders(selectedCustomer);
-    const selectedFolder = folders.find(folder => folder.id === selectedFolderForUpload && folder.active !== false);
-    if (!selectedFolder) {
-      alert(t('Thư mục lưu trữ không còn tồn tại.'));
-      return;
-    }
-    const updatedFiles = (selectedCustomer.files || []).filter((file: any) => file.name !== '.placeholder');
+      const folders = getCustomerRepositoryFolders(selectedCustomer);
+      const selectedFolder = folders.find(folder => folder.id === selectedFolderForUpload && folder.active !== false);
+      if (!selectedFolder) {
+        alert(t('Thư mục lưu trữ không còn tồn tại.'));
+        return;
+      }
+      const updatedFiles = (selectedCustomer.files || []).filter((file: any) => file.name !== '.placeholder');
 
-    const newFileObj = {
-      id: `customer-file-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      folderId: selectedFolder.id,
-      folder: selectedFolder.name,
-      name: repoUploadFileName,
-      base64: repoUploadFile,
-      data: repoUploadFile,
-      url: normalizedLink,
-      createdAt: new Date().toISOString(),
-      createdById: currentUser.uid,
-      createdBy: currentUser.displayName
-    };
+      const newFileObj = {
+        id: `customer-file-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        folderId: selectedFolder.id,
+        folder: selectedFolder.name,
+        name: repoUploadFileName,
+        base64: repoUploadFile,
+        data: repoUploadFile,
+        url: normalizedLink,
+        createdAt: new Date().toISOString(),
+        createdById: currentUser.uid,
+        createdBy: currentUser.displayName
+      };
 
-    const newFiles = [...updatedFiles, newFileObj];
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      files: newFiles,
-      fileFolders: folders
-    });
+      const newFiles = [...updatedFiles, newFileObj];
+      await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+        files: newFiles,
+        fileFolders: folders
+      }));
 
-    setRepoUploadFile('');
-    setRepoUploadFileName('');
-    setRepoUploadLink('');
-    setSelectedCustomer((prev: any) => ({ ...prev, files: newFiles }));
-    onRefresh();
+      setRepoUploadFile('');
+      setRepoUploadFileName('');
+      setRepoUploadLink('');
+      setSelectedCustomer((prev: any) => ({ ...prev, files: newFiles }));
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   // Delete file/folder from customer repo
   const handleDeleteRepoFile = async (fileId: string) => {
-    if (!selectedCustomer) return;
-    if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) {
-      return;
-    }
-    const updatedFiles = selectedCustomer.files || [];
-    const newFiles = updatedFiles.filter((file: any) => file.id !== fileId);
+    return runMutationAction("CrmPage.tsx:handleDeleteRepoFile", async () => {
+      if (!selectedCustomer) return;
+      if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) {
+        return;
+      }
+      const updatedFiles = selectedCustomer.files || [];
+      const newFiles = updatedFiles.filter((file: any) => file.id !== fileId);
 
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      files: newFiles
-    });
+      await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+        files: newFiles
+      }));
 
-    setSelectedCustomer((prev: any) => ({ ...prev, files: newFiles }));
-    onRefresh();
+      setSelectedCustomer((prev: any) => ({ ...prev, files: newFiles }));
+      onRefresh();
+
+      showSuccessToast("Đã xóa thành công");
+    }, fileId);
   };
 
   const handleDeleteRepoFolder = async (folderId: string) => {
-    if (!selectedCustomer || currentUser.role !== 'admin') return;
-    const folders = getCustomerRepositoryFolders(selectedCustomer);
-    const folder = folders.find(item => item.id === folderId);
-    if (!folder) return;
-    const containsFiles = (selectedCustomer.files || []).some((file: any) => file.name !== '.placeholder' && resolveCustomerFileFolderId(file, folders) === folderId);
-    const containsContracts = folderId === 'contracts' && (selectedCustomer.contracts || []).length > 0;
-    if (containsFiles || containsContracts) {
-      alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
-      return;
-    }
-    if (folders.length === 1) {
-      alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
-      return;
-    }
-    if (!window.confirm(`${t('Xóa thư mục')} “${folder.name}”?`)) return;
-    const nextFolders = folders.filter(item => item.id !== folderId);
+    return runMutationAction("CrmPage.tsx:handleDeleteRepoFolder", async () => {
+      if (!selectedCustomer || currentUser.role !== 'admin') return;
+      const folders = getCustomerRepositoryFolders(selectedCustomer);
+      const folder = folders.find(item => item.id === folderId);
+      if (!folder) return;
+      const containsFiles = (selectedCustomer.files || []).some((file: any) => file.name !== '.placeholder' && resolveCustomerFileFolderId(file, folders) === folderId);
+      const containsContracts = folderId === 'contracts' && (selectedCustomer.contracts || []).length > 0;
+      if (containsFiles || containsContracts) {
+        alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
+        return;
+      }
+      if (folders.length === 1) {
+        alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
+        return;
+      }
+      if (!window.confirm(`${t('Xóa thư mục')} “${folder.name}”?`)) return;
+      const nextFolders = folders.filter(item => item.id !== folderId);
 
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      fileFolders: nextFolders
-    });
+      await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+        fileFolders: nextFolders
+      }));
 
-    const nextActiveId = nextFolders[0]?.id || '';
-    setActiveRepositoryFolderId(nextActiveId);
-    setSelectedFolderForUpload(nextActiveId);
-    setSelectedCustomer((prev: any) => ({ ...prev, fileFolders: nextFolders }));
-    onRefresh();
+      const nextActiveId = nextFolders[0]?.id || '';
+      setActiveRepositoryFolderId(nextActiveId);
+      setSelectedFolderForUpload(nextActiveId);
+      setSelectedCustomer((prev: any) => ({ ...prev, fileFolders: nextFolders }));
+      onRefresh();
+
+      showSuccessToast("Đã xóa thành công");
+    }, folderId);
   };
 
   // Product Helpers
@@ -1705,26 +1762,30 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   const handleDeleteProduct = async (productId: string) => {
-    if (!selectedCustomer) return;
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa mã sản phẩm này?'))) {
-      const updatedProducts = (selectedCustomer.products || []).map((p: any) => {
-        if (p.id === productId) {
-          return { ...p, deleted: true, deletedAt: new Date().toISOString() };
-        }
-        return p;
-      });
+    return runMutationAction("CrmPage.tsx:handleDeleteProduct", async () => {
+      if (!selectedCustomer) return;
+      if (window.confirm(t('Bạn có chắc chắn muốn xóa mã sản phẩm này?'))) {
+        const updatedProducts = (selectedCustomer.products || []).map((p: any) => {
+          if (p.id === productId) {
+            return { ...p, deleted: true, deletedAt: new Date().toISOString() };
+          }
+          return p;
+        });
 
-      await dbService.updateDocument('customers', selectedCustomer.id, {
-        products: updatedProducts
-      });
+        await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+          products: updatedProducts
+        }));
 
-      setSelectedCustomer((prev: any) => ({
-        ...prev,
-        products: updatedProducts
-      }));
+        setSelectedCustomer((prev: any) => ({
+          ...prev,
+          products: updatedProducts
+        }));
 
-      onRefresh();
-    }
+        onRefresh();
+
+        showSuccessToast("Đã xóa thành công");
+      }
+    }, productId);
   };
 
   const handleOpenRequote = (prod: any) => {
@@ -1735,40 +1796,44 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   const handleRequoteSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomer || !selectedProduct) return;
+    return runMutationAction("CrmPage.tsx:handleRequoteSubmit", async () => {
+      e.preventDefault();
+      if (!selectedCustomer || !selectedProduct) return;
 
-    const updatedProducts = (selectedCustomer.products || []).map((p: any) => {
-      if (p.id === selectedProduct.id) {
-        return {
-          ...p,
-          currentPrice: Number(requotePrice),
-          priceHistory: [
-            ...(p.priceHistory || []),
-            {
-              date: new Date().toISOString().split('T')[0],
-              price: Number(requotePrice),
-              note: requoteNote,
-              updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-            }
-          ]
-        };
-      }
-      return p;
-    });
+      const updatedProducts = (selectedCustomer.products || []).map((p: any) => {
+        if (p.id === selectedProduct.id) {
+          return {
+            ...p,
+            currentPrice: Number(requotePrice),
+            priceHistory: [
+              ...(p.priceHistory || []),
+              {
+                date: new Date().toISOString().split('T')[0],
+                price: Number(requotePrice),
+                note: requoteNote,
+                updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+              }
+            ]
+          };
+        }
+        return p;
+      });
 
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      products: updatedProducts
-    });
+      await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+        products: updatedProducts
+      }));
 
-    setSelectedCustomer((prev: any) => ({
-      ...prev,
-      products: updatedProducts
-    }));
+      setSelectedCustomer((prev: any) => ({
+        ...prev,
+        products: updatedProducts
+      }));
 
-    setShowRequoteModal(false);
-    setSelectedProduct(null);
-    onRefresh();
+      setShowRequoteModal(false);
+      setSelectedProduct(null);
+      onRefresh();
+
+      showSuccessToast("Đã lưu thành công");
+    }, e);
   };
 
   // Contract Helpers
@@ -1788,55 +1853,63 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   const handleAddContractSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomer || !contractNo) return;
+    return runMutationAction("CrmPage.tsx:handleAddContractSubmit", async () => {
+      e.preventDefault();
+      if (!selectedCustomer || !contractNo) return;
 
-    const newContract = {
-      id: `contr-${Math.random().toString(36).substr(2, 9)}`,
-      contractNo,
-      signDate: contractSignDate,
-      expiryDate: contractExpiryDate,
-      value: Number(contractValue),
-      fileUrl: contractFile,
-      status: new Date(contractExpiryDate).getTime() > Date.now() ? 'active' : 'expired',
-      createdAt: new Date().toISOString(),
-      createdById: currentUser.uid,
-      createdBy: currentUser.displayName
-    };
+      const newContract = {
+        id: `contr-${Math.random().toString(36).substr(2, 9)}`,
+        contractNo,
+        signDate: contractSignDate,
+        expiryDate: contractExpiryDate,
+        value: Number(contractValue),
+        fileUrl: contractFile,
+        status: new Date(contractExpiryDate).getTime() > Date.now() ? 'active' : 'expired',
+        createdAt: new Date().toISOString(),
+        createdById: currentUser.uid,
+        createdBy: currentUser.displayName
+      };
 
-    const updatedContracts = [...(selectedCustomer.contracts || []), newContract];
+      const updatedContracts = [...(selectedCustomer.contracts || []), newContract];
 
-    await dbService.updateDocument('customers', selectedCustomer.id, {
-      contracts: updatedContracts
-    });
-
-    setSelectedCustomer((prev: any) => ({
-      ...prev,
-      contracts: updatedContracts
-    }));
-
-    setShowAddContractModal(false);
-    setContractNo('');
-    setContractFile('');
-    onRefresh();
-  };
-
-  const handleDeleteContract = async (contractId: string) => {
-    if (!selectedCustomer) return;
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa hợp đồng này?'))) {
-      const updatedContracts = (selectedCustomer.contracts || []).filter((c: any) => c.id !== contractId);
-
-      await dbService.updateDocument('customers', selectedCustomer.id, {
+      await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
         contracts: updatedContracts
-      });
+      }));
 
       setSelectedCustomer((prev: any) => ({
         ...prev,
         contracts: updatedContracts
       }));
 
+      setShowAddContractModal(false);
+      setContractNo('');
+      setContractFile('');
       onRefresh();
-    }
+
+      showSuccessToast("Đã thêm thành công");
+    }, e);
+  };
+
+  const handleDeleteContract = async (contractId: string) => {
+    return runMutationAction("CrmPage.tsx:handleDeleteContract", async () => {
+      if (!selectedCustomer) return;
+      if (window.confirm(t('Bạn có chắc chắn muốn xóa hợp đồng này?'))) {
+        const updatedContracts = (selectedCustomer.contracts || []).filter((c: any) => c.id !== contractId);
+
+        await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
+          contracts: updatedContracts
+        }));
+
+        setSelectedCustomer((prev: any) => ({
+          ...prev,
+          contracts: updatedContracts
+        }));
+
+        onRefresh();
+
+        showSuccessToast("Đã xóa thành công");
+      }
+    }, contractId);
   };
 
   // Order history helper for selected customer
@@ -2369,7 +2442,7 @@ export const Crm: React.FC<CrmProps> = ({
     ]);
     try {
       await copyTextToClipboard(profile);
-      window.alert('Đã sao chép hồ sơ doanh nghiệp.');
+      showSuccessToast("Đã sao chép thành công");
     } catch {
       window.alert('Không thể sao chép. Vui lòng thử lại.');
     }
@@ -2399,7 +2472,7 @@ export const Crm: React.FC<CrmProps> = ({
     ]);
     try {
       await copyTextToClipboard(profile);
-      window.alert('Đã sao chép thông tin doanh nghiệp.');
+      showSuccessToast("Đã sao chép thành công");
     } catch {
       window.alert('Không thể sao chép. Vui lòng thử lại.');
     }

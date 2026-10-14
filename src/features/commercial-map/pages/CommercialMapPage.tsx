@@ -1,3 +1,4 @@
+import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
@@ -413,27 +414,32 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
   const parkRows = parkProvinceOption?.children || [];
 
   const saveIndustrialParkDefinition = async (nextDefinition: LeadFilterDefinition, message: string) => {
-    setParkSaving(true);
-    setParkMessage('');
-    try {
-      const savedDefinition = {
-        ...compactLeadFilterDefinitionForStorage(nextDefinition),
-        updatedBy: currentUser.displayName,
-        updatedAt: new Date().toISOString()
-      };
-      await dbService.addDocument('lead_filter_definitions', savedDefinition);
-      setStoredFilterDefinitions(previous => [
-        ...previous.filter(definition => definition.id !== savedDefinition.id),
-        savedDefinition
-      ]);
-      setParkMessage(message);
-      return true;
-    } catch {
-      setParkMessage('Không thể lưu danh mục KCN lúc này. Vui lòng thử lại.');
-      return false;
-    } finally {
-      setParkSaving(false);
-    }
+    return runMutationAction("CommercialMapPage.tsx:saveIndustrialParkDefinition", async () => {
+      setParkSaving(true);
+      setParkMessage('');
+      try {
+        const savedDefinition = {
+          ...compactLeadFilterDefinitionForStorage(nextDefinition),
+          updatedBy: currentUser.displayName,
+          updatedAt: new Date().toISOString()
+        };
+        await dbService.addDocument('lead_filter_definitions', savedDefinition);
+        setStoredFilterDefinitions(previous => [
+          ...previous.filter(definition => definition.id !== savedDefinition.id),
+          savedDefinition
+        ]);
+        setParkMessage(message);
+
+        showSuccessToast("Đã lưu thành công");
+        return true;
+      } catch {
+        showErrorToast();
+        setParkMessage('Không thể lưu danh mục KCN lúc này. Vui lòng thử lại.');
+        return false;
+      } finally {
+        setParkSaving(false);
+      }
+    }, nextDefinition);
   };
 
   const addIndustrialPark = async () => {
