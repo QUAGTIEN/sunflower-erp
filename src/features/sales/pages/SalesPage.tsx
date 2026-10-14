@@ -892,16 +892,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
 
         <div className="card sales-list-card">
 
-          {activeListView === 'waiting-customers' && (
-            <div className="waiting-customer-intro">
-              <div>
-                <strong>{t('Khách hàng đã có hồ sơ nhưng chưa có PO')}</strong>
-                <span>{t('Danh sách được tự động đối chiếu từ CRM và các PO hiện có. Khi lưu PO đầu tiên, khách hàng sẽ tự rời khỏi danh sách này.')}</span>
-              </div>
-              <span className="waiting-customer-intro__total">{waitingCustomerCount} {t('khách hàng')}</span>
-            </div>
-          )}
-
           {activeListView === 'orders' && selectedOrderCustomer && (
             <div className="sales-customer-po-header">
               <div className="sales-customer-po-header__identity">
@@ -1056,17 +1046,18 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
             )
           ) : (
             <div className="table-container waiting-customer-table erp-primary-data-table">
-              <table data-resize-key="sales-waiting-customers">
+              <table data-resize-key="sales-waiting-customers-v2">
                 <thead>
                   <tr>
                     <th>{t('Mã khách hàng')}</th>
-                    <th>{t('Tên Công Ty')}</th>
-                    <th>{t('Người Liên Hệ')}</th>
+                    <th>{t('Công ty')}</th>
+                    <th>{t('Người liên hệ')}</th>
+                    <th>{t('Số điện thoại')}</th>
                     <th>{t('Sale phụ trách')}</th>
                     <th>{t('Ngày tạo')}</th>
                     <th>{t('Số ngày chờ')}</th>
-                    <th>{t('Hạng Khách Hàng')}</th>
-                    <th>{t('Thao Tác')}</th>
+                    <th>{t('Hạng khách hàng')}</th>
+                    <th>{t('Thao tác')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1080,10 +1071,9 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
 
                     return (
                       <tr key={customer.id}>
-                        <td><span className="customer-code-badge">{getCustomerCode(customer)}</span></td>
+                        <td><span className="waiting-customer-code">{getCustomerCode(customer)}</span></td>
                         <td>
                           <strong className="waiting-customer-name">{customer.companyName || t('Chưa cung cấp')}</strong>
-                          {customer.phone && <div><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ contactPerson: customer.contactPerson, contactPosition: customer.contactPosition, province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} onOpenDetails={() => onOpenCustomerDetails?.(customer.id)} /></div>}
                           {customer.pendingOrderDraft && (
                             <span className="prepared-order-badge">Đã chuẩn bị thông tin đơn</span>
                           )}
@@ -1092,12 +1082,13 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
                           <span>{customer.contactPerson || t('Chưa cung cấp')}</span>
                           {customer.email && <span className="waiting-customer-secondary">{customer.email}</span>}
                         </td>
+                        <td><PhoneCallCell phone={customer.phone} companyName={customer.companyName} subjectKey={customerCallSubjectKey(customer)} historyKeys={customerCallHistoryKeys(customer, leads)} context={{ contactPerson: customer.contactPerson, contactPosition: customer.contactPosition, province: customer.province, businessSector: customer.businessSector, expectedProducts: customer.expectedProducts }} auditModule="crm" targetType="customer" targetId={customer.id} currentUser={currentUser} canRecord={currentUser.role === 'admin' || (currentUser.role === 'sale' && (!customer.assignedSaleId || customer.assignedSaleId === currentUser.uid))} onOpenDetails={() => onOpenCustomerDetails?.(customer.id)} /></td>
                         <td>{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>
                         <td>{hasValidCreatedDate ? formatDate(createdDate, t('vi-VN')) : '—'}</td>
                         <td>
                           {waitingDays === null
                             ? '—'
-                            : <span className={`waiting-days-badge ${waitingDays >= 7 ? 'is-overdue' : ''}`}>{waitingDays} {t('ngày')}</span>}
+                            : <span className={`waiting-days-text ${waitingDays >= 7 ? 'is-overdue' : ''}`}>{waitingDays} {t('ngày')}</span>}
                         </td>
                         <td>
                           <span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>

@@ -2155,17 +2155,32 @@
 }
 
 .waiting-customer-table table {
-  min-width: 1080px;
+  min-width: 1280px;
 }
 
 .waiting-customer-table th:nth-child(1) { width: 150px; }
 .waiting-customer-table th:nth-child(2) { width: 225px; }
-.waiting-customer-table th:nth-child(3) { width: 210px; }
-.waiting-customer-table th:nth-child(4) { width: 180px; }
-.waiting-customer-table th:nth-child(5) { width: 115px; }
+.waiting-customer-table th:nth-child(3) { width: 180px; }
+.waiting-customer-table th:nth-child(4) { width: 150px; }
+.waiting-customer-table th:nth-child(5) { width: 180px; }
 .waiting-customer-table th:nth-child(6) { width: 115px; }
-.waiting-customer-table th:nth-child(7) { width: 120px; }
-.waiting-customer-table th:nth-child(8) { width: 110px; text-align: center; }
+.waiting-customer-table th:nth-child(7) { width: 115px; }
+.waiting-customer-table th:nth-child(8) { width: 120px; }
+.waiting-customer-table th:nth-child(9) { width: 110px; text-align: center; }
+
+.waiting-customer-code {
+  color: var(--erp-table-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.waiting-days-text {
+  color: var(--erp-table-secondary-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.waiting-days-text.is-overdue { color: #b45309; }
 
 .waiting-customer-table td:last-child {
   text-align: center;

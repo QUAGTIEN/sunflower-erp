@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Plus, Search, Trash2, X, Download, Folder, FileText,
-  ChevronDown, ChevronUp, Upload, CheckSquare,
-  History, Layers, Paperclip, SlidersHorizontal
+  Upload, CheckSquare,
+  History, Paperclip, SlidersHorizontal
 } from 'lucide-react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { calculatePOItemFinancials, withCalculatedPOFinancials } from '@/domain/poFinancials';
@@ -95,6 +95,7 @@ export default function POFormFullScreen({
   const [assignments, setAssignments] = useState<any[]>([]);
   const [showAssignments, setShowAssignments] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [showOrderInfo, setShowOrderInfo] = useState(true);
   const [expandedItemIds, setExpandedItemIds] = useState<string[]>([]);
   const [isTableFocusMode, setIsTableFocusMode] = useState(false);
   const [tableZoom, setTableZoom] = useState(PO_GRID_DEFAULT_ZOOM);
@@ -152,6 +153,9 @@ export default function POFormFullScreen({
     setSaveError('');
     setIsSaving(false);
     setTableZoom(PO_GRID_DEFAULT_ZOOM);
+    setShowOrderInfo(true);
+    setShowAttachments(false);
+    setShowAssignments(false);
 
     if (po) {
       setCustomerId(po.customerId || '');
@@ -761,14 +765,17 @@ export default function POFormFullScreen({
     e.preventDefault();
     if (isSaving) return;
     if (!customerId) {
+      setShowOrderInfo(true);
       alert(t('Vui lòng chọn khách hàng!'));
       return;
     }
     if (!expectedDeliveryDate || Number.isNaN(Date.parse(expectedDeliveryDate))) {
+      setShowOrderInfo(true);
       alert(t('Vui lòng chọn ngày giao hàng dự kiến hợp lệ!'));
       return;
     }
     if (!['A', 'B', 'C', 'D'].includes(customerRank)) {
+      setShowOrderInfo(true);
       alert(t('Vui lòng chọn hạng khách hàng A, B, C hoặc D!'));
       return;
     }
@@ -950,16 +957,17 @@ export default function POFormFullScreen({
                 className="po-collapse-trigger"
                 onClick={() => setShowAttachments(current => !current)}
                 aria-expanded={showAttachments}
+                aria-controls="po-attachment-content"
               >
                 <span>
                   <Paperclip size={15} />
                   {t('Tệp đơn hàng & thiết kế')}
                   {attachmentCount > 0 && <small>{attachmentCount}</small>}
                 </span>
-                {showAttachments ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                <span className="po-section-action">{showAttachments ? t('Thu gọn') : t('Mở rộng')}</span>
               </button>
 
-              {showAttachments && <div className="po-attachment-content">
+              {showAttachments && <div id="po-attachment-content" className="po-attachment-content">
                 {customerId && (
                 <button
                   type="button"
@@ -977,7 +985,7 @@ export default function POFormFullScreen({
                   }}
                 >
                   <Folder size={14} />
-                  <span>{t('Nhúp từ kho tệp khách hàng')}</span>
+                  <span>{t('Chọn từ kho tệp khách hàng')}</span>
                 </button>
                 )}
 
@@ -1017,22 +1025,267 @@ export default function POFormFullScreen({
             </div>
   </>;
 
+  const orderAssignments = (
+            <div className="po-assignment-card" style={{
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              backgroundColor: 'white',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+              overflow: 'hidden',
+              display: isCustomerOnboarding ? 'none' : undefined
+            }}>
+              <button type="button" className="po-collapse-trigger po-assignment-header" onClick={() => setShowAssignments(current => !current)} aria-expanded={showAssignments} aria-controls="po-assignment-content">
+                <span>{t('Phân công công việc')} <small>{assignments.length}</small></span>
+                <span className="po-section-action">{showAssignments ? t('Thu gọn') : t('Mở rộng')}</span>
+              </button>
+
+              {showAssignments && (
+                <div id="po-assignment-content" className="po-assignment-content" style={{ padding: '16px' }}>
+
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '14px' }}>
+                    {assignments.map((assign, index) => {
+                      // Users that match the role of the department
+                      const deptUsers = users.filter(u => u.role === assign.department && u.active);
+
+                      return (
+                        <div key={assign.id} className="po-assignment-entry" style={{
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '6px',
+                          padding: '12px',
+                          backgroundColor: '#fafbfc',
+                          display: 'grid',
+                          gridTemplateColumns: '200px 1.5fr 150px 120px 30px',
+                          gap: '12px',
+                          alignItems: 'start'
+                        }}>
+                          {/* Department Selector */}
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Bộ phận chịu trách nhiệm')}</label>
+                            <select
+                              value={assign.department}
+                              onChange={(e) => handleUpdateAssignment(index, 'department', e.target.value)}
+                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                            >
+                              {departments.map(d => (
+                                <option key={d.value} value={d.value}>{d.label}</option>
+                              ))}
+                            </select>
+
+                            {/* Personnel check list */}
+                            <div style={{ marginTop: '8px' }}>
+                              <label style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>
+                                {t('Chọn Nhân Sự Phụ Trách')}
+                              </label>
+                              <div style={{
+                                maxHeight: '100px',
+                                overflowY: 'auto',
+                                border: '1px solid #e2e8f0',
+                                padding: '4px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: 'white',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '3px'
+                              }}>
+                                {deptUsers.map(u => (
+                                  <label key={u.uid} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', cursor: 'pointer', margin: 0 }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={(assign.userIds || []).includes(u.uid)}
+                                      onChange={() => handleToggleUserInAssignment(index, u.uid)}
+                                    />
+                                    <span>{u.displayName}</span>
+                                  </label>
+                                ))}
+                                {deptUsers.length === 0 && (
+                                  <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                                    {t('Không có nhân sự cho bộ phận này')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Task Description */}
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Nội dung công việc bàn giao')}</label>
+                            <textarea
+                              value={assign.description}
+                              onChange={(e) => handleUpdateAssignment(index, 'description', e.target.value)}
+                              placeholder={t('Ví dụ: Bế tem trắng, gửi mẫu layout duyệt, đặt mua mực màu đen...')}
+                              rows={3}
+                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                            />
+                          </div>
+
+                          {/* Due date */}
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Hạn hoàn thành')}</label>
+                            <input
+                              type="date"
+                              value={assign.dueDate}
+                              onChange={(e) => handleUpdateAssignment(index, 'dueDate', e.target.value)}
+                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                            />
+                          </div>
+
+                          {/* Priority Selector */}
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Độ ưu tiên')}</label>
+                            <select
+                              value={assign.priority}
+                              onChange={(e) => handleUpdateAssignment(index, 'priority', e.target.value)}
+                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                            >
+                              <option value="Cực gấp">{t('Cực gấp')}</option>
+                              <option value="Gấp">{t('Gấp')}</option>
+                              <option value="Bình thường">{t('Bình thường')}</option>
+                              <option value="Thong thả">{t('Thong thả')}</option>
+                            </select>
+                          </div>
+
+                          {/* Delete Assignment Row */}
+                          <div style={{ alignSelf: 'center', textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                              onClick={() => handleRemoveAssignment(index)}
+                              title={t('Xóa phân công')}
+                            >
+                              {t('Xóa phân công')}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {assignments.length === 0 && (
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '20px',
+                        border: '1px dashed #cbd5e1',
+                        borderRadius: '6px',
+                        color: 'var(--color-text-muted)',
+                        fontStyle: 'italic',
+                        fontSize: '12.5px'
+                      }}>
+                        {t('Chưa phân công công việc phòng ban nào cho PO này.')}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    onClick={handleAddAssignment}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}
+                  >
+                    <Plus size={14} />
+                    <span>{t('Thêm phân công phòng ban')}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+  );
+
+  const orderInfo = (
+    <section className="po-order-info">
+      <button type="button" className="po-collapse-trigger" onClick={() => setShowOrderInfo(current => !current)} aria-expanded={showOrderInfo} aria-controls="po-order-info-content">
+        <span>{t('Thông tin đơn hàng')}</span>
+        <span className="po-section-action">{showOrderInfo ? t('Thu gọn') : t('Mở rộng')}</span>
+      </button>
+      {!showOrderInfo && <div className="po-order-info-summary">
+        <strong title={currentCustomer?.companyName}>{currentCustomer?.companyName || t('Chưa chọn khách hàng')}</strong>
+        <span>{t('Ngày giao')}: {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}</span>
+      </div>}
+      <div id="po-order-info-content" className="po-order-info-fields" hidden={!showOrderInfo}>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Khách hàng *')}</label>
+              <select
+                value={customerId}
+                onChange={(e) => {
+                  const nextCustomerId = e.target.value;
+                  if (nextCustomerId !== customerId && poItems.length && !window.confirm(t('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong PO. Bạn có muốn tiếp tục?'))) return;
+                  const nextCustomer = customers.find(customer => customer.id === nextCustomerId);
+                  setCustomerId(nextCustomerId);
+                  setCustomerRank(nextCustomer?.customerRank || '');
+                  setPoItems([]); // Reset items on customer change
+                  setPastProducts([]);
+                  setSearchPopupOpen(false);
+                  setSearchRowIndex(null);
+                }}
+                disabled={!!po || !!templatePo || Boolean(initialCustomerId)} // Linked onboarding/repeat orders must stay with the original customer
+                required
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+              >
+                <option value="">{t('Chọn khách hàng')}</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.companyName} ({t('CK')}: {c.discountRate}%)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng khách hàng *')}</label>
+              <select
+                value={customerRank}
+                onChange={(e) => setCustomerRank(e.target.value)}
+                required
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+              >
+                <option value="">{t('-- Chọn hạng khách hàng --')}</option>
+                {['A', 'B', 'C', 'D'].map(rank => (
+                  <option key={rank} value={rank}>{t('Hạng')} {rank}</option>
+                ))}
+              </select>
+              <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.')}</span>
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số PO khách hàng')}</label>
+              <input
+                type="text"
+                value={customerPoCode}
+                onChange={(e) => setCustomerPoCode(e.target.value)}
+                placeholder={t('Ví dụ: VFT26-553...')}
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày giao dự kiến *')}</label>
+              <input
+                type="date"
+                value={expectedDeliveryDate}
+                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                required
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi chú đơn hàng')}</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={t('Chi tiết giao hàng, yêu cầu riêng...')}
+                rows={3}
+                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
+              />
+            </div>
+
+        {draftRestored && <button type="button" className="po-discard-draft" onClick={handleDiscardDraft}>{t('Bỏ bản nháp')}</button>}
+      </div>
+    </section>
+  );
+
   const statusNotices = <>
             {saveError && (
               <div className="po-save-error" role="alert">
                 {saveError}
-              </div>
-            )}
-            {draftRestored && (
-              <div className="po-draft-notice" role="status">
-                <History size={18} />
-                <div>
-                  <strong>Đã khôi phục bản nháp chưa lưu</strong>
-                  <span>Nội dung, mã hàng và phân công đã được giữ lại. Các tệp vừa chọn từ máy tính cần được chọn lại.</span>
-                </div>
-                <button type="button" className="btn btn-sm btn-outline" onClick={handleDiscardDraft}>
-                  Bỏ bản nháp
-                </button>
               </div>
             )}
             {templatePo && (
@@ -1115,102 +1368,11 @@ export default function POFormFullScreen({
           overflowY: 'auto'
         }} className="po-form-body-container">
 
-          {usesCatalogProducts && statusNotices}
-
-          {/* LEFT SIDEBAR PANEL: Info, Files */}
-          <div className="po-order-sidebar" style={{
-            borderRight: '1px solid var(--color-border)',
-            padding: '20px',
-            overflowY: 'visible',
-            backgroundColor: '#f8fafc',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Layers size={16} />
-              <span>{usesCatalogProducts ? t('Thông tin đơn hàng') : t('Thông Tin Khách Hàng')}</span>
-            </h3>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Khách hàng *')}</label>
-              <select
-                value={customerId}
-                onChange={(e) => {
-                  const nextCustomerId = e.target.value;
-                  if (nextCustomerId !== customerId && poItems.length && !window.confirm(t('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong PO. Bạn có muốn tiếp tục?'))) return;
-                  const nextCustomer = customers.find(customer => customer.id === nextCustomerId);
-                  setCustomerId(nextCustomerId);
-                  setCustomerRank(nextCustomer?.customerRank || '');
-                  setPoItems([]); // Reset items on customer change
-                  setPastProducts([]);
-                  setSearchPopupOpen(false);
-                  setSearchRowIndex(null);
-                }}
-                disabled={!!po || !!templatePo || Boolean(initialCustomerId)} // Linked onboarding/repeat orders must stay with the original customer
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              >
-                <option value="">{t('Chọn khách hàng')}</option>
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.companyName} ({t('CK')}: {c.discountRate}%)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng khách hàng *')}</label>
-              <select
-                value={customerRank}
-                onChange={(e) => setCustomerRank(e.target.value)}
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              >
-                <option value="">{t('-- Chọn hạng khách hàng --')}</option>
-                {['A', 'B', 'C', 'D'].map(rank => (
-                  <option key={rank} value={rank}>{t('Hạng')} {rank}</option>
-                ))}
-              </select>
-              <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.')}</span>
-            </div>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số PO khách hàng')}</label>
-              <input
-                type="text"
-                value={customerPoCode}
-                onChange={(e) => setCustomerPoCode(e.target.value)}
-                placeholder={t('Ví dụ: VFT26-553...')}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày giao dự kiến *')}</label>
-              <input
-                type="date"
-                value={expectedDeliveryDate}
-                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi chú đơn hàng')}</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={t('Chi tiết giao hàng, yêu cầu riêng...')}
-                rows={3}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
-              />
-            </div>
-
-            {!usesCatalogProducts && orderAttachments}
-          </div>
+          <aside className="po-order-sidebar">
+            {orderInfo}
+            {orderAttachments}
+            {usesCatalogProducts && orderAssignments}
+          </aside>
 
           {/* RIGHT GRID PANEL: Items Grid & Assignments */}
           <div className="po-order-main" style={{
@@ -1220,7 +1382,7 @@ export default function POFormFullScreen({
             flexDirection: 'column',
             gap: '20px'
           }}>
-            {!usesCatalogProducts && statusNotices}
+            {statusNotices}
             {/* INLINE EDITING EXCEL-LIKE GRID */}
             <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
               <div className="po-items-card-header">
@@ -1582,197 +1744,7 @@ export default function POFormFullScreen({
               </div>
             </div>
 
-            {usesCatalogProducts && orderAttachments}
-
-            {/* DEPARTMENT WORK ASSIGNMENTS SECTION */}
-            <div className="po-assignment-card" style={{
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              backgroundColor: 'white',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              overflow: 'hidden',
-              display: isCustomerOnboarding ? 'none' : undefined
-            }}>
-              <div
-                className="po-assignment-header"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '14px 18px',
-                  backgroundColor: '#f8fafc',
-                  borderBottom: showAssignments ? '1px solid var(--color-border)' : 'none',
-                  cursor: 'pointer'
-                }}
-                onClick={() => setShowAssignments(!showAssignments)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: 'var(--color-primary-dark)', fontSize: '14px' }}>
-                  <CheckSquare size={16} />
-                  <span>{t('PHÂN CÔNG CÔNG VIỆC PHÒNG BAN')}</span>
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 'normal',
-                    backgroundColor: 'var(--color-primary-light)',
-                    color: 'var(--color-primary)',
-                    padding: '2px 6px',
-                    borderRadius: '999px'
-                  }}>
-                    {assignments.length} {t('Phân công')}
-                  </span>
-                </div>
-                {showAssignments ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-
-              {showAssignments && (
-                <div style={{ padding: '16px' }}>
-                  <p style={{ fontSize: '12.5px', color: 'var(--color-text-muted)', marginBottom: '14px', marginTop: 0 }}>
-                    {t('Giao phó công việc chi tiết cho các bộ phận như Thiết kế layout, In ấn, Đặt vật tư, Thanh toán... Kèm theo ngày đến hạn và mức độ khẩn cấp.')}
-                  </p>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '14px' }}>
-                    {assignments.map((assign, index) => {
-                      // Users that match the role of the department
-                      const deptUsers = users.filter(u => u.role === assign.department && u.active);
-
-                      return (
-                        <div key={assign.id} className="po-assignment-entry" style={{
-                          border: '1px solid var(--color-border-light)',
-                          borderRadius: '6px',
-                          padding: '12px',
-                          backgroundColor: '#fafbfc',
-                          display: 'grid',
-                          gridTemplateColumns: '200px 1.5fr 150px 120px 30px',
-                          gap: '12px',
-                          alignItems: 'start'
-                        }}>
-                          {/* Department Selector */}
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Bộ phận chịu trách nhiệm')}</label>
-                            <select
-                              value={assign.department}
-                              onChange={(e) => handleUpdateAssignment(index, 'department', e.target.value)}
-                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-                            >
-                              {departments.map(d => (
-                                <option key={d.value} value={d.value}>{d.label}</option>
-                              ))}
-                            </select>
-
-                            {/* Personnel check list */}
-                            <div style={{ marginTop: '8px' }}>
-                              <label style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>
-                                {t('Chọn Nhân Sự Phụ Trách')}
-                              </label>
-                              <div style={{
-                                maxHeight: '100px',
-                                overflowY: 'auto',
-                                border: '1px solid #e2e8f0',
-                                padding: '4px 6px',
-                                borderRadius: '4px',
-                                backgroundColor: 'white',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '3px'
-                              }}>
-                                {deptUsers.map(u => (
-                                  <label key={u.uid} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', cursor: 'pointer', margin: 0 }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={(assign.userIds || []).includes(u.uid)}
-                                      onChange={() => handleToggleUserInAssignment(index, u.uid)}
-                                    />
-                                    <span>{u.displayName}</span>
-                                  </label>
-                                ))}
-                                {deptUsers.length === 0 && (
-                                  <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                                    {t('Không có nhân sự cho bộ phận này')}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Task Description */}
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Nội dung công việc bàn giao')}</label>
-                            <textarea
-                              value={assign.description}
-                              onChange={(e) => handleUpdateAssignment(index, 'description', e.target.value)}
-                              placeholder={t('Ví dụ: Bế tem trắng, gửi mẫu layout duyệt, đặt mua mực màu đen...')}
-                              rows={3}
-                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-                            />
-                          </div>
-
-                          {/* Due date */}
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Hạn hoàn thành')}</label>
-                            <input
-                              type="date"
-                              value={assign.dueDate}
-                              onChange={(e) => handleUpdateAssignment(index, 'dueDate', e.target.value)}
-                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-                            />
-                          </div>
-
-                          {/* Priority Selector */}
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Độ ưu tiên')}</label>
-                            <select
-                              value={assign.priority}
-                              onChange={(e) => handleUpdateAssignment(index, 'priority', e.target.value)}
-                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-                            >
-                              <option value="Cực gấp">{t('Cực gấp')}</option>
-                              <option value="Gấp">{t('Gấp')}</option>
-                              <option value="Bình thường">{t('Bình thường')}</option>
-                              <option value="Thong thả">{t('Thong thả')}</option>
-                            </select>
-                          </div>
-
-                          {/* Delete Assignment Row */}
-                          <div style={{ alignSelf: 'center', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                              onClick={() => handleRemoveAssignment(index)}
-                              title={t('Xóa phân công')}
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {assignments.length === 0 && (
-                      <div style={{
-                        textAlign: 'center',
-                        padding: '20px',
-                        border: '1px dashed #cbd5e1',
-                        borderRadius: '6px',
-                        color: 'var(--color-text-muted)',
-                        fontStyle: 'italic',
-                        fontSize: '12.5px'
-                      }}>
-                        {t('Chưa phân công công việc phòng ban nào cho PO này.')}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={handleAddAssignment}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}
-                  >
-                    <Plus size={14} />
-                    <span>{t('Thêm phân công phòng ban')}</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            {!usesCatalogProducts && orderAssignments}
           </div>
         </div>
 
