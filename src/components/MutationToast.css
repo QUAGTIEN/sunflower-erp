@@ -1,24 +1,26 @@
 .mutation-toast-region {
   position: fixed;
   z-index: 20000;
-  top: 76px;
-  right: 20px;
-  max-width: calc(100vw - 32px);
+  top: 12px;
+  left: 50%;
+  width: max-content;
+  max-width: min(420px, calc(100vw - 32px));
+  transform: translateX(-50%);
   pointer-events: none;
 }
 .mutation-toast {
   display: block;
   max-width: 100%;
-  min-height: 48px;
-  padding: 12px 20px;
+  min-height: 40px;
+  padding: 10px 20px;
   overflow: hidden;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--erp-control-radius, 5px);
   background: #15803d;
-  box-shadow: 0 6px 18px rgb(15 23 42 / 14%);
+  box-shadow: 0 3px 10px rgb(15 23 42 / 12%);
   color: #fff;
-  font: 500 14px/1.4 var(--font-sans, sans-serif);
-  text-align: left;
+  font: 500 13px/1.4 var(--font-sans, sans-serif);
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: auto;
@@ -26,10 +28,23 @@
 }
 .mutation-toast--error { background: #b91c1c; }
 .mutation-toast:focus-visible { outline: 2px solid #172554; outline-offset: 3px; }
-button[data-mutation-pending='true'] { position: relative; color: transparent !important; cursor: wait; }
+/* Busy saves and inactive primary actions share a neutral, readable disabled state. */
+button.btn-primary:disabled,
+button[aria-busy='true'],
+button[data-mutation-pending='true'] {
+  border-color: #cbd5e1 !important;
+  background: #e2e8f0 !important;
+  box-shadow: none !important;
+  color: #475569 !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+button[data-mutation-pending='true'][aria-busy='true'] {
+  position: relative;
+  color: transparent !important;
+  cursor: wait;
+}
 button[data-mutation-pending='true'] > * { visibility: hidden; }
-button[data-mutation-pending='true']::after { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 4px; color: #334155; content: 'Đang lưu…'; font-size: 12px; white-space: nowrap; }
-.btn-primary[data-mutation-pending='true']::after { color: #fff; }
-.po-form-header-actions .btn-primary[data-mutation-pending='true']::after { color: #1e3a8a; }
+button[data-mutation-pending='true']::after { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 4px; overflow: hidden; color: #475569; content: 'Đang lưu…'; font-size: 12px; white-space: nowrap; }
 html[lang='en'] button[data-mutation-pending='true']::after { content: 'Saving…'; }
-@media (max-width: 600px) { .mutation-toast-region { top: 68px; right: 16px; } }
+@media (max-width: 600px) { .mutation-toast-region { top: 8px; } }

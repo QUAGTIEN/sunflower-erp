@@ -68,7 +68,7 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
     setMessage('');
   };
 
-  const save = async () => {
+  const save = async (event: React.MouseEvent<HTMLButtonElement>) => {
     return runMutationAction("CustomerInsightClassification.tsx:save", async () => {
       if (!canEdit || !hasChanges || saving) return;
       setSaving(true);
@@ -76,13 +76,12 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
       try {
         await onSave(draft);
         setSavedValues(draft);
-        setMessage('Đã lưu phân loại khách hàng.');
       } catch {
         setMessage('Không thể lưu phân loại. Vui lòng kiểm tra kết nối và thử lại.');
       } finally {
         setSaving(false);
       }
-    }, undefined);
+    }, event);
   };
 
   return <main className="customer-classification" aria-label={`Phân loại ${companyName}`}>
@@ -103,11 +102,11 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
         </label>
         {toolbarActions && <div className="customer-classification__record-actions">{toolbarActions}</div>}
         {onScore && <button type="button" className="btn btn-outline" disabled={!canEdit || hasChanges || saving} title={hasChanges ? 'Lưu phân loại trước khi chấm điểm' : 'Chấm điểm khách hàng'} onClick={onScore}><BarChart3 size={14} aria-hidden="true" /> Chấm điểm</button>}
-        <button type="button" className="btn btn-primary" disabled={!canEdit || !hasChanges || saving} onClick={() => void save()}>{saving ? 'Đang lưu...' : 'Lưu phân loại'}</button>
+        <button type="button" className="btn btn-primary" disabled={!canEdit || !hasChanges || saving} aria-busy={saving} onClick={event => void save(event)}>{saving ? 'Đang lưu…' : 'Lưu phân loại'}</button>
       </div>
     </header>
 
-    {message && <p className={`customer-classification__message ${message.startsWith('Không thể') ? 'is-error' : ''}`} role="status">{message}</p>}
+    {message && <p className="customer-classification__message is-error" role="alert">{message}</p>}
     {!canEdit && <p className="customer-classification__message">Bạn chỉ có quyền xem phân loại của hồ sơ này.</p>}
 
     <div className="customer-classification__groups">

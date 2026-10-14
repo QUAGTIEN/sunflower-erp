@@ -153,6 +153,36 @@ test('keyboard submissions are guarded even when no button has focus', async () 
   assert.equal(calls, 2);
 });
 
+test('the clicked save button stays busy even when focus is elsewhere', async () => {
+  const store = setup();
+  const button = new store.Button();
+  const unrelatedButton = new store.Button();
+  store.document.activeElement = unrelatedButton;
+  let finish;
+  const pending = new Promise(resolve => { finish = resolve; });
+  const save = store.withMutationFeedback('clicked-save', async () => pending);
+  const saving = save({ currentTarget: button });
+  assert.equal(button.disabled, true);
+  assert.equal(button.dataset.mutationPending, 'true');
+  assert.equal(button.getAttribute('aria-busy'), 'true');
+  assert.equal(unrelatedButton.disabled, false);
+  finish();
+  await saving;
+  assert.equal(button.disabled, false);
+  assert.equal(button.dataset.mutationPending, undefined);
+});
+
+test('a rejected save releases its button so the user can retry', async () => {
+  const store = setup();
+  const button = new store.Button();
+  const save = store.withMutationFeedback('retry-save', async () => { throw new Error('offline'); });
+  await assert.rejects(save({ currentTarget: button }));
+  assert.equal(button.disabled, false);
+  assert.equal(button.dataset.mutationPending, undefined);
+  assert.equal(button.getAttribute('aria-busy'), null);
+  assert.equal(store.getToastSnapshot().tone, 'error');
+});
+
 test('automatic field updates are not dropped or allowed to lock an unrelated button', async () => {
   const store = setup();
   const button = new store.Button();
