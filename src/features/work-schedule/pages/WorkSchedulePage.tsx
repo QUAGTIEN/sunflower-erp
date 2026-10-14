@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Building2, CheckCircle2, ClipboardList, Plus, Search, Settings2, UserRound, UsersRound, X } from 'lucide-react';
@@ -350,7 +351,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
         setSelectedItem(normalized);
         setMessage(editingItem ? 'Đã cập nhật công việc.' : taskGroup.id === 'self' ? 'Đã tạo công việc cá nhân.' : 'Đã giao công việc.');
 
-        showSuccessToast("Đã lưu thành công");
+        showSuccessToast(editingItem ? 'Đã lưu thành công' : 'Đã thêm thành công');
       } catch (error) {
         showErrorToast();
         const permissionDenied = typeof error === 'object' && error !== null && 'code' in error && error.code === 'permission-denied';
@@ -441,7 +442,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
   const deleteCompletedTask = async (item: WorkScheduleRecord) => {
     return runMutationAction("WorkSchedulePage.tsx:deleteCompletedTask", async () => {
       if (!canPermanentlyDeleteWorkSchedule(currentUser.role, item.status) || detailBusy) return;
-      if (!window.confirm(`Xóa vĩnh viễn công việc “${item.title}”? Thao tác này không thể hoàn tác.`)) return;
+      if (!(await confirmDelete(`Xóa vĩnh viễn công việc “${item.title}”? Thao tác này không thể hoàn tác.`))) return;
       setDetailBusy(true);
       setDetailError('');
       setMessage('');

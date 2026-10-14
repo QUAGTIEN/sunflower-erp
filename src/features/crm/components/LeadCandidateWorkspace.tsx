@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -1884,7 +1885,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
 
   const archiveCandidate = async (candidate: LeadCandidateRecord) => {
     return runMutationAction("LeadCandidateWorkspace.tsx:archiveCandidate", async () => {
-      if (!window.confirm(`Xóa “${candidate.companyName}” khỏi danh sách dữ liệu? Thông tin cũ vẫn được lưu an toàn.`)) return;
+      if (!(await confirmDelete(`Xóa “${candidate.companyName}” khỏi danh sách dữ liệu? Thông tin cũ vẫn được lưu an toàn.`))) return;
       const archivedAt = new Date().toISOString();
       setActionError('');
       try {

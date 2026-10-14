@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -166,7 +167,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
 
   const handleHardDelete = async (item: DeletedItem) => {
     return runMutationAction("RecycleBinPage.tsx:handleHardDelete", async () => {
-      if (!window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN "${item.name}" (${item.typeLabel})? Hành động này không thể hoàn tác.`)) {
+      if (!(await confirmDelete(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN "${item.name}" (${item.typeLabel})? Hành động này không thể hoàn tác.`))) {
         return;
       }
       try {

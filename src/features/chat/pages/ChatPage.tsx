@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -223,7 +224,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const handleDeleteMessage = async (message: { id: string; senderName?: string; attachments?: ChatAttachmentRecord[] }) => {
     return runMutationAction("ChatPage.tsx:handleDeleteMessage", async () => {
       if (currentUser.role !== 'admin') return;
-      if (!window.confirm(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.'))) return;
+      if (!(await confirmDelete(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.')))) return;
 
       try {
         await requireConfirmedMutation(dbService.deleteDocument('messages', message.id));

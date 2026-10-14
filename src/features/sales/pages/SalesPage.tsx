@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -352,6 +353,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
   const handleRemoveItemFile = async (itemIdx: number, fieldName: 'saleLayouts' | 'designLayouts', fileIdx: number) => {
     return runMutationAction("SalesPage.tsx:handleRemoveItemFile", async () => {
       if (!selectedPO) return;
+      if (!await confirmDelete(t('Bạn có chắc chắn muốn xóa tệp này khỏi đơn hàng?'))) return;
 
       const updatedItems = selectedPO.items.map((item: any, idx: number) => {
         if (idx === itemIdx) {
@@ -446,6 +448,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
   const handleRemoveChecklistItem = async (taskId: string) => {
     return runMutationAction("SalesPage.tsx:handleRemoveChecklistItem", async () => {
       if (!selectedPO) return;
+      if (!await confirmDelete(t('Bạn có chắc chắn muốn xóa mục công việc này?'))) return;
 
       const updatedChecklist = (selectedPO.internalChecklist || []).filter((item: any) => item.id !== taskId);
 
@@ -488,6 +491,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
 
   const handleDeletePO = async (poId: string) => {
     return runMutationAction("SalesPage.tsx:handleDeletePO", async () => {
+      if (!await confirmDelete(t('Đưa đơn hàng PO này vào Thùng rác?'))) return;
       const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
       if (password === 'admin123' || password === '123456') {
         await requireConfirmedMutation(dbService.updateDocument('pos', poId, {
@@ -731,7 +735,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
 
       onRefresh();
 
-      showSuccessToast("Đã lưu thành công");
+      showSuccessToast(poData.id ? 'Đã lưu thành công' : 'Đã thêm thành công');
     }, poData);
   };
 

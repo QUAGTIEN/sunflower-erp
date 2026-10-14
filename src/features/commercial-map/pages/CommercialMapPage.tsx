@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -511,7 +512,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
 
   const deleteIndustrialPark = async (park: LeadFilterOption) => {
     if (!industrialParkDefinition || !parkProvinceOption) return;
-    if (!window.confirm(`Xóa KCN “${park.label}” khỏi danh sách? Dữ liệu hồ sơ cũ vẫn được giữ nguyên.`)) return;
+    if (!(await confirmDelete(`Xóa KCN “${park.label}” khỏi danh sách? Dữ liệu hồ sơ cũ vẫn được giữ nguyên.`))) return;
     const nextOptions = industrialParkDefinition.options.map(option => option.id !== parkProvinceOption.id ? option : {
       ...option,
       children: (option.children || []).filter(item => item.id !== park.id)

@@ -35,7 +35,7 @@ function setup() {
   return { ...loaded.exports, advance, document, Button, Form, Element };
 }
 
-test('success is one line and dismisses after exactly three seconds', () => {
+test('notification titles are normalized and dismiss after exactly three seconds', () => {
   const store = setup();
   store.showSuccessToast('Đã lưu\n thành công');
   assert.equal(store.getToastSnapshot().text, 'Đã lưu thành công');
@@ -55,6 +55,25 @@ test('a previous toast timer cannot dismiss a newer message', () => {
   assert.equal(store.getToastSnapshot().text, 'Đã xóa Lead');
   store.advance(2000);
   assert.equal(store.getToastSnapshot(), null);
+});
+
+test('new records use blue information feedback and saved changes use green success feedback', () => {
+  const store = setup();
+  store.showSuccessToast('Đã thêm thành công');
+  assert.equal(store.getToastSnapshot().tone, 'info');
+  assert.equal(store.getToastSnapshot().detail, 'Dữ liệu mới đã được tạo trong hệ thống.');
+  store.showSuccessToast('Đã lưu thành công');
+  assert.equal(store.getToastSnapshot().tone, 'success');
+  assert.equal(store.getToastSnapshot().detail, 'Dữ liệu đã được lưu vào hệ thống.');
+});
+
+test('feedback supports contextual descriptions without claiming permanent deletion for trash moves', () => {
+  const store = setup();
+  store.showSuccessToast('Đã xóa Lead');
+  assert.equal(store.getToastSnapshot().tone, 'success');
+  assert.equal(store.getToastSnapshot().detail, 'Thao tác xóa đã được thực hiện thành công.');
+  store.showSuccessToast('Đã thêm thành công', 'Mã sản phẩm đã được tạo.');
+  assert.equal(store.getToastSnapshot().detail, 'Mã sản phẩm đã được tạo.');
 });
 
 test('manual dismissal cancels the timer and subscribers can unsubscribe', () => {

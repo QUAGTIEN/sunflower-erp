@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -229,13 +230,14 @@ export const InlineEntityFieldManager: React.FC<{
     }, undefined);
   };
 
-  const confirmPermanentDelete = (name: string) => window.prompt(
-    `Xóa vĩnh viễn trường “${name}” và toàn bộ thông tin đã nhập ở tất cả hồ sơ? Thao tác này không thể hoàn tác.\n\nNhập XÓA để xác nhận.`
-  ) === 'XÓA';
+  const confirmPermanentDelete = async (name: string) => {
+    if (!await confirmDelete(`Xóa vĩnh viễn trường “${name}” và toàn bộ thông tin đã nhập ở tất cả hồ sơ? Thao tác này không thể hoàn tác.`)) return false;
+    return window.prompt('Nhập XÓA để xác nhận.') === 'XÓA';
+  };
 
   const purgeCustomField = async (definition: EntityFieldDefinition) => {
     return runMutationAction("InlineEntityFieldManager.tsx:purgeCustomField", async () => {
-      if (!confirmPermanentDelete(definition.name)) return;
+      if (!await confirmPermanentDelete(definition.name)) return;
       setSaving(true);
       setError('');
       try {
@@ -256,7 +258,7 @@ export const InlineEntityFieldManager: React.FC<{
 
   const purgeSystemField = async (field: SystemFieldOverride) => {
     return runMutationAction("InlineEntityFieldManager.tsx:purgeSystemField", async () => {
-      if (!confirmPermanentDelete(field.label)) return;
+      if (!await confirmPermanentDelete(field.label)) return;
       setSaving(true);
       setError('');
       try {

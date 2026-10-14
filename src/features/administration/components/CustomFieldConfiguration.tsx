@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -166,7 +167,7 @@ export const CustomFieldConfiguration: React.FC<CustomFieldConfigurationProps> =
 
   const changeDefinition = async (definition: EntityFieldDefinition, action: 'archive' | 'restore' | 'remove') => {
     return runMutationAction("CustomFieldConfiguration.tsx:changeDefinition", async () => {
-      if (action !== 'restore' && !window.confirm(action === 'remove' ? 'Xóa trường khỏi sử dụng? Chỉ trường chưa có dữ liệu mới được xóa; cấu hình được giữ để có thể khôi phục.' : 'Ngừng sử dụng trường? Dữ liệu đã nhập vẫn được giữ trong hồ sơ.')) return;
+      if (action !== 'restore' && !(await confirmDelete(action === 'remove' ? 'Xóa trường khỏi sử dụng? Chỉ trường chưa có dữ liệu mới được xóa; cấu hình được giữ để có thể khôi phục.' : 'Ngừng sử dụng trường? Dữ liệu đã nhập vẫn được giữ trong hồ sơ.', { title: action === 'remove' ? 'Xác nhận xóa' : 'Xác nhận ngừng sử dụng', confirmLabel: action === 'remove' ? 'Xóa' : 'Ngừng sử dụng' }))) return;
       setSaving(true); setError('');
       try {
         await manageFieldConfiguration(currentUser, { action, table: definition.table, id: definition.id, expectedUpdatedAt: definition.updatedAt });

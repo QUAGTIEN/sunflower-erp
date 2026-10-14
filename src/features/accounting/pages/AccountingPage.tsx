@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -420,7 +421,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
 
   const handleDeleteInvoice = async (invId: string) => {
     return runMutationAction("AccountingPage.tsx:handleDeleteInvoice", async () => {
-      if (window.confirm(t('Bạn có chắc chắn muốn xóa hóa đơn này khỏi hệ thống?'))) {
+      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa hóa đơn này khỏi hệ thống?')))) {
         await requireConfirmedMutation(dbService.deleteDocument('invoices', invId));
         setSelectedInvoice(null);
         fetchAccountingData();

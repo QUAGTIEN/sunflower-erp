@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -231,7 +232,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
         return;
       }
 
-      if (window.confirm(t('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản người dùng này?'))) {
+      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản người dùng này?')))) {
         setIsSubmitting(true);
         try {
           await adminUserService.delete(userToDelete.uid);

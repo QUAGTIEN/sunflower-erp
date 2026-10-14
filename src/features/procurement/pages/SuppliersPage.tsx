@@ -309,7 +309,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
       }
       setShowForm(false);
 
-      showSuccessToast("Đã lưu thành công");
+      showSuccessToast(editingSupplierId ? 'Đã lưu thành công' : 'Đã thêm thành công');
     }, event);
   };
 

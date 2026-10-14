@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
@@ -752,9 +753,9 @@ export default function POFormFullScreen({
     onClose();
   };
 
-  const handleDiscardDraft = () => {
+  const handleDiscardDraft = async () => {
     if (!draftKey) return;
-    const shouldDiscard = window.confirm('Bạn có chắc muốn xóa bản nháp và bắt đầu lại?');
+    const shouldDiscard = (await confirmDelete('Bạn có chắc muốn xóa bản nháp và bắt đầu lại?'));
     if (!shouldDiscard) return;
     window.localStorage.removeItem(draftKey);
     setDraftRestored(false);

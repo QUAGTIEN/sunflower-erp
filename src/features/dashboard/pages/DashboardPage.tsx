@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -383,7 +384,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleDeleteReminder = async (remId: string) => {
     return runMutationAction("DashboardPage.tsx:handleDeleteReminder", async () => {
-      if (window.confirm(t('Bạn có chắc chắn muốn xóa nhắc nhở này?'))) {
+      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa nhắc nhở này?')))) {
         try {
           await requireConfirmedMutation(dbService.deleteDocument('reminders', remId));
           setReminders(prev => prev.filter(r => r.id !== remId));

@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -472,8 +473,8 @@ export const Crm: React.FC<CrmProps> = ({
     setSpecFields(prev => prev.map(f => f.id === fieldId ? { ...f, value } : f));
   };
 
-  const handleDeleteField = (fieldId: string) => {
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa thông số này?'))) {
+  const handleDeleteField = async (fieldId: string) => {
+    if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa thông số này?')))) {
       setSpecFields(prev => prev.filter(f => f.id !== fieldId));
     }
   };
@@ -1175,6 +1176,7 @@ export const Crm: React.FC<CrmProps> = ({
   const handleDeleteCustomer = async (id: string) => {
     return runMutationAction("CrmPage.tsx:handleDeleteCustomer", async () => {
       if (currentUser.role === 'admin') {
+        if (!await confirmDelete(t('Đưa khách hàng này vào Thùng rác?'))) return;
         const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
         if (password === 'admin123' || password === '123456') {
           await requireConfirmedMutation(dbService.updateDocument('customers', id, {
@@ -1191,7 +1193,7 @@ export const Crm: React.FC<CrmProps> = ({
           alert(t('Mật khẩu không chính xác. Xóa thất bại.'));
         }
       } else {
-        if (window.confirm(t('Bạn có muốn gửi yêu cầu xóa khách hàng này tới Admin phê duyệt?'))) {
+        if ((await confirmDelete(t('Bạn có muốn gửi yêu cầu xóa khách hàng này tới Admin phê duyệt?'), { title: 'Xác nhận yêu cầu xóa', confirmLabel: 'Gửi yêu cầu' }))) {
           await requireConfirmedMutation(dbService.updateDocument('customers', id, {
             deleteRequested: true,
             deleteRequestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
@@ -1517,7 +1519,7 @@ export const Crm: React.FC<CrmProps> = ({
 
   const handleApproveDeleteCustomer = async (cust: any) => {
     return runMutationAction("CrmPage.tsx:handleApproveDeleteCustomer", async () => {
-      if (window.confirm(t('Bạn có chắc muốn phê duyệt xóa khách hàng này?'))) {
+      if ((await confirmDelete(t('Bạn có chắc muốn phê duyệt xóa khách hàng này?'), { title: 'Xác nhận phê duyệt xóa', confirmLabel: 'Duyệt xóa' }))) {
         await requireConfirmedMutation(dbService.updateDocument('customers', cust.id, {
           deleted: true,
           deleteRequested: false,
@@ -1689,7 +1691,7 @@ export const Crm: React.FC<CrmProps> = ({
   const handleDeleteRepoFile = async (fileId: string) => {
     return runMutationAction("CrmPage.tsx:handleDeleteRepoFile", async () => {
       if (!selectedCustomer) return;
-      if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) {
+      if (!(await confirmDelete(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?')))) {
         return;
       }
       const updatedFiles = selectedCustomer.files || [];
@@ -1722,7 +1724,7 @@ export const Crm: React.FC<CrmProps> = ({
         alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
         return;
       }
-      if (!window.confirm(`${t('Xóa thư mục')} “${folder.name}”?`)) return;
+      if (!(await confirmDelete(`${t('Xóa thư mục')} “${folder.name}”?`))) return;
       const nextFolders = folders.filter(item => item.id !== folderId);
 
       await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {
@@ -1764,7 +1766,7 @@ export const Crm: React.FC<CrmProps> = ({
   const handleDeleteProduct = async (productId: string) => {
     return runMutationAction("CrmPage.tsx:handleDeleteProduct", async () => {
       if (!selectedCustomer) return;
-      if (window.confirm(t('Bạn có chắc chắn muốn xóa mã sản phẩm này?'))) {
+      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa mã sản phẩm này?')))) {
         const updatedProducts = (selectedCustomer.products || []).map((p: any) => {
           if (p.id === productId) {
             return { ...p, deleted: true, deletedAt: new Date().toISOString() };
@@ -1893,7 +1895,7 @@ export const Crm: React.FC<CrmProps> = ({
   const handleDeleteContract = async (contractId: string) => {
     return runMutationAction("CrmPage.tsx:handleDeleteContract", async () => {
       if (!selectedCustomer) return;
-      if (window.confirm(t('Bạn có chắc chắn muốn xóa hợp đồng này?'))) {
+      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa hợp đồng này?')))) {
         const updatedContracts = (selectedCustomer.contracts || []).filter((c: any) => c.id !== contractId);
 
         await requireConfirmedMutation(dbService.updateDocument('customers', selectedCustomer.id, {

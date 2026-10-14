@@ -27,6 +27,16 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Detailed Vietnamese to English Translation Dictionary
   const dict: { [key: string]: string } = {
     'Đã lưu thành công': 'Saved successfully',
+    'Đóng thông báo': 'Dismiss notification',
+    'Không thể hoàn tất': 'Unable to complete',
+    'Dữ liệu mới đã được tạo trong hệ thống.': 'The new record has been created.',
+    'Dữ liệu đã được lưu vào hệ thống.': 'Your changes have been saved.',
+    'Thao tác xóa đã được thực hiện thành công.': 'The item has been deleted successfully.',
+    'Thao tác đã được thực hiện thành công.': 'The action has been completed successfully.',
+    'Xác nhận yêu cầu xóa': 'Confirm deletion request',
+    'Xác nhận phê duyệt xóa': 'Approve deletion',
+    'Xác nhận ngừng sử dụng': 'Confirm deactivation',
+    'Duyệt xóa': 'Approve deletion',
     'Đã thêm thành công': 'Added successfully',
     'Đã xóa thành công': 'Deleted successfully',
     'Đã xóa Lead': 'Lead deleted',

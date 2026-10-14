@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -613,7 +614,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
 
   const handleDeleteTrip = async (tripId: string) => {
     return runMutationAction("DeliveryPage.tsx:handleDeleteTrip", async () => {
-      if (window.confirm(t('Bạn có chắc chắn muốn xóa chuyến xe giao hàng này?'))) {
+      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa chuyến xe giao hàng này?')))) {
         const trip = deliveries.find(d => d.id === tripId);
         await requireConfirmedMutation(dbService.deleteDocument('deliveries', tripId));
 

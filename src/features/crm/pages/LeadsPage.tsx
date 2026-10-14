@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -1435,7 +1436,7 @@ export const Leads: React.FC<LeadsProps> = ({
   const handleDeleteLeadRepositoryFile = async (fileId: string) => {
     return runMutationAction("LeadsPage.tsx:handleDeleteLeadRepositoryFile", async () => {
       if (!selectedLead || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
-      if (!window.confirm(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) return;
+      if (!(await confirmDelete(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?')))) return;
       await requireConfirmedMutation(dbService.updateDocument('leads', selectedLead.id, {
         files: (selectedLead.files || []).filter(file => file.id !== fileId),
         updatedAt: new Date().toISOString(),
@@ -1461,7 +1462,7 @@ export const Leads: React.FC<LeadsProps> = ({
         window.alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
         return;
       }
-      if (!window.confirm(`${t('Xóa thư mục')} “${folder.name}”?`)) return;
+      if (!(await confirmDelete(`${t('Xóa thư mục')} “${folder.name}”?`))) return;
       const nextFolders = folders.filter(item => item.id !== folderId);
       await requireConfirmedMutation(dbService.updateDocument('leads', selectedLead.id, {
         fileFolders: nextFolders,
@@ -1728,7 +1729,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
       closeLeadForm();
 
-      showSuccessToast("Đã lưu thành công");
+      showSuccessToast(editingLeadId ? 'Đã lưu thành công' : 'Đã thêm thành công');
     }, event);
   };
 
@@ -1980,7 +1981,7 @@ export const Leads: React.FC<LeadsProps> = ({
     return runMutationAction("LeadsPage.tsx:handleDeleteLead", async () => {
       const canDelete = currentUser.role === 'admin' || lead.assignedSaleId === currentUser.uid;
       if (!canDelete) return;
-      if (!window.confirm(`Đưa Lead “${lead.companyName}” vào Thùng rác?`)) return;
+      if (!(await confirmDelete(`Đưa Lead “${lead.companyName}” vào Thùng rác?`))) return;
 
       const now = new Date().toISOString();
       try {
@@ -2448,7 +2449,7 @@ export const Leads: React.FC<LeadsProps> = ({
                   <table><thead><tr><th>{t('Tên tệp')}</th><th>{t('Loại')}</th><th>{t('Dung lượng')}</th><th>{t('Ngày cập nhật')}</th><th>{t('Người cập nhật')}</th><th>{t('Thao tác')}</th></tr></thead><tbody>
                     {uploadingFiles.map(file => {
                       const source = file.data || file.url || '';
-                      return <tr key={file.id}><td title={file.name}>{file.name}</td><td>{file.url ? t('Đường dẫn') : source.startsWith('data:image/') ? t('Hình ảnh') : t('Tệp tài liệu')}</td><td>{file.size ? `${(file.size / 1024).toLocaleString('vi-VN', { maximumFractionDigits: 0 })} KB` : '—'}</td><td>{file.createdAt ? formatDateTime(file.createdAt) : '—'}</td><td>{file.createdBy || '—'}</td><td><div className="lead-attachments-card__actions">{source && (file.url ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a> : <a href={source} download={file.name}>{t('Tải xuống')}</a>)}<button type="button" onClick={() => { if (window.confirm(t('Xóa tệp này khỏi hồ sơ?'))) setUploadingFiles(previous => previous.filter(item => item.id !== file.id)); }}>{t('Xóa')}</button></div></td></tr>;
+                      return <tr key={file.id}><td title={file.name}>{file.name}</td><td>{file.url ? t('Đường dẫn') : source.startsWith('data:image/') ? t('Hình ảnh') : t('Tệp tài liệu')}</td><td>{file.size ? `${(file.size / 1024).toLocaleString('vi-VN', { maximumFractionDigits: 0 })} KB` : '—'}</td><td>{file.createdAt ? formatDateTime(file.createdAt) : '—'}</td><td>{file.createdBy || '—'}</td><td><div className="lead-attachments-card__actions">{source && (file.url ? <a href={file.url} target="_blank" rel="noreferrer">{t('Mở liên kết')}</a> : <a href={source} download={file.name}>{t('Tải xuống')}</a>)}<button type="button" onClick={async () => { if ((await confirmDelete(t('Xóa tệp này khỏi hồ sơ?')))) setUploadingFiles(previous => previous.filter(item => item.id !== file.id)); }}>{t('Xóa')}</button></div></td></tr>;
                     })}
                   </tbody></table>
                 </div>

@@ -1,3 +1,4 @@
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -191,7 +192,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
 
   const handleDeleteItem = async (itemId: string) => {
     return runMutationAction("InventoryPage.tsx:handleDeleteItem", async () => {
-      if (window.confirm(t('Bạn có chắc chắn muốn xóa vật tư này khỏi danh mục kho?'))) {
+      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa vật tư này khỏi danh mục kho?')))) {
         await requireConfirmedMutation(dbService.deleteDocument('inventory', itemId));
         refreshAllData();
         onRefresh();

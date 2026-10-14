@@ -1,7 +1,8 @@
 export interface ToastMessage {
   id: number;
   text: string;
-  tone: 'success' | 'error';
+  detail: string;
+  tone: 'success' | 'info' | 'error';
 }
 
 const listeners = new Set<() => void>();
@@ -23,15 +24,25 @@ export const dismissToast = () => {
   listeners.forEach(listener => listener());
 };
 
-const showToast = (text: string, tone: ToastMessage['tone']) => {
+const showToast = (text: string, tone: ToastMessage['tone'], detail = '') => {
   clearTimeout(timeout);
-  current = { id: ++sequence, text: text.replace(/\s+/g, ' ').trim(), tone };
+  current = { id: ++sequence, text: text.replace(/\s+/g, ' ').trim(), detail, tone };
   listeners.forEach(listener => listener());
   timeout = setTimeout(dismissToast, 3000);
 };
 
-export const showSuccessToast = (text = 'Đã lưu thành công') => showToast(text, 'success');
-export const showErrorToast = (text = 'Không thể lưu. Vui lòng thử lại.') => showToast(text, 'error');
+export const showSuccessToast = (text = 'Đã lưu thành công', detail?: string) => {
+  const isAdded = /^Đã (thêm|tạo)/i.test(text);
+  const description = detail ?? (isAdded
+    ? 'Dữ liệu mới đã được tạo trong hệ thống.'
+    : /^Đã xóa/i.test(text)
+      ? 'Thao tác xóa đã được thực hiện thành công.'
+      : /^Đã lưu/i.test(text)
+        ? 'Dữ liệu đã được lưu vào hệ thống.'
+        : 'Thao tác đã được thực hiện thành công.');
+  showToast(text, isAdded ? 'info' : 'success', description);
+};
+export const showErrorToast = (text = 'Không thể lưu. Vui lòng thử lại.') => showToast('Không thể hoàn tất', 'error', text);
 
 export const requireConfirmedMutation = async <Result>(operation: Promise<Result>): Promise<Result> => {
   const result = await operation;
