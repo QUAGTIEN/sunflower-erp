@@ -161,7 +161,8 @@ test('the full-page form has technical groups, optional price, and a pinned save
   const React = require('react');
   const { renderToStaticMarkup } = require('react-dom/server');
   const { CustomerProductEditor } = load('src/features/crm/components/CustomerProductEditor.tsx', {
-    'react': React, 'react/jsx-runtime': require('react/jsx-runtime'),
+    '@/shared/feedback/mutationFeedback': { runMutationAction: (_key, action) => action(), showSuccessToast() {}, showErrorToast() {} },
+    'react': React, 'react/jsx-runtime': require('react/jsx-runtime'), 'lucide-react': require('lucide-react'),
     '@/components/PageBackButton': { PageBackButton: () => React.createElement('button', { type: 'button' }, 'Back') },
     '@/components/PageContextHeader': { PageContextHeader: () => null },
     '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) },

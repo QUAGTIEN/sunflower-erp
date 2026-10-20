@@ -67,7 +67,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     { id: 'leads', label: t('Khách Hàng Tiềm Năng') },
     { id: 'customer_data', label: t('Dữ Liệu Khách Hàng') },
     { id: 'commercial_map', label: t('Bản Đồ Thương Mại') },
-    { id: 'sales', label: t('Tạo đơn hàng') },
+    { id: 'sales', label: t('Đơn hàng') },
     { id: 'sales_management', label: t('Quản Lý Sale') },
     { id: 'design', label: t('Quản Lý Thiết Kế') },
     { id: 'purchase', label: t('Mua Hàng NCC') },

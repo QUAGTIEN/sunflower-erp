@@ -108,7 +108,7 @@ export default function POFormFullScreen({
   const [pastProducts, setPastProducts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const usesCatalogProducts = workflowMode === 'standard';
-  const requiresRegisteredProducts = !po && usesCatalogProducts;
+  const refreshCatalogProducts = !po && usesCatalogProducts;
   const closeCatalogPicker = useCallback(() => setSearchPopupOpen(false), []);
 
   // Modal customer document repository state
@@ -128,13 +128,13 @@ export default function POFormFullScreen({
     ? `sunflower:po-draft:${currentUser.uid}:${templatePo?.id || initialCustomerId || 'new'}`
     : '';
   const orderItems = useMemo(() => {
-    if (!requiresRegisteredProducts) return poItems;
+    if (!refreshCatalogProducts) return poItems;
     const products = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
     return poItems.map(item => {
       const product = findCustomerProductForOrderItem(item, products);
       return product ? refreshCustomerProductOrderItem(item, product) : item;
     });
-  }, [requiresRegisteredProducts, poItems, customerId, customers]);
+  }, [refreshCatalogProducts, poItems, customerId, customers]);
 
   // Load initial data
   useEffect(() => {
@@ -407,7 +407,7 @@ export default function POFormFullScreen({
 
   // Load repeat order products history for selected customer
   useEffect(() => {
-    if (!customerId || requiresRegisteredProducts) return;
+    if (!customerId || usesCatalogProducts) return;
     let cancelled = false;
     const fetchPastProducts = async () => {
       try {
@@ -442,7 +442,7 @@ export default function POFormFullScreen({
     };
     fetchPastProducts();
     return () => { cancelled = true; };
-  }, [customerId, requiresRegisteredProducts]);
+  }, [customerId, usesCatalogProducts]);
 
   if (!isOpen) return null;
 
@@ -537,20 +537,17 @@ export default function POFormFullScreen({
 
   // Add blank row
   const handleAddRow = () => {
-    if (usesCatalogProducts) {
-      setSearchRowIndex(-1);
-      setSearchPopupOpen(true);
-      return;
-    }
+    if (usesCatalogProducts && !customerId) return;
     const currentCustomer = customers.find(c => c.id === customerId);
     const discountRate = currentCustomer ? currentCustomer.discountRate : 0;
 
-    setPoItems([...poItems, {
+    setPoItems(previous => [...previous, {
       itemId: `item-${Math.random().toString(36).substr(2, 9)}`,
+      ...(usesCatalogProducts ? { customerProductId: '' } : {}),
       productCode: '',
       productName: '',
       size: '',
-      material: 'Decal Giấy Fasson AW0339F',
+      material: usesCatalogProducts ? '' : 'Decal Giấy Fasson AW0339F',
       unit: 'cái',
       quantity: 1000,
       price: 0,
@@ -595,7 +592,7 @@ export default function POFormFullScreen({
   };
 
   const handleUpdateRowField = (index: number, field: string, value: any) => {
-    if (usesCatalogProducts && (requiresRegisteredProducts || poItems[index]?.customerProductId)
+    if (usesCatalogProducts && poItems[index]?.customerProductId
       && ['productCode', 'productName', 'size', 'material', 'unit'].includes(field)) return;
     const updated = [...poItems];
     updated[index] = { ...updated[index], [field]: value };
@@ -606,7 +603,7 @@ export default function POFormFullScreen({
     }
 
     // Auto-populate all other fields when code or name matches CRM catalog product
-    if (field === 'productCode' || field === 'productName') {
+    if (!usesCatalogProducts && (field === 'productCode' || field === 'productName')) {
       const currentCustomer = customers.find(c => c.id === customerId);
       const catalogProducts = getActiveCustomerProducts(currentCustomer);
       const matchedProd = catalogProducts.find((p: any) =>
@@ -635,13 +632,8 @@ export default function POFormFullScreen({
 
     const catalogProduct = getActiveCustomerProducts(customers.find(customer => customer.id === customerId))
       .find(candidate => normalizeProductCode(candidate.productCode) === normalizeProductCode(product.productCode));
-    if (requiresRegisteredProducts && !catalogProduct) {
-      alert(t('Mã này chưa được đăng ký cho khách hàng. Hãy tạo mã sản phẩm trong hồ sơ khách hàng trước.'));
-      return;
-    }
-
     const updated = [...poItems];
-    updated[searchRowIndex] = catalogProduct && (!product.poCode || requiresRegisteredProducts) ? applyCustomerProductToOrderItem(updated[searchRowIndex], catalogProduct) : {
+    updated[searchRowIndex] = catalogProduct && !product.poCode ? applyCustomerProductToOrderItem(updated[searchRowIndex], catalogProduct) : {
       ...updated[searchRowIndex],
       customerProductId: '',
       productCode: product.productCode || product.code || 'MANUAL',
@@ -792,7 +784,7 @@ export default function POFormFullScreen({
       const preparedProductCodes = new Set<string>();
       for (let i = 0; i < orderItems.length; i++) {
         const productCode = String(orderItems[i].productCode || '').trim();
-        if (requiresRegisteredProducts
+        if (refreshCatalogProducts && orderItems[i].customerProductId
           && !findCustomerProductForOrderItem(orderItems[i], customerCatalog)) {
           alert(t(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`));
           return;
@@ -807,11 +799,15 @@ export default function POFormFullScreen({
           return;
         }
         if (normalizedProductCode) preparedProductCodes.add(normalizedProductCode);
-        if (!orderItems[i].productName) {
+        if (!String(orderItems[i].productName || '').trim()) {
           alert(t(`Dòng ${i + 1}: Vui lòng nhập tên hàng!`));
           return;
         }
-        if (!orderItems[i].quantity || orderItems[i].quantity <= 0) {
+        if (!String(orderItems[i].unit || '').trim()) {
+          alert(t(`Dòng ${i + 1}: Vui lòng nhập đơn vị tính!`));
+          return;
+        }
+        if (!Number.isFinite(Number(orderItems[i].quantity)) || Number(orderItems[i].quantity) <= 0) {
           alert(t(`Dòng ${i + 1}: Số lượng phải lớn hơn 0!`));
           return;
         }
@@ -823,7 +819,7 @@ export default function POFormFullScreen({
 
       const normalizedItems = orderItems.map(item => {
         const catalogProduct = findCustomerProductForOrderItem(item, customerCatalog);
-        return withCalculatedPOFinancials(requiresRegisteredProducts && catalogProduct ? refreshCustomerProductOrderItem(item, catalogProduct) : item);
+        return withCalculatedPOFinancials(refreshCatalogProducts && catalogProduct ? refreshCustomerProductOrderItem(item, catalogProduct) : item);
       });
 
       // Calculate totals
@@ -1417,8 +1413,11 @@ export default function POFormFullScreen({
                   >
                     {isTableFocusMode ? t('Thu gọn') : t('Mở toàn màn hình')}
                   </button>
-                  <button type="button" className="btn btn-outline" onClick={handleAddRow} disabled={usesCatalogProducts && (!customerId || !catalogProducts.length)}>
-                    {usesCatalogProducts ? t('Chọn sản phẩm') : t('Thêm mã hàng')}
+                  {usesCatalogProducts && <button type="button" className="btn btn-outline" onClick={() => openSearchPopup(-1)} disabled={!customerId || !catalogProducts.length || isSaving}>
+                    {t('Chọn sản phẩm')}
+                  </button>}
+                  <button type="button" className="btn btn-outline" onClick={handleAddRow} disabled={isSaving || (usesCatalogProducts && !customerId)}>
+                    {usesCatalogProducts ? t('Thêm dòng nhập tay') : t('Thêm mã hàng')}
                   </button>
                 </div>
               </div>
@@ -1436,8 +1435,8 @@ export default function POFormFullScreen({
                 <div className="po-save-error" role="alert">{saveError}</div>
               )}
 
-              {usesCatalogProducts && catalogProducts.length === 0 && <div className="po-catalog-empty" role="status">
-                <span>{t('Khách hàng chưa có mã sản phẩm. Hãy tạo mã trong hồ sơ khách hàng trước khi lập PO.')}</span>
+              {usesCatalogProducts && customerId && catalogProducts.length === 0 && <div className="po-catalog-empty" role="status">
+                <span>{t('Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.')}</span>
                 {onOpenCustomerDetails && <button type="button" className="btn btn-outline" disabled={!customerId} onClick={() => { onClose(); onOpenCustomerDetails(customerId); }}>{t('Mở hồ sơ khách hàng')}</button>}
               </div>}
               <div className="po-inline-grid-container">
@@ -1466,7 +1465,7 @@ export default function POFormFullScreen({
                       const imagesList = item.previewImages || (item.previewImage ? [item.previewImage] : []);
                       const itemKey = item.itemId || String(index);
                       const isExpanded = expandedItemIds.includes(itemKey);
-                      const lockedFields = usesCatalogProducts && (requiresRegisteredProducts || Boolean(item.customerProductId));
+                      const lockedFields = usesCatalogProducts && Boolean(item.customerProductId);
                       const technicalSummary = getCustomerProductSpecSummary(item.specifications || {}, item.productType || '');
                       const productAssets = Array.isArray(item.productFiles) ? (item.productFiles as ProductAttachment[]).filter(file => file && typeof file.url === 'string' && file.url) : [];
                       const rowAttachments = (
@@ -1664,7 +1663,7 @@ export default function POFormFullScreen({
                           <td>
                             {usesCatalogProducts ? <div className="po-catalog-row-actions">
                               <button type="button" aria-expanded={isExpanded} onClick={() => toggleItemDetails(itemKey)}>{isExpanded ? t('Thu gọn') : t('Chi tiết')}</button>
-                              <button type="button" onClick={() => openSearchPopup(index)} aria-label={`${t('Đổi sản phẩm')}: ${item.productCode || index + 1}`}>{t('Đổi')}</button>
+                              <button type="button" onClick={() => openSearchPopup(index)} disabled={!catalogProducts.length || isSaving} aria-label={`${t('Đổi sản phẩm')}: ${item.productCode || index + 1}`}>{t('Đổi')}</button>
                               <button type="button" className="po-catalog-row-delete" onClick={() => handleRemoveRow(index)} aria-label={`${t('Xóa dòng')}: ${item.productCode || index + 1}`}>{t('Xóa')}</button>
                             </div> : rowAttachments}
                           </td>
@@ -1782,7 +1781,7 @@ export default function POFormFullScreen({
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: requiresRegisteredProducts ? '1fr' : '1fr 1fr', gap: '16px', height: '320px', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', height: '320px', overflow: 'hidden' }}>
                   {/* Catalog list */}
                   <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f8fafc', fontWeight: 600, fontSize: '13px', color: 'var(--color-primary)' }}>
@@ -1818,7 +1817,7 @@ export default function POFormFullScreen({
                   </div>
 
                   {/* History list */}
-                  {!requiresRegisteredProducts && <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f8fafc', fontWeight: 600, fontSize: '13px', color: 'var(--color-success-dark)' }}>
                       {t('Lịch Sử Đã Đặt Đơn Hàng Cũ (History)')}
                     </div>
@@ -1849,7 +1848,7 @@ export default function POFormFullScreen({
                         </div>
                       )}
                     </div>
-                  </div>}
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">

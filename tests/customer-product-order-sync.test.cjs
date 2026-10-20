@@ -83,3 +83,66 @@ test('technical summaries reflect current values and do not print attachment obj
     { id: 'processing', label: 'Gia công', value: 'Cán bóng, Ép kim' }
   ]);
 });
+
+const manualItem = (overrides = {}) => ({
+  itemId: 'manual-1', customerProductId: '', productCode: '', productName: 'Dịch vụ gia công',
+  size: 'Theo bản vẽ', material: 'Vật tư khách cung cấp', unit: 'lần', quantity: 2, price: 120000,
+  vatRate: 8, discountType: 'percent', discountRate: 5, note: 'Giao buổi sáng',
+  specifications: { description: 'Yêu cầu riêng' }, previewImages: ['data:image/png;base64,demo'],
+  ...overrides
+});
+
+test('customers without a product catalog can place orders using manual items with no product code', () => {
+  const record = customer([]);
+  const input = manualItem();
+  const [saved] = model.synchronizeCustomerProductOrderItems([input], record);
+  assert.equal(saved.customerProductId, '');
+  assert.equal(saved.productCode, '');
+  assert.equal(saved.productName, 'Dịch vụ gia công');
+  for (const field of ['itemId', 'size', 'material', 'unit', 'quantity', 'price', 'vatRate', 'discountRate', 'note']) assert.equal(saved[field], input[field]);
+  assert.deepEqual(saved.specifications, input.specifications);
+  assert.deepEqual(saved.previewImages, input.previewImages);
+  assert.deepEqual(record.products, []);
+});
+
+test('a single order can mix manual items and catalog snapshots without changing either source', () => {
+  const catalog = product();
+  const record = customer([catalog]);
+  const selected = model.applyCustomerProductToOrderItem({ quantity: 5, price: 90000 }, catalog);
+  const original = JSON.stringify([record, selected]);
+  const [linked, manual] = model.synchronizeCustomerProductOrderItems([selected, manualItem()], record);
+  assert.equal(linked.customerProductId, catalog.id);
+  assert.equal(linked.productCode, catalog.productCode);
+  assert.equal(linked.size, '50 × 30 mm');
+  assert.equal(linked.price, 85000);
+  assert.equal(manual.customerProductId, '');
+  assert.equal(manual.productName, 'Dịch vụ gia công');
+  assert.equal(JSON.stringify([record, selected]), original);
+});
+
+test('manual rows are not silently replaced by catalog products with the same code', () => {
+  const catalog = product();
+  const input = manualItem({ productCode: catalog.productCode, productName: 'Tên nhập tay', unit: 'bộ' });
+  assert.equal(model.findCustomerProductForOrderItem(input, [catalog]), undefined);
+  const [saved] = model.synchronizeCustomerProductOrderItems([input], customer([catalog]));
+  assert.equal(saved.productName, 'Tên nhập tay');
+  assert.equal(saved.unit, 'bộ');
+  assert.equal(saved.size, 'Theo bản vẽ');
+  assert.equal(saved.customerProductId, '');
+  assert.equal(model.getCustomerProductOrderHistory(catalog, [{ id: 'po-manual', items: [saved] }]).orderCount, 0);
+});
+
+test('manual item validation rejects invalid values and preserves the input object', () => {
+  for (const invalid of [
+    { productName: ' ' }, { unit: ' ' }, { quantity: 0 }, { quantity: NaN },
+    { quantity: -2 }, { price: -1 }, { price: Infinity }, { vatRate: -1 }, { vatRate: 101 }
+  ]) assert.throws(() => model.synchronizeCustomerProductOrderItems([manualItem(invalid)], customer([])), /Dòng 1:/);
+  const input = manualItem({ productCode: ' CUSTOM ', productName: ' Dịch vụ ', unit: ' lần ', quantity: '3', price: '1000' });
+  const [saved] = model.synchronizeCustomerProductOrderItems([input], customer([]));
+  assert.equal(saved.productCode, 'CUSTOM');
+  assert.equal(saved.productName, 'Dịch vụ');
+  assert.equal(saved.unit, 'lần');
+  assert.equal(saved.quantity, 3);
+  assert.equal(saved.price, 1000);
+  assert.equal(input.productName, ' Dịch vụ ');
+});

@@ -118,7 +118,7 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   customer_data: { section: 'Dữ liệu thô', current: 'Tất cả dữ liệu' },
   leads: { section: 'Tiềm năng', current: 'Tổng quan' },
   crm: { section: 'Khách hàng', current: 'Tất cả' },
-  sales: { section: 'Tạo đơn hàng', current: 'Danh sách PO' },
+  sales: { section: 'Đơn hàng', current: 'Danh sách PO' },
   sales_management: { section: 'Quản lý Sale', current: 'Tổng quan' },
   design: { section: 'Thiết kế', current: 'Danh sách yêu cầu thiết kế' },
   design_library: { section: 'Kho mẫu', current: 'Danh sách mẫu thiết kế' },
@@ -1133,11 +1133,11 @@ function AppShell() {
               data-page-id="sales"
               className={`sidebar-item ${activePage === 'sales' ? 'active' : ''}`}
               onClick={() => { setActivePage('sales'); setIsSidebarOpen(false); }}
-              title={t('Tạo đơn hàng')}
+              title={t('Đơn hàng')}
             >
               <div className="sidebar-item-content">
                 <FileText size={16} />
-                <span className="sidebar-item-label">Tạo đơn hàng</span>
+                <span className="sidebar-item-label">{t('Đơn hàng')}</span>
               </div>
             </button>
           )}

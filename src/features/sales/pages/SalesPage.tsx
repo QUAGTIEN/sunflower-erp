@@ -905,7 +905,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
 
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Tạo đơn hàng')} current={!selectedPO ? (selectedOrderCustomer?.companyName || (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Khách hàng có PO'))) : undefined} />
+      <PageContextHeader section={t('Đơn hàng')} current={!selectedPO ? (selectedOrderCustomer?.companyName || (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Khách hàng có PO'))) : undefined} />
 
       {!selectedPO && (
         <>

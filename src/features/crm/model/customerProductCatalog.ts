@@ -57,8 +57,8 @@ export function getCustomerProductOrderHistory(product: CustomerProductRecord, o
   for (const order of orders) {
     if (order.deleted === true) continue;
     const items = Array.isArray(order.items) ? order.items as Array<Record<string, unknown>> : [];
-    const matching = items.filter(item => item.customerProductId
-      ? item.customerProductId === product.id : codes.includes(normalizeProductCode(item.productCode)));
+    const matching = items.filter(item => item.customerProductId !== '' && (item.customerProductId
+      ? item.customerProductId === product.id : codes.includes(normalizeProductCode(item.productCode))));
     if (!matching.length) continue;
     orderCount += 1;
     totalQuantity += matching.reduce((sum, item) => sum + (Number.isFinite(Number(item.quantity)) ? Number(item.quantity) : 0), 0);
@@ -134,6 +134,8 @@ export const getCustomerProductSize = (product: Pick<CustomerProductRecord, 'siz
 };
 
 export function findCustomerProductForOrderItem(item: Record<string, unknown>, products: CustomerProductRecord[]) {
+  // An explicit empty ID identifies a manually entered row, even if its code matches the catalog.
+  if (item.customerProductId === '') return undefined;
   if (item.customerProductId) return products.find(product => product.id === item.customerProductId);
   const code = normalizeProductCode(item.productCode);
   return code ? products.find(product => getCustomerProductCodes(product).includes(code)) : undefined;
@@ -258,13 +260,28 @@ export function refreshCustomerProductOrderItem(item: Record<string, unknown>, p
   };
 }
 
+export function normalizeManualOrderItem(item: Record<string, unknown>, index: number) {
+  const productName = String(item.productName || '').trim();
+  const unit = String(item.unit || '').trim();
+  const quantity = Number(item.quantity);
+  const price = Number(item.price ?? item.unitPrice ?? 0);
+  const vatRate = Number(item.vatRate ?? 8);
+  if (!productName) throw new Error(`Dòng ${index + 1}: Vui lòng nhập tên hàng.`);
+  if (!unit) throw new Error(`Dòng ${index + 1}: Vui lòng nhập đơn vị tính.`);
+  if (!Number.isFinite(quantity) || quantity <= 0) throw new Error(`Dòng ${index + 1}: Số lượng phải lớn hơn 0.`);
+  if (!Number.isFinite(price) || price < 0) throw new Error(`Dòng ${index + 1}: Đơn giá không hợp lệ.`);
+  if (!Number.isFinite(vatRate) || vatRate < 0 || vatRate > 100) throw new Error(`Dòng ${index + 1}: Thuế phải từ 0 đến 100%.`);
+  return { ...item, customerProductId: '', customerProductVersion: '', productCode: String(item.productCode || '').trim(), productName, unit, quantity, price, vatRate };
+}
+
 export function synchronizeCustomerProductOrderItems(items: Record<string, unknown>[], customer: CustomerRecord) {
   if (customer.deleted === true) throw new Error('Khách hàng không còn hoạt động.');
   const products = getActiveCustomerProducts(customer);
-  if (!items.length) throw new Error('Vui lòng chọn ít nhất một sản phẩm.');
+  if (!items.length) throw new Error('Vui lòng thêm ít nhất một mặt hàng.');
   return items.map((item, index) => {
     const product = findCustomerProductForOrderItem(item, products);
-    if (!product) throw new Error(`Dòng ${index + 1}: Mã sản phẩm không còn hợp lệ trong danh mục khách hàng. Vui lòng chọn lại.`);
-    return refreshCustomerProductOrderItem(item, product);
+    if (product) return refreshCustomerProductOrderItem(item, product);
+    if (item.customerProductId) throw new Error(`Dòng ${index + 1}: Mã sản phẩm không còn hợp lệ trong danh mục khách hàng. Vui lòng chọn lại.`);
+    return normalizeManualOrderItem(item, index);
   });
 }
