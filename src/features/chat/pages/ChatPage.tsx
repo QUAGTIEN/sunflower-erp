@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { getPOQueueLabel } from '@/features/sales/model/poWorkflow';
 import { Download, FileText, Paperclip, Plus, X } from 'lucide-react';
 import { formatTime } from '@/shared/utils/dateFormatting';
+import { productionQuantityLabel } from '@/features/production/model/productionOrder';
 import {
   CHAT_ATTACHMENT_MAX_FILES,
   CHAT_ATTACHMENT_MAX_FILE_SIZE,
@@ -416,7 +417,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           return (
             <div key={lsx.id} className="chat-task-card">
               <span className="chat-task-card-title">{t('Lệnh Sản Xuất')} {lsxCode}</span>
-              <span className="chat-task-card-desc">{lsx.productName} - Qty: {lsx.qtyToProduce?.toLocaleString()} ({t(lsx.status)})</span>
+              <span className="chat-task-card-desc">{lsx.productName} — {productionQuantityLabel(lsx)} ({t(lsx.status)})</span>
               <button
                 type="button"
                 className="chat-task-card-btn"

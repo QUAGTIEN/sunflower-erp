@@ -478,7 +478,7 @@ function AppShell() {
     );
     syncSubscription(
       'production_commands',
-      pageNeeds('dashboard', 'production', 'chat'),
+      pageNeeds('dashboard', 'sales', 'production', 'chat'),
       () => dbService.subscribeCollection('production_commands', data => {
         setProductionCommands(sortNewestFirst(data, command => [command.createdAt, command.startedAt]));
       })
@@ -730,6 +730,7 @@ function AppShell() {
         return (
           <Sales
             pos={pos}
+            productionCommands={productionCommands}
             customers={customers}
             leads={leads}
             currentUser={user}

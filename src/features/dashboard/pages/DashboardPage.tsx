@@ -8,6 +8,7 @@ import { ensureReceivableInvoice } from '@/features/sales/api/poWorkflowService'
 import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { DesignRequest } from '@/features/design/model/designWorkflow';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
+import { productionQuantityLabel, PRODUCTION_STATUSES, type ProductionStatus } from '@/features/production/model/productionOrder';
 import {
   Bell, ChevronDown, ChevronUp, ClipboardList, Clock, Plus, Sliders, Trash2
 } from 'lucide-react';
@@ -1351,11 +1352,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <td>{cmd.productName}</td>
                       <td>{cmd.machineId}</td>
                       <td>{cmd.shift}</td>
-                      <td>{cmd.qtyToProduce.toLocaleString()} tem</td>
+                      <td title={productionQuantityLabel(cmd)}>{productionQuantityLabel(cmd)}</td>
                       <td>
                         <span className={`badge ${
                           cmd.status === 'completed' ? 'badge-success' : 'badge-info'
-                        }`}>{cmd.status === 'completed' ? t('Xong') : t('Đang in')}</span>
+                        }`}>{PRODUCTION_STATUSES[cmd.status as ProductionStatus] || (cmd.status === 'transfer_pending' ? 'Chờ bàn giao' : 'Lệnh cũ')}</span>
                       </td>
                     </tr>
                   ))}

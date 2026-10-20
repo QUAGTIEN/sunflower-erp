@@ -149,7 +149,7 @@ export const getMachineForAssignment = (
 ): ProductionMachine | undefined => machines.find(machine => machineMatchesAssignment(machine, assignment));
 
 export const isActiveProductionCommand = (command: ProductionCommandLike): boolean => (
-  !command?.deleted && (command?.status === 'producing' || command?.status === 'transfer_pending')
+  !command?.deleted && (command?.status === 'released' || command?.status === 'producing' || command?.status === 'transfer_pending')
 );
 
 export const getMachineCommands = (
@@ -168,7 +168,7 @@ export const getMachineRuntimeStatus = (
   excludeCommandId?: string
 ): MachineRuntimeStatus => {
   if (machine.status !== 'available') return machine.status;
-  return getMachineCommands(machine, commands, excludeCommandId).length > 0 ? 'running' : 'available';
+  return getMachineCommands(machine, commands, excludeCommandId).some(command => command.status === 'producing' || command.status === 'transfer_pending') ? 'running' : 'available';
 };
 
 export const getRequiredColorCount = (po?: PurchaseOrderLike | null): number => {

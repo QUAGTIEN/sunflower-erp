@@ -1,6 +1,6 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
@@ -21,10 +21,11 @@ import {
   sortMachinesForAssignment,
   subscribeMachines
 } from '@/features/production/api/machineService';
-import { AlertTriangle, CalendarDays, Info, ListChecks, Pencil, Settings2, Trash2, X } from 'lucide-react';
-import { getPOQueueUpdate, isPOInQueue } from '@/features/sales/model/poWorkflow';
+import { CalendarDays, ListChecks, Pencil, Settings2, Trash2, X } from 'lucide-react';
+import { getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
+import { ProductionOrderWorkspace } from '@/features/production/components/ProductionOrderWorkspace';
 import './Production.css';
 
 interface ProductionProps {
@@ -44,7 +45,6 @@ const getProductionQuantity = (command: any): number => {
 
 export const Production: React.FC<ProductionProps> = ({ pos, productionCommands, currentUser, onRefresh, initialSelectedLsxId, messages, users }) => {
   const { t } = useLanguage();
-  const [showAddLsxModal, setShowAddLsxModal] = useState(false);
   const [showEditLsxModal, setShowEditLsxModal] = useState(false);
   const [selectedLsx, setSelectedLsx] = useState<any | null>(null);
 
@@ -52,31 +52,20 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferReason, setTransferReason] = useState('');
   const [targetOperatorId, setTargetOperatorId] = useState('');
+  const handledNavigation = useRef('');
+  const [productionTab, setProductionTab] = useState<'commands' | 'legacy' | 'schedule' | 'machines'>('commands');
 
   // Auto-select LSX when initialSelectedLsxId changes
   useEffect(() => {
-    if (initialSelectedLsxId) {
+    if (initialSelectedLsxId && handledNavigation.current !== initialSelectedLsxId) {
       const cmd = productionCommands.find(c => c.id === initialSelectedLsxId || c.lsxCode === initialSelectedLsxId);
       if (cmd) {
-        setSelectedLsx(cmd);
+        handledNavigation.current = initialSelectedLsxId;
+        setProductionTab(cmd.productionOrderVersion === 2 ? 'commands' : 'legacy');
+        setSelectedLsx(cmd.productionOrderVersion === 2 ? null : cmd);
       }
     }
   }, [initialSelectedLsxId, productionCommands]);
-
-  // Form states
-  const [linkedPoId, setLinkedPoId] = useState('');
-  const [machineId, setMachineId] = useState('Máy Flexo 8 màu OMET');
-  const [shift, setShift] = useState('Ca Sáng (08:00 - 18:00)');
-  const [operatorName, setOperatorName] = useState('Thành Vũ (Sản xuất)');
-  const [qtyToProduce, setQtyToProduce] = useState(10000);
-  const [notes, setNotes] = useState('');
-
-  // Additional technical fields
-  const [productNameToBeCut, setProductNameToBeCut] = useState('');
-  const [paperCore, setPaperCore] = useState('76mm');
-  const [paperMaterialCode, setPaperMaterialCode] = useState('Decal Giấy thường Fasson AW0339F');
-  const [paperQuantity, setPaperQuantity] = useState(10);
-  const [deliveryDeadline, setDeliveryDeadline] = useState('');
 
   // Edit form states
   const [editMachineId, setEditMachineId] = useState('');
@@ -97,36 +86,11 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
 
   // Operator view tab filter
   const [operatorTab, setOperatorTab] = useState<'producing' | 'completed'>('producing');
-  const [productionTab, setProductionTab] = useState<'commands' | 'schedule' | 'machines'>('commands');
   const [machines, setMachines] = useState<ProductionMachine[]>([]);
 
   useEffect(() => subscribeMachines(setMachines), []);
 
-  useEffect(() => {
-    // Auto select first PO if available
-    const activePOs = pos.filter(po => isPOInQueue(po, 'waiting_production'));
-    if (activePOs.length > 0) {
-      const firstPo = activePOs[0];
-      setLinkedPoId(firstPo.id);
-      const item = firstPo.items?.[0] || {};
-      setQtyToProduce(item.quantity || 10000);
-      setProductNameToBeCut(item.productName || '');
-      setDeliveryDeadline(toDateInputValue(firstPo.expectedDeliveryDate));
-
-      if (item.specifications) {
-        if (item.specifications.core) setPaperCore(item.specifications.core);
-        if (item.specifications.paperMaterial) setPaperMaterialCode(item.specifications.paperMaterial);
-      }
-    }
-  }, [pos]);
-
   const machineCatalog = machines.length > 0 ? machines : DEFAULT_MACHINES;
-
-  const getPreferredMachine = (po?: PurchaseOrderLike): ProductionMachine | undefined => {
-    const requiredColors = getRequiredColorCount(po);
-    return sortMachinesForAssignment(machineCatalog, productionCommands, requiredColors)
-      .find(machine => machine.status === 'available' && (requiredColors === 0 || machine.colorCount >= requiredColors));
-  };
 
   const validateMachineAssignment = (
     assignment: string,
@@ -156,84 +120,6 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
       );
     }
     return true;
-  };
-
-  const handleOpenAddLsx = () => {
-    const activePOs = pos.filter(po => isPOInQueue(po, 'waiting_production'));
-    if (activePOs.length === 0) {
-      alert('Không có đơn hàng nào ở trạng thái "Chờ sản xuất" hoặc "NCC xác nhận vật tư đủ" để lập lệnh!');
-      return;
-    }
-    const firstPo = activePOs[0];
-    setLinkedPoId(firstPo.id);
-    const item = firstPo.items?.[0] || {};
-    setQtyToProduce(item.quantity || 10000);
-    setProductNameToBeCut(item.productName || '');
-    setDeliveryDeadline(toDateInputValue(firstPo.expectedDeliveryDate));
-    const preferredMachine = getPreferredMachine(firstPo);
-    if (preferredMachine) setMachineId(preferredMachine.name);
-    setShowAddLsxModal(true);
-  };
-
-  const handleCreateLsx = async (e: React.FormEvent) => {
-    return runMutationAction("ProductionPage.tsx:handleCreateLsx", async () => {
-      e.preventDefault();
-      if (!linkedPoId) return;
-
-      const po = pos.find(p => p.id === linkedPoId);
-      if (!po) return;
-      if (!validateMachineAssignment(machineId, po)) return;
-
-      const lsxCode = `LSX-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      const newLsx = {
-        lsxCode,
-        poId: linkedPoId,
-        poCode: po.poCode,
-        productName: po.items?.[0]?.productName || 'Tem nhãn',
-        qtyToProduce: Number(qtyToProduce),
-        machineId,
-        shift,
-        operatorId: currentUser.uid,
-        operatorName: operatorName,
-        status: 'producing',
-        scrapQty: 0,
-        notes,
-        productNameToBeCut: productNameToBeCut || po.items?.[0]?.productName || 'Tem nhãn',
-        paperCore,
-        paperMaterialCode,
-        paperQuantity: Number(paperQuantity),
-        deliveryDeadline: deliveryDeadline ? new Date(deliveryDeadline).toISOString() : po.expectedDeliveryDate,
-        startedAt: new Date().toISOString(),
-        completedAt: '',
-        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        createdAt: new Date().toISOString()
-      };
-
-      await dbService.addDocument('production_commands', newLsx);
-
-      // Update customer PO status to "producing"
-      const updatedLogs = [
-        ...po.historyLogs,
-        {
-          status: 'waiting_production',
-          updatedBy: currentUser.displayName,
-          updatedAt: new Date().toISOString(),
-          note: `Phát hành Lệnh sản xuất ${lsxCode} giao phó thợ máy ${operatorName} đứng máy in ${machineId}.`
-        }
-      ];
-
-      await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
-        ...getPOQueueUpdate('waiting_production', { productionProgress: 'producing' }),
-        historyLogs: updatedLogs
-      }));
-
-      setShowAddLsxModal(false);
-      setNotes('');
-      onRefresh();
-
-      showSuccessToast("Đã thêm thành công");
-    }, e);
   };
 
   const handleOpenEditLsx = (lsx: any) => {
@@ -320,24 +206,10 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const activeCommands = sortNewestFirst(
-    (productionCommands || []).filter(cmd => !cmd.deleted),
+    (productionCommands || []).filter(cmd => !cmd.deleted && cmd.productionOrderVersion !== 2),
     command => [command.createdAt, command.startedAt]
   );
   const productionPagination = useDataTablePagination(activeCommands);
-  const selectedPoForCreate = pos.find(po => po.id === linkedPoId);
-  const requiredColorsForCreate = getRequiredColorCount(selectedPoForCreate);
-  const createMachineOptions = sortMachinesForAssignment(machineCatalog, activeCommands, requiredColorsForCreate)
-    .filter(machine => machine.status !== 'inactive');
-  const selectedMachineForCreate = getMachineForAssignment(machineCatalog, machineId);
-  const selectedMachineStatusForCreate = selectedMachineForCreate
-    ? getMachineRuntimeStatus(selectedMachineForCreate, activeCommands)
-    : undefined;
-  const recommendedMachineForCreate = createMachineOptions.find(machine => (
-    machine.status === 'available' &&
-    getMachineRuntimeStatus(machine, activeCommands) === 'available' &&
-    (requiredColorsForCreate === 0 || machine.colorCount >= requiredColorsForCreate)
-  ));
-
   const getMachineOptionLabel = (machine: ProductionMachine, excludeCommandId?: string): string => {
     const runtimeStatus = getMachineRuntimeStatus(machine, activeCommands, excludeCommandId);
     const colorLabel = machine.colorCount > 0 ? `${machine.colorCount} màu` : 'chưa khai báo số màu';
@@ -361,57 +233,16 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         updatedAt: now
       }));
 
-      // Advance the PO to the delivery queue. Detailed LSX/QC progress stays in
-      // productionProgress instead of expanding the primary PO status list.
+      // Legacy commands have no reliable per-item allocation. Never infer that one
+      // completed command satisfies the entire PO or guess material consumption.
       const po = pos.find(p => p.id === selectedLsx.poId);
       if (po) {
-        const updatedLogs = [
-          ...po.historyLogs,
-          {
-            status: 'waiting_production',
-            updatedBy: currentUser.displayName,
-            updatedAt: now,
-            note: `Lệnh sản xuất ${selectedLsx.lsxCode} hoàn thành. Số lượng in phế phẩm hao hụt: ${scrapQty}.`
-          },
-          {
-            status: 'waiting_delivery',
-            updatedBy: 'Hệ thống sản xuất',
-            updatedAt: now,
-            note: 'QC đạt, đã đóng gói và chuyển sang hàng chờ giao cho khách.'
-          }
-        ];
-
         await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
-          ...getPOQueueUpdate('waiting_delivery', {
-            deliveryStage: 'customer_outbound',
-            productionProgress: 'completed',
-            deliveryProgress: 'pending'
-          }),
-          historyLogs: updatedLogs
-        }));
-      }
-
-      // AUTO WAREHOUSE DEDUCTION FOR MATERIALS USED
-      const invList = await dbService.getCollection('inventory');
-      const completedQuantity = getProductionQuantity(selectedLsx);
-      const decalQtyNeeded = Math.round(completedQuantity * 0.015); // e.g. 150sqm for 10k items
-      const inkQtyNeeded = Math.round(completedQuantity * 0.0002 * 10) / 10; // e.g. 2kg
-
-      // Deduct Decal
-      const decalItem = invList.find((item: any) => item.category === 'paper');
-      if (decalItem) {
-        await requireConfirmedMutation(dbService.updateDocument('inventory', decalItem.id, {
-          qtyInStock: Math.max(0, Number(decalItem.qtyInStock) - decalQtyNeeded),
-          updatedAt: now
-        }));
-      }
-
-      // Deduct Ink
-      const inkItem = invList.find((item: any) => item.category === 'ink');
-      if (inkItem) {
-        await requireConfirmedMutation(dbService.updateDocument('inventory', inkItem.id, {
-          qtyInStock: Math.max(0, Number(inkItem.qtyInStock) - inkQtyNeeded),
-          updatedAt: now
+          productionProgress: 'needs_reconciliation',
+          historyLogs: [...(po.historyLogs || []), {
+            status: po.status, updatedBy: currentUser.displayName, updatedAt: now,
+            note: `Lệnh cũ ${selectedLsx.lsxCode} hoàn thành; cần đối soát sản lượng theo từng dòng PO và phiếu xuất kho riêng. Không tự chuyển hàng chờ giao hoặc trừ kho ước lượng.`
+          }]
         }));
       }
 
@@ -561,6 +392,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         >
           <ListChecks size={16} /> Danh sách LSX
         </button>
+        <button type="button" role="tab" aria-selected={productionTab === 'legacy'} className={`production-tab ${productionTab === 'legacy' ? 'is-active' : ''}`} onClick={() => setProductionTab('legacy')}>Lệnh cũ</button>
         <button
           type="button"
           role="tab"
@@ -581,24 +413,18 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         </button>
       </div>
 
-      {productionTab === 'commands' && !isOperator && (currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
-        <div className="erp-tab-actionbar">
-          <button className="btn btn-primary" onClick={handleOpenAddLsx}>{t('Phát hành lệnh sản xuất')}</button>
-        </div>
-      )}
-
-      {productionTab === 'schedule' ? (
+      {productionTab === 'commands' ? <ProductionOrderWorkspace key={initialSelectedLsxId || 'commands'} pos={pos} commands={productionCommands} currentUser={currentUser} users={users} onRefresh={onRefresh} initialSelectedId={productionCommands.find(command => command.id === initialSelectedLsxId || command.lsxCode === initialSelectedLsxId)?.id || initialSelectedLsxId} onOpenLegacy={id => { setProductionTab('legacy'); setSelectedLsx(productionCommands.find(command => command.id === id) || null); }} /> : productionTab === 'schedule' ? (
         <MachineManagement
           view="schedule"
           machines={machineCatalog}
-          productionCommands={activeCommands}
+          productionCommands={productionCommands.filter(command => !command.deleted)}
           canManage={canManageMachines}
         />
       ) : productionTab === 'machines' ? (
         <MachineManagement
           view="machines"
           machines={machineCatalog}
-          productionCommands={activeCommands}
+          productionCommands={productionCommands.filter(command => !command.deleted)}
           canManage={canManageMachines}
         />
       ) : isOperator ? (
@@ -819,172 +645,6 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         </div>
       )}
 
-      {/* CREATE LSX DIALOG */}
-      {showAddLsxModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '650px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('PHÁT HÀNH LỆNH SẢN XUẤT (LSX) MỚI')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowAddLsxModal(false)}>{t('Đóng')}</button>
-            </div>
-            <form onSubmit={handleCreateLsx}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div className="form-group">
-                  <label>{t('Chọn Đơn Hàng PO Chờ Sản Xuất *')}</label>
-                  <select
-                    value={linkedPoId}
-                    onChange={e => {
-                      setLinkedPoId(e.target.value);
-                      const po = pos.find(p => p.id === e.target.value);
-                      if (po) {
-                        const item = po.items?.[0] || {};
-                        setQtyToProduce(item.quantity || 10000);
-                        setProductNameToBeCut(item.productName || '');
-                        setDeliveryDeadline(toDateInputValue(po.expectedDeliveryDate));
-                        const preferredMachine = getPreferredMachine(po);
-                        if (preferredMachine) setMachineId(preferredMachine.name);
-                        if (item.specifications) {
-                          if (item.specifications.core) setPaperCore(item.specifications.core);
-                          if (item.specifications.paperMaterial) setPaperMaterialCode(item.specifications.paperMaterial);
-                        }
-                      }
-                    }}
-                    required
-                  >
-                    {pos.filter(po => isPOInQueue(po, 'waiting_production')).map(po => (
-                      <option key={po.id} value={po.id}>{po.poCode} - {po.customerName} ({po.items?.[0]?.productName})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>{t('Tên sản phẩm cần bế *')}</label>
-                  <input
-                    type="text"
-                    value={productNameToBeCut}
-                    onChange={e => setProductNameToBeCut(e.target.value)}
-                    required
-                    placeholder="VD: Nhãn dán chai Aqua"
-                  />
-                </div>
-
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label>{t('Máy In Phân Công *')}</label>
-                    <select value={machineId} onChange={e => setMachineId(e.target.value)} required>
-                      {machineId && !getMachineForAssignment(machineCatalog, machineId) && (
-                        <option value={machineId}>{machineId} (chưa có trong danh mục)</option>
-                      )}
-                      {createMachineOptions.map(machine => (
-                        <option key={machine.id} value={machine.name}>{getMachineOptionLabel(machine)}</option>
-                      ))}
-                    </select>
-                    {recommendedMachineForCreate && (
-                      <div className="machine-recommendation">
-                        <Info size={15} />
-                        <span>
-                          Gợi ý: <strong>{recommendedMachineForCreate.code} - {recommendedMachineForCreate.name}</strong>
-                          {requiredColorsForCreate > 0 ? ` đáp ứng đơn ${requiredColorsForCreate} màu` : ' hiện đang sẵn sàng'}.
-                        </span>
-                      </div>
-                    )}
-                    {selectedMachineStatusForCreate && selectedMachineStatusForCreate !== 'available' && (
-                      <div className="machine-recommendation machine-recommendation--warning">
-                        <AlertTriangle size={15} />
-                        <span>Máy đã chọn hiện ở trạng thái <strong>{getMachineStatusLabel(selectedMachineStatusForCreate)}</strong>. Hệ thống sẽ kiểm tra lại trước khi phát hành LSX.</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Ca Sản Xuất *')}</label>
-                    <select value={shift} onChange={e => setShift(e.target.value)}>
-                      <option value="Ca Sáng (08:00 - 18:00)">{t('Ca Sáng (08:00 - 18:00)')}</option>
-                      <option value="Ca Đêm (18:00 - 04:00)">{t('Ca Đêm (18:00 - 04:00)')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label>{t('Số Lượng Tem Cần In *')}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={qtyToProduce}
-                      onChange={e => setQtyToProduce(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Loại lõi giấy *')}</label>
-                    <select value={paperCore} onChange={e => setPaperCore(e.target.value)}>
-                      <option value="25mm">25mm</option>
-                      <option value="29mm">29mm</option>
-                      <option value="40mm">40mm</option>
-                      <option value="42mm">42mm</option>
-                      <option value="76mm">76mm</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label>{t('Mã nguyên liệu giấy cần dùng *')}</label>
-                    <input
-                      type="text"
-                      value={paperMaterialCode}
-                      onChange={e => setPaperMaterialCode(e.target.value)}
-                      required
-                      placeholder="VD: Decal giấy Fasson AW0339F"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Số lượng giấy cấp *')}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={paperQuantity}
-                      onChange={e => setPaperQuantity(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="form-group">
-                    <label>{t('Ngày cần giao hàng *')}</label>
-                    <input
-                      type="date"
-                      value={deliveryDeadline}
-                      onChange={e => setDeliveryDeadline(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Người Đứng Máy Vận Hành')}</label>
-                    <input type="text" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>{t('Ghi Chú Kỹ Thuật Máy / Bế / Cán màng')}</label>
-                  <textarea
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                    placeholder={t('Ví dụ: Cán màng OPP mờ, bế cuộn phi 76 hướng tem ra ngoài...')}
-                    rows={2}
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAddLsxModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Phát Hành Lệnh')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* EDIT LSX DIALOG */}
       {showEditLsxModal && (
         <div className="modal-overlay">
@@ -1189,7 +849,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                   </div>
 
                   <button type="submit" className="btn btn-success" style={{ width: '100%', marginTop: '12px', padding: '10px', fontWeight: 600 }}>
-                    {t('Xác Nhận Sản Xuất Xong (Tự Động Trừ Kho & Bàn Giao QC)')}
+                    {t('Xác nhận hoàn thành (cần đối soát PO / kho)')}
                   </button>
                 </form>
               )}
