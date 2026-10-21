@@ -5,8 +5,8 @@
 .lsx-heading > div > span, .lsx-hint { color: var(--color-text-muted, #64748b); font-size: 12px; line-height: 1.5; }
 .lsx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .lsx-toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) 220px; gap: 12px; padding: 12px; background: #f8fafc; border: 1px solid var(--erp-border-color, #d8e1ee); border-radius: 6px; }
-.lsx-workspace label { display: grid; gap: 6px; color: #334155; font-size: 13px; min-width: 0; }
-.lsx-workspace :is(input:not([type=checkbox]), select, textarea) { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: var(--erp-control-radius, 6px); padding: 7px 9px; background: #fff; color: #172554; font: inherit; }
+.lsx-workspace :is(.lsx-toolbar, .lsx-editor, .lsx-section) label { display: grid; gap: 6px; color: #334155; font-size: 13px; min-width: 0; }
+.lsx-workspace :is(.lsx-toolbar, .lsx-editor, .lsx-section) :is(input:not([type=checkbox]), select, textarea) { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: var(--erp-control-radius, 6px); padding: 7px 9px; background: #fff; color: #172554; font: inherit; }
 .lsx-workspace :is(input:not([type=checkbox]), select) { min-height: var(--erp-control-height, 36px); }
 .lsx-workspace :is(input, select, textarea):focus-visible { outline: 2px solid var(--erp-focus-ring, #dbeafe); outline-offset: 1px; }
 .lsx-workspace input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--color-primary, #233c88); }
@@ -19,6 +19,8 @@
 .lsx-wide { grid-column: span 2; }
 .lsx-workspace .table-container { min-width: 0; overflow: auto; margin: 0; }
 .lsx-workspace table { min-width: 850px; width: 100%; }
+.lsx-list-frame { min-width: 0; min-height: 0; }
+.lsx-list th:last-child { width: 240px; }
 .lsx-workspace .lsx-lines th:nth-child(1) { width: 80px; }
 .lsx-workspace .lsx-lines th:nth-child(2) { width: 26%; }
 .lsx-workspace .lsx-lines th:nth-child(4) { width: 65px; }

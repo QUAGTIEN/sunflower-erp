@@ -200,6 +200,21 @@ test('workspace renders empty, mixed-status and sale-scoped lists without a brow
   const html = renderToStaticMarkup(React.createElement(Component, { ...props, commands }));
   assert.ok(html.includes('LSX-ONE')); assert.ok(!html.includes('SECRET')); assert.match(html, /Lập lệnh sản xuất/);
 });
+
+test('legacy-only lists count the displayed records and keep detail tables at content height', () => {
+  const Component = loader({ '@/infrastructure/firebase/erpDataGateway': { dbService: {} } })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
+  const props = { pos: [po()], currentUser: sale, users: [producer], onRefresh() {} };
+  const legacy = { id: 'old', poId: 'po1', lsxCode: 'LSX-OLD', status: 'producing', productName: 'Tem cũ' };
+  const html = renderToStaticMarkup(React.createElement(Component, { ...props, commands: [legacy, { ...legacy, id: 'deleted', deleted: true }, { ...legacy, id: 'foreign', poId: 'other' }] }));
+  assert.match(html, /1 lệnh \(1 lệnh cũ\)/);
+  assert.match(html, /Tổng số: <strong>1<\/strong>/);
+  assert.match(html, /Lệnh cũ · Đang sản xuất/);
+  assert.match(html, /title="Xem tại Sản xuất → Lệnh cũ"/);
+  const order = { ...legacy, id: 'new', productionOrderVersion: 2, status: 'draft', lines: [], materials: [], history: [] };
+  const detail = renderToStaticMarkup(React.createElement(Component, { ...props, commands: [order], initialSelectedId: 'new' }));
+  assert.match(detail, /data-erp-table-layout="content"/);
+  assert.ok(!detail.includes('lsx-list-frame'));
+});
 test('actual UI create handler sends stable PO line IDs and retries the same request without duplication', async () => {
   const states = [], refs = []; let cursor = 0, refCursor = 0; let attempts = 0; const calls = [];
   const fakeReact = { ...React, useEffect() {}, useState(initial) { const index = cursor++; if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial; return [states[index], next => { states[index] = typeof next === 'function' ? next(states[index]) : next; }]; }, useRef(initial) { const index = refCursor++; if (!(index in refs)) refs[index] = { current: initial }; return refs[index]; } };
@@ -207,8 +222,14 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
   const render = () => { cursor = 0; refCursor = 0; return Component({ pos: [po()], commands: [], currentUser: sale, users: [producer], onRefresh() {} }); };
   const nodes = tree => !tree || typeof tree !== 'object' ? [] : [tree, ...(Array.isArray(tree.props?.children) ? tree.props.children.flat(Infinity) : [tree.props?.children]).flatMap(nodes)];
   let tree = render();
+  assert.equal(tree.props['data-erp-table-layout'], undefined);
+  const listFrame = nodes(tree).find(node => node.props?.className === 'lsx-list-frame');
+  assert.equal(listFrame.props.children[0].props.className, 'table-container erp-primary-data-table');
+  assert.equal(listFrame.props.children[1].type.name, 'DataTablePagination');
   nodes(tree).find(node => node.type === 'button' && node.props.children === 'Lập lệnh sản xuất').props.onClick();
   tree = render();
+  assert.equal(tree.props['data-erp-table-layout'], 'content');
+  assert.ok(!nodes(tree).some(node => node.props?.className === 'lsx-list-frame'));
   nodes(tree).find(node => node.type === 'select' && node.props.value === '' && node.props.required).props.onChange({ target: { value: 'po1' } });
   tree = render();
   nodes(tree).find(node => node.props?.['aria-label'] === 'Số lượng Tem cuộn').props.onChange({ target: { value: '40' } });

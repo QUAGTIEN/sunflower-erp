@@ -40,6 +40,13 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
         if (container.offsetParent === null) return;
         const table = container.querySelector(':scope > table');
         if (!table) return;
+        // Tables embedded in forms/details follow their content height, even on
+        // wide screens. Keep column resizing without stretching each form section.
+        if (container.closest('[data-erp-table-layout="content"]')) {
+          container.classList.remove('erp-viewport-table-scroll', 'erp-viewport-table-scroll--fill');
+          container.style.removeProperty('--erp-table-viewport-height');
+          return;
+        }
 
         const pagination = container.nextElementSibling instanceof HTMLElement
           && /pagination/i.test(container.nextElementSibling.className)
