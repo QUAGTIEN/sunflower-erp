@@ -14,6 +14,7 @@
 
 - Sale không truy cập trang Sản xuất và không được gọi API tạo / sửa / gửi duyệt / hủy LSX, kể cả nháp do Sale lập trước đây. Dữ liệu những lệnh này vẫn giữ nguyên để Admin / nhân sự Sản xuất tiếp tục xử lý.
 - Admin / nhân sự có vai trò `producer` **và** quyền Sản xuất được lập, sửa, gửi duyệt, phát hành, chạy và nghiệm thu LSX. Người chạy phải đang hoạt động và có quyền Sản xuất.
+- Kế toán đang hoạt động, có quyền Accounting hoặc Production được vào Sản xuất để tạo, sửa và gửi duyệt **nháp của chính mình**, xem/in lệnh. Không được hủy, trả về nháp, phát hành, chạy máy, QC hoặc quản lý máy. Accounting được kế thừa quyền này cho hồ sơ cũ mà không sửa users; Sale tiếp tục bị chặn. Mở danh sách máy bằng Kế toán không khởi tạo máy mặc định trong Firestore.
 - Các LSX cũ nằm cùng danh sách tại **Sản xuất → Lệnh sản xuất**, mở chi tiết để báo cáo hoàn thành hoặc bàn giao theo quyền cũ. Không tự đoán phân bổ theo dòng PO; PO có lệnh cũ cần đối soát trước khi lập lệnh mới.
 - Đã bỏ cơ chế trừ giấy / mực bằng hệ số cố định khi hoàn thành lệnh cũ. Lệnh cũ hoàn thành được đánh dấu cần đối soát, không tự đưa toàn PO sang chờ giao.
 - Nháp giữ chỗ số lượng nhưng vẫn cho phép bộ phận thiết kế cập nhật PO. Khi phát hành, máy chủ kiểm tra lại nguồn dữ liệu; nếu đã đổi phải trả về nháp và lưu lại. Sau phát hành, cấm sửa mặt hàng của PO. Hủy toàn bộ lệnh chưa chạy sẽ mở lại phạm vi kế hoạch.
@@ -22,6 +23,16 @@
 
 - Gom thông số, năng lực, trạng thái, LSX đang phân công, ca / người vận hành và hạn giao vào một bảng. Có thống kê tải máy và cảnh báo lệnh chưa khớp danh mục.
 - Giữ chức năng thêm / sửa / ngừng sử dụng máy; không ngừng máy còn LSX hoạt động. Không còn tab Lịch máy riêng.
+
+## Bổ sung lượt kế toán 2 — ngày 22/10/2026
+
+- Bộ chọn mẫu in gồm phiếu chung hiện có (mặc định cho cả lệnh thiếu trường mẫu) và **Tem trắng — mẫu công ty v1** theo ảnh người dùng cung cấp. Trường `printTemplate` được lưu khi tạo/sửa nháp; lệnh phát hành không sửa mẫu.
+- Mẫu tem trắng có đầu lệnh, bảng 12 cột, vật tư dự kiến và 3 vùng kho cấp / thừa thiếu / chữ ký. Dùng dữ liệu lưu trên LSX, logo có sẵn; không nhập ví dụ trên ảnh. Khổ NVL và ưu tiên từng dòng bổ sung trong `lines[].printDetails`, không thay kỹ thuật PO. `customerCode` lấy từ PO hoặc hồ sơ khách khi lưu.
+- Phiếu chia theo nhóm 6 sản phẩm/5 vật tư mỗi tờ; ghi chú dài giữ đầy đủ ở trang bổ sung. Các ô chưa có nghiệp vụ kho thực tế để trống, không tự điền số 0/người cấp/thời gian giả.
+- `/api/production/manage` thêm `action: catalog` để đọc mã NVL đang dùng và liên kết dòng PO. Producer tra cứu qua API, không cấp quyền quản trị danh mục. Không cần mã yêu cầu cho thao tác chỉ đọc.
+- Tạo/sửa/phát hành đọc lại liên kết mã phía máy chủ. Ưu tiên liên kết PO đã xác nhận; chỉ kế thừa liên kết sản phẩm khách khi đúng ID, phiên bản và kỹ thuật/ĐVT. Snapshot lưu mã, tên, ĐVT cơ sở/gốc, hệ số và revision; không tin snapshot client. Vật tư chọn mã phải là NVL và có hệ số quy đổi được khai báo.
+- Dòng chưa liên kết giữ khả năng lưu/in theo luồng cũ; ghi rõ chưa liên kết, cần đối soát trước hạch toán kho ở lượt 3. Liên kết đã có nhưng stale/inactive bị chặn lưu/phát hành. Đổi danh mục khi chờ duyệt yêu cầu trả về lưu lại; không thay mã trên lệnh đã phát hành.
+- Không đổi số tồn, công nợ hoặc backfill lệnh cũ. Chi tiết hợp đồng và quyết định tại `ACCOUNTING_SPEC.md`, `ACCOUNTING_DECISIONS.md`.
 
 ## Chưa triển khai ở bước này
 
@@ -36,8 +47,11 @@ Không có thao tác lưu / phát hành / in / nghiệm thu LSX nào tự trừ 
 3. Local cần API máy chủ (ví dụ `vercel dev`); `vite` đơn thuần không phục vụ `/api`. Chế độ dữ liệu demo chỉ xem danh sách, không giả lập giao dịch hoặc âm thầm lưu local khi API lỗi.
 4. Danh mục máy phải được lưu trong hệ thống; mở **Sản xuất → Danh sách máy** để cấu hình trước khi phát hành.
 
+Lượt 2 không thay `firestore.rules` so với lượt 1: quyền đọc cần thiết đã có, ghi lệnh mới qua API. Vẫn phải xác nhận triển khai rules của các lượt trước; chưa có xác nhận môi trường thật đã dùng phiên bản đó. Push Git không xác nhận deploy Vercel/Firebase.
+
 ## Kiểm tra
 
 - `node --test tests/production-orders.test.cjs`: kiểm thử model và API với mô phỏng giao dịch có retry / kiểm tra phiên bản, không kết nối dữ liệu thật.
 - Kiểm thử hai tab Sản xuất, lệnh cũ / mới, quyền Sale, danh sách máy; các kiểm thử PO nhập tay, đồng bộ mã sản phẩm, build TypeScript / Vite và lint theo phạm vi.
 - Chưa kiểm thử trình duyệt, máy in thực hoặc triển khai quy tắc trên Firebase trong lượt này.
+- Lượt 2 bổ sung test quyền Kế toán/nháp của người khác, liên kết PO/sản phẩm khách, mã stale/inactive, snapshot sau phát hành, quy đổi NVL, mẫu có phiên bản, dữ liệu dài và bản in nhiều trang. Kiểm tra HTML sinh ra không thay thế nghiệm thu bố cục trên trình duyệt/máy in thật.

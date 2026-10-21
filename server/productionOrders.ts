@@ -1,10 +1,12 @@
 import { AdminApiError } from './adminUsers.js';
+import { isDeepStrictEqual } from 'node:util';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
 import {
-  assertPOAccess, assertTransition, canManageProduction, validateProductionDraft, completedProduction, lineSnapshot,
+  assertPOAccess, assertTransition, canManageProduction, canDraftProduction, validateProductionDraft, completedProduction, lineSnapshot,
   type ProductionActor, type ProductionOrder, type ProductionPO, type CommandRecord
 } from '../src/features/production/model/productionOrder.js';
 import { getPOQueueUpdate, getPOQueueStatus } from '../src/features/sales/model/poWorkflow.js';
+import { productionCatalogReader } from './productionCatalog.js';
 
 export { requireActiveErpCaller as requireProductionCaller } from './erpCaller.js';
 
@@ -15,9 +17,18 @@ const identifier = (value: unknown) => {
 
 /** The PO write serializes concurrent allocations, including creates with different IDs. */
 export async function manageProductionOrder(actor: ProductionActor, body: Record<string, unknown>) {
-  if (!canManageProduction(actor)) throw new AdminApiError(403, 'Bạn không có quyền quản lý lệnh sản xuất.');
+  if (!canDraftProduction(actor)) throw new AdminApiError(403, 'Bạn không có quyền lập lệnh sản xuất.');
   const { firestore } = getFirebaseAdminServices();
-  const action = String(body.action), id = identifier(body.id), poId = identifier(body.poId);
+  const action = String(body.action), poId = identifier(body.poId);
+  if (action === 'catalog') return firestore.runTransaction(async tx => {
+    const doc = await tx.get(firestore.collection('pos').doc(poId));
+    if (!doc.exists) throw new AdminApiError(404, 'Không tìm thấy PO.');
+    const po = { ...doc.data(), id: poId } as ProductionPO;
+    assertPOAccess(actor, po);
+    return { success: true, ...(await productionCatalogReader(tx, firestore, po).options()) };
+  });
+  if (!canManageProduction(actor) && !['create', 'save', 'submit'].includes(action)) throw new AdminApiError(403, 'Kế toán chỉ được lập, sửa nháp và gửi duyệt LSX của mình.');
+  const id = identifier(body.id);
   const commandRef = firestore.collection('production_commands').doc(id);
   const poRef = firestore.collection('pos').doc(poId);
   const eventRef = firestore.collection('audit_events').doc();
@@ -33,6 +44,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     const snapshots = await transaction.get(firestore.collection('production_commands').where('poId', '==', poId));
     const commands = snapshots.docs.map(doc => ({ ...doc.data(), id: doc.id })) as CommandRecord[];
     const previous = commands.find(command => command.id === id) as ProductionOrder | undefined;
+    if (previous && !canManageProduction(actor) && previous.createdById !== actor.uid) throw new AdminApiError(403, 'Bạn chỉ được sửa/gửi duyệt LSX do mình lập.');
     const requestId = identifier(body.requestId);
     assertPOAccess(actor, { ...po, status: 'waiting_production' });
     // Retrying an acknowledged mutation is a no-op, even after another status change.
@@ -52,12 +64,18 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     if (action === 'create' || action === 'save') {
       const draft = validateProductionDraft(po, commands, body, id);
       const { requiredItemIds, ...fields } = draft;
+      const catalog = productionCatalogReader(transaction, firestore, po);
+      fields.lines = await Promise.all(fields.lines.map(line => catalog.line(line)));
+      fields.materials = await Promise.all(fields.materials.map(material => catalog.material(material)));
       required = requiredItemIds;
+      const customer = po.customerId ? (await transaction.get(firestore.collection('customers').doc(identifier(po.customerId)))).data() : undefined;
+      const customerSnapshot = po.customerSnapshot && typeof po.customerSnapshot === 'object' ? po.customerSnapshot as Record<string, unknown> : {};
       next = {
         ...(previous || {}), ...fields, id, productionOrderVersion: 2, revision: (previous?.revision || 0) + 1,
         lsxCode: previous?.lsxCode || `LSX-${businessDate.replaceAll('-', '')}-${String(sequence).padStart(4, '0')}`,
         poId, poCode: String(po.poCode || poId), customerId: String(po.customerId || ''), customerName: String(po.customerName || ''),
         machineName: '', operatorName: '', status: 'draft', inventoryPostingMode: 'actual_issue',
+        customerCode: String(previous?.customerCode || customerSnapshot.customerCode || po.customerCode || customer?.customerCode || ''),
         createdAt: previous?.createdAt || now, createdById: previous?.createdById || actor.uid,
         createdBy: previous?.createdBy || actor.displayName, updatedAt: now, history: previous?.history || []
       };
@@ -72,6 +90,15 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
         for (const line of next.lines) {
           const index = (po.items || []).findIndex((item, index) => String(item.itemId || `legacy-line-${index + 1}`) === line.itemId);
           if (index < 0 || lineSnapshot(po.items![index], index, line.quantity).sourceFingerprint !== line.sourceFingerprint) throw new AdminApiError(409, 'Thông tin PO đã thay đổi. Trả về nháp và lưu lại trước khi phát hành.');
+        }
+        const catalog = productionCatalogReader(transaction, firestore, po);
+        for (const line of next.lines) {
+          const current = await catalog.line(line);
+          if (!isDeepStrictEqual(current.catalog || null, line.catalog || null)) throw new AdminApiError(409, 'Danh mục/liên kết mã đã đổi. Trả về nháp và lưu lại trước khi phát hành.');
+        }
+        for (const material of next.materials) {
+          const current = await catalog.material(material);
+          if (!isDeepStrictEqual(current.catalog || null, material.catalog || null)) throw new AdminApiError(409, 'Danh mục NVL đã đổi. Trả về nháp và lưu lại trước khi phát hành.');
         }
         const machine = next.machineId ? (await transaction.get(firestore.collection('machines').doc(identifier(next.machineId)))).data() : null;
         const operator = next.operatorId ? (await transaction.get(firestore.collection('users').doc(identifier(next.operatorId)))).data() : null;

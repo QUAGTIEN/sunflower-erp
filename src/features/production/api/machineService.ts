@@ -127,12 +127,12 @@ export const ensureDefaultMachines = async (): Promise<void> => {
   await Promise.all(DEFAULT_MACHINES.map(machine => dbService.addDocument('machines', machine)));
 };
 
-export const subscribeMachines = (callback: (machines: ProductionMachine[]) => void): (() => void) => {
+export const subscribeMachines = (callback: (machines: ProductionMachine[]) => void, seedDefaults = true): (() => void) => {
   const unsubscribe = dbService.subscribeCollection('machines', data => {
     callback(sortMachines(data.map(normalizeMachine).filter(machine => machine.name)));
   });
 
-  void ensureDefaultMachines();
+  if (seedDefaults) void ensureDefaultMachines();
   return unsubscribe;
 };
 

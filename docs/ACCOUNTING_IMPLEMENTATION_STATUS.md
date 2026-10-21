@@ -7,7 +7,7 @@
 | Lượt | Phạm vi | Trạng thái |
 |---|---|---|
 | 1 | Danh mục, ĐVT, nhập CSV, liên kết dữ liệu cũ | Hoàn thành mã nguồn; kết quả Git theo bàn giao cuối lượt |
-| 2 | Kế toán lập LSX và mẫu in công ty | Chưa thực hiện |
+| 2 | Kế toán lập LSX và mẫu in công ty | Hoàn thành mã nguồn; chưa nghiệm thu bản in trên trình duyệt/máy in |
 | 3 | Kho NVL, nhập mua, cấp/hoàn | Chưa thực hiện |
 | 4 | Thành phẩm, giao và trả hàng | Chưa thực hiện |
 | 5 | Công nợ và thu chi | Chưa thực hiện |
@@ -54,15 +54,35 @@ Khi triển khai được cho phép: deploy ứng dụng và API `/api/catalog/m
 - Đầu vào mã thật/hệ số thật chưa được cung cấp; người dùng xem trước và xác nhận khi nạp. Tệp mẫu là ví dụ.
 - Liên kết dòng cũ thiếu ID dùng vị trí + dấu nội dung; chưa backfill ID cho PO/LSX cũ. Lượt kho phải xác thực lại nguồn; không dùng liên kết stale/inactive.
 - Đổi kỹ thuật sản phẩm nguồn làm liên kết cần đối chiếu lại. Thay đổi tên danh mục không sửa lịch sử đơn/lệnh.
-- Chưa nối toàn bộ bộ chọn PO/LSX vào danh mục nội bộ; hiện bảo toàn bộ chọn sản phẩm khách và dòng nhập tay. Các bộ phận tra cứu/đối chiếu mã qua màn hình liên kết; không tự tạo snapshot nội bộ vào chứng từ cũ.
+- Lượt 1 chưa nối bộ chọn LSX; lượt 2 đã bổ sung tra cứu/liên kết và snapshot cho lệnh tạo/sửa mới (bên dưới). Bộ chọn sản phẩm PO và dòng nhập tay được bảo toàn, không tự backfill chứng từ cũ.
 - Kho thủ công, nhận mua và cộng paid hiện hữu vẫn chạy theo luồng cũ. Chưa có sổ kho/công nợ mới; chỉ được thay ở các lượt 3–5 với một nguồn ghi duy nhất.
 
-## Đầu lượt 2
+## Kết quả lượt 2 — ngày 22/10/2026
 
-1. Kiểm tra Git thực tế và đọc các quy tắc, SPEC, DECISIONS, STATUS cùng `docs/PRODUCTION_ORDERS.md`.
-2. Đọc luồng quyền tại `src/app/navigation/accessControl.ts`, `server/adminUsers.ts`, model productionOrder, API/server productionOrders và rules.
-3. Tách quyền lập/sửa nháp/gửi duyệt của Kế toán khỏi quyền phát hành, chạy máy, QC và quản lý máy. Sale vẫn bị chặn cả UI/API.
-4. Thu thập mẫu thật để chốt ánh xạ và phiên bản biểu mẫu; chưa có thì triển khai phần quyền độc lập và báo rõ phần mẫu còn chờ.
-5. Không đưa cấp/hoàn vật tư hoặc công nợ vào lượt 2. Giữ snapshot lệnh phát hành, phân bổ PO, version check và bảo toàn mã cũ.
-6. Dùng lại danh mục/liên kết của lượt 1 khi cần; không tự cập nhật PO đóng băng từ danh mục mới.
-7. Build, test liên quan, cập nhật bàn giao, commit đúng file và push origin/main. Không tự kiểm thử trình duyệt hay deploy dữ liệu thật.
+Mốc đầu lượt: `1d9ceb3`, nhánh main, origin GitHub giữ nguyên. Commit kết quả tra qua `git log --oneline -- docs/ACCOUNTING_IMPLEMENTATION_STATUS.md` và bàn giao trong chat.
+
+- Kế toán được tạo, sửa/gửi duyệt nháp của mình, xem/in LSX tại Sản xuất. Accounting kế thừa quyền này cho hồ sơ cũ, không ghi lại users. Không mở quyền phát hành, hủy, chạy máy, QC, lệnh cũ hay quản lý máy; Sale bị chặn.
+- Nhận ảnh mẫu LSX tem trắng thực tế từ người dùng. Thêm lựa chọn mẫu tem trắng v1, giữ phiếu chung v1 và lệnh cũ. Bổ sung khổ NVL, ưu tiên dòng, snapshot mã khách; ô kho cấp/thừa thiếu/chữ ký vẫn trống.
+- API tra cứu danh mục chỉ đọc trong luồng LSX. Chọn mã NVL hoạt động và ĐVT có quy đổi rõ; mã/tên lấy lại từ máy chủ. Dòng hàng lấy liên kết PO đã xác nhận hoặc liên kết sản phẩm khách có đúng ID/phiên bản/kỹ thuật. Không ghép theo tên/mã.
+- Chụp mã nội bộ/quy đổi/revision trên lệnh. Chặn stale/inactive và thay đổi danh mục trước phát hành; không sửa lệnh đã phát hành từ danh mục hiện tại. Dòng chưa liên kết vẫn theo luồng cũ, cần đối soát trước hạch toán kho.
+- Form có trạng thái tải/lỗi/thử lại danh mục, trường mã/tên NVL đã chọn chỉ đọc; cảnh báo khi bỏ nháp/rời phân hệ/tab và chặn rời lúc đang lưu. Mở máy ở chế độ đọc không khởi tạo dữ liệu máy.
+- Không thêm dependency, không sửa rules, không ghi dữ liệu Firebase thật hoặc tác động số tồn/công nợ.
+
+### Kiểm tra lượt 2
+
+- **129/129 test đạt**: production-orders (39), item-catalog (27), customer-product-catalog, customer-product-order-sync, po-manual-entry, table-viewport-layout, mutation-feedback, field-configuration.
+- Build TypeScript client/server và Vite đạt; còn cảnh báo chunk lớn hiện có.
+- Lint phần server/model/API/component LSX mới và UserManagementPage đạt (0 lỗi/cảnh báo). ProductionPage giữ baseline 11 lỗi/0 cảnh báo, không thêm lỗi/cảnh báo so với HEAD đầu lượt.
+- Test mô phỏng transaction kiểm tra quyền, chống trùng/đồng thời, snapshot, liên kết, quy đổi và bảo toàn tồn. Test HTML kiểm tra trường mẫu, escape, dữ liệu dài, chia trang và lệnh cũ. Không thay thế kiểm thử giao diện thực tế.
+- Chưa mở trình duyệt theo yêu cầu người dùng; chưa nghiệm thu PDF/máy in thật. Bố cục mẫu cần kiểm tra thực tế khi được yêu cầu.
+- Chưa xác nhận deploy Vercel hoặc rules Firebase. Lượt 2 cần deploy web/API mới; rules giữ nguyên lượt 1, vẫn phải kiểm tra môi trường thật đã triển khai các rules trước đó. Push Git không phải xác nhận deploy.
+
+## Đầu lượt 3
+
+1. Kiểm tra Git, đọc quy tắc dự án và ba tài liệu ACCOUNTING cùng PRODUCTION_ORDERS. Dùng mốc cuối lượt 2, không triển khai lại quyền/mẫu.
+2. Xác nhận D02f/D03/D04/D05b: số kho, lô/cuộn/vị trí, giữ chỗ/khóa chất lượng, ngưỡng tồn, cảnh báo hay chặn âm, quyền ghi sổ/đảo và lùi ngày. Không dùng dữ liệu mẫu để thay đầu vào thực tế.
+3. Đọc luồng inventory, warehouse_exports, procurement/purchase_orders và các hàm ghi tồn thực tế. Thiết lập **một nguồn ghi sổ kho**; tránh chạy song song cộng/trừ tồn cũ và mới.
+4. Triển khai nhận mua, cấp nhiều lần/hoàn/cấp bổ sung theo LSX và lịch sử; transaction có chống trùng, revision, kiểm tra mã/quy đổi và tồn. Không suy hệ số cuộn/mét hoặc cấp theo vật tư dự kiến mà không có phiếu thực tế.
+5. Kiểm tra nguồn liên kết trước hạch toán, đối soát các dòng LSX cũ/chưa liên kết; không thay snapshot lệnh đã phát hành bằng danh mục hiện tại. Chưa nhập đầu kỳ thật trước khi được xác nhận.
+6. Chưa đưa thành phẩm/giao hàng/công nợ vào lượt 3 ngoài điểm nối đã thống nhất. Xem D06 nếu nối nhận mua với tiền; không tự chọn mốc tăng nợ.
+7. Build/test/lint theo phạm vi, cập nhật tài liệu, commit đúng file và push origin/main; không tự kiểm thử trình duyệt/deploy dữ liệu thật.

@@ -14,6 +14,7 @@ function loader(stubs = {}) {
     const resolve = name => {
       if (Object.hasOwn(stubs, name)) return stubs[name];
       if (name.endsWith('.css')) return {};
+      if (name.endsWith('.woff2?url')) return '/test-font.woff2';
       if (!name.startsWith('.') && !name.startsWith('@/')) return require(name);
       const base = name.startsWith('@/') ? path.join(root, 'src', name.slice(2)) : path.resolve(path.dirname(file), name);
       const candidate = [base.replace(/\.js$/, '.ts'), `${base}.ts`, `${base}.tsx`, base].find(file => fs.existsSync(file));
@@ -30,6 +31,7 @@ const model = loader()('src/features/production/model/productionOrder.ts');
 const admin = { uid: 'boss', displayName: 'Admin', role: 'admin', active: true, allowedPages: [] };
 const sale = { uid: 'sale1', displayName: 'Sale 1', role: 'sale', active: true, allowedPages: ['sales'] };
 const producer = { uid: 'worker', displayName: 'Thợ máy', role: 'producer', active: true, allowedPages: ['production'] };
+const accountant = { uid: 'accountant1', displayName: 'Kế toán', role: 'accountant', active: true, allowedPages: ['accounting'] };
 const po = () => ({ id: 'po1', poCode: 'PO-01', customerId: 'customer1', customerName: 'Công ty A', saleId: sale.uid, status: 'waiting_production', items: [
   { itemId: 'roll', productCode: 'TM01', productName: 'Tem cuộn', quantity: 100, unit: 'cuộn', size: '50 × 30 mm', specifications: { core: '76mm', coreType: 'Lõi giấy', paperCode: 'F0070' } },
   { itemId: 'manual', customerProductId: '', productCode: '', productName: 'Tem nhập tay', quantity: 50, unit: 'tờ' }
@@ -346,4 +348,156 @@ test('rules and module integration keep LSX exclusively in production', () => {
   const legacy = fs.readFileSync(path.join(root, 'src/features/production/pages/ProductionPage.tsx'), 'utf8');
   assert.match(legacy, /<ProductionOrderWorkspace/);
   assert.ok(!legacy.includes('0.015')); assert.ok(!legacy.includes('0.0002')); assert.ok(!legacy.includes('handleCreateLsx'));
+});
+
+const draftFields = extra => {
+  const { action, id, poId, requestId, ...fields } = draft(extra);
+  return fields;
+};
+test('existing accountants with Accounting access can draft but cannot operate production or edit another creator', async () => {
+  const b = backend();
+  await b.manage(draft(), accountant);
+  assert.equal(b.order().createdById, accountant.uid);
+  assert.equal(model.canManageProduction(accountant), false);
+  await b.action('save', 'command1', draftFields(), accountant);
+  await b.action('submit', 'command1', {}, accountant);
+  for (const action of ['return', 'release', 'start', 'complete', 'cancel']) await assert.rejects(b.action(action, 'command1', {}, accountant), error => error.status === 403);
+  await b.action('return');
+  await assert.rejects(b.action('save', 'command1', draftFields(), { ...accountant, uid: 'other-accountant' }), error => error.status === 403);
+  await assert.rejects(b.action('submit', 'command1', {}, { ...accountant, uid: 'other-accountant' }), error => error.status === 403);
+  await b.action('submit', 'command1', {}, accountant); await b.action('release'); await b.action('start');
+  await assert.rejects(b.action('save', 'command1', draftFields(), accountant));
+  assert.equal(b.store.get('inventory/paper').qtyInStock, 1000);
+});
+test('accountant access respects account status and page revocation without writing profile data', async () => {
+  const access = loader()('src/app/navigation/accessControl.ts');
+  assert.equal(access.canAccessPage(accountant, 'production'), true);
+  assert.ok(access.getDefaultPagesForRole('accountant').includes('production'));
+  for (const actor of [{ ...accountant, active: false }, { ...accountant, allowedPages: [] }, { ...accountant, role: 'sale', allowedPages: ['accounting', 'production'] }]) {
+    assert.equal(access.canAccessPage(actor, 'production'), false);
+    const b = backend(); await assert.rejects(b.manage(draft(), actor), error => error.status === 403);
+  }
+  const b = backend({ 'users/accountant1': accountant }); await b.manage(draft(), accountant);
+  assert.deepEqual(b.store.get('users/accountant1'), accountant);
+});
+const hash = value => require('node:crypto').createHash('sha256').update(value).digest('hex');
+function catalogFixture(type = 'po_item', overrides = {}) {
+  const catalogModel = loader()('src/features/catalog/model/itemCatalog.ts');
+  const id = `itm-${hash('FG01')}`;
+  const product = { id, code: 'FG01', normalizedCode: 'FG01', name: 'Tem nội bộ', kind: 'finished_good', baseUnit: 'cái', conversions: [{ unit: 'cuộn', factor: 1000 }], active: true, revision: 1, ...overrides };
+  const source = catalogModel.catalogSources(type, [po()])[0];
+  const linkId = `link-${hash(source.key)}`;
+  return { id, product, source, linkId, data: { [`item_catalog/${id}`]: product, [`catalog_links/${linkId}`]: { id: linkId, source: source.ref, sourceKey: source.key, sourceFingerprint: source.fingerprint, catalogItemId: id, sourceUnit: 'cuộn', factor: 1000, baseUnit: 'cái', revision: 1 } } };
+}
+test('production resolves confirmed PO mappings on the server and ignores forged client catalog snapshots', async () => {
+  const fixture = catalogFixture(); const b = backend(fixture.data);
+  await b.manage(draft({ lines: [{ itemId: 'roll', quantity: 20, catalog: { id: 'forged', code: 'FORGED' } }] }), accountant);
+  const line = b.order().lines[0];
+  assert.equal(line.catalog.id, fixture.id); assert.equal(line.catalog.code, 'FG01');
+  assert.equal(line.catalog.factor, 1000); assert.equal(line.unit, 'cuộn'); assert.equal(line.quantity, 20);
+  assert.equal(line.productCode, 'TM01'); assert.equal(b.store.get('pos/po1').items[0].catalog, undefined);
+  const options = await b.manage({ action: 'catalog', poId: 'po1' }, accountant);
+  assert.equal(options.lines.roll.catalog.code, 'FG01');
+  assert.equal(options.materials.length, 0); assert.equal(options.lines.manual.catalog, undefined);
+});
+test('stale/inactive mappings block storage; changed catalog requires a refreshed draft before release', async () => {
+  const fixture = catalogFixture(); const b = backend(fixture.data); await b.manage(draft()); await b.action('submit');
+  // Firestore map fields may arrive in a different order than the saved JS object.
+  b.order().lines[0].catalog = Object.fromEntries(Object.entries(b.order().lines[0].catalog).reverse());
+  await b.action('release');
+  const refresh = backend(fixture.data); await refresh.manage(draft()); await refresh.action('submit');
+  refresh.store.get(`item_catalog/${fixture.id}`).revision = 2;
+  await assert.rejects(refresh.action('release'), error => error.status === 409);
+  await refresh.action('return'); await refresh.action('save', 'command1', draftFields()); await refresh.action('submit'); await refresh.action('release');
+  b.store.get(`item_catalog/${fixture.id}`).code = 'CHANGED-LATER';
+  await b.action('start');
+  assert.equal(b.order().lines[0].catalog.code, 'FG01');
+  const inactive = backend({ ...fixture.data, [`item_catalog/${fixture.id}`]: { ...fixture.product, active: false } });
+  await assert.rejects(inactive.manage(draft()), /không còn hoạt động/);
+  assert.equal(inactive.order(), undefined);
+  const stale = backend({ ...fixture.data, [`catalog_links/${fixture.linkId}`]: { ...fixture.data[`catalog_links/${fixture.linkId}`], sourceFingerprint: 'stale' } });
+  await assert.rejects(stale.manage(draft()), /đối chiếu/);
+  const before = stale.store.size;
+  const result = await stale.manage({ action: 'catalog', poId: 'po1' }, accountant);
+  assert.match(result.lines.roll.error, /đối chiếu/); assert.equal(stale.store.size, before);
+});
+test('customer-product mapping is inherited only for the exact identified PO version and technical snapshot', async () => {
+  const fixture = catalogFixture();
+  const catalogModel = loader()('src/features/catalog/model/itemCatalog.ts');
+  const product = { ...po().items[0], id: 'cp1', catalogRevision: 3 };
+  const customer = { id: 'customer1', products: [product] };
+  const source = catalogModel.catalogSources('customer_product', [customer])[0];
+  const linkId = `link-${hash(source.key)}`;
+  const data = { [`item_catalog/${fixture.id}`]: fixture.product, 'customers/customer1': customer,
+    [`catalog_links/${linkId}`]: { ...fixture.data[`catalog_links/${fixture.linkId}`], id: linkId, source: source.ref, sourceKey: source.key, sourceFingerprint: source.fingerprint } };
+  const linkedPO = () => { const order = po(); order.items[0] = { ...order.items[0], customerProductId: 'cp1', customerProductVersion: '3', specifications: { paperCode: 'F0070', coreType: 'Lõi giấy', core: '76mm' } }; return order; };
+  const b = backend({ ...data, 'pos/po1': linkedPO() }); await b.manage(draft());
+  assert.equal(b.order().lines[0].catalog.linkId, linkId);
+  for (const patch of [{ customerProductVersion: '2' }, { customerProductVersion: '' }, { customerProductId: '' }, { specifications: { core: '25mm' } }, { productType: 'changed' }]) {
+    const order = linkedPO(); Object.assign(order.items[0], patch);
+    const old = backend({ ...data, 'pos/po1': order }); await old.manage(draft());
+    assert.equal(old.order().lines[0].catalog, undefined, JSON.stringify(patch));
+  }
+  await assert.rejects(b.manage({ action: 'catalog', poId: 'po1' }, sale), error => error.status === 403);
+});
+test('material selection uses canonical code and explicit conversion but never posts stock', async () => {
+  const fixture = catalogFixture('po_item', { kind: 'raw_material', baseUnit: 'm', conversions: [{ unit: 'cuộn', factor: 200 }] });
+  const b = backend({ [`item_catalog/${fixture.id}`]: fixture.product });
+  await b.manage(draft({ materials: [{ id: 'mat1', catalogItemId: fixture.id, code: 'FAKE', name: 'Fake', width: '1120', unit: 'cuộn', quantity: 2, allowancePercent: 0 }] }));
+  const material = b.order().materials[0];
+  assert.equal(material.code, 'FG01'); assert.equal(material.name, 'Tem nội bộ'); assert.equal(material.catalog.factor, 200);
+  assert.equal(material.quantity, 2); assert.equal(b.store.get('inventory/paper').qtyInStock, 1000);
+  const bad = backend({ [`item_catalog/${fixture.id}`]: fixture.product });
+  await assert.rejects(bad.manage(draft({ materials: [{ catalogItemId: fixture.id, code: 'X', name: 'X', unit: 'kg', quantity: 1 }] })), /quy đổi/);
+  const forbidden = backend({ [`item_catalog/${fixture.id}`]: { ...fixture.product, kind: 'finished_good' } });
+  await assert.rejects(forbidden.manage(draft({ materials: [{ catalogItemId: fixture.id, code: 'X', name: 'X', unit: 'm', quantity: 1 }] })), /Nguyên vật liệu/);
+});
+test('print template and per-line details are versioned and cannot change after release', async () => {
+  const b = backend();
+  await b.manage(draft({ printTemplate: { id: 'white_label', version: 1 }, lines: [{ itemId: 'roll', quantity: 40, printDetails: { materialWidth: '1120', priority: 'high' } }] }), accountant);
+  assert.equal(b.order().printTemplate.id, 'white_label');
+  assert.deepEqual(b.order().lines[0].printDetails, { materialWidth: '1120', priority: 'high' });
+  await b.action('submit', 'command1', {}, accountant); await b.action('release');
+  await assert.rejects(b.action('save', 'command1', draftFields({ printTemplate: { id: 'standard', version: 1 } })));
+  for (const printTemplate of [{ id: 'injected-html', version: 1 }, { id: 'white_label', version: 2 }]) await assert.rejects(backend().manage(draft({ printTemplate })), /Mẫu in/);
+  await assert.rejects(backend().manage(draft({ lines: [{ itemId: 'roll', quantity: 1, printDetails: { materialWidth: '-1' } }] })), /Khổ NVL/);
+});
+test('white-label print follows the provided fields, escapes values and preserves old generic output', async () => {
+  const b = backend({ 'customers/customer1': { customerCode: 'KH-REAL' } });
+  await b.manage(draft({ printTemplate: { id: 'white_label', version: 1 }, lines: [{ itemId: 'roll', quantity: 40, printDetails: { materialWidth: '1120', priority: 'high' } }] }));
+  const print = loader()('src/features/production/model/productionPrint.ts');
+  const original = JSON.stringify(b.order());
+  const html = print.productionPrintHtml(b.order());
+  for (const label of ['PHIẾU LỆNH SẢN XUẤT TEM TRẮNG', 'KH-REAL', 'VẬT TƯ SỬ DỤNG', 'NVL KHO CẤP', 'NVL THỪA / THIẾU SAU 1 ĐƠN', 'XÁC NHẬN', '1120', 'Hơi gấp', 'KHÔNG DÙNG ĐỂ TRIỂN KHAI']) assert.ok(html.includes(label), label);
+  assert.ok(!html.includes('Nguyễn Văn C')); assert.ok(!html.includes('KH-0012'));
+  assert.ok(!html.includes('Thừa / ĐVT: 0')); assert.equal(JSON.stringify(b.order()), original);
+  const unsafe = print.productionPrintHtml({ ...b.order(), notes: '<script>alert(1)</script>', lines: [{ ...b.order().lines[0], productName: '<img onerror=alert(1)>', image: 'javascript:alert(1)' }] });
+  assert.ok(!unsafe.includes('<script>')); assert.ok(!unsafe.includes('src="javascript:')); assert.ok(unsafe.includes('&lt;img'));
+  const old = { ...b.order(), printTemplate: undefined }; assert.ok(!print.productionPrintHtml(old).includes('PHIẾU LỆNH SẢN XUẤT TEM TRẮNG'));
+});
+test('multi-page white-label prints retain all lines, materials and full long notes', async () => {
+  const b = backend(); await b.manage(draft({ printTemplate: { id: 'white_label', version: 1 } }));
+  const print = loader()('src/features/production/model/productionPrint.ts');
+  const order = { ...b.order(), lines: Array.from({ length: 13 }, (_, index) => ({ ...b.order().lines[0], productCode: `UNIQUE-LINE-${index}-END` })), materials: Array.from({ length: 11 }, (_, index) => ({ ...b.order().materials[0], code: `UNIQUE-MAT-${index}-END` })), notes: 'Nội dung dài '.repeat(150) + 'PHẦN-CUỐI-GHI-CHÚ' };
+  const html = print.productionPrintHtml(order);
+  for (let index = 0; index < 13; index++) assert.ok(html.includes(`UNIQUE-LINE-${index}-END`));
+  for (let index = 0; index < 11; index++) assert.ok(html.includes(`UNIQUE-MAT-${index}-END`));
+  assert.ok(html.includes('PHẦN-CUỐI-GHI-CHÚ')); assert.ok(html.includes('Trang 4 / 4'));
+});
+test('read-only machine subscriptions do not initialize machine records for accounting', () => {
+  let writes = 0;
+  const service = loader({ '@/infrastructure/firebase/erpDataGateway': { dbService: { subscribeCollection: () => () => {}, getCollection: () => { writes++; return Promise.resolve([]); } } } })('src/features/production/api/machineService.ts');
+  service.subscribeMachines(() => {}, false);
+  assert.equal(writes, 0);
+});
+test('accountant UI exposes only own draft editing and keeps released/running operations hidden', async () => {
+  const b = backend(); await b.manage(draft(), accountant);
+  const Component = loader({ '@/infrastructure/firebase/erpDataGateway': { dbService: {} } })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
+  const html = order => renderToStaticMarkup(React.createElement(Component, { pos: [po()], commands: [order], currentUser: accountant, users: [producer], onRefresh() {}, initialSelectedId: order.id }));
+  assert.match(html(b.order()), /Sửa nháp/); assert.match(html(b.order()), /Gửi duyệt/);
+  assert.doesNotMatch(html({ ...b.order(), createdById: 'another-user' }), /Sửa nháp|Gửi duyệt/);
+  for (const status of ['draft', 'pending_approval', 'released', 'producing']) {
+    assert.doesNotMatch(html({ ...b.order(), status }), /Hủy lệnh|Trả về nháp|Duyệt &amp; phát hành|Bắt đầu sản xuất|Xác nhận nghiệm thu/);
+  }
+  assert.match(html({ ...b.order(), status: 'released' }), /In phiếu/);
 });

@@ -14,7 +14,7 @@ Kế hoạch chính thức gồm **7 lượt**, thay cho cách chia 14 lượt t
 | 6 | Báo cáo tháng, hàng còn giao/nhận, hạn thanh toán và cảnh báo tồn |
 | 7 | Chuyển đổi dữ liệu thật, kiểm thử tích hợp, triển khai và nghiệm thu |
 
-Yêu cầu đã xác nhận: theo dõi **cả nợ tiền và hàng chưa giao/nhận**, **cả NVL và thành phẩm**, bổ sung **Kế toán lập LSX**. Sale không truy cập Sản xuất. Quyền LSX thuộc lượt 2, chưa mở trong lượt 1.
+Yêu cầu đã xác nhận: theo dõi **cả nợ tiền và hàng chưa giao/nhận**, **cả NVL và thành phẩm**, bổ sung **Kế toán lập LSX**. Sale không truy cập Sản xuất. Lượt 2 đã bổ sung quyền lập LSX cho Kế toán theo hợp đồng bên dưới.
 
 ## Quy tắc xuyên suốt
 
@@ -82,9 +82,36 @@ Chấp nhận dấu phẩy, chấm phẩy hoặc tab; dấu nháy CSV và ghi ch
 - API xác thực token và tài khoản thật trên máy chủ; client không ghi trực tiếp 3 collection mới. Rules cho đúng nhóm đọc và từ chối toàn bộ client write.
 - Demo chỉ đọc; lỗi mạng/API không được chuyển thành lưu local rồi báo thành công.
 
+## Hợp đồng dữ liệu và workflow lượt 2
+
+### Kế toán lập LSX
+
+- Kế toán đang hoạt động, có trang Accounting hoặc Production được vào Sản xuất. Hồ sơ cũ chỉ có Accounting được nhận quyền hiệu lực này mà không sửa dữ liệu users. Màn hình quản trị người dùng giải thích quyền kế thừa.
+- Kế toán tạo nháp từ PO, sửa và gửi duyệt **nháp do chính mình lập**, xem/in lệnh. Không phát hành, trả về nháp, hủy lệnh, bắt đầu chạy máy, QC, quản lý máy hoặc sửa luồng lệnh cũ. Admin/producer giữ quyền xử lý hiện có.
+- UI và API cùng kiểm tra. API lấy vai trò/người thực hiện từ tài khoản xác thực, không tin nội dung client. Quyền ghi trực tiếp Firestore không mở rộng; LSX mới vẫn chỉ ghi qua transaction máy chủ.
+- Mở danh sách máy với quyền chỉ đọc không khởi tạo các máy mặc định trong Firestore.
+
+### Danh mục trên LSX
+
+- API LSX thêm thao tác tra cứu chỉ đọc `action: catalog`, tham số `poId`, trả mã NVL đang hoạt động và liên kết mã cho từng dòng PO. Producer tra cứu qua API, không được mở quyền quản trị trực tiếp danh mục.
+- Dòng hàng giữ nguyên kỹ thuật/số lượng/ĐVT từ PO. Máy chủ ưu tiên liên kết `po_item` đã xác nhận. Chỉ kế thừa liên kết `customer_product` khi có đúng customerProductId, đúng phiên bản và nội dung kỹ thuật/ĐVT trùng hồ sơ khách hiện tại. Không đoán mã từ tên hoặc chuỗi mã giống nhau.
+- Lệnh cũ, dòng nhập tay hoặc chưa có liên kết vẫn lưu được theo luồng cũ, hiển thị rõ chưa liên kết. Lượt kho phải đối soát trước hạch toán; không dùng khả năng lưu nháp này để bỏ qua kiểm soát kho.
+- Liên kết đã có nhưng stale/inactive chặn lưu/phát hành. Máy chủ bỏ mọi snapshot danh mục do client gửi, đọc lại danh mục/liên kết và quy đổi.
+- `lines[].catalog` và `materials[].catalog` lưu snapshot `{id, code, name, baseUnit, sourceUnit, factor, revision, linkId?, linkRevision?}`. Vật tư được chọn từ danh mục còn lưu `catalogItemId`; chỉ nhận nhóm raw_material và ĐVT có hệ số khai báo.
+- Đổi danh mục/liên kết sau gửi duyệt yêu cầu trả về nháp, lưu lại rồi duyệt. Sau phát hành, lệnh tiếp tục dùng snapshot đã lưu, không tự thay từ danh mục hiện tại. Không backfill hoặc ghi đè PO/LSX lịch sử.
+
+### Mẫu in tem trắng
+
+- Ảnh mẫu người dùng gửi ngày 22/10/2026 là đầu vào cho **Tem trắng — mẫu công ty v1** (`printTemplate: {id: white_label, version: 1}`). Không nhập mã/tên/số lượng ví dụ trên ảnh vào dữ liệu thật.
+- Phiếu chung hiện có (`standard`, v1) vẫn là mặc định; lệnh thiếu printTemplate tiếp tục dùng phiếu chung. Người lập chọn mẫu khi tạo/sửa nháp. Không tự suy mẫu theo tên sản phẩm, không cung cấp HTML mẫu tùy ý.
+- Phiếu tem trắng A4 ngang có thông tin đầu lệnh, 12 cột kỹ thuật/ảnh, vật tư dự kiến, vùng kho cấp, thừa/thiếu và chữ ký. Dùng logo sẵn có trong repository; không lấy logo/hotline hoặc ảnh cuộn ví dụ trên mẫu làm dữ liệu thật.
+- `customerCode` chụp mã khách từ PO/hồ sơ khách lúc lưu. `lines[].printDetails` bổ sung khổ NVL (mm) và ưu tiên riêng theo dòng; không sửa kỹ thuật PO. Không lấy chiều rộng con tem làm khổ NVL.
+- Chia nội dung theo 6 dòng sản phẩm/5 dòng vật tư mỗi tờ; ghi chú dài có trang bổ sung, không bỏ dữ liệu. Bản nháp/chờ duyệt/hủy có dấu cảnh báo không dùng triển khai sản xuất.
+- Các ô cấp kho, thừa/thiếu và ký xác nhận để trống để ghi nhận theo chứng từ thực tế. Không điền số 0 giả, không coi mẫu in là phiếu kho đã ghi sổ. In không đổi trạng thái, tồn kho hay công nợ.
+
 ## Phạm vi chưa thực hiện
 
-Chưa nhập dữ liệu thật, chưa tạo đầu kỳ tồn/nợ, chưa cộng trừ kho hay tiền qua danh mục. Chưa tự nối supplier SKU vào đơn mua; phần nguồn mua/nhận kết nối ở lượt 3. Chưa mở quyền LSX cho Kế toán, chưa sửa mẫu LSX. Chưa triển khai giá vốn/sổ cái/thuế/ngân hàng.
+Chưa nhập dữ liệu thật, chưa tạo đầu kỳ tồn/nợ, chưa cộng trừ kho hay tiền qua danh mục. Chưa tự nối supplier SKU vào đơn mua; phần nguồn mua/nhận kết nối ở lượt 3. Chưa triển khai giá vốn/sổ cái/thuế/ngân hàng. Chưa kiểm tra bố cục mẫu tem trắng trên trình duyệt/máy in thật; chưa có xác nhận deploy API/web/rules thực tế.
 
 Hành vi kho và thanh toán cũ vẫn tồn tại để tương thích, **chưa phải sổ kế toán mới**. Không coi lượt 1 là hoàn thành kho nguyên vật liệu hoặc công nợ.
 

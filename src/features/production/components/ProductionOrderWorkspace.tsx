@@ -4,11 +4,12 @@ import { DataTablePagination } from '@/components/DataTablePagination';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
+import { registerNavigationGuard } from '@/shared/feedback/navigationGuard';
 import { formatDate } from '@/shared/utils/dateFormatting';
 import { getCustomerProductSpecSummary } from '@/features/crm/model/customerProductCatalog';
 import type { ProductionMachine } from '../api/machineService';
-import { mutateProductionOrder } from '../api/productionOrderService';
-import { allocatedQuantities, canManageProduction, hasProductionAccess, itemIdentity, PRODUCTION_STATUSES, type CommandRecord, type PlannedMaterial, type ProductionOrder, type ProductionPO } from '../model/productionOrder';
+import { mutateProductionOrder, loadProductionDraftCatalog, type ProductionDraftCatalog } from '../api/productionOrderService';
+import { allocatedQuantities, canManageProduction, canDraftProduction, canEditProductionDraft, hasProductionAccess, itemIdentity, PRODUCTION_PRINT_TEMPLATES, PRODUCTION_STATUSES, type CommandRecord, type PlannedMaterial, type ProductionOrder, type ProductionPO, type ProductionPrintTemplate } from '../model/productionOrder';
 import { productionPrintHtml } from '../model/productionPrint';
 import './ProductionOrders.css';
 
@@ -19,8 +20,10 @@ interface Props {
 interface Draft {
   id: string; poId: string; revision?: number; quantities: Record<string, string>; requiredItemIds: string[];
   materials: PlannedMaterial[]; machineId: string; operatorId: string; shift: string; deliveryDeadline: string; priority: string; notes: string;
+  printTemplate: ProductionPrintTemplate;
+  printDetails: Record<string, { materialWidth: string; priority: string }>;
 }
-const emptyDraft = (): Draft => ({ id: crypto.randomUUID(), poId: '', quantities: {}, requiredItemIds: [], materials: [], machineId: '', operatorId: '', shift: '', deliveryDeadline: '', priority: 'normal', notes: '' });
+const emptyDraft = (): Draft => ({ id: crypto.randomUUID(), poId: '', quantities: {}, requiredItemIds: [], materials: [], machineId: '', operatorId: '', shift: '', deliveryDeadline: '', priority: 'normal', notes: '', printTemplate: { id: 'standard', version: 1 }, printDetails: {} });
 const actionNames: Record<string, string> = { create: 'Đã tạo LSX thành công', save: 'Đã lưu thành công', submit: 'Đã gửi duyệt LSX', return: 'Đã trả về nháp', release: 'Đã phát hành LSX', start: 'Đã bắt đầu sản xuất', complete: 'Đã nghiệm thu LSX', cancel: 'Đã hủy LSX' };
 const historyNames: Record<string, string> = { create: 'Lập lệnh', save: 'Lưu nháp', submit: 'Gửi duyệt', return: 'Trả về nháp', release: 'Duyệt và phát hành', start: 'Bắt đầu chạy máy', complete: 'Hoàn thành', cancel: 'Hủy lệnh', qc: 'Nghiệm thu QC' };
 const LIST_STATUSES: Record<string, string> = { ...PRODUCTION_STATUSES, transfer_pending: 'Chờ duyệt bàn giao' };
@@ -39,6 +42,10 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
   const [printReady, setPrintReady] = useState(false);
   const [qc, setQc] = useState<Record<string, { goodQuantity: string; rejectQuantity: string }>>({});
   const [qcNote, setQcNote] = useState('');
+  const [catalog, setCatalog] = useState<ProductionDraftCatalog>({ materials: [], lines: {} });
+  const [catalogError, setCatalogError] = useState('');
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogReload, setCatalogReload] = useState(0);
   const printFrame = useRef<HTMLIFrameElement>(null);
   const printDialog = useRef<HTMLDialogElement>(null);
   const request = useRef({ payload: '', id: '' });
@@ -50,8 +57,23 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
   useEffect(() => {
     if (printOrder && printDialog.current && !printDialog.current.open) printDialog.current.showModal();
   }, [printOrder]);
+  useEffect(() => {
+    if (!draft?.poId) return;
+    let cancelled = false;
+    void loadProductionDraftCatalog(draft.poId).then(data => { if (!cancelled) { setCatalog(data); setCatalogError(''); } })
+      .catch(cause => { if (!cancelled) { setCatalog({ materials: [], lines: {} }); setCatalogError(cause instanceof Error ? cause.message : 'Không tải được danh mục.'); } })
+      .finally(() => { if (!cancelled) setCatalogLoading(false); });
+    return () => { cancelled = true; };
+  }, [draft?.poId, catalogReload]);
+  useEffect(() => {
+    if (!draft && !busy) return;
+    const unregister = registerNavigationGuard(() => !busy && window.confirm('LSX đang có dữ liệu chưa lưu. Bạn có muốn rời trang?'));
+    const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => { unregister(); window.removeEventListener('beforeunload', beforeUnload); };
+  }, [draft, busy]);
   const manager = canManageProduction(currentUser);
-  const canCreate = manager;
+  const canCreate = canDraftProduction(currentUser);
   const visiblePOs = pos.filter(po => !po.deleted);
   const accessibleCommands = commands.filter(command => !command.deleted);
   const legacyCount = accessibleCommands.filter(command => command.productionOrderVersion !== 2).length;
@@ -71,18 +93,21 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
   }
   const updateDraft = (patch: Partial<Draft>) => setDraft(current => current ? { ...current, ...patch } : current);
   const choosePO = (poId: string) => {
+    setCatalog({ materials: [], lines: {} }); setCatalogError(''); setCatalogLoading(!!poId);
     const po = visiblePOs.find(po => po.id === poId);
-    updateDraft({ poId, quantities: {}, requiredItemIds: po?.productionPlanRequiredItemIds?.length ? po.productionPlanRequiredItemIds
+    updateDraft({ poId, quantities: {}, printDetails: {}, requiredItemIds: po?.productionPlanRequiredItemIds?.length ? po.productionPlanRequiredItemIds
       : (po?.items || []).filter(item => !['mua_nvl', 'mua_hang', 'dich_vu'].includes(String(item.workType)) && !['giay', 'may_in', 'may_quet', 'muc_in'].includes(String(item.productType))).map(item => itemIdentity(item, (po?.items || []).indexOf(item))),
       deliveryDeadline: String(po?.expectedDeliveryDate || '').slice(0, 10) });
   };
   const edit = (order: ProductionOrder) => {
-    setError(''); setSelectedId('');
+    setError(''); setSelectedId(''); setCatalog({ materials: [], lines: {} }); setCatalogError(''); setCatalogLoading(true);
     setDraft({ id: order.id, revision: order.revision, poId: order.poId,
       quantities: Object.fromEntries(order.lines.map(line => [line.itemId, String(line.quantity)])),
       requiredItemIds: pos.find(po => po.id === order.poId)?.productionPlanRequiredItemIds || order.lines.map(line => line.itemId),
       materials: structuredClone(order.materials), machineId: order.machineId, operatorId: order.operatorId,
-      shift: order.shift, deliveryDeadline: order.deliveryDeadline, priority: order.priority, notes: order.notes });
+      shift: order.shift, deliveryDeadline: order.deliveryDeadline, priority: order.priority, notes: order.notes,
+      printTemplate: order.printTemplate || { id: 'standard', version: 1 },
+      printDetails: Object.fromEntries(order.lines.map(line => [line.itemId, line.printDetails || { materialWidth: '', priority: '' }])) });
   };
   const mutate = async (body: Record<string, unknown>, after?: () => void) => {
     if (pending.current) return;
@@ -103,9 +128,9 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
     if (!draft || !editingPO || allocationError) return;
     void mutate({ action: draft.revision ? 'save' : 'create', id: draft.id, poId: draft.poId, expectedRevision: draft.revision,
       requiredItemIds: draft.requiredItemIds,
-      lines: Object.entries(draft.quantities).filter(([, quantity]) => quantity !== '' && Number(quantity) !== 0).map(([itemId, quantity]) => ({ itemId, quantity: Number(quantity) })),
+      lines: Object.entries(draft.quantities).filter(([, quantity]) => quantity !== '' && Number(quantity) !== 0).map(([itemId, quantity]) => ({ itemId, quantity: Number(quantity), ...(draft.printDetails[itemId] ? { printDetails: draft.printDetails[itemId] } : {}) })),
       materials: draft.materials, machineId: draft.machineId, operatorId: draft.operatorId, shift: draft.shift,
-      deliveryDeadline: draft.deliveryDeadline, priority: draft.priority, notes: draft.notes
+      deliveryDeadline: draft.deliveryDeadline, priority: draft.priority, notes: draft.notes, printTemplate: draft.printTemplate
     }, () => { setSelectedId(draft.id); setDraft(null); });
   };
   const transition = async (action: string) => {
@@ -125,7 +150,7 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
   return <section className="lsx-workspace" data-erp-table-layout={draft || selected ? 'content' : undefined} aria-label="Lệnh sản xuất" aria-busy={busy}>
     {error && <div className="lsx-error" role="alert">{error}</div>}
     {draft ? <form onSubmit={saveDraft} className="lsx-editor">
-      <header className="lsx-heading"><div><h2>{draft.revision ? 'Chỉnh sửa LSX nháp' : 'Lập lệnh sản xuất'}</h2><span>Một PO có thể chia thành nhiều lệnh; vật tư bên dưới là số lượng dự kiến.</span></div><div className="lsx-actions"><button type="button" className="btn btn-outline" disabled={busy} onClick={() => { setDraft(null); setError(''); }}>Quay lại</button><button className="btn btn-primary" disabled={busy || !editingPO || !!allocationError}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button></div></header>
+      <header className="lsx-heading"><div><h2>{draft.revision ? 'Chỉnh sửa LSX nháp' : 'Lập lệnh sản xuất'}</h2><span>Một PO có thể chia thành nhiều lệnh; vật tư bên dưới là số lượng dự kiến.</span></div><div className="lsx-actions"><button type="button" className="btn btn-outline" disabled={busy} onClick={() => { if (window.confirm('LSX chưa lưu. Bạn có muốn bỏ thay đổi?')) { setDraft(null); setError(''); } }}>Quay lại</button><button className="btn btn-primary" disabled={busy || !editingPO || !!allocationError}>{busy ? 'Đang lưu…' : 'Lưu nháp'}</button></div></header>
       <fieldset disabled={busy}><section className="lsx-section"><h3>Thông tin lệnh</h3><div className="lsx-fields">
         <label className="lsx-wide">Đơn hàng PO *<select required value={draft.poId} disabled={!!draft.revision} onChange={event => choosePO(event.target.value)}><option value="">Chọn PO</option>{visiblePOs.filter(po => ['waiting_design', 'receive_po', 'bom_extracted', 'design_sent', 'layout_pending', 'waiting_production', 'production_pending', 'producing', 'supplier_confirmed'].includes(String(po.status))).map(po => <option key={po.id} value={po.id}>{po.poCode} — {po.customerName}</option>)}</select></label>
         <label>Ngày cần *<input type="date" value={draft.deliveryDeadline} onChange={event => updateDraft({ deliveryDeadline: event.target.value })} /></label>
@@ -133,6 +158,7 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
         <label>Máy sản xuất<select value={draft.machineId} onChange={event => updateDraft({ machineId: event.target.value })}><option value="">Chọn máy (bắt buộc khi phát hành)</option>{machines.filter(machine => machine.status === 'available').map(machine => <option key={machine.id} value={machine.id}>{machine.code} — {machine.name}</option>)}</select></label>
         <label>Người chạy máy<select value={draft.operatorId} onChange={event => updateDraft({ operatorId: event.target.value })}><option value="">Chọn nhân sự</option>{users.filter(user => user.active && ['producer', 'admin'].includes(user.role)).map(user => <option key={user.uid} value={user.uid}>{user.displayName}</option>)}</select></label>
         <label className="lsx-wide">Ca / tổ sản xuất<input value={draft.shift} maxLength={100} onChange={event => updateDraft({ shift: event.target.value })} placeholder="Ví dụ: Ca sáng / Tổ in 01" /></label>
+        <label className="lsx-wide">Mẫu in<select value={draft.printTemplate.id} onChange={event => updateDraft({ printTemplate: { id: event.target.value as ProductionPrintTemplate['id'], version: 1 } })}>{Object.entries(PRODUCTION_PRINT_TEMPLATES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
       </div></section>
       <section className="lsx-section"><h3>Mặt hàng cần sản xuất</h3><p className="lsx-hint">Xác định cột “Cần SX” cho toàn PO trước lệnh đầu tiên; bỏ hàng mua bán lại / dịch vụ. Nhập số lượng vào các dòng muốn đưa vào lệnh này. Các dòng còn lại có thể lập lệnh sau.</p>
         {allocationError && <p className="lsx-error">{allocationError}</p>}
@@ -143,16 +169,32 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
           {!editingPO && <tr><td colSpan={7}>Chọn PO để hiển thị danh mục mặt hàng.</td></tr>}
         </tbody></table></div>
       </section>
+      {editingPO && <section className="lsx-section"><h3>Mã nội bộ và thông tin bổ sung trên phiếu</h3>
+        {catalogLoading && <p role="status" className="lsx-hint">Đang tải mã nội bộ và danh mục NVL…</p>}
+        {catalogError && <div role="alert" className="lsx-hint">{catalogError} Không tự ghép mã theo tên; thông tin được máy chủ kiểm tra lại khi lưu. <button type="button" className="btn btn-outline" disabled={catalogLoading} onClick={() => { setCatalogLoading(true); setCatalogReload(value => value + 1); }}>Tải lại danh mục</button></div>}
+        <div className="table-container"><table><thead><tr><th>Dòng PO</th><th>Mã nội bộ đã liên kết</th><th>Khổ NVL (mm)</th><th>Ưu tiên dòng</th></tr></thead><tbody>{(editingPO.items || []).filter((item, index) => draft.requiredItemIds.includes(itemIdentity(item, index))).map(item => {
+          const index = editingPO.items!.indexOf(item), id = itemIdentity(item, index), mapped = catalog.lines[id];
+          const details = draft.printDetails[id] || { materialWidth: '', priority: '' };
+          return <tr key={id}><td>{String(item.productCode || 'Nhập tay')} — {String(item.productName || '')}</td><td title={mapped?.error}>{mapped?.error || mapped?.catalog?.code || 'Chưa có liên kết đã xác nhận'}</td>
+            <td><input aria-label={`Khổ NVL ${item.productName}`} type="number" min="0.001" step="any" value={details.materialWidth} onChange={event => updateDraft({ printDetails: { ...draft.printDetails, [id]: { ...details, materialWidth: event.target.value } } })} /></td>
+            <td><select aria-label={`Ưu tiên ${item.productName}`} value={details.priority} onChange={event => updateDraft({ printDetails: { ...draft.printDetails, [id]: { ...details, priority: event.target.value } } })}><option value="">Theo ưu tiên lệnh</option><option value="urgent">Gấp</option><option value="high">Hơi gấp</option><option value="normal">Bình thường</option></select></td></tr>;
+        })}</tbody></table></div><p className="lsx-hint">Không sửa thông số PO đã chốt. Khổ NVL là khổ vật liệu đầu vào, không lấy từ chiều rộng con tem. Mã chưa liên kết vẫn được lưu theo luồng cũ và cần đối soát trước khi hạch toán kho.</p>
+      </section>}
       <section className="lsx-section"><div className="lsx-heading"><h3>Vật tư dự kiến sử dụng</h3><button type="button" className="btn btn-outline" onClick={() => updateDraft({ materials: [...draft.materials, { id: crypto.randomUUID(), code: '', name: '', width: '', unit: '', quantity: 0, allowancePercent: 0 }] })}>Thêm vật tư</button></div>
-        <div className="table-container"><table className="lsx-materials"><thead><tr><th>Mã NVL</th><th>Tên vật tư</th><th>Khổ (mm)</th><th>ĐVT</th><th>Số lượng</th><th>Hao hụt (%)</th><th>Thao tác</th></tr></thead><tbody>{draft.materials.map((material, index) => <tr key={material.id}>{(['code', 'name', 'width', 'unit', 'quantity', 'allowancePercent'] as const).map(key => <td key={key}><input aria-label={`${key} vật tư ${index + 1}`} required={key !== 'width'} type={['quantity', 'allowancePercent'].includes(key) ? 'number' : 'text'} min={key === 'quantity' ? '0.000001' : 0} max={key === 'allowancePercent' ? 100 : undefined} step="any" value={material[key]} onChange={event => materialField(index, key, event.target.value)} /></td>)}<td><button className="btn btn-outline" type="button" onClick={() => updateDraft({ materials: draft.materials.filter((_, position) => position !== index) })}>Bỏ dòng</button></td></tr>)}{!draft.materials.length && <tr><td colSpan={7}>Chưa khai báo vật tư. Có thể bổ sung khi lưu nháp; bắt buộc trước khi phát hành.</td></tr>}</tbody></table></div>
+        {draft.materials.map((material, index) => <label key={material.id}>Chọn mã NVL cho dòng {index + 1}<select value={material.catalogItemId || ''} onChange={event => {
+          const item = catalog.materials.find(item => item.id === event.target.value);
+          updateDraft({ materials: draft.materials.map((row, position) => position !== index ? row : { ...row, catalogItemId: item?.id || '', code: item?.code || row.code, name: item?.name || row.name, unit: item?.baseUnit || row.unit }) });
+        }}><option value="">Nhập tay theo luồng cũ (chưa liên kết)</option>{material.catalogItemId && !catalog.materials.some(item => item.id === material.catalogItemId) && <option value={material.catalogItemId}>{material.code} — cần tải/đối chiếu danh mục</option>}{catalog.materials.map(item => <option key={item.id} value={item.id}>{item.code} — {item.name} ({item.baseUnit})</option>)}</select></label>)}
+        <div className="table-container"><table className="lsx-materials"><thead><tr><th>Mã NVL</th><th>Tên vật tư</th><th>Khổ (mm)</th><th>ĐVT</th><th>Số lượng</th><th>Hao hụt (%)</th><th>Thao tác</th></tr></thead><tbody>{draft.materials.map((material, index) => <tr key={material.id}>{(['code', 'name', 'width', 'unit', 'quantity', 'allowancePercent'] as const).map(key => <td key={key}><input aria-label={`${key} vật tư ${index + 1}`} required={key !== 'width'} readOnly={!!material.catalogItemId && ['code', 'name'].includes(key)} type={['quantity', 'allowancePercent'].includes(key) ? 'number' : 'text'} min={key === 'quantity' ? '0.000001' : 0} max={key === 'allowancePercent' ? 100 : undefined} step="any" value={material[key]} onChange={event => materialField(index, key, event.target.value)} /></td>)}<td><button className="btn btn-outline" type="button" onClick={() => updateDraft({ materials: draft.materials.filter((_, position) => position !== index) })}>Bỏ dòng</button></td></tr>)}{!draft.materials.length && <tr><td colSpan={7}>Chưa khai báo vật tư. Có thể bổ sung khi lưu nháp; bắt buộc trước khi phát hành.</td></tr>}</tbody></table></div>
       </section><section className="lsx-section"><label>Ghi chú kỹ thuật / yêu cầu sản xuất<textarea rows={2} maxLength={3000} value={draft.notes} onChange={event => updateDraft({ notes: event.target.value })} /></label></section></fieldset>
     </form> : selected ? <>
       <header className="lsx-heading"><div><h2>{selected.lsxCode} <span className={`lsx-status lsx-status--${selected.status}`}>{PRODUCTION_STATUSES[selected.status]}</span></h2><span>{selected.poCode} · {selected.customerName}</span></div><div className="lsx-actions"><button className="btn btn-outline" disabled={busy} onClick={() => { setSelectedId(''); setError(''); }}>Quay lại</button><button className="btn btn-outline" onClick={() => { setPrintReady(false); setPrintOrder(selected); }}>In phiếu</button>
-        {selected.status === 'draft' && (manager || selected.createdById === currentUser.uid) && <><button className="btn btn-outline" disabled={busy} onClick={() => edit(selected)}>Sửa nháp</button><button className="btn btn-primary" disabled={busy} onClick={() => void transition('submit')}>Gửi duyệt</button></>}
+        {canEditProductionDraft(currentUser, selected) && <><button className="btn btn-outline" disabled={busy} onClick={() => edit(selected)}>Sửa nháp</button><button className="btn btn-primary" disabled={busy} onClick={() => void transition('submit')}>Gửi duyệt</button></>}
         {selected.status === 'pending_approval' && manager && <><button className="btn btn-outline" disabled={busy} onClick={() => void transition('return')}>Trả về nháp</button><button className="btn btn-primary" disabled={busy} onClick={() => void transition('release')}>Duyệt & phát hành</button></>}
-        {selected.status === 'released' && (manager || selected.operatorId === currentUser.uid) && hasProductionAccess(currentUser, 'production') && <button className="btn btn-primary" disabled={busy} onClick={() => void transition('start')}>Bắt đầu sản xuất</button>}
-        {(['draft', 'pending_approval'].includes(selected.status) && (manager || selected.createdById === currentUser.uid) || selected.status === 'released' && manager) && <button className="btn btn-outline" disabled={busy} onClick={() => void transition('cancel')}>Hủy lệnh</button>}
+        {selected.status === 'released' && manager && <button className="btn btn-primary" disabled={busy} onClick={() => void transition('start')}>Bắt đầu sản xuất</button>}
+        {['draft', 'pending_approval', 'released'].includes(selected.status) && manager && <button className="btn btn-outline" disabled={busy} onClick={() => void transition('cancel')}>Hủy lệnh</button>}
       </div></header>
+      <p className="lsx-hint">Mẫu in: {PRODUCTION_PRINT_TEMPLATES[selected.printTemplate?.id || 'standard']} · phiên bản mẫu {selected.printTemplate?.version || 1}. Mã nội bộ: {selected.lines.map(line => line.catalog?.code || `${line.productCode || line.productName}: chưa liên kết`).join('; ')}</p>
       <section className="lsx-section"><div className="lsx-meta"><span>Ngày cần: <strong>{formatDate(selected.deliveryDeadline)}</strong></span><span>Máy: <strong>{selected.machineName || machines.find(machine => machine.id === selected.machineId)?.name || 'Chưa chọn'}</strong></span><span>Người chạy: <strong>{selected.operatorName || users.find(user => user.uid === selected.operatorId)?.displayName || 'Chưa chọn'}</strong></span><span>Ca: <strong>{selected.shift || '—'}</strong></span><span>Người lập: <strong>{selected.createdBy}</strong></span><span>Ưu tiên: <strong>{{ urgent: 'Gấp', high: 'Hơi gấp', normal: 'Bình thường' }[selected.priority]}</strong></span></div></section>
       <section className="lsx-section"><h3>Thông tin sản xuất đã chốt theo PO</h3><div className="table-container"><table className="lsx-detail-lines"><thead><tr><th>Mã / tên sản phẩm</th><th>Quy cách / vật liệu</th><th>SL lệnh / ĐVT</th><th>Góc / răng cưa</th><th>Lõi / NVL</th><th>Đạt QC / hỏng</th></tr></thead><tbody>{selected.lines.map(line => <tr key={line.itemId}><td title={`${line.productCode} — ${line.productName}`}>{line.productCode || 'Nhập tay'} — {line.productName}</td><td title={`${line.specification} · ${line.material}`}>{line.specification} · {line.material}</td><td>{number(line.quantity)} {line.unit}</td><td title={String(line.specifications.perforated || '')}>{String(line.specifications.dieCut || line.specifications.corner || '—')} / {String(line.specifications.perforated || '—')}</td><td title={String(line.specifications.paperCode || '')}>{String(line.specifications.core || '—')} / {String(line.specifications.coreType || '—')} / {String(line.specifications.paperCode || '—')}</td><td>{selected.status === 'completed' ? `${number(line.goodQuantity)} / ${number(line.rejectQuantity)}` : 'Chưa nghiệm thu'}</td></tr>)}</tbody></table></div>
         <details><summary>Xem toàn bộ thông số kỹ thuật và ảnh</summary><div className="lsx-specifications">{selected.lines.map(line => <article key={line.itemId}><h3>{line.productCode || 'Nhập tay'} — {line.productName}</h3><dl>{getCustomerProductSpecSummary(line.specifications, line.productType).map(field => <div key={field.id}><dt>{field.label}</dt><dd>{field.value}</dd></div>)}</dl>{line.image && <img src={line.image} alt={`Mẫu ${line.productName}`} />}</article>)}</div></details>
@@ -172,6 +214,6 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
         <DataTablePagination {...pagination.paginationProps} />
       </div>
     </>}
-    {printOrder && <dialog ref={printDialog} className="lsx-print-dialog" aria-labelledby="lsx-print-title" onCancel={event => { event.preventDefault(); setPrintOrder(null); }}><header className="lsx-heading"><h2 id="lsx-print-title">Xem phiếu in — {printOrder.lsxCode}</h2><div className="lsx-actions"><button className="btn btn-outline" onClick={() => setPrintOrder(null)}>Đóng</button><button className="btn btn-primary" disabled={!printReady} onClick={() => { printFrame.current?.contentWindow?.focus(); printFrame.current?.contentWindow?.print(); }}>In / lưu PDF</button></div></header><iframe ref={printFrame} title="Phiếu lệnh sản xuất" sandbox="allow-same-origin allow-modals" srcDoc={productionPrintHtml(printOrder)} onLoad={() => setPrintReady(true)} /></dialog>}
+    {printOrder && <dialog ref={printDialog} className="lsx-print-dialog" aria-labelledby="lsx-print-title" onCancel={event => { event.preventDefault(); setPrintOrder(null); }}><header className="lsx-heading"><h2 id="lsx-print-title">Xem phiếu in — {printOrder.lsxCode}</h2><div className="lsx-actions"><button className="btn btn-outline" onClick={() => setPrintOrder(null)}>Đóng</button><button className="btn btn-primary" disabled={!printReady} onClick={() => { printFrame.current?.contentWindow?.focus(); printFrame.current?.contentWindow?.print(); }}>In / lưu PDF</button></div></header><iframe ref={printFrame} title="Phiếu lệnh sản xuất" sandbox="allow-same-origin allow-modals" srcDoc={productionPrintHtml(printOrder)} onLoad={event => { const fonts = event.currentTarget.contentDocument?.fonts; if (fonts) void fonts.ready.then(() => setPrintReady(true)); else setPrintReady(true); }} /></dialog>}
   </section>;
 }

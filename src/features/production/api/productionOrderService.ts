@@ -1,4 +1,16 @@
 import { authService, isFirebaseRuntimeEnabled } from '@/infrastructure/firebase/erpDataGateway';
+import type { CatalogItem } from '@/features/catalog/model/itemCatalog';
+import type { ProductionCatalogSnapshot } from '../model/productionOrder';
+
+export interface ProductionDraftCatalog { materials: CatalogItem[]; lines: Record<string, { catalog?: ProductionCatalogSnapshot; error?: string }> }
+export async function loadProductionDraftCatalog(poId: string): Promise<ProductionDraftCatalog> {
+  if (!isFirebaseRuntimeEnabled) throw new Error('Tra cứu mã nội bộ cần kết nối Firebase và API máy chủ.');
+  const token = await authService.getIdToken();
+  const response = await fetch('/api/production/manage', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'catalog', poId }) });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.success) throw new Error(result?.error || 'Chưa tải được mã nội bộ. Hãy kiểm tra API máy chủ.');
+  return result;
+}
 
 /** No unsafe direct-Firestore/local fallback: quantity reservation requires a server transaction. */
 export async function mutateProductionOrder(body: Record<string, unknown>) {

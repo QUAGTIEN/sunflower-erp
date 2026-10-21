@@ -9,6 +9,7 @@ import {
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const itemId = (input: CatalogInput) => `itm-${hash(normalizeCatalogCode(input.code))}`;
+export const catalogLinkDocumentId = (source: CatalogSourceRef) => `link-${hash(sourceKey(source))}`;
 const revisionMatches = (value: unknown, revision: number) => Number.isInteger(value) && value === revision;
 const id = (value: unknown) => {
   if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,180}$/.test(value)) throw new AdminApiError(400, 'Định danh yêu cầu không hợp lệ.');
@@ -71,7 +72,7 @@ export async function manageItemCatalog(actor: CatalogActor & { uid: string; dis
       const candidate = catalogSources(source.type, [{ ...sourceDoc.data(), id: source.documentId }]).find(row => row.key === sourceKey(source));
       if (!candidate || candidate.problem) throw new AdminApiError(400, candidate?.problem || 'Không tìm thấy dòng nguồn đang hoạt động.');
       if (body.sourceFingerprint !== candidate.fingerprint) throw new AdminApiError(409, 'Thông tin nguồn đã thay đổi. Tải lại và đối chiếu trước khi liên kết.');
-      const key = `link-${hash(candidate.key)}`;
+      const key = catalogLinkDocumentId(source);
       const previous = await tx.get(firestore.collection('catalog_links').doc(key));
       previousLink = previous.exists ? previous.data()! : null;
       if (!revisionMatches(body.expectedLinkRevision, previous.exists ? Number(previous.data()!.revision) : 0)) throw new AdminApiError(409, 'Liên kết vừa thay đổi. Tải lại trước khi xác nhận.');

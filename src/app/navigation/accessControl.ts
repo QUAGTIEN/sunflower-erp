@@ -13,7 +13,7 @@ export const getDefaultPagesForRole = (role: UserRole): string[] => {
     case 'producer':
       return ['dashboard', 'chat', 'work_schedule', 'production'];
     case 'accountant':
-      return ['dashboard', 'chat', 'work_schedule', 'accounting'];
+      return ['dashboard', 'chat', 'work_schedule', 'accounting', 'production'];
   }
 };
 
@@ -24,6 +24,7 @@ export const canAccessPage = (
   if (!user) return false;
   if (pageId === 'production' && user.role === 'sale') return false;
   const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
+  if (pageId === 'production' && user.role === 'accountant') return user.active === true && (allowed.includes('accounting') || allowed.includes('production'));
   if (pageId === 'sales_management') return user.role === 'admin';
   if (pageId === 'work_schedule') return user.active !== false;
   if (pageId === 'leads') return allowed.includes('leads') || allowed.includes('crm');

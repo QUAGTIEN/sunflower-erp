@@ -23,6 +23,7 @@ import { getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
 import { ProductionOrderWorkspace } from '@/features/production/components/ProductionOrderWorkspace';
+import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import './Production.css';
 
 interface ProductionProps {
@@ -85,7 +86,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
 
   useEffect(() => {
     if (!hasProductionAccess(currentUser, 'production')) return;
-    return subscribeMachines(setMachines);
+    return subscribeMachines(setMachines, canManageProduction(currentUser));
   }, [currentUser]);
 
   const machineCatalog = machines.length > 0 ? machines : DEFAULT_MACHINES;
@@ -389,7 +390,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
           Lệnh sản xuất
         </button>
         <button type="button" role="tab" aria-selected={productionTab === 'machines'}
-          className={productionTab === 'machines' ? 'is-active' : ''} onClick={() => setProductionTab('machines')}>
+          className={productionTab === 'machines' ? 'is-active' : ''} onClick={() => { if (confirmAppNavigation()) setProductionTab('machines'); }}>
           Danh sách máy
         </button>
       </div>
