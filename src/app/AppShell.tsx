@@ -41,6 +41,7 @@ import {
   Building2,
   Archive,
   FolderOpen,
+  Settings,
   Truck,
   DollarSign,
   Trash2,
@@ -1149,6 +1150,7 @@ function AppShell() {
               title={t('Lệnh Sản Xuất (LSX)')}
             >
               <div className="sidebar-item-content">
+                <Settings size={16} />
                 <span className="sidebar-item-label">Sản xuất</span>
               </div>
             </button>
