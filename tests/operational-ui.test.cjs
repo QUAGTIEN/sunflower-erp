@@ -1,0 +1,163 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const root = path.resolve(__dirname, '..');
+function loader(stubs = {}) {
+  const cache = new Map();
+  function load(file) {
+    file = path.resolve(root, file);
+    if (cache.has(file)) return cache.get(file).exports;
+    const mod = { exports: {} }; cache.set(file, mod);
+    const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
+    const resolve = name => {
+      if (Object.hasOwn(stubs, name)) return stubs[name];
+      if (name.endsWith('.css')) return {};
+      if (name.endsWith('.woff2?url')) return '/test-font.woff2';
+      if (!name.startsWith('.') && !name.startsWith('@/')) return require(name);
+      const base = name.startsWith('@/') ? path.join(root, 'src', name.slice(2)) : path.resolve(path.dirname(file), name);
+      const candidate = [base.replace(/\.js$/, '.ts'), `${base}.ts`, `${base}.tsx`, base].find(file => fs.existsSync(file));
+      if (!candidate) throw new Error(`Missing ${name}`);
+      return load(candidate);
+    };
+    try { new Function('require', 'module', 'exports', code)(resolve, mod, mod.exports); }
+    catch (error) { error.message = `${file}: ${error.message}`; throw error; }
+    return mod.exports;
+  }
+  return load;
+}
+
+const nodes = tree => !tree || typeof tree !== 'object' ? [] : [tree, ...(Array.isArray(tree.props?.children) ? tree.props.children.flat(Infinity) : [tree.props?.children]).flatMap(nodes)];
+const admin = { uid: 'admin', displayName: 'Admin', role: 'admin', active: true, allowedPages: [] };
+const menu = tree => nodes(tree).filter(node => node.type?.name === 'RowActionMenu');
+function screen(file, name, props, initial = {}, stubs = {}) {
+  const ast = ts.createSourceFile(file, fs.readFileSync(path.join(root,file),'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const names = [];
+  const visit = node => {
+    if (ts.isVariableDeclaration(node) && ts.isArrayBindingPattern(node.name) && node.initializer && ts.isCallExpression(node.initializer) && node.initializer.expression.getText(ast) === 'useState') names.push(node.name.elements[0].getText(ast));
+    ts.forEachChild(node, visit);
+  };
+  visit(ast);
+  const state = new Map(Object.entries(initial)), refs = [], layouts = []; let cursor=0, refCursor=0;
+  const react = { ...React, useEffect() {}, useLayoutEffect: cb => layouts.push(cb), useMemo: cb => cb(), useCallback: cb => cb,
+    useRef(value) { const index=refCursor++; if (!(index in refs)) refs[index]={current:value}; return refs[index]; },
+    useState(value) { const index=cursor++, key=names[index] || 'hook'+index; if (!state.has(key)) state.set(key,typeof value==='function'?value():value); return [state.get(key), next=>state.set(key,typeof next==='function'?next(state.get(key)):next)]; }
+  };
+  const Component=loader({react,
+    '@/context/LanguageContext': {useLanguage:()=>({t:value=>value})},
+    '@/infrastructure/firebase/erpDataGateway': {dbService:{getCollection:async()=>[]}},
+    '@/shared/feedback/mutationFeedback': {runMutationAction:(_name,action)=>action(),requireConfirmedMutation:value=>value,showSuccessToast(){}},
+    ...stubs
+  })(file)[name];
+  return {state, refs, layouts, render:()=>{cursor=0;refCursor=0;return Component(props);} };
+}
+const invoice = index => ({id:'inv'+index,invoiceCode:'INV-'+index,amount:100,paidAmount:20,type:'receivable',status:'partially_paid',dueDate:'2026-11-01',companyName:'Khách dài '+index});
+
+test('accounting row menus retain payment/edit actions and pagination reaches every invoice', async()=>{
+  const writes=[];
+  const ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos:[],currentUser:admin,users:[],onRefresh(){}},{invoices:Array.from({length:26},(_,i)=>invoice(i+1))},{
+    '@/infrastructure/firebase/erpDataGateway':{dbService:{getCollection:async()=>[],updateDocument:async(...args)=>{writes.push(args);return true;}}}
+  });
+  let tree=ui.render(); assert.equal(tree.props['data-erp-table-text'],'single-line');
+  assert.equal(menu(tree).length,25); assert.ok(menu(tree).every(node=>node.props.textOnly));
+  const pagination=nodes(tree).find(node=>node.type?.name==='DataTablePagination');
+  assert.equal(pagination.props.totalItems,26); pagination.props.setPage(2);
+  tree=ui.render(); assert.equal(menu(tree).length,1); assert.equal(menu(tree)[0].props.label,'Thao tác INV-26');
+  assert.deepEqual(menu(tree)[0].props.actions.map(action=>action.label),['Chi Tiết','Sửa','Xóa','Thu Nợ']);
+  menu(tree)[0].props.actions.find(action=>action.label==='Thu Nợ').onSelect();
+  tree=ui.render(); assert.equal(ui.state.get('selectedInvoice').id,'inv26'); assert.equal(ui.state.get('paymentAmount'),80);
+  await nodes(tree).find(node=>node.type==='form').props.onSubmit({preventDefault(){}});
+  assert.equal(writes[0][0],'invoices'); assert.equal(writes[0][1],'inv26'); assert.equal(writes[0][2].paidAmount,100); assert.equal(writes[0][2].status,'paid');
+});
+test('invoice menus keep existing role restrictions and omit payment for settled invoices',()=>{
+  const settled={...invoice(1),paidAmount:100,status:'paid'};
+  const ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos:[],currentUser:{...admin,role:'sale'},users:[],onRefresh(){}},{invoices:[settled]});
+  assert.deepEqual(menu(ui.render())[0].props.actions.map(action=>action.label),['Chi Tiết']);
+});
+test('costing menu still opens original cost editor after changing pages',()=>{
+  const pos=Array.from({length:27},(_,i)=>({id:'po'+i,poCode:'PO-'+i,customerName:'Khách',totalAmount:1000000,status:'waiting_production',items:[{material:'giấy',size:'10x20mm',quantity:100}]}));
+  const ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos,currentUser:admin,users:[],onRefresh(){}},{activeTab:'costing'});
+  let tree=ui.render(); assert.equal(menu(tree).length,25);
+  nodes(tree).find(node=>node.type?.name==='DataTablePagination').props.setPage(2);
+  tree=ui.render(); assert.equal(menu(tree).length,2);
+  assert.deepEqual(menu(tree)[0].props.actions.map(action=>action.label),['Sửa Chi Phí','In Phiếu']);
+  menu(tree)[0].props.actions[0].onSelect(); assert.equal(ui.state.get('customCostModalPo').id,'po25');
+});
+test('inventory uses text statuses and its existing detail/edit handlers remain reachable',()=>{
+  const item={id:'paper',materialName:'Vật tư tên rất dài',unit:'m²',category:'paper',qtyInStock:0,minQtyAlert:10};
+  const ui=screen('src/features/inventory/pages/InventoryPage.tsx','Inventory',{currentUser:admin,onRefresh(){}},{inventoryList:[item]});
+  let tree=ui.render(); assert.equal(tree.props['data-erp-table-text'],'single-line');
+  assert.ok(nodes(tree).some(node=>node.props?.className==='erp-status-text erp-status-text--danger'));
+  assert.ok(!nodes(tree).some(node=>String(node.props?.className||'').includes('badge')));
+  assert.equal(menu(tree)[0].props.textOnly,true);
+  menu(tree)[0].props.actions.find(action=>action.label==='Chi Tiết').onSelect();
+  tree=ui.render(); assert.equal(ui.state.get('selectedItem').id,'paper');
+  const edit=nodes(tree).find(node=>node.type==='button'&&node.props.title==='Sửa');
+  assert.equal(edit.props.children,'Sửa');edit.props.onClick();assert.equal(ui.state.get('showEditModal'),true);
+});
+test('purchasing keeps request processing actions and columns while replacing icon controls',()=>{
+  const request={id:'r1',requestCode:'MH-1',poCode:'PO-1',status:'new',customerName:'Khách dài',productName:'Tem',quantity:50,unit:'cái',sourcingType:'subcontract',createdAt:'2026-10-22'};
+  const ui=screen('src/features/procurement/pages/PurchasePage.tsx','Purchase',{pos:[],purchaseOrders:[],procurementRequests:[request],currentUser:admin,users:[],onRefresh(){}},{},{
+    '@/hooks/useSharedTableColumns':{useSharedTableColumns:()=>({selectedIds:[],setSelectedIds(){},canEditColumns:true})},
+    '@/context/TableColumnLayoutContext':{useTableColumnLayouts:()=>({canEditColumns:true})},
+    '@/hooks/useReorderableTableColumns':{useReorderableTableColumns:({columns})=>({orderedColumnIds:columns.map(column=>column.id),getHeaderProps:()=>({})})}
+  });
+  let tree=ui.render(); assert.equal(tree.props['data-erp-table-text'],'single-line');
+  assert.deepEqual(menu(tree)[0].props.actions.map(action=>action.label),['Tiếp nhận','Chọn NCC']);
+  menu(tree)[0].props.actions[1].onSelect();tree=ui.render();assert.equal(ui.state.get('selectedRequestId'),'r1');
+  assert.ok(nodes(tree).some(node=>node.type==='button'&&node.props.children==='Đóng'));
+  assert.ok(nodes(tree).some(node=>node.type?.name==='DataFilterButton'&&node.props.textOnly));
+  assert.ok(nodes(tree).some(node=>node.type==='button'&&node.props.children==='Tùy chỉnh cột'));
+});
+test('text filter controls preserve callbacks, and default shared controls retain their icons',()=>{
+  const controls=loader()('src/components/DataWorkspaceFilters.tsx');
+  const render=props=>renderToStaticMarkup(React.createElement(controls.DataFilterButton,{activeCount:2,open:false,onClick(){},...props}));
+  assert.ok(!render({textOnly:true}).includes('<svg'));assert.ok(render({textOnly:true}).includes('Bộ lọc (2)'));assert.ok(render({}).includes('<svg'));
+  const panel=renderToStaticMarkup(React.createElement(controls.DataFilterPanel,{textOnly:true,open:true,title:'Lọc',activeCount:0,onClose(){},onReset(){}},'Nội dung'));
+  assert.ok(!panel.includes('<svg'));assert.ok(panel.includes('>Đóng</button>'));
+});
+test('ellipsis menu fits narrow viewports and still blocks disabled actions',()=>{
+  let selected=0;
+  const previousWindow=global.window;
+  global.window={innerWidth:180,innerHeight:160};
+  try {
+    const ui=screen('src/components/RowActionMenu.tsx','RowActionMenu',{textOnly:true,actions:[{label:'Không được sửa',disabled:true,onSelect:()=>selected++},{label:'Chi tiết',onSelect:()=>selected++}]},{open:true},{'react-dom':{createPortal:child=>child}});
+    const previousDocument=global.document;global.document={body:{}};
+    try {
+      ui.render();ui.refs[0].current={getBoundingClientRect:()=>({right:175,bottom:155,top:120})};ui.refs[1].current={offsetHeight:250};
+      ui.layouts.splice(0).forEach(effect=>effect());
+      const tree=ui.render(), popover=nodes(tree).find(node=>node.props?.role==='menu');
+      assert.ok(popover.props.style.left>=8);assert.ok(popover.props.style.left+popover.props.style.width<=172);assert.ok(popover.props.style.top>=8);
+      assert.equal(nodes(tree).find(node=>node.type==='button'&&node.props['aria-haspopup']==='menu').props.children,'…');
+      const items=nodes(tree).filter(node=>node.props?.role==='menuitem');items[0].props.onClick();assert.equal(selected,0);items[1].props.onClick();assert.equal(selected,1);assert.equal(ui.state.get('open'),false);
+    } finally { global.document=previousDocument; }
+  } finally { global.window=previousWindow; }
+});
+
+test('single-line grids keep full hover text up to date without changing other pages adaptive behavior',()=>{
+  class Element {
+    constructor(text='',title='') { this.textContent=text;this.title=title;this.dataset={};this.children=[];this.clientWidth=10;this.offsetParent={};const classes=new Set();this.classList={add:(...names)=>names.forEach(name=>classes.add(name)),remove:(...names)=>names.forEach(name=>classes.delete(name)),contains:name=>classes.has(name)}; }
+    querySelector(){return null;}
+  }
+  const automatic=new Element('Tên rất dài'), authored=new Element('Mã','Thông tin riêng'), legacy=new Element('Tên dài ở trang khác');
+  const single={offsetParent:{},closest:()=>({}),querySelectorAll:()=>[automatic,authored]};
+  const other={offsetParent:{},closest:()=>null,querySelectorAll:()=>[legacy]};
+  const root={querySelectorAll:()=>[single,other]};
+  const listeners=new Map(), frames=new Map();let sequence=0,measurements=0,cleanup;
+  const window={getComputedStyle:()=>({paddingLeft:'0',paddingRight:'0',font:'13px Inter',letterSpacing:'0'}),requestAnimationFrame:cb=>{frames.set(++sequence,cb);return sequence;},cancelAnimationFrame:id=>frames.delete(id),addEventListener:(name,cb)=>listeners.set(name,cb),removeEventListener:name=>listeners.delete(name)};
+  const document={querySelector:()=>root,createElement:()=>({getContext:()=>({measureText:()=>{measurements++;return {width:100};}})}),createRange:()=>({selectNodeContents(){},getClientRects:()=>[{width:10,height:10,top:0}]})};
+  class Observer {observe(){}disconnect(){}}
+  const code=ts.transpileModule(fs.readFileSync(path.join(rootPath(),'src/hooks/useAdaptiveTableText.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+  const mod={exports:{}};
+  new Function('require','module','exports','window','document','HTMLElement','Element','MutationObserver','ResizeObserver',code)(()=>({useEffect:cb=>{cleanup=cb();}}),mod,mod.exports,window,document,Element,Element,Observer,Observer);
+  mod.exports.useAdaptiveTableText('accounting','admin');
+  const flush=()=>{const callbacks=[...frames.values()];frames.clear();callbacks.forEach(cb=>cb());};flush();
+  assert.equal(automatic.title,'Tên rất dài');assert.equal(authored.title,'Thông tin riêng');assert.equal(automatic.classList.contains('is-two-line'),false);
+  assert.equal(legacy.classList.contains('is-two-line'),true);assert.equal(measurements,1);
+  automatic.textContent='Tên vừa cập nhật';listeners.get('resize')();flush();assert.equal(automatic.title,'Tên vừa cập nhật');
+  automatic.title='Ghi chú do màn hình cung cấp';automatic.textContent='Tên khác';listeners.get('resize')();flush();assert.equal(automatic.title,'Ghi chú do màn hình cung cấp');cleanup();
+});
+function rootPath(){return root;}

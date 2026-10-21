@@ -1270,3 +1270,103 @@ input[type='checkbox']:disabled {
     display: none;
   }
 }
+
+/* Scoped operational grids: production, purchasing, inventory and accounting.
+   Other workspaces retain their existing adaptive text policy. */
+.app-main [data-erp-table-text='single-line'] { min-width: 0; max-width: 100%; }
+.app-main [data-erp-table-text='single-line'] table { table-layout: fixed !important; }
+.app-main [data-erp-table-text='single-line'] table :is(th, td) {
+  height: var(--erp-table-row-height) !important;
+  padding: 3px 10px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  overflow-wrap: normal;
+}
+.app-main [data-erp-table-text='single-line'] table td :is(.erp-table-cell-text, .erp-adaptive-table-text) {
+  display: block !important;
+  max-height: none;
+  overflow: hidden !important;
+  font-size: inherit !important;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  -webkit-line-clamp: 1;
+}
+.app-main [data-erp-table-text='single-line'] table .erp-status-text,
+.app-main [data-erp-table-text='single-line'] table .machine-status {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
+  font-weight: 500;
+  text-transform: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.erp-status-text--info { color: #1d4ed8; }
+.erp-status-text--success { color: #087a55; }
+.erp-status-text--warning { color: #925a08; }
+.erp-status-text--danger { color: #b42336; }
+.app-main [data-erp-table-text='single-line'] .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.app-main [data-erp-table-text='single-line'] :is(.modal-header, .modal-footer, .card-header) {
+  min-width: 0;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.app-main [data-erp-table-text='single-line'] .modal-header > div { min-width: 0; }
+.app-main [data-erp-table-text='single-line'] .modal-header :is(strong, span) { overflow-wrap: anywhere; }
+.app-main [data-erp-table-text='single-line'] .modal-content { max-width: calc(100vw - 32px); }
+.app-main [data-erp-table-text='single-line'] .erp-number-cell,
+.app-main [data-erp-table-text='single-line'] .accounting-invoice-table :is(th, td):is(:nth-child(5), :nth-child(6), :nth-child(7)),
+.app-main [data-erp-table-text='single-line'] .accounting-costing-table :is(th, td):is(:nth-child(n+3):nth-child(-n+10)),
+.app-main [data-erp-table-text='single-line'] .inventory-stock-table :is(th, td):is(:nth-child(n+3):nth-child(-n+6)),
+.app-main [data-erp-table-text='single-line'] .inventory-summary-table :is(th, td):nth-child(n+4),
+.app-main [data-erp-table-text='single-line'] .inventory-export-table :is(th, td):nth-child(6) { text-align: right; font-variant-numeric: tabular-nums; }
+.app-main [data-erp-table-text='single-line'] .row-action-menu { display: inline-flex !important; vertical-align: middle; }
+.app-main [data-erp-table-text='single-line'] .row-action-menu__trigger { width: 32px; min-width: 32px; height: 32px; min-height: 32px !important; font-size: 20px; line-height: 1; }
+.app-main .purchase-page[data-erp-table-text] .purchase-search input { padding-left: 10px; }
+.app-main .purchase-page[data-erp-table-text] .purchase-list-tabs { display: flex; width: 100%; overflow-x: auto; }
+.app-main .purchase-page[data-erp-table-text] .purchase-list-tab { flex: 0 0 auto; white-space: nowrap; }
+.app-main .purchase-page[data-erp-table-text] .purchase-list-tab__count { min-width: 0; height: auto; padding: 0; border: 0; background: transparent; color: inherit; }
+.app-main .purchase-page[data-erp-table-text] .purchase-new-text { margin-left: 6px; color: #b42336; font-size: 11px; font-weight: 600; }
+.app-main .purchase-page[data-erp-table-text] .purchase-request-code { display: block !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-main .inventory-view[data-erp-table-text] .inventory-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.app-main .inventory-view[data-erp-table-text] .inventory-toolbar > div:first-child { display: flex; flex: 1 1 280px; min-width: 0; gap: 8px; }
+.app-main .inventory-view[data-erp-table-text] .inventory-toolbar input { min-width: 0; flex: 1 1 180px; }
+.app-main .inventory-view[data-erp-table-text] .inventory-toolbar .tab-container { display: flex; max-width: 100%; overflow-x: auto; }
+.app-main .inventory-view[data-erp-table-text] .inventory-toolbar .tab-btn { flex: 0 0 auto; white-space: nowrap; }
+.app-main [data-erp-table-text='single-line'] .lsx-toolbar { padding: 0; border: 0; background: transparent; }
+.app-main [data-erp-table-text='single-line'] .lsx-list th:last-child { width: 80px; }
+.app-main [data-erp-table-text='single-line'] .lsx-list { min-width: 1420px; }
+.app-main [data-erp-table-text='single-line'] .lsx-list th:first-child { width: 190px; }
+.app-main [data-erp-table-text='single-line'] .lsx-list th:nth-child(2) { width: 280px; }
+.app-main [data-erp-table-text='single-line'] .lsx-list th:nth-child(3) { width: 240px; }
+.app-main [data-erp-table-text='single-line'] .lsx-list th:nth-child(4) { width: 260px; }
+.app-main [data-erp-table-text='single-line'] .lsx-list th:nth-child(5) { width: 120px; }
+.app-main [data-erp-table-text='single-line'] .lsx-list th:nth-child(6) { width: 230px; }
+.app-main [data-erp-table-text='single-line'] .machine-summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.app-main [data-erp-table-text='single-line'] .machine-section-heading { flex-wrap: wrap; gap: 8px; }
+@media (max-width: 760px) {
+  .app-main [data-erp-table-text='single-line'] .machine-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-main [data-erp-table-text='single-line'] .erp-data-table-pagination { flex-wrap: wrap; flex: 0 0 auto; height: auto; min-height: 50px; gap: 8px; white-space: normal; }
+  .app-main [data-erp-table-text='single-line'] .erp-data-table-pagination > span { padding: 0; }
+  .app-main [data-erp-table-text='single-line'] .erp-data-table-pagination label { padding-right: 0; }
+}
+
+
+.app-main [data-erp-table-text='single-line'] .card > .erp-primary-data-table + .erp-data-table-pagination { margin-top: 0; }
+.app-main [data-erp-table-text='single-line'] .erp-column-layout-error { flex-wrap: wrap; }
+.app-main [data-erp-table-text='single-line'] .erp-column-layout-error > span { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; }
+.app-main .inventory-view[data-erp-table-text] .inventory-categories { min-width: 0; flex: 1 1 560px; }
+.app-main [data-erp-table-text='single-line'] .machine-section-heading > div { min-width: 0; }
+
+.app-main [data-erp-table-text='single-line'] .machine-workspace table :is(th, td):is(:nth-child(4), :nth-child(5), :nth-child(6)),
+.app-main [data-erp-table-text='single-line'] .lsx-lines :is(th, td):is(:nth-child(5), :nth-child(6), :nth-child(7)) { text-align: right; font-variant-numeric: tabular-nums; }

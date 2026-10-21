@@ -13,19 +13,21 @@ export interface RowActionMenuItem {
 interface RowActionMenuProps {
   actions: RowActionMenuItem[];
   label?: string;
+  textOnly?: boolean;
 }
 
 interface MenuPosition {
   top: number;
   left: number;
+  width: number;
 }
 
 const MENU_WIDTH = 196;
 const VIEWPORT_MARGIN = 8;
 
-export function RowActionMenu({ actions, label = 'Mở danh sách thao tác' }: RowActionMenuProps) {
+export function RowActionMenu({ actions, label = 'Mở danh sách thao tác', textOnly = false }: RowActionMenuProps) {
   const [open, setOpen] = useState(false);
-  const [position, setPosition] = useState<MenuPosition>({ top: 0, left: 0 });
+  const [position, setPosition] = useState<MenuPosition>({ top: 0, left: 0, width: MENU_WIDTH });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -36,17 +38,18 @@ export function RowActionMenu({ actions, label = 'Mở danh sách thao tác' }: 
     if (!trigger) return;
 
     const rect = trigger.getBoundingClientRect();
-    const menuHeight = menuRef.current?.offsetHeight ?? actions.length * 38 + 12;
+    const menuHeight = Math.min(menuRef.current?.offsetHeight ?? actions.length * 38 + 12, window.innerHeight - VIEWPORT_MARGIN * 2);
+    const width = Math.min(MENU_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2);
     const left = Math.min(
-      window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN,
-      Math.max(VIEWPORT_MARGIN, rect.right - MENU_WIDTH)
+      window.innerWidth - width - VIEWPORT_MARGIN,
+      Math.max(VIEWPORT_MARGIN, rect.right - width)
     );
     const belowTop = rect.bottom + 6;
     const top = belowTop + menuHeight <= window.innerHeight - VIEWPORT_MARGIN
       ? belowTop
       : Math.max(VIEWPORT_MARGIN, rect.top - menuHeight - 6);
 
-    setPosition({ top, left });
+    setPosition({ top, left, width });
   }, [actions.length]);
 
   useLayoutEffect(() => {
@@ -91,14 +94,14 @@ export function RowActionMenu({ actions, label = 'Mở danh sách thao tác' }: 
         title={label}
         onClick={() => setOpen(previous => !previous)}
       >
-        <MoreHorizontal size={18} />
+        {textOnly ? '…' : <MoreHorizontal size={18} />}
       </button>
       {open && createPortal(
         <div
           ref={menuRef}
           className="row-action-menu__popover"
           role="menu"
-          style={{ top: position.top, left: position.left, width: MENU_WIDTH }}
+          style={{ top: position.top, left: position.left, width: position.width, maxHeight: 'calc(100vh - 16px)', overflowY: 'auto' }}
           onClick={event => event.stopPropagation()}
         >
           {actions.map(action => (
@@ -114,7 +117,7 @@ export function RowActionMenu({ actions, label = 'Mở danh sách thao tác' }: 
                 action.onSelect();
               }}
             >
-              {action.icon}
+              {!textOnly && action.icon}
               <span>{action.label}</span>
             </button>
           ))}

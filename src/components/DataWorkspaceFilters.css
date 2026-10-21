@@ -400,3 +400,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+.data-filter-button--text { width: auto; min-width: 76px; flex: 0 0 auto; padding: 0 12px; }
+.data-filter-panel--text > header > button { width: auto; min-width: 48px; padding: 0 8px; }
+.data-filter-panel--text svg { display: none; }
+.data-filter-chips--text button { border: 0; border-radius: 0; background: transparent; padding: 0 4px; color: #334155; }
+
+
+.data-filter-panel--text .data-filter-section__count { padding: 0; border: 0; border-radius: 0; background: transparent; }

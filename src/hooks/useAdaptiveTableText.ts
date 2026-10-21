@@ -60,7 +60,17 @@ export const useAdaptiveTableText = (pageId: string, userId: string) => {
     const updateText = () => {
       root.querySelectorAll<HTMLElement>('.erp-viewport-table-scroll').forEach(viewport => {
         if (viewport.offsetParent === null) return;
+        const singleLine = Boolean(viewport.closest('[data-erp-table-text="single-line"]'));
         viewport.querySelectorAll<HTMLTableCellElement>('table tbody td').forEach(cell => {
+          if (singleLine) {
+            // These operational grids deliberately keep one line. Preserve authored titles.
+            if (!cell.title || cell.dataset.erpAutoTitle === cell.title) {
+              const title = cell.textContent?.replace(/\s+/g, ' ').trim() || '';
+              cell.title = title;
+              cell.dataset.erpAutoTitle = title;
+            }
+            return;
+          }
           const target = getTextTarget(cell);
           if (!target) return;
           const direct = target === cell;

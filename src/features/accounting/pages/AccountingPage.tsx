@@ -5,7 +5,9 @@ import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { BarChart } from '@/components/VisualCharts';
-import { Trash2, Pencil } from 'lucide-react';
+import { RowActionMenu } from '@/components/RowActionMenu';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { getPOQueueLabel, getPOQueueStatus, getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
@@ -75,6 +77,9 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
   const filteredInvoices = currentUser.role === 'admin'
     ? invoices
     : invoices.filter(inv => inv.assignedAccountantId === currentUser.uid || !inv.assignedAccountantId);
+
+  const invoicePagination = useDataTablePagination(filteredInvoices);
+  const costingPagination = useDataTablePagination(pos);
 
   const fetchAccountingData = async () => {
     const invList = await dbService.getCollection('invoices');
@@ -448,7 +453,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
     .slice(0, 5);
 
   return (
-    <div className="accounting-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="accounting-view" data-erp-table-text="single-line" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <PageContextHeader section={t('Kế toán')} current={activeTab === 'catalog' ? t('Danh mục hàng') : activeTab === 'costing' ? t('Báo cáo lãi gộp đơn hàng') : t('Công nợ phải thu & phải trả')} />
 
       {/* Tabs */}
@@ -489,8 +494,8 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
               </button>
             </div>
           )}
-          <div className="table-container accounting-invoice-table-wrap">
-            <table className="accounting-invoice-table">
+          <div className="table-container accounting-invoice-table-wrap erp-primary-data-table">
+            <table className="accounting-invoice-table" data-resize-key="accounting-invoices">
               <thead>
                 <tr>
                   <th>{t('Số Hóa Đơn')}</th>
@@ -506,7 +511,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                 </tr>
               </thead>
               <tbody>
-                {filteredInvoices.map(inv => {
+                {invoicePagination.rows.map(inv => {
                   const linkedPo = pos.find(p => p.id === inv.poId);
                   const isReceivable = inv.type === 'receivable';
                   const balance = Number(inv.amount) - (Number(inv.paidAmount) || 0);
@@ -517,7 +522,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                       <td>{linkedPo ? linkedPo.poCode : inv.poCode || 'N/A'}</td>
                       <td>{inv.companyName}</td>
                       <td>
-                        <span className={`badge ${isReceivable ? 'badge-info' : 'badge-warning'}`}>
+                        <span className={`erp-status-text ${isReceivable ? 'erp-status-text--info' : 'erp-status-text--warning'}`}>
                           {isReceivable ? t('Công Nợ Phải Thu') : t('Công Nợ Phải Trả')}
                         </span>
                       </td>
@@ -528,43 +533,32 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                       </td>
                       <td>{formatDate(inv.dueDate)}</td>
                       <td>
-                        <span className={`badge ${
-                          inv.status === 'paid' ? 'badge-success' :
-                          inv.status === 'partially_paid' ? 'badge-warning' : 'badge-danger'
+                        <span className={`erp-status-text ${
+                          inv.status === 'paid' ? 'erp-status-text--success' :
+                          inv.status === 'partially_paid' ? 'erp-status-text--warning' : 'erp-status-text--danger'
                         }`}>
                           {inv.status === 'paid' ? t('Đã thanh toán') :
                            inv.status === 'partially_paid' ? t('Thanh toán 1 phần') : t('Chưa trả hết')}
                         </span>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button className="btn btn-sm btn-outline" onClick={() => { setSelectedInvoice(inv); setShowDetailsInvoiceModal(true); }}>{t('Chi Tiết')}</button>
-                          {(currentUser.role === 'admin' || currentUser.role === 'accountant') && (
-                            <>
-                              <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => handleOpenEditInvoice(inv)} title={t('Sửa')}>
-                                <Pencil size={14} />
-                              </button>
-                              <button className="btn btn-sm btn-danger btn-symbol-sm" onClick={() => handleDeleteInvoice(inv.id)} title={t('Xóa')}>
-                                <Trash2 size={14} />
-                              </button>
-                            </>
-                          )}
-                          {balance > 0 && (
-                            <button
-                              className="btn btn-sm btn-primary"
-                              onClick={() => { setSelectedInvoice(inv); setPaymentAmount(balance); }}
-                            >
-                              {isReceivable ? t('Thu Nợ') : t('Trả Tiền')}
-                            </button>
-                          )}
-                        </div>
+                        <RowActionMenu textOnly label={`Thao tác ${inv.invoiceCode}`} actions={[
+                          { label: t('Chi Tiết'), onSelect: () => { setSelectedInvoice(inv); setShowDetailsInvoiceModal(true); } },
+                          ...((currentUser.role === 'admin' || currentUser.role === 'accountant') ? [
+                            { label: t('Sửa'), onSelect: () => handleOpenEditInvoice(inv) },
+                            { label: t('Xóa'), onSelect: () => { void handleDeleteInvoice(inv.id); }, danger: true }
+                          ] : []),
+                          ...(balance > 0 ? [{ label: isReceivable ? t('Thu Nợ') : t('Trả Tiền'), onSelect: () => { setSelectedInvoice(inv); setPaymentAmount(balance); } }] : [])
+                        ]} />
                       </td>
                     </tr>
                   );
                 })}
+                {!filteredInvoices.length && <tr><td colSpan={10}>{t('Chưa có hóa đơn phù hợp.')}</td></tr>}
               </tbody>
             </table>
           </div>
+          <DataTablePagination {...invoicePagination.paginationProps} />
         </div>
       )}
 
@@ -583,8 +577,8 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
             <div className="card-header">
               <span className="card-title">{t('Báo Cáo Lãi Gộp Đơn Hàng')}</span>
             </div>
-            <div className="table-container accounting-costing-table-wrap">
-              <table className="accounting-costing-table">
+            <div className="table-container accounting-costing-table-wrap erp-primary-data-table">
+              <table className="accounting-costing-table" data-resize-key="accounting-costing">
                 <thead>
                   <tr>
                     <th>{t('Mã PO')}</th>
@@ -601,7 +595,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                   </tr>
                 </thead>
                 <tbody>
-                  {pos.map(po => {
+                  {costingPagination.rows.map(po => {
                     const c = calculateCosting(po);
                     const queueStatus = getPOQueueStatus(po);
                     const isEstimated = !['waiting_invoice', 'waiting_receivable', 'waiting_discount', 'completed'].includes(queueStatus);
@@ -618,35 +612,24 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                         <td style={{ fontWeight: 600 }}>{c.totalCost?.toLocaleString()} đ</td>
                         <td style={{ color: 'var(--color-success)', fontWeight: 700 }}>{c.grossProfit?.toLocaleString()} đ</td>
                         <td>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontWeight: 'bold', color: c.marginPercent > 30 ? 'var(--color-success)' : 'var(--color-warning)' }}>
-                              {c.marginPercent.toFixed(1)}%
-                            </span>
-                            {isEstimated && (
-                              <span style={{ fontSize: '9.5px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                                ({t('Dự kiến')})
-                              </span>
-                            )}
-                          </div>
+                          <span style={{ color: c.marginPercent > 30 ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                            {c.marginPercent.toFixed(1)}%{isEstimated ? ` (${t('Dự kiến')})` : ''}
+                          </span>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            <button
-                              className="btn btn-sm btn-outline btn-symbol-sm"
-                              onClick={() => handleOpenCostModal(po)}
-                              title={t('Sửa Chi Phí')}
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button className="btn btn-sm btn-outline" onClick={() => printWorkOrder(po)}>{t('In Phiếu')}</button>
-                          </div>
+                          <RowActionMenu textOnly label={`Thao tác ${po.poCode}`} actions={[
+                            { label: t('Sửa Chi Phí'), onSelect: () => handleOpenCostModal(po) },
+                            { label: t('In Phiếu'), onSelect: () => printWorkOrder(po) }
+                          ]} />
                         </td>
                       </tr>
                     );
                   })}
+                  {!pos.length && <tr><td colSpan={11}>{t('Chưa có đơn hàng phù hợp.')}</td></tr>}
                 </tbody>
               </table>
             </div>
+            <DataTablePagination {...costingPagination.paginationProps} />
           </div>
         </div>
       )}
@@ -880,8 +863,8 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
             </div>
             <div className="modal-footer">
               {(currentUser.role === 'admin' || currentUser.role === 'accountant') && (
-                <button className="btn btn-primary btn-symbol" onClick={() => { setShowDetailsInvoiceModal(false); handleOpenEditInvoice(selectedInvoice); }} title={t('Sửa')}>
-                  <Pencil size={16} />
+                <button className="btn btn-primary" onClick={() => { setShowDetailsInvoiceModal(false); handleOpenEditInvoice(selectedInvoice); }} title={t('Sửa')}>
+                  {t('Sửa')}
                 </button>
               )}
               <button className="btn btn-outline" onClick={() => setShowDetailsInvoiceModal(false)}>{t('Đóng')}</button>

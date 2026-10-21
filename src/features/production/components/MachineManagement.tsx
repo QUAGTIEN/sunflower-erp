@@ -177,7 +177,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
   const unavailableCount = machineRows.filter(row => ['maintenance', 'fault'].includes(row.runtimeStatus)).length;
 
   return (
-    <div className="machine-workspace">
+    <div className="machine-workspace" data-erp-table-text="single-line">
       <div className="machine-summary-grid">
         <div className="machine-summary-card"><div><strong>{machines.length}</strong><span>Tổng số máy</span></div></div>
         <div className="machine-summary-card machine-summary-card--running"><div><strong>{runningCount}</strong><span>Máy đang chạy</span></div></div>
@@ -222,10 +222,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
               {machinePagination.rows.map(({ machine, commands, runtimeStatus }) => (
                 <tr key={machine.id}>
                   <td><strong>{machine.code}</strong></td>
-                  <td>
-                    <strong>{machine.name}</strong>
-                    {machine.notes && <span className="machine-cell-subtitle">{machine.notes}</span>}
-                  </td>
+                  <td title={[machine.name, machine.notes].filter(Boolean).join(' · ')}><strong>{machine.name}</strong></td>
                   <td>{machine.type}</td>
                   <td>{machine.colorCount || '—'}</td>
                   <td>{machine.maxWidthMm ? `${machine.maxWidthMm} mm` : '—'}</td>
@@ -237,7 +234,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
                   <td title={commands.map(command => formatDate(command.deliveryDeadline)).join('; ')}>{commands.map(command => formatDate(command.deliveryDeadline)).join('; ') || '—'}</td>
                   {canManage && (
                     <td>
-                      <RowActionMenu
+                      <RowActionMenu textOnly
                         label={`Thao tác ${machine.name}`}
                         actions={[
                           { label: 'Chỉnh sửa máy', onSelect: () => openEditModal(machine) },

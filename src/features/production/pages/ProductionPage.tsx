@@ -381,7 +381,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   if (!hasProductionAccess(currentUser, 'production')) return <div role="alert">Bạn không có quyền truy cập Sản xuất.</div>;
 
   return (
-    <div className="production-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="production-view" data-erp-table-text="single-line" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <PageContextHeader section={t('Sản xuất')} current={productionTab === 'machines' ? 'Danh sách máy' : 'Lệnh sản xuất'} />
 
       <div className="production-tabs content-tabs" role="tablist" aria-label="Quản lý sản xuất">

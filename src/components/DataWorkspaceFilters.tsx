@@ -18,31 +18,32 @@ export const DataFilterButton: React.FC<{
   activeCount: number;
   open: boolean;
   onClick: () => void;
-}> = ({ activeCount, open, onClick }) => (
+  textOnly?: boolean;
+}> = ({ activeCount, open, onClick, textOnly = false }) => (
   <button
     type="button"
-    className={`data-filter-button ${open || activeCount > 0 ? 'is-active' : ''}`}
+    className={`data-filter-button ${textOnly ? 'data-filter-button--text' : ''} ${open || activeCount > 0 ? 'is-active' : ''}`}
     aria-expanded={open}
     aria-label={activeCount > 0 ? `Bộ lọc, ${activeCount} điều kiện đang áp dụng` : 'Bộ lọc'}
     title={activeCount > 0 ? `Bộ lọc (${activeCount})` : 'Bộ lọc'}
     onClick={onClick}
   >
-    <Filter size={15} />
-    {activeCount > 0 && <strong>{activeCount}</strong>}
+    {textOnly ? `Bộ lọc${activeCount > 0 ? ` (${activeCount})` : ''}` : <><Filter size={15} />{activeCount > 0 && <strong>{activeCount}</strong>}</>}
   </button>
 );
 
 export const DataFilterChipBar: React.FC<{
   chips: DataFilterChip[];
   onClear: () => void;
-}> = ({ chips, onClear }) => {
+  textOnly?: boolean;
+}> = ({ chips, onClear, textOnly = false }) => {
   if (chips.length === 0) return null;
   return (
-    <div className="data-filter-chips" aria-label="Điều kiện lọc đang áp dụng">
+    <div className={`data-filter-chips ${textOnly ? 'data-filter-chips--text' : ''}`} aria-label="Điều kiện lọc đang áp dụng">
       <span>Đang lọc:</span>
       {chips.map(chip => (
         <button key={chip.id} type="button" onClick={chip.onRemove} title={`Bỏ lọc ${chip.label}`}>
-          {chip.label}<X size={12} />
+          {chip.label}{textOnly ? ' · Bỏ' : <X size={12} />}
         </button>
       ))}
       <button type="button" className="data-filter-chips__clear" onClick={onClear}>Xóa tất cả</button>
@@ -59,7 +60,8 @@ export const DataFilterPanel: React.FC<{
   onReset: () => void;
   headerAction?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ open, title, description, activeCount, onClose, onReset, headerAction, children }) => {
+  textOnly?: boolean;
+}> = ({ open, title, description, activeCount, onClose, onReset, headerAction, children, textOnly = false }) => {
   useEffect(() => {
     if (!open) return undefined;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -73,23 +75,23 @@ export const DataFilterPanel: React.FC<{
   return (
     <>
       <button type="button" className="data-filter-panel__backdrop" aria-label="Đóng bộ lọc" onClick={onClose} />
-      <aside className="data-filter-panel" aria-label={title}>
+      <aside className={`data-filter-panel ${textOnly ? 'data-filter-panel--text' : ''}`} aria-label={title}>
         <header>
           <div>
             <span>BỘ LỌC</span>
             <h2>{title}</h2>
             {description && <p>{description}</p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
+          <button type="button" onClick={onClose} aria-label="Đóng">{textOnly ? 'Đóng' : <X size={18} />}</button>
         </header>
         {headerAction && <div className="data-filter-panel__admin-action">{headerAction}</div>}
         <div className="data-filter-panel__body">{children}</div>
         <footer>
           <button type="button" className="btn btn-outline" onClick={onReset} disabled={activeCount === 0}>
-            <RotateCcw size={14} /> Đặt lại
+            {!textOnly && <RotateCcw size={14} />} Đặt lại
           </button>
           <button type="button" className="btn btn-primary" onClick={onClose}>
-            <Check size={14} /> Áp dụng {activeCount > 0 ? `(${activeCount})` : ''}
+            {!textOnly && <Check size={14} />} Áp dụng {activeCount > 0 ? `(${activeCount})` : ''}
           </button>
         </footer>
       </aside>

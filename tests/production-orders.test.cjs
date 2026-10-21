@@ -269,7 +269,7 @@ test('combined order list filters and searches legacy items and opens their exis
   tree = render(); assert.deepEqual(rowIds(), ['old']);
   nodes(tree).find(node => node.type === 'input' && node.props.type === 'search').props.onChange({ target: { value: 'NƯỚC GIẶT' } });
   tree = render(); assert.deepEqual(rowIds(), ['old']);
-  nodes(tree).find(node => node.type === 'button' && node.props.children === 'Chi tiết').props.onClick();
+  nodes(tree).find(node => node.type?.name === 'RowActionMenu').props.actions.find(action => action.label === 'Chi tiết').onSelect();
   assert.deepEqual(opened, ['old']);
   assert.ok(nodes(tree).some(node => node.type === 'option' && node.props.value === 'transfer_pending'));
 });

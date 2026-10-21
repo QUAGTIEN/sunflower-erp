@@ -77,6 +77,18 @@ Mốc đầu lượt: `1d9ceb3`, nhánh main, origin GitHub giữ nguyên. Commi
 - Chưa mở trình duyệt theo yêu cầu người dùng; chưa nghiệm thu PDF/máy in thật. Bố cục mẫu cần kiểm tra thực tế khi được yêu cầu.
 - Chưa xác nhận deploy Vercel hoặc rules Firebase. Lượt 2 cần deploy web/API mới; rules giữ nguyên lượt 1, vẫn phải kiểm tra môi trường thật đã triển khai các rules trước đó. Push Git không phải xác nhận deploy.
 
+## Đợt đồng bộ giao diện trước lượt 3 — ngày 22/10/2026
+
+Mốc đầu đợt: `9834a18`. Đây là chỉnh giao diện riêng theo yêu cầu người dùng, **chưa bắt đầu nghiệp vụ lượt 3**.
+
+- Sản xuất, Mua hàng, Vật liệu, Kế toán và component Danh mục hàng dùng chế độ bảng một dòng, có nội dung đầy đủ khi rê chuột; giữ chế độ chữ thích ứng của các phân hệ khác. Chữ dài không tràn ô, số liệu căn phải, trạng thái chuyển sang chữ thuần.
+- Thao tác từng dòng dùng menu chữ `…`; Kế toán giữ nguyên chức năng và điều kiện quyền của Chi tiết/Sửa/Xóa/Thu nợ/Trả tiền/Sửa chi phí/In phiếu. Bổ sung phân trang chung cho hai bảng Kế toán.
+- Đồng bộ nút tìm kiếm/lọc/tùy chỉnh cột/đóng/sửa, thanh lọc Vật liệu và các bảng liên quan. Menu thao tác có giới hạn kích thước theo màn hình và cuộn khi danh sách dài. Mẫu in LSX không thay đổi.
+- Không sửa API, rules, cấu trúc dữ liệu, công thức, hàm ghi nghiệp vụ hoặc dữ liệu Firebase thật. Lỗi tải Danh mục hàng do kết nối/rules vẫn cần kiểm tra riêng, không được coi là đã giải quyết bằng chỉnh UI.
+- Build đạt; **137/137 test đạt**, gồm 8 test mới tại `tests/operational-ui.test.cjs` và bộ hồi quy lượt 2. Test thao tác thực qua JSX/hàm xử lý, mô phỏng vị trí menu và chính sách một dòng; không mở trình duyệt.
+- Lint các component/hook chỉnh sửa đạt. Baseline trang cũ không tăng: ProductionPage 11 lỗi; PurchasePage 0; InventoryPage 12 lỗi/1 cảnh báo; AccountingPage 17 lỗi.
+- Chưa kiểm tra bố cục trên trình duyệt/máy in và chưa xác nhận deploy web/Firebase. Commit kết quả tra Git và bàn giao cuối đợt.
+
 ## Đầu lượt 3
 
 1. Kiểm tra Git, đọc quy tắc dự án và ba tài liệu ACCOUNTING cùng PRODUCTION_ORDERS. Dùng mốc cuối lượt 2, không triển khai lại quyền/mẫu.

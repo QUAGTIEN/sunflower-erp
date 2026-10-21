@@ -7,7 +7,6 @@ import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
-import { Pencil } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
 import { ItemCatalogWorkspace } from '@/features/catalog/components/ItemCatalogWorkspace';
 import { canManageItemCatalog } from '@/features/catalog/model/itemCatalog';
@@ -291,7 +290,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
   const summaryPagination = useDataTablePagination(inventoryList);
 
   return (
-    <div className="inventory-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="inventory-view" data-erp-table-text="single-line" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <PageContextHeader section={t('Vật liệu')} current={activeTab === 'catalog' ? t('Danh mục hàng') : activeTab === 'exports' ? t('Lịch Sử Phiếu Xuất Kho') : activeTab === 'nxt' ? t('Báo Cáo Nhập Xuất Tồn') : t('Tồn Kho Hiện Tại')} />
 
       <div className="content-tabs inventory-view-tabs" role="tablist" aria-label={t('Kho nguyên vật tư')}>
@@ -311,10 +310,11 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
       {activeTab === 'catalog' && <ItemCatalogWorkspace currentUser={currentUser} />}
       {activeTab === 'inventory' && (
         <div className="card">
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="inventory-toolbar">
+            <div className="inventory-search">
               <input
                 type="text"
+                aria-label={t('Tìm vật tư')}
                 placeholder={t('Nhập tên vật tư cần tìm...')}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -323,7 +323,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
               <button className="btn btn-outline" onClick={() => setSearchTerm('')}>{t('Đặt Lại')}</button>
             </div>
 
-            <div className="tab-container" style={{ borderBottom: 'none' }}>
+            <div className="tab-container inventory-categories" style={{ borderBottom: 'none' }}>
               <button className={`tab-btn ${categoryFilter === 'all' ? 'active' : ''}`} onClick={() => setCategoryFilter('all')}>{t('Tất cả')}</button>
               <button className={`tab-btn ${categoryFilter === 'paper' ? 'active' : ''}`} onClick={() => setCategoryFilter('paper')}>{t('Giấy decal cuộn')}</button>
               <button className={`tab-btn ${categoryFilter === 'ink' ? 'active' : ''}`} onClick={() => setCategoryFilter('ink')}>{t('Mực in Flexo')}</button>
@@ -365,13 +365,13 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                       <td>{item.unit}</td>
                       <td>
                         {isLowStock ? (
-                          <span className="badge badge-danger">{t('Cảnh Báo Tồn Kho Thấp')}</span>
+                          <span className="erp-status-text erp-status-text--danger">{t('Cảnh Báo Tồn Kho Thấp')}</span>
                         ) : (
-                          <span className="badge badge-success">{t('An Toàn')}</span>
+                          <span className="erp-status-text erp-status-text--success">{t('An Toàn')}</span>
                         )}
                       </td>
                       <td>
-                        <RowActionMenu
+                        <RowActionMenu textOnly
                           label={`${t('Thao tác')} ${item.materialName}`}
                           actions={[
                             { label: t('Chi Tiết'), onSelect: () => { setSelectedItem(item); setShowDetailsModal(true); } },
@@ -684,8 +684,8 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
             </div>
             <div className="modal-footer">
               {(currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
-                <button className="btn btn-primary btn-symbol" onClick={() => { setShowDetailsModal(false); handleOpenEdit(selectedItem); }} title={t('Sửa')}>
-                  <Pencil size={16} />
+                <button className="btn btn-primary" onClick={() => { setShowDetailsModal(false); handleOpenEdit(selectedItem); }} title={t('Sửa')}>
+                  {t('Sửa')}
                 </button>
               )}
               <button className="btn btn-outline" onClick={() => setShowDetailsModal(false)}>{t('Đóng')}</button>

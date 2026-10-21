@@ -17,6 +17,7 @@ interface TableColumnCustomizerProps {
   selectedIds: string[];
   onClose: () => void;
   onSave: (selectedIds: string[]) => void;
+  textOnly?: boolean;
 }
 
 const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
@@ -24,7 +25,8 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
   columns,
   selectedIds,
   onClose,
-  onSave
+  onSave,
+  textOnly = false
 }) => {
   const [query, setQuery] = useState('');
   const [draftIds, setDraftIds] = useState(() => Array.from(new Set(selectedIds)));
@@ -70,7 +72,7 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
   const selectedColumns = columns.filter(column => selectedSet.has(column.id));
 
   return (
-    <div className="table-column-customizer" role="dialog" aria-modal="true" aria-labelledby="table-column-customizer-title">
+    <div className={`table-column-customizer ${textOnly ? 'table-column-customizer--text' : ''}`} role="dialog" aria-modal="true" aria-labelledby="table-column-customizer-title">
       <button type="button" className="table-column-customizer__backdrop" aria-label="Đóng tùy chỉnh cột" onClick={onClose} />
       <aside className="table-column-customizer__panel">
         <header>
@@ -78,13 +80,13 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
             <h2 id="table-column-customizer-title">Tùy chỉnh cột</h2>
             <p>Chọn cột cần hiển thị. Kéo tiêu đề trực tiếp trên bảng để đổi vị trí.</p>
           </div>
-          <button type="button" className="table-column-customizer__close" onClick={onClose} aria-label="Đóng"><X size={18} /></button>
+          <button type="button" className="table-column-customizer__close" onClick={onClose} aria-label="Đóng">{textOnly ? 'Đóng' : <X size={18} />}</button>
         </header>
 
         <div className="table-column-customizer__body">
           <section className="table-column-customizer__available">
             <label className="table-column-customizer__search">
-              <Search size={15} />
+              {!textOnly && <Search size={15} />}
               <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm kiếm cột" autoFocus />
             </label>
             <div className="table-column-customizer__selection-heading">

@@ -1,36 +1,16 @@
-.accounting-view .table-container {
-  overflow-x: auto;
-}
+.accounting-view .table-container { overflow-x: auto; }
 
-/* Accounting tables contain several financial columns plus row actions. A
-   page-scoped auto layout keeps each header aligned while preserving the full
-   customer/status/action text on smaller viewports. */
+/* Stable columns keep amounts, dates and actions inside their own cells. */
 .accounting-view .accounting-invoice-table,
-.accounting-view .accounting-costing-table {
-  table-layout: auto;
-  min-width: 1260px;
-}
-
-.accounting-view .accounting-invoice-table th,
-.accounting-view .accounting-invoice-table td,
-.accounting-view .accounting-costing-table th,
-.accounting-view .accounting-costing-table td {
-  max-width: none;
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal !important;
-}
-
-.accounting-view .accounting-invoice-table th:last-child,
-.accounting-view .accounting-invoice-table td:last-child,
-.accounting-view .accounting-costing-table th:last-child,
-.accounting-view .accounting-costing-table td:last-child {
-  min-width: 260px;
-  white-space: nowrap !important;
-}
-
-.accounting-view .accounting-invoice-table td:last-child > div,
-.accounting-view .accounting-costing-table td:last-child > div {
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
+.accounting-view .accounting-costing-table { table-layout: fixed; min-width: 1740px; }
+.accounting-invoice-table th:nth-child(1) { width: 190px; }
+.accounting-invoice-table th:nth-child(2) { width: 180px; }
+.accounting-invoice-table th:nth-child(3) { width: 280px; }
+.accounting-invoice-table th:nth-child(4) { width: 170px; }
+.accounting-invoice-table th:nth-child(8) { width: 120px; }
+.accounting-invoice-table th:nth-child(9) { width: 190px; }
+.accounting-invoice-table th:last-child,
+.accounting-costing-table th:last-child { width: 80px; }
+.accounting-costing-table th:nth-child(1) { width: 180px; }
+.accounting-costing-table th:nth-child(2) { width: 280px; }
+.accounting-costing-table th:nth-child(10) { width: 180px; }

@@ -15,13 +15,6 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
-import {
-  ClipboardList,
-  Search,
-  Settings2,
-  ShoppingBag,
-  X
-} from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { formatDate } from '@/shared/utils/dateFormatting';
 import {
@@ -462,26 +455,26 @@ export const Purchase: React.FC<PurchaseProps> = ({
   };
 
   return (
-    <div className="purchase-page">
+    <div className="purchase-page" data-erp-table-text="single-line">
       <PageContextHeader section={t('Mua hàng')} current={activeListView === 'orders' ? t('Đơn mua đã phát hành') : t('Yêu cầu từ Sale PO')} />
 
       <div className="purchase-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>
           <button type="button" className={`purchase-list-tab ${activeListView === 'requests' ? 'is-active' : ''}`} onClick={() => { setActiveListView('requests'); setSearchTerm(''); }} role="tab" aria-selected={activeListView === 'requests'}>
-            <ClipboardList size={16} /><span>{t('Yêu cầu từ Sale PO')}</span><span className="purchase-list-tab__count">{filteredRequests.length}</span>
+            <span>{t('Yêu cầu từ Sale PO')}</span><span className="purchase-list-tab__count">{filteredRequests.length}</span>
           </button>
           <button type="button" className={`purchase-list-tab ${activeListView === 'orders' ? 'is-active' : ''}`} onClick={() => { setActiveListView('orders'); setSearchTerm(''); }} role="tab" aria-selected={activeListView === 'orders'}>
-            <ShoppingBag size={16} /><span>{t('Đơn mua đã phát hành')}</span><span className="purchase-list-tab__count">{filteredPurchaseOrders.length}</span>
+            <span>{t('Đơn mua đã phát hành')}</span><span className="purchase-list-tab__count">{filteredPurchaseOrders.length}</span>
           </button>
       </div>
 
       <section className="purchase-panel purchase-list-card">
         <div className="purchase-toolbar">
-          <div className="purchase-search"><Search size={16} /><input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={activeListView === 'requests' ? t('Tìm mã PO, khách hàng, mã hàng, vật liệu hoặc NCC...') : t('Tìm mã đơn mua, NCC, PO khách hàng hoặc mặt hàng...')} /></div>
-          <DataFilterButton activeCount={purchaseActiveFilterCount} open={showPurchaseFilters} onClick={() => setShowPurchaseFilters(true)} />
-          {canEditColumns && <button type="button" className="data-filter-button" onClick={() => setShowPurchaseColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}><Settings2 size={16} /></button>}
+          <div className="purchase-search"><input aria-label={t('Tìm kiếm mua hàng')} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={activeListView === 'requests' ? t('Tìm mã PO, khách hàng, mã hàng, vật liệu hoặc NCC...') : t('Tìm mã đơn mua, NCC, PO khách hàng hoặc mặt hàng...')} /></div>
+          <DataFilterButton textOnly activeCount={purchaseActiveFilterCount} open={showPurchaseFilters} onClick={() => setShowPurchaseFilters(true)} />
+          {canEditColumns && <button type="button" className="btn btn-outline" onClick={() => setShowPurchaseColumnCustomizer(true)} title={t('Tùy chỉnh cột')} aria-label={t('Tùy chỉnh cột')}>{t('Tùy chỉnh cột')}</button>}
         </div>
 
-        <DataFilterChipBar
+        <DataFilterChipBar textOnly
           chips={[
             ...sourcingFilters.map(value => ({ id: `sourcing:${value}`, label: getSourcingTypeLabel(value), onRemove: () => setSourcingFilters(current => current.filter(item => item !== value)) })),
             ...monthFilters.map(value => ({ id: `month:${value}`, label: value, onRemove: () => setMonthFilters(current => current.filter(item => item !== value)) }))
@@ -497,7 +490,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                 {requestVisibleColumnSet.has('customer') && <th key="customer">{t('Khách hàng')}</th>}
                 {requestVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng')}</th>}
                 {requestVisibleColumnSet.has('sourcing') && <th key="sourcing">{t('Phương án cung ứng')}</th>}
-                {requestVisibleColumnSet.has('quantity') && <th key="quantity">{t('Số lượng')}</th>}
+                {requestVisibleColumnSet.has('quantity') && <th key="quantity" className="erp-number-cell">{t('Số lượng')}</th>}
                 {requestVisibleColumnSet.has('requiredDate') && <th key="requiredDate">{t('Ngày cần')}</th>}
                 {requestVisibleColumnSet.has('purchaser') && <th key="purchaser">{t('Mua hàng phụ trách')}</th>}
                 {requestVisibleColumnSet.has('supplier') && <th key="supplier">{t('NCC')}</th>}
@@ -506,15 +499,15 @@ export const Purchase: React.FC<PurchaseProps> = ({
               <tbody>
                 {requestPagination.rows.map(request => <tr key={request.id}>
                   <ReorderableTableCells order={orderedRequestColumnIds} expandOverflowText={false}>
-                    <td key="request"><strong className="purchase-request-code">{request.requestCode}{request.status === 'new' && <span className="purchase-new-tag"><i />NEW</span>}</strong><span>{request.poCode}</span></td>
+                    <td key="request" title={[request.requestCode, request.poCode, request.status === 'new' ? 'NEW' : ''].filter(Boolean).join(' · ')}><strong className="purchase-request-code">{request.requestCode} · {request.poCode}{request.status === 'new' && <span className="purchase-new-text">NEW</span>}</strong></td>
                     {requestVisibleColumnSet.has('customer') && <td key="customer"><strong>{request.customerName || '—'}</strong></td>}
                     {requestVisibleColumnSet.has('product') && <td key="product"><strong>{request.productName}</strong><span>{[request.productCode, request.material, request.size].filter(Boolean).join(' · ')}</span></td>}
                     {requestVisibleColumnSet.has('sourcing') && <td key="sourcing"><span className={`sourcing-text sourcing-text--${request.sourcingType}`}>{getSourcingTypeLabel(request.sourcingType)}</span></td>}
-                    {requestVisibleColumnSet.has('quantity') && <td key="quantity"><strong>{request.quantity.toLocaleString('vi-VN')} {request.unit}</strong></td>}
+                    {requestVisibleColumnSet.has('quantity') && <td key="quantity" className="erp-number-cell"><strong>{request.quantity.toLocaleString('vi-VN')} {request.unit}</strong></td>}
                     {requestVisibleColumnSet.has('requiredDate') && <td key="requiredDate"><span className={request.requiredDate && Date.parse(request.requiredDate) < PURCHASE_PAGE_REFERENCE_TIME && request.status !== 'received' ? 'purchase-date-overdue' : ''}>{formatDate(request.requiredDate, 'vi-VN', '—')}</span></td>}
                     {requestVisibleColumnSet.has('purchaser') && <td key="purchaser">{request.assignedPurchaserName || t('Chưa phân công')}</td>}
                     {requestVisibleColumnSet.has('supplier') && <td key="supplier">{request.selectedSupplierName || '—'}</td>}
-                    <td key="actions"><RowActionMenu
+                    <td key="actions"><RowActionMenu textOnly
                       label={`${t('Thao tác')} ${request.requestCode}`}
                       actions={[
                         ...(request.status === 'new' ? [{ label: t('Tiếp nhận'), onSelect: () => handleUpdateRequestStatus(request, 'reviewing') }] : []),
@@ -534,7 +527,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                 {orderVisibleColumnSet.has('supplier') && <th key="supplier">{t('Nhà cung cấp')}</th>}
                 {orderVisibleColumnSet.has('po') && <th key="po">{t('PO khách hàng')}</th>}
                 {orderVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng')}</th>}
-                {orderVisibleColumnSet.has('value') && <th key="value">{t('Giá trị')}</th>}
+                {orderVisibleColumnSet.has('value') && <th key="value" className="erp-number-cell">{t('Giá trị')}</th>}
                 {orderVisibleColumnSet.has('expectedDate') && <th key="expectedDate">{t('Ngày nhận dự kiến')}</th>}
                 <th key="actions">{t('Thao tác')}</th>
               </ReorderableTableCells></tr></thead>
@@ -545,10 +538,10 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     {orderVisibleColumnSet.has('supplier') && <td key="supplier">{asText(order.supplierName)}</td>}
                     {orderVisibleColumnSet.has('po') && <td key="po">{asText(order.linkedPoCode) || '—'}</td>}
                     {orderVisibleColumnSet.has('product') && <td key="product">{asArray(order.items).map(item => `${asText(item.materialName ?? item.productName)} (${asNumber(item.quantity).toLocaleString('vi-VN')} ${asText(item.unit)})`).join(', ')}</td>}
-                    {orderVisibleColumnSet.has('value') && <td key="value"><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td>}
+                    {orderVisibleColumnSet.has('value') && <td key="value" className="erp-number-cell"><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td>}
                     {orderVisibleColumnSet.has('expectedDate') && <td key="expectedDate">{formatDate(asText(order.expectedReceiveDate), 'vi-VN', '—')}</td>}
                     <td key="actions">{asText(order.status) !== 'received'
-                      ? <RowActionMenu label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t('Xác nhận nhận hàng'), onSelect: () => handleReceiveOrder(order) }]} />
+                      ? <RowActionMenu textOnly label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t('Xác nhận nhận hàng'), onSelect: () => handleReceiveOrder(order) }]} />
                       : '—'}</td>
                   </ReorderableTableCells>
                 </tr>)}
@@ -559,14 +552,14 @@ export const Purchase: React.FC<PurchaseProps> = ({
         <DataTablePagination {...(activeListView === 'requests' ? requestPagination.paginationProps : orderPagination.paginationProps)} />
       </section>
 
-      <TableColumnCustomizer
+      <TableColumnCustomizer textOnly
         open={showPurchaseColumnCustomizer}
         columns={activeListView === 'requests' ? PURCHASE_REQUEST_COLUMNS : PURCHASE_ORDER_COLUMNS}
         selectedIds={activeListView === 'requests' ? requestVisibleColumns : orderVisibleColumns}
         onClose={() => setShowPurchaseColumnCustomizer(false)}
         onSave={activeListView === 'requests' ? saveRequestVisibleColumns : saveOrderVisibleColumns}
       />
-      <DataFilterPanel
+      <DataFilterPanel textOnly
         open={showPurchaseFilters}
         title={t('Lọc danh sách mua hàng')}
         description={t('Lọc theo phương án cung ứng và tháng phát sinh.')}
@@ -589,7 +582,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
       {selectedRequest && (
         <div className="modal-overlay">
           <div className="modal-content procurement-modal">
-            <div className="modal-header"><div><strong>{t('CHỌN NHÀ CUNG CẤP')}</strong><span>{selectedRequest.requestCode} · {selectedRequest.poCode}</span></div><button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setSelectedRequestId('')}><X size={16} /></button></div>
+            <div className="modal-header"><div><strong>{t('CHỌN NHÀ CUNG CẤP')}</strong><span>{selectedRequest.requestCode} · {selectedRequest.poCode}</span></div><button type="button" className="btn btn-outline" onClick={() => setSelectedRequestId('')}>{t('Đóng')}</button></div>
             <form onSubmit={handleCreatePurchaseOrder}>
               <div className="modal-body">
                 <div className="procurement-context">
