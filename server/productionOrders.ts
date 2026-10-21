@@ -6,22 +6,7 @@ import {
 } from '../src/features/production/model/productionOrder.js';
 import { getPOQueueUpdate, getPOQueueStatus } from '../src/features/sales/model/poWorkflow.js';
 
-export async function requireProductionCaller(request: Request): Promise<ProductionActor> {
-  const token = request.headers.get('authorization')?.match(/^Bearer (.+)$/i)?.[1];
-  if (!token) throw new AdminApiError(401, 'Vui lòng đăng nhập lại.');
-  const { auth, firestore } = getFirebaseAdminServices();
-  let uid: string;
-  let email: string | undefined;
-  try {
-    const decoded = await auth.verifyIdToken(token, true);
-    const user = await auth.getUser(decoded.uid);
-    if (user.disabled) throw new Error('disabled');
-    uid = decoded.uid; email = user.email;
-  } catch { throw new AdminApiError(401, 'Phiên đăng nhập không hợp lệ.'); }
-  const profile = (await firestore.collection('users').doc(uid).get()).data();
-  if (!profile?.active || profile.uid !== uid || String(profile.email).toLowerCase() !== email?.toLowerCase()) throw new AdminApiError(403, 'Hồ sơ tài khoản không hợp lệ hoặc đã khóa.');
-  return { uid, displayName: String(profile.displayName || email), role: String(profile.role), active: true, allowedPages: profile.allowedPages || [] };
-}
+export { requireActiveErpCaller as requireProductionCaller } from './erpCaller.js';
 
 const identifier = (value: unknown) => {
   if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,160}$/.test(value)) throw new AdminApiError(400, 'Mã bản ghi không hợp lệ.');

@@ -14,6 +14,7 @@ import {
   NOTIFICATION_MODULE_LABELS
 } from '@/app/config/appConfig';
 import { canAccessPage, getDefaultPagesForRole } from '@/app/navigation/accessControl';
+import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import '@/styles/ErpUiStandards.css';
 import '@/styles/Theme.css';
 import '@/styles/ContentTabs.css';
@@ -134,7 +135,10 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
 
 function AppShell() {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [activePage, setActivePage] = useState<string>('dashboard');
+  const [activePage, setActivePageState] = useState<string>('dashboard');
+  const setActivePage = useCallback((page: string) => {
+    if (confirmAppNavigation()) setActivePageState(page);
+  }, []);
   const [reportedPageContext, setReportedPageContext] = useState<(AppPageContext & { pageId: string }) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -562,6 +566,7 @@ function AppShell() {
   };
 
   const handleLogout = async () => {
+    if (!confirmAppNavigation()) return;
     if (user) {
       auditService.recordSafely(user, {
         category: 'session',
@@ -572,7 +577,7 @@ function AppShell() {
       auditService.updatePresenceSafely(user, 'offline', activePage);
     }
     await authService.logout();
-    setActivePage('dashboard');
+    setActivePageState('dashboard');
   };
 
   // Demo Switch Role Utility (Changes role on-the-fly for testing/reviewing)

@@ -9,6 +9,9 @@ import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway
 import { useLanguage } from '@/context/LanguageContext';
 import { Pencil } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
+import { ItemCatalogWorkspace } from '@/features/catalog/components/ItemCatalogWorkspace';
+import { canManageItemCatalog } from '@/features/catalog/model/itemCatalog';
+import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import './Inventory.css';
 
 interface InventoryProps {
@@ -23,7 +26,8 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
   const [exportSlips, setExportSlips] = useState<any[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'inventory' | 'exports' | 'nxt'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'exports' | 'nxt' | 'catalog'>('inventory');
+  const changeTab = (tab: typeof activeTab) => { if (activeTab !== 'catalog' || confirmAppNavigation()) setActiveTab(tab); };
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'paper' | 'ink' | 'film' | 'others'>('all');
 
@@ -288,21 +292,23 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
 
   return (
     <div className="inventory-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Vật liệu')} current={activeTab === 'exports' ? t('Lịch Sử Phiếu Xuất Kho') : activeTab === 'nxt' ? t('Báo Cáo Nhập Xuất Tồn') : t('Tồn Kho Hiện Tại')} />
+      <PageContextHeader section={t('Vật liệu')} current={activeTab === 'catalog' ? t('Danh mục hàng') : activeTab === 'exports' ? t('Lịch Sử Phiếu Xuất Kho') : activeTab === 'nxt' ? t('Báo Cáo Nhập Xuất Tồn') : t('Tồn Kho Hiện Tại')} />
 
       <div className="content-tabs inventory-view-tabs" role="tablist" aria-label={t('Kho nguyên vật tư')}>
-        <button type="button" role="tab" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'is-active' : ''} onClick={() => setActiveTab('inventory')}>{t('Tồn Kho Hiện Tại')}</button>
-        <button type="button" role="tab" aria-selected={activeTab === 'exports'} className={activeTab === 'exports' ? 'is-active' : ''} onClick={() => setActiveTab('exports')}>{t('Lịch Sử Phiếu Xuất Kho')}</button>
-        <button type="button" role="tab" aria-selected={activeTab === 'nxt'} className={activeTab === 'nxt' ? 'is-active' : ''} onClick={() => setActiveTab('nxt')}>{t('Báo Cáo Nhập Xuất Tồn')}</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'is-active' : ''} onClick={() => changeTab('inventory')}>{t('Tồn Kho Hiện Tại')}</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'exports'} className={activeTab === 'exports' ? 'is-active' : ''} onClick={() => changeTab('exports')}>{t('Lịch Sử Phiếu Xuất Kho')}</button>
+        <button type="button" role="tab" aria-selected={activeTab === 'nxt'} className={activeTab === 'nxt' ? 'is-active' : ''} onClick={() => changeTab('nxt')}>{t('Báo Cáo Nhập Xuất Tồn')}</button>
+        {canManageItemCatalog(currentUser) && <button type="button" role="tab" aria-selected={activeTab === 'catalog'} className={activeTab === 'catalog' ? 'is-active' : ''} onClick={() => setActiveTab('catalog')}>{t('Danh mục hàng')}</button>}
       </div>
 
-      {(currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
+      {activeTab !== 'catalog' && (currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
         <div className="erp-tab-actionbar">
           <button className="btn btn-outline" onClick={handleOpenAddExport}>{t('Tạo Phiếu Xuất Kho')}</button>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>{t('Thêm vật tư')}</button>
         </div>
       )}
 
+      {activeTab === 'catalog' && <ItemCatalogWorkspace currentUser={currentUser} />}
       {activeTab === 'inventory' && (
         <div className="card">
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>

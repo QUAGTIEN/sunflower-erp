@@ -9,6 +9,9 @@ import { Trash2, Pencil } from 'lucide-react';
 import { getPOQueueLabel, getPOQueueStatus, getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
+import { ItemCatalogWorkspace } from '@/features/catalog/components/ItemCatalogWorkspace';
+import { canManageItemCatalog } from '@/features/catalog/model/itemCatalog';
+import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import './Accounting.css';
 
 interface AccountingProps {
@@ -22,7 +25,8 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
   const { t } = useLanguage();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'invoices' | 'costing'>('invoices');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'costing' | 'catalog'>('invoices');
+  const changeTab = (tab: typeof activeTab) => { if (activeTab !== 'catalog' || confirmAppNavigation()) setActiveTab(tab); };
 
   // Dynamic collections
   const [customers, setCustomers] = useState<any[]>([]);
@@ -445,7 +449,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
 
   return (
     <div className="accounting-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Kế toán')} current={activeTab === 'costing' ? t('Báo cáo lãi gộp đơn hàng') : t('Công nợ phải thu & phải trả')} />
+      <PageContextHeader section={t('Kế toán')} current={activeTab === 'catalog' ? t('Danh mục hàng') : activeTab === 'costing' ? t('Báo cáo lãi gộp đơn hàng') : t('Công nợ phải thu & phải trả')} />
 
       {/* Tabs */}
       <div className="tab-container content-tabs" role="tablist" aria-label={t('Kế toán')}>
@@ -454,7 +458,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
           className={`tab-btn ${activeTab === 'invoices' ? 'active' : ''}`}
           role="tab"
           aria-selected={activeTab === 'invoices'}
-          onClick={() => setActiveTab('invoices')}
+          onClick={() => changeTab('invoices')}
         >
           {t('Công Nợ Phải Thu')} ({filteredInvoices.filter(i => i.type === 'receivable').length}) & Phải Trả ({filteredInvoices.filter(i => i.type === 'payable').length})
         </button>
@@ -463,11 +467,14 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
           className={`tab-btn ${activeTab === 'costing' ? 'active' : ''}`}
           role="tab"
           aria-selected={activeTab === 'costing'}
-          onClick={() => setActiveTab('costing')}
+          onClick={() => changeTab('costing')}
         >
           {t('Báo Cáo Lãi Gộp Đơn Hàng')} ({pos.length})
         </button>
+        {canManageItemCatalog(currentUser) && <button type="button" role="tab" className={`tab-btn ${activeTab === 'catalog' ? 'active' : ''}`} aria-selected={activeTab === 'catalog'} onClick={() => setActiveTab('catalog')}>{t('Danh mục hàng')}</button>}
       </div>
+
+      {activeTab === 'catalog' && <ItemCatalogWorkspace currentUser={currentUser} />}
 
       {/* TAB 1: INVOICES & AR/AP LEDGER */}
       {activeTab === 'invoices' && (

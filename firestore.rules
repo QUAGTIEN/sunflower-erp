@@ -130,6 +130,27 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Catalog mutations use the authenticated API (uniqueness, revision and source validation).
+    function canManageItemCatalog() {
+      return isAdmin() || (isActive() && (
+        (userProfile().role == 'purchaser' && (hasPage('inventory') || hasPage('purchase')))
+        || (userProfile().role == 'accountant' && hasPage('accounting'))
+      ));
+    }
+
+    match /item_catalog/{documentId} {
+      allow read: if canManageItemCatalog();
+      allow write: if false;
+    }
+    match /catalog_links/{documentId} {
+      allow read: if canManageItemCatalog();
+      allow write: if false;
+    }
+    match /catalog_requests/{documentId} {
+      allow read: if canManageItemCatalog();
+      allow write: if false;
+    }
+
     // CRM and lead management.
     match /customers/{documentId} {
       allow read: if isActive()

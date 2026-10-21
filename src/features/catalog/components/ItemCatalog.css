@@ -1,0 +1,23 @@
+.item-catalog { display: flex; min-width: 0; flex-direction: column; gap: var(--erp-page-gap); }
+.catalog-toolbar, .catalog-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.catalog-actions { justify-content: flex-end; }
+.catalog-toolbar label, .catalog-form label { display: flex; min-width: 0; flex-direction: column; gap: 8px; font-size: 13px; }
+.catalog-toolbar label:first-child { flex: 1 1 240px; }
+.catalog-toolbar label:not(:first-child) { flex: 0 1 220px; }
+.catalog-form { display: flex; min-width: 0; flex-direction: column; gap: var(--erp-section-gap); }
+.catalog-form h2, .catalog-form p, .item-catalog > p { margin: 0; }
+.catalog-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.catalog-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.catalog-form-grid textarea { min-height: 92px; resize: vertical; }
+.catalog-form label > span { font-size: 12px; color: var(--erp-table-secondary-text); }
+.item-catalog .catalog-check { flex-direction: row; align-items: center; align-self: center; gap: 8px; }
+.catalog-list-frame { min-width: 0; overflow: hidden; }
+.catalog-list-frame table { min-width: 1160px; }
+.catalog-inline-table { max-height: 420px; overflow: auto; }
+.catalog-inline-table table { min-width: 960px; }
+.catalog-inline-table th:last-child { width: 340px; }
+.catalog-form input[readonly] { background: var(--erp-row-hover); }
+@media (max-width: 768px) {
+  .catalog-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .catalog-toolbar label, .catalog-toolbar label:not(:first-child) { flex: 1 1 200px; }
+}
