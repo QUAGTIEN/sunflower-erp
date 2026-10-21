@@ -371,7 +371,7 @@ export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) 
                         )}
                       </td>
                       <td>
-                        <RowActionMenu textOnly
+                        <RowActionMenu
                           label={`${t('Thao tác')} ${item.materialName}`}
                           actions={[
                             { label: t('Chi Tiết'), onSelect: () => { setSelectedItem(item); setShowDetailsModal(true); } },

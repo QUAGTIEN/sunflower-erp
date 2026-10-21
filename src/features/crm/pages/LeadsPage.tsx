@@ -2516,7 +2516,7 @@ export const Leads: React.FC<LeadsProps> = ({
       <div className="lead-page-navigation lead-candidate-commandbar">
         <div className="lead-workspace-tabs content-tabs content-tabs--compact" role="tablist" aria-label="Không gian quản lý khách hàng tiềm năng">
           <button type="button" role="tab" aria-selected={workspaceTab === 'overview'} className={workspaceTab === 'overview' ? 'is-active' : ''} onClick={() => setWorkspaceTab('overview')}>Tổng quan</button>
-          <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={openLeadListTab}>Danh sách KH tiềm năng <span>{accessibleLeads.length}</span></button>
+          <button type="button" role="tab" aria-selected={workspaceTab === 'list'} className={workspaceTab === 'list' ? 'is-active' : ''} onClick={openLeadListTab}>Danh sách KH tiềm năng</button>
         </div>
         {workspaceTab === 'list' && (
           <section className="lead-page-navigation__tools lead-candidate-toolbar">

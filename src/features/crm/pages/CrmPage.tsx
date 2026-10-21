@@ -2806,7 +2806,7 @@ export const Crm: React.FC<CrmProps> = ({
               <div className="crm-list-tabs content-tabs content-tabs--commandbar" role="tablist" aria-label={t('Chọn nhóm khách hàng')}>
                 <button type="button" className={`crm-list-tab ${filterType === 'overview' ? 'is-active' : ''}`} onClick={() => setFilterType('overview')} role="tab" aria-selected={filterType === 'overview'}>Tổng quan</button>
                 <button type="button" className={`crm-list-tab ${filterType === 'all' ? 'is-active' : ''}`} onClick={() => { setFilterType('all'); setCustomerPage(1); }} role="tab" aria-selected={filterType === 'all'}>
-                  <span>{t('Tất cả')}</span><span className="crm-list-tab__count">{accessibleCustomers.length}</span>
+                  <span>{t('Tất cả')}</span>
                 </button>
               </div>
               <div className="crm-list-toolbar">
@@ -3186,8 +3186,8 @@ export const Crm: React.FC<CrmProps> = ({
                 {(currentUser.role === 'admin' || currentUser.role === 'sale') && <button type="button" className="btn btn-outline" onClick={() => { setRepositoryUploadOpen(true); setCustomerHistoryTab('files'); }}>{t('Thêm tệp')}</button>}
               </div>
               <div className="content-tabs customer-repository-preview__tabs" aria-label={t('Thư mục tài liệu')}>
-                <button type="button" className={!repositoryPreviewFolder ? 'is-active' : ''} aria-pressed={!repositoryPreviewFolder} onClick={() => setRepositoryPreviewFolder('')}>{t('Tất cả')} ({repositoryPreviewItems.length})</button>
-                {customerRepositoryFolders.map(folder => <button key={folder.id} type="button" className={repositoryPreviewFolder === folder.id ? 'is-active' : ''} aria-pressed={repositoryPreviewFolder === folder.id} onClick={() => setRepositoryPreviewFolder(folder.id)}>{folder.name} ({repositoryPreviewItems.filter(item => item.folderId === folder.id).length})</button>)}
+                <button type="button" className={!repositoryPreviewFolder ? 'is-active' : ''} aria-pressed={!repositoryPreviewFolder} onClick={() => setRepositoryPreviewFolder('')}>{t('Tất cả')}</button>
+                {customerRepositoryFolders.map(folder => <button key={folder.id} type="button" className={repositoryPreviewFolder === folder.id ? 'is-active' : ''} aria-pressed={repositoryPreviewFolder === folder.id} onClick={() => setRepositoryPreviewFolder(folder.id)}>{folder.name}</button>)}
               </div>
               <div className="customer-repository-preview__files">
                 {visibleRepositoryPreview.slice(0, 4).map(file => <div key={file.id} className="customer-repository-preview__file">

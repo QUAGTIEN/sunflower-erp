@@ -62,7 +62,7 @@ test('accounting row menus retain payment/edit actions and pagination reaches ev
     '@/infrastructure/firebase/erpDataGateway':{dbService:{getCollection:async()=>[],updateDocument:async(...args)=>{writes.push(args);return true;}}}
   });
   let tree=ui.render(); assert.equal(tree.props['data-erp-table-text'],'single-line');
-  assert.equal(menu(tree).length,25); assert.ok(menu(tree).every(node=>node.props.textOnly));
+  assert.equal(menu(tree).length,25);
   const pagination=nodes(tree).find(node=>node.type?.name==='DataTablePagination');
   assert.equal(pagination.props.totalItems,26); pagination.props.setPage(2);
   tree=ui.render(); assert.equal(menu(tree).length,1); assert.equal(menu(tree)[0].props.label,'Thao tác INV-26');
@@ -81,6 +81,8 @@ test('costing menu still opens original cost editor after changing pages',()=>{
   const pos=Array.from({length:27},(_,i)=>({id:'po'+i,poCode:'PO-'+i,customerName:'Khách',totalAmount:1000000,status:'waiting_production',items:[{material:'giấy',size:'10x20mm',quantity:100}]}));
   const ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos,currentUser:admin,users:[],onRefresh(){}},{activeTab:'costing'});
   let tree=ui.render(); assert.equal(menu(tree).length,25);
+  assert.ok(!nodes(tree).some(node=>node.type?.name==='BarChart'));
+  assert.ok(nodes(tree).some(node=>node.props?.role==='tab' && node.props.children==='Báo Cáo Lãi Gộp Đơn Hàng'));
   nodes(tree).find(node=>node.type?.name==='DataTablePagination').props.setPage(2);
   tree=ui.render(); assert.equal(menu(tree).length,2);
   assert.deepEqual(menu(tree)[0].props.actions.map(action=>action.label),['Sửa Chi Phí','In Phiếu']);
@@ -92,7 +94,7 @@ test('inventory uses text statuses and its existing detail/edit handlers remain 
   let tree=ui.render(); assert.equal(tree.props['data-erp-table-text'],'single-line');
   assert.ok(nodes(tree).some(node=>node.props?.className==='erp-status-text erp-status-text--danger'));
   assert.ok(!nodes(tree).some(node=>String(node.props?.className||'').includes('badge')));
-  assert.equal(menu(tree)[0].props.textOnly,true);
+  assert.equal(menu(tree)[0].type.name,'RowActionMenu');
   menu(tree)[0].props.actions.find(action=>action.label==='Chi Tiết').onSelect();
   tree=ui.render(); assert.equal(ui.state.get('selectedItem').id,'paper');
   const edit=nodes(tree).find(node=>node.type==='button'&&node.props.title==='Sửa');
@@ -119,19 +121,19 @@ test('text filter controls preserve callbacks, and default shared controls retai
   const panel=renderToStaticMarkup(React.createElement(controls.DataFilterPanel,{textOnly:true,open:true,title:'Lọc',activeCount:0,onClose(){},onReset(){}},'Nội dung'));
   assert.ok(!panel.includes('<svg'));assert.ok(panel.includes('>Đóng</button>'));
 });
-test('ellipsis menu fits narrow viewports and still blocks disabled actions',()=>{
+test('shared three-dot menu fits narrow viewports and still blocks disabled actions',()=>{
   let selected=0;
   const previousWindow=global.window;
   global.window={innerWidth:180,innerHeight:160};
   try {
-    const ui=screen('src/components/RowActionMenu.tsx','RowActionMenu',{textOnly:true,actions:[{label:'Không được sửa',disabled:true,onSelect:()=>selected++},{label:'Chi tiết',onSelect:()=>selected++}]},{open:true},{'react-dom':{createPortal:child=>child}});
+    const ui=screen('src/components/RowActionMenu.tsx','RowActionMenu',{actions:[{label:'Không được sửa',disabled:true,onSelect:()=>selected++},{label:'Chi tiết',onSelect:()=>selected++}]},{open:true},{'react-dom':{createPortal:child=>child}});
     const previousDocument=global.document;global.document={body:{}};
     try {
       ui.render();ui.refs[0].current={getBoundingClientRect:()=>({right:175,bottom:155,top:120})};ui.refs[1].current={offsetHeight:250};
       ui.layouts.splice(0).forEach(effect=>effect());
       const tree=ui.render(), popover=nodes(tree).find(node=>node.props?.role==='menu');
       assert.ok(popover.props.style.left>=8);assert.ok(popover.props.style.left+popover.props.style.width<=172);assert.ok(popover.props.style.top>=8);
-      assert.equal(nodes(tree).find(node=>node.type==='button'&&node.props['aria-haspopup']==='menu').props.children,'…');
+      assert.equal(nodes(tree).find(node=>node.type==='button'&&node.props['aria-haspopup']==='menu').props.children.props.size,18);
       const items=nodes(tree).filter(node=>node.props?.role==='menuitem');items[0].props.onClick();assert.equal(selected,0);items[1].props.onClick();assert.equal(selected,1);assert.equal(ui.state.get('open'),false);
     } finally { global.document=previousDocument; }
   } finally { global.window=previousWindow; }

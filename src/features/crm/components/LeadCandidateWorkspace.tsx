@@ -760,12 +760,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     && (currentUser.role === 'admin' || candidate.assignedSaleId === currentUser.uid)
   )), [accessibleCandidates, currentUser.role, currentUser.uid]);
 
-  const workspaceCounts = useMemo(() => ({
-    management: saleUsers.length,
-    tasks: taskCandidates.length,
-    all: accessibleCandidates.length
-  }), [accessibleCandidates.length, saleUsers.length, taskCandidates.length]);
-
   const employeeCards = useMemo(() => {
     const now = referenceTime;
     const today = new Date(referenceTime).toLocaleDateString('vi-VN');
@@ -2195,7 +2189,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     <SystemFieldSurface table="lead_candidates" className="lead-candidate-workspace" hidden={adminRawView === 'list'}>
       {adminRawView === 'overview' && <nav className="lead-candidate-queues content-tabs content-tabs--compact" role="tablist" aria-label="Dữ liệu thô">
         <button type="button" role="tab" aria-selected={true} className="is-active" onClick={showRawOverview}>Tổng quan</button>
-        <button type="button" role="tab" aria-selected={false} onClick={showRawList}>Tất cả dữ liệu <strong>{accessibleCandidates.length}</strong></button>
+        <button type="button" role="tab" aria-selected={false} onClick={showRawList}>Tất cả dữ liệu</button>
       </nav>}
       {adminRawView === 'scoring' && <RawDataScoringPage
         currentUser={currentUser}
@@ -2242,7 +2236,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
               {value === 'management' && <UserRoundSearch size={15} />}
               {value === 'tasks' && <CalendarClock size={15} />}
               {value === 'all' && currentUser.role !== 'admin' && <ListPlus size={15} />}
-              <span>{label}</span><strong>{workspaceCounts[value]}</strong>
+              <span>{label}</span>
             </button>
           ))}
         </nav>

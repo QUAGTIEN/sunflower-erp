@@ -89,6 +89,16 @@ Mốc đầu đợt: `9834a18`. Đây là chỉnh giao diện riêng theo yêu c
 - Lint các component/hook chỉnh sửa đạt. Baseline trang cũ không tăng: ProductionPage 11 lỗi; PurchasePage 0; InventoryPage 12 lỗi/1 cảnh báo; AccountingPage 17 lỗi.
 - Chưa kiểm tra bố cục trên trình duyệt/máy in và chưa xác nhận deploy web/Firebase. Commit kết quả tra Git và bàn giao cuối đợt.
 
+## Điều chỉnh giao diện tiếp theo — ngày 22/10/2026
+
+Mốc đầu đợt: `d785d13`. Người dùng chốt **giữ Báo cáo lãi gộp đơn hàng, chỉ bỏ biểu đồ**, thay cho yêu cầu bỏ cả tab đã nêu trước đó.
+
+- Bốn phân hệ Sản xuất/Mua hàng/Vật liệu/Kế toán và Danh mục hàng dùng đúng nút ba chấm mặc định của RowActionMenu như Đơn hàng/Khách hàng. Bỏ biến thể ký tự `…` và CSS kích thước riêng; giữ nguyên menu, quyền và cách xử lý.
+- Bỏ số đếm sau tên tab trên toàn bộ nơi tìm thấy, gồm tab chính, tab hồ sơ/phân loại, thư mục tài liệu, dữ liệu thô và cấu hình trường. Rà soát mã nguồn 48 nút tab không còn biểu thức số đếm. Số liệu báo cáo, thẻ tổng hợp, tiến độ và phân trang giữ nguyên.
+- Kế toán bỏ biểu đồ Top 5 cùng phần chuẩn bị dữ liệu chỉ phục vụ biểu đồ; bảng lãi gộp, tính toán, phân trang, sửa chi phí và in phiếu được giữ lại.
+- Build đạt; **142/142 test liên quan đạt**. Lint phần sạch đạt; so sánh các trang cũ với mốc đầu đợt không thêm lỗi/cảnh báo (Accounting 17; Sales 36; Crm 115; Leads 4 lỗi/1 cảnh báo).
+- Không đổi API/rules, dữ liệu thật hoặc bắt đầu nghiệp vụ lượt 3. Chưa kiểm thử trình duyệt hay xác nhận triển khai web/Firebase; kết quả push ghi trong bàn giao cuối đợt.
+
 ## Đầu lượt 3
 
 1. Kiểm tra Git, đọc quy tắc dự án và ba tài liệu ACCOUNTING cùng PRODUCTION_ORDERS. Dùng mốc cuối lượt 2, không triển khai lại quyền/mẫu.

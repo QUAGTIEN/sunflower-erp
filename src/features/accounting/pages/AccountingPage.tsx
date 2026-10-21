@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
-import { BarChart } from '@/components/VisualCharts';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
@@ -441,17 +440,6 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
     }, invId);
   };
 
-  // Compile costing profit margin percentage data for top 5 POs
-  const profitMarginChartData = pos
-    .map(po => {
-      const calc = calculateCosting(po);
-      return {
-        label: po.poCode,
-        value: Math.max(0, Math.round(calc.marginPercent))
-      };
-    })
-    .slice(0, 5);
-
   return (
     <div className="accounting-view" data-erp-table-text="single-line" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <PageContextHeader section={t('Kế toán')} current={activeTab === 'catalog' ? t('Danh mục hàng') : activeTab === 'costing' ? t('Báo cáo lãi gộp đơn hàng') : t('Công nợ phải thu & phải trả')} />
@@ -465,7 +453,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
           aria-selected={activeTab === 'invoices'}
           onClick={() => changeTab('invoices')}
         >
-          {t('Công Nợ Phải Thu')} ({filteredInvoices.filter(i => i.type === 'receivable').length}) & Phải Trả ({filteredInvoices.filter(i => i.type === 'payable').length})
+          {t('Công Nợ Phải Thu')} & Phải Trả
         </button>
         <button
           type="button"
@@ -474,7 +462,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
           aria-selected={activeTab === 'costing'}
           onClick={() => changeTab('costing')}
         >
-          {t('Báo Cáo Lãi Gộp Đơn Hàng')} ({pos.length})
+          {t('Báo Cáo Lãi Gộp Đơn Hàng')}
         </button>
         {canManageItemCatalog(currentUser) && <button type="button" role="tab" className={`tab-btn ${activeTab === 'catalog' ? 'active' : ''}`} aria-selected={activeTab === 'catalog'} onClick={() => setActiveTab('catalog')}>{t('Danh mục hàng')}</button>}
       </div>
@@ -542,7 +530,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                         </span>
                       </td>
                       <td>
-                        <RowActionMenu textOnly label={`Thao tác ${inv.invoiceCode}`} actions={[
+                        <RowActionMenu label={`Thao tác ${inv.invoiceCode}`} actions={[
                           { label: t('Chi Tiết'), onSelect: () => { setSelectedInvoice(inv); setShowDetailsInvoiceModal(true); } },
                           ...((currentUser.role === 'admin' || currentUser.role === 'accountant') ? [
                             { label: t('Sửa'), onSelect: () => handleOpenEditInvoice(inv) },
@@ -564,15 +552,6 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
 
       {activeTab === 'costing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {profitMarginChartData.length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <span className="card-title">{t('Tỷ Suất Lãi Gộp (%) - Top 5 Đơn Hàng PO')}</span>
-              </div>
-              <BarChart data={profitMarginChartData} yAxisSuffix="%" height={220} />
-            </div>
-          )}
-
           <div className="card">
             <div className="card-header">
               <span className="card-title">{t('Báo Cáo Lãi Gộp Đơn Hàng')}</span>
@@ -617,7 +596,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                           </span>
                         </td>
                         <td>
-                          <RowActionMenu textOnly label={`Thao tác ${po.poCode}`} actions={[
+                          <RowActionMenu label={`Thao tác ${po.poCode}`} actions={[
                             { label: t('Sửa Chi Phí'), onSelect: () => handleOpenCostModal(po) },
                             { label: t('In Phiếu'), onSelect: () => printWorkOrder(po) }
                           ]} />

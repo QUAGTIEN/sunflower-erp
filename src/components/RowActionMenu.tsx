@@ -13,7 +13,6 @@ export interface RowActionMenuItem {
 interface RowActionMenuProps {
   actions: RowActionMenuItem[];
   label?: string;
-  textOnly?: boolean;
 }
 
 interface MenuPosition {
@@ -25,7 +24,7 @@ interface MenuPosition {
 const MENU_WIDTH = 196;
 const VIEWPORT_MARGIN = 8;
 
-export function RowActionMenu({ actions, label = 'Mở danh sách thao tác', textOnly = false }: RowActionMenuProps) {
+export function RowActionMenu({ actions, label = 'Mở danh sách thao tác' }: RowActionMenuProps) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<MenuPosition>({ top: 0, left: 0, width: MENU_WIDTH });
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -94,7 +93,7 @@ export function RowActionMenu({ actions, label = 'Mở danh sách thao tác', te
         title={label}
         onClick={() => setOpen(previous => !previous)}
       >
-        {textOnly ? '…' : <MoreHorizontal size={18} />}
+        <MoreHorizontal size={18} />
       </button>
       {open && createPortal(
         <div
@@ -117,7 +116,7 @@ export function RowActionMenu({ actions, label = 'Mở danh sách thao tác', te
                 action.onSelect();
               }}
             >
-              {!textOnly && action.icon}
+              {action.icon}
               <span>{action.label}</span>
             </button>
           ))}

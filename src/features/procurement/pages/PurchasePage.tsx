@@ -460,10 +460,10 @@ export const Purchase: React.FC<PurchaseProps> = ({
 
       <div className="purchase-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>
           <button type="button" className={`purchase-list-tab ${activeListView === 'requests' ? 'is-active' : ''}`} onClick={() => { setActiveListView('requests'); setSearchTerm(''); }} role="tab" aria-selected={activeListView === 'requests'}>
-            <span>{t('Yêu cầu từ Sale PO')}</span><span className="purchase-list-tab__count">{filteredRequests.length}</span>
+            <span>{t('Yêu cầu từ Sale PO')}</span>
           </button>
           <button type="button" className={`purchase-list-tab ${activeListView === 'orders' ? 'is-active' : ''}`} onClick={() => { setActiveListView('orders'); setSearchTerm(''); }} role="tab" aria-selected={activeListView === 'orders'}>
-            <span>{t('Đơn mua đã phát hành')}</span><span className="purchase-list-tab__count">{filteredPurchaseOrders.length}</span>
+            <span>{t('Đơn mua đã phát hành')}</span>
           </button>
       </div>
 
@@ -507,7 +507,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     {requestVisibleColumnSet.has('requiredDate') && <td key="requiredDate"><span className={request.requiredDate && Date.parse(request.requiredDate) < PURCHASE_PAGE_REFERENCE_TIME && request.status !== 'received' ? 'purchase-date-overdue' : ''}>{formatDate(request.requiredDate, 'vi-VN', '—')}</span></td>}
                     {requestVisibleColumnSet.has('purchaser') && <td key="purchaser">{request.assignedPurchaserName || t('Chưa phân công')}</td>}
                     {requestVisibleColumnSet.has('supplier') && <td key="supplier">{request.selectedSupplierName || '—'}</td>}
-                    <td key="actions"><RowActionMenu textOnly
+                    <td key="actions"><RowActionMenu
                       label={`${t('Thao tác')} ${request.requestCode}`}
                       actions={[
                         ...(request.status === 'new' ? [{ label: t('Tiếp nhận'), onSelect: () => handleUpdateRequestStatus(request, 'reviewing') }] : []),
@@ -541,7 +541,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     {orderVisibleColumnSet.has('value') && <td key="value" className="erp-number-cell"><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td>}
                     {orderVisibleColumnSet.has('expectedDate') && <td key="expectedDate">{formatDate(asText(order.expectedReceiveDate), 'vi-VN', '—')}</td>}
                     <td key="actions">{asText(order.status) !== 'received'
-                      ? <RowActionMenu textOnly label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t('Xác nhận nhận hàng'), onSelect: () => handleReceiveOrder(order) }]} />
+                      ? <RowActionMenu label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t('Xác nhận nhận hàng'), onSelect: () => handleReceiveOrder(order) }]} />
                       : '—'}</td>
                   </ReorderableTableCells>
                 </tr>)}

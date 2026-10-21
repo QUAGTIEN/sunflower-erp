@@ -893,10 +893,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
       ].some(value => String(value || '').toLocaleLowerCase('vi-VN').includes(normalizedSearchTerm));
     }), customer => [customer.createdAt]);
 
-  const waitingCustomerCount = customers.filter(customer => {
-    if (customer.deleted === true || customerIdsWithOrders.has(customer.id)) return false;
-    return currentUser.role !== 'sale' || !customer.assignedSaleId || customer.assignedSaleId === currentUser.uid;
-  }).length;
   const customerPoPagination = useDataTablePagination(filteredPOs);
   const orderCustomerPagination = useDataTablePagination(orderCustomers);
   const waitingCustomerPagination = useDataTablePagination(waitingCustomers);
@@ -923,7 +919,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
             >
               <FileText size={16} />
               <span>{t('Khách hàng có PO')}</span>
-              <span className="sales-list-tab__count">{customersWithOrders.length}</span>
             </button>
             <button
               type="button"
@@ -934,7 +929,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
             >
               <Check size={16} />
               <span>{t('Khách hàng chờ lên đơn')}</span>
-              <span className="sales-list-tab__count">{waitingCustomerCount}</span>
             </button>
           </div>
 

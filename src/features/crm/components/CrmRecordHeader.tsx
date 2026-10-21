@@ -85,8 +85,6 @@ const HeaderProgress: React.FC<HeaderProgressProps> = ({ label, completed, total
 
 export const CrmRecordHeaderTabs: React.FC<CrmRecordHeaderTabsProps> = ({
   activeTab,
-  classificationCount,
-  classificationTotal,
   classificationLabel,
   profileLabel,
   ariaLabel,
@@ -111,7 +109,6 @@ export const CrmRecordHeaderTabs: React.FC<CrmRecordHeaderTabsProps> = ({
   >
     <ListChecks size={15} aria-hidden="true" />
     <span>{classificationLabel}</span>
-    <strong>{clampCount(classificationCount, classificationTotal)}/{classificationTotal}</strong>
   </button>
 </nav>;
 

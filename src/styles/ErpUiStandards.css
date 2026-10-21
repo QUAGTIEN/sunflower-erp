@@ -1330,8 +1330,6 @@ input[type='checkbox']:disabled {
 .app-main [data-erp-table-text='single-line'] .inventory-stock-table :is(th, td):is(:nth-child(n+3):nth-child(-n+6)),
 .app-main [data-erp-table-text='single-line'] .inventory-summary-table :is(th, td):nth-child(n+4),
 .app-main [data-erp-table-text='single-line'] .inventory-export-table :is(th, td):nth-child(6) { text-align: right; font-variant-numeric: tabular-nums; }
-.app-main [data-erp-table-text='single-line'] .row-action-menu { display: inline-flex !important; vertical-align: middle; }
-.app-main [data-erp-table-text='single-line'] .row-action-menu__trigger { width: 32px; min-width: 32px; height: 32px; min-height: 32px !important; font-size: 20px; line-height: 1; }
 .app-main .purchase-page[data-erp-table-text] .purchase-search input { padding-left: 10px; }
 .app-main .purchase-page[data-erp-table-text] .purchase-list-tabs { display: flex; width: 100%; overflow-x: auto; }
 .app-main .purchase-page[data-erp-table-text] .purchase-list-tab { flex: 0 0 auto; white-space: nowrap; }

@@ -234,7 +234,7 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({
                   <td title={commands.map(command => formatDate(command.deliveryDeadline)).join('; ')}>{commands.map(command => formatDate(command.deliveryDeadline)).join('; ') || '—'}</td>
                   {canManage && (
                     <td>
-                      <RowActionMenu textOnly
+                      <RowActionMenu
                         label={`Thao tác ${machine.name}`}
                         actions={[
                           { label: 'Chỉnh sửa máy', onSelect: () => openEditModal(machine) },
