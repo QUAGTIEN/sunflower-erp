@@ -17,6 +17,7 @@ export const ERP_PAGE_IDS = [
   'dashboard',
   'chat',
   'work_schedule',
+  'attendance',
   'crm',
   'leads',
   'customer_data',

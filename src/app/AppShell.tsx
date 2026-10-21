@@ -70,6 +70,7 @@ const loadAdministrationModule = () => import('@/features/administration');
 const loadChatModule = () => import('@/features/chat');
 const loadCommercialMapModule = () => import('@/features/commercial-map');
 const loadWorkScheduleModule = () => import('@/features/work-schedule');
+const loadAttendanceModule = () => import('@/features/attendance');
 
 const SalesManagementPage = lazy(() => loadSalesManagementModule().then(module => ({ default: module.SalesManagementPage })));
 const Crm = lazy(() => loadCrmModule().then(module => ({ default: module.Crm })));
@@ -90,9 +91,12 @@ const ChatPage = lazy(() => loadChatModule().then(module => ({ default: module.C
 const CommercialMap = lazy(() => loadCommercialMapModule().then(module => ({ default: module.CommercialMap })));
 const WorkSchedule = lazy(() => loadWorkScheduleModule().then(module => ({ default: module.WorkSchedule })));
 
+const AttendancePage = lazy(() => loadAttendanceModule().then(module => ({ default: module.AttendancePage })));
+
 const PAGE_MODULE_PRELOADERS: Record<string, () => Promise<unknown>> = {
   chat: loadChatModule,
   work_schedule: loadWorkScheduleModule,
+  attendance: loadAttendanceModule,
   commercial_map: loadCommercialMapModule,
   customer_data: loadCrmModule,
   leads: loadCrmModule,
@@ -115,6 +119,7 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   dashboard: { section: 'Tổng quan' },
   chat: { section: 'Kênh chat' },
   work_schedule: { section: 'Công việc', current: 'Danh sách' },
+  attendance: { section: 'Chấm công', current: 'Chấm công' },
   commercial_map: { section: 'Thương mại', current: 'Tỉnh thành' },
   customer_data: { section: 'Dữ liệu thô', current: 'Tất cả dữ liệu' },
   leads: { section: 'Tiềm năng', current: 'Tổng quan' },
@@ -727,6 +732,9 @@ function AppShell() {
             onNavigateToLeads={() => setActivePage('leads')}
           />
         );
+      case 'attendance':
+        if (!isPageAllowed('attendance')) return null;
+        return <AttendancePage currentUser={user} />;
       case 'work_schedule':
         if (!isPageAllowed('work_schedule')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
         return <WorkSchedule currentUser={user} users={users} candidates={leadCandidates} leads={leads} customers={customers} initialGroupId={workScheduleGroupNavigation} onInitialGroupConsumed={() => setWorkScheduleGroupNavigation('')} onOpenRecord={(module, id) => { setSupportNavigationTarget({ module, entityId: id }); setActivePage(module); }} />;
@@ -1060,6 +1068,13 @@ function AppShell() {
                 <CalendarDays size={16} />
                 <span className="sidebar-item-label">Công việc</span>
               </div>
+            </button>
+          )}
+
+          {isPageAllowed('attendance') && (
+            <button data-page-id="attendance" className={`sidebar-item ${activePage === 'attendance' ? 'active' : ''}`}
+              onClick={() => { setActivePage('attendance'); setIsSidebarOpen(false); }} title="Chấm công">
+              <div className="sidebar-item-content"><CalendarDays size={16} /><span className="sidebar-item-label">Chấm công</span></div>
             </button>
           )}
 

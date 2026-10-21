@@ -3,17 +3,17 @@ import type { UserProfile, UserRole } from '@/shared/types';
 export const getDefaultPagesForRole = (role: UserRole): string[] => {
   switch (role) {
     case 'admin':
-      return ['dashboard', 'chat', 'work_schedule', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'sales_management', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
+      return ['dashboard', 'chat', 'work_schedule', 'attendance', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales', 'sales_management', 'design', 'purchase', 'suppliers', 'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'];
     case 'sale':
-      return ['dashboard', 'chat', 'work_schedule', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'];
+      return ['dashboard', 'chat', 'work_schedule', 'attendance', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'];
     case 'designer':
-      return ['dashboard', 'chat', 'work_schedule', 'design'];
+      return ['dashboard', 'chat', 'work_schedule', 'attendance', 'design'];
     case 'purchaser':
-      return ['dashboard', 'chat', 'work_schedule', 'purchase', 'suppliers', 'inventory'];
+      return ['dashboard', 'chat', 'work_schedule', 'attendance', 'purchase', 'suppliers', 'inventory'];
     case 'producer':
-      return ['dashboard', 'chat', 'work_schedule', 'production'];
+      return ['dashboard', 'chat', 'work_schedule', 'attendance', 'production'];
     case 'accountant':
-      return ['dashboard', 'chat', 'work_schedule', 'accounting', 'production'];
+      return ['dashboard', 'chat', 'work_schedule', 'attendance', 'accounting', 'production'];
   }
 };
 
@@ -26,6 +26,7 @@ export const canAccessPage = (
   const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
   if (pageId === 'production' && user.role === 'accountant') return user.active === true && (allowed.includes('accounting') || allowed.includes('production'));
   if (pageId === 'sales_management') return user.role === 'admin';
+  if (pageId === 'attendance') return user.active === true;
   if (pageId === 'work_schedule') return user.active !== false;
   if (pageId === 'leads') return allowed.includes('leads') || allowed.includes('crm');
   if (pageId === 'customer_data') {

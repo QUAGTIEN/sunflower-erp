@@ -570,6 +570,15 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Attendance is private and transactionally managed by the authenticated API.
+    // Neither staff nor Admin may bypass the API's month locks and validation.
+    match /attendance_months/{documentId} {
+      allow read, write: if false;
+    }
+    match /attendance_settings/{documentId} {
+      allow read, write: if false;
+    }
+
     // Any collection not reviewed above is denied by default.
     match /{document=**} {
       allow read, write: if false;

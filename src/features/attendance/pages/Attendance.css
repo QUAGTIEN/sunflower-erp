@@ -1,0 +1,130 @@
+.attendance-page {
+  --attendance-primary: #1e3a8a;
+  --attendance-muted: #64748b;
+  --attendance-success: #087a55;
+  --attendance-danger: #b42336;
+  --attendance-warning: #925a08;
+  --attendance-day-height: clamp(90px, 12vh, 132px);
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--erp-page-gap);
+  color: var(--erp-table-text);
+  font-size: 14px;
+}
+.attendance-page button, .attendance-dialog button { white-space: nowrap; }
+.attendance-page .content-tabs > button:disabled { opacity: .55; cursor: not-allowed; }
+.attendance-toolbar, .attendance-month-controls, .attendance-summary, .attendance-footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.attendance-toolbar { align-items: flex-end; }
+.attendance-toolbar > h2 { margin: 0 auto 0 0; }
+.attendance-toolbar > .btn-primary { margin-left: auto; }
+.attendance-header-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.attendance-month-controls { margin-left: auto; gap: 8px; align-items: flex-end; }
+.attendance-page label, .attendance-dialog label { display: flex; min-width: 0; flex-direction: column; gap: 8px; font-size: 13px; color: #334155; }
+.attendance-page label > select, .attendance-page label > input { width: 220px; max-width: 100%; }
+.attendance-page .attendance-month-label input { width: 166px; }
+.attendance-page input, .attendance-page select, .attendance-dialog input[type='number'], .attendance-dialog textarea {
+  min-width: 0;
+  min-height: var(--erp-control-height);
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  color: var(--erp-table-text);
+  background: #fff;
+  font: inherit;
+}
+.attendance-page select { padding-right: 26px; }
+.attendance-employment { padding-bottom: 9px; color: var(--attendance-muted); font-size: 13px; }
+.attendance-surface { min-width: 0; padding: 16px; border: 1px solid var(--erp-border-color); border-radius: var(--erp-surface-radius); background: #fff; }
+.attendance-summary { gap: 12px 24px; padding: 0 0 12px; }
+.attendance-summary strong { margin-left: 8px; color: var(--attendance-primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+.attendance-status { margin-left: auto; font-size: 13px; }
+.attendance-page .attendance-status--draft { color: var(--attendance-muted); }
+.attendance-page .attendance-status--pending, .attendance-late { color: var(--attendance-warning); }
+.attendance-page .attendance-status--approved { color: var(--attendance-success); }
+.attendance-page .attendance-status--returned, .attendance-page .attendance-error, .attendance-dialog .attendance-error, .attendance-dialog .attendance-danger { color: #b42336; }
+.attendance-page .attendance-view-tabs { margin-bottom: 12px; }
+.attendance-calendar-scroll { max-width: 100%; overflow: auto; }
+.attendance-calendar { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); min-width: 720px; border-top: 1px solid var(--erp-border-color); border-left: 1px solid var(--erp-border-color); }
+.attendance-weekday { min-height: 36px; padding: 9px 8px; box-sizing: border-box; border-right: 1px solid var(--erp-border-color); border-bottom: 1px solid var(--erp-border-color); background: var(--erp-table-header-bg); text-align: center; font-size: 13px; font-weight: 600; color: #172554; }
+.attendance-page .attendance-calendar-day {
+  display: flex;
+  height: var(--attendance-day-height);
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border: 0;
+  border-right: 1px solid var(--erp-border-color);
+  border-bottom: 1px solid var(--erp-border-color);
+  border-radius: 0 !important;
+  background: #fff;
+  color: var(--erp-table-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+}
+.attendance-page .attendance-calendar-day:disabled { opacity: 1; cursor: default; }
+.attendance-page .attendance-calendar-day.is-weekend { background: #f8fafc; }
+.attendance-page .attendance-calendar-day.is-outside { background: #f1f5f9; color: #8a96a8; }
+.attendance-page .attendance-calendar-day:not(:disabled):hover { background: var(--erp-row-hover); }
+.attendance-page .attendance-calendar-day.is-today { box-shadow: inset 0 0 0 1px var(--attendance-primary); }
+.attendance-page .attendance-calendar-day:focus-visible { outline: 2px solid var(--attendance-primary); outline-offset: -2px; }
+.attendance-date { font-size: 13px; font-variant-numeric: tabular-nums; }
+.attendance-day-status { display: flex; min-width: 0; flex-wrap: wrap; gap: 4px 8px; color: var(--attendance-success); font-size: 12px; line-height: 1.4; white-space: normal; }
+.attendance-day-status > span { white-space: nowrap; }
+.attendance-ot { color: #1d4ed8; }
+.attendance-muted { color: var(--attendance-muted); font-size: 12px; line-height: 1.5; }
+.attendance-message { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px; margin: 0; background: #fff; line-height: 1.5; overflow-wrap: anywhere; }
+.attendance-footer { justify-content: space-between; padding-top: 12px; }
+.attendance-footer > span { flex: 1 1 280px; }
+.attendance-table-scroll { max-width: 100%; overflow: auto; margin-top: 12px; border: 1px solid var(--erp-border-color); }
+.attendance-page .attendance-number { text-align: right; font-variant-numeric: tabular-nums; }
+.attendance-approval-table { min-width: 1080px; }
+.attendance-approval-table th:first-child { width: 210px; }
+.attendance-approval-table th:last-child { width: 80px; }
+.attendance-days-table { min-width: 760px; }
+.attendance-days-table th:first-child { width: 130px; }
+.attendance-days-table th:last-child { width: 80px; }
+.attendance-settings-table { min-width: 900px; }
+.attendance-settings-table th:first-child { width: 240px; }
+.attendance-page .attendance-settings-table td { height: 48px; }
+.attendance-settings-table select { width: 100%; max-width: 100%; }
+.attendance-page .erp-data-table-pagination { flex-wrap: wrap; min-height: 50px; height: auto; }
+.attendance-rules { padding: 8px 0; border-bottom: 1px solid var(--erp-border-color); margin-bottom: 12px; }
+.attendance-rules p { margin: 8px 0; font-size: 13px; line-height: 1.5; }
+.attendance-dialog { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); box-sizing: border-box; padding: 20px; border: 1px solid var(--erp-border-color); border-radius: 6px; background: #fff; color: var(--erp-table-text); box-shadow: 0 16px 40px rgb(15 23 42 / 18%); font: inherit; overflow: auto; }
+.attendance-dialog::backdrop { background: rgb(15 23 42 / 35%); }
+.attendance-dialog header, .attendance-dialog footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.attendance-dialog header { justify-content: space-between; }
+.attendance-dialog header h2 { flex: 1 1 250px; margin: 0; color: #172554; font-size: 16px; font-weight: 600; }
+.attendance-dialog > form > p { font-size: 13px; line-height: 1.5; }
+.attendance-day-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 20px 0; }
+.attendance-dialog .attendance-checkbox { grid-column: 1 / -1; align-items: center; flex-direction: row; }
+.attendance-dialog textarea { width: 100%; resize: vertical; }
+.attendance-dialog footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--erp-border-color); }
+.attendance-dialog footer > span { flex: 1; }
+.attendance-dialog :is(input, textarea, button):focus-visible { outline: 2px solid #6687c7; outline-offset: 2px; }
+@media (max-width: 1050px) {
+  .attendance-month-controls { margin-left: 0; }
+  .attendance-status { margin-left: 0; }
+}
+@media (max-width: 600px) {
+  .attendance-surface { padding: 12px; }
+  .attendance-toolbar > label { flex: 1 1 180px; }
+  .attendance-toolbar label > :is(select, input) { width: 100%; }
+  .attendance-month-controls { width: 100%; }
+  .attendance-month-controls .btn { padding: 0 8px; font-size: 12px; }
+  .attendance-day-fields { grid-template-columns: minmax(0, 1fr); }
+  .attendance-dialog footer > span { display: none; }
+}
