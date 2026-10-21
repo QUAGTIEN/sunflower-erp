@@ -44,8 +44,6 @@ import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
 import { normalizeCustomerProduct, type CustomerRecord, type LeadRecord } from '@/features/crm/model/crmModels';
 import { synchronizeCustomerProductOrderItems } from '@/features/crm/model/customerProductCatalog';
-import { ProductionOrderWorkspace } from '@/features/production/components/ProductionOrderWorkspace';
-import type { CommandRecord } from '@/features/production/model/productionOrder';
 import '@/components/CustomerHistory.css';
 import {
   Plus,
@@ -60,7 +58,6 @@ import {
 
 interface SalesProps {
   pos: any[];
-  productionCommands?: CommandRecord[];
   customers: CustomerRecord[];
   leads: LeadRecord[];
   currentUser: UserProfile;
@@ -75,7 +72,7 @@ interface SalesProps {
   users: UserProfile[];
 }
 
-type SalesListView = 'orders' | 'waiting-customers' | 'production-commands';
+type SalesListView = 'orders' | 'waiting-customers';
 
 const SALES_CUSTOMER_COLUMNS: TableColumnOption[] = [
   { id: 'customer', label: 'Khách hàng', required: true, group: 'Thông tin khách hàng' },
@@ -125,7 +122,7 @@ const getWaitingDays = (createdAt: unknown) => {
   return Math.max(0, Math.floor((Date.now() - createdTime) / (24 * 60 * 60 * 1000)));
 };
 
-export const Sales: React.FC<SalesProps> = ({ pos, productionCommands = [], customers, leads, currentUser, onRefresh, initialSelectedPoId, initialRepeatPoId, initialPreparedCustomerId, onRepeatOrderOpened, onPreparedOrderOpened, onOpenCustomerDetails, messages, users }) => {
+export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser, onRefresh, initialSelectedPoId, initialRepeatPoId, initialPreparedCustomerId, onRepeatOrderOpened, onPreparedOrderOpened, onOpenCustomerDetails, messages, users }) => {
   const { t } = useLanguage();
   const isFull = currentUser.role === 'admin' || currentUser.role === 'accountant';
   const isSaleOnly = currentUser.role === 'sale' || currentUser.role === 'designer';
@@ -912,7 +909,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, productionCommands = [], cust
 
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Đơn hàng')} current={!selectedPO ? (activeListView === 'production-commands' ? 'Lệnh sản xuất' : selectedOrderCustomer?.companyName || (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Khách hàng có PO'))) : undefined} />
+      <PageContextHeader section={t('Đơn hàng')} current={!selectedPO ? (selectedOrderCustomer?.companyName || (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Khách hàng có PO'))) : undefined} />
 
       {!selectedPO && (
         <>
@@ -939,14 +936,9 @@ export const Sales: React.FC<SalesProps> = ({ pos, productionCommands = [], cust
               <span>{t('Khách hàng chờ lên đơn')}</span>
               <span className="sales-list-tab__count">{waitingCustomerCount}</span>
             </button>
-            <button type="button" role="tab" aria-selected={activeListView === 'production-commands'}
-              className={`sales-list-tab ${activeListView === 'production-commands' ? 'is-active' : ''}`}
-              onClick={() => { setActiveListView('production-commands'); setSelectedOrderCustomerId(''); }}>
-              Lệnh sản xuất
-            </button>
           </div>
 
-        {activeListView === 'production-commands' ? <ProductionOrderWorkspace pos={pos} commands={productionCommands} currentUser={currentUser} users={users} onRefresh={onRefresh} /> : <div className="card sales-list-card">
+        <div className="card sales-list-card">
 
           {activeListView === 'orders' && selectedOrderCustomer && (
             <div className="sales-customer-po-header">
@@ -1173,7 +1165,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, productionCommands = [], cust
                 ? customerPoPagination.paginationProps
                 : orderCustomerPagination.paginationProps
           )} />
-        </div>}
+        </div>
         </>
       )}
 

@@ -8,7 +8,7 @@ import { formatDate } from '@/shared/utils/dateFormatting';
 import { getCustomerProductSpecSummary } from '@/features/crm/model/customerProductCatalog';
 import type { ProductionMachine } from '../api/machineService';
 import { mutateProductionOrder } from '../api/productionOrderService';
-import { allocatedQuantities, canManageProduction, hasProductionAccess, itemIdentity, PRODUCTION_STATUSES, type CommandRecord, type PlannedMaterial, type ProductionOrder, type ProductionPO, type ProductionStatus } from '../model/productionOrder';
+import { allocatedQuantities, canManageProduction, hasProductionAccess, itemIdentity, PRODUCTION_STATUSES, type CommandRecord, type PlannedMaterial, type ProductionOrder, type ProductionPO } from '../model/productionOrder';
 import { productionPrintHtml } from '../model/productionPrint';
 import './ProductionOrders.css';
 
@@ -23,11 +23,13 @@ interface Draft {
 const emptyDraft = (): Draft => ({ id: crypto.randomUUID(), poId: '', quantities: {}, requiredItemIds: [], materials: [], machineId: '', operatorId: '', shift: '', deliveryDeadline: '', priority: 'normal', notes: '' });
 const actionNames: Record<string, string> = { create: 'Đã tạo LSX thành công', save: 'Đã lưu thành công', submit: 'Đã gửi duyệt LSX', return: 'Đã trả về nháp', release: 'Đã phát hành LSX', start: 'Đã bắt đầu sản xuất', complete: 'Đã nghiệm thu LSX', cancel: 'Đã hủy LSX' };
 const historyNames: Record<string, string> = { create: 'Lập lệnh', save: 'Lưu nháp', submit: 'Gửi duyệt', return: 'Trả về nháp', release: 'Duyệt và phát hành', start: 'Bắt đầu chạy máy', complete: 'Hoàn thành', cancel: 'Hủy lệnh', qc: 'Nghiệm thu QC' };
+const LIST_STATUSES: Record<string, string> = { ...PRODUCTION_STATUSES, transfer_pending: 'Chờ duyệt bàn giao' };
 const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
 
 export function ProductionOrderWorkspace({ pos, commands, currentUser, users, onRefresh, initialSelectedId, onOpenLegacy }: Props) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [orderType, setOrderType] = useState('all');
   const [selectedId, setSelectedId] = useState(initialSelectedId || '');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,22 +43,25 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
   const printDialog = useRef<HTMLDialogElement>(null);
   const request = useRef({ payload: '', id: '' });
   const pending = useRef(false);
-  useEffect(() => dbService.subscribeCollection('machines', data => setMachines(data as ProductionMachine[])), []);
+  useEffect(() => {
+    if (!hasProductionAccess(currentUser, 'production')) return;
+    return dbService.subscribeCollection('machines', data => setMachines(data as ProductionMachine[]));
+  }, [currentUser]);
   useEffect(() => {
     if (printOrder && printDialog.current && !printDialog.current.open) printDialog.current.showModal();
   }, [printOrder]);
   const manager = canManageProduction(currentUser);
-  const canCreate = (manager || currentUser.role === 'sale') && (hasProductionAccess(currentUser, 'sales') || hasProductionAccess(currentUser, 'production'));
-  const visiblePOs = pos.filter(po => !po.deleted && (currentUser.role !== 'sale' || po.saleId === currentUser.uid || po.assignedSaleId === currentUser.uid));
-  const allowedPoIds = new Set(visiblePOs.map(po => po.id));
-  const accessibleCommands = commands.filter(command => !command.deleted && (currentUser.role !== 'sale' || allowedPoIds.has(String(command.poId))));
+  const canCreate = manager;
+  const visiblePOs = pos.filter(po => !po.deleted);
+  const accessibleCommands = commands.filter(command => !command.deleted);
   const legacyCount = accessibleCommands.filter(command => command.productionOrderVersion !== 2).length;
   const visible = accessibleCommands
+    .filter(command => orderType === 'all' || (orderType === 'managed' ? command.productionOrderVersion === 2 : command.productionOrderVersion !== 2))
     .filter(command => !status || command.status === status)
-    .filter(command => `${command.lsxCode} ${command.poCode} ${command.customerName} ${command.operatorName} ${(command.lines || []).map(line => `${line.productCode} ${line.productName}`).join(' ')}`.toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi')))
+    .filter(command => `${command.lsxCode} ${command.poCode} ${command.customerName} ${command.operatorName} ${command.productNameToBeCut || command.productName || ''} ${(command.lines || []).map(line => `${line.productCode} ${line.productName}`).join(' ')}`.toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi')))
     .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
   const pagination = useDataTablePagination(visible);
-  const selected = commands.find(command => command.productionOrderVersion === 2 && command.id === selectedId && !command.deleted && (currentUser.role !== 'sale' || allowedPoIds.has(String(command.poId)))) as ProductionOrder | undefined;
+  const selected = commands.find(command => command.productionOrderVersion === 2 && command.id === selectedId && !command.deleted) as ProductionOrder | undefined;
   const editingPO = visiblePOs.find(po => po.id === draft?.poId);
   let allocationError = '';
   let allocations = new Map<string, number>();
@@ -115,6 +120,8 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
   };
   const materialField = (index: number, key: keyof PlannedMaterial, value: string) => updateDraft({ materials: draft!.materials.map((material, position) => position === index ? { ...material, [key]: ['quantity', 'allowancePercent'].includes(key) ? Number(value) : value } : material) });
 
+  if (!hasProductionAccess(currentUser, 'production')) return <div role="alert">Bạn không có quyền truy cập Sản xuất.</div>;
+
   return <section className="lsx-workspace" data-erp-table-layout={draft || selected ? 'content' : undefined} aria-label="Lệnh sản xuất" aria-busy={busy}>
     {error && <div className="lsx-error" role="alert">{error}</div>}
     {draft ? <form onSubmit={saveDraft} className="lsx-editor">
@@ -154,10 +161,14 @@ export function ProductionOrderWorkspace({ pos, commands, currentUser, users, on
       {selected.status === 'producing' && manager && <form className="lsx-section" onSubmit={event => { event.preventDefault(); void transition('complete'); }}><h3>Nghiệm thu sản lượng / QC</h3><fieldset disabled={busy}><div className="table-container"><table><thead><tr><th>Sản phẩm</th><th>SL lệnh / ĐVT</th><th>SL đạt QC</th><th>SL hỏng</th></tr></thead><tbody>{selected.lines.map(line => <tr key={line.itemId}><td>{line.productCode} — {line.productName}</td><td>{number(line.quantity)} {line.unit}</td><td><input aria-label={`Đạt QC ${line.productName}`} type="number" required min="0" step="any" max={line.quantity} value={qc[line.itemId]?.goodQuantity ?? ''} onChange={event => setQc({ ...qc, [line.itemId]: { goodQuantity: event.target.value, rejectQuantity: qc[line.itemId]?.rejectQuantity || '0' } })} /></td><td><input aria-label={`Hỏng ${line.productName}`} type="number" required min="0" step="any" max={line.quantity} value={qc[line.itemId]?.rejectQuantity ?? '0'} onChange={event => setQc({ ...qc, [line.itemId]: { goodQuantity: qc[line.itemId]?.goodQuantity || '0', rejectQuantity: event.target.value } })} /></td></tr>)}</tbody></table></div><label>Ghi chú nghiệm thu *<textarea required rows={2} maxLength={2000} value={qcNote} onChange={event => setQcNote(event.target.value)} /></label><p className="lsx-hint">Chỉ sản lượng đạt QC được tính cho PO. Phần thiếu có thể lập lệnh bổ sung; PO chỉ chuyển chờ giao khi đủ tất cả dòng cần SX.</p><button className="btn btn-primary" disabled={busy}>{busy ? 'Đang lưu…' : 'Xác nhận nghiệm thu'}</button></fieldset></form>}
       <details className="lsx-section"><summary>Lịch sử thao tác</summary><ol className="lsx-history">{selected.history.map((entry, index) => <li key={index}>{new Date(entry.at).toLocaleString('vi-VN')} · {entry.actorName} · {historyNames[entry.action] || entry.action}{entry.action === 'qc' ? `: ${entry.note}` : ''}</li>)}</ol></details>
     </> : <>
-      <header className="lsx-heading"><div><h2>Lệnh sản xuất</h2><span>{accessibleCommands.length} lệnh{legacyCount > 0 ? ` (${legacyCount} lệnh cũ)` : ''} · Theo dõi chung với phân hệ Sản xuất</span></div>{canCreate && <button className="btn btn-primary" onClick={() => { setDraft(emptyDraft()); setError(''); }}>Lập lệnh sản xuất</button>}</header>
-      <div className="lsx-toolbar"><label>Tìm kiếm<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Mã LSX, PO, khách hàng, sản phẩm…" /></label><label>Trạng thái<select value={status} onChange={event => setStatus(event.target.value)}><option value="">Tất cả trạng thái</option>{Object.entries(PRODUCTION_STATUSES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label></div>
+      <header className="lsx-heading"><div><h2>Lệnh sản xuất</h2><span>{accessibleCommands.length} lệnh{legacyCount > 0 ? ` (${legacyCount} lệnh cũ)` : ''}</span></div>{canCreate && <button className="btn btn-primary" onClick={() => { setDraft(emptyDraft()); setError(''); }}>Lập lệnh sản xuất</button>}</header>
+      <div className="lsx-toolbar">
+        <label>Tìm kiếm<input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Mã LSX, PO, khách hàng, sản phẩm…" /></label>
+        <label>Trạng thái<select value={status} onChange={event => setStatus(event.target.value)}><option value="">Tất cả trạng thái</option>{Object.entries(LIST_STATUSES).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
+        <label>Loại lệnh<select value={orderType} onChange={event => setOrderType(event.target.value)}><option value="all">Tất cả lệnh</option><option value="managed">Lệnh mới</option><option value="legacy">Lệnh cũ</option></select></label>
+      </div>
       <div className="lsx-list-frame">
-        <div className="table-container erp-primary-data-table"><table className="lsx-list"><thead><tr><th>Mã LSX</th><th>PO / khách hàng</th><th>Mặt hàng</th><th>Máy / nhân sự</th><th>Ngày cần</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{pagination.rows.map(command => <tr key={String(command.id)}><td>{String(command.lsxCode || '')}</td><td title={`${command.poCode} — ${command.customerName || ''}`}>{String(command.poCode)} — {String(command.customerName || '')}</td><td title={(command.lines || []).map(line => line.productName).join(', ')}>{command.productionOrderVersion === 2 ? `${command.lines?.length || 0} mặt hàng` : String(command.productName || 'Lệnh cũ')}</td><td title={`${command.machineName || command.machineId || ''} / ${command.operatorName || ''}`}>{String(command.machineName || command.machineId || 'Chưa phân công')} / {String(command.operatorName || '')}</td><td>{formatDate(command.deliveryDeadline)}</td><td><span className={`lsx-status lsx-status--${command.status}`}>{command.productionOrderVersion !== 2 && PRODUCTION_STATUSES[command.status as ProductionStatus] ? 'Lệnh cũ · ' : ''}{PRODUCTION_STATUSES[command.status as ProductionStatus] || 'Lệnh cũ'}</span></td><td title={command.productionOrderVersion !== 2 && !onOpenLegacy ? 'Xem tại Sản xuất → Lệnh cũ' : undefined}>{command.productionOrderVersion === 2 || onOpenLegacy ? <button className="btn btn-outline" onClick={() => open(command)}>Chi tiết</button> : 'Xem tại Sản xuất → Lệnh cũ'}</td></tr>)}{!visible.length && <tr><td colSpan={7}>Chưa có lệnh phù hợp. Chọn “Lập lệnh sản xuất” để phân bổ mặt hàng từ PO.</td></tr>}</tbody></table></div>
+        <div className="table-container erp-primary-data-table"><table className="lsx-list"><thead><tr><th>Mã LSX</th><th>PO / khách hàng</th><th>Mặt hàng</th><th>Máy / nhân sự</th><th>Ngày cần</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>{pagination.rows.map(command => <tr key={String(command.id)}><td>{String(command.lsxCode || '')}</td><td title={`${command.poCode} — ${command.customerName || ''}`}>{String(command.poCode)} — {String(command.customerName || '')}</td><td title={(command.lines || []).map(line => line.productName).join(', ')}>{command.productionOrderVersion === 2 ? `${command.lines?.length || 0} mặt hàng` : String(command.productName || 'Lệnh cũ')}</td><td title={`${command.machineName || command.machineId || ''} / ${command.operatorName || ''}`}>{String(command.machineName || command.machineId || 'Chưa phân công')} / {String(command.operatorName || '')}</td><td>{formatDate(command.deliveryDeadline)}</td><td><span className={`lsx-status lsx-status--${command.status}`}>{command.productionOrderVersion !== 2 && LIST_STATUSES[String(command.status)] ? 'Lệnh cũ · ' : ''}{LIST_STATUSES[String(command.status)] || 'Lệnh cũ'}</span></td><td title={command.productionOrderVersion !== 2 && !onOpenLegacy ? 'Lệnh cũ' : undefined}>{command.productionOrderVersion === 2 || onOpenLegacy ? <button className="btn btn-outline" onClick={() => open(command)}>Chi tiết</button> : 'Lệnh cũ'}</td></tr>)}{!visible.length && <tr><td colSpan={7}>Chưa có lệnh phù hợp. Chọn “Lập lệnh sản xuất” để phân bổ mặt hàng từ PO.</td></tr>}</tbody></table></div>
         <DataTablePagination {...pagination.paginationProps} />
       </div>
     </>}

@@ -22,6 +22,7 @@ export const canAccessPage = (
   pageId: string
 ): boolean => {
   if (!user) return false;
+  if (pageId === 'production' && user.role === 'sale') return false;
   const allowed = user.allowedPages || getDefaultPagesForRole(user.role);
   if (pageId === 'sales_management') return user.role === 'admin';
   if (pageId === 'work_schedule') return user.active !== false;

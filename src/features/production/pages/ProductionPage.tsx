@@ -2,9 +2,6 @@ import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { DataTablePagination } from '@/components/DataTablePagination';
-import { RowActionMenu } from '@/components/RowActionMenu';
-import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { FloatingChat } from '@/components/FloatingChat';
@@ -21,7 +18,7 @@ import {
   sortMachinesForAssignment,
   subscribeMachines
 } from '@/features/production/api/machineService';
-import { CalendarDays, ListChecks, Pencil, Settings2, Trash2, X } from 'lucide-react';
+import { canManageProduction, hasProductionAccess } from '@/features/production/model/productionOrder';
 import { getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
@@ -53,7 +50,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   const [transferReason, setTransferReason] = useState('');
   const [targetOperatorId, setTargetOperatorId] = useState('');
   const handledNavigation = useRef('');
-  const [productionTab, setProductionTab] = useState<'commands' | 'legacy' | 'schedule' | 'machines'>('commands');
+  const [productionTab, setProductionTab] = useState<'commands' | 'machines'>('commands');
 
   // Auto-select LSX when initialSelectedLsxId changes
   useEffect(() => {
@@ -61,7 +58,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
       const cmd = productionCommands.find(c => c.id === initialSelectedLsxId || c.lsxCode === initialSelectedLsxId);
       if (cmd) {
         handledNavigation.current = initialSelectedLsxId;
-        setProductionTab(cmd.productionOrderVersion === 2 ? 'commands' : 'legacy');
+        setProductionTab('commands');
         setSelectedLsx(cmd.productionOrderVersion === 2 ? null : cmd);
       }
     }
@@ -84,11 +81,12 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   const [scrapQty, setScrapQty] = useState(0);
   const [completionNotes, setCompletionNotes] = useState('');
 
-  // Operator view tab filter
-  const [operatorTab, setOperatorTab] = useState<'producing' | 'completed'>('producing');
   const [machines, setMachines] = useState<ProductionMachine[]>([]);
 
-  useEffect(() => subscribeMachines(setMachines), []);
+  useEffect(() => {
+    if (!hasProductionAccess(currentUser, 'production')) return;
+    return subscribeMachines(setMachines);
+  }, [currentUser]);
 
   const machineCatalog = machines.length > 0 ? machines : DEFAULT_MACHINES;
 
@@ -209,7 +207,6 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
     (productionCommands || []).filter(cmd => !cmd.deleted && cmd.productionOrderVersion !== 2),
     command => [command.createdAt, command.startedAt]
   );
-  const productionPagination = useDataTablePagination(activeCommands);
   const getMachineOptionLabel = (machine: ProductionMachine, excludeCommandId?: string): string => {
     const runtimeStatus = getMachineRuntimeStatus(machine, activeCommands, excludeCommandId);
     const colorLabel = machine.colorCount > 0 ? `${machine.colorCount} màu` : 'chưa khai báo số màu';
@@ -332,6 +329,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         transferReason: ''
       }));
 
+      setSelectedLsx(null);
       onRefresh();
 
       showSuccessToast("Đã lưu thành công");
@@ -364,6 +362,7 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         transferReason: ''
       }));
 
+      setSelectedLsx(null);
       onRefresh();
 
       showSuccessToast("Đã lưu thành công");
@@ -376,273 +375,32 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const isOperator = currentUser.role === 'producer';
-  const canManageMachines = currentUser.role === 'admin' || currentUser.role === 'producer';
+  const canManage = canManageProduction(currentUser);
+  const canCompleteLegacy = canManage && (currentUser.role === 'admin' || selectedLsx?.operatorId === currentUser.uid);
+  if (!hasProductionAccess(currentUser, 'production')) return <div role="alert">Bạn không có quyền truy cập Sản xuất.</div>;
 
   return (
     <div className="production-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={isOperator ? t('Phòng máy sản xuất') : t('Sản xuất')} current={productionTab === 'schedule' ? 'Lịch máy' : productionTab === 'machines' ? 'Danh mục máy' : 'Danh sách LSX'} />
+      <PageContextHeader section={t('Sản xuất')} current={productionTab === 'machines' ? 'Danh sách máy' : 'Lệnh sản xuất'} />
 
       <div className="production-tabs content-tabs" role="tablist" aria-label="Quản lý sản xuất">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={productionTab === 'commands'}
-          className={`production-tab ${productionTab === 'commands' ? 'is-active' : ''}`}
-          onClick={() => setProductionTab('commands')}
-        >
-          <ListChecks size={16} /> Danh sách LSX
+        <button type="button" role="tab" aria-selected={productionTab === 'commands'}
+          className={productionTab === 'commands' ? 'is-active' : ''} onClick={() => setProductionTab('commands')}>
+          Lệnh sản xuất
         </button>
-        <button type="button" role="tab" aria-selected={productionTab === 'legacy'} className={`production-tab ${productionTab === 'legacy' ? 'is-active' : ''}`} onClick={() => setProductionTab('legacy')}>Lệnh cũ</button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={productionTab === 'schedule'}
-          className={`production-tab ${productionTab === 'schedule' ? 'is-active' : ''}`}
-          onClick={() => setProductionTab('schedule')}
-        >
-          <CalendarDays size={16} /> Lịch máy
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={productionTab === 'machines'}
-          className={`production-tab ${productionTab === 'machines' ? 'is-active' : ''}`}
-          onClick={() => setProductionTab('machines')}
-        >
-          <Settings2 size={16} /> Danh mục máy
+        <button type="button" role="tab" aria-selected={productionTab === 'machines'}
+          className={productionTab === 'machines' ? 'is-active' : ''} onClick={() => setProductionTab('machines')}>
+          Danh sách máy
         </button>
       </div>
 
-      {productionTab === 'commands' ? <ProductionOrderWorkspace key={initialSelectedLsxId || 'commands'} pos={pos} commands={productionCommands} currentUser={currentUser} users={users} onRefresh={onRefresh} initialSelectedId={productionCommands.find(command => command.id === initialSelectedLsxId || command.lsxCode === initialSelectedLsxId)?.id || initialSelectedLsxId} onOpenLegacy={id => { setProductionTab('legacy'); setSelectedLsx(productionCommands.find(command => command.id === id) || null); }} /> : productionTab === 'schedule' ? (
-        <MachineManagement
-          view="schedule"
-          machines={machineCatalog}
-          productionCommands={productionCommands.filter(command => !command.deleted)}
-          canManage={canManageMachines}
-        />
-      ) : productionTab === 'machines' ? (
-        <MachineManagement
-          view="machines"
-          machines={machineCatalog}
-          productionCommands={productionCommands.filter(command => !command.deleted)}
-          canManage={canManageMachines}
-        />
-      ) : isOperator ? (
-        /* THỢ B OPERATION VIEW */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="content-tabs production-operator-tabs" role="tablist" aria-label={t('Theo dõi lệnh sản xuất')}>
-            <button
-              className={`btn ${operatorTab === 'producing' ? 'btn-primary' : 'btn-outline'}`}
-              role="tab"
-              aria-selected={operatorTab === 'producing'}
-              onClick={() => setOperatorTab('producing')}
-            >
-              {t('Lệnh Chờ & Đang Chạy Máy')}
-            </button>
-            <button
-              className={`btn ${operatorTab === 'completed' ? 'btn-primary' : 'btn-outline'}`}
-              role="tab"
-              aria-selected={operatorTab === 'completed'}
-              onClick={() => setOperatorTab('completed')}
-            >
-              {t('Lịch Sử Lệnh Đã Hoàn Thành')}
-            </button>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(450px, 1fr))', gap: '20px' }}>
-            {activeCommands
-              .filter(cmd => {
-                if (currentUser.role === 'producer' && cmd.operatorId !== currentUser.uid) {
-                  return false;
-                }
-                if (operatorTab === 'producing') {
-                  return cmd.status === 'producing' || cmd.status === 'transfer_pending';
-                } else {
-                  return cmd.status === 'completed';
-                }
-              })
-              .map(cmd => (
-                <div key={cmd.id} className="card" style={{ border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden' }}>
-                  <div style={{ backgroundColor: '#f1f5f9', padding: '12px 16px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '15px' }}>{cmd.lsxCode}</span>
-                    <span className={`badge ${
-                      cmd.status === 'completed' ? 'badge-success' :
-                      cmd.status === 'transfer_pending' ? 'badge-warning' : 'badge-info'
-                    }`}>
-                      {cmd.status === 'completed' ? t('Đã hoàn thành') :
-                       cmd.status === 'transfer_pending' ? t('Chờ duyệt chuyển') : t('Đang sản xuất')}
-                    </span>
-                  </div>
-
-                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
-                        <div><strong>{t('Tên sản phẩm cần bế:')}</strong> {cmd.productNameToBeCut}</div>
-                        <div><strong>{t('Đơn PO liên kết:')}</strong> {cmd.poCode}</div>
-                        <div><strong>{t('Số lượng tem yêu cầu:')}</strong> {getProductionQuantity(cmd).toLocaleString()} {t('tem')}</div>
-                        <div><strong>{t('Máy vận hành:')}</strong> {cmd.machineId} ({cmd.shift})</div>
-                        <div><strong>{t('Loại lõi giấy:')}</strong> {cmd.paperCore || '76mm'}</div>
-                        <div><strong>{t('Giấy nguyên liệu:')}</strong> {cmd.paperMaterialCode}</div>
-                        <div><strong>{t('Số lượng giấy cấp:')}</strong> {cmd.paperQuantity}</div>
-                        <div><strong>{t('Hạn giao hàng:')}</strong> {formatDate(cmd.deliveryDeadline, 'vi-VN', 'N/A')}</div>
-                        <div><strong>{t('Yêu cầu kỹ thuật:')}</strong> {cmd.notes || t('Không có')}</div>
-                      </div>
-
-                      <div style={{ textAlign: 'center', border: '1px solid var(--color-border-light)', borderRadius: '4px', padding: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '150px', backgroundColor: '#f8fafc' }}>
-                        <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginBottom: '6px', display: 'block', fontWeight: 600 }}>{t('ẢNH LAYOUT MẪU')}</span>
-                        {getPOItemImage(cmd.poId) ? (
-                          <img
-                            src={getPOItemImage(cmd.poId)}
-                            alt="Layout"
-                            style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain', borderRadius: '4px' }}
-                          />
-                        ) : (
-                          <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa có ảnh thiết kế')}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {cmd.status === 'producing' && (
-                      <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--color-border-light)', display: 'flex', gap: '8px' }}>
-                        <button
-                          className="btn btn-success"
-                          style={{ flex: 1, padding: '10px', fontWeight: 600 }}
-                          onClick={() => setSelectedLsx(cmd)}
-                        >
-                          {t('HOÀN THÀNH')}
-                        </button>
-                        <button
-                          className="btn btn-outline"
-                          style={{ flex: 1, padding: '10px', fontWeight: 600 }}
-                          onClick={() => handleOpenTransfer(cmd)}
-                        >
-                          {t('CHUYỂN LỆNH')}
-                        </button>
-                      </div>
-                    )}
-                    {cmd.status === 'transfer_pending' && (
-                      <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--color-border-light)', textAlign: 'center', fontSize: '12.5px', color: 'var(--color-warning)', fontWeight: 600, backgroundColor: 'var(--color-warning-bg)', padding: '6px', borderRadius: '4px', border: '1px solid var(--color-warning-border)' }}>
-                        {t('Chờ duyệt chuyển sang:')} {cmd.proposedOperatorName}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-            {activeCommands.filter(cmd => {
-              if (currentUser.role === 'producer' && cmd.operatorId !== currentUser.uid) return false;
-              return operatorTab === 'producing' ? (cmd.status === 'producing' || cmd.status === 'transfer_pending') : cmd.status === 'completed';
-            }).length === 0 && (
-              <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)', gridColumn: '1 / -1' }}>
-                {t('Không có lệnh sản xuất nào trong danh sách này.')}
-              </div>
-            )}
-          </div>
-        </div>
+      {productionTab === 'commands' ? (
+        <ProductionOrderWorkspace key={initialSelectedLsxId || 'commands'} pos={pos} commands={productionCommands}
+          currentUser={currentUser} users={users} onRefresh={onRefresh}
+          initialSelectedId={productionCommands.find(command => command.id === initialSelectedLsxId || command.lsxCode === initialSelectedLsxId)?.id || initialSelectedLsxId}
+          onOpenLegacy={id => setSelectedLsx(productionCommands.find(command => command.id === id && command.productionOrderVersion !== 2 && !command.deleted) || null)} />
       ) : (
-        /* STANDARD ADMIN/COORDINATOR VIEW */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
-          {/* LSX Transfer Approvals */}
-          {activeCommands.some(cmd => cmd.status === 'transfer_pending') && (
-            <div className="card" style={{ border: '1px solid var(--color-warning-border)', backgroundColor: 'var(--color-warning-bg)' }}>
-              <span className="card-title" style={{ color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {t('Yêu Cầu Phê Duyệt Bàn Giao Lệnh')}
-              </span>
-              <div className="table-container production-approval-table-wrap">
-              <table className="production-approval-table" data-resize-key="production-approvals">
-                  <thead>
-                    <tr>
-                      <th>{t('Mã LSX')}</th>
-                      <th>{t('Thợ Yêu Cầu')}</th>
-                      <th>{t('Thợ Nhận Thay')}</th>
-                      <th>{t('Lý Do Bàn Giao')}</th>
-                      <th>{t('Hành Động')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeCommands
-                      .filter(cmd => cmd.status === 'transfer_pending')
-                      .map(cmd => (
-                        <tr key={cmd.id}>
-                          <td style={{ fontWeight: 600 }}>{cmd.lsxCode}</td>
-                          <td>{cmd.operatorName}</td>
-                          <td style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{cmd.proposedOperatorName}</td>
-                          <td>{cmd.transferReason}</td>
-                          <td>
-                            <RowActionMenu
-                              label={`${t('Thao tác')} ${cmd.lsxCode}`}
-                              actions={[
-                                { label: t('Duyệt'), onSelect: () => handleApproveTransfer(cmd) },
-                                { label: t('Từ Chối'), onSelect: () => handleRejectTransfer(cmd), danger: true }
-                              ]}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          <div className="card">
-            <div style={{ marginBottom: '16px' }}>
-              <span className="card-title" style={{ margin: 0 }}>{t('Danh Sách Lệnh Sản Xuất Đang Chạy và Đã Xong')}</span>
-            </div>
-            <div className="table-container production-command-table-wrap erp-primary-data-table">
-              <table className="production-command-table" data-resize-key="production-commands">
-                <thead>
-                  <tr>
-                    <th>{t('Mã LSX')}</th>
-                    <th>{t('Mã PO')}</th>
-                    <th>{t('Tên Tem Cần Bế')}</th>
-                    <th>{t('Máy Sản Xuất')}</th>
-                    <th>{t('Lõi Giấy')}</th>
-                    <th>{t('Giấy NVL')}</th>
-                    <th>{t('SL Đặt')}</th>
-                    <th>{t('Phế phẩm')}</th>
-                    <th>{t('Trạng Thái')}</th>
-                    <th>{t('Thao Tác')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {productionPagination.rows.map(cmd => (
-                    <tr key={cmd.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedLsx(cmd)}>
-                      <td style={{ fontWeight: 600 }}>{cmd.lsxCode}</td>
-                      <td>{cmd.poCode}</td>
-                      <td style={{ fontWeight: 500 }}>{cmd.productNameToBeCut || cmd.productName}</td>
-                      <td>{cmd.machineId}</td>
-                      <td>{cmd.paperCore || '76mm'}</td>
-                      <td style={{ fontSize: '11px' }}>{cmd.paperMaterialCode} ({cmd.paperQuantity} cuộn)</td>
-                      <td>{getProductionQuantity(cmd).toLocaleString()}</td>
-                      <td>{cmd.scrapQty ? `${cmd.scrapQty.toLocaleString()} tem` : '0'}</td>
-                      <td>
-                        <span className={`badge ${
-                          cmd.status === 'completed' ? 'badge-success' :
-                          cmd.status === 'transfer_pending' ? 'badge-warning' : 'badge-info'
-                        }`}>
-                          {cmd.status === 'completed' ? t('Đã hoàn thành') :
-                           cmd.status === 'transfer_pending' ? t('Bàn giao chờ duyệt') : t('Đang in')}
-                        </span>
-                      </td>
-                      <td>
-                        <RowActionMenu
-                          label={`${t('Thao tác')} ${cmd.lsxCode}`}
-                          actions={cmd.status !== 'completed' && (currentUser.role === 'admin' || currentUser.role === 'producer') ? [
-                            { label: t('Báo Cáo Hoàn Thành'), onSelect: () => setSelectedLsx(cmd) },
-                            { label: t('Sửa'), onSelect: () => handleOpenEditLsx(cmd) },
-                            { label: t('Xóa'), onSelect: () => handleDeleteLsx(cmd.id), danger: true }
-                          ] : [{ label: t('Chi Tiết'), onSelect: () => setSelectedLsx(cmd) }]}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <DataTablePagination {...productionPagination.paginationProps} />
-          </div>
-        </div>
+        <MachineManagement machines={machineCatalog} productionCommands={productionCommands.filter(command => !command.deleted)} canManage={canManage} />
       )}
 
       {/* EDIT LSX DIALOG */}
@@ -768,19 +526,19 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
       )}
 
       {/* LSX DETAILS AND COMPLETION MODAL */}
-      {selectedLsx && !showEditLsxModal && (
+      {selectedLsx && !showEditLsxModal && !showTransferModal && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '650px' }}>
             <div className="modal-header">
               <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHI TIẾT LỆNH SẢN XUẤT')}: {selectedLsx.lsxCode}</span>
               <div style={{ display: 'flex', gap: '8px' }}>
-                {selectedLsx.status === 'producing' && !isOperator && (currentUser.role === 'admin' || currentUser.role === 'producer') && (
+                {selectedLsx.status !== 'completed' && !isOperator && canManage && (
                   <>
-                    <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => handleOpenEditLsx(selectedLsx)} title={t('Sửa')}>
-                      <Pencil size={14} />
+                    <button className="btn btn-sm btn-outline" onClick={() => handleOpenEditLsx(selectedLsx)} title={t('Sửa')}>
+                      {t('Sửa')}
                     </button>
-                    <button className="btn btn-sm btn-danger btn-symbol-sm" onClick={() => handleDeleteLsx(selectedLsx.id)} title={t('Xóa')}>
-                      <Trash2 size={14} />
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteLsx(selectedLsx.id)} title={t('Xóa')}>
+                      {t('Xóa')}
                     </button>
                   </>
                 )}
@@ -823,7 +581,19 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                 </div>
               </div>
 
-              {selectedLsx.status === 'producing' && (currentUser.role === 'admin' || currentUser.role === 'producer') && (
+              {selectedLsx.status === 'transfer_pending' && (
+                <div className="machine-alert">
+                  <div><strong>Chờ duyệt bàn giao cho {selectedLsx.proposedOperatorName}</strong><span>{selectedLsx.transferReason}</span></div>
+                  {currentUser.role === 'admin' && <div className="lsx-actions">
+                    <button className="btn btn-primary" onClick={() => handleApproveTransfer(selectedLsx)}>Duyệt bàn giao</button>
+                    <button className="btn btn-outline" onClick={() => handleRejectTransfer(selectedLsx)}>Từ chối</button>
+                  </div>}
+                </div>
+              )}
+              {selectedLsx.status === 'producing' && isOperator && canCompleteLegacy && (
+                <button className="btn btn-outline" onClick={() => handleOpenTransfer(selectedLsx)}>Đề nghị bàn giao</button>
+              )}
+              {selectedLsx.status === 'producing' && canCompleteLegacy && (
                 <form onSubmit={handleCompleteLsx} style={{ border: '1px solid var(--color-border)', padding: '16px', borderRadius: '4px', marginTop: '16px', backgroundColor: '#f8fafc' }}>
                   <h3 style={{ fontSize: '14px', marginBottom: '12px', color: 'var(--color-success)', fontWeight: 700 }}>{t('Báo cáo kết quả hoàn thành sản xuất')}:</h3>
                   <div className="form-group">
@@ -874,8 +644,8 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
           <div className="modal-content" style={{ maxWidth: '450px' }}>
             <div className="modal-header">
               <span style={{ fontWeight: 700 }}>{t('BÀN GIAO / CHUYỂN LỆNH SẢN XUẤT')}</span>
-              <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => setShowTransferModal(false)}>
-                <X size={16} />
+              <button className="btn btn-sm btn-outline" onClick={() => setShowTransferModal(false)}>
+                {t('Đóng')}
               </button>
             </div>
             <form onSubmit={handleTransferSubmit}>

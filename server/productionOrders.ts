@@ -1,7 +1,7 @@
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
 import {
-  assertPOAccess, assertTransition, validateProductionDraft, completedProduction, lineSnapshot,
+  assertPOAccess, assertTransition, canManageProduction, validateProductionDraft, completedProduction, lineSnapshot,
   type ProductionActor, type ProductionOrder, type ProductionPO, type CommandRecord
 } from '../src/features/production/model/productionOrder.js';
 import { getPOQueueUpdate, getPOQueueStatus } from '../src/features/sales/model/poWorkflow.js';
@@ -30,6 +30,7 @@ const identifier = (value: unknown) => {
 
 /** The PO write serializes concurrent allocations, including creates with different IDs. */
 export async function manageProductionOrder(actor: ProductionActor, body: Record<string, unknown>) {
+  if (!canManageProduction(actor)) throw new AdminApiError(403, 'Bạn không có quyền quản lý lệnh sản xuất.');
   const { firestore } = getFirebaseAdminServices();
   const action = String(body.action), id = identifier(body.id), poId = identifier(body.poId);
   const commandRef = firestore.collection('production_commands').doc(id);
@@ -58,7 +59,6 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     const accessPO = ['cancel', 'complete', 'start', 'return'].includes(action) ? { ...po, status: 'waiting_production' } : po;
     assertPOAccess(actor, accessPO);
     if (action !== 'create') assertTransition(actor, previous!, action);
-    if (action === 'create' && !['admin', 'sale', 'producer'].includes(actor.role)) throw new AdminApiError(403, 'Bạn không có quyền lập LSX.');
     const counterRef = firestore.collection('production_counters').doc(businessDate);
     const counter = action === 'create' ? await transaction.get(counterRef) : null;
     const sequence = Number(counter?.data()?.sequence || 0) + 1;

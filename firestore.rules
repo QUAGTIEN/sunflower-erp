@@ -66,6 +66,10 @@ service cloud.firestore {
       return hasPage('sales') || hasPage('design');
     }
 
+    function canManageProduction() {
+      return isAdmin() || (hasPage('production') && userProfile().role == 'producer');
+    }
+
     function canUsePurchase() {
       return hasPage('purchase') || hasPage('inventory');
     }
@@ -340,7 +344,7 @@ service cloud.firestore {
     match /production_commands/{documentId} {
       allow read: if isActive();
       allow create: if false;
-      allow update: if hasPage('production')
+      allow update: if canManageProduction()
         && resource.data.get('productionOrderVersion', 0) != 2
         && request.resource.data.get('productionOrderVersion', 0) != 2;
       allow delete: if isAdmin() && resource.data.get('productionOrderVersion', 0) != 2;
@@ -348,7 +352,7 @@ service cloud.firestore {
 
     match /machines/{documentId} {
       allow read: if isActive();
-      allow create, update: if hasPage('production');
+      allow create, update: if canManageProduction();
       allow delete: if isAdmin();
     }
 

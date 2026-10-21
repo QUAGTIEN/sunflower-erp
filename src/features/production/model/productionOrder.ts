@@ -47,7 +47,9 @@ export function lineSnapshot(item: Record<string, unknown>, index: number, quant
   };
   return { ...data, quantity, sourceFingerprint: JSON.stringify(stable({ ...data, orderedQuantity: numeric(item.quantity) })) };
 }
-export const hasProductionAccess = (actor: ProductionActor, page: 'sales' | 'production') => actor.active && (actor.role === 'admin' || actor.allowedPages?.includes(page) === true);
+export const hasProductionAccess = (actor: ProductionActor, page: 'sales' | 'production') => actor.active
+  && (page !== 'production' || actor.role !== 'sale')
+  && (actor.role === 'admin' || actor.allowedPages?.includes(page) === true);
 export function productionQuantityLabel(command: CommandRecord) {
   if (command.productionOrderVersion !== 2) {
     const value = Number(command.qtyToProduce ?? command.quantity ?? 0);
@@ -59,8 +61,7 @@ export function productionQuantityLabel(command: CommandRecord) {
 }
 export const canManageProduction = (actor: ProductionActor) => hasProductionAccess(actor, 'production') && ['admin', 'producer'].includes(actor.role);
 export function assertPOAccess(actor: ProductionActor, po: ProductionPO) {
-  if (!hasProductionAccess(actor, 'sales') && !hasProductionAccess(actor, 'production')) fail('Bạn không có quyền sử dụng đơn hàng / sản xuất.');
-  if (actor.role === 'sale' && po.saleId !== actor.uid && po.assignedSaleId !== actor.uid) fail('Bạn chỉ được lập lệnh cho PO do mình phụ trách.');
+  if (!canManageProduction(actor)) fail('Bạn không có quyền quản lý lệnh sản xuất.');
   if (po.deleted || !Array.isArray(po.items) || !po.items.length) fail('PO không tồn tại hoặc chưa có mặt hàng.');
   if (!['waiting_design', 'receive_po', 'bom_extracted', 'design_sent', 'layout_pending', 'waiting_production', 'production_pending', 'producing', 'supplier_confirmed'].includes(String(po.status))) fail('PO đã chuyển giai đoạn, không thể lập / phát hành thêm LSX.');
 }
@@ -111,6 +112,7 @@ export function validateProductionDraft(po: ProductionPO, commands: CommandRecor
 }
 export function assertTransition(actor: ProductionActor, order: ProductionOrder, action: string) {
   const manager = canManageProduction(actor);
+  if (!manager) fail('Bạn không có quyền quản lý lệnh sản xuất.');
   const operator = hasProductionAccess(actor, 'production') && actor.role === 'producer' && order.operatorId === actor.uid;
   const owner = order.createdById === actor.uid && (hasProductionAccess(actor, 'sales') || manager);
   const permitted = action === 'save' ? order.status === 'draft' && (manager || owner)

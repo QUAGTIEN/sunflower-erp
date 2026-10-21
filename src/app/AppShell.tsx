@@ -41,7 +41,6 @@ import {
   Building2,
   Archive,
   FolderOpen,
-  Settings,
   Truck,
   DollarSign,
   Trash2,
@@ -478,7 +477,7 @@ function AppShell() {
     );
     syncSubscription(
       'production_commands',
-      pageNeeds('dashboard', 'sales', 'production', 'chat'),
+      pageNeeds('dashboard', 'production', 'chat'),
       () => dbService.subscribeCollection('production_commands', data => {
         setProductionCommands(sortNewestFirst(data, command => [command.createdAt, command.startedAt]));
       })
@@ -730,7 +729,6 @@ function AppShell() {
         return (
           <Sales
             pos={pos}
-            productionCommands={productionCommands}
             customers={customers}
             leads={leads}
             currentUser={user}
@@ -1143,6 +1141,19 @@ function AppShell() {
             </button>
           )}
 
+          {isPageAllowed('production') && (
+            <button
+              data-page-id="production"
+              className={`sidebar-item ${activePage === 'production' ? 'active' : ''}`}
+              onClick={() => { setActivePage('production'); setIsSidebarOpen(false); }}
+              title={t('Lệnh Sản Xuất (LSX)')}
+            >
+              <div className="sidebar-item-content">
+                <span className="sidebar-item-label">Sản xuất</span>
+              </div>
+            </button>
+          )}
+
           {isPageAllowed('design') && (
             <>
               <button
@@ -1208,20 +1219,6 @@ function AppShell() {
               <div className="sidebar-item-content">
                 <Archive size={16} />
                 <span className="sidebar-item-label">Vật liệu</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('production') && (
-            <button
-              data-page-id="production"
-              className={`sidebar-item ${activePage === 'production' ? 'active' : ''}`}
-              onClick={() => { setActivePage('production'); setIsSidebarOpen(false); }}
-              title={t('Lệnh Sản Xuất (LSX)')}
-            >
-              <div className="sidebar-item-content">
-                <Settings size={16} />
-                <span className="sidebar-item-label">Sản xuất</span>
               </div>
             </button>
           )}

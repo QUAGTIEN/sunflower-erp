@@ -4,7 +4,7 @@
 .lsx-heading h2 { font-size: 18px; }
 .lsx-heading > div > span, .lsx-hint { color: var(--color-text-muted, #64748b); font-size: 12px; line-height: 1.5; }
 .lsx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.lsx-toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) 220px; gap: 12px; padding: 12px; background: #f8fafc; border: 1px solid var(--erp-border-color, #d8e1ee); border-radius: 6px; }
+.lsx-toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) repeat(2, minmax(140px, 180px)); gap: 12px; padding: 12px; background: #f8fafc; border: 1px solid var(--erp-border-color, #d8e1ee); border-radius: 6px; }
 .lsx-workspace :is(.lsx-toolbar, .lsx-editor, .lsx-section) label { display: grid; gap: 6px; color: #334155; font-size: 13px; min-width: 0; }
 .lsx-workspace :is(.lsx-toolbar, .lsx-editor, .lsx-section) :is(input:not([type=checkbox]), select, textarea) { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: var(--erp-control-radius, 6px); padding: 7px 9px; background: #fff; color: #172554; font: inherit; }
 .lsx-workspace :is(input:not([type=checkbox]), select) { min-height: var(--erp-control-height, 36px); }
@@ -38,5 +38,5 @@
 .lsx-print-dialog { position: fixed; inset: 16px; width: calc(100vw - 32px); height: calc(100vh - 32px); max-width: none; max-height: none; margin: 0; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; z-index: 12000; box-shadow: 0 0 0 100vmax rgb(15 23 42 / 35%); }
 .lsx-print-dialog iframe { width: 100%; flex: 1; min-height: 0; border: 1px solid #d8e1ee; }
 .lsx-print-dialog::backdrop { background: rgb(15 23 42 / 35%); }
-@media (max-width: 900px) { .lsx-fields, .lsx-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .lsx-fields, .lsx-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }.lsx-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }.lsx-toolbar > label:first-child { grid-column: 1 / -1; } }
 @media (max-width: 600px) { .lsx-toolbar, .lsx-fields, .lsx-meta { grid-template-columns: minmax(0, 1fr); }.lsx-wide { grid-column: auto; }.lsx-workspace { padding: 12px; } }
