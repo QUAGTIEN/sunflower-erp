@@ -98,11 +98,15 @@ test('first save uses authoritative employee identity/type, canonical record ID,
   assert.deepEqual(b.store.get('inventory/paper'), { qty: 50 }); assert.deepEqual(b.store.get('pos/po1'), { total: 100 });
   assert.equal([...b.store.keys()].filter(key => key.startsWith('audit_events/')).length, 1);
 });
-test('an update replaces one day, deletion retains revision tombstone, and monthly totals follow stored days', async () => {
-  const b = backend(); await b.save(); await b.save({ day: { ...fullDay, lateMinutes: 0, overtimeHours: 2 } });
-  assert.equal(Object.keys(b.record().days).length, 1); assert.equal(model.attendanceTotals(b.record().days).overtimeHours, 2);
-  await b.action('delete_day', worker, { date: '2026-01-05', employmentType: 'full_time' });
+test('recorded days cannot be directly changed/deleted; manager-approved deletion retains revision and request history', async () => {
+  const b = backend(); await b.save();
+  await rejectsStatus(b.save({ day: { ...fullDay, lateMinutes: 0, overtimeHours: 2 } }), 403);
+  await rejectsStatus(b.action('delete_day', worker, { date: '2026-01-05' }), 403);
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'delete', reason: 'Chấm nhầm ngày', requestId: 'deletion1' });
+  assert.deepEqual(b.record().days['2026-01-05'], fullDay);
+  await b.action('approve_change', admin, { changeId: 'deletion1' });
   assert.deepEqual(b.record().days, {}); assert.equal(b.record().revision, 3);
+  assert.equal(b.record().changeRequests.deletion1.status, 'approved');
   await rejectsStatus(b.action('submit'), 400);
   await rejectsStatus(b.save({ expectedRevision: 0 }), 409);
 });
@@ -132,13 +136,15 @@ test('no employee or Admin can punch for others; staff cannot approve, configure
 test('submit locks both updates and deletes; approve and return enforce state and reason, resubmit clears old review', async () => {
   const b = backend(); await b.save(); await b.action('submit'); assert.equal(b.record().status, 'pending');
   await rejectsStatus(b.save(), 409);
-  await rejectsStatus(b.action('delete_day', worker, { date: '2026-01-05', employmentType: 'full_time' }), 409);
+  await rejectsStatus(b.action('delete_day', worker, { date: '2026-01-05', employmentType: 'full_time' }), 403);
   await rejectsStatus(b.action('submit'), 409);
   await b.action('approve', admin); assert.equal(b.record().status, 'approved');
   await rejectsStatus(b.action('approve', admin), 409);
   await rejectsStatus(b.action('return', admin, { reason: ' ' }), 400);
   await b.action('return', admin, { reason: 'Kiểm tra lại OT' }); assert.equal(b.record().returnReason, 'Kiểm tra lại OT');
-  await b.save({ day: { ...fullDay, overtimeHours: 0 } }); await b.action('submit');
+  await rejectsStatus(b.save({ day: { ...fullDay, overtimeHours: 0 } }), 403);
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'edit', day: { ...fullDay, overtimeHours: 0 }, reason: 'Sửa OT', requestId: 'edit1' });
+  await b.action('approve_change', admin, { changeId: 'edit1' }); await b.action('submit');
   assert.equal(b.record().status, 'pending'); assert.equal(b.record().returnReason, undefined); assert.equal(b.record().reviewedBy, undefined);
 });
 test('concurrent writes from the same revision never overwrite another day', async () => {
@@ -146,6 +152,82 @@ test('concurrent writes from the same revision never overwrite another day', asy
   const result = await Promise.allSettled([b.save({ expectedRevision: 0 }), b.save({ expectedRevision: 0, date: '2026-01-06' })]);
   assert.equal(result.filter(item => item.status === 'fulfilled').length, 1); assert.ok(b.retries() > 0);
   assert.equal(Object.keys(b.record().days).length, 1);
+});
+test('a correction is a snapshot proposal; submitting and approving a month waits for pending requests', async () => {
+  const b = backend(); await b.save();
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'edit', day: { ...fullDay, overtimeHours: 2 }, reason: 'Bổ sung OT', requestId: 'correction1', before: { hours: 999 }, status: 'approved' });
+  const change = b.record().changeRequests.correction1;
+  assert.deepEqual(change.before, fullDay); assert.equal(change.status, 'pending');
+  assert.deepEqual(b.record().days['2026-01-05'], fullDay);
+  await rejectsStatus(b.action('submit'), 409);
+  await rejectsStatus(b.action('request_change', worker, { date: '2026-01-05', kind: 'delete', reason: 'Lặp yêu cầu' }), 409);
+  await b.action('approve_change', admin, { changeId: 'correction1', day: { ...fullDay, overtimeHours: 999 } });
+  assert.equal(b.record().days['2026-01-05'].overtimeHours, 2);
+  assert.equal(b.record().changeRequests.correction1.status, 'approved');
+  await rejectsStatus(b.action('approve_change', admin, { changeId: 'correction1' }), 409);
+  await b.action('submit');
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'delete', reason: 'Chấm nhầm', requestId: 'correction2' });
+  await rejectsStatus(b.action('approve', admin), 409);
+});
+test('rejection requires reason and leaves recorded work unchanged; staff cannot self-approve or change another employee', async () => {
+  const b = backend(); await b.save();
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'delete', reason: 'Chấm nhầm', requestId: 'delete1' });
+  await rejectsStatus(b.action('approve_change', worker, { changeId: 'delete1' }), 403);
+  await rejectsStatus(b.action('reject_change', admin, { changeId: 'delete1', reason: ' ' }), 400);
+  await rejectsStatus(b.action('request_change', other, { date: '2026-01-05', kind: 'delete', reason: 'Giả mạo' }), 403);
+  await b.action('reject_change', admin, { changeId: 'delete1', reason: 'Đã xác nhận có đi làm' });
+  assert.deepEqual(b.record().days['2026-01-05'], fullDay);
+  assert.equal(b.record().changeRequests.delete1.responseReason, 'Đã xác nhận có đi làm');
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'edit', day: { ...fullDay, lateMinutes: 0 }, reason: 'Sửa phút trễ' });
+  assert.equal(Object.values(b.record().changeRequests).filter(item => item.status === 'pending').length, 1);
+});
+test('corrections can be requested for an approved month; approval reopens monthly review without unlocking existing days', async () => {
+  const b = backend(); await b.save(); await b.action('submit'); await b.action('approve', admin);
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'edit', day: { ...fullDay, lateMinutes: 0 }, reason: 'Kiểm tra lại phút trễ', requestId: 'editApproved' });
+  assert.equal(b.record().status, 'approved');
+  await b.action('approve_change', admin, { changeId: 'editApproved' });
+  assert.equal(b.record().status, 'returned'); assert.equal(b.record().days['2026-01-05'].lateMinutes, 0);
+  await rejectsStatus(b.save(), 403);
+  await b.action('submit'); assert.equal(b.record().status, 'pending');
+});
+test('request validation prevents no-op, invalid hours, foreign dates, forged revision and simultaneous duplicate requests', async () => {
+  const b = backend(); await b.save();
+  const base = { date: '2026-01-05', kind: 'edit', day: { ...fullDay, lateMinutes: 0 }, reason: 'Điều chỉnh' };
+  await rejectsStatus(b.action('request_change', worker, { ...base, day: fullDay }), 400);
+  await rejectsStatus(b.action('request_change', worker, { ...base, reason: '' }), 400);
+  await rejectsStatus(b.action('request_change', worker, { ...base, date: '2026-02-05' }), 404);
+  await rejectsStatus(b.action('request_change', worker, { ...base, expectedRevision: 0 }), 409);
+  await assert.rejects(b.action('request_change', worker, { ...base, day: { ...fullDay, overtimeHours: -1 } }));
+  const results = await Promise.allSettled([b.action('request_change', worker, { ...base, expectedRevision: 1 }), b.action('request_change', worker, { ...base, expectedRevision: 1 })]);
+  assert.equal(results.filter(item => item.status === 'fulfilled').length, 1);
+  assert.equal(Object.keys(b.record().changeRequests).length, 1);
+});
+test('assigned reviewers and stale base data are checked on approval; rejection remains available after base changes', async () => {
+  const b = backend(); await b.save();
+  b.store.set('attendance_settings/worker', { ...b.store.get('attendance_settings/worker'), reviewerId: otherAdmin.uid });
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'delete', reason: 'Xóa nhầm', requestId: 'assigned1' });
+  await rejectsStatus(b.action('approve_change', admin, { changeId: 'assigned1' }), 403);
+  await rejectsStatus(b.action('reject_change', admin, { changeId: 'assigned1', reason: 'Không đúng' }), 403);
+  b.store.set('attendance_months/worker_2026-01', { ...b.record(), days: { '2026-01-05': { ...fullDay, lateMinutes: 1 } } });
+  await rejectsStatus(b.action('approve_change', otherAdmin, { changeId: 'assigned1' }), 409);
+  await b.action('reject_change', otherAdmin, { changeId: 'assigned1', reason: 'Công gốc đã đổi' });
+  assert.equal(b.record().days['2026-01-05'].lateMinutes, 1);
+});
+test('concurrent approve/reject resolves once and records only the affected day/request in audit', async () => {
+  const b = backend(); await b.save(); await b.save({ date: '2026-01-06' });
+  await b.action('request_change', worker, { date: '2026-01-05', kind: 'edit', day: { ...fullDay, lateMinutes: 0 }, reason: 'Chỉnh phút trễ', requestId: 'concurrentReview' });
+  const revision = b.record().revision;
+  const results = await Promise.allSettled([
+    b.action('approve_change', admin, { changeId: 'concurrentReview', expectedRevision: revision }),
+    b.action('reject_change', admin, { changeId: 'concurrentReview', expectedRevision: revision, reason: 'Không chấp nhận' })
+  ]);
+  assert.equal(results.filter(item => item.status === 'fulfilled').length, 1);
+  assert.deepEqual(b.record().days['2026-01-06'], fullDay);
+  const events = [...b.store.entries()].filter(([key]) => key.startsWith('audit_events/')).map(([, value]) => value);
+  const review = events.find(event => ['attendance_approve_change', 'attendance_reject_change'].includes(event.action));
+  assert.deepEqual(Object.keys(review.after.days), ['2026-01-05']);
+  assert.equal(review.before.change.status, 'pending'); assert.ok(['approved', 'rejected'].includes(review.after.change.status));
+  assert.equal(review.after.changeRequests, undefined);
 });
 test('identical acknowledged retries are no-ops; same request ID with altered content is rejected', async () => {
   const b = backend(); const request = { expectedRevision: 0, requestId: 'uniqueRequest' };
@@ -166,7 +248,7 @@ test('configuration requires active employees/admin reviewers and optimistic rev
 test('changing employment type preserves entered months and applies to new months; stale UI type cannot silently change interpretation', async () => {
   const b = backend(); await b.save();
   await b.manage(admin, { action: 'settings', changes: [{ userId: worker.uid, employmentType: 'part_time', reviewerId: '', expectedRevision: 1 }] });
-  await b.save(); assert.equal(b.record().employmentType, 'full_time');
+  await b.save({ date: '2026-01-06' }); assert.equal(b.record().employmentType, 'full_time');
   await rejectsStatus(b.save({ month: '2026-02', date: '2026-02-02', expectedRevision: 0 }), 409);
   await b.save({ month: '2026-02', date: '2026-02-02', employmentType: 'part_time', expectedRevision: 0, day: partDay });
   assert.equal(b.record(worker.uid, '2026-02').employmentType, 'part_time');
@@ -259,7 +341,7 @@ function screen(file, name, props, initial = {}, stubs = {}) {
 }
 const monthRecord = () => ({ id: 'worker_2026-01', userId: worker.uid, employeeName: worker.displayName, month: '2026-01', employmentType: 'full_time', days: { '2026-01-05': fullDay }, status: 'draft', revision: 1, reviewerId: '', updatedAt: '' });
 const workspace = () => ({ employees: [worker, admin], settings: [{ userId: worker.uid, employmentType: 'full_time', reviewerId: '', revision: 1 }], months: [monthRecord()] });
-test('UI has exactly three main tabs, calendar/table views, locked/future days and role-specific tab access', () => {
+test('UI keeps exactly three main tabs and only the month grid, without summary, annotations or daily-list navigation', () => {
   const ui = screen('src/features/attendance/pages/AttendancePage.tsx', 'AttendancePage', { currentUser: worker }, { loading: false, month: '2026-01', workspace: workspace() });
   let tree = ui.render();
   const tabs = nodes(tree).find(node => node.props?.['aria-label'] === 'Phân hệ Chấm công');
@@ -268,11 +350,14 @@ test('UI has exactly three main tabs, calendar/table views, locked/future days a
   const calendarDay = date => nodes(tree).find(node => node.type === 'button' && node.props['aria-label']?.startsWith(date));
   assert.equal(calendarDay('05/01/2026').props.disabled, false); calendarDay('05/01/2026').props.onClick(); assert.equal(ui.state.get('editingDate'), '2026-01-05');
   ui.state.set('editingDate', ''); ui.state.set('workspace', { ...workspace(), months: [{ ...monthRecord(), status: 'pending' }] }); tree = ui.render();
-  assert.equal(calendarDay('05/01/2026').props.disabled, true);
-  ui.state.set('workspace', workspace()); ui.state.set('view', 'table'); tree = ui.render();
-  assert.equal(nodes(tree).filter(node => node.type?.name === 'RowActionMenu').length, 31);
+  assert.equal(calendarDay('05/01/2026').props.disabled, false, 'recorded locked days can request corrections');
+  assert.equal(calendarDay('06/01/2026').props.disabled, true, 'new entries remain locked in a submitted month');
+  assert.equal(nodes(tree).filter(node => node.type === 'nav').length, 1);
+  assert.equal(nodes(tree).filter(node => node.type === 'table' || node.type === 'p').length, 0);
+  assert.ok(!nodes(tree).some(node => node.props?.className === 'attendance-summary'));
+  ui.state.set('editingDate', ''); ui.state.set('workspace', workspace());
   ui.state.set('month', '2099-12'); tree = ui.render();
-  assert.ok(nodes(tree).filter(node => node.type?.name === 'RowActionMenu').every(menu => menu.props.actions[0].disabled));
+  assert.ok(nodes(tree).filter(node => node.props?.className?.startsWith('attendance-calendar-day')).every(day => day.props.disabled));
 });
 test('saving through the calendar dialog calls the API, updates totals/state and emits success only after response', async () => {
   const writes = [], toasts = [];
@@ -286,7 +371,7 @@ test('saving through the calendar dialog calls the API, updates totals/state and
   assert.equal(ui.state.get('editingDate'), ''); assert.equal(model.attendanceTotals(ui.state.get('workspace').months[0].days).days, 2);
   assert.deepEqual(toasts, ['Đã lưu chấm công.']);
 });
-test('failed save keeps modal open and emits no success; delete reuses the API and confirmed deletion', async () => {
+test('failed save keeps modal open and emits no success; existing-day deletion sends a request with reason and never calls save', async () => {
   const toasts = [];
   const ui = screen('src/features/attendance/pages/AttendancePage.tsx', 'AttendancePage', { currentUser: worker }, { loading: false, month: '2026-01', workspace: workspace(), editingDate: '2026-01-05' }, {
     '../api/attendanceService': { mutateAttendance: async () => { throw new Error('Mất kết nối'); } },
@@ -294,12 +379,15 @@ test('failed save keeps modal open and emits no success; delete reuses the API a
   });
   await assert.rejects(nodes(ui.render()).find(node => node.type?.name === 'AttendanceDayDialog').props.onSave(fullDay), /Mất kết nối/);
   assert.equal(ui.state.get('editingDate'), '2026-01-05'); assert.deepEqual(toasts, []);
-  let confirmed = false, deletes = 0;
-  const dayUI = screen('src/features/attendance/components/AttendanceDayDialog.tsx', 'AttendanceDayDialog', { date: '2026-01-05', employeeName: worker.displayName, employmentType: 'full_time', day: fullDay, onClose() {}, onSave: async day => { assert.equal(day, null); deletes++; } }, {}, {
-    '@/shared/feedback/deleteConfirmation': { confirmDelete: async () => confirmed }
-  });
-  const remove = () => nodes(dayUI.render()).find(node => node.type === 'button' && node.props.children === 'Xóa chấm công').props.onClick();
-  await remove(); assert.equal(deletes, 0); confirmed = true; await remove(); assert.equal(deletes, 1);
+  const requested = []; let saves = 0;
+  const dayUI = screen('src/features/attendance/components/AttendanceDayDialog.tsx', 'AttendanceDayDialog', { date: '2026-01-05', employeeName: worker.displayName, employmentType: 'full_time', day: fullDay, onClose() {}, onSave: async () => { saves++; }, onRequest: async (...args) => requested.push(args) });
+  assert.ok(nodes(dayUI.render()).filter(node => node.type === 'input').every(input => input.props.disabled));
+  nodes(dayUI.render()).find(node => node.type === 'button' && node.props.children === 'Yêu cầu xóa').props.onClick();
+  await nodes(dayUI.render()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.equal(requested.length, 0);
+  nodes(dayUI.render()).find(node => node.type === 'textarea').props.onChange({ target: { value: 'Chấm nhầm' } });
+  await nodes(dayUI.render()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.deepEqual(requested, [['delete', null, 'Chấm nhầm']]); assert.equal(saves, 0);
 });
 test('part-time modal exposes only worked hours and late minutes, never OT or clock-in/out', async () => {
   let saved;
@@ -310,9 +398,61 @@ test('part-time modal exposes only worked hours and late minutes, never OT or cl
   await nodes(ui.render()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
   assert.deepEqual(saved, { ...partDay, lateMinutes: 10 });
 });
+test('existing-day edits require an explicit request, changed values and reason; pending/read-only days expose no change buttons', async () => {
+  let saves = 0; const requests = [];
+  const props = { date: '2026-01-05', employeeName: worker.displayName, employmentType: 'full_time', day: fullDay, onClose() {}, onSave: async () => saves++, onRequest: async (...args) => requests.push(args) };
+  const ui = screen('src/features/attendance/components/AttendanceDayDialog.tsx', 'AttendanceDayDialog', props);
+  nodes(ui.render()).find(node => node.type === 'button' && node.props.children === 'Yêu cầu sửa').props.onClick();
+  nodes(ui.render()).find(node => node.type === 'textarea').props.onChange({ target: { value: 'Bổ sung OT' } });
+  await nodes(ui.render()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.equal(requests.length, 0, 'unchanged values cannot be submitted');
+  nodes(ui.render()).find(node => node.type === 'input' && node.props.value === '1.5').props.onChange({ target: { value: '2' } });
+  await nodes(ui.render()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.deepEqual(requests, [['edit', { ...fullDay, overtimeHours: 2 }, 'Bổ sung OT']]); assert.equal(saves, 0);
+  for (const extra of [{ readOnly: true }, { lastRequest: { status: 'pending', kind: 'edit' } }]) {
+    const locked = screen('src/features/attendance/components/AttendanceDayDialog.tsx', 'AttendanceDayDialog', { ...props, ...extra });
+    assert.ok(nodes(locked.render()).filter(node => node.type === 'input').every(input => input.props.disabled));
+    assert.ok(!nodes(locked.render()).some(node => node.type === 'button' && ['Yêu cầu sửa', 'Yêu cầu xóa', 'Lưu thay đổi', 'Lưu chấm công'].includes(node.props.children)));
+  }
+});
+test('requesting from a day dialog uses request_change, keeps stored work intact and reports pending confirmation', async () => {
+  const writes = [], toasts = [];
+  const request = { id: 'pendingEdit', date: '2026-01-05', kind: 'edit', status: 'pending', createdAt: '', before: fullDay, after: { ...fullDay, lateMinutes: 0 }, reason: 'Sửa phút trễ', employmentType: 'full_time', reviewerId: '' };
+  const ui = screen('src/features/attendance/pages/AttendancePage.tsx', 'AttendancePage', { currentUser: worker }, { loading: false, month: '2026-01', workspace: workspace(), editingDate: '2026-01-05' }, {
+    '../api/attendanceService': { mutateAttendance: async body => { writes.push(body); return { ...monthRecord(), revision: 2, changeRequests: { pendingEdit: request } }; } },
+    '@/shared/feedback/mutationFeedback': { showSuccessToast: text => toasts.push(text), showErrorToast() {} }
+  });
+  const dialog = nodes(ui.render()).find(node => node.type?.name === 'AttendanceDayDialog');
+  await dialog.props.onRequest('edit', request.after, request.reason);
+  assert.equal(writes[0].action, 'request_change'); assert.equal(writes[0].userId, worker.uid);
+  assert.deepEqual(ui.state.get('workspace').months[0].days['2026-01-05'], fullDay);
+  assert.deepEqual(toasts, ['Đã gửi yêu cầu chờ duyệt.']);
+  assert.ok(nodes(ui.render()).some(node => node.props?.className === 'attendance-request-status'));
+});
+test('review UI shows proposed data, only mutates after manager submits, and requires rejection reason', async () => {
+  const request = { id: 'edit1', date: '2026-01-05', kind: 'edit', status: 'pending', createdAt: '', before: fullDay, after: { ...fullDay, lateMinutes: 0 }, reason: 'Sửa phút trễ', employmentType: 'full_time', reviewerId: '' };
+  const pending = { ...monthRecord(), changeRequests: { edit1: request } }, writes = [];
+  const ui = screen('src/features/attendance/pages/AttendancePage.tsx', 'AttendancePage', { currentUser: admin }, { loading: false, month: '2026-01', workspace: { ...workspace(), months: [pending] }, tab: 'approval' }, {
+    '../api/attendanceService': { mutateAttendance: async body => { writes.push(body); return { ...pending, days: { '2026-01-05': request.after }, revision: 2 }; } },
+    '@/shared/feedback/mutationFeedback': { showSuccessToast() {}, showErrorToast() {} }
+  });
+  nodes(ui.render()).find(node => node.type?.name === 'RowActionMenu').props.actions[0].onSelect();
+  assert.equal(writes.length, 0);
+  const detail = nodes(ui.render()).find(node => node.type?.name === 'AttendanceChangeReviewDialog');
+  assert.deepEqual(detail.props.request.before, fullDay); assert.equal(detail.props.canReview, true);
+  await detail.props.onReview(true, '');
+  assert.equal(writes[0].action, 'approve_change'); assert.equal(writes[0].changeId, request.id); assert.equal(ui.state.get('reviewingChange'), null);
+  const decisions = [];
+  const modal = screen('src/features/attendance/components/AttendanceChangeReviewDialog.tsx', 'AttendanceChangeReviewDialog', { employeeName: worker.displayName, request, canReview: true, onClose() {}, onReview: async (...args) => decisions.push(args) });
+  nodes(modal.render()).find(node => node.type === 'button' && node.props.children === 'Từ chối').props.onClick();
+  await nodes(modal.render()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} }); assert.equal(decisions.length, 0);
+  nodes(modal.render()).find(node => node.type === 'textarea').props.onChange({ target: { value: 'Công gốc đúng' } });
+  await nodes(modal.render()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  assert.deepEqual(decisions, [[false, 'Công gốc đúng']]);
+});
 test('approval actions call the real mutation path after confirmation and display the returned status', async () => {
   const writes = [], pending = { ...monthRecord(), status: 'pending' };
-  const ui = screen('src/features/attendance/pages/AttendancePage.tsx', 'AttendancePage', { currentUser: admin }, { loading: false, month: '2026-01', workspace: { ...workspace(), months: [pending] }, tab: 'approval' }, {
+  const ui = screen('src/features/attendance/pages/AttendancePage.tsx', 'AttendancePage', { currentUser: admin }, { loading: false, month: '2026-01', workspace: { ...workspace(), months: [pending] }, tab: 'approval', approvalKind: 'months' }, {
     '../api/attendanceService': { mutateAttendance: async body => { writes.push(body); return { ...pending, status: 'approved', revision: 2 }; } },
     '@/shared/feedback/deleteConfirmation': { confirmDelete: async () => true },
     '@/shared/feedback/mutationFeedback': { showSuccessToast() {}, showErrorToast() {} }

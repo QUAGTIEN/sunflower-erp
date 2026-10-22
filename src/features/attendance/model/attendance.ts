@@ -9,10 +9,17 @@ export interface AttendanceSetting {
   userId: string; employmentType: EmploymentType; reviewerId: string; revision: number;
 }
 export interface AttendanceDay { worked: boolean; hours: number; lateMinutes: number; overtimeHours: number }
+export interface AttendanceChangeRequest {
+  id: string; date: string; kind: 'edit' | 'delete'; employmentType: EmploymentType;
+  before: AttendanceDay; after: AttendanceDay | null; reason: string;
+  status: 'pending' | 'approved' | 'rejected'; reviewerId: string; createdAt: string;
+  reviewedAt?: string; reviewedBy?: string; responseReason?: string;
+}
 export interface AttendanceMonth {
   id: string; userId: string; employeeName: string; month: string; employmentType: EmploymentType;
   days: Record<string, AttendanceDay>; status: AttendanceStatus; revision: number; reviewerId: string;
   submittedAt?: string; reviewedAt?: string; reviewedBy?: string; returnReason?: string; updatedAt: string;
+  changeRequests?: Record<string, AttendanceChangeRequest>;
 }
 export interface AttendanceWorkspace {
   employees: AttendanceEmployee[]; settings: AttendanceSetting[]; months: AttendanceMonth[];
@@ -54,12 +61,19 @@ export function validateAttendanceDay(date: unknown, month: string, type: Employ
   if (type === 'full_time') {
     if (typeof input.worked !== 'boolean' || hours !== 0) throw new AttendanceValidationError('Full-time chỉ ghi nhận đi làm theo ngày.');
     if (!input.worked && (lateMinutes || overtimeHours)) throw new AttendanceValidationError('Cần đánh dấu Đi làm trước khi nhập trễ hoặc OT.');
-    if (!input.worked) throw new AttendanceValidationError('Đánh dấu Đi làm hoặc dùng Xóa chấm công để bỏ ghi nhận ngày này.');
+    if (!input.worked) throw new AttendanceValidationError('Đánh dấu Đi làm; ngày đã ghi nhận cần gửi yêu cầu xóa.');
     return { worked: true, hours: 0, lateMinutes, overtimeHours };
   }
   if (type !== 'part_time' || hours <= 0 || overtimeHours !== 0) throw new AttendanceValidationError('Part-time cần số giờ làm lớn hơn 0 và không có trường OT.');
   return { worked: true, hours, lateMinutes, overtimeHours: 0 };
 }
+export const CHANGE_STATUS_LABELS: Record<AttendanceChangeRequest['status'], string> = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối' };
+export const pendingDayChange = (month: AttendanceMonth | undefined, date: string) => Object.values(month?.changeRequests || {}).find(request => request.date === date && request.status === 'pending');
+export const hasPendingChanges = (month: AttendanceMonth) => Object.values(month.changeRequests || {}).some(request => request.status === 'pending');
+export const formatAttendanceDay = (day: AttendanceDay | null | undefined, type: EmploymentType): string => !day ? '—' : [
+  type === 'full_time' ? 'Đi làm' : `${day.hours.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}h`,
+  day.lateMinutes ? `Trễ ${day.lateMinutes}p` : '', day.overtimeHours ? `OT ${day.overtimeHours.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}h` : ''
+].filter(Boolean).join(' · ');
 export function attendanceTotals(days: Record<string, AttendanceDay>) {
   return Object.values(days).reduce((total, day) => ({
     days: total.days + (day.worked ? 1 : 0), hours: Math.round((total.hours + day.hours) * 100) / 100,
