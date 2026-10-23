@@ -9,7 +9,7 @@
 | 1 | Danh mục, ĐVT, nhập CSV, liên kết dữ liệu cũ | Hoàn thành mã nguồn; kết quả Git theo bàn giao cuối lượt |
 | 2 | Kế toán lập LSX và mẫu in công ty | Hoàn thành mã nguồn; chưa nghiệm thu bản in trên trình duyệt/máy in |
 | 3 | Kho NVL, nhập mua, cấp/hoàn | Hoàn thành mã nguồn; chưa deploy/đối soát tồn đầu kỳ thật |
-| 4 | Thành phẩm, giao và trả hàng | Chưa thực hiện |
+| 4 | Thành phẩm, giao và trả hàng | Hoàn thành mã nguồn; chưa deploy/đối soát dữ liệu thật |
 | 5 | Công nợ và thu chi | Chưa thực hiện |
 | 6 | Báo cáo, hàng còn thực hiện và cảnh báo | Chưa thực hiện |
 | 7 | Chuyển đổi, triển khai và nghiệm thu | Chưa thực hiện |
@@ -138,3 +138,33 @@ Test giao dịch dùng mô phỏng có retry/version; rules kiểm tra hợp đ�
 2. Chốt D08: thời điểm trừ kho giao khách, hàng đi đường, giao thất bại, trả/giao bù và dung sai. Cần mã thành phẩm/quy đổi rõ, không đoán từ mã khách.
 3. Nhập thành phẩm từ QC theo lượng đạt có thật; QC không tự ghi kho. Giao/trả từng phần có chống trùng, không vượt lượng nguồn hợp lệ, có đảo/audit và bảo toàn chuyến/phiếu cũ.
 4. Chưa nối tiền hoặc tự nhập đầu kỳ thật. Công nợ nối lượt 5; ngày chuyển đổi/đầu kỳ và triển khai/nghiệm thu ở lượt 7 theo xác nhận riêng.
+
+
+## Kết quả lượt 4 — ngày 23/10/2026
+
+Mốc đầu lượt 54b09f8, main/origin đã kiểm tra. Người dùng xác nhận cả nhập kho công ty và NCC giao thẳng ngay lượt 4, giữ quyền ghi kho, Giao hàng POD, Admin đảo/đóng thiếu có lý do và khách chấp nhận. Chi tiết tại FINISHED_GOODS.md.
+
+- Sổ số lượng thành phẩm riêng; nhập từng phần từ QC LSX v2 và hàng mua/gia công. Xuất giảm kho/tăng đang giao; POD từng dòng không trừ lần hai. Giao thất bại, khách trả/giao bù, tuyến NCC giao thẳng và hoàn về NCC/công ty; chặn âm thành phẩm.
+- Cùng transaction ghi số dư, phiếu, nguồn, PO/chuyến/xe, request/counter và audit. Kiểm tra snapshot, cap/revision, idempotency/đồng thời, quyền. Admin đảo chứng từ, không sửa/xóa phiếu; đóng thiếu không tăng lượng đã giao.
+- Vật liệu có tab Thành phẩm; Sản xuất có lịch sử nhập theo LSX; Mua hàng mở phiếu số lượng; Giao hàng có hàng giao/POD, dùng API trạng thái chuyến, không còn cộng qtyDelivered trực tiếp. Bỏ tự tạo payable khi nhận mua không phải NVL, giữ hóa đơn cũ để nối lượt 5.
+- Rules khóa nguồn mua, PO/chuyến đã vào sổ và xe đang gắn chuyến; collection sổ chỉ ghi qua máy chủ. Đơn mua thêm cho PO đã vào sổ lưu giá/NCC ở đơn/yêu cầu mua, không ghi lại PO.items đã khóa.
+- Không nhập/chuyển dữ liệu thật, đầu kỳ, giá vốn hoặc công nợ mới. PO/đơn mua đã nhận theo luồng cũ cần đối soát, không tự ghi lại. Trả hàng chưa có xử lý chất lượng/cách ly hay tiền.
+
+### Kiểm tra lượt 4
+
+Kết quả cuối lượt ghi trong bàn giao Git/chat và phần cập nhật bên dưới. Không kiểm thử trình duyệt, máy in, Firestore emulator hoặc deploy Vercel/rules; chưa ghi dữ liệu Firebase thật. Push Git khác triển khai môi trường thật. Cần web/API/rules cùng phiên bản.
+
+### Lượt 5 tiếp theo
+
+Chốt mốc tăng nợ mua/bán, hạn nợ/kỳ/thuế/làm tròn, quyền ghi/đảo tiền và khóa kỳ; phân bổ thu chi/ứng trước theo chứng từ/đơn/mã. Nối từ ID chứng từ kho/giao thực tế, hỗ trợ điều chỉnh tiền hàng trả theo quyết định được duyệt; không suy lịch sử tiền từ số lượng hoặc tự chuyển hóa đơn cũ thành sổ mới. Lượt 6 báo cáo/cảnh báo, lượt 7 chuyển đổi/triển khai/nghiệm thu theo kế hoạch 7 lượt đã chốt.
+
+
+### Kết quả kiểm tra cuối lượt 4
+
+- Build TypeScript client/server + Vite đạt; còn cảnh báo chunk lớn hiện có.
+- 104/104 test trực tiếp đạt: finished-goods 28, warehouse 26, production-orders 40, operational-ui 10. Có kiểm tra API xác thực, retry payload bất biến, preview tồn và khung ký; không mở trình duyệt.
+- Lượt chạy rộng toàn bộ test đạt 282/284, còn đúng 2 lỗi đã có ở lead-workspace-tabs (regex không khớp mã hiện tại) và raw-data-overview (loader thiếu require). Sau đó bổ sung 1 test biên API và 1 test tích hợp giao từng phần–sản xuất, chạy lại bộ trực tiếp 104/104. Các nguồn/test của 2 lỗi cũ không thay đổi trong lượt này.
+- Lint phần mới và phần đã sạch đạt 0 lỗi/cảnh báo. AppShell giữ 10 lỗi cũ; DeliveryPage giảm từ 26 xuống 14 lỗi cũ, không thêm loại/chẩn đoán mới khi đối chiếu HEAD đầu lượt và chuẩn hóa vị trí dòng. Không dọn lỗi ngoài phạm vi.
+- Test transaction mô phỏng có retry/version, rules kiểm tra tĩnh; chưa có nghiệm thu emulator/Firebase/trình duyệt thật. Chưa deploy, chưa nhập đầu kỳ hoặc tác động dữ liệu thật.
+
+Giao từng phần giữ PO còn sản xuất ở waiting_production để lập/phát hành phần LSX còn lại. Khi QC phần cuối chuyển chờ giao, API LSX giữ tiến độ giao thực tế đã có, không đặt lại pending. Kiểm thử tích hợp gọi hai API trên cùng kho dữ liệu mô phỏng.

@@ -238,7 +238,7 @@ test('static rules contract freezes legacy and protects quantity writer and mana
   const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
   for (const collection of ['inventory', 'warehouse_exports']) assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{[^}]*allow write: if false;`));
   for (const collection of ['warehouse_vouchers', 'warehouse_source_state', 'warehouse_requests', 'warehouse_counters']) assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{ allow read, write: if false;`));
-  assert.match(rules, /warehouseReceiptRevision/); assert.match(rules, /resource.data.get\('sourcingType', ''\) != 'raw_material'/);
+  assert.match(rules, /warehouseReceiptRevision/); assert.match(rules, /Quantity receipt\/direct-shipping state and its source are server-owned/);
 });
 
 function screen(file, exportName, props, initial, stubs = {}) {

@@ -5,6 +5,7 @@ import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { WarehouseVoucherDialog } from '@/features/inventory/components/WarehouseVoucherDialog';
 import { canPostWarehouse } from '@/features/inventory/model/warehouse';
+import { GoodsVoucherDialog, type GoodsDialogOptions } from '@/features/inventory/components/GoodsVoucherDialog';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
@@ -95,7 +96,6 @@ export const Purchase: React.FC<PurchaseProps> = ({
 }) => {
   const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
-  const [invoices, setInvoices] = useState<UnknownRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sourcingFilters, setSourcingFilters] = useState<SourcingType[]>([]);
   const [monthFilters, setMonthFilters] = useState<string[]>([]);
@@ -110,6 +110,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
   const [sourcingType, setSourcingType] = useState<SourcingType>('subcontract');
   const [isSaving, setIsSaving] = useState(false);
   const [warehouseOrderId, setWarehouseOrderId] = useState('');
+  const [goodsOptions, setGoodsOptions] = useState<GoodsDialogOptions | null>(null);
   const { selectedIds: sharedRequestColumns, setSelectedIds: setRequestVisibleColumns, canEditColumns } = useSharedTableColumns({
     layoutId: 'purchase-requests',
     legacySelectionKey: `sunflower:purchase-request-columns:${currentUser.uid}`,
@@ -167,10 +168,8 @@ export const Purchase: React.FC<PurchaseProps> = ({
     const unsubscribeSuppliers = dbService.subscribeCollection('suppliers', data => {
       setSuppliers(normalizeSupplierRecords(data).filter(supplier => !supplier.deleted));
     });
-    const unsubscribeInvoices = dbService.subscribeCollection('invoices', data => setInvoices(data));
     return () => {
       unsubscribeSuppliers();
-      unsubscribeInvoices();
     };
   }, []);
 
@@ -353,7 +352,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
               : item
           ));
           await requireConfirmedMutation(dbService.updateDocument('pos', selectedRequest.poId, {
-            items: updatedItems,
+            ...(po.goodsFlowVersion !== 1 ? { items: updatedItems } : {}),
             purchaseProgress: 'supplier_ordered',
             historyLogs: [
               ...asArray(po.historyLogs),
@@ -378,61 +377,9 @@ export const Purchase: React.FC<PurchaseProps> = ({
   };
 
   const handleReceiveOrder = async (order: UnknownRecord) => {
-    if (asText(order.sourcingType) === 'raw_material') {
-      if (canPostWarehouse(currentUser)) setWarehouseOrderId(asText(order.id));
-      return;
-    }
-    return runMutationAction("PurchasePage.tsx:handleReceiveOrder", async () => {
-      if (!window.confirm(`${t('Xác nhận đã nhận đủ hàng cho')} ${asText(order.purCode)}?`)) return;
-      const now = new Date().toISOString();
-      const request = procurementRequests.find(candidate => candidate.id === asText(order.procurementRequestId));
-
-      const invoiceExists = invoices.some(invoice => (
-        invoice.type === 'payable' && asText(invoice.poId) === asText(order.id)
-      ));
-      if (!invoiceExists) {
-        await dbService.addDocument('invoices', {
-          invoiceCode: `INV-${asText(order.purCode).replace('PUR-', '')}`,
-          poId: asText(order.id),
-          poCode: asText(order.purCode),
-          customerId: asText(order.supplierId),
-          customerName: asText(order.supplierName),
-          type: 'payable',
-          amount: asNumber(order.totalPrice),
-          paidAmount: 0,
-          status: 'unpaid',
-          dueDate: new Date(Date.parse(now) + 30 * 86_400_000).toISOString(),
-          createdAt: now
-        });
-      }
-
-      await requireConfirmedMutation(dbService.updateDocument('purchase_orders', asText(order.id), {
-        status: 'received',
-        actualReceiveDate: now,
-        updatedBy: currentUser.displayName
-      }));
-      if (request) {
-        await requireConfirmedMutation(dbService.updateDocument('procurement_requests', request.id, {
-          status: 'received',
-          updatedBy: currentUser.displayName
-        }));
-        const po = pos.find(candidate => asText(candidate.id) === request.poId);
-        if (po) {
-          await requireConfirmedMutation(dbService.updateDocument('pos', request.poId, {
-            purchaseProgress: 'materials_received',
-            historyLogs: [...asArray(po.historyLogs), {
-              status: asText(po.status),
-              updatedBy: currentUser.displayName,
-              updatedAt: now,
-              note: `Đã nhận hàng từ ${asText(order.supplierName)} theo đơn ${asText(order.purCode)}.`
-            }]
-          }));
-        }
-      }
-      onRefresh();
-
-      showSuccessToast("Đã lưu thành công");
-    }, order);
+    if (!canPostWarehouse(currentUser)) return;
+    if (asText(order.sourcingType) === 'raw_material') setWarehouseOrderId(asText(order.id));
+    else setGoodsOptions({ kind: 'purchase_receipt', sourceId: asText(order.id) });
   };
 
   return (
@@ -522,7 +469,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     {orderVisibleColumnSet.has('value') && <td key="value" className="erp-number-cell"><strong>{asNumber(order.totalPrice).toLocaleString('vi-VN')} đ</strong></td>}
                     {orderVisibleColumnSet.has('expectedDate') && <td key="expectedDate">{formatDate(asText(order.expectedReceiveDate), 'vi-VN', '—')}</td>}
                     <td key="actions">{asText(order.status) !== 'received'
-                      ? <RowActionMenu label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t(asText(order.sourcingType) === 'raw_material' ? 'Nhập kho NVL' : 'Xác nhận nhận hàng'), disabled: asText(order.status) === 'cancelled' || asText(order.sourcingType) === 'raw_material' && !canPostWarehouse(currentUser), onSelect: () => handleReceiveOrder(order) }]} />
+                      ? <RowActionMenu label={`${t('Thao tác')} ${asText(order.purCode)}`} actions={[{ label: t(asText(order.sourcingType) === 'raw_material' ? 'Nhập kho NVL' : 'Nhập kho hàng mua / gia công'), disabled: asText(order.status) === 'cancelled' || !canPostWarehouse(currentUser), onSelect: () => handleReceiveOrder(order) }, ...(asText(order.sourcingType) !== 'raw_material' ? [{ label: t('NCC giao thẳng khách'), disabled: !canPostWarehouse(currentUser) || asText(order.status) === 'cancelled', onSelect: () => setGoodsOptions({ kind: 'supplier_dispatch', sourceId: asText(order.id) }) }] : [])]} />
                       : '—'}</td>
                   </ReorderableTableCells>
                 </tr>)}
@@ -621,6 +568,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
           </div>
         </div>
       )}
+      {goodsOptions && <GoodsVoucherDialog currentUser={currentUser} options={goodsOptions} onClose={() => setGoodsOptions(null)} onSaved={() => { setGoodsOptions(null); onRefresh(); }} />}
       {warehouseOrderId && <WarehouseVoucherDialog currentUser={currentUser} initialSourceId={warehouseOrderId} initialKind="purchase_receipt" onClose={() => setWarehouseOrderId('')} onSaved={() => { setWarehouseOrderId(''); onRefresh(); }} />}
     </div>
   );

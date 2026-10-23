@@ -47,7 +47,7 @@ export function roundStock(value: number) {
   if (!Number.isFinite(value) || !Number.isSafeInteger(Math.round(value * 1e6))) throw new WarehouseValidationError('Số lượng vượt giới hạn tính toán an toàn.');
   return Math.round(value * 1e6) / 1e6;
 }
-export function warehouseSummary(vouchers: WarehouseVoucher[], from: string, to: string) {
+export function warehouseSummary(vouchers: { postingDate: string; lines: WarehouseLine[] }[], from: string, to: string) {
   const result = new Map<string, { code: string; name: string; unit: string; opening: number; incoming: number; outgoing: number; closing: number }>();
   for (const voucher of vouchers) {
     if (voucher.postingDate > to) continue;

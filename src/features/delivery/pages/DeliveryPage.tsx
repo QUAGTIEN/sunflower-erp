@@ -7,6 +7,9 @@ import { useLanguage } from '@/context/LanguageContext';
 import { getPODeliveryStage, getPOQueueUpdate, isPOInQueue } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
+import { FinishedGoodsWorkspace } from '@/features/inventory/components/FinishedGoodsWorkspace';
+import { GoodsVoucherDialog, type GoodsDialogOptions } from '@/features/inventory/components/GoodsVoucherDialog';
+import { mutateFinishedGoods } from '@/features/inventory/api/finishedGoodsService';
 import './Delivery.css';
 
 interface DeliveryProps {
@@ -15,7 +18,7 @@ interface DeliveryProps {
   onRefresh: () => void;
 }
 
-type DeliveryTab = 'control' | 'trips' | 'fleet' | 'proof';
+type DeliveryTab = 'control' | 'trips' | 'fleet' | 'proof' | 'goods';
 
 interface DeliveryVehicle {
   id: string;
@@ -55,6 +58,8 @@ interface DeliveryTripOrderLike {
   stopSequence?: number;
   status?: string;
   signatureImage?: string;
+  podReference?: string;
+  goodsResult?: string;
   note?: string;
 }
 
@@ -123,22 +128,15 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   const [showVehicleModal, setShowVehicleModal] = useState(false);
   const [fleetLoading, setFleetLoading] = useState(true);
 
-  // Signature Modal states
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
-  const [signingOrderPoId, setSigningOrderPoId] = useState('');
-  const [signingPo, setSigningPo] = useState<any | null>(null);
-  const [deliveredQuantities, setDeliveredQuantities] = useState<{ [itemId: string]: number }>({});
-
-  // Signature Canvas Ref
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-
   // Form states - Delivery Trip
   const [region, setRegion] = useState('Hải Dương');
   const [driverName, setDriverName] = useState('');
   const [vehiclePlate, setVehiclePlate] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const assignedSaleId = 'u-sale';
+  const [goodsOptions, setGoodsOptions] = useState<GoodsDialogOptions | null>(null);
+  const [goodsTripId, setGoodsTripId] = useState('');
+  const tripRequest = useRef({ payload: '', id: '' });
   const [deliveryDate, setDeliveryDate] = useState(DEFAULT_DELIVERY_DATE);
   const [timeWindowStart, setTimeWindowStart] = useState('08:00');
   const [timeWindowEnd, setTimeWindowEnd] = useState('17:00');
@@ -179,6 +177,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
       list.filter((trip: any) => !trip.deleted),
       trip => [trip.createdAt]
     ));
+    setSelectedTrip((previous: { id: string } | null) => previous ? list.find(trip => trip.id === previous.id && !trip.deleted) || null : null);
   };
 
   const fetchVehicles = async () => {
@@ -205,8 +204,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
 
   const readyOrders = useMemo(
     () => pos.filter(po => (
-      isPOInQueue(po, 'waiting_delivery') &&
-      getPODeliveryStage(po) === 'customer_outbound' &&
+      (isPOInQueue(po, 'waiting_delivery') && getPODeliveryStage(po) === 'customer_outbound' || po.goodsReady === true && po.goodsDeliveryClosed !== true && getOrderRemainingQuantity(po) > 0) &&
       !po.deleted
     )),
     [pos]
@@ -320,7 +318,8 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
     delCode: trip.delCode,
     deliveryDate: trip.deliveryDate,
     region: trip.region,
-    tripStatus: trip.status
+    tripStatus: trip.status,
+    goodsFlowVersion: trip.goodsFlowVersion
   }))), [deliveries]);
 
   const averageLoadFactor = deliveries.length
@@ -352,10 +351,10 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   const getPackedOrdersInRegion = (reg: string, includeOrderIds: string[] = []) => {
     return pos.filter(po => {
       const canSchedule = (
-        isPOInQueue(po, 'waiting_delivery') && getPODeliveryStage(po) === 'customer_outbound'
+        isPOInQueue(po, 'waiting_delivery') && getPODeliveryStage(po) === 'customer_outbound' || po.goodsReady === true && po.goodsDeliveryClosed !== true && getOrderRemainingQuantity(po) > 0
       ) || includeOrderIds.includes(po.id);
       const notScheduledElsewhere = !scheduledOrderIds.has(po.id) || includeOrderIds.includes(po.id);
-      return canSchedule && notScheduledElsewhere && getOrderRegion(po) === reg;
+      return !po.deleted && !['cancelled', 'completed'].includes(String(po.status)) && canSchedule && notScheduledElsewhere && getOrderRegion(po) === reg;
     });
   };
 
@@ -452,7 +451,8 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
           customerId: po?.customerId || '',
           customerName: po?.customerName || '',
           deliveryAddress: po?.shippingInfo?.deliveryAddress || po?.deliveryAddress || (po?.notes?.includes('địa chỉ') ? po.notes : 'Kho khách hàng theo hồ sơ CRM'),
-          deliveredQty: totalRemaining,
+          deliveredQty: 0,
+          plannedQty: totalRemaining,
           estimatedWeightKg: estimateOrderWeightKg(po),
           stopSequence: index + 1,
           status: 'pending',
@@ -574,7 +574,8 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
           customerId: po?.customerId || existingOrder?.customerId || '',
           customerName: po?.customerName || existingOrder?.customerName || '',
           deliveryAddress: po?.shippingInfo?.deliveryAddress || po?.deliveryAddress || existingOrder?.deliveryAddress || 'Kho khách hàng theo hồ sơ CRM',
-          deliveredQty: existingOrder ? existingOrder.deliveredQty : totalRemaining,
+          deliveredQty: existingOrder?.deliveredQty || 0,
+          plannedQty: totalRemaining,
           estimatedWeightKg: estimateOrderWeightKg(po),
           stopSequence: index + 1,
           status: existingOrder?.status || 'pending',
@@ -628,7 +629,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
         if (trip) {
           for (const ord of trip.orders) {
             const po = pos.find(p => p.id === ord.poId);
-            if (po && isPOInQueue(po, 'waiting_delivery')) {
+            if (po && po.goodsFlowVersion !== 1 && isPOInQueue(po, 'waiting_delivery')) {
               const updatedLogs = [
                 ...(po.historyLogs || []),
                 {
@@ -659,312 +660,43 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   };
 
   const updateTripStatus = async (tripId: string, newStatus: string) => {
-    return runMutationAction("DeliveryPage.tsx:updateTripStatus", async () => {
+    return runMutationAction('DeliveryPage.tsx:updateTripStatus', async () => {
       const trip = deliveries.find(item => item.id === tripId) || selectedTrip;
-      const now = new Date().toISOString();
-      const milestoneFields = newStatus === 'delivering'
-        ? { departedAt: now }
-        : newStatus === 'completed'
-          ? { completedAt: now }
-          : {};
-
-      await requireConfirmedMutation(dbService.updateDocument('deliveries', tripId, {
-        status: newStatus,
-        ...milestoneFields,
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: now
-      }));
-
-      if (trip?.vehicleId) {
-        await requireConfirmedMutation(dbService.updateDocument('delivery_vehicles', trip.vehicleId, {
-          status: ['loading', 'delivering'].includes(newStatus) ? 'running' : 'ready',
-          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-        }));
-      }
-
-      if (newStatus === 'delivering' && trip?.orders) {
-        for (const order of trip.orders) {
-          const po = pos.find(item => item.id === order.poId);
-          if (!po || !isPOInQueue(po, 'waiting_delivery')) continue;
-          await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
-            ...getPOQueueUpdate('waiting_delivery', {
-              deliveryStage: 'customer_outbound',
-              deliveryProgress: 'delivering'
-            }),
-            historyLogs: [
-              ...(po.historyLogs || []),
-              {
-                status: 'waiting_delivery',
-                updatedBy: currentUser.displayName,
-                updatedAt: now,
-                note: `Chuyến ${trip.delCode} đã xuất phát. Xe ${trip.vehiclePlate}, tuyến ${trip.region}.`
-              }
-            ]
-          }));
-        }
-      }
-
-      setSelectedTrip((prev: any) => prev ? { ...prev, status: newStatus } : null);
-      await Promise.all([fetchDeliveries(), fetchVehicles()]);
-      onRefresh();
-
-      showSuccessToast("Đã lưu thành công");
+      if (!trip) return;
+      const body = { action: 'trip_status', tripId, status: newStatus, expectedTripRevision: Number(trip.goodsRevision || 0), note: 'Cập nhật chuyến: ' + newStatus };
+      const payload = JSON.stringify(body);
+      if (tripRequest.current.payload !== payload) tripRequest.current = { payload, id: crypto.randomUUID() };
+      await mutateFinishedGoods({ ...body, requestId: tripRequest.current.id });
+      tripRequest.current = { payload: '', id: '' };
+      const fresh = await dbService.getCollection('deliveries');
+      setSelectedTrip(fresh.find(item => item.id === tripId) || null);
+      await Promise.all([fetchDeliveries(), fetchVehicles()]); onRefresh(); showSuccessToast('Đã cập nhật chuyến');
     }, tripId);
   };
-
   const handleRevertTripStatus = async (trip: any) => {
-    return runMutationAction("DeliveryPage.tsx:handleRevertTripStatus", async () => {
-      if (!window.confirm(t('Bạn có chắc chắn muốn hoãn chuyến giao hàng này? Trạng thái các đơn hàng liên kết sẽ quay về "Đã đóng gói".'))) return;
-
-      // 1. Mark the trip as postponed and release the vehicle.
-      await requireConfirmedMutation(dbService.updateDocument('deliveries', trip.id, {
-        status: 'postponed',
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: new Date().toISOString()
-      }));
-
-      if (trip.vehicleId) {
-        await requireConfirmedMutation(dbService.updateDocument('delivery_vehicles', trip.vehicleId, {
-          status: 'ready',
-          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-        }));
-      }
-
-      // 2. Revert PO statuses to packed
-      if (trip.orders) {
-        for (const ord of trip.orders) {
-          const po = pos.find(p => p.id === ord.poId);
-          if (po) {
-            const updatedLogs = [
-                ...(po.historyLogs || []),
-              {
-                status: 'waiting_delivery',
-                updatedBy: currentUser.displayName,
-                updatedAt: new Date().toISOString(),
-                note: `Hoãn chuyến giao hàng ${trip.delCode}. Trạng thái PO quay lại chờ xe giao.`
-              }
-            ];
-            await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
-              ...getPOQueueUpdate('waiting_delivery', {
-                deliveryStage: 'customer_outbound',
-                deliveryProgress: 'pending'
-              }),
-              historyLogs: updatedLogs
-            }));
-          }
-        }
-      }
-
-      setSelectedTrip((prev: any) => prev ? { ...prev, status: 'postponed' } : null);
-      await Promise.all([fetchDeliveries(), fetchVehicles()]);
-      onRefresh();
-
-      showSuccessToast("Đã lưu thành công");
-    }, trip);
-  };
-
-  // Sign canvas drawing helpers
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-    setIsDrawing(true);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  };
-
-  const saveSignature = async () => {
-    return runMutationAction("DeliveryPage.tsx:saveSignature", async () => {
-      const canvas = canvasRef.current;
-      if (!canvas || !selectedTrip || !signingPo) return;
-
-      const signatureBase64 = canvas.toDataURL('image/png');
-
-      // Accumulate total items quantity delivered
-      let currentTripDeliveredQty = 0;
-
-      // Update PO items with newly delivered quantities
-      const updatedItems = signingPo.items.map((item: any) => {
-        const itemId = item.itemId || item.productCode;
-        const currentDel = Number(deliveredQuantities[itemId]) || 0;
-        currentTripDeliveredQty += currentDel;
-        return {
-          ...item,
-          qtyDelivered: (Number(item.qtyDelivered) || 0) + currentDel
-        };
-      });
-
-      // Check if fully delivered
-      const isAllFullyDelivered = updatedItems.every((item: any) => (Number(item.qtyDelivered) || 0) >= Number(item.quantity));
-      const finalPoStatus = isAllFullyDelivered ? 'waiting_invoice' : 'waiting_delivery';
-
-      // Save updated items and status to PO
-      const poLogs = [
-        ...(signingPo.historyLogs || []),
-        {
-          status: finalPoStatus,
-          updatedBy: currentUser.displayName,
-          updatedAt: new Date().toISOString(),
-          note: `Báo cáo giao hàng lẻ: ${signingPo.items.map((item: any) => {
-            const itemId = item.itemId || item.productCode;
-            const qty = deliveredQuantities[itemId] || 0;
-            return `${item.productName} (Giao +${qty})`;
-          }).join(', ')}. Chữ ký lưu trên hệ thống.`
-        }
-      ];
-
-      await requireConfirmedMutation(dbService.updateDocument('pos', signingPo.id, {
-        items: updatedItems,
-        ...getPOQueueUpdate(finalPoStatus, {
-          deliveryStage: 'customer_outbound',
-          deliveryProgress: isAllFullyDelivered ? 'delivered' : 'partial'
-        }),
-        historyLogs: poLogs
-      }));
-
-      // Update trip details
-      const updatedOrders = selectedTrip.orders.map((ord: any) => {
-        if (ord.poId === signingOrderPoId) {
-          return {
-            ...ord,
-            status: 'success',
-            deliveredQty: currentTripDeliveredQty,
-            signatureImage: signatureBase64,
-            note: isAllFullyDelivered ? 'Giao hoàn tất đơn' : 'Giao hàng một phần'
-          };
-        }
-        return ord;
-      });
-
-      const allStopsCompleted = updatedOrders.every((order: any) => order.status === 'success');
-      await requireConfirmedMutation(dbService.updateDocument('deliveries', selectedTrip.id, {
-        orders: updatedOrders,
-        ...(allStopsCompleted ? { status: 'completed', completedAt: new Date().toISOString() } : {}),
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-      }));
-
-      if (allStopsCompleted && selectedTrip.vehicleId) {
-        await requireConfirmedMutation(dbService.updateDocument('delivery_vehicles', selectedTrip.vehicleId, {
-          status: 'ready',
-          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-        }));
-      }
-
-      setShowSignatureModal(false);
-      setSigningPo(null);
-      setSelectedTrip((prev: any) => ({
-        ...prev,
-        orders: updatedOrders,
-        ...(allStopsCompleted ? { status: 'completed', completedAt: new Date().toISOString() } : {})
-      }));
-      await Promise.all([fetchDeliveries(), fetchVehicles()]);
-      onRefresh();
-
-      showSuccessToast("Đã lưu thành công");
-    }, undefined);
+    if (!window.confirm('Hoãn chuyến? Hàng đã xuất vẫn được theo dõi đang giao; chỉ phiếu hoàn thực tế mới cộng lại kho.')) return;
+    await updateTripStatus(trip.id, 'postponed');
   };
 
   const handleOpenSignature = (poId: string) => {
-    const po = pos.find(p => p.id === poId);
-    if (!po) return;
-
-    setSigningOrderPoId(poId);
-    setSigningPo(po);
-
-    // Initialize quantities to remaining to deliver
-    const initialQuantities: { [itemId: string]: number } = {};
-    po.items?.forEach((item: any) => {
-      const itemId = item.itemId || item.productCode;
-      const remaining = Number(item.quantity) - (Number(item.qtyDelivered) || 0);
-      initialQuantities[itemId] = Math.max(0, remaining);
-    });
-    setDeliveredQuantities(initialQuantities);
-
-    setShowSignatureModal(true);
-    setTimeout(() => {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.strokeStyle = '#1e3a8a';
-          ctx.lineWidth = 3;
-          ctx.lineCap = 'round';
-        }
-      }
-    }, 100);
+    setGoodsOptions({ kind: 'delivery', poId, tripId: selectedTrip?.id || '' });
   };
 
   const handleForceClosePO = async (po: any) => {
-    return runMutationAction("DeliveryPage.tsx:handleForceClosePO", async () => {
-      const missingItems = po.items?.map((item: any) => {
-        const remaining = Number(item.quantity) - (Number(item.qtyDelivered) || 0);
-        return `${item.productName} (Thiếu ${remaining?.toLocaleString()} tem)`;
-      }).join(', ') || '';
-
-      if (window.confirm(t(`Bạn có chắc chắn muốn Force Close đóng đơn hàng PO này do dung sai sản xuất?\nChi tiết thiếu: ${missingItems}`))) {
-        const now = new Date().toISOString();
-        const updatedLogs = [
-          ...(po.historyLogs || []),
-          {
-            status: 'waiting_invoice',
-            updatedBy: currentUser.displayName,
-            updatedAt: now,
-            note: `Force Close đơn hàng theo số lượng thực tế đã giao. Lý do: Dung sai hao hụt sản xuất trong mức khách hàng chấp nhận.`
-          }
-        ];
-
-        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
-          ...getPOQueueUpdate('waiting_invoice', {
-            deliveryStage: 'customer_outbound',
-            deliveryProgress: 'delivered_with_tolerance'
-          }),
-          historyLogs: updatedLogs
-        }));
-
-        onRefresh();
-
-        showSuccessToast("Đã lưu thành công");
-      }
-    }, po);
+    if (currentUser.role === 'admin') setGoodsOptions({ kind: 'close_short', poId: po.id });
   };
 
   return (
     <div className="delivery-view delivery-control-center">
-      <PageContextHeader section="Giao hàng" current={activeTab === 'trips' ? 'Chuyến giao' : activeTab === 'fleet' ? 'Xe & tài xế' : activeTab === 'proof' ? 'POD & đối soát' : 'Bảng điều phối'} />
+      <PageContextHeader section="Giao hàng" current={activeTab === 'goods' ? 'Hàng giao & thành phẩm' : activeTab === 'trips' ? 'Chuyến giao' : activeTab === 'fleet' ? 'Xe & tài xế' : activeTab === 'proof' ? 'POD & đối soát' : 'Bảng điều phối'} />
 
       <div className="delivery-tabs content-tabs" role="tablist" aria-label="Điều phối giao hàng">
         {([
           ['control', 'Bảng điều phối'],
           ['trips', 'Chuyến giao'],
           ['fleet', 'Xe & tài xế'],
-          ['proof', 'POD & đối soát']
+          ['proof', 'POD & đối soát'],
+          ['goods', 'Hàng giao & thành phẩm']
         ] as Array<[DeliveryTab, string]>).map(([tabKey, label]) => (
           <button
             key={tabKey}
@@ -1131,6 +863,8 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
         </>
       )}
 
+      {activeTab === 'goods' && <><button className="btn btn-outline" onClick={() => setGoodsTripId('')} disabled={!goodsTripId}>Bỏ lọc chuyến</button><FinishedGoodsWorkspace initialView="dispatches" key={goodsTripId} currentUser={currentUser} tripId={goodsTripId} onRefresh={onRefresh} /></>}
+      {goodsOptions && <GoodsVoucherDialog currentUser={currentUser} options={goodsOptions} onClose={() => setGoodsOptions(null)} onSaved={() => { setGoodsOptions(null); void fetchDeliveries(); void fetchVehicles(); onRefresh(); }} />}
       {activeTab === 'trips' && (
         <>
           <div className="delivery-section-card">
@@ -1182,12 +916,13 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                   <p>Tuyến {selectedTrip.region} · {selectedTrip.vehiclePlate} · {selectedTrip.driverName}</p>
                 </div>
                 <div className="delivery-actions">
-                  {selectedTrip.status === 'planning' && (
+                  {selectedTrip.status === 'planning' && selectedTrip.goodsFlowVersion !== 1 && (
                     <>
                       <button type="button" className="btn btn-sm btn-outline" onClick={() => handleOpenEditTrip(selectedTrip)}>Sửa kế hoạch</button>
                       <button type="button" className="btn btn-sm btn-danger" onClick={() => handleDeleteTrip(selectedTrip.id)}>Xóa chuyến</button>
                     </>
                   )}
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => { setGoodsTripId(selectedTrip.id); setActiveTab('goods'); }}>Phiếu xuất / hàng giao</button>
                   <button type="button" className="btn btn-sm btn-outline" onClick={() => setSelectedTrip(null)}>Đóng chi tiết</button>
                 </div>
               </div>
@@ -1226,9 +961,9 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                         <td>{order.stopSequence || index + 1}</td>
                         <td><strong>{order.customerName}</strong></td>
                         <td>{order.deliveryAddress}</td>
-                        <td>{Number(order.deliveredQty || 0).toLocaleString('vi-VN')}</td>
-                        <td>{order.signatureImage ? <img className="delivery-signature" src={order.signatureImage} alt="Chữ ký nhận hàng" /> : 'Chưa ký'}</td>
-                        <td><span className={`delivery-status ${order.status === 'success' ? 'completed' : 'planning'}`}>{order.status === 'success' ? 'Đã giao' : 'Chờ giao'}</span></td>
+                        <td>{selectedTrip.goodsFlowVersion === 1 ? 'Theo phiếu hàng giao' : Number(order.deliveredQty || 0).toLocaleString('vi-VN')}</td>
+                        <td>{order.signatureImage ? <img className="delivery-signature" src={order.signatureImage} alt="Chữ ký nhận hàng" /> : order.podReference || 'Chưa ký'}</td>
+                        <td><span className={`delivery-status ${order.status === 'success' ? 'completed' : 'planning'}`}>{order.goodsResult === 'returned' ? 'Đã hoàn hàng' : order.goodsResult === 'mixed' ? 'Giao / hoàn một phần' : order.status === 'success' ? 'Đã giao' : 'Chờ giao'}</span></td>
                         <td>{order.status !== 'success' && selectedTrip.status === 'delivering' && <button className="btn btn-sm btn-primary" onClick={() => handleOpenSignature(order.poId)}>Xác nhận giao</button>}</td>
                       </tr>
                     ))}
@@ -1297,7 +1032,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                 <h2>POD và đối soát giao hàng</h2>
                 <p>Theo dõi ký nhận, giao từng phần và chứng từ của từng điểm giao.</p>
               </div>
-              <span className="delivery-count-chip">{proofRows.filter(row => row.signatureImage).length}/{proofRows.length} đã có POD</span>
+              <span className="delivery-count-chip">{proofRows.filter(row => row.signatureImage || row.podReference).length}/{proofRows.length} đã có POD</span>
             </div>
             <div className="table-container">
               <table>
@@ -1309,9 +1044,9 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                       <td>{toDateInputValue(row.deliveryDate) || 'Chưa có'}</td>
                       <td>{row.customerName}</td>
                       <td>{row.region}</td>
-                      <td>{Number(row.deliveredQty || 0).toLocaleString('vi-VN')}</td>
-                      <td>{row.signatureImage ? <img className="delivery-signature" src={row.signatureImage} alt="Chữ ký nhận hàng" /> : 'Chưa có'}</td>
-                      <td><span className={`delivery-status ${row.status === 'success' ? 'completed' : row.tripStatus}`}>{row.status === 'success' ? 'Đã giao' : TRIP_STATUS_LABELS[row.tripStatus] || 'Chờ giao'}</span></td>
+                      <td>{row.goodsFlowVersion === 1 ? 'Theo phiếu hàng giao' : Number(row.deliveredQty || 0).toLocaleString('vi-VN')}</td>
+                      <td>{row.signatureImage ? <img className="delivery-signature" src={row.signatureImage} alt="Chữ ký nhận hàng" /> : row.podReference || 'Chưa có'}</td>
+                      <td><span className={`delivery-status ${row.status === 'success' ? 'completed' : row.tripStatus}`}>{row.goodsResult === 'returned' ? 'Đã hoàn hàng' : row.goodsResult === 'mixed' ? 'Giao / hoàn một phần' : row.status === 'success' ? 'Đã giao' : TRIP_STATUS_LABELS[row.tripStatus] || 'Chờ giao'}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -1337,7 +1072,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                       <tr key={po.id}>
                         <td><strong>{po.poCode}</strong></td><td>{po.customerName}</td><td>{totalRequired.toLocaleString('vi-VN')}</td><td>{totalDelivered.toLocaleString('vi-VN')}</td><td>{Math.max(0, totalRequired - totalDelivered).toLocaleString('vi-VN')}</td>
                         <td><span className="delivery-status warning">{po.deliveryProgress === 'partial' || po.status === 'partially_delivered' ? 'Giao một phần' : 'Đang giao'}</span></td>
-                        <td>{(currentUser.role === 'admin' || currentUser.role === 'sale') && <button className="btn btn-sm btn-danger" onClick={() => handleForceClosePO(po)}>Đóng dung sai</button>}</td>
+                        <td>{(currentUser.role === 'admin') && <button className="btn btn-sm btn-danger" onClick={() => handleForceClosePO(po)}>Đóng dung sai</button>}</td>
                       </tr>
                     );
                   })}
@@ -1616,83 +1351,6 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
         </div>
       )}
 
-      {/* SIGNATURE & PARTIAL DELIVERY QUANTITY MODAL */}
-      {showSignatureModal && signingPo && (
-        <div className="modal-overlay" style={{ zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '15px' }}>{t('XÁC NHẬN GIAO LẺ & KÝ NHẬN')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowSignatureModal(false)}>{t('Hủy')}</button>
-            </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ fontSize: '13px', backgroundColor: '#f1f5f9', padding: '10px', borderRadius: '4px' }}>
-                <div><strong>{t('Khách Hàng:')}</strong> {signingPo.customerName}</div>
-                <div><strong>{t('Đơn PO Gốc:')}</strong> {signingPo.poCode}</div>
-              </div>
-
-              <h4 style={{ color: 'var(--color-primary)', fontSize: '13px', margin: '4px 0' }}>{t('Chi Tiết Số Lượng Bàn Giao:')}</h4>
-              <div className="table-container" style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                <table style={{ fontSize: '12px' }}>
-                  <thead>
-                    <tr>
-                      <th>{t('Tên Hàng')}</th>
-                      <th>{t('SL Đặt')}</th>
-                      <th>{t('Đã Giao')}</th>
-                      <th style={{ width: '100px' }}>{t('Giao Đợt Này')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {signingPo.items?.map((item: any) => {
-                      const itemId = item.itemId || item.productCode;
-                      const remaining = Number(item.quantity) - (Number(item.qtyDelivered) || 0);
-                      return (
-                        <tr key={itemId}>
-                          <td style={{ fontWeight: 500 }}>{item.productName}</td>
-                          <td>{item.quantity?.toLocaleString()}</td>
-                          <td>{(item.qtyDelivered || 0)?.toLocaleString()}</td>
-                          <td>
-                            <input
-                              type="number"
-                              min="0"
-                              max={remaining}
-                              value={deliveredQuantities[itemId] !== undefined ? deliveredQuantities[itemId] : remaining}
-                              onChange={e => setDeliveredQuantities({
-                                ...deliveredQuantities,
-                                [itemId]: Math.max(0, Math.min(remaining, Number(e.target.value)))
-                              })}
-                              style={{ width: '80px', padding: '4px', fontSize: '12px' }}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '8px 0 0 0', textAlign: 'center' }}>
-                {t('Ký tên nhận hàng trực tuyến vào khung dưới đây để hoàn tất giao lẻ:')}
-              </p>
-
-              <canvas
-                ref={canvasRef}
-                width="460"
-                height="180"
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                style={{ border: '2px solid var(--color-primary)', borderRadius: '4px', cursor: 'crosshair', backgroundColor: '#ffffff', touchAction: 'none' }}
-              />
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-                <button type="button" className="btn btn-sm btn-outline" onClick={clearCanvas}>{t('Xóa Chữ Ký')}</button>
-                <button type="button" className="btn btn-sm btn-success" onClick={saveSignature}>{t('Xác Nhận Giao Hàng')}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

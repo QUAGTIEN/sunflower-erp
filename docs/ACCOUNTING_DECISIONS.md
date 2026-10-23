@@ -47,8 +47,22 @@ Chi tiết triển khai tại `WAREHOUSE.md`: cấp/hoàn thực tế, ánh xạ
 | D05b | Ai duyệt tiền, đảo tiền, khóa/mở kỳ kế toán | 5 |
 | D06 | Mốc ghi tăng nợ bán/mua, hạn nợ, tiền tệ, thuế và làm tròn; không nối nợ ở lượt 3 | 5 |
 | D07 | Phân bổ thu chi tới dòng mã hay chứng từ, gợi ý và ứng trước | 5 |
-| D08 | Mốc trừ kho giao khách, hàng đi đường, giao thất bại, trả/giao bù | 4 |
+| D08 | Đã chốt D08-4 bên dưới; thay đổi dung sai/chất lượng hàng trả cần xác nhận riêng | 4 / mở rộng |
 | D09 | Ngày chuyển đổi, đầu kỳ tiền/kho và hàng còn thực hiện, thiếu lịch sử | 7 |
 | D10 | Ngày nhắc, dung sai giao nhận/đóng thiếu, quyền xem công nợ | 6 |
 
 Mẫu tem trắng đã có đầu vào; mẫu công ty khác chỉ bổ sung khi có tài liệu thật. Không có đầu kỳ được xác nhận thì không chạy nhập số dư thật. Không bịa lịch sử thanh toán hoặc suy số quy đổi từ mã hàng.
+
+
+## Quyết định lượt 4 — ngày 23/10/2026
+
+| Mã | Quyết định đã chốt |
+|---|---|
+| D08a-4 | Một kho thành phẩm chung, tách NVL; QC không tự nhập, nhập theo lượng đạt có phiếu; xuất kho tăng hàng đang giao, POD chỉ tăng thực nhận |
+| D08b-4 | Hàng mua/gia công hỗ trợ cả nhập kho công ty và NCC giao thẳng khách ngay lượt 4. Giao thẳng không tạo tồn kho công ty |
+| D08c-4 | Hoàn giao thất bại/khách trả theo phiếu xuất gốc, mở lại phần cần giao. Hàng giao thẳng chọn đích thực tế công ty/NCC, chỉ về công ty mới tăng tồn công ty |
+| D08d-4 | Chặn xuất âm thành phẩm; không tự ghi hàng hoàn khi hoãn chuyến; không coi lượng kế hoạch là đã giao |
+| D05b-4 | Giữ nhóm ghi sổ lượt 3; người có Giao hàng xác nhận thực nhận/POD; chỉ Admin đảo phiếu và đóng thiếu có lý do, xác nhận khách |
+| D08e-4 | Không tự lấp phần thiếu vào qtyDelivered; không tự chuyển số dư/lịch sử cũ. Công nợ và điều chỉnh tiền hàng trả nối ở lượt 5 |
+
+Chi tiết tại FINISHED_GOODS.md. D08b và D05b-4 là hai câu trả lời trực tiếp của người dùng trong lượt này; kiểm soát phiếu, số dư và chống ghi trùng triển khai trong phạm vi đã duyệt.

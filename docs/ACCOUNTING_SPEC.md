@@ -121,10 +121,21 @@ Chấp nhận dấu phẩy, chấm phẩy hoặc tab; dấu nháy CSV và ghi ch
 
 ## Phạm vi chưa thực hiện
 
-Chưa nhập dữ liệu thật hoặc đầu kỳ tồn/nợ; danh mục không tự đổi số lượng/tiền. Chưa triển khai tồn thành phẩm/giao/trả, công nợ mới, giá vốn/sổ cái/thuế/ngân hàng. Supplier SKU riêng, lô/cuộn/vị trí, giữ chỗ NVL và khóa chất lượng chưa có. Chưa kiểm tra trình duyệt/máy in thật hoặc deploy API/web/rules thực tế.
+Chưa nhập dữ liệu thật hoặc đầu kỳ tồn/nợ; danh mục không tự đổi số lượng/tiền. Đã có mã nguồn thành phẩm/giao/trả ở lượt 4; chưa có công nợ mới, giá vốn/sổ cái/thuế/ngân hàng. Supplier SKU riêng, lô/cuộn/vị trí, giữ chỗ NVL và khóa chất lượng chưa có. Chưa kiểm tra trình duyệt/máy in thật hoặc deploy API/web/rules thực tế.
 
-Kho cũ chỉ đọc; sổ số lượng mới có ở lượt 3, chưa bao gồm đầu kỳ chưa đối soát. Thanh toán và nhận mua không phải NVL còn luồng cũ, **chưa phải sổ công nợ mới**. Không coi các lượt 1–3 là hoàn thành công nợ/chuyển đổi dữ liệu thật.
+Kho cũ chỉ đọc; sổ số lượng mới có ở lượt 3–4, chưa bao gồm đầu kỳ chưa đối soát. Thanh toán hiện hữu còn luồng cũ, **chưa phải sổ công nợ mới**. Nhận mua mọi loại chỉ ghi số lượng qua API kho, không tự tạo payable. Không coi các lượt 1–4 là hoàn thành công nợ/chuyển đổi dữ liệu thật.
 
 ## Kiểm tra bắt buộc các lượt tiếp theo
 
 Build client và server; test hành vi liên quan, quyền, dữ liệu cũ, request gửi lại và đồng thời. Lint phần mới; so sánh baseline khi đụng trang cũ. Không tự kiểm thử trình duyệt nếu người dùng chưa yêu cầu. Commit đúng file công việc và push `origin/main`; phân biệt push với deploy API, deploy rules và chuyển dữ liệu thật.
+
+
+## Hợp đồng lượt 4 — thành phẩm và hàng giao
+
+Mã nguồn theo FINISHED_GOODS.md, quyết định D08-4 tại ACCOUNTING_DECISIONS.md. Nội dung này thay phần nhận mua không phải NVL còn luồng cũ ở hợp đồng lượt 3 phía trên.
+
+- Nhập thành phẩm từng phần theo lượng đạt LSX v2 hoàn thành; hàng mua/gia công nhập kho hoặc NCC giao thẳng. Một kho thành phẩm chung, không trộn NVL.
+- Xuất giảm tồn, tăng đang giao; POD thực nhận từng dòng. Hoàn giao thất bại, khách trả/giao bù có phiếu gốc/cap; hàng giao thẳng quay về công ty hoặc NCC theo thực tế. Không xuất âm thành phẩm.
+- Admin/Mua hàng Inventory/Kế toán Accounting ghi số lượng; người có Giao hàng xác nhận POD; chỉ Admin đảo/đóng thiếu có xác nhận khách. Không ghi lượng thiếu thành đã giao.
+- Transaction là nguồn duy nhất ghi số dư, nguồn, PO/chuyến/xe, phiếu/audit/requestId. Rules khóa đường ghi tắt và nguồn đã phát sinh. Không nhập đầu kỳ, không tự chuyển phiếu cũ hoặc sinh tiền từ nhận hàng.
+- Mua hàng bỏ handler tự sinh payable khi nhận hàng không phải NVL. Hóa đơn đã có giữ nguyên; mốc tăng/giảm công nợ và quyền tiền cần chốt ở lượt 5. Chưa có nghiệm thu hoặc xác nhận deploy thực tế.

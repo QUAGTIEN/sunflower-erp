@@ -12,10 +12,11 @@ import { formatDateTime } from '@/shared/utils/dateFormatting';
 import { loadWarehouse, mutateWarehouse } from '../api/warehouseService';
 import { canPostWarehouse, canReadWarehouse, stockNumber, warehouseSummary, warehouseDate, WAREHOUSE_KINDS, type WarehouseBalance, type WarehouseData, type WarehouseVoucher } from '../model/warehouse';
 import { WarehouseVoucherDialog } from '../components/WarehouseVoucherDialog';
+import { FinishedGoodsWorkspace } from '../components/FinishedGoodsWorkspace';
 import '../components/Warehouse.css';
 
 const empty: WarehouseData = { items: [], balances: [], vouchers: [], sources: [], progress: [], legacyInventory: [], legacyExports: [] };
-const tabNames = { inventory: 'Tồn kho NVL', vouchers: 'Phiếu kho', report: 'Nhập xuất tồn', catalog: 'Danh mục hàng', legacy: 'Dữ liệu cũ' };
+const tabNames = { inventory: 'Tồn kho NVL', goods: 'Thành phẩm', vouchers: 'Phiếu kho NVL', report: 'Nhập xuất tồn NVL', catalog: 'Danh mục hàng', legacy: 'Dữ liệu cũ' };
 export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile; onRefresh: () => void }) {
   const [data, setData] = useState(empty);
   const [loaded, setLoaded] = useState(false);
@@ -59,7 +60,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   return <div className="inventory-view warehouse-workspace" data-erp-table-text="single-line">
     <PageContextHeader section="Vật liệu" current={tabNames[tab]} />
     <nav className="content-tabs" aria-label="Kho NVL" role="tablist">{Object.entries(tabNames).filter(([key]) => key !== 'catalog' || canManageItemCatalog(currentUser)).map(([key, name]) => <button key={key} role="tab" aria-selected={tab === key} className={tab === key ? 'active' : ''} onClick={() => { if (tab !== 'catalog' || confirmAppNavigation()) { setTab(key as typeof tab); setSearch(''); } }}>{name}</button>)}</nav>
-    {tab === 'catalog' ? <ItemCatalogWorkspace currentUser={currentUser} /> : <>
+    {tab === 'catalog' ? <ItemCatalogWorkspace currentUser={currentUser} /> : tab === 'goods' ? <FinishedGoodsWorkspace currentUser={currentUser} onRefresh={onRefresh} /> : <>
       <div className="warehouse-toolbar"><input aria-label="Tìm kiếm kho" type="search" placeholder="Tìm mã, tên NVL hoặc chứng từ…" value={search} onChange={event => setSearch(event.target.value)} />
         {tab === 'inventory' && <label className="warehouse-check"><input type="checkbox" checked={onlyLow} onChange={event => setOnlyLow(event.target.checked)} />Tồn âm / dưới ngưỡng</label>}
         {tab === 'vouchers' && <select aria-label="Loại phiếu" value={kind} onChange={event => setKind(event.target.value)}><option value="">Tất cả loại phiếu</option>{Object.entries(WAREHOUSE_KINDS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>}

@@ -42,7 +42,7 @@
 
 ## Chưa triển khai
 
-Chưa nhập thành phẩm/giao/trả, giá thành/giá vốn, phân bổ tiêu hao, nhiều kho/lô/cuộn/vị trí hoặc chuyển đổi đầu kỳ thật. Các vùng cấp kho / đối soát trên bản in vẫn để ghi theo chứng từ riêng, không tự đổ dữ liệu hoặc chữ ký giả.
+Đã bổ sung nhập thành phẩm/giao/trả ở lượt kế toán 4, xem `FINISHED_GOODS.md`. Chưa có giá thành/giá vốn, phân bổ tiêu hao, nhiều kho/lô/cuộn/vị trí hoặc chuyển đổi đầu kỳ thật. Các vùng cấp kho / đối soát trên bản in vẫn để ghi theo chứng từ riêng, không tự đổ dữ liệu hoặc chữ ký giả.
 
 Không có thao tác lưu / phát hành / in / nghiệm thu LSX nào tự trừ tồn kho. Chỉ phiếu thực tế qua API kho làm đổi số dư mới; không chạy song song đường ghi tồn cũ.
 
@@ -63,3 +63,8 @@ Lượt 3 thay rules và thêm `/api/warehouse/manage`; cần web/API/rules cùn
 - Kiểm thử hai tab Sản xuất, lệnh cũ / mới, quyền Sale, danh sách máy; các kiểm thử PO nhập tay, đồng bộ mã sản phẩm, build TypeScript / Vite và lint theo phạm vi.
 - Chưa kiểm thử trình duyệt, máy in thực hoặc triển khai quy tắc trên Firebase trong lượt này.
 - Lượt 2 bổ sung test quyền Kế toán/nháp của người khác, liên kết PO/sản phẩm khách, mã stale/inactive, snapshot sau phát hành, quy đổi NVL, mẫu có phiên bản, dữ liệu dài và bản in nhiều trang. Kiểm tra HTML sinh ra không thay thế nghiệm thu bố cục trên trình duyệt/máy in thật.
+
+
+## Bổ sung lượt kế toán 4 — ngày 23/10/2026
+
+Chi tiết LSX v2 hiển thị lịch sử phiếu thành phẩm, mở nhập thực tế khi lệnh hoàn thành và người dùng có quyền kho. Nhập từng phần, tổng không vượt lượng đạt QC, đóng băng mã/quy đổi và kiểm tra nguồn trên máy chủ. Producer chỉ xem; QC/in/lưu không tự tăng tồn. Phiếu mới qua /api/warehouse/finished, tách số dư NVL và giữ lệnh cũ; cần deploy web/API/rules cùng phiên bản. Chưa có đầu kỳ thật, công nợ mới hoặc nghiệm thu Firebase/trình duyệt thật. Xem FINISHED_GOODS.md.

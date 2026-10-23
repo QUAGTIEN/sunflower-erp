@@ -157,7 +157,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
       productionRevision: Number(po.productionRevision || 0) + 1,
       ...(action === 'start' ? { productionProgress: 'producing' } : {}),
       ...(action === 'complete' ? { productionProgress: complete ? 'completed' : 'partial' } : {}),
-      ...(complete && getPOQueueStatus(po) === 'waiting_production' ? getPOQueueUpdate('waiting_delivery', { deliveryStage: 'customer_outbound', deliveryProgress: 'pending' }) : {}),
+      ...(complete && getPOQueueStatus(po) === 'waiting_production' ? getPOQueueUpdate('waiting_delivery', { deliveryStage: 'customer_outbound', deliveryProgress: po.goodsFlowVersion === 1 ? String(po.deliveryProgress || 'pending') : 'pending' }) : {}),
       historyLogs: [...(Array.isArray(po.historyLogs) ? po.historyLogs : []), { status: String(po.status), updatedBy: actor.displayName, updatedAt: now, note: `${next.lsxCode}: ${action}${complete ? ' — đủ sản lượng đạt QC, chuyển chờ giao.' : ''}` }]
     });
     transaction.set(eventRef, { actorId: actor.uid, actorName: actor.displayName, actorRole: actor.role,

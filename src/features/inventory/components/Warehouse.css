@@ -34,3 +34,8 @@
 .warehouse-entry-table th:nth-child(2) { width: 260px; }
 .warehouse-entry-table th:last-child { width: 240px; }
 @media (max-width: 680px) { .warehouse-fields { grid-template-columns: 1fr; } .warehouse-dialog { padding: 12px; } }
+.goods-entry-table { min-width: 1380px !important; }
+.goods-entry-table th:nth-child(-n+3) { width: 240px; }
+.goods-entry-table th:last-child { width: 220px; }
+.goods-proof-image { display: block; max-width: min(100%, 400px); max-height: 240px; object-fit: contain; margin: 8px 0; border: 1px solid var(--erp-border-color); }
+.goods-signature-pad { display: block; width: min(100%, 600px); height: 180px; margin: 8px 0; border: 1px solid var(--erp-border-color); background: white; touch-action: none; }

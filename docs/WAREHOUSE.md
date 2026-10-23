@@ -67,3 +67,8 @@ Chưa deploy Vercel/Firebase, chưa kết nối dữ liệu thật, chưa nhập
 - `tests/production-orders.test.cjs`: thêm kiểm tra hủy LSX không làm bỏ quên NVL đang cấp. `tests/operational-ui.test.cjs`: kho mới, nhận NVL không chạy ghi tiền/kho cũ, nhận mua khác giữ luồng hiện tại.
 - Kiểm tra rules là hợp đồng tĩnh; chưa chạy Firestore emulator. Giao dịch test mô phỏng có retry/version, không thay thế nghiệm thu Firebase và trình duyệt thật.
 - Lượt 4 nối sổ thành phẩm/giao/trả theo quyết định D08; giữ một nguồn ghi và không dùng lại các handler tồn cũ. Lượt 5 nối công nợ từ chứng từ mua có thật, không tự dựng lại nợ cho các phiếu kho lịch sử. Lượt 7 chốt chuyển đổi trước khi nhập đầu kỳ thật.
+
+
+## Bổ sung lượt 4
+
+Sổ thành phẩm/giao/trả đã có mã nguồn, xem FINISHED_GOODS.md. Collection số dư/phiếu dùng chung nhưng lọc kho rõ ràng: NVL raw_main, thành phẩm finished_main với ID số dư fg_<catalogItemId>. API load NVL và Dashboard chỉ đọc phần NVL; báo cáo thành phẩm không trộn hàng NCC giao thẳng/POD vào delta vật lý. Nhận mua mọi nhóm đã chuyển sang phiếu số lượng, không tự tạo payable; thay cho đoạn nhận mua khác còn luồng hiện tại ở bàn giao lượt 3 phía trên. Tiền nối lượt 5. Cần triển khai web/API/rules cùng phiên bản; chưa có đầu kỳ thật hoặc deploy trong lượt này.

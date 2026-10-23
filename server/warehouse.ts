@@ -44,7 +44,7 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
       ...rows(4).filter(row => row.sourcingType === 'raw_material' && !row.deleted && row.status !== 'cancelled').map(row => sourceView('purchase', row.id, row, progress.some(item => item.id === `purchase_${row.id}`))),
       ...rows(5).filter(row => row.productionOrderVersion === 2 && !row.deleted && ['released', 'producing', 'completed'].includes(String(row.status))).map(row => sourceView('production', row.id, row, true))
     ];
-    return { success: true, items: rows(0).filter(row => row.kind === 'raw_material'), balances: rows(1), vouchers: rows(2), progress, sources,
+    return { success: true, items: rows(0).filter(row => row.kind === 'raw_material'), balances: rows(1).filter(row => !row.warehouseId || row.warehouseId === 'raw_main'), vouchers: rows(2).filter(row => row.warehouseId === 'raw_main'), progress, sources,
       legacyInventory: rows(6), legacyExports: rows(7) };
   });
   if (!canPostWarehouse(actor)) fail(403, 'Chỉ Admin, Mua hàng có quyền Vật liệu hoặc Kế toán có quyền Kế toán được ghi sổ.');

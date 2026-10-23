@@ -132,7 +132,7 @@ test('raw purchase receive opens the actual quantity voucher and does not run le
   assert.deepEqual(writes,[]); dialog.props.onSaved(); assert.equal(refreshes,1); assert.equal(ui.state.get('warehouseOrderId'),'');
 });
 
-test('finished-good receiving keeps the existing non-raw workflow until its scheduled phase',async()=>{
+test('finished-good purchasing opens quantity receipts or direct-shipping without creating payables',async()=>{
   const writes=[],previousWindow=global.window; global.window={confirm:()=>true};
   try {
     const ui=screen('src/features/procurement/pages/PurchasePage.tsx','Purchase',{pos:[],purchaseOrders:[{id:'buy2',purCode:'PUR-2',status:'ordered',sourcingType:'finished_good',items:[],totalPrice:100,supplierId:'supplier1'}],procurementRequests:[],currentUser:admin,users:[],onRefresh(){}},{activeListView:'orders'},{
@@ -142,8 +142,9 @@ test('finished-good receiving keeps the existing non-raw workflow until its sche
       '@/hooks/useReorderableTableColumns':{useReorderableTableColumns:({columns})=>({orderedColumnIds:columns.map(column=>column.id),getHeaderProps:()=>({})})}
     });
     await menu(ui.render())[0].props.actions[0].onSelect();
-    assert.equal(writes[0][0],'invoices'); assert.equal(writes[0][1].type,'payable'); assert.equal(writes[1][0],'purchase_orders'); assert.equal(writes[1][2].status,'received');
-    assert.ok(!writes.some(row=>row[0]==='inventory')); assert.equal(ui.state.get('warehouseOrderId'),'');
+    assert.deepEqual(writes,[]); assert.equal(ui.state.get('goodsOptions').kind,'purchase_receipt'); assert.equal(ui.state.get('goodsOptions').sourceId,'buy2');
+    assert.ok(nodes(ui.render()).some(node=>node.type?.name==='GoodsVoucherDialog'));
+    menu(ui.render())[0].props.actions.find(action=>action.label==='NCC giao thẳng khách').onSelect(); assert.equal(ui.state.get('goodsOptions').kind,'supplier_dispatch');
   } finally { global.window=previousWindow; }
 });
 test('text filter controls preserve callbacks, and default shared controls retain their icons',()=>{
