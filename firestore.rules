@@ -335,28 +335,54 @@ service cloud.firestore {
 
     match /procurement_requests/{documentId} {
       allow read: if isActive();
-      allow create, update: if hasPage('sales') || hasPage('purchase');
-      allow delete: if isAdmin();
+      allow create: if (hasPage('sales') || hasPage('purchase'))
+        && !request.resource.data.keys().hasAny(['warehouseReceiptRevision']);
+      allow update: if (hasPage('sales') || hasPage('purchase'))
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['warehouseReceiptRevision'])
+        && !(resource.data.get('sourcingType', '') == 'raw_material'
+          && resource.data.get('purchaseOrderId', '') != ''
+          && request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'purchaseOrderId', 'sourcingType', 'deleted']));
+      allow delete: if isAdmin() && resource.data.get('purchaseOrderId', '') == '';
     }
 
     match /purchase_orders/{documentId} {
       allow read: if isActive();
-      allow create, update: if canUsePurchase();
-      allow delete: if isAdmin();
+      allow create: if canUsePurchase()
+        && !request.resource.data.keys().hasAny(['warehouseReceiptRevision', 'warehouseReceivedComplete'])
+        && (request.resource.data.get('sourcingType', '') != 'raw_material' || request.resource.data.status == 'ordered');
+      allow update: if canUsePurchase()
+        && resource.data.get('sourcingType', '') != 'raw_material'
+        && request.resource.data.get('sourcingType', '') == resource.data.get('sourcingType', '')
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['warehouseReceiptRevision', 'warehouseReceivedComplete']);
+      allow delete: if isAdmin() && resource.data.get('sourcingType', '') != 'raw_material';
     }
 
-    // Inventory is also updated when production consumes raw materials.
+    // Legacy quantities are frozen for reconciliation; all new postings use the API.
     match /inventory/{documentId} {
       allow read: if isActive();
-      allow create, update: if canUseInventory();
-      allow delete: if isAdmin();
+      allow write: if false;
     }
 
     match /warehouse_exports/{documentId} {
       allow read: if isActive();
-      allow create, update: if canUseInventory();
-      allow delete: if isAdmin();
+      allow write: if false;
     }
+
+    function canReadWarehouse() {
+      return isAdmin() || (isActive() && (
+        (userProfile().role == 'accountant' && hasPage('accounting'))
+        || (userProfile().role == 'purchaser' && (hasPage('inventory') || hasPage('purchase')))
+        || (userProfile().role == 'producer' && hasPage('production'))
+      ));
+    }
+    match /warehouse_balances/{documentId} {
+      allow read: if canReadWarehouse();
+      allow write: if false;
+    }
+    match /warehouse_vouchers/{documentId} { allow read, write: if false; }
+    match /warehouse_source_state/{documentId} { allow read, write: if false; }
+    match /warehouse_requests/{documentId} { allow read, write: if false; }
+    match /warehouse_counters/{documentId} { allow read, write: if false; }
 
     // Production planning and machines.
     match /production_counters/{documentId} {

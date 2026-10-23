@@ -88,17 +88,21 @@ test('costing menu still opens original cost editor after changing pages',()=>{
   assert.deepEqual(menu(tree)[0].props.actions.map(action=>action.label),['Sửa Chi Phí','In Phiếu']);
   menu(tree)[0].props.actions[0].onSelect(); assert.equal(ui.state.get('customCostModalPo').id,'po25');
 });
-test('inventory uses text statuses and its existing detail/edit handlers remain reachable',()=>{
-  const item={id:'paper',materialName:'Vật tư tên rất dài',unit:'m²',category:'paper',qtyInStock:0,minQtyAlert:10};
-  const ui=screen('src/features/inventory/pages/InventoryPage.tsx','Inventory',{currentUser:admin,onRefresh(){}},{inventoryList:[item]});
+test('inventory uses canonical ledger balances, text warnings and threshold actions without legacy quantity editors',()=>{
+  const item={id:'paper',code:'NVL-1',name:'Vật tư tên rất dài',baseUnit:'m²',active:true};
+  const balance={id:'paper',code:'NVL-1',name:item.name,unit:'m²',quantity:0,minQuantity:10,revision:1};
+  const ui=screen('src/features/inventory/pages/InventoryPage.tsx','Inventory',{currentUser:admin,onRefresh(){}},{data:{items:[item],balances:[balance],sources:[],vouchers:[],progress:[],legacyInventory:[],legacyExports:[]},loaded:true,loading:false});
   let tree=ui.render(); assert.equal(tree.props['data-erp-table-text'],'single-line');
-  assert.ok(nodes(tree).some(node=>node.props?.className==='erp-status-text erp-status-text--danger'));
+  assert.ok(nodes(tree).some(node=>node.type==='td' && node.props.children==='Cần nhập hàng'));
   assert.ok(!nodes(tree).some(node=>String(node.props?.className||'').includes('badge')));
   assert.equal(menu(tree)[0].type.name,'RowActionMenu');
-  menu(tree)[0].props.actions.find(action=>action.label==='Chi Tiết').onSelect();
-  tree=ui.render(); assert.equal(ui.state.get('selectedItem').id,'paper');
-  const edit=nodes(tree).find(node=>node.type==='button'&&node.props.title==='Sửa');
-  assert.equal(edit.props.children,'Sửa');edit.props.onClick();assert.equal(ui.state.get('showEditModal'),true);
+  assert.deepEqual(menu(tree)[0].props.actions.map(action=>action.label),['Chi tiết / ngưỡng tồn']);
+  menu(tree)[0].props.actions[0].onSelect();
+  tree=ui.render(); assert.equal(ui.state.get('stock').id,'paper');
+  assert.ok(nodes(tree).some(node=>node.type?.name==='StockDetails'));
+  assert.ok(!nodes(tree).some(node=>node.type==='button' && node.props.children==='Thêm vật tư'));
+  nodes(tree).find(node=>node.props?.role==='tab' && node.props.children==='Dữ liệu cũ').props.onClick();
+  tree=ui.render(); assert.equal(menu(tree).length,0);
 });
 test('purchasing keeps request processing actions and columns while replacing icon controls',()=>{
   const request={id:'r1',requestCode:'MH-1',poCode:'PO-1',status:'new',customerName:'Khách dài',productName:'Tem',quantity:50,unit:'cái',sourcingType:'subcontract',createdAt:'2026-10-22'};
@@ -113,6 +117,34 @@ test('purchasing keeps request processing actions and columns while replacing ic
   assert.ok(nodes(tree).some(node=>node.type==='button'&&node.props.children==='Đóng'));
   assert.ok(nodes(tree).some(node=>node.type?.name==='DataFilterButton'&&node.props.textOnly));
   assert.ok(nodes(tree).some(node=>node.type==='button'&&node.props.children==='Tùy chỉnh cột'));
+});
+
+test('raw purchase receive opens the actual quantity voucher and does not run legacy stock or payable writes',async()=>{
+  const writes=[]; let refreshes=0;
+  const ui=screen('src/features/procurement/pages/PurchasePage.tsx','Purchase',{pos:[],purchaseOrders:[{id:'buy1',purCode:'PUR-1',status:'partially_received',sourcingType:'raw_material',items:[{materialName:'Giấy',quantity:100,unit:'m'}]}],procurementRequests:[],currentUser:admin,users:[],onRefresh(){refreshes++;}},{activeListView:'orders'},{
+    '@/infrastructure/firebase/erpDataGateway':{dbService:{getCollection:async()=>[],addDocument:async(...args)=>writes.push(args),updateDocument:async(...args)=>writes.push(args)}},
+    '@/hooks/useSharedTableColumns':{useSharedTableColumns:()=>({selectedIds:[],setSelectedIds(){},canEditColumns:true})},
+    '@/context/TableColumnLayoutContext':{useTableColumnLayouts:()=>({canEditColumns:true})},
+    '@/hooks/useReorderableTableColumns':{useReorderableTableColumns:({columns})=>({orderedColumnIds:columns.map(column=>column.id),getHeaderProps:()=>({})})}
+  });
+  const action=menu(ui.render())[0].props.actions[0]; assert.equal(action.label,'Nhập kho NVL'); await action.onSelect();
+  const dialog=nodes(ui.render()).find(node=>node.type?.name==='WarehouseVoucherDialog'); assert.equal(dialog.props.initialSourceId,'buy1'); assert.equal(dialog.props.initialKind,'purchase_receipt');
+  assert.deepEqual(writes,[]); dialog.props.onSaved(); assert.equal(refreshes,1); assert.equal(ui.state.get('warehouseOrderId'),'');
+});
+
+test('finished-good receiving keeps the existing non-raw workflow until its scheduled phase',async()=>{
+  const writes=[],previousWindow=global.window; global.window={confirm:()=>true};
+  try {
+    const ui=screen('src/features/procurement/pages/PurchasePage.tsx','Purchase',{pos:[],purchaseOrders:[{id:'buy2',purCode:'PUR-2',status:'ordered',sourcingType:'finished_good',items:[],totalPrice:100,supplierId:'supplier1'}],procurementRequests:[],currentUser:admin,users:[],onRefresh(){}},{activeListView:'orders'},{
+      '@/infrastructure/firebase/erpDataGateway':{dbService:{getCollection:async()=>[],addDocument:async(...args)=>{writes.push(args);return {id:'invoice1'};},updateDocument:async(...args)=>{writes.push(args);return true;}}},
+      '@/hooks/useSharedTableColumns':{useSharedTableColumns:()=>({selectedIds:[],setSelectedIds(){},canEditColumns:true})},
+      '@/context/TableColumnLayoutContext':{useTableColumnLayouts:()=>({canEditColumns:true})},
+      '@/hooks/useReorderableTableColumns':{useReorderableTableColumns:({columns})=>({orderedColumnIds:columns.map(column=>column.id),getHeaderProps:()=>({})})}
+    });
+    await menu(ui.render())[0].props.actions[0].onSelect();
+    assert.equal(writes[0][0],'invoices'); assert.equal(writes[0][1].type,'payable'); assert.equal(writes[1][0],'purchase_orders'); assert.equal(writes[1][2].status,'received');
+    assert.ok(!writes.some(row=>row[0]==='inventory')); assert.equal(ui.state.get('warehouseOrderId'),'');
+  } finally { global.window=previousWindow; }
 });
 test('text filter controls preserve callbacks, and default shared controls retain their icons',()=>{
   const controls=loader()('src/components/DataWorkspaceFilters.tsx');

@@ -90,7 +90,7 @@ export const synchronizeProcurementRequestsForPO = async (
   }
 
   await Promise.all(existingForPO
-    .filter(request => !activeRequestIds.has(request.id) && !['ordered', 'received'].includes(request.status))
+    .filter(request => !activeRequestIds.has(request.id) && !['ordered', 'partially_received', 'received'].includes(request.status))
     .map(request => dbService.updateDocument('procurement_requests', request.id, {
       status: 'cancelled',
       deleted: true,

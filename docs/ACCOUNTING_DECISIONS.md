@@ -27,15 +27,25 @@ Kế hoạch chính thức: 7 lượt, theo `ACCOUNTING_SPEC.md`. Yêu cầu tr�
 | D02g | Máy chủ lấy liên kết PO trước; kế thừa sản phẩm khách chỉ khi đúng ID, phiên bản, kỹ thuật và ĐVT | Tái dùng danh mục lượt 1, không ghép nhầm dòng nhập tay hoặc snapshot cũ |
 | D02h | Mã nội bộ/quy đổi và mẫu in được chụp trên lệnh; thay đổi trước phát hành phải trả về lưu lại; sau phát hành dùng snapshot | Không thay ý nghĩa phiếu lịch sử hoặc nội dung đã duyệt |
 
-## Quyết định cần đầu vào công ty trước lượt tương ứng
+## Quyết định lượt 3 — đã được người dùng xác nhận ngày 23/10/2026
+
+| Mã | Quyết định |
+|---|---|
+| D02f-3 / D03-3 | Một kho NVL chung; chưa quản lý lô/cuộn/vị trí. Không chuyển tồn cũ tự động; đầu kỳ thật chốt ở lượt 7 |
+| D04-3 | Cảnh báo xuất âm, cho người có quyền ghi sổ xác nhận kèm lý do; không ghi lùi/ngày tương lai |
+| D05b-3 | Admin, purchaser có Inventory, accountant có Accounting ghi sổ; chỉ Admin đảo; Producer chỉ xem |
+| D06-3 | Nhập mua NVL chỉ ghi số lượng, không tự tạo hóa đơn phải trả; công nợ nối ở lượt 5 |
+
+Chi tiết triển khai tại `WAREHOUSE.md`: cấp/hoàn thực tế, ánh xạ rõ từng dòng, snapshot, biên nhận chống trùng, ngưỡng theo số dư ĐVT cơ sở. Chưa đặt giữ chỗ NVL từ lượng dự kiến hoặc khóa chất lượng. Các lựa chọn về tiền/kỳ, thành phẩm/giao hàng và chuyển đổi thật dưới đây còn cần chốt ở lượt tương ứng.
+
+## Đầu vào còn cần trước các lượt tiếp theo
 
 | Mã | Cần xác nhận | Lượt cần |
 |---|---|---|
-| D02f | Dữ liệu mã thật, hệ số thực tế; có quản lý lô/cuộn/vị trí hay không | 1 khi nhập thật; cấu trúc kho ở 3 |
-| D03 | Số kho, giữ chỗ, lượng khóa chất lượng; ngưỡng tối thiểu theo thực tế hay khả dụng | 3 |
-| D04 | Cảnh báo hay chặn xuất âm; ngoại lệ; kiểm soát lùi ngày | 3 |
-| D05b | Ai ghi sổ kho, duyệt tiền, đảo phiếu, khóa/mở kỳ | 3/5 |
-| D06 | Mốc ghi tăng nợ bán/mua, hạn nợ, tiền tệ, thuế và làm tròn | 3 khi nối mua; 5 |
+| D02f | Dữ liệu mã thật, hệ số thực tế khi nhập/chuyển đổi; mở rộng lô/cuộn/vị trí nếu có yêu cầu sau | 7 / mở rộng |
+| D03 | Giữ chỗ/khóa chất lượng nếu mở rộng; hiện chỉ số dư phiếu và ngưỡng theo ĐVT cơ sở | Sau phạm vi hiện tại |
+| D05b | Ai duyệt tiền, đảo tiền, khóa/mở kỳ kế toán | 5 |
+| D06 | Mốc ghi tăng nợ bán/mua, hạn nợ, tiền tệ, thuế và làm tròn; không nối nợ ở lượt 3 | 5 |
 | D07 | Phân bổ thu chi tới dòng mã hay chứng từ, gợi ý và ứng trước | 5 |
 | D08 | Mốc trừ kho giao khách, hàng đi đường, giao thất bại, trả/giao bù | 4 |
 | D09 | Ngày chuyển đổi, đầu kỳ tiền/kho và hàng còn thực hiện, thiếu lịch sử | 7 |

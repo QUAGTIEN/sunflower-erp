@@ -1,757 +1,120 @@
-import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
-import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
-import React, { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { UserProfile } from '@/shared/types';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
-import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { useLanguage } from '@/context/LanguageContext';
-import { formatDateTime } from '@/shared/utils/dateFormatting';
 import { ItemCatalogWorkspace } from '@/features/catalog/components/ItemCatalogWorkspace';
 import { canManageItemCatalog } from '@/features/catalog/model/itemCatalog';
-import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
-import './Inventory.css';
+import { confirmAppNavigation, registerNavigationGuard } from '@/shared/feedback/navigationGuard';
+import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
+import { formatDateTime } from '@/shared/utils/dateFormatting';
+import { loadWarehouse, mutateWarehouse } from '../api/warehouseService';
+import { canPostWarehouse, canReadWarehouse, stockNumber, warehouseSummary, warehouseDate, WAREHOUSE_KINDS, type WarehouseBalance, type WarehouseData, type WarehouseVoucher } from '../model/warehouse';
+import { WarehouseVoucherDialog } from '../components/WarehouseVoucherDialog';
+import '../components/Warehouse.css';
 
-interface InventoryProps {
-  currentUser: UserProfile;
-  onRefresh: () => void;
+const empty: WarehouseData = { items: [], balances: [], vouchers: [], sources: [], progress: [], legacyInventory: [], legacyExports: [] };
+const tabNames = { inventory: 'Tồn kho NVL', vouchers: 'Phiếu kho', report: 'Nhập xuất tồn', catalog: 'Danh mục hàng', legacy: 'Dữ liệu cũ' };
+export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile; onRefresh: () => void }) {
+  const [data, setData] = useState(empty);
+  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refresh, setRefresh] = useState(0);
+  const [tab, setTab] = useState<keyof typeof tabNames>('inventory');
+  const [search, setSearch] = useState('');
+  const [onlyLow, setOnlyLow] = useState(false);
+  const [kind, setKind] = useState('');
+  const [from, setFrom] = useState(`${warehouseDate().slice(0, 7)}-01`);
+  const [to, setTo] = useState(warehouseDate());
+  const [legacyKind, setLegacyKind] = useState('inventory');
+  const [creating, setCreating] = useState(false);
+  const [selected, setSelected] = useState<WarehouseVoucher | null>(null);
+  const [reversal, setReversal] = useState<WarehouseVoucher | null>(null);
+  const [stock, setStock] = useState<WarehouseBalance | null>(null);
+  const permitted = canReadWarehouse(currentUser);
+  const canWrite = canPostWarehouse(currentUser) && loaded && !loading;
+  useEffect(() => {
+    if (!permitted) return;
+    let cancelled = false;
+    void loadWarehouse().then(next => { if (!cancelled) { setData(next); setLoaded(true); setError(''); } })
+      .catch(cause => { if (!cancelled) setError(cause instanceof Error ? cause.message : 'Không tải được sổ kho.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [permitted, refresh]);
+  const reload = () => { setLoaded(false); setLoading(true); setRefresh(value => value + 1); };
+  const saved = () => { setCreating(false); setReversal(null); reload(); onRefresh(); };
+  const needle = search.trim().toLocaleLowerCase('vi');
+  const matches = (...values: unknown[]) => values.join(' ').toLocaleLowerCase('vi').includes(needle);
+  const balances: WarehouseBalance[] = data.items.map(item => data.balances.find(balance => balance.id === item.id) || {
+    id: item.id, code: item.code, name: item.name, unit: item.baseUnit, quantity: 0, minQuantity: null, revision: 0, updatedAt: ''
+  }).sort((a, b) => a.code.localeCompare(b.code, 'vi'));
+  const balancePages = useDataTablePagination(balances.filter(row => matches(row.code, row.name) && (!onlyLow || row.quantity < 0 || row.minQuantity !== null && row.quantity < row.minQuantity)));
+  const voucherPages = useDataTablePagination(data.vouchers.filter(row => (!kind || row.kind === kind) && matches(row.code, row.sourceCode, row.actorName, row.lines.map(line => line.code).join(' '))).sort((a, b) => b.postedAt.localeCompare(a.postedAt)));
+  const reportPages = useDataTablePagination(from && to && from <= to ? warehouseSummary(data.vouchers, from, to).filter(row => matches(row.code, row.name)) : []);
+  const legacyPages = useDataTablePagination((legacyKind === 'inventory' ? data.legacyInventory : data.legacyExports).filter(row => matches(row.materialName, row.exportCode, row.receiverName)));
+  const pagination = tab === 'inventory' ? balancePages : tab === 'vouchers' ? voucherPages : tab === 'report' ? reportPages : legacyPages;
+  if (!permitted) return <p role="alert">Bạn không có quyền xem kho NVL.</p>;
+  return <div className="inventory-view warehouse-workspace" data-erp-table-text="single-line">
+    <PageContextHeader section="Vật liệu" current={tabNames[tab]} />
+    <nav className="content-tabs" aria-label="Kho NVL" role="tablist">{Object.entries(tabNames).filter(([key]) => key !== 'catalog' || canManageItemCatalog(currentUser)).map(([key, name]) => <button key={key} role="tab" aria-selected={tab === key} className={tab === key ? 'active' : ''} onClick={() => { if (tab !== 'catalog' || confirmAppNavigation()) { setTab(key as typeof tab); setSearch(''); } }}>{name}</button>)}</nav>
+    {tab === 'catalog' ? <ItemCatalogWorkspace currentUser={currentUser} /> : <>
+      <div className="warehouse-toolbar"><input aria-label="Tìm kiếm kho" type="search" placeholder="Tìm mã, tên NVL hoặc chứng từ…" value={search} onChange={event => setSearch(event.target.value)} />
+        {tab === 'inventory' && <label className="warehouse-check"><input type="checkbox" checked={onlyLow} onChange={event => setOnlyLow(event.target.checked)} />Tồn âm / dưới ngưỡng</label>}
+        {tab === 'vouchers' && <select aria-label="Loại phiếu" value={kind} onChange={event => setKind(event.target.value)}><option value="">Tất cả loại phiếu</option>{Object.entries(WAREHOUSE_KINDS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>}
+        {tab === 'report' && <><label>Từ ngày<input type="date" value={from} onChange={event => setFrom(event.target.value)} /></label><label>Đến ngày<input type="date" value={to} onChange={event => setTo(event.target.value)} /></label></>}
+        {tab === 'legacy' && <select aria-label="Dữ liệu cũ" value={legacyKind} onChange={event => setLegacyKind(event.target.value)}><option value="inventory">Tồn kho cũ</option><option value="exports">Phiếu xuất cũ</option></select>}
+        <button className="btn btn-outline" disabled={loading} onClick={reload}>Tải lại</button>{canPostWarehouse(currentUser) && tab !== 'legacy' && <button className="btn btn-primary" disabled={!canWrite} onClick={() => setCreating(true)}>Lập phiếu kho</button>}
+      </div>
+      {error && <p className="warehouse-error" role="alert">{error}</p>}
+      {loading && <p role="status">Đang tải sổ kho…</p>}
+      {tab === 'legacy' ? <p className="warehouse-note">Dữ liệu cũ chỉ để đối soát, chưa chuyển thành tồn đầu kỳ của sổ mới.</p> : <p className="warehouse-note">Kho NVL chung · Số lượng từ phiếu thực tế; chưa bao gồm tồn cũ chưa đối soát. Không tính giữ chỗ từ LSX dự kiến.</p>}
+      {tab === 'report' && (!from || !to || from > to) && <p role="alert" className="warehouse-error">Chọn khoảng ngày hợp lệ.</p>}
+      <div className="warehouse-list-frame"><div className="table-container erp-primary-data-table"><table data-resize-key={`warehouse-${tab}-${legacyKind}`} className="warehouse-list"><thead><tr>
+        {tab === 'inventory' ? <><th>Mã NVL</th><th>Tên NVL</th><th>Tồn theo sổ</th><th>ĐVT cơ sở</th><th>Ngưỡng tối thiểu</th><th>Trạng thái</th><th>Thao tác</th></> : tab === 'vouchers' ? <><th>Mã phiếu</th><th>Loại phiếu</th><th>Nguồn</th><th>Ngày hạch toán</th><th>Người ghi sổ</th><th>Trạng thái</th><th>Thao tác</th></> : tab === 'report' ? <><th>Mã NVL</th><th>Tên NVL</th><th>ĐVT</th><th>Đầu kỳ</th><th>Nhập</th><th>Xuất</th><th>Cuối kỳ</th></> : legacyKind === 'inventory' ? <><th>Tên vật tư cũ</th><th>ĐVT cũ</th><th>Tồn cũ</th><th>Giữ chỗ cũ</th><th>Ngưỡng cũ</th><th>Trạng thái cũ</th></> : <><th>Mã phiếu cũ</th><th>Ngày xuất</th><th>Người nhận</th><th>Lý do</th><th>Số dòng</th><th>Chi tiết</th></>}
+      </tr></thead><tbody>
+        {!loading && !error && tab === 'inventory' && balancePages.rows.map(row => <tr key={row.id}><td>{row.code}</td><td title={row.name}>{row.name}</td><td className="warehouse-number">{stockNumber(row.quantity)}</td><td>{row.unit}</td><td className="warehouse-number">{row.minQuantity === null ? 'Chưa thiết lập' : stockNumber(row.minQuantity)}</td><td className={row.quantity < 0 || row.minQuantity !== null && row.quantity < row.minQuantity ? 'warehouse-danger' : ''}>{row.quantity < 0 ? 'Tồn âm' : row.minQuantity !== null && row.quantity < row.minQuantity ? 'Cần nhập hàng' : row.revision ? 'Trong ngưỡng' : 'Chưa có phiếu'}</td><td><RowActionMenu label={`Thao tác ${row.code}`} actions={[{ label: canWrite ? 'Chi tiết / ngưỡng tồn' : 'Chi tiết', onSelect: () => setStock(row) }]} /></td></tr>)}
+        {!loading && !error && tab === 'vouchers' && voucherPages.rows.map(row => <tr key={row.id}><td>{row.code}</td><td>{WAREHOUSE_KINDS[row.kind]}</td><td title={row.sourceCode}>{row.sourceCode}</td><td>{row.postingDate}</td><td>{row.actorName}</td><td>{row.reversedBy ? 'Đã đảo' : row.kind === 'reversal' ? 'Phiếu đảo' : 'Đã ghi sổ'}</td><td><RowActionMenu label={`Thao tác ${row.code}`} actions={[{ label: 'Chi tiết', onSelect: () => setSelected(row) }, ...(currentUser.role === 'admin' && !row.reversedBy && row.kind !== 'reversal' ? [{ label: 'Đảo phiếu', onSelect: () => setReversal(row), disabled: !canWrite }] : [])]} /></td></tr>)}
+        {!loading && !error && tab === 'report' && reportPages.rows.map(row => <tr key={row.code}><td>{row.code}</td><td title={row.name}>{row.name}</td><td>{row.unit}</td>{[row.opening, row.incoming, row.outgoing, row.closing].map((value, index) => <td className="warehouse-number" key={index}>{stockNumber(value)}</td>)}</tr>)}
+        {!loading && !error && tab === 'legacy' && legacyPages.rows.map(row => <tr key={String(row.id)}>{legacyKind === 'inventory' ? <><td title={String(row.materialName || '')}>{String(row.materialName || '')}</td><td>{String(row.unit || '')}</td><td>{String(row.qtyInStock ?? '')}</td><td>{String(row.qtyReserved ?? '')}</td><td>{String(row.minQtyAlert ?? '')}</td><td>{row.deleted ? 'Đã xóa cũ' : 'Dữ liệu cũ'}</td></> : <><td>{String(row.exportCode || row.id)}</td><td>{formatDateTime(String(row.createdAt || row.exportDate || ''))}</td><td>{String(row.receiverName || '')}</td><td title={String(row.reason || '')}>{String(row.reason || '')}</td><td>{Array.isArray(row.items) ? row.items.length : 0}</td><td title={JSON.stringify(row.items || [])}>{JSON.stringify(row.items || [])}</td></>}</tr>)}
+        {!loading && !error && pagination.paginationProps.totalItems === 0 && <tr><td colSpan={7}>{search ? 'Không có kết quả phù hợp.' : 'Chưa có dữ liệu.'}</td></tr>}
+      </tbody></table></div><DataTablePagination {...pagination.paginationProps} /></div>
+    </>}
+    {(creating || reversal) && <WarehouseVoucherDialog currentUser={currentUser} reversal={reversal || undefined} onClose={() => { setCreating(false); setReversal(null); }} onSaved={saved} />}
+    {selected && <VoucherDetails voucher={selected} vouchers={data.vouchers} onClose={() => setSelected(null)} />}
+    {stock && <StockDetails stock={stock} currentUser={currentUser} vouchers={data.vouchers.filter(voucher => voucher.lines.some(line => line.catalogItemId === stock.id))} onClose={() => setStock(null)} onSaved={() => { setStock(null); reload(); }} />}
+  </div>;
 }
 
-export const Inventory: React.FC<InventoryProps> = ({ currentUser, onRefresh }) => {
-  const { t } = useLanguage();
-  const [inventoryList, setInventoryList] = useState<any[]>([]);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [exportSlips, setExportSlips] = useState<any[]>([]);
-  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
-
-  const [activeTab, setActiveTab] = useState<'inventory' | 'exports' | 'nxt' | 'catalog'>('inventory');
-  const changeTab = (tab: typeof activeTab) => { if (activeTab !== 'catalog' || confirmAppNavigation()) setActiveTab(tab); };
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'paper' | 'ink' | 'film' | 'others'>('all');
-
-  // Quick adjustment modal
-  const [showAdjustModal, setShowAdjustModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any | null>(null);
-  const [adjustQty, setAdjustQty] = useState(0);
-  const [adjustType, setAdjustType] = useState<'add' | 'deduct'>('add');
-
-  // CRUD modals and lists
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-
-  // Add form states
-  const [addName, setAddName] = useState('');
-  const [addCategory, setAddCategory] = useState<'paper' | 'ink' | 'film' | 'others'>('paper');
-  const [addQty, setAddQty] = useState(0);
-  const [addMinAlert, setAddMinAlert] = useState(50);
-  const [addUnit, setAddUnit] = useState('m²');
-  const [addSupplierId, setAddSupplierId] = useState('');
-
-  // Edit form states
-  const [editName, setEditName] = useState('');
-  const [editCategory, setEditCategory] = useState<'paper' | 'ink' | 'film' | 'others'>('paper');
-  const [editMinAlert, setEditMinAlert] = useState(50);
-  const [editUnit, setEditUnit] = useState('m²');
-  const [editSupplierId, setEditSupplierId] = useState('');
-
-  // Export slips states
-  const [showAddExportModal, setShowAddExportModal] = useState(false);
-  const [exportReason, setExportReason] = useState('Xuất sản xuất');
-  const [exportPoCode, setExportPoCode] = useState('');
-  const [selectedMaterialId, setSelectedMaterialId] = useState('');
-  const [exportQty, setExportQty] = useState(1);
-
-  const fetchInventory = async () => {
-    const data = await dbService.getCollection('inventory');
-    setInventoryList(data);
-  };
-
-  const fetchExportSlips = async () => {
-    const data = await dbService.getCollection('warehouse_exports');
-    setExportSlips(data);
-  };
-
-  const fetchPurchaseOrders = async () => {
-    const data = await dbService.getCollection('purchase_orders');
-    setPurchaseOrders(data);
-  };
-
-  const fetchSuppliers = async () => {
-    const data = await dbService.getCollection('suppliers');
-    setSuppliers(data);
-  };
-
-  const refreshAllData = async () => {
-    await fetchInventory();
-    await fetchExportSlips();
-    await fetchPurchaseOrders();
-    await fetchSuppliers();
-  };
-
-  useEffect(() => {
-    refreshAllData();
-  }, []);
-
-  const handleOpenAdjust = (item: any) => {
-    setSelectedItem(item);
-    setAdjustQty(0);
-    setAdjustType('add');
-    setShowAdjustModal(true);
-  };
-
-  const handleAdjustStock = async (e: React.FormEvent) => {
-    return runMutationAction("InventoryPage.tsx:handleAdjustStock", async () => {
-      e.preventDefault();
-      if (!selectedItem || adjustQty <= 0) return;
-
-      let newQty = Number(selectedItem.qtyInStock);
-      if (adjustType === 'add') {
-        newQty += Number(adjustQty);
-      } else {
-        newQty = Math.max(0, newQty - Number(adjustQty));
-      }
-
-      await requireConfirmedMutation(dbService.updateDocument('inventory', selectedItem.id, {
-        qtyInStock: newQty,
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: new Date().toISOString()
-      }));
-
-      setShowAdjustModal(false);
-      refreshAllData();
-      onRefresh();
-
-      showSuccessToast("Đã lưu thành công");
-    }, e);
-  };
-
-  const handleAddSubmit = async (e: React.FormEvent) => {
-    return runMutationAction("InventoryPage.tsx:handleAddSubmit", async () => {
-      e.preventDefault();
-      if (!addName) return;
-
-      await dbService.addDocument('inventory', {
-        materialName: addName,
-        category: addCategory,
-        qtyInStock: Number(addQty),
-        qtyReserved: 0,
-        minQtyAlert: Number(addMinAlert),
-        unit: addUnit,
-        defaultSupplierId: addSupplierId || '',
-        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        createdAt: new Date().toISOString()
-      });
-
-      setShowAddModal(false);
-      setAddName('');
-      setAddCategory('paper');
-      setAddQty(0);
-      setAddMinAlert(50);
-      setAddUnit('m²');
-      setAddSupplierId('');
-
-      refreshAllData();
-      onRefresh();
-
-      showSuccessToast("Đã thêm thành công");
-    }, e);
-  };
-
-  const handleOpenEdit = (item: any) => {
-    setSelectedItem(item);
-    setEditName(item.materialName);
-    setEditCategory(item.category);
-    setEditMinAlert(item.minQtyAlert);
-    setEditUnit(item.unit);
-    setEditSupplierId(item.defaultSupplierId || '');
-    setShowEditModal(true);
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    return runMutationAction("InventoryPage.tsx:handleEditSubmit", async () => {
-      e.preventDefault();
-      if (!selectedItem || !editName) return;
-
-      await requireConfirmedMutation(dbService.updateDocument('inventory', selectedItem.id, {
-        materialName: editName,
-        category: editCategory,
-        minQtyAlert: Number(editMinAlert),
-        unit: editUnit,
-        defaultSupplierId: editSupplierId || '',
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: new Date().toISOString()
-      }));
-
-      setShowEditModal(false);
-      setSelectedItem(null);
-      refreshAllData();
-      onRefresh();
-
-      showSuccessToast("Đã lưu thành công");
-    }, e);
-  };
-
-  const handleDeleteItem = async (itemId: string) => {
-    return runMutationAction("InventoryPage.tsx:handleDeleteItem", async () => {
-      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa vật tư này khỏi danh mục kho?')))) {
-        await requireConfirmedMutation(dbService.deleteDocument('inventory', itemId));
-        refreshAllData();
-        onRefresh();
-
-        showSuccessToast("Đã xóa thành công");
-      }
-    }, itemId);
-  };
-
-  const handleOpenAddExport = () => {
-    if (inventoryList.length === 0) {
-      alert('Không có nguyên vật liệu nào trong kho để xuất!');
-      return;
-    }
-    setSelectedMaterialId(inventoryList[0].id);
-    setExportQty(1);
-    setExportReason('Xuất sản xuất');
-    setExportPoCode('');
-    setShowAddExportModal(true);
-  };
-
-  const handleAddExportSubmit = async (e: React.FormEvent) => {
-    return runMutationAction("InventoryPage.tsx:handleAddExportSubmit", async () => {
-      e.preventDefault();
-      if (!selectedMaterialId || exportQty <= 0) return;
-
-      const material = inventoryList.find(i => i.id === selectedMaterialId);
-      if (!material) return;
-
-      if (material.qtyInStock < exportQty) {
-        alert(`Số lượng tồn kho không đủ để xuất! (Hiện có: ${material.qtyInStock} ${material.unit})`);
-        return;
-      }
-
-      const pxkCode = `PXK-${new Date().toISOString().substring(2,7).replace('-','')}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      const newExport = {
-        pxkCode,
-        exportDate: new Date().toISOString(),
-        reason: exportReason,
-        linkedCode: exportPoCode || 'Không có',
-        exportedBy: currentUser.displayName,
-        items: [
-          {
-            materialId: selectedMaterialId,
-            materialName: material.materialName,
-            quantity: Number(exportQty),
-            unit: material.unit
-          }
-        ],
-        createdBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        createdAt: new Date().toISOString()
-      };
-
-      // Deduct stock quantity
-      const newQty = Number(material.qtyInStock) - Number(exportQty);
-      await requireConfirmedMutation(dbService.updateDocument('inventory', material.id, {
-        qtyInStock: newQty,
-        updatedAt: new Date().toISOString()
-      }));
-
-      // Save export slip
-      await dbService.addDocument('warehouse_exports', newExport);
-
-      setShowAddExportModal(false);
-      setExportPoCode('');
-      setExportQty(1);
-
-      refreshAllData();
-      onRefresh();
-
-      showSuccessToast("Đã thêm thành công");
-    }, e);
-  };
-
-  const getCategoryLabel = (cat: string) => {
-    switch (cat) {
-      case 'paper': return t('Giấy decal cuộn');
-      case 'ink': return t('Mực in Flexo');
-      case 'film': return t('Màng bóng/mờ');
-      default: return t('Vật tư phụ / Khác');
-    }
-  };
-
-  const filteredInventory = inventoryList.filter(item => {
-    const matchesSearch = item.materialName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
-  const stockPagination = useDataTablePagination(filteredInventory);
-  const exportPagination = useDataTablePagination(exportSlips);
-  const summaryPagination = useDataTablePagination(inventoryList);
-
-  return (
-    <div className="inventory-view" data-erp-table-text="single-line" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Vật liệu')} current={activeTab === 'catalog' ? t('Danh mục hàng') : activeTab === 'exports' ? t('Lịch Sử Phiếu Xuất Kho') : activeTab === 'nxt' ? t('Báo Cáo Nhập Xuất Tồn') : t('Tồn Kho Hiện Tại')} />
-
-      <div className="content-tabs inventory-view-tabs" role="tablist" aria-label={t('Kho nguyên vật tư')}>
-        <button type="button" role="tab" aria-selected={activeTab === 'inventory'} className={activeTab === 'inventory' ? 'is-active' : ''} onClick={() => changeTab('inventory')}>{t('Tồn Kho Hiện Tại')}</button>
-        <button type="button" role="tab" aria-selected={activeTab === 'exports'} className={activeTab === 'exports' ? 'is-active' : ''} onClick={() => changeTab('exports')}>{t('Lịch Sử Phiếu Xuất Kho')}</button>
-        <button type="button" role="tab" aria-selected={activeTab === 'nxt'} className={activeTab === 'nxt' ? 'is-active' : ''} onClick={() => changeTab('nxt')}>{t('Báo Cáo Nhập Xuất Tồn')}</button>
-        {canManageItemCatalog(currentUser) && <button type="button" role="tab" aria-selected={activeTab === 'catalog'} className={activeTab === 'catalog' ? 'is-active' : ''} onClick={() => setActiveTab('catalog')}>{t('Danh mục hàng')}</button>}
-      </div>
-
-      {activeTab !== 'catalog' && (currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
-        <div className="erp-tab-actionbar">
-          <button className="btn btn-outline" onClick={handleOpenAddExport}>{t('Tạo Phiếu Xuất Kho')}</button>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>{t('Thêm vật tư')}</button>
-        </div>
-      )}
-
-      {activeTab === 'catalog' && <ItemCatalogWorkspace currentUser={currentUser} />}
-      {activeTab === 'inventory' && (
-        <div className="card">
-          <div className="inventory-toolbar">
-            <div className="inventory-search">
-              <input
-                type="text"
-                aria-label={t('Tìm vật tư')}
-                placeholder={t('Nhập tên vật tư cần tìm...')}
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                style={{ maxWidth: '300px' }}
-              />
-              <button className="btn btn-outline" onClick={() => setSearchTerm('')}>{t('Đặt Lại')}</button>
-            </div>
-
-            <div className="tab-container inventory-categories" style={{ borderBottom: 'none' }}>
-              <button className={`tab-btn ${categoryFilter === 'all' ? 'active' : ''}`} onClick={() => setCategoryFilter('all')}>{t('Tất cả')}</button>
-              <button className={`tab-btn ${categoryFilter === 'paper' ? 'active' : ''}`} onClick={() => setCategoryFilter('paper')}>{t('Giấy decal cuộn')}</button>
-              <button className={`tab-btn ${categoryFilter === 'ink' ? 'active' : ''}`} onClick={() => setCategoryFilter('ink')}>{t('Mực in Flexo')}</button>
-              <button className={`tab-btn ${categoryFilter === 'film' ? 'active' : ''}`} onClick={() => setCategoryFilter('film')}>{t('Màng bóng/mờ')}</button>
-              <button className={`tab-btn ${categoryFilter === 'others' ? 'active' : ''}`} onClick={() => setCategoryFilter('others')}>{t('Vật tư phụ / Khác')}</button>
-            </div>
-          </div>
-
-          <div className="table-container erp-primary-data-table">
-            <table className="inventory-stock-table" data-resize-key="inventory-stock">
-              <thead>
-                <tr>
-                  <th>{t('Tên Vật Tư')}</th>
-                  <th>{t('Phân Nhóm')}</th>
-                  <th>{t('Tồn Kho Thực Tế')}</th>
-                  <th>{t('Giữ Chỗ Cho LSX')}</th>
-                  <th>{t('Tồn Khả Dụng')}</th>
-                  <th>{t('Ngưỡng Tối Thiểu')}</th>
-                  <th>{t('Đơn Vị')}</th>
-                  <th>{t('Trạng Thái')}</th>
-                  <th>{t('Thao Tác')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stockPagination.rows.map(item => {
-                  const isLowStock = item.qtyInStock < item.minQtyAlert;
-                  const netAvailable = item.qtyInStock - (item.qtyReserved || 0);
-
-                  return (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: 600 }}>{item.materialName}</td>
-                      <td>{getCategoryLabel(item.category)}</td>
-                      <td style={{ fontWeight: 600 }}>{item.qtyInStock?.toLocaleString()}</td>
-                      <td>{item.qtyReserved || 0}</td>
-                      <td style={{ fontWeight: 700, color: netAvailable < 0 ? 'var(--color-danger)' : 'var(--color-text-main)' }}>
-                        {netAvailable?.toLocaleString()}
-                      </td>
-                      <td>{item.minQtyAlert}</td>
-                      <td>{item.unit}</td>
-                      <td>
-                        {isLowStock ? (
-                          <span className="erp-status-text erp-status-text--danger">{t('Cảnh Báo Tồn Kho Thấp')}</span>
-                        ) : (
-                          <span className="erp-status-text erp-status-text--success">{t('An Toàn')}</span>
-                        )}
-                      </td>
-                      <td>
-                        <RowActionMenu
-                          label={`${t('Thao tác')} ${item.materialName}`}
-                          actions={[
-                            { label: t('Chi Tiết'), onSelect: () => { setSelectedItem(item); setShowDetailsModal(true); } },
-                            ...((currentUser.role === 'admin' || currentUser.role === 'purchaser') ? [
-                              { label: t('Cập Nhật Tồn Kho'), onSelect: () => handleOpenAdjust(item) },
-                              { label: t('Sửa'), onSelect: () => handleOpenEdit(item) },
-                              { label: t('Xóa'), onSelect: () => handleDeleteItem(item.id), danger: true }
-                            ] : [])
-                          ]}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <DataTablePagination {...stockPagination.paginationProps} />
-        </div>
-      )}
-
-      {activeTab === 'exports' && (
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span className="card-title">{t('Nhật Ký Xuất Kho Nguyên Vật Tư')}</span>
-            {(currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
-              <button className="btn btn-primary" onClick={handleOpenAddExport}>{t('Tạo Phiếu Xuất Kho Mới')}</button>
-            )}
-          </div>
-
-          <div className="table-container erp-primary-data-table">
-            <table className="inventory-export-table" data-resize-key="inventory-exports">
-              <thead>
-                <tr>
-                  <th>{t('Số Phiếu')}</th>
-                  <th>{t('Ngày Xuất')}</th>
-                  <th>{t('Lý Do Xuất')}</th>
-                  <th>{t('Đơn LSX/PO')}</th>
-                  <th>{t('Vật Tư Xuất')}</th>
-                  <th>{t('Số Lượng Xuất')}</th>
-                  <th>{t('Người Xuất')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {exportPagination.rows.map(slip => {
-                  const slipItem = slip.items?.[0] || {};
-                  return (
-                    <tr key={slip.id}>
-                      <td style={{ fontWeight: 600 }}>{slip.pxkCode}</td>
-                      <td>{formatDateTime(slip.exportDate)}</td>
-                      <td style={{ fontWeight: 500 }}>{t(slip.reason)}</td>
-                      <td>{slip.linkedCode}</td>
-                      <td>{slipItem.materialName}</td>
-                      <td style={{ fontWeight: 600, color: 'var(--color-danger)' }}>-{slipItem.quantity?.toLocaleString()} {slipItem.unit}</td>
-                      <td>{slip.exportedBy}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <DataTablePagination {...exportPagination.paginationProps} />
-        </div>
-      )}
-
-      {activeTab === 'nxt' && (
-        <div className="card">
-          <span className="card-title">{t('Báo Cáo Nhập - Xuất - Tồn Kho Vật Tư')}</span>
-          <p style={{ fontSize: '12.5px', color: 'var(--color-text-muted)', marginBottom: '16px' }}>
-            {t('* Tồn đầu kỳ được tính tự động từ tồn cuối kỳ (tồn thực tế) cộng tổng lượng xuất trừ tổng lượng nhập.')}
-          </p>
-
-          <div className="table-container erp-primary-data-table">
-            <table className="inventory-summary-table" data-resize-key="inventory-summary">
-              <thead>
-                <tr>
-                  <th>{t('Tên Vật Tư')}</th>
-                  <th>{t('Nhóm Vật Tư')}</th>
-                  <th>{t('Đơn Vị')}</th>
-                  <th>{t('Tồn Đầu Kỳ')}</th>
-                  <th>{t('Nhập Trong Kỳ')}</th>
-                  <th>{t('Xuất Trong Kỳ')}</th>
-                  <th>{t('Tồn Cuối Kỳ')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summaryPagination.rows.map(item => {
-                  // Calculate dynamic Nhập
-                  const totalImported = purchaseOrders
-                    .filter(po => po.status === 'received')
-                    .reduce((sum, po) => {
-                      const found = po.items?.find((i: any) => i.materialName.toLowerCase() === item.materialName.toLowerCase());
-                      return sum + (found ? Number(found.quantity) : 0);
-                    }, 0);
-
-                  // Calculate dynamic Xuất
-                  const totalExported = exportSlips.reduce((sum, slip) => {
-                    const found = slip.items?.find((i: any) => i.materialId === item.id || i.materialName.toLowerCase() === item.materialName.toLowerCase());
-                    return sum + (found ? Number(found.quantity) : 0);
-                  }, 0);
-
-                  const endStock = item.qtyInStock;
-                  const beginStock = Math.max(0, endStock + totalExported - totalImported);
-
-                  return (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: 600 }}>{item.materialName}</td>
-                      <td>{getCategoryLabel(item.category)}</td>
-                      <td>{item.unit}</td>
-                      <td style={{ fontWeight: 500 }}>{beginStock?.toLocaleString()}</td>
-                      <td style={{ color: 'var(--color-success)', fontWeight: 500 }}>+{totalImported?.toLocaleString()}</td>
-                      <td style={{ color: 'var(--color-danger)', fontWeight: 500 }}>-{totalExported?.toLocaleString()}</td>
-                      <td style={{ fontWeight: 700 }}>{endStock?.toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <DataTablePagination {...summaryPagination.paginationProps} />
-        </div>
-      )}
-
-      {/* STOCK ADJUSTMENT MODAL */}
-      {showAdjustModal && selectedItem && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '450px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CẬP NHẬT TỒN KHO VẬT TƯ')}: {selectedItem.materialName}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowAdjustModal(false)}>{t('Đóng')}</button>
-            </div>
-            <form onSubmit={handleAdjustStock}>
-              <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', marginBottom: '16px' }}>
-                  <span style={{ fontWeight: 600 }}>{t('Hiện có:')}</span>
-                  <span>{selectedItem.qtyInStock} {selectedItem.unit}</span>
-                </div>
-
-                <div className="form-group">
-                  <label>{t('Loại Điều Chỉnh *')}</label>
-                  <select value={adjustType} onChange={e => setAdjustType(e.target.value as 'add' | 'deduct')}>
-                    <option value="add">{t('Nhập kho bổ sung (+)')}</option>
-                    <option value="deduct">{t('Xuất kho / Điều chỉnh giảm (-)')}</option>
-                  </select>
-                </div>
-
-                <div className="form-group" style={{ marginTop: '10px' }}>
-                  <label>{t('Số Lượng Điều Chỉnh')} ({selectedItem.unit}) *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={adjustQty}
-                    onChange={e => setAdjustQty(Number(e.target.value))}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAdjustModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Cập Nhật Kho')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ADD MATERIAL MODAL */}
-      {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('Thêm Vật Tư Mới')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowAddModal(false)}>{t('Đóng')}</button>
-            </div>
-            <form onSubmit={handleAddSubmit}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div className="form-group">
-                  <label>{t('Tên Vật Tư')} *</label>
-                  <input type="text" value={addName} onChange={e => setAddName(e.target.value)} placeholder={t('Ví dụ: Decal nhựa Fasson AW0339F...')} required />
-                </div>
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label>{t('Phân Nhóm')} *</label>
-                    <select value={addCategory} onChange={e => setAddCategory(e.target.value as any)}>
-                      <option value="paper">{t('Giấy decal cuộn')}</option>
-                      <option value="ink">{t('Mực in Flexo')}</option>
-                      <option value="film">{t('Màng bóng/mờ')}</option>
-                      <option value="others">{t('Vật tư phụ / Khác')}</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Đơn Vị')} *</label>
-                    <input type="text" value={addUnit} onChange={e => setAddUnit(e.target.value)} placeholder="m², kg, cuộn, hộp" required />
-                  </div>
-                </div>
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label>{t('Số Lượng Nhập Ban Đầu')}</label>
-                    <input type="number" min="0" value={addQty} onChange={e => setAddQty(Number(e.target.value))} />
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Ngưỡng Cảnh Báo Tối Thiểu')}</label>
-                    <input type="number" min="0" value={addMinAlert} onChange={e => setAddMinAlert(Number(e.target.value))} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label>{t('Nhà Cung Cấp Mặc Định')}</label>
-                  <select value={addSupplierId} onChange={e => setAddSupplierId(e.target.value)}>
-                    <option value="">{t('-- Chọn nhà cung cấp --')}</option>
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.id}>{s.supplierName}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAddModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Lưu')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT MATERIAL MODAL */}
-      {showEditModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('Chỉnh Sửa Vật Tư')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowEditModal(false)}>{t('Đóng')}</button>
-            </div>
-            <form onSubmit={handleEditSubmit}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div className="form-group">
-                  <label>{t('Tên Vật Tư')} *</label>
-                  <input type="text" value={editName} onChange={e => setEditName(e.target.value)} required />
-                </div>
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group">
-                    <label>{t('Phân Nhóm')} *</label>
-                    <select value={editCategory} onChange={e => setEditCategory(e.target.value as any)}>
-                      <option value="paper">{t('Giấy decal cuộn')}</option>
-                      <option value="ink">{t('Mực in Flexo')}</option>
-                      <option value="film">{t('Màng bóng/mờ')}</option>
-                      <option value="others">{t('Vật tư phụ / Khác')}</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Đơn Vị')} *</label>
-                    <input type="text" value={editUnit} onChange={e => setEditUnit(e.target.value)} required />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label>{t('Ngưỡng Cảnh Báo Tối Thiểu')}</label>
-                  <input type="number" min="0" value={editMinAlert} onChange={e => setEditMinAlert(Number(e.target.value))} />
-                </div>
-                <div className="form-group">
-                  <label>{t('Nhà Cung Cấp Mặc Định')}</label>
-                  <select value={editSupplierId} onChange={e => setEditSupplierId(e.target.value)}>
-                    <option value="">{t('-- Chọn nhà cung cấp --')}</option>
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.id}>{s.supplierName}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Cập Nhật')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ITEM DETAILS MODAL */}
-      {showDetailsModal && selectedItem && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHI TIẾT VẬT TƯ')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowDetailsModal(false)}>{t('Đóng')}</button>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '8px' }}>
-                <span style={{ fontWeight: 600 }}>{t('Tên Vật Tư')}:</span>
-                <span>{selectedItem.materialName}</span>
-                <span style={{ fontWeight: 600 }}>{t('Phân Nhóm')}:</span>
-                <span>{getCategoryLabel(selectedItem.category)}</span>
-                <span style={{ fontWeight: 600 }}>{t('Tồn Kho Thực Tế')}:</span>
-                <span>{selectedItem.qtyInStock?.toLocaleString()} {selectedItem.unit}</span>
-                <span style={{ fontWeight: 600 }}>{t('Giữ Chỗ Cho LSX')}:</span>
-                <span>{selectedItem.qtyReserved || 0} {selectedItem.unit}</span>
-                <span style={{ fontWeight: 600 }}>{t('Tồn Khả Dụng')}:</span>
-                <span>{(selectedItem.qtyInStock - (selectedItem.qtyReserved || 0))?.toLocaleString()} {selectedItem.unit}</span>
-                <span style={{ fontWeight: 600 }}>{t('Ngưỡng Tối Thiểu')}:</span>
-                <span>{selectedItem.minQtyAlert} {selectedItem.unit}</span>
-                <span style={{ fontWeight: 600 }}>{t('Nhà Cung Cấp Mặc Định')}:</span>
-                <span>{suppliers.find(s => s.id === selectedItem.defaultSupplierId)?.supplierName || t('Chưa gán')}</span>
-              </div>
-
-              {/* Audit trail */}
-              <div style={{ marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)', fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                <div>{t('Tạo bởi:')} {selectedItem.createdBy || t('Không xác định')} {selectedItem.createdAt && `(${formatDateTime(selectedItem.createdAt, t('vi-VN'))})`}</div>
-                {selectedItem.updatedBy && (
-                  <div>{t('Cập nhật bởi:')} {selectedItem.updatedBy} ({formatDateTime(selectedItem.updatedAt, t('vi-VN'))})</div>
-                )}
-              </div>
-            </div>
-            <div className="modal-footer">
-              {(currentUser.role === 'admin' || currentUser.role === 'purchaser') && (
-                <button className="btn btn-primary" onClick={() => { setShowDetailsModal(false); handleOpenEdit(selectedItem); }} title={t('Sửa')}>
-                  {t('Sửa')}
-                </button>
-              )}
-              <button className="btn btn-outline" onClick={() => setShowDetailsModal(false)}>{t('Đóng')}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CREATE WAREHOUSE EXPORT SLIP */}
-      {showAddExportModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('TẠO PHIẾU XUẤT KHO VẬT TƯ')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowAddExportModal(false)}>{t('Đóng')}</button>
-            </div>
-            <form onSubmit={handleAddExportSubmit}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div className="form-group">
-                  <label>{t('Chọn Nguyên Vật Tư Xuất *')}</label>
-                  <select value={selectedMaterialId} onChange={e => setSelectedMaterialId(e.target.value)} required>
-                    {inventoryList.map(item => (
-                      <option key={item.id} value={item.id}>{item.materialName} ({t('Tồn thực tế')}: {item.qtyInStock} {item.unit})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>{t('Số Lượng Xuất Kho *')}</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={exportQty}
-                    onChange={e => setExportQty(Number(e.target.value))}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>{t('Lý Do Xuất Kho *')}</label>
-                  <select value={exportReason} onChange={e => setExportReason(e.target.value)}>
-                    <option value="Xuất sản xuất">{t('Xuất sản xuất (Cho thợ in/bế)')}</option>
-                    <option value="Xuất hủy phế phẩm">{t('Xuất hủy phế phẩm / lỗi hỏng')}</option>
-                    <option value="Xuất trả nhà cung cấp">{t('Xuất trả nhà cung cấp')}</option>
-                    <option value="Xuất khác">{t('Xuất điều chỉnh / Khác')}</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label>{t('Mã Lệnh LSX / Đơn PO Liên Kết')}</label>
-                  <input
-                    type="text"
-                    placeholder="VD: LSX-06041 or PO-06042"
-                    value={exportPoCode}
-                    onChange={e => setExportPoCode(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAddExportModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Xác Nhận Xuất Kho')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+function VoucherDetails({ voucher, vouchers, onClose }: { voucher: WarehouseVoucher; vouchers: WarehouseVoucher[]; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close(); }, []);
+  const related = vouchers.find(row => row.id === (voucher.reversalOf || voucher.reversedBy));
+  return <dialog ref={dialog} className="warehouse-dialog" aria-labelledby="warehouse-detail-title" onCancel={event => { event.preventDefault(); onClose(); }}><header><h2 id="warehouse-detail-title">{voucher.code}</h2><button className="btn btn-outline" onClick={onClose}>Đóng</button></header>
+    <p>{WAREHOUSE_KINDS[voucher.kind]} · {voucher.sourceCode} · Kho NVL chung</p><p>{formatDateTime(voucher.postedAt)} · {voucher.actorName}</p><p>{voucher.note}</p>{voucher.negativeReason && <p className="warehouse-danger">Xuất âm: {voucher.negativeReason}</p>}{related && <p>Phiếu liên quan: {related.code}</p>}
+    <div className="warehouse-grid-scroll"><table><thead><tr><th>Mã NVL</th><th>Tên NVL</th><th>SL nguồn</th><th>ĐVT nguồn</th><th>Hệ số</th><th>Tăng / giảm</th><th>ĐVT cơ sở</th></tr></thead><tbody>{voucher.lines.map(line => <tr key={line.sourceLine}><td>{line.code}</td><td title={line.name}>{line.name}</td><td className="warehouse-number">{stockNumber(line.quantity)}</td><td>{line.unit}</td><td className="warehouse-number">{stockNumber(line.factor)}</td><td className="warehouse-number">{stockNumber(line.delta)}</td><td>{line.baseUnit}</td></tr>)}</tbody></table></div>
+  </dialog>;
+}
+function StockDetails({ stock, currentUser, vouchers, onClose, onSaved }: { stock: WarehouseBalance; currentUser: UserProfile; vouchers: WarehouseVoucher[]; onClose: () => void; onSaved: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null), pending = useRef(false), request = useRef({ payload: '', id: '' });
+  const [threshold, setThreshold] = useState(stock.minQuantity?.toString() || '');
+  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  const dirty = threshold !== (stock.minQuantity?.toString() || '');
+  const close = () => { if (!pending.current && (!dirty || window.confirm('Bỏ thay đổi ngưỡng tồn?'))) onClose(); };
+  useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close(); }, []);
+  useEffect(() => { if (!dirty && !busy) return; const unregister = registerNavigationGuard(() => !busy && window.confirm('Bỏ thay đổi ngưỡng tồn?')); const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault(); window.addEventListener('beforeunload', beforeUnload); return () => { unregister(); window.removeEventListener('beforeunload', beforeUnload); }; }, [dirty, busy]);
+  return <dialog ref={dialog} className="warehouse-dialog" aria-labelledby="warehouse-stock-title" onCancel={event => { event.preventDefault(); close(); }}><form onSubmit={async event => {
+    event.preventDefault(); if (pending.current || !canPostWarehouse(currentUser)) return;
+    const body = { action: 'threshold', catalogItemId: stock.id, expectedRevision: stock.revision, minQuantity: Number(threshold) };
+    const payload = JSON.stringify(body); if (request.current.payload !== payload) request.current = { payload, id: crypto.randomUUID() };
+    pending.current = true; setBusy(true); setError('');
+    try { await mutateWarehouse({ ...body, requestId: request.current.id }); showSuccessToast('Đã lưu ngưỡng tồn'); onSaved(); }
+    catch (cause) { const message = cause instanceof Error ? cause.message : 'Không lưu được ngưỡng tồn.'; setError(message); showErrorToast(message); }
+    finally { pending.current = false; setBusy(false); }
+  }}><header><h2 id="warehouse-stock-title">{stock.code} — {stock.name}</h2><button type="button" className="btn btn-outline" disabled={busy} onClick={close}>Đóng</button></header>
+    <p>Tồn theo sổ mới: {stockNumber(stock.quantity)} {stock.unit}</p>{error && <p className="warehouse-error" role="alert">{error}</p>}
+    {canPostWarehouse(currentUser) && <div className="warehouse-toolbar"><label>Ngưỡng tối thiểu ({stock.unit}) *<input required type="number" min="0" max="1000000000" step="0.000001" value={threshold} disabled={busy} onChange={event => setThreshold(event.target.value)} /></label><button className="btn btn-primary" disabled={busy || !dirty}>{busy ? 'Đang lưu…' : 'Lưu ngưỡng tồn'}</button></div>}
+    <div className="warehouse-grid-scroll"><table><thead><tr><th>Mã phiếu</th><th>Nguồn</th><th>Ngày</th><th>Tăng / giảm</th></tr></thead><tbody>{vouchers.sort((a, b) => b.postedAt.localeCompare(a.postedAt)).map(voucher => <tr key={voucher.id}><td>{voucher.code}</td><td>{voucher.sourceCode}</td><td>{voucher.postingDate}</td><td className="warehouse-number">{stockNumber(voucher.lines.filter(line => line.catalogItemId === stock.id).reduce((sum, line) => sum + line.delta, 0))}</td></tr>)}{!vouchers.length && <tr><td colSpan={4}>Chưa có phiếu.</td></tr>}</tbody></table></div>
+  </form></dialog>;
+}

@@ -495,14 +495,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
 
                 <div className="form-group">
                   <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>{t('Trang Được Phép Truy Cập')}</label>
-                  {role === 'accountant' && allowedPages.includes('accounting') && <p>Kế toán có quyền Kế toán được vào Sản xuất để lập nháp và gửi duyệt LSX; không được phát hành, chạy máy hoặc QC.</p>}
+                  {role === 'accountant' && allowedPages.includes('accounting') && <p>Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL tại Vật liệu; chỉ Admin được đảo phiếu kho. Không được phát hành, chạy máy hoặc QC.</p>}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '10px', backgroundColor: 'var(--color-bg-light)', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
                     {ALL_PAGES.map(page => (
                       <label key={page.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px' }}>
                         <input
                           type="checkbox"
-                          checked={allowedPages.includes(page.id) || page.id === 'production' && role === 'accountant' && allowedPages.includes('accounting')}
-                          disabled={page.id === 'production' && role === 'accountant' && allowedPages.includes('accounting')}
+                          checked={allowedPages.includes(page.id) || ['production', 'inventory'].includes(page.id) && role === 'accountant' && allowedPages.includes('accounting')}
+                          disabled={['production', 'inventory'].includes(page.id) && role === 'accountant' && allowedPages.includes('accounting')}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setAllowedPages([...allowedPages, page.id]);
@@ -593,14 +593,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
 
                 <div className="form-group">
                   <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>{t('Trang Được Phép Truy Cập')}</label>
-                  {role === 'accountant' && allowedPages.includes('accounting') && <p>Kế toán có quyền Kế toán được vào Sản xuất để lập nháp và gửi duyệt LSX; không được phát hành, chạy máy hoặc QC.</p>}
+                  {role === 'accountant' && allowedPages.includes('accounting') && <p>Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL tại Vật liệu; chỉ Admin được đảo phiếu kho. Không được phát hành, chạy máy hoặc QC.</p>}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '10px', backgroundColor: 'var(--color-bg-light)', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
                     {ALL_PAGES.map(page => (
                       <label key={page.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px' }}>
                         <input
                           type="checkbox"
-                          checked={allowedPages.includes(page.id) || page.id === 'production' && role === 'accountant' && allowedPages.includes('accounting')}
-                          disabled={page.id === 'production' && role === 'accountant' && allowedPages.includes('accounting')}
+                          checked={allowedPages.includes(page.id) || ['production', 'inventory'].includes(page.id) && role === 'accountant' && allowedPages.includes('accounting')}
+                          disabled={['production', 'inventory'].includes(page.id) && role === 'accountant' && allowedPages.includes('accounting')}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setAllowedPages([...allowedPages, page.id]);

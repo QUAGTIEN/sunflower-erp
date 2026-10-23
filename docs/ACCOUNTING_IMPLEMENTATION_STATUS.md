@@ -8,7 +8,7 @@
 |---|---|---|
 | 1 | Danh mục, ĐVT, nhập CSV, liên kết dữ liệu cũ | Hoàn thành mã nguồn; kết quả Git theo bàn giao cuối lượt |
 | 2 | Kế toán lập LSX và mẫu in công ty | Hoàn thành mã nguồn; chưa nghiệm thu bản in trên trình duyệt/máy in |
-| 3 | Kho NVL, nhập mua, cấp/hoàn | Chưa thực hiện |
+| 3 | Kho NVL, nhập mua, cấp/hoàn | Hoàn thành mã nguồn; chưa deploy/đối soát tồn đầu kỳ thật |
 | 4 | Thành phẩm, giao và trả hàng | Chưa thực hiện |
 | 5 | Công nợ và thu chi | Chưa thực hiện |
 | 6 | Báo cáo, hàng còn thực hiện và cảnh báo | Chưa thực hiện |
@@ -101,6 +101,8 @@ Mốc đầu đợt: `d785d13`. Người dùng chốt **giữ Báo cáo lãi g�
 
 ## Đầu lượt 3
 
+Các mục dưới đây là checklist đầu lượt; kết quả đã thực hiện ghi ở phần Kết quả lượt 3 sau checklist.
+
 1. Kiểm tra Git, đọc quy tắc dự án và ba tài liệu ACCOUNTING cùng PRODUCTION_ORDERS. Dùng mốc cuối lượt 2, không triển khai lại quyền/mẫu.
 2. Xác nhận D02f/D03/D04/D05b: số kho, lô/cuộn/vị trí, giữ chỗ/khóa chất lượng, ngưỡng tồn, cảnh báo hay chặn âm, quyền ghi sổ/đảo và lùi ngày. Không dùng dữ liệu mẫu để thay đầu vào thực tế.
 3. Đọc luồng inventory, warehouse_exports, procurement/purchase_orders và các hàm ghi tồn thực tế. Thiết lập **một nguồn ghi sổ kho**; tránh chạy song song cộng/trừ tồn cũ và mới.
@@ -108,3 +110,31 @@ Mốc đầu đợt: `d785d13`. Người dùng chốt **giữ Báo cáo lãi g�
 5. Kiểm tra nguồn liên kết trước hạch toán, đối soát các dòng LSX cũ/chưa liên kết; không thay snapshot lệnh đã phát hành bằng danh mục hiện tại. Chưa nhập đầu kỳ thật trước khi được xác nhận.
 6. Chưa đưa thành phẩm/giao hàng/công nợ vào lượt 3 ngoài điểm nối đã thống nhất. Xem D06 nếu nối nhận mua với tiền; không tự chọn mốc tăng nợ.
 7. Build/test/lint theo phạm vi, cập nhật tài liệu, commit đúng file và push origin/main; không tự kiểm thử trình duyệt/deploy dữ liệu thật.
+
+## Kết quả lượt 3 — ngày 23/10/2026
+
+Mốc đầu lượt `2235742`, main, origin GitHub đã đối chiếu. Phạm vi/luồng/collection và hạn chế chi tiết tại `WAREHOUSE.md`; quyết định trực tiếp đã cập nhật trong `ACCOUNTING_DECISIONS.md`.
+
+- Sổ số lượng NVL một kho chung, nhập mua từng phần, cấp nhiều lần/bổ sung, hoàn theo lượng cấp ròng và đảo phiếu. Mã/quy đổi từ danh mục xác thực trên máy chủ; không ghép vật tư theo tên hoặc tin snapshot ở đơn mua do client tạo.
+- Một nguồn ghi transaction cho số dư/phiếu/trạng thái nhận/audit/biên nhận; chống trùng và stale revision/đua đồng thời. Mất phản hồi giữ nguyên yêu cầu để gửi lại, chưa có xác nhận không báo thành công. Cảnh báo/xác nhận xuất âm có lý do, không ghi lùi/ngày tương lai.
+- Quyền đúng quyết định: Admin, Mua hàng Inventory, Kế toán Accounting ghi; chỉ Admin đảo. Producer có Production chỉ đọc. Kế toán Accounting vào Vật liệu theo quyền hiệu lực, không ghi lại hồ sơ users.
+- Vật liệu: số dư/ngưỡng/lịch sử/báo cáo theo kỳ/danh mục/dữ liệu cũ chỉ đọc. Mua hàng NVL mở phiếu thực nhận dùng chung; không chạy cộng kho theo tên hoặc tự tạo payable. Chi tiết LSX có cấp/hoàn thực tế, chặn hủy khi còn NVL cấp ròng. Dashboard đọc số dư mới theo quyền, không trộn tồn cũ.
+- Giữ `inventory`, `warehouse_exports`, hóa đơn và LSX cũ; chặn client ghi tồn cũ. Đơn NVL cũ đã received không ghi nhận lại. Nguồn mua NVL đã phát hành không sửa/xóa nhận hàng ngoài API. Đồng bộ yêu cầu mua giữ trạng thái nhận một phần, không tự hủy nó khi đối chiếu PO.
+- Chưa chuyển tồn đầu kỳ thật hoặc nhập dữ liệu Firebase thật. Không có giữ chỗ NVL/khóa chất lượng, nhiều kho/lô/cuộn/vị trí, thành phẩm/giao/trả hoặc công nợ mới. Nhận mua khác NVL vẫn giữ luồng cũ; kết nối tiền thực hiện lượt 5.
+
+### Kiểm tra lượt 3
+
+Build TypeScript client/server và Vite đạt, còn cảnh báo chunk lớn hiện có. Lint mã TypeScript mới/thay đổi ngoài AppShell đạt 0 lỗi/cảnh báo; AppShell giữ baseline 10 lỗi/0 cảnh báo, không thêm chẩn đoán mới. Không dọn lỗi cũ ngoài phạm vi.
+
+**76/76 test trực tiếp đạt**: warehouse 26, production-orders 40, operational-ui 10. Kiểm tra gồm sai số thập phân ở preview, nguồn mua có snapshot giả, nhận NVL không ghi tiền, ghi đồng thời/gửi lại và khóa hủy khi còn NVL cấp.
+
+Chạy rộng toàn bộ bộ test để rà soát còn 2 lỗi có sẵn tại `lead-workspace-tabs.test.cjs` (regex chuẩn bị danh sách không khớp mã hiện tại) và `raw-data-overview.test.cjs` (loader thiếu require cho import model). Đã đối chiếu test và nguồn liên quan với HEAD đầu lượt; chúng không đổi, lỗi cũng tái hiện trên nội dung HEAD. Lượt chạy rộng đạt 255/257; sau đó thêm 1 test preview thập phân và chạy lại bộ trực tiếp 76/76. Không sửa các phân hệ này trong lượt kho.
+
+Test giao dịch dùng mô phỏng có retry/version; rules kiểm tra hợp đồng tĩnh, chưa chạy emulator. Chưa mở trình duyệt, thử máy in, deploy Vercel/rules hoặc chuyển dữ liệu thật. Cần triển khai web + API + rules cùng phiên bản; push Git không xác nhận đã triển khai.
+
+### Bắt đầu lượt 4
+
+1. Đọc lại các quyết định và `WAREHOUSE.md`; giữ một nguồn ghi, không khôi phục handler tồn cũ.
+2. Chốt D08: thời điểm trừ kho giao khách, hàng đi đường, giao thất bại, trả/giao bù và dung sai. Cần mã thành phẩm/quy đổi rõ, không đoán từ mã khách.
+3. Nhập thành phẩm từ QC theo lượng đạt có thật; QC không tự ghi kho. Giao/trả từng phần có chống trùng, không vượt lượng nguồn hợp lệ, có đảo/audit và bảo toàn chuyến/phiếu cũ.
+4. Chưa nối tiền hoặc tự nhập đầu kỳ thật. Công nợ nối lượt 5; ngày chuyển đổi/đầu kỳ và triển khai/nghiệm thu ở lượt 7 theo xác nhận riêng.

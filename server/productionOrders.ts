@@ -121,7 +121,11 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
         transaction.update(machineRef, { runtimeRevision: Number(machine.runtimeRevision || 0) + 1 });
         next.status = 'producing'; next.startedAt = now;
       }
-      if (action === 'cancel') { next.status = 'cancelled'; }
+      if (action === 'cancel') {
+        const stockState = (await transaction.get(firestore.collection('warehouse_source_state').doc(`production_${id}`))).data();
+        if (stockState && Object.values(stockState.lines || {}).some(line => Number((line as Record<string, unknown>).quantity) > 0)) throw new AdminApiError(409, 'LSX còn NVL đã cấp. Hoàn hết NVL hoặc đảo phiếu cấp trước khi hủy.');
+        next.status = 'cancelled';
+      }
       if (action === 'complete') {
         if (!Array.isArray(body.results) || body.results.length !== next.lines.length) throw new AdminApiError(400, 'Nhập kết quả QC của tất cả mặt hàng.');
         const results = body.results as Record<string, unknown>[];

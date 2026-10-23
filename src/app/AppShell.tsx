@@ -14,6 +14,7 @@ import {
   NOTIFICATION_MODULE_LABELS
 } from '@/app/config/appConfig';
 import { canAccessPage, getDefaultPagesForRole } from '@/app/navigation/accessControl';
+import { canReadWarehouse } from '@/features/inventory/model/warehouse';
 import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import '@/styles/ErpUiStandards.css';
 import '@/styles/Theme.css';
@@ -508,8 +509,8 @@ function AppShell() {
     );
     syncSubscription(
       'inventory',
-      pageNeeds('dashboard'),
-      () => dbService.subscribeCollection('inventory', setInventory)
+      pageNeeds('dashboard') && !!user && canReadWarehouse(user) && isFirebaseRuntimeEnabled,
+      () => dbService.subscribeCollection('warehouse_balances', rows => setInventory(rows.map(row => ({ ...row, materialName: row.name, qtyInStock: row.quantity, minQtyAlert: row.minQuantity ?? 0 }))), { onError: () => setInventory([]) })
     );
     syncSubscription(
       'design_requests',
@@ -845,7 +846,7 @@ function AppShell() {
             customers={customers}
             leads={leads}
             candidates={leadCandidates}
-            inventory={inventory}
+            inventory={canReadWarehouse(user) && isFirebaseRuntimeEnabled ? inventory : []}
             purchaseOrders={purchaseOrders}
             productionCommands={productionCommands}
             invoices={invoices}

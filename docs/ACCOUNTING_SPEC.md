@@ -77,7 +77,7 @@ Chấp nhận dấu phẩy, chấm phẩy hoặc tab; dấu nháy CSV và ghi ch
 ### Quyền và nơi sử dụng
 
 - Admin đang hoạt động; purchaser có trang Inventory/Purchase; accountant có trang Accounting được quản lý danh mục.
-- Cùng component tại **Vật liệu → Danh mục hàng** và **Kế toán → Danh mục hàng**. Không thêm menu, không mở trang kho cho Kế toán.
+- Cùng component tại **Vật liệu → Danh mục hàng** và **Kế toán → Danh mục hàng**. Lượt 1 không mở trang kho cho Kế toán; lượt 3 bổ sung quyền kho hiệu lực bên dưới.
 - Sale/producer/designer không tự được quyền quản trị danh mục mới dù có quyền trang khác.
 - API xác thực token và tài khoản thật trên máy chủ; client không ghi trực tiếp 3 collection mới. Rules cho đúng nhóm đọc và từ chối toàn bộ client write.
 - Demo chỉ đọc; lỗi mạng/API không được chuyển thành lưu local rồi báo thành công.
@@ -109,11 +109,21 @@ Chấp nhận dấu phẩy, chấm phẩy hoặc tab; dấu nháy CSV và ghi ch
 - Chia nội dung theo 6 dòng sản phẩm/5 dòng vật tư mỗi tờ; ghi chú dài có trang bổ sung, không bỏ dữ liệu. Bản nháp/chờ duyệt/hủy có dấu cảnh báo không dùng triển khai sản xuất.
 - Các ô cấp kho, thừa/thiếu và ký xác nhận để trống để ghi nhận theo chứng từ thực tế. Không điền số 0 giả, không coi mẫu in là phiếu kho đã ghi sổ. In không đổi trạng thái, tồn kho hay công nợ.
 
+## Hợp đồng lượt 3 — sổ số lượng NVL
+
+Đã triển khai mã nguồn theo quyết định người dùng tại `ACCOUNTING_DECISIONS.md`; chi tiết collection, API, quyền, kiểm tra và giới hạn tại `WAREHOUSE.md`.
+
+- Một kho NVL chung, nhập mua từng phần, cấp nhiều lần/bổ sung và hoàn theo LSX; số dư và phiếu mới tách khỏi dữ liệu cũ để đối soát. Không tự cộng tồn cũ vào đầu kỳ.
+- Ánh xạ mã/quy đổi có xác nhận, đóng băng theo dòng nguồn; LSX đã phát hành giữ snapshot. Ghi sổ qua một API transaction; phiếu đã ghi chỉ đảo, không sửa/xóa. Admin đảo; kế toán Accounting và mua hàng Inventory cùng Admin được ghi. Xuất âm có cảnh báo, xác nhận/lý do; ngày hiện tại tại Việt Nam.
+- Vật liệu có số dư theo mã, ngưỡng thấp, lịch sử phiếu và nhập xuất tồn theo khoảng ngày. Mua hàng NVL dùng cùng form; chi tiết LSX hiển thị phiếu cấp/hoàn. Không hủy LSX khi còn NVL cấp ròng.
+- Kế toán Accounting kế thừa quyền Vật liệu; không sửa users cũ. Dashboard đọc số dư mới, không trộn tồn cũ. Cột “Tồn theo sổ” và thông báo làm rõ chưa có đầu kỳ thật.
+- Nhập mua NVL không tự sinh payable; tiền nối ở lượt 5 theo yêu cầu trực tiếp. Hóa đơn và nhận mua không phải NVL giữ luồng hiện tại. Lưu/phát hành/in/QC LSX không tự hạch toán kho.
+
 ## Phạm vi chưa thực hiện
 
-Chưa nhập dữ liệu thật, chưa tạo đầu kỳ tồn/nợ, chưa cộng trừ kho hay tiền qua danh mục. Chưa tự nối supplier SKU vào đơn mua; phần nguồn mua/nhận kết nối ở lượt 3. Chưa triển khai giá vốn/sổ cái/thuế/ngân hàng. Chưa kiểm tra bố cục mẫu tem trắng trên trình duyệt/máy in thật; chưa có xác nhận deploy API/web/rules thực tế.
+Chưa nhập dữ liệu thật hoặc đầu kỳ tồn/nợ; danh mục không tự đổi số lượng/tiền. Chưa triển khai tồn thành phẩm/giao/trả, công nợ mới, giá vốn/sổ cái/thuế/ngân hàng. Supplier SKU riêng, lô/cuộn/vị trí, giữ chỗ NVL và khóa chất lượng chưa có. Chưa kiểm tra trình duyệt/máy in thật hoặc deploy API/web/rules thực tế.
 
-Hành vi kho và thanh toán cũ vẫn tồn tại để tương thích, **chưa phải sổ kế toán mới**. Không coi lượt 1 là hoàn thành kho nguyên vật liệu hoặc công nợ.
+Kho cũ chỉ đọc; sổ số lượng mới có ở lượt 3, chưa bao gồm đầu kỳ chưa đối soát. Thanh toán và nhận mua không phải NVL còn luồng cũ, **chưa phải sổ công nợ mới**. Không coi các lượt 1–3 là hoàn thành công nợ/chuyển đổi dữ liệu thật.
 
 ## Kiểm tra bắt buộc các lượt tiếp theo
 

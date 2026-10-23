@@ -152,6 +152,13 @@ test('PO can be planned during design but cannot release before production stage
   await b.manage(draft()); await b.action('submit'); await assert.rejects(b.action('release'), /sẵn sàng sản xuất/);
   assert.equal(b.store.get('pos/po1').productionPlanFrozen, false);
 });
+test('cancellation cannot strand actual material issues; returning all material makes cancellation possible', async () => {
+  const b = backend(); await b.manage(draft()); await b.action('submit'); await b.action('release');
+  b.store.set('warehouse_source_state/production_command1', { lines: { paper: { quantity: 10 } } });
+  await assert.rejects(b.action('cancel'), /còn NVL đã cấp/); assert.equal(b.order().status, 'released');
+  b.store.get('warehouse_source_state/production_command1').lines.paper.quantity = 0;
+  await b.action('cancel'); assert.equal(b.order().status, 'cancelled');
+});
 test('a cancelled draft releases reservations and retains its history; running orders cannot be cancelled', async () => {
   const b = backend(); await b.manage(draft()); await b.action('cancel');
   assert.equal(b.store.get('pos/po1').productionPlanLocked, false);

@@ -34,11 +34,17 @@
 - Dòng chưa liên kết giữ khả năng lưu/in theo luồng cũ; ghi rõ chưa liên kết, cần đối soát trước hạch toán kho ở lượt 3. Liên kết đã có nhưng stale/inactive bị chặn lưu/phát hành. Đổi danh mục khi chờ duyệt yêu cầu trả về lưu lại; không thay mã trên lệnh đã phát hành.
 - Không đổi số tồn, công nợ hoặc backfill lệnh cũ. Chi tiết hợp đồng và quyết định tại `ACCOUNTING_SPEC.md`, `ACCOUNTING_DECISIONS.md`.
 
-## Chưa triển khai ở bước này
+## Bổ sung lượt kế toán 3 — ngày 23/10/2026
 
-Phiếu cấp NVL thực tế nhiều lần, lô / kho, quy đổi ĐVT, hoàn kho, cấp bổ sung và hạch toán tiêu hao. Các vùng cấp kho / đối soát trên bản in để ghi nhận theo chứng từ riêng, **không phải dữ liệu xuất kho đã được xác nhận**.
+- Phiếu cấp nhiều lần/bổ sung, hoàn nhiều lần và đảo có ở sổ kho NVL mới. Chi tiết LSX v2 hiển thị lịch sử và mở form theo quyền; Producer chỉ xem. Admin/Mua hàng Inventory/Kế toán Accounting ghi sổ; chỉ Admin đảo.
+- Cấp cho lệnh phát hành/đang chạy, hoàn thêm cả lệnh hoàn thành; không hoàn vượt lượng cấp ròng. Không hủy LSX khi còn NVL cấp ròng. Không sửa snapshot LSX đã phát hành để gán mã; dòng nhập tay v2 cần chọn/xác nhận mã ở kho, lệnh cũ v1 cần đối soát riêng.
+- Một kho chung, quy đổi khai báo theo mã, cảnh báo xuất âm và xác nhận/lý do. Nhận mua NVL chỉ số lượng, không tự sinh công nợ. `inventory` và `warehouse_exports` cũ chỉ đọc, không tự chuyển đầu kỳ. Chi tiết tại `WAREHOUSE.md`.
 
-Không có thao tác lưu / phát hành / in / nghiệm thu LSX nào tự trừ tồn kho. Khi nối phiếu kho ở bước sau cần một nguồn hạch toán duy nhất, chống ghi nhận hai lần.
+## Chưa triển khai
+
+Chưa nhập thành phẩm/giao/trả, giá thành/giá vốn, phân bổ tiêu hao, nhiều kho/lô/cuộn/vị trí hoặc chuyển đổi đầu kỳ thật. Các vùng cấp kho / đối soát trên bản in vẫn để ghi theo chứng từ riêng, không tự đổ dữ liệu hoặc chữ ký giả.
+
+Không có thao tác lưu / phát hành / in / nghiệm thu LSX nào tự trừ tồn kho. Chỉ phiếu thực tế qua API kho làm đổi số dư mới; không chạy song song đường ghi tồn cũ.
 
 ## Triển khai
 
@@ -48,6 +54,8 @@ Không có thao tác lưu / phát hành / in / nghiệm thu LSX nào tự trừ 
 4. Danh mục máy phải được lưu trong hệ thống; mở **Sản xuất → Danh sách máy** để cấu hình trước khi phát hành.
 
 Lượt 2 không thay `firestore.rules` so với lượt 1: quyền đọc cần thiết đã có, ghi lệnh mới qua API. Vẫn phải xác nhận triển khai rules của các lượt trước; chưa có xác nhận môi trường thật đã dùng phiên bản đó. Push Git không xác nhận deploy Vercel/Firebase.
+
+Lượt 3 thay rules và thêm `/api/warehouse/manage`; cần web/API/rules cùng phiên bản. Chưa deploy hoặc ghi dữ liệu thật trong lượt này.
 
 ## Kiểm tra
 
