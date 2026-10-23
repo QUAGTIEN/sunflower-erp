@@ -23,7 +23,7 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
-import { ensureReceivableInvoice } from '@/features/sales/api/poWorkflowService';
+import { assertManualFinancialTransition } from '@/features/sales/api/poWorkflowService';
 import { syncDesignRequestsForPO } from '@/features/design/api/designRequestService';
 import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/procurementService';
 import { DesignRecord, DesignVersion } from '@/features/design/model/designWorkflow';
@@ -745,6 +745,7 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
 
   const updatePOStatus = async (poId: string, newStatus: POQueueStatus) => {
     return runMutationAction("SalesPage.tsx:updatePOStatus", async () => {
+      assertManualFinancialTransition(newStatus);
       const po = pos.find(p => p.id === poId);
       if (!po) return;
 
@@ -767,11 +768,6 @@ export const Sales: React.FC<SalesProps> = ({ pos, customers, leads, currentUser
         historyLogs: updatedLogs
       }));
 
-      // Entering the receivable queue means the sales invoice has been issued.
-      // Create a receivable only when none exists, preventing duplicate invoices.
-      if (newStatus === 'waiting_receivable') {
-        await ensureReceivableInvoice(po, `${currentUser.displayName} (${currentUser.role.toUpperCase()})`);
-      }
 
       setSelectedPO((prev: any) => prev ? {
         ...prev,

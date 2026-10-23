@@ -158,15 +158,17 @@ service cloud.firestore {
           || userProfile().role != 'sale'
           || resource.data.assignedSaleId == request.auth.uid);
       allow create: if (hasPage('crm') || hasPage('sales'))
+        && !request.resource.data.keys().hasAny(['financeLinked'])
         && (isAdmin()
           || userProfile().role != 'sale'
           || request.resource.data.assignedSaleId == request.auth.uid);
       allow update: if (hasPage('crm') || hasPage('sales'))
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['financeLinked'])
         && (isAdmin()
           || userProfile().role != 'sale'
           || (resource.data.assignedSaleId == request.auth.uid
             && request.resource.data.assignedSaleId == resource.data.assignedSaleId));
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() && resource.data.get('financeLinked', false) != true;
     }
 
     match /leads/{documentId} {
@@ -303,17 +305,19 @@ service cloud.firestore {
       allow read: if isActive();
       // Production allocation and its scope are owned by the transactional API.
       allow create: if canUseOrderFlow()
-        && !request.resource.data.keys().hasAny(['productionPlanRequiredItemIds', 'productionPlanLocked', 'productionPlanFrozen', 'productionRevision', 'goodsFlowVersion', 'goodsRevision', 'goodsReady', 'goodsDeliveryClosed']);
+        && !request.resource.data.keys().hasAny(['productionPlanRequiredItemIds', 'productionPlanLocked', 'productionPlanFrozen', 'productionRevision', 'goodsFlowVersion', 'goodsRevision', 'goodsReady', 'goodsDeliveryClosed', 'accountingFlowVersion', 'accountingRevision', 'accountingProgress']);
       allow update: if canUseOrderFlow()
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['goodsFlowVersion', 'goodsRevision', 'goodsReady', 'goodsDeliveryClosed'])
+        && (request.resource.data.status == resource.data.status || !(request.resource.data.status in ['waiting_receivable', 'waiting_discount', 'invoiced', 'debt_collected']))
+        && (resource.data.get('accountingFlowVersion', 0) != 1 || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'items', 'customerId', 'deleted']))
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['goodsFlowVersion', 'goodsRevision', 'goodsReady', 'goodsDeliveryClosed', 'accountingFlowVersion', 'accountingRevision', 'accountingProgress'])
         && (resource.data.get('goodsFlowVersion', 0) != 1
-          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['items', 'status', 'deliveryStage', 'deliveryProgress', 'deleted']))
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['items', 'status', 'customerId', 'deliveryStage', 'deliveryProgress', 'deleted']))
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['productionPlanRequiredItemIds', 'productionPlanLocked', 'productionPlanFrozen', 'productionRevision'])
         && (resource.data.get('productionPlanLocked', false) != true
           || ((resource.data.get('productionPlanFrozen', false) != true || request.resource.data.items == resource.data.items)
             && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['productionProgress', 'deleted'])
             && (resource.data.status != 'waiting_production' || request.resource.data.status == resource.data.status)));
-      allow delete: if isAdmin() && resource.data.get('productionPlanLocked', false) != true && resource.data.get('goodsFlowVersion', 0) != 1;
+      allow delete: if isAdmin() && resource.data.get('productionPlanLocked', false) != true && resource.data.get('goodsFlowVersion', 0) != 1 && resource.data.get('accountingFlowVersion', 0) != 1;
     }
 
     // Design workflow. Sale can create requests; design staff process them.
@@ -332,8 +336,9 @@ service cloud.firestore {
     // Purchasing and supplier management.
     match /suppliers/{documentId} {
       allow read: if isActive();
-      allow create, update: if hasPage('purchase');
-      allow delete: if isAdmin();
+      allow create: if hasPage('purchase') && !request.resource.data.keys().hasAny(['financeLinked']);
+      allow update: if hasPage('purchase') && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['financeLinked']);
+      allow delete: if isAdmin() && resource.data.get('financeLinked', false) != true;
     }
 
     match /procurement_requests/{documentId} {
@@ -428,12 +433,21 @@ service cloud.firestore {
       allow delete: if isAdmin() && resource.data.get('activeGoodsTripId', '') == '';
     }
 
-    // Invoices are created by Sale/Purchasing flows and finalized by Accounting.
+    // Legacy invoices are read-only; new charge projections are written by the financial API.
     match /invoices/{documentId} {
       allow read: if isActive();
-      allow create, update: if canUseAccounting();
-      allow delete: if isAdmin();
+      allow create, update, delete: if false;
     }
+
+    match /finance_control/{documentId} { allow read, write: if false; }
+    match /finance_documents/{documentId} { allow read, write: if false; }
+    match /finance_funds/{documentId} { allow read, write: if false; }
+    match /finance_entries/{documentId} { allow read, write: if false; }
+    match /finance_source_state/{documentId} { allow read, write: if false; }
+    match /finance_periods/{documentId} { allow read, write: if false; }
+    match /finance_requests/{documentId} { allow read, write: if false; }
+    match /finance_reference_keys/{documentId} { allow read, write: if false; }
+    match /finance_counters/{documentId} { allow read, write: if false; }
 
     // Each click to call is an independent event. Only its caller (or an admin)
     // may later confirm the result; the original call identity remains immutable.

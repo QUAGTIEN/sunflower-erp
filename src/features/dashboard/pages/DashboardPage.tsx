@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
 import { DonutChart } from '@/components/VisualCharts';
-import { ensureReceivableInvoice } from '@/features/sales/api/poWorkflowService';
+import { assertManualFinancialTransition } from '@/features/sales/api/poWorkflowService';
 import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { DesignRequest } from '@/features/design/model/designWorkflow';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
@@ -416,6 +416,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleUpdateStatus = async (poId: string, status: POQueueStatus) => {
     return runMutationAction("DashboardPage.tsx:handleUpdateStatus", async () => {
       try {
+        assertManualFinancialTransition(status);
         const targetPo = pos.find(p => p.id === poId);
         if (!targetPo) return;
 
@@ -437,9 +438,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           updatedAt: new Date().toISOString(),
           historyLogs: updatedLogs
         }));
-        if (status === 'waiting_receivable') {
-          await ensureReceivableInvoice(targetPo, `${user.displayName} (${user.role.toUpperCase()})`);
-        }
         showSuccessToast("Đã lưu thành công");
       } catch (err) {
         showErrorToast();

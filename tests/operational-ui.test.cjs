@@ -54,29 +54,17 @@ function screen(file, name, props, initial = {}, stubs = {}) {
   })(file)[name];
   return {state, refs, layouts, render:()=>{cursor=0;refCursor=0;return Component(props);} };
 }
-const invoice = index => ({id:'inv'+index,invoiceCode:'INV-'+index,amount:100,paidAmount:20,type:'receivable',status:'partially_paid',dueDate:'2026-11-01',companyName:'Khách dài '+index});
 
-test('accounting row menus retain payment/edit actions and pagination reaches every invoice', async()=>{
-  const writes=[];
-  const ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos:[],currentUser:admin,users:[],onRefresh(){}},{invoices:Array.from({length:26},(_,i)=>invoice(i+1))},{
-    '@/infrastructure/firebase/erpDataGateway':{dbService:{getCollection:async()=>[],updateDocument:async(...args)=>{writes.push(args);return true;}}}
-  });
-  let tree=ui.render(); assert.equal(tree.props['data-erp-table-text'],'single-line');
-  assert.equal(menu(tree).length,25);
-  const pagination=nodes(tree).find(node=>node.type?.name==='DataTablePagination');
-  assert.equal(pagination.props.totalItems,26); pagination.props.setPage(2);
-  tree=ui.render(); assert.equal(menu(tree).length,1); assert.equal(menu(tree)[0].props.label,'Thao tác INV-26');
-  assert.deepEqual(menu(tree)[0].props.actions.map(action=>action.label),['Chi Tiết','Sửa','Xóa','Thu Nợ']);
-  menu(tree)[0].props.actions.find(action=>action.label==='Thu Nợ').onSelect();
-  tree=ui.render(); assert.equal(ui.state.get('selectedInvoice').id,'inv26'); assert.equal(ui.state.get('paymentAmount'),80);
-  await nodes(tree).find(node=>node.type==='form').props.onSubmit({preventDefault(){}});
-  assert.equal(writes[0][0],'invoices'); assert.equal(writes[0][1],'inv26'); assert.equal(writes[0][2].paidAmount,100); assert.equal(writes[0][2].status,'paid');
+test('accounting mounts the financial ledger instead of direct invoice/payment editors',()=>{
+  const writes=[],ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos:[],currentUser:admin,users:[],onRefresh(){}},{},{'@/infrastructure/firebase/erpDataGateway':{dbService:{updateDocument:async(...args)=>writes.push(args)}}});
+  const tree=ui.render();assert.equal(tree.props['data-erp-table-text'],'single-line');assert.ok(nodes(tree).some(node=>node.type?.name==='AccountingLedgerWorkspace'));assert.ok(!nodes(tree).some(node=>node.type==='form'));assert.deepEqual(writes,[]);
+  const source=fs.readFileSync(path.join(root,'src/features/accounting/pages/AccountingPage.tsx'),'utf8');assert.doesNotMatch(source,/paidAmount:|addDocument\('invoices'|deleteDocument\('invoices'|updateDocument\('invoices'/);
 });
-test('invoice menus keep existing role restrictions and omit payment for settled invoices',()=>{
-  const settled={...invoice(1),paidAmount:100,status:'paid'};
-  const ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos:[],currentUser:{...admin,role:'sale'},users:[],onRefresh(){}},{invoices:[settled]});
-  assert.deepEqual(menu(ui.render())[0].props.actions.map(action=>action.label),['Chi Tiết']);
+test('Sale with a page flag cannot bypass financial role restrictions',()=>{
+  const ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos:[],currentUser:{...admin,role:'sale',allowedPages:['accounting']},users:[],onRefresh(){}});
+  const tree=ui.render();assert.equal(tree.props.role,'alert');assert.equal(menu(tree).length,0);assert.ok(!nodes(tree).some(node=>node.type?.name==='AccountingLedgerWorkspace'));
 });
+
 test('costing menu still opens original cost editor after changing pages',()=>{
   const pos=Array.from({length:27},(_,i)=>({id:'po'+i,poCode:'PO-'+i,customerName:'Khách',totalAmount:1000000,status:'waiting_production',items:[{material:'giấy',size:'10x20mm',quantity:100}]}));
   const ui=screen('src/features/accounting/pages/AccountingPage.tsx','Accounting',{pos,currentUser:admin,users:[],onRefresh(){}},{activeTab:'costing'});

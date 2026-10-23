@@ -1,3 +1,4 @@
+import { assertPhysicalSourceUnbilled } from './financeSourceGuard.js';
 import { createHash } from 'node:crypto';
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
@@ -81,6 +82,7 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
     const originalRef = action === 'reverse' ? firestore.collection('warehouse_vouchers').doc(id(body.voucherId)) : null;
     const original = originalRef ? (await tx.get(originalRef)).data() as WarehouseVoucher | undefined : undefined;
     if (action === 'reverse' && (!original || original.kind === 'reversal' || original.reversedBy)) fail(409, 'Phiếu không tồn tại, là phiếu đảo hoặc đã được đảo.');
+    if (original) await assertPhysicalSourceUnbilled(tx, firestore, id(body.voucherId));
     const kind = action === 'reverse' ? 'reversal' : String(body.kind) as WarehouseKind;
     if (action !== 'reverse' && !['purchase_receipt', 'production_issue', 'production_return'].includes(kind)) fail(400, 'Loại phiếu không hợp lệ.');
     const effectiveKind = original?.kind || kind;

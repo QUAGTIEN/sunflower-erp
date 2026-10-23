@@ -1,3 +1,4 @@
+import { assertPhysicalSourceUnbilled } from './financeSourceGuard.js';
 import { createHash } from 'node:crypto';
 import { getPOQueueStatus } from '../src/features/sales/model/poWorkflow.js';
 import type { CatalogItem } from '../src/features/catalog/model/itemCatalog.js';
@@ -83,6 +84,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
     }
     const original = reversing ? await read('warehouse_vouchers', id(body.voucherId)) as GoodsVoucher | undefined : undefined;
     if (reversing && (!original || original.warehouseId !== 'finished_main' || original.kind === 'reversal' || original.reversedBy)) fail(409, 'Phiếu không tồn tại hoặc đã được đảo.');
+    if (original) await assertPhysicalSourceUnbilled(tx, firestore, id(body.voucherId));
     const kind = (original?.kind || (action === 'close_short' ? 'close_short' : body.kind)) as GoodsKind;
     if (!Object.hasOwn(GOODS_KINDS, kind) || kind === 'reversal') fail(400, 'Loại phiếu không hợp lệ.');
     const receipt = kind === 'production_receipt' || kind === 'purchase_receipt';

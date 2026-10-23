@@ -10,7 +10,7 @@
 | 2 | Kế toán lập LSX và mẫu in công ty | Hoàn thành mã nguồn; chưa nghiệm thu bản in trên trình duyệt/máy in |
 | 3 | Kho NVL, nhập mua, cấp/hoàn | Hoàn thành mã nguồn; chưa deploy/đối soát tồn đầu kỳ thật |
 | 4 | Thành phẩm, giao và trả hàng | Hoàn thành mã nguồn; chưa deploy/đối soát dữ liệu thật |
-| 5 | Công nợ và thu chi | Chưa thực hiện |
+| 5 | Công nợ và thu chi | Hoàn thành mã nguồn; chưa deploy/chuyển số dư thật |
 | 6 | Báo cáo, hàng còn thực hiện và cảnh báo | Chưa thực hiện |
 | 7 | Chuyển đổi, triển khai và nghiệm thu | Chưa thực hiện |
 
@@ -168,3 +168,28 @@ Chốt mốc tăng nợ mua/bán, hạn nợ/kỳ/thuế/làm tròn, quyền ghi
 - Test transaction mô phỏng có retry/version, rules kiểm tra tĩnh; chưa có nghiệm thu emulator/Firebase/trình duyệt thật. Chưa deploy, chưa nhập đầu kỳ hoặc tác động dữ liệu thật.
 
 Giao từng phần giữ PO còn sản xuất ở waiting_production để lập/phát hành phần LSX còn lại. Khi QC phần cuối chuyển chờ giao, API LSX giữ tiến độ giao thực tế đã có, không đặt lại pending. Kiểm thử tích hợp gọi hai API trên cùng kho dữ liệu mô phỏng.
+
+
+## Kết quả lượt 5 — ngày 23/10/2026
+
+Mốc đầu lượt cc04ef8, main/origin đã đối chiếu. Đã đọc lại quy tắc, skill UI, chuẩn CSS, luồng thực tế Accounting/Sale/Dashboard/Mua hàng, sổ kho và rules. Ba câu trả lời trực tiếp của người dùng: Kế toán xác nhận tăng nợ; VND/đơn giá chưa thuế/thuế nhập theo chứng từ/làm tròn đồng/hạn riêng/phân bổ tới dòng mã; Admin/Kế toán Accounting ghi, chỉ Admin đảo và khóa/mở kỳ, không ghi lùi ngày.
+
+- Sổ mới cho phải thu/phải trả, đầu kỳ và ứng trước đầu kỳ, thu/chi, phân bổ nhiều dòng/chứng từ, hoàn tiền chưa dùng, điều chỉnh tăng/giảm và hàng trả. Ngày/tiền/nguồn/quyền/giới hạn lấy lại tại API, không tin tổng tiền client.
+- Một nguồn ghi transaction cho docs/funds/entries/source-state/PO/bản chiếu/audit/request, revision chung, idempotency và tham chiếu chống trùng. Không giảm nợ vượt phần chưa phân bổ; Admin đảo phụ thuộc trước, kể cả điều chỉnh bù nhau về 0.
+- UI thay CRUD hóa đơn và nhập paidAmount bằng form chứng từ; vẫn giữ bảng lãi gộp cũ, không thêm biểu đồ. Dữ liệu cũ chỉ đọc. Nguồn đã có hóa đơn cũ cần đối soát, không tự lập lại; không nhập đầu kỳ thật hoặc dựng tiền từ số đã trả cũ.
+- Kho/POD thuần số lượng, không tạo nợ tự động. Hai API kho chặn đảo nguồn đã vào tiền cho tới khi đảo tiền liên quan; Sale/Dashboard bỏ tự tạo invoice khi đổi hàng đợi. Rules đóng ghi client vào invoices/sổ, bảo vệ metadata và đối tác có lịch sử tài chính. Mua hàng không ghi lại PO.items đã vào sổ.
+- Chứng từ charge mới có bản chiếu invoices phục vụ nơi đọc cũ; đầu kỳ không có bản chiếu để tránh cộng trùng lịch sử. CRM/NCC/Dashboard chưa phải bộ báo cáo đối soát mới, cần thống nhất ở lượt 6; số mới chính thức xem tại Kế toán.
+- Đối tác ngừng dùng còn công nợ/tiền vẫn hiển thị và được tất toán, không ghi nợ mới. Chặn xóa cứng hồ sơ đã có phát sinh. Không thay users hoặc mở quyền tiền cho Sale/Mua hàng.
+
+Chi tiết luồng, collection, giới hạn, kiểm tra và triển khai tại ACCOUNTING_LEDGER.md. Cần web + API kế toán + API kho có guard + rules cùng phiên bản. Chưa deploy, trình duyệt/emulator, chuyển dữ liệu hoặc ghi Firebase thật. Push Git khác triển khai.
+
+Lượt tiếp theo là lượt 6: báo cáo tháng đầu/phát sinh/cuối, công nợ/hàng còn thực hiện theo đơn/mã, hạn/tuổi nợ và cảnh báo tồn; không thực hiện chuyển đổi đầu kỳ thật trước lượt 7.
+
+
+### Kiểm tra cuối lượt 5
+
+- Build TypeScript client/server và Vite đạt; còn cảnh báo chunk lớn hiện có.
+- 30 kiểm thử mới tại accounting-ledger đạt; bộ rộng toàn dự án đạt 314/316, chỉ còn 2 lỗi baseline không thuộc lượt này: lead-workspace-tabs (regex requestAnimationFrame) và raw-data-overview (loader thiếu require). 2 test operational-ui cũ được thay bằng hợp đồng sổ tiền/khóa quyền mới; kiểm thử handler phân bổ và retry thực nằm trong bộ kế toán.
+- Lint phần mới, API/server, sổ kho và phần sạch thay đổi đạt 0 lỗi/cảnh báo. Trang Accounting giảm từ 17 xuống 5 lỗi any có sẵn, Sales giữ 36, Dashboard giữ 8; không thêm chẩn đoán khi so HEAD đầu lượt. RecycleBin/Purchase đạt lint.
+- Rà soát diff rules đã khôi phục đoạn không thuộc kế toán bị mất trong lúc biên tập, thêm test giữ mọi collection guard có sẵn. Chưa chạy rules emulator hoặc trình duyệt; test rules tĩnh không phải xác nhận đã triển khai.
+- Không ghi Firebase thật, không nhập đầu kỳ, không deploy web/API/rules. Chỉ commit các file công việc; giữ nguyên mục riêng của người dùng. Kết quả commit/push xem Git và bàn giao cuối chat.

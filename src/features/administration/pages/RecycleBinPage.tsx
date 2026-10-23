@@ -40,6 +40,8 @@ interface RecycleCollectionDefinition {
   getName: (item: RecycleRecord) => string;
 }
 
+const financiallyProtected = (item: DeletedItem) => item.collection === 'invoices' || 'financeLinked' in item.originalData && item.originalData.financeLinked === true || 'accountingFlowVersion' in item.originalData && item.originalData.accountingFlowVersion === 1;
+
 const asText = (value: unknown): string => typeof value === 'string' ? value : '';
 const readName = (item: RecycleRecord, ...keys: string[]): string => (
   keys.map(key => asText(item[key])).find(Boolean) || item.id
@@ -130,6 +132,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
 
   const handleRestore = async (item: DeletedItem) => {
     return runMutationAction("RecycleBinPage.tsx:handleRestore", async () => {
+      if (item.collection === 'invoices') { showErrorToast('Hóa đơn cũ chỉ đọc để đối soát tại Kế toán.'); return; }
       if (!window.confirm(`Bạn có chắc chắn muốn khôi phục "${item.name}" (${item.typeLabel})?`)) {
         return;
       }
@@ -167,6 +170,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
 
   const handleHardDelete = async (item: DeletedItem) => {
     return runMutationAction("RecycleBinPage.tsx:handleHardDelete", async () => {
+      if (financiallyProtected(item)) { showErrorToast('Hồ sơ đã có chứng từ kế toán, cần giữ để đối soát.'); return; }
       if (!(await confirmDelete(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN "${item.name}" (${item.typeLabel})? Hành động này không thể hoàn tác.`))) {
         return;
       }
@@ -297,6 +301,8 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
                   <td>{item.deletedAt}</td>
                   <td style={{ textAlign: 'right' }}>
                     <button
+                      disabled={item.collection === 'invoices'}
+                      title={item.collection === 'invoices' ? 'Hóa đơn cũ chỉ đọc tại Kế toán' : undefined}
                       onClick={() => handleRestore(item)}
                       className="btn"
                       style={{
@@ -315,6 +321,8 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
                       <span>{t('Khôi phục')}</span>
                     </button>
                     <button
+                      disabled={financiallyProtected(item)}
+                      title={financiallyProtected(item) ? 'Giữ hồ sơ có chứng từ kế toán để đối soát' : undefined}
                       onClick={() => handleHardDelete(item)}
                       className="btn btn-danger"
                       style={{

@@ -71,3 +71,8 @@ Rules chặn client ghi sổ/metadata; khóa nguồn mua đã phát hành và PO
 Cần triển khai web, `/api/warehouse/finished`, API kho/LSX và `firestore.rules` cùng phiên bản. Chưa deploy hoặc kiểm thử trình duyệt/Firebase thật trong lượt này; push Git không xác nhận triển khai. Chưa nhập đầu kỳ thật.
 
 Lượt 5 tiếp theo: chốt mốc tăng nợ mua/bán từ chứng từ có thật, kỳ/thuế/làm tròn, quyền ghi/đảo/khóa kỳ, phân bổ thu chi/ứng trước và tác động tiền của hàng trả. Dùng ID phiếu/nguồn để nối, không suy lịch sử thanh toán từ lượng giao hoặc số đã trả hiện tại.
+
+
+## Điểm nối lượt 5
+
+Đã có mã nguồn sổ tiền tại ACCOUNTING_LEDGER.md: Kế toán xác nhận POD/nhập mua thực tế để tăng nợ, không tự tăng từ phiếu hàng. Hàng NCC giao thẳng có thể là nguồn AR và AP với cap riêng. Hàng trả có điều chỉnh tiền được xác nhận, không tự giảm nợ/hoàn tiền. API hàng chặn đảo nguồn khi còn phụ thuộc tiền; cần đảo chứng từ tiền trước. Triển khai web/API kho/API kế toán/rules cùng phiên bản; chưa xác nhận deploy hoặc chuyển dữ liệu thật.

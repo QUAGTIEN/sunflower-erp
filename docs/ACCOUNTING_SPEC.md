@@ -121,9 +121,9 @@ Chấp nhận dấu phẩy, chấm phẩy hoặc tab; dấu nháy CSV và ghi ch
 
 ## Phạm vi chưa thực hiện
 
-Chưa nhập dữ liệu thật hoặc đầu kỳ tồn/nợ; danh mục không tự đổi số lượng/tiền. Đã có mã nguồn thành phẩm/giao/trả ở lượt 4; chưa có công nợ mới, giá vốn/sổ cái/thuế/ngân hàng. Supplier SKU riêng, lô/cuộn/vị trí, giữ chỗ NVL và khóa chất lượng chưa có. Chưa kiểm tra trình duyệt/máy in thật hoặc deploy API/web/rules thực tế.
+Chưa nhập dữ liệu thật hoặc đầu kỳ tồn/nợ; danh mục không tự đổi số lượng/tiền. Đã có mã nguồn thành phẩm/giao/trả ở lượt 4; đã có sổ công nợ/thu chi mới ở lượt 5; chưa có giá vốn/sổ cái/tích hợp thuế/ngân hàng. Supplier SKU riêng, lô/cuộn/vị trí, giữ chỗ NVL và khóa chất lượng chưa có. Chưa kiểm tra trình duyệt/máy in thật hoặc deploy API/web/rules thực tế.
 
-Kho cũ chỉ đọc; sổ số lượng mới có ở lượt 3–4, chưa bao gồm đầu kỳ chưa đối soát. Thanh toán hiện hữu còn luồng cũ, **chưa phải sổ công nợ mới**. Nhận mua mọi loại chỉ ghi số lượng qua API kho, không tự tạo payable. Không coi các lượt 1–4 là hoàn thành công nợ/chuyển đổi dữ liệu thật.
+Kho cũ chỉ đọc; sổ số lượng mới có ở lượt 3–4, chưa bao gồm đầu kỳ chưa đối soát. Lượt 5 đã thay ghi thanh toán trực tiếp bằng sổ công nợ/thu chi mới; hóa đơn trước đó chỉ đọc. Nhận mua mọi loại chỉ ghi số lượng qua API kho, không tự tạo payable. Không coi các lượt 1–5 là đã chuyển đổi dữ liệu thật hoặc hoàn thành báo cáo/nghiệm thu.
 
 ## Kiểm tra bắt buộc các lượt tiếp theo
 
@@ -139,3 +139,12 @@ Mã nguồn theo FINISHED_GOODS.md, quyết định D08-4 tại ACCOUNTING_DECIS
 - Admin/Mua hàng Inventory/Kế toán Accounting ghi số lượng; người có Giao hàng xác nhận POD; chỉ Admin đảo/đóng thiếu có xác nhận khách. Không ghi lượng thiếu thành đã giao.
 - Transaction là nguồn duy nhất ghi số dư, nguồn, PO/chuyến/xe, phiếu/audit/requestId. Rules khóa đường ghi tắt và nguồn đã phát sinh. Không nhập đầu kỳ, không tự chuyển phiếu cũ hoặc sinh tiền từ nhận hàng.
 - Mua hàng bỏ handler tự sinh payable khi nhận hàng không phải NVL. Hóa đơn đã có giữ nguyên; mốc tăng/giảm công nợ và quyền tiền cần chốt ở lượt 5. Chưa có nghiệm thu hoặc xác nhận deploy thực tế.
+
+
+## Hợp đồng lượt 5 — sổ công nợ và tiền
+
+Đã có mã nguồn theo ACCOUNTING_LEDGER.md và D05b-5/D06-5/D07-5. Phần này thay mô tả luồng tiền còn cũ ở bàn giao các lượt trước.
+
+Kế toán xác nhận nguồn hàng để ghi nợ, thu/chi lập riêng rồi phân bổ tới dòng mã/chứng từ. Có ứng trước, đầu kỳ, điều chỉnh/hàng trả, hoàn tiền, đảo và khóa kỳ; bảo toàn chứng từ cũ. Phân quyền/tiền VND/làm tròn/ngày theo quyết định trực tiếp. Một transaction bảo vệ số dư, nguồn, PO, khoản tiền, chứng từ, audit và retry. Số chưa dùng không tự bù trừ và số đã trả cũ không tự biến thành lịch sử tiền.
+
+Báo cáo tháng/cảnh báo và đồng bộ các chỉ tiêu CRM/NCC/Dashboard là lượt 6. Chuyển đầu kỳ thật, dữ liệu lịch sử và deploy/nghiệm thu vẫn lượt 7; chưa thực hiện trong lượt 5.

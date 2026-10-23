@@ -66,3 +66,15 @@ Mẫu tem trắng đã có đầu vào; mẫu công ty khác chỉ bổ sung khi
 | D08e-4 | Không tự lấp phần thiếu vào qtyDelivered; không tự chuyển số dư/lịch sử cũ. Công nợ và điều chỉnh tiền hàng trả nối ở lượt 5 |
 
 Chi tiết tại FINISHED_GOODS.md. D08b và D05b-4 là hai câu trả lời trực tiếp của người dùng trong lượt này; kiểm soát phiếu, số dư và chống ghi trùng triển khai trong phạm vi đã duyệt.
+
+
+## Quyết định lượt 5 — người dùng xác nhận ngày 23/10/2026
+
+| Mã | Quyết định |
+|---|---|
+| D06-5 | Kế toán xác nhận chứng từ tăng nợ từ giao/nhận thực tế; kho/POD không tự tạo nợ |
+| D06a-5 | VND, giá chưa thuế, thuế suất nhập theo chứng từ, làm tròn đến đồng, hạn nợ riêng |
+| D07-5 | Phân bổ tiền tới từng dòng mã của chứng từ, nhiều dòng/đơn; khoản chưa dùng giữ riêng ở ứng trước |
+| D05b-5 | Admin và accountant có Accounting lập/ghi sổ; chỉ Admin đảo/khóa/mở kỳ; Sale/Mua hàng không ghi tiền; không ghi lùi ngày |
+
+Lựa chọn triển khai trong phạm vi: giảm nợ chạm tiền đã phân bổ cần đảo phân bổ trước, sau đó giảm/phân bổ lại/hoàn tiền chưa dùng; không tự giảm tiền theo hàng trả. Số dư và ứng trước đầu kỳ có chứng từ đối chiếu riêng, không tự chuyển dữ liệu thật. Rules bảo vệ liên kết đối tác, nguồn hàng và metadata; API kho/tiền dùng cùng phụ thuộc khi đảo. Màn hình mới dành Admin/Kế toán Accounting; không tự cấp quyền trang cho vai trò khác. Chi tiết ACCOUNTING_LEDGER.md. Chuyển đổi số thật vẫn theo D09 lượt 7.

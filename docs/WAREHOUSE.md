@@ -72,3 +72,8 @@ Chưa deploy Vercel/Firebase, chưa kết nối dữ liệu thật, chưa nhập
 ## Bổ sung lượt 4
 
 Sổ thành phẩm/giao/trả đã có mã nguồn, xem FINISHED_GOODS.md. Collection số dư/phiếu dùng chung nhưng lọc kho rõ ràng: NVL raw_main, thành phẩm finished_main với ID số dư fg_<catalogItemId>. API load NVL và Dashboard chỉ đọc phần NVL; báo cáo thành phẩm không trộn hàng NCC giao thẳng/POD vào delta vật lý. Nhận mua mọi nhóm đã chuyển sang phiếu số lượng, không tự tạo payable; thay cho đoạn nhận mua khác còn luồng hiện tại ở bàn giao lượt 3 phía trên. Tiền nối lượt 5. Cần triển khai web/API/rules cùng phiên bản; chưa có đầu kỳ thật hoặc deploy trong lượt này.
+
+
+## Điểm nối tiền ở lượt 5
+
+Nhận hàng vẫn chỉ ghi lượng. Kế toán xác nhận chứng từ riêng để tăng nợ; xem ACCOUNTING_LEDGER.md. API kho NVL và thành phẩm đọc phụ thuộc finance_source_state trước đảo: phiếu đã dùng ghi nợ/điều chỉnh tiền phải đảo chứng từ tiền liên quan trước. Chưa triển khai dữ liệu thật; cần deploy API kho và kế toán cùng rules/web.

@@ -352,7 +352,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
               : item
           ));
           await requireConfirmedMutation(dbService.updateDocument('pos', selectedRequest.poId, {
-            ...(po.goodsFlowVersion !== 1 ? { items: updatedItems } : {}),
+            ...(po.goodsFlowVersion !== 1 && po.accountingFlowVersion !== 1 ? { items: updatedItems } : {}),
             purchaseProgress: 'supplier_ordered',
             historyLogs: [
               ...asArray(po.historyLogs),
