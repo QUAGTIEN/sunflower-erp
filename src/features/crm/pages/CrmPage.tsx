@@ -1,3 +1,5 @@
+import { usePartnerDebt } from '@/features/accounting/components/usePartnerDebt';
+import { PartnerDebtNotice, PartnerDebtValue } from '@/features/accounting/components/PartnerDebtSummary';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
@@ -280,6 +282,7 @@ export const Crm: React.FC<CrmProps> = ({
   onInitialCustomerOpened,
 }) => {
   const { t } = useLanguage();
+  const finance = usePartnerDebt(currentUser);
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
   const inlineSystemFieldConfiguration = useSystemFieldConfiguration('customers');
   const [searchTerm, setSearchTerm] = useState('');
@@ -2038,9 +2041,7 @@ export const Crm: React.FC<CrmProps> = ({
   const getCustomerOrderValue = (customerId: string) => getCustomerOrders(customerId)
     .reduce((total, order) => total + Number(order.netAmount || order.totalAmount || 0), 0);
 
-  const getCustomerOutstandingDebt = (customerId: string) => invoices
-    .filter(invoice => invoice.deleted !== true && invoice.type === 'receivable' && invoice.customerId === customerId)
-    .reduce((total, invoice) => total + Math.max(0, Number(invoice.amount || 0) - Number(invoice.paidAmount || 0)), 0);
+  const getCustomerOutstandingDebt = (customerId: string) => finance.get('ar', customerId)?.debt;
 
   const isNewCustomer = (customer: CustomerRecord): boolean => {
     const createdDate = parseValidDate(customer.createdAt || customer.convertedAt);
@@ -2192,7 +2193,7 @@ export const Crm: React.FC<CrmProps> = ({
     customerSystemAdvancedField('note', 'Ghi chú yêu cầu riêng', advancedFilterGroups.additional, 'text', customer => [customer.note]),
     customerSystemAdvancedField('orderCount', 'Số PO', advancedFilterGroups.result, 'number', customer => [getCustomerOrders(customer.id).length]),
     customerSystemAdvancedField('orderValue', 'Tổng giá trị PO', advancedFilterGroups.result, 'number', customer => [getCustomerOrderValue(customer.id)]),
-    customerSystemAdvancedField('outstandingDebt', 'Công nợ hiện tại', advancedFilterGroups.result, 'number', customer => [getCustomerOutstandingDebt(customer.id)]),
+    customerSystemAdvancedField('outstandingDebt', 'Công nợ sổ mới', advancedFilterGroups.result, 'number', customer => [getCustomerOutstandingDebt(customer.id)]),
     customerSystemAdvancedField('lastOrderAt', 'Lần mua gần nhất', advancedFilterGroups.result, 'date', customer => [customer.lastOrderAt]),
     customerSystemAdvancedField('updatedAt', 'Cập nhật gần nhất', advancedFilterGroups.result, 'date', customer => [customer.updatedAt]),
     ...customFieldDefinitions.filter(definition => definition.active).map(definition => ({
@@ -2831,8 +2832,9 @@ export const Crm: React.FC<CrmProps> = ({
               </div>
             </div>
 
+            <PartnerDebtNotice loaded={finance.loaded} error={finance.error} reload={finance.reload} />
             {filterType === 'overview' ? (
-              <CustomerOverview customers={accessibleCustomers} orders={pos} invoices={invoices} provinceByCustomerId={provinceByCustomerId} onOpenCustomer={openCustomerDetail} />
+              <CustomerOverview debtByCustomerId={new Map(finance.rows.filter(r => r.side === 'ar').map(r => [r.partnerId, r.debt]))} debtReady={finance.loaded} customers={accessibleCustomers} orders={pos} invoices={invoices} provinceByCustomerId={provinceByCustomerId} onOpenCustomer={openCustomerDetail} />
             ) : (
               <>
                 <DataFilterChipBar chips={crmFilterChips} onClear={resetCrmListFilters} />
@@ -3006,6 +3008,7 @@ export const Crm: React.FC<CrmProps> = ({
       {/* SELECTED CUSTOMER DETAIL */}
        {selectedCustomer && (
         <div className={`customer-details-grid customer-detail-workspace customer-detail-workspace--${customerHistoryTab}`}>
+          <div className="partner-debt-summary"><PartnerDebtNotice loaded={finance.loaded} error={finance.error} reload={finance.reload} /><p>Nợ sổ mới: <PartnerDebtValue row={finance.get('ar', selectedCustomer.id)} /></p></div>
           <div className="customer-detail-header">
             <PageBackButton onClick={() => {
               if (customerHistoryTab !== 'overview') {

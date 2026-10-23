@@ -217,6 +217,18 @@ test('threshold revisions preserve quantity and alert settings; no opening quant
   await assert.rejects(b.manage({ action: 'threshold', requestId: 'threshold2', catalogItemId: 'paper', expectedRevision: 1, minQuantity: 10 }), /vừa thay đổi/);
   await b.manage(b.request('purchase_receipt', 10)); assert.equal(b.balance().minQuantity, 50);
 });
+
+test('finished goods thresholds preserve isolated balance, audit, permission and idempotent retry', async () => {
+  const b=backend({'item_catalog/tp':{...item,id:'tp',kind:'finished_good',code:'TP1'},'warehouse_balances/fg_tp':{id:'fg_tp',catalogItemId:'tp',warehouseId:'finished_main',quantity:12,revision:2},'warehouse_balances/tp':{quantity:999,revision:9}});
+  const body={action:'threshold',warehouseId:'finished_main',requestId:'fg-threshold',catalogItemId:'tp',minQuantity:20,expectedRevision:2};
+  await b.manage(body,accountant);await b.manage(body,accountant);
+  assert.equal(b.store.get('warehouse_balances/fg_tp').quantity,12);assert.equal(b.store.get('warehouse_balances/fg_tp').minQuantity,20);assert.equal(b.store.get('warehouse_balances/fg_tp').revision,3);assert.equal(b.store.get('warehouse_balances/tp').quantity,999);
+  assert.equal([...b.store.keys()].filter(k=>k.startsWith('audit_events/')).length,1);
+  await assert.rejects(b.manage({...body,requestId:'stale'},accountant),/vừa thay đổi/);
+  await assert.rejects(b.manage({...body,requestId:'denied'},{...producer,allowedPages:['production']}),e=>e.status===403);
+  await assert.rejects(b.manage({...body,requestId:'wrong',catalogItemId:'paper'},accountant),/đúng kho/);
+  await assert.rejects(b.manage({...body,requestId:'malformed',warehouseId:'other'},accountant),/Kho không hợp lệ/);
+});
 test('signed ledger report includes original and reversal, opening/closing across date boundaries', () => {
   const voucher = (postingDate, delta) => ({ postingDate, lines: [{ catalogItemId: 'paper', code: 'NVL-1', name: 'Giấy', baseUnit: 'm', delta }] });
   const rows = model.warehouseSummary([voucher('2026-09-30', 100), voucher('2026-10-01', -40), voucher('2026-10-02', 10), voucher('2026-10-03', 40), voucher('2026-11-01', 500)], '2026-10-01', '2026-10-31');

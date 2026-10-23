@@ -510,7 +510,7 @@ function AppShell() {
     syncSubscription(
       'inventory',
       pageNeeds('dashboard') && !!user && canReadWarehouse(user) && isFirebaseRuntimeEnabled,
-      () => dbService.subscribeCollection('warehouse_balances', rows => setInventory(rows.filter(row => row.warehouseId !== 'finished_main').map(row => ({ ...row, materialName: row.name, qtyInStock: row.quantity, minQtyAlert: row.minQuantity ?? 0 }))), { onError: () => setInventory([]) })
+      () => dbService.subscribeCollection('warehouse_balances', rows => setInventory(rows.filter(row => row.warehouseId !== 'finished_main').map(row => ({ ...row, materialName: row.name, qtyInStock: row.quantity, minQtyAlert: row.minQuantity ?? null }))), { onError: () => setInventory([]) })
     );
     syncSubscription(
       'design_requests',

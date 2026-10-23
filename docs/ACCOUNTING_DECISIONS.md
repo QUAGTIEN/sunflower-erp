@@ -78,3 +78,16 @@ Chi tiết tại FINISHED_GOODS.md. D08b và D05b-4 là hai câu trả lời tr�
 | D05b-5 | Admin và accountant có Accounting lập/ghi sổ; chỉ Admin đảo/khóa/mở kỳ; Sale/Mua hàng không ghi tiền; không ghi lùi ngày |
 
 Lựa chọn triển khai trong phạm vi: giảm nợ chạm tiền đã phân bổ cần đảo phân bổ trước, sau đó giảm/phân bổ lại/hoàn tiền chưa dùng; không tự giảm tiền theo hàng trả. Số dư và ứng trước đầu kỳ có chứng từ đối chiếu riêng, không tự chuyển dữ liệu thật. Rules bảo vệ liên kết đối tác, nguồn hàng và metadata; API kho/tiền dùng cùng phụ thuộc khi đảo. Màn hình mới dành Admin/Kế toán Accounting; không tự cấp quyền trang cho vai trò khác. Chi tiết ACCOUNTING_LEDGER.md. Chuyển đổi số thật vẫn theo D09 lượt 7.
+
+## Lựa chọn triển khai lượt 6
+
+Người dùng đồng ý code/push phạm vi lượt 6. Các mặc định sau là lựa chọn triển khai đã thông báo, **chưa phải câu trả lời xác nhận chính sách riêng**:
+
+| Mã | Lựa chọn |
+|---|---|
+| D10a-6 | Báo trước 3 ngày, bộ lọc chỉnh 0–365; tuổi nợ quá hạn 1–30/31–60/61–90/trên 90; chưa có lịch tự gửi cảnh báo |
+| D10b-6 | Báo cáo tổng hợp đầy đủ chỉ Admin/Kế toán Accounting; tóm tắt AR khách của Sale theo phân công CRM, AP tại NCC của Purchaser; không mở quyền trang/ghi sổ tiền |
+| D10c-6 | Báo cáo tiền theo ngày ghi sổ, đảo tác động ngày đảo; ứng trước và tiền vào/ra tách phân bổ. Hàng/kho ở báo cáo này là số hiện tại, không bị lọc theo kỳ tiền |
+| D10d-6 | Không cộng hóa đơn cũ chưa chuyển đổi với nợ mới/đầu kỳ; giữ riêng cho lượt 7 đối soát. Không tự ghi lùi theo openingAsOf |
+
+Ngưỡng thành phẩm/hàng mua dùng cùng nhóm ghi kho lượt 3 và quy tắc `< ngưỡng`; null khác 0. Không thay hạn nợ, điều khoản thương mại, dung sai giao, khóa kỳ hoặc quyền đảo đã chốt. D09 ngày cắt/đầu kỳ thật vẫn chưa chốt.

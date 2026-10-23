@@ -1,3 +1,5 @@
+import { usePartnerDebt } from '@/features/accounting/components/usePartnerDebt';
+import { PartnerDebtValue, PartnerDebtNotice } from '@/features/accounting/components/PartnerDebtSummary';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -126,7 +128,7 @@ const SUPPLIER_LIST_COLUMNS: TableColumnOption[] = [
 export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUser, users }) => {
   const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
-  const [invoices, setInvoices] = useState<UnknownRecord[]>([]);
+  const finance = usePartnerDebt(currentUser);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilters, setCategoryFilters] = useState<string[]>([]);
   const [monthFilters, setMonthFilters] = useState<string[]>([]);
@@ -169,10 +171,8 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     const unsubscribeSuppliers = dbService.subscribeCollection('suppliers', data => {
       setSuppliers(normalizeSupplierRecords(data).filter(supplier => !supplier.deleted));
     });
-    const unsubscribeInvoices = dbService.subscribeCollection('invoices', data => setInvoices(data));
     return () => {
       unsubscribeSuppliers();
-      unsubscribeInvoices();
     };
   }, []);
 
@@ -189,9 +189,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     .filter(order => asText(order.supplierId) === supplierId && order.deleted !== true)
     .sort((a, b) => Date.parse(asText(b.createdAt)) - Date.parse(asText(a.createdAt))), [purchaseOrders]);
 
-  const getSupplierDebt = (supplierId: string): number => invoices
-    .filter(invoice => invoice.type === 'payable' && asText(invoice.customerId) === supplierId)
-    .reduce((total, invoice) => total + Math.max(0, asNumber(invoice.amount) - asNumber(invoice.paidAmount)), 0);
+  const getSupplierDebt = (supplierId: string): number | undefined => finance.get('ap', supplierId)?.debt;
 
   const filteredSuppliers = useMemo(() => suppliers.filter(supplier => {
     const orders = getSupplierOrders(supplier.id);
@@ -398,6 +396,8 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     const supplierDebt = getSupplierDebt(selectedSupplier.id);
     return (
       <div className="suppliers-page">
+        <PartnerDebtNotice loaded={finance.loaded} error={finance.error} reload={finance.reload} />
+        <p><PartnerDebtValue row={finance.get('ap', selectedSupplier.id)} /></p>
         <div className="supplier-detail-header">
           <PageBackButton onClick={() => setSelectedSupplierId('')} />
           <div>
@@ -412,7 +412,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
           <div><Building2 size={18} /><strong>{supplierSpend.toLocaleString('vi-VN')} đ</strong><span>{t('Tổng giá trị mua')}</span></div>
           <div><CalendarDays size={18} /><strong>{formatDate(asText(supplierOrders[0]?.createdAt), 'vi-VN', '—')}</strong><span>{t('Lần mua gần nhất')}</span></div>
           <div><Star size={18} /><strong>{selectedSupplier.rating || '—'}/5</strong><span>{t('Đánh giá')}</span></div>
-          <div><FileText size={18} /><strong>{supplierDebt.toLocaleString('vi-VN')} đ</strong><span>{t('Công nợ phải trả')}</span></div>
+          <div><FileText size={18} /><strong>{supplierDebt?.toLocaleString('vi-VN') ?? '—'} đ</strong><span>{t('Công nợ sổ mới')}</span></div>
         </div>
 
         <div className="supplier-detail-grid">
@@ -552,6 +552,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
         onClear={() => { setCategoryFilters([]); setMonthFilters([]); }}
       />
 
+      <PartnerDebtNotice loaded={finance.loaded} error={finance.error} reload={finance.reload} />
       <section className="purchase-panel supplier-list-panel">
         <div className="table-container erp-primary-data-table">
           <table className="supplier-table" data-resize-key="suppliers">
@@ -577,7 +578,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                     {supplierVisibleColumnSet.has('orderCount') && <td key="orderCount"><strong>{orders.length}</strong></td>}
                     {supplierVisibleColumnSet.has('totalSpend') && <td key="totalSpend"><strong>{spend.toLocaleString('vi-VN')} đ</strong></td>}
                     {supplierVisibleColumnSet.has('latestOrder') && <td key="latestOrder">{formatDate(asText(orders[0]?.createdAt), 'vi-VN', '—')}</td>}
-                    {supplierVisibleColumnSet.has('debt') && <td key="debt">{getSupplierDebt(supplier.id).toLocaleString('vi-VN')} đ</td>}
+                    {supplierVisibleColumnSet.has('debt') && <td key="debt"><PartnerDebtValue row={finance.get('ap', supplier.id)} /></td>}
                     {supplierVisibleColumnSet.has('rating') && <td key="rating">{supplier.rating ? `${supplier.rating}/5` : '—'}</td>}
                   </ReorderableTableCells>
                 </tr>;

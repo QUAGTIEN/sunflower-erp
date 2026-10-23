@@ -47,7 +47,8 @@ export function buildCustomerOverview(
   orders: CustomerOverviewOrder[],
   invoices: CustomerOverviewInvoice[],
   now = new Date(),
-  provinceByCustomerId: ReadonlyMap<string, string> = new Map()
+  provinceByCustomerId: ReadonlyMap<string, string> = new Map(),
+  ledgerDebtByCustomerId?: ReadonlyMap<string, number>
 ) {
   const visibleIds = new Set(customers.map(customer => customer.id));
   const ordersByCustomer = new Map<string, CustomerOverviewOrder[]>();
@@ -76,7 +77,7 @@ export function buildCustomerOverview(
       orderValue: customerOrders.reduce((sum, order) => sum + nonnegative(order.netAmount ?? order.totalAmount), 0),
       lastOrderAt,
       daysSinceLastOrder: lastOrderAt ? Math.floor((now.getTime() - lastOrderAt.getTime()) / 86_400_000) : null,
-      debt: debtByCustomer.get(customer.id) || 0
+      debt: (ledgerDebtByCustomerId || debtByCustomer).get(customer.id) || 0
     };
   });
 

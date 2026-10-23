@@ -11,6 +11,7 @@ import { formatDate } from '@/shared/utils/dateFormatting';
 import { ItemCatalogWorkspace } from '@/features/catalog/components/ItemCatalogWorkspace';
 import { canManageItemCatalog } from '@/features/catalog/model/itemCatalog';
 import { canUseLedger } from '../model/accountingLedger';
+import { AccountingReportsWorkspace } from '../components/AccountingReportsWorkspace';
 import { AccountingLedgerWorkspace } from '../components/AccountingLedgerWorkspace';
 import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import './Accounting.css';
@@ -18,7 +19,7 @@ import './Accounting.css';
 interface AccountingProps { pos: any[]; currentUser: UserProfile; onRefresh: () => void; users: UserProfile[] }
 export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefresh }) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'invoices' | 'costing' | 'catalog'>('invoices');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'costing' | 'catalog' | 'reports'>('invoices');
   const changeTab = (tab: typeof activeTab) => { if (confirmAppNavigation()) setActiveTab(tab); };
   const [customCostModalPo, setCustomCostModalPo] = useState<any | null>(null);
   const [tempTransportCost, setTempTransportCost] = useState(0), [tempLaborCost, setTempLaborCost] = useState(0), [tempOtherCost, setTempOtherCost] = useState(0);
@@ -168,13 +169,15 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
   };
 
   return <div className="accounting-view" data-erp-table-text="single-line" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-    <PageContextHeader section="Kế toán" current={activeTab === 'catalog' ? 'Danh mục hàng' : activeTab === 'costing' ? 'Báo cáo lãi gộp đơn hàng' : 'Công nợ & thu chi'} />
+    <PageContextHeader section="Kế toán" current={activeTab === 'reports' ? 'Báo cáo & cảnh báo' : activeTab === 'catalog' ? 'Danh mục hàng' : activeTab === 'costing' ? 'Báo cáo lãi gộp đơn hàng' : 'Công nợ & thu chi'} />
     <nav className="content-tabs" role="tablist" aria-label="Kế toán">
       <button type="button" role="tab" aria-selected={activeTab === 'invoices'} className={activeTab === 'invoices' ? 'active' : ''} onClick={() => changeTab('invoices')}>Công nợ & thu chi</button>
       <button type="button" role="tab" aria-selected={activeTab === 'costing'} className={activeTab === 'costing' ? 'active' : ''} onClick={() => changeTab('costing')}>{t('Báo Cáo Lãi Gộp Đơn Hàng')}</button>
       {canManageItemCatalog(currentUser) && <button type="button" role="tab" aria-selected={activeTab === 'catalog'} className={activeTab === 'catalog' ? 'active' : ''} onClick={() => changeTab('catalog')}>Danh mục hàng</button>}
+      <button type="button" role="tab" aria-selected={activeTab === 'reports'} className={activeTab === 'reports' ? 'active' : ''} onClick={() => changeTab('reports')}>Báo cáo & cảnh báo</button>
     </nav>
     {activeTab === 'invoices' && <AccountingLedgerWorkspace actor={currentUser} onRefresh={onRefresh} />}
+    {activeTab === 'reports' && <AccountingReportsWorkspace actor={currentUser} />}
     {activeTab === 'catalog' && <ItemCatalogWorkspace currentUser={currentUser} />}
       {activeTab === 'costing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

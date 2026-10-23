@@ -7,6 +7,8 @@ interface Props {
   customers: CustomerRecord[];
   orders: CustomerOverviewOrder[];
   invoices: CustomerOverviewInvoice[];
+  debtByCustomerId?: ReadonlyMap<string, number>;
+  debtReady?: boolean;
   provinceByCustomerId: ReadonlyMap<string, string>;
   onOpenCustomer: (customer: CustomerRecord) => void;
 }
@@ -40,10 +42,10 @@ function RankBars({ rows, measure, display, exact, color, onOpenCustomer }: {
   })}</div>;
 }
 
-export function CustomerOverview({ customers, orders, invoices, provinceByCustomerId, onOpenCustomer }: Props) {
+export function CustomerOverview({ customers, orders, invoices, provinceByCustomerId, onOpenCustomer, debtByCustomerId, debtReady = true }: Props) {
   const [showAllInactive, setShowAllInactive] = useState(false);
   const [selectedProvince, setSelectedProvince] = useState<string | null>(null);
-  const data = buildCustomerOverview(customers, orders, invoices, new Date(), provinceByCustomerId);
+  const data = buildCustomerOverview(customers, orders, invoices, new Date(), provinceByCustomerId, debtByCustomerId);
   const provinceColumns: CustomerOverviewProvince[] = data.provinces.length > 7
     ? [...data.provinces.slice(0, 6), { label: 'Tỉnh khác', rows: data.provinces.slice(6).flatMap(province => province.rows) }]
     : data.provinces;
@@ -62,7 +64,7 @@ export function CustomerOverview({ customers, orders, invoices, provinceByCustom
     ['Chưa có PO', data.neverOrderedCount],
     ['Mua trong 90 ngày', data.activeCount],
     ['Lâu chưa đặt đơn', data.inactiveCount],
-    ['Còn công nợ', data.debtCount]
+    ['Còn nợ sổ mới', debtReady ? data.debtCount : '—']
   ] as const;
   const ageLabels = ['91–180 ngày', '181–365 ngày', 'Trên 365 ngày'];
 
@@ -70,7 +72,7 @@ export function CustomerOverview({ customers, orders, invoices, provinceByCustom
     <div className="customer-overview__top-grid">
       <section className="customer-overview__panel customer-overview__panel--top" aria-labelledby="customer-overview-general">
         <header><div><h2 id="customer-overview-general">Tình hình chung</h2><p>Nhìn nhanh số lượng và hoạt động mua hàng</p></div></header>
-        <div className="customer-overview__metrics">{metrics.map(([label, value]) => <div key={label} className={label === 'Lâu chưa đặt đơn' ? 'is-attention' : ''}><strong>{number(value)}</strong><span>{label}</span></div>)}</div>
+        <div className="customer-overview__metrics">{metrics.map(([label, value]) => <div key={label} className={label === 'Lâu chưa đặt đơn' ? 'is-attention' : ''}><strong>{typeof value === 'number' ? number(value) : value}</strong><span>{label}</span></div>)}</div>
         <div className="customer-overview__donut-layout">
           <div className="customer-overview__donut" role="img" aria-label={`${data.activeCount} khách mua trong 90 ngày, ${data.inactiveCount} khách lâu chưa đặt lại, ${data.neverOrderedCount} khách chưa từng có PO`} style={{ background: donutBackground }}><span><strong>{number(data.customerCount)}</strong><small>khách hàng</small></span></div>
           <div className="customer-overview__legend">

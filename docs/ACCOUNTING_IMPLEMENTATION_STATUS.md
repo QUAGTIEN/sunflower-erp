@@ -11,7 +11,7 @@
 | 3 | Kho NVL, nhập mua, cấp/hoàn | Hoàn thành mã nguồn; chưa deploy/đối soát tồn đầu kỳ thật |
 | 4 | Thành phẩm, giao và trả hàng | Hoàn thành mã nguồn; chưa deploy/đối soát dữ liệu thật |
 | 5 | Công nợ và thu chi | Hoàn thành mã nguồn; chưa deploy/chuyển số dư thật |
-| 6 | Báo cáo, hàng còn thực hiện và cảnh báo | Chưa thực hiện |
+| 6 | Báo cáo, hàng còn thực hiện và cảnh báo | Hoàn thành mã nguồn; chưa deploy/nghiệm thu dữ liệu thật |
 | 7 | Chuyển đổi, triển khai và nghiệm thu | Chưa thực hiện |
 
 ## Mốc đầu lượt 1
@@ -193,3 +193,24 @@ Lượt tiếp theo là lượt 6: báo cáo tháng đầu/phát sinh/cuối, c�
 - Lint phần mới, API/server, sổ kho và phần sạch thay đổi đạt 0 lỗi/cảnh báo. Trang Accounting giảm từ 17 xuống 5 lỗi any có sẵn, Sales giữ 36, Dashboard giữ 8; không thêm chẩn đoán khi so HEAD đầu lượt. RecycleBin/Purchase đạt lint.
 - Rà soát diff rules đã khôi phục đoạn không thuộc kế toán bị mất trong lúc biên tập, thêm test giữ mọi collection guard có sẵn. Chưa chạy rules emulator hoặc trình duyệt; test rules tĩnh không phải xác nhận đã triển khai.
 - Không ghi Firebase thật, không nhập đầu kỳ, không deploy web/API/rules. Chỉ commit các file công việc; giữ nguyên mục riêng của người dùng. Kết quả commit/push xem Git và bàn giao cuối chat.
+
+## Kết quả lượt 6 — ngày 23/10/2026
+
+Mốc đầu lượt `b3c96fe`, main/origin đã đối chiếu. Triển khai theo yêu cầu người dùng: báo cáo kỳ, hàng còn thực hiện, cảnh báo và thống nhất số dư. Chi tiết tại ACCOUNTING_REPORTS.md.
+
+- Thêm tab Báo cáo & cảnh báo tại Kế toán: công nợ kỳ/tháng, tuổi nợ, chứng từ/đơn/mã, dòng tiền, hàng còn giao/nhận, cảnh báo kho, dữ liệu cũ riêng. Bộ lọc, CSV toàn bộ kết quả, phân trang và menu dùng chuẩn hiện có; giữ bảng lãi gộp cũ, không thêm biểu đồ.
+- Tính kỳ từ sự kiện ghi sổ và snapshot gốc; phiếu đảo tháng sau không xóa phát sinh tháng trước. Ứng trước không tự giảm nợ, phân bổ không thành thu tiền. Đầu kỳ nhập trong tháng là phát sinh tháng nhập; ngày đối chiếu không tự lùi ghi sổ.
+- Hàng hiện tại tính theo counter và quy đổi đã chốt, phân biệt đang giao/nhận ròng/trả/đóng thiếu, gồm giao thẳng NCC. Không cộng các ĐVT khác nhau. Nguồn cũ/stale/mất dòng cần đối soát; không dựng số 0 thay lượng chưa biết.
+- Cùng số dư sổ mới cho Khách hàng, NCC và tổng hợp Dashboard; nợ cũ chưa đối soát/ứng trước tách riêng. Sale chỉ xem tóm tắt AR khách trong phạm vi CRM, purchaser chỉ AP tại phân hệ NCC hiện có; không mở báo cáo đầy đủ hay quyền ghi tiền.
+- Báo trước mặc định 3 ngày (bộ lọc chỉnh được), tuổi nợ 1–30/31–60/61–90/trên 90 ngày. Đây là mặc định triển khai được nêu trong lúc làm, chưa có câu trả lời xác nhận riêng; không coi là chính sách công ty đã chốt hoặc tự gửi thông báo nền.
+- Bổ sung ngưỡng thành phẩm/hàng mua qua writer kho hiện có; giữ lượng tồn, quyền, audit, revision và retry. Không đổi Firestore rules, không thêm dependency/collection, không nhập đầu kỳ thật.
+
+Lượt tiếp theo: **7 — chốt ngày cắt, đối soát/chuyển dữ liệu thật và triển khai/nghiệm thu có xác nhận**. Chưa có deploy API/web/rules, emulator, trình duyệt hoặc Firebase write trong lượt 6. Kết quả kiểm tra cuối lượt và commit/push xem phần bàn giao cuối chat/Git.
+
+### Kiểm tra cuối lượt 6
+
+- Build TypeScript client/server + Vite đạt, còn cảnh báo chunk lớn hiện có.
+- 26 kiểm thử bổ sung: accounting-reports 24, tích hợp ledger–report 1, threshold thành phẩm 1. Bộ trực tiếp kế toán/kho đạt 82/82; bộ toàn dự án chạy đủ 342 bài, đạt 340/342. Hai lỗi baseline giữ nguyên: lead-workspace-tabs regex và raw-data-overview loader thiếu require; không sửa nguồn/test của chúng.
+- Lint phần mới/server/API và phần đã sạch thay đổi đạt 0 lỗi/cảnh báo. Baseline đối chiếu HEAD: AccountingPage 5, AppShell 10, Dashboard 8, CrmPage 115; cùng loại lỗi/chẩn đoán cũ, khác vị trí dòng trong thông báo sau thêm code. Không thêm lỗi lint ở các trang này.
+- Có một lần chạy build/test/lint đồng thời bị Node hết bộ nhớ; đã chạy lại tuần tự, full test `--test-concurrency=2`, build đạt và đủ test như trên. Không coi tiến trình dừng vì thiếu bộ nhớ là test nghiệp vụ đã chạy xong.
+- Diff kiểm tra không lỗi whitespace. Chưa kiểm thử trình duyệt/emulator, tải lớn, dữ liệu thật hoặc deployment. Không đổi rules trong lượt 6; triển khai thật vẫn cần toàn bộ phiên bản web/API/rules từ các lượt trước.

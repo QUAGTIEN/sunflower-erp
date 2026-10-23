@@ -245,3 +245,11 @@ test('rules retain every pre-existing collection guard while adding financial re
   const matches=[...old.matchAll(/match \/([a-z_]+)\//g)].map(m=>m[1]);for(const name of matches)assert.ok(current.includes('match /'+name+'/'),'Missing existing rules '+name);
   for(const fn of ['isValidRole','isValidUserProfile','canManageItemCatalog'])assert.ok(current.includes('function '+fn+'('));assert.match(current,/financeLinked/);
 });
+
+test('phase 6 event report reconciles with actual phase 5 writer after allocation, adjustment, refund and reversals',async()=>{
+  const b=backend(),r=loader()('src/features/accounting/model/accountingReports.ts');
+  const check=async()=>{const data=await b.loadData(),report=r.buildDebtReport(data.documents,data.funds,data.entries,today.slice(0,7)+'-01',today),current=r.currentPartnerBalances(data.documents,data.funds);for(const p of report.partners){const c=current.find(c=>c.side===p.side&&c.partnerId===p.partnerId);assert.equal(p.closing,c?.debt||0);assert.equal(p.advanceClosing,c?.advance||0);}};
+  const d1=await b.charge(40),d2=await b.charge(60),p=await b.payment(1200);await check();
+  const a=await b.allocate(p,d1,440);await check();const c=await b.adjust(d2,100);await check();const f=await b.post('refund',{fundId:p.id,amount:100});await check();
+  await b.reverse(c.id);await check();await b.reverse(f.id);await check();await b.reverse(a.id);await check();await b.reverse(d1.id);await check();
+});

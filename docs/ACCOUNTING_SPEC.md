@@ -148,3 +148,11 @@ Mã nguồn theo FINISHED_GOODS.md, quyết định D08-4 tại ACCOUNTING_DECIS
 Kế toán xác nhận nguồn hàng để ghi nợ, thu/chi lập riêng rồi phân bổ tới dòng mã/chứng từ. Có ứng trước, đầu kỳ, điều chỉnh/hàng trả, hoàn tiền, đảo và khóa kỳ; bảo toàn chứng từ cũ. Phân quyền/tiền VND/làm tròn/ngày theo quyết định trực tiếp. Một transaction bảo vệ số dư, nguồn, PO, khoản tiền, chứng từ, audit và retry. Số chưa dùng không tự bù trừ và số đã trả cũ không tự biến thành lịch sử tiền.
 
 Báo cáo tháng/cảnh báo và đồng bộ các chỉ tiêu CRM/NCC/Dashboard là lượt 6. Chuyển đầu kỳ thật, dữ liệu lịch sử và deploy/nghiệm thu vẫn lượt 7; chưa thực hiện trong lượt 5.
+
+## Hợp đồng lượt 6 — báo cáo và cảnh báo
+
+Đã có mã nguồn theo ACCOUNTING_REPORTS.md. Công nợ theo kỳ phát lại sự kiện, giữ lịch sử đảo khác tháng, dư đầu/phát sinh/cuối và ứng trước riêng; dòng tiền khác phân bổ. Có tổng hợp tuổi nợ, chi tiết chứng từ/đơn/mã và CSV theo bộ lọc.
+
+Hàng còn giao/nhận và kho là snapshot hiện tại, có ghi rõ thời điểm, dùng ID/quy đổi/counter của lượt 3–4; không áp dụng kỳ tiền hoặc suy số cũ thành sự kiện mới. Nguồn cũ/thay đổi/mất dòng đưa vào đối soát. Ngưỡng tồn dùng chung cho NVL và thành phẩm/hàng mua, giữ quyền ghi kho và revision.
+
+Khách hàng/NCC/Dashboard dùng số dư sổ mới, nợ cũ chưa chuyển đổi và ứng trước riêng. Báo cáo đầy đủ chỉ Admin/Kế toán Accounting; Sale/Mua hàng chỉ có tóm tắt đúng phân hệ/phạm vi hiện có, không có quyền ghi tiền. Cảnh báo trước mặc định 3 ngày có bộ lọc, chưa tự gửi thông báo. Không sửa rules, không chuyển dữ liệu thật/deploy; lượt 7 vẫn chưa thực hiện.

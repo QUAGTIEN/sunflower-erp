@@ -86,3 +86,7 @@ Rules đóng toàn bộ ghi client vào invoices và sổ mới, bảo vệ meta
 Cần triển khai web, API kế toán, hai API kho có guard phụ thuộc và firestore.rules cùng phiên bản. Chưa triển khai web/Firebase, chạy trình duyệt, nạp đầu kỳ hoặc ghi dữ liệu thật trong lượt này. Push Git khác deploy/nghiệm thu.
 
 Lượt 6 tiếp theo: báo cáo đầu/phát sinh/cuối theo tháng, công nợ và hàng còn giao/nhận theo đơn/mã, tuổi nợ/hạn, cảnh báo tồn và thống nhất chỉ tiêu các phân hệ. Lượt 7: chốt cắt dữ liệu, đối soát đầu kỳ thật, chuyển đổi, kiểm thử tích hợp và triển khai/nghiệm thu có xác nhận.
+
+### Cập nhật sau lượt 6
+
+Đã bổ sung báo cáo kỳ và đồng bộ số dư theo ACCOUNTING_REPORTS.md. Đoạn CRM/NCC/Dashboard còn đọc chỉ tiêu invoices ở bàn giao lượt 5 phía trên là trạng thái lịch sử; màn hình hiện dùng tóm tắt documents/funds cho nợ mới, nợ cũ và ứng trước riêng. Bản chiếu invoices vẫn được writer bảo toàn cho tương thích, không cộng lần nữa vào báo cáo mới. Lượt 7 chưa thực hiện; chưa deploy hoặc chuyển số dư thật.

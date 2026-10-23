@@ -16,7 +16,7 @@ const text = (value: unknown, max = 1000) => typeof value === 'string' ? value.t
 const WAREHOUSE_NOTE: Record<WarehouseKind, string> = { purchase_receipt: 'nhận NVL', production_issue: 'cấp NVL', production_return: 'hoàn NVL', reversal: 'đảo phiếu' };
 const sourceRows = (type: 'purchase' | 'production', data: Data): Data[] => Array.isArray(data[type === 'purchase' ? 'items' : 'materials']) ? data[type === 'purchase' ? 'items' : 'materials'] as Data[] : [];
 const sourceLine = (type: 'purchase' | 'production', row: Data, index: number) => type === 'purchase' ? `line-${index}` : String(row.id || '');
-const sourceStamp = (type: 'purchase' | 'production', data: Data) => hash({
+export const sourceStamp = (type: 'purchase' | 'production', data: Data) => hash({
   type, supplierId: data.supplierId || '', poId: data.poId || data.linkedPoId || '', requestId: data.procurementRequestId || '',
   rows: sourceRows(type, data).map((row, index) => ({ id: sourceLine(type, row, index), name: row.materialName || row.productName || row.name || '',
     sourceItemId: row.poItemId || row.itemId || '', code: row.productCode || row.code || '', width: row.width || '', size: row.size || '',
@@ -65,12 +65,15 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
     if (action === 'threshold') {
       const catalogId = id(body.catalogItemId);
       const item = (await tx.get(firestore.collection('item_catalog').doc(catalogId))).data() as CatalogItem | undefined;
-      if (!item?.active || item.kind !== 'raw_material') fail(400, 'Chọn mã NVL đang sử dụng.');
-      const ref = firestore.collection('warehouse_balances').doc(catalogId), previous = (await tx.get(ref)).data() as WarehouseBalance | undefined;
+      const finished = body.warehouseId === 'finished_main';
+      if (body.warehouseId !== undefined && !['raw_main', 'finished_main'].includes(String(body.warehouseId))) fail(400, 'Kho không hợp lệ.');
+      if (!item?.active || (finished ? !['finished_good', 'resale'].includes(item.kind) : item.kind !== 'raw_material')) fail(400, 'Chọn mã hàng đang sử dụng thuộc đúng kho.');
+      const balanceId = finished ? `fg_${catalogId}` : catalogId;
+      const ref = firestore.collection('warehouse_balances').doc(balanceId), previous = (await tx.get(ref)).data() as WarehouseBalance | undefined;
       if (body.expectedRevision !== (previous?.revision || 0)) fail(409, 'Tồn kho vừa thay đổi. Tải lại trước khi lưu.');
       if (typeof body.minQuantity !== 'number' || !Number.isFinite(body.minQuantity) || body.minQuantity < 0 || body.minQuantity > 1e9) fail(400, 'Ngưỡng tồn tối thiểu không hợp lệ.');
       if (roundStock(body.minQuantity as number) !== body.minQuantity) fail(400, 'Ngưỡng tồn tối đa 6 chữ số thập phân.');
-      const next = { id: catalogId, code: item!.code, name: item!.name, unit: item!.baseUnit, quantity: previous?.quantity || 0,
+      const next = { id: balanceId, ...(finished ? { catalogItemId: catalogId, warehouseId: 'finished_main' } : {}), code: item!.code, name: item!.name, unit: item!.baseUnit, quantity: previous?.quantity || 0,
         minQuantity: body.minQuantity, revision: (previous?.revision || 0) + 1, updatedAt: now };
       const result = { success: true };
       tx.set(ref, next); tx.set(requestRef, { digest, actorId: actor.uid, result, createdAt: now });

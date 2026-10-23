@@ -1,3 +1,5 @@
+import { AccountingOverview } from '@/features/accounting/components/AccountingOverview';
+import { stockAlert } from '@/features/accounting/model/operationalReports';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -339,7 +341,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   });
 
   // Warning for low stock materials
-  const lowStockMaterials = activeInventoryList.filter(item => item.qtyInStock < item.minQtyAlert);
+  const lowStockMaterials = activeInventoryList.filter(item => ['Tồn âm','Cần nhập hàng'].includes(stockAlert(item.qtyInStock, item.minQuantity ?? item.minQtyAlert)));
 
   // Category filters mapping for clicking
   const getCategoryPOs = (category: POQueueStatus) => filteredPOs.filter(po => isPOInQueue(po, category));
@@ -920,6 +922,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // STANDARD DASHBOARD VIEW
   return (
     <div className="dashboard-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <AccountingOverview actor={user} onOpen={() => onNavigate('accounting')} />
 
       <PageContextHeader section={t('Tổng quan')}>
         {/* TIME RANGE & DATE FILTERS */}
