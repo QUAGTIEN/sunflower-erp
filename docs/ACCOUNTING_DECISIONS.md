@@ -81,7 +81,7 @@ Lựa chọn triển khai trong phạm vi: giảm nợ chạm tiền đã phân 
 
 ## Lựa chọn triển khai lượt 6
 
-Người dùng đồng ý code/push phạm vi lượt 6. Các mặc định sau là lựa chọn triển khai đã thông báo, **chưa phải câu trả lời xác nhận chính sách riêng**:
+Người dùng đồng ý code/push phạm vi lượt 6. Sau khi push `22de146`, người dùng trả lời “Áp dụng đề xuất” cho cả hai câu hỏi về ngày cảnh báo/tuổi nợ và quyền báo cáo tổng hợp. D10a-6 và D10b-6 đã được xác nhận trực tiếp; mã lượt 6 đã khớp, không cần sửa logic. D10c-6 và D10d-6 tiếp tục là các lựa chọn kỹ thuật trong phạm vi triển khai:
 
 | Mã | Lựa chọn |
 |---|---|
