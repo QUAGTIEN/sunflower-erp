@@ -55,9 +55,7 @@ export const DEFAULT_CUSTOMER_FILTER_DEFINITIONS: CustomerFilterDefinition[] = [
   }
 ];
 
-export const mergeCustomerFilterDefinitions = (
-  stored: CustomerFilterDefinition[] = []
-): CustomerFilterDefinition[] => {
+export const mergeCustomerFilterDefinitions = (stored: CustomerFilterDefinition[] = []): CustomerFilterDefinition[] => {
   const storedById = new Map(stored.map(definition => [definition.id, definition]));
   return DEFAULT_CUSTOMER_FILTER_DEFINITIONS.map(defaultDefinition => ({
     ...defaultDefinition,

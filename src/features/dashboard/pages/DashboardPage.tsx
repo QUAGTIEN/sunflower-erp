@@ -1,7 +1,12 @@
 import { AccountingOverview } from '@/features/accounting/components/AccountingOverview';
 import { stockAlert } from '@/features/accounting/model/operationalReports';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
-import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
+import {
+  requireConfirmedMutation,
+  showErrorToast,
+  showSuccessToast,
+  runMutationAction
+} from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
@@ -10,10 +15,12 @@ import { assertManualFinancialTransition } from '@/features/sales/api/poWorkflow
 import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { DesignRequest } from '@/features/design/model/designWorkflow';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
-import { productionQuantityLabel, PRODUCTION_STATUSES, type ProductionStatus } from '@/features/production/model/productionOrder';
 import {
-  Bell, ChevronDown, ChevronUp, ClipboardList, Clock, Plus, Sliders, Trash2
-} from 'lucide-react';
+  productionQuantityLabel,
+  PRODUCTION_STATUSES,
+  type ProductionStatus
+} from '@/features/production/model/productionOrder';
+import { Bell, ChevronDown, ChevronUp, ClipboardList, Clock, Plus, Sliders, Trash2 } from 'lucide-react';
 import {
   getPOBadgeClass,
   getPOHistoryStatusLabel,
@@ -95,17 +102,18 @@ const calculatePORevenueMetrics = (po: Record<string, unknown>): PORevenueMetric
   const items: Record<string, unknown>[] = Array.isArray(po.items)
     ? po.items.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
     : [];
-  const itemFinancials: ReturnType<typeof calculatePOItemFinancials>[] = items
-    .map((item: Record<string, unknown>) => calculatePOItemFinancials(item));
+  const itemFinancials: ReturnType<typeof calculatePOItemFinancials>[] = items.map((item: Record<string, unknown>) =>
+    calculatePOItemFinancials(item)
+  );
   const itemGross = itemFinancials.reduce((sum, item) => sum + item.grossAmount, 0);
   const itemDiscount = itemFinancials.reduce((sum, item) => sum + item.discountAmount, 0);
   const itemNet = itemFinancials.reduce((sum, item) => sum + item.amountBeforeVat, 0);
   const storedTotal = nonnegativeNumber(po.totalAmount);
   const storedNet = nonnegativeNumber(po.netAmount);
   const storedDiscount = Math.max(nonnegativeNumber(po.discountAmount), itemDiscount);
-  const hasModernItemFinancials = items.some(item => (
-    item.discountType !== undefined || item.discountRate !== undefined || item.discountAmount !== undefined
-  ));
+  const hasModernItemFinancials = items.some(
+    item => item.discountType !== undefined || item.discountRate !== undefined || item.discountAmount !== undefined
+  );
 
   if (storedDiscount > 0 || hasModernItemFinancials) {
     const net = storedTotal || itemNet;
@@ -130,14 +138,16 @@ const calculatePORevenueMetrics = (po: Record<string, unknown>): PORevenueMetric
   return { gross, directDiscount: Math.max(0, gross - net), net };
 };
 
-const getPayableDiscountAmount = (po: Record<string, unknown>) => Math.max(
-  nonnegativeNumber(po.discountPayableAmount),
-  nonnegativeNumber(po.rebateAmount),
-  nonnegativeNumber(po.discountSettlementAmount)
-);
+const getPayableDiscountAmount = (po: Record<string, unknown>) =>
+  Math.max(
+    nonnegativeNumber(po.discountPayableAmount),
+    nonnegativeNumber(po.rebateAmount),
+    nonnegativeNumber(po.discountSettlementAmount)
+  );
 
 const formatCompactMoney = (value: number) => {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tỷ`;
+  if (value >= 1_000_000_000)
+    return `${(value / 1_000_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tỷ`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} tr`;
   return value.toLocaleString('vi-VN');
 };
@@ -154,20 +164,32 @@ const RevenueTrendChart: React.FC<{ data: RevenueTrendPoint[] }> = ({ data }) =>
   const rawMaxValue = Math.max(...data.map(point => point.gross), 0);
   const magnitude = rawMaxValue > 0 ? 10 ** Math.floor(Math.log10(rawMaxValue)) : 1;
   const normalizedMax = rawMaxValue / magnitude;
-  const scaleMax = rawMaxValue === 0
-    ? 1
-    : (normalizedMax <= 1 ? 1 : normalizedMax <= 2 ? 2 : normalizedMax <= 5 ? 5 : 10) * magnitude;
+  const scaleMax =
+    rawMaxValue === 0 ? 1 : (normalizedMax <= 1 ? 1 : normalizedMax <= 2 ? 2 : normalizedMax <= 5 ? 5 : 10) * magnitude;
   const tickRatios = [0, 0.25, 0.5, 0.75, 1];
 
   return (
     <div className="dashboard-revenue-trend">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Giá trị PO trước và sau chiết khấu trong sáu tháng gần nhất">
-        <desc>Phần navy là doanh thu sau chiết khấu. Phần champagne là chiết khấu trực tiếp. Tổng chiều cao cột là giá trị trước chiết khấu.</desc>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Giá trị PO trước và sau chiết khấu trong sáu tháng gần nhất"
+      >
+        <desc>
+          Phần navy là doanh thu sau chiết khấu. Phần champagne là chiết khấu trực tiếp. Tổng chiều cao cột là giá trị
+          trước chiết khấu.
+        </desc>
         {tickRatios.map(ratio => {
           const y = plotBottom - ratio * plotHeight;
           return (
             <g key={ratio}>
-              <line x1={paddingLeft} y1={y} x2={width - paddingRight} y2={y} className="dashboard-revenue-trend__grid" />
+              <line
+                x1={paddingLeft}
+                y1={y}
+                x2={width - paddingRight}
+                y2={y}
+                className="dashboard-revenue-trend__grid"
+              />
               <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="dashboard-revenue-trend__axis-label">
                 {ratio === 0 ? '0' : formatCompactMoney(scaleMax * ratio)}
               </text>
@@ -178,25 +200,56 @@ const RevenueTrendChart: React.FC<{ data: RevenueTrendPoint[] }> = ({ data }) =>
           const grossHeight = (point.gross / scaleMax) * plotHeight;
           const netHeight = (point.net / scaleMax) * plotHeight;
           const discountHeight = Math.max(0, grossHeight - netHeight);
-          const x = paddingLeft + (index * step) + (step / 2) - 16;
+          const x = paddingLeft + index * step + step / 2 - 16;
           return (
             <g key={`${point.label}-${index}`}>
               <title>{`${point.label}: trước chiết khấu ${point.gross.toLocaleString('vi-VN')} đ; sau chiết khấu ${point.net.toLocaleString('vi-VN')} đ; chiết khấu trực tiếp ${point.directDiscount.toLocaleString('vi-VN')} đ`}</title>
-              {point.net > 0 && <rect x={x} y={plotBottom - netHeight} width="32" height={netHeight} rx={discountHeight > 0 ? 0 : 3} className="dashboard-revenue-trend__net" />}
-              {discountHeight > 0 && <rect x={x} y={plotBottom - grossHeight} width="32" height={discountHeight} rx="3" className="dashboard-revenue-trend__discount" />}
+              {point.net > 0 && (
+                <rect
+                  x={x}
+                  y={plotBottom - netHeight}
+                  width="32"
+                  height={netHeight}
+                  rx={discountHeight > 0 ? 0 : 3}
+                  className="dashboard-revenue-trend__net"
+                />
+              )}
+              {discountHeight > 0 && (
+                <rect
+                  x={x}
+                  y={plotBottom - grossHeight}
+                  width="32"
+                  height={discountHeight}
+                  rx="3"
+                  className="dashboard-revenue-trend__discount"
+                />
+              )}
               {point.gross > 0 && (
-                <text x={x + 16} y={Math.max(12, plotBottom - grossHeight - 6)} textAnchor="middle" className="dashboard-revenue-trend__value">
+                <text
+                  x={x + 16}
+                  y={Math.max(12, plotBottom - grossHeight - 6)}
+                  textAnchor="middle"
+                  className="dashboard-revenue-trend__value"
+                >
                   {formatCompactMoney(point.gross)}
                 </text>
               )}
-              <text x={x + 16} y={plotBottom + 19} textAnchor="middle" className="dashboard-revenue-trend__label">{point.label}</text>
+              <text x={x + 16} y={plotBottom + 19} textAnchor="middle" className="dashboard-revenue-trend__label">
+                {point.label}
+              </text>
             </g>
           );
         })}
       </svg>
       <div className="dashboard-revenue-trend__legend" aria-hidden="true">
-        <span><i className="is-net" />Sau chiết khấu</span>
-        <span><i className="is-discount" />Chiết khấu trực tiếp</span>
+        <span>
+          <i className="is-net" />
+          Sau chiết khấu
+        </span>
+        <span>
+          <i className="is-discount" />
+          Chiết khấu trực tiếp
+        </span>
       </div>
     </div>
   );
@@ -221,10 +274,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Filter out deleted documents
   const activePOsList = (pos || []).filter(po => !po.deleted);
-  const activeDesignRequests = (designRequests || []).filter(request => (
-    request.archived !== true
-    && (user.role !== 'designer' || !request.assignedDesignerId || request.assignedDesignerId === user.uid)
-  ));
+  const activeDesignRequests = (designRequests || []).filter(
+    request =>
+      request.archived !== true &&
+      (user.role !== 'designer' || !request.assignedDesignerId || request.assignedDesignerId === user.uid)
+  );
   const activeCustomersList = (customers || []).filter(c => !c.deleted);
   const activeInventoryList = (inventory || []).filter(i => !i.deleted);
   const activePurchaseOrdersList = (purchaseOrders || []).filter(pur => !pur.deleted);
@@ -257,7 +311,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         const data = await dbService.getCollection('reminders');
         setReminders(data);
       } catch (err) {
-        console.error("Error loading reminders:", err);
+        console.error('Error loading reminders:', err);
       }
     };
     fetchReminders();
@@ -266,9 +320,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   useEffect(() => {
     const loadWorkSchedule = async () => {
       try {
-        const items = user.role === 'admin'
-          ? await dbService.getCollection('work_schedule_items')
-          : await dbService.getCollectionByField('work_schedule_items', 'assigneeId', user.uid);
+        const items =
+          user.role === 'admin'
+            ? await dbService.getCollection('work_schedule_items')
+            : await dbService.getCollectionByField('work_schedule_items', 'assigneeId', user.uid);
         setWorkScheduleItems(normalizeWorkScheduleRecords(items).filter(item => !item.deleted));
       } catch (error) {
         console.error('Error loading work schedule overview:', error);
@@ -296,22 +351,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const filteredPOs = activePOsList.filter(po => matchesTimeframe(po.orderDate || po.createdAt));
   const filteredPurchaseOrders = activePurchaseOrdersList.filter(pur => matchesTimeframe(pur.createdAt));
-  const filteredProductionCommands = activeProductionCommandsList.filter(cmd => matchesTimeframe(cmd.startedAt || cmd.createdAt));
+  const filteredProductionCommands = activeProductionCommandsList.filter(cmd =>
+    matchesTimeframe(cmd.startedAt || cmd.createdAt)
+  );
 
   // Calculations helper
   const activePOs = filteredPOs.filter(po => !isPOCompleted(po));
 
   // Revenue is reported before VAT. Cash collection remains a separate accounting measure.
-  const revenueMetrics = filteredPOs.reduce<PORevenueMetrics>((summary, po) => {
-    const metrics = calculatePORevenueMetrics(po);
-    summary.gross += metrics.gross;
-    summary.directDiscount += metrics.directDiscount;
-    summary.net += metrics.net;
-    return summary;
-  }, { gross: 0, directDiscount: 0, net: 0 });
+  const revenueMetrics = filteredPOs.reduce<PORevenueMetrics>(
+    (summary, po) => {
+      const metrics = calculatePORevenueMetrics(po);
+      summary.gross += metrics.gross;
+      summary.directDiscount += metrics.directDiscount;
+      summary.net += metrics.net;
+      return summary;
+    },
+    { gross: 0, directDiscount: 0, net: 0 }
+  );
 
   const newCustomerIds = new Set(
-    activeCustomersList.filter(customer => matchesTimeframe(customer.convertedAt || customer.createdAt)).map(customer => customer.id)
+    activeCustomersList
+      .filter(customer => matchesTimeframe(customer.convertedAt || customer.createdAt))
+      .map(customer => customer.id)
   );
   const newCustomerRevenue = filteredPOs
     .filter(po => newCustomerIds.has(po.customerId))
@@ -326,130 +388,162 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const period = new Date(trendEndYear, trendEndMonth - (5 - offset), 1);
     const periodPOs = activePOsList.filter(po => {
       const date = new Date(po.orderDate || po.createdAt || '');
-      return !Number.isNaN(date.getTime())
-        && date.getFullYear() === period.getFullYear()
-        && date.getMonth() === period.getMonth();
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date.getFullYear() === period.getFullYear() &&
+        date.getMonth() === period.getMonth()
+      );
     });
-    const metrics = periodPOs.reduce<PORevenueMetrics>((summary, po) => {
-      const values = calculatePORevenueMetrics(po);
-      summary.gross += values.gross;
-      summary.directDiscount += values.directDiscount;
-      summary.net += values.net;
-      return summary;
-    }, { gross: 0, directDiscount: 0, net: 0 });
+    const metrics = periodPOs.reduce<PORevenueMetrics>(
+      (summary, po) => {
+        const values = calculatePORevenueMetrics(po);
+        summary.gross += values.gross;
+        summary.directDiscount += values.directDiscount;
+        summary.net += values.net;
+        return summary;
+      },
+      { gross: 0, directDiscount: 0, net: 0 }
+    );
     return { ...metrics, label: `T${period.getMonth() + 1}` };
   });
 
   // Warning for low stock materials
-  const lowStockMaterials = activeInventoryList.filter(item => ['Tồn âm','Cần nhập hàng'].includes(stockAlert(item.qtyInStock, item.minQuantity ?? item.minQtyAlert)));
+  const lowStockMaterials = activeInventoryList.filter(item =>
+    ['Tồn âm', 'Cần nhập hàng'].includes(stockAlert(item.qtyInStock, item.minQuantity ?? item.minQtyAlert))
+  );
 
   // Category filters mapping for clicking
   const getCategoryPOs = (category: POQueueStatus) => filteredPOs.filter(po => isPOInQueue(po, category));
 
-  const categoryLabels = Object.fromEntries(
-    PO_QUEUE_STATES.map(state => [state.value, t(state.label)])
-  ) as Record<POQueueStatus, string>;
+  const categoryLabels = Object.fromEntries(PO_QUEUE_STATES.map(state => [state.value, t(state.label)])) as Record<
+    POQueueStatus,
+    string
+  >;
 
-  const poQueueChartData = PO_QUEUE_STATES
-    .filter(state => state.value !== 'completed')
-    .map(state => ({
-      status: state.value,
-      label: t(state.label),
-      color: state.color,
-      value: filteredPOs.filter(po => isPOInQueue(po, state.value)).length
-    }));
+  const poQueueChartData = PO_QUEUE_STATES.filter(state => state.value !== 'completed').map(state => ({
+    status: state.value,
+    label: t(state.label),
+    color: state.color,
+    value: filteredPOs.filter(po => isPOInQueue(po, state.value)).length
+  }));
 
   // Reminder managers
   const handleAddReminderSubmit = async (poId: string, poCode: string) => {
-    return runMutationAction("DashboardPage.tsx:handleAddReminderSubmit", async () => {
-      if (!newReminderText.trim() || !newReminderDate) return;
-      const newRem = {
-        poId,
-        poCode,
-        message: newReminderText.trim(),
-        date: newReminderDate,
-        completed: false,
-        createdBy: user.displayName,
-        createdAt: new Date().toISOString()
-      };
-      try {
-        const created = await dbService.addDocument('reminders', newRem);
-        setReminders(prev => [...prev, created]);
-        setNewReminderText('');
-        setNewReminderDate('');
-        showSuccessToast("Đã thêm thành công");
-      } catch (err) {
-        showErrorToast();
-        console.error(err);
-      }
-    }, poId);
+    return runMutationAction(
+      'DashboardPage.tsx:handleAddReminderSubmit',
+      async () => {
+        if (!newReminderText.trim() || !newReminderDate) return;
+        const newRem = {
+          poId,
+          poCode,
+          message: newReminderText.trim(),
+          date: newReminderDate,
+          completed: false,
+          createdBy: user.displayName,
+          createdAt: new Date().toISOString()
+        };
+        try {
+          const created = await dbService.addDocument('reminders', newRem);
+          setReminders(prev => [...prev, created]);
+          setNewReminderText('');
+          setNewReminderDate('');
+          showSuccessToast('Đã thêm thành công');
+        } catch (err) {
+          showErrorToast();
+          console.error(err);
+        }
+      },
+      poId
+    );
   };
 
   const handleDeleteReminder = async (remId: string) => {
-    return runMutationAction("DashboardPage.tsx:handleDeleteReminder", async () => {
-      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa nhắc nhở này?')))) {
-        try {
-          await requireConfirmedMutation(dbService.deleteDocument('reminders', remId));
-          setReminders(prev => prev.filter(r => r.id !== remId));
+    return runMutationAction(
+      'DashboardPage.tsx:handleDeleteReminder',
+      async () => {
+        if (await confirmDelete(t('Bạn có chắc chắn muốn xóa nhắc nhở này?'))) {
+          try {
+            await requireConfirmedMutation(dbService.deleteDocument('reminders', remId));
+            setReminders(prev => prev.filter(r => r.id !== remId));
 
-          showSuccessToast("Đã xóa thành công");
-        } catch (err) {
-          showErrorToast('Không thể xóa. Vui lòng thử lại.');
-          console.error(err);
+            showSuccessToast('Đã xóa thành công');
+          } catch (err) {
+            showErrorToast('Không thể xóa. Vui lòng thử lại.');
+            console.error(err);
+          }
         }
-      }
-    }, remId);
+      },
+      remId
+    );
   };
 
   const handleToggleReminder = async (remId: string, completed: boolean) => {
-    return runMutationAction("DashboardPage.tsx:handleToggleReminder", async () => {
-      try {
-        await requireConfirmedMutation(dbService.updateDocument('reminders', remId, { completed }));
-        setReminders(prev => prev.map(r => r.id === remId ? { ...r, completed } : r));
+    return runMutationAction(
+      'DashboardPage.tsx:handleToggleReminder',
+      async () => {
+        try {
+          await requireConfirmedMutation(dbService.updateDocument('reminders', remId, { completed }));
+          setReminders(prev => prev.map(r => (r.id === remId ? { ...r, completed } : r)));
 
-        showSuccessToast("Đã lưu thành công");
-      } catch (err) {
-        showErrorToast();
-        console.error(err);
-      }
-    }, remId);
+          showSuccessToast('Đã lưu thành công');
+        } catch (err) {
+          showErrorToast();
+          console.error(err);
+        }
+      },
+      remId
+    );
   };
 
   const handleUpdateStatus = async (poId: string, status: POQueueStatus) => {
-    return runMutationAction("DashboardPage.tsx:handleUpdateStatus", async () => {
-      try {
-        assertManualFinancialTransition(status);
-        const targetPo = pos.find(p => p.id === poId);
-        if (!targetPo) return;
+    return runMutationAction(
+      'DashboardPage.tsx:handleUpdateStatus',
+      async () => {
+        try {
+          assertManualFinancialTransition(status);
+          const targetPo = pos.find(p => p.id === poId);
+          if (!targetPo) return;
 
-        const updatedLogs = [
-          ...targetPo.historyLogs,
-          {
-            status,
-            updatedBy: user.displayName,
-            updatedAt: new Date().toISOString(),
-            note: `Thay đổi hàng đợi từ Bảng Điều Khiển sang: ${getPOQueueLabel(status)}`
-          }
-        ];
+          const updatedLogs = [
+            ...targetPo.historyLogs,
+            {
+              status,
+              updatedBy: user.displayName,
+              updatedAt: new Date().toISOString(),
+              note: `Thay đổi hàng đợi từ Bảng Điều Khiển sang: ${getPOQueueLabel(status)}`
+            }
+          ];
 
-        await requireConfirmedMutation(dbService.updateDocument('pos', poId, {
-          ...getPOQueueUpdate(status, status === 'waiting_delivery'
-            ? { deliveryStage: targetPo.deliveryStage || 'customer_outbound' }
-            : {}),
-          updatedBy: `${user.displayName} (${user.role.toUpperCase()})`,
-          updatedAt: new Date().toISOString(),
-          historyLogs: updatedLogs
-        }));
-        showSuccessToast("Đã lưu thành công");
-      } catch (err) {
-        showErrorToast();
-        console.error(err);
-      }
-    }, poId);
+          await requireConfirmedMutation(
+            dbService.updateDocument('pos', poId, {
+              ...getPOQueueUpdate(
+                status,
+                status === 'waiting_delivery' ? { deliveryStage: targetPo.deliveryStage || 'customer_outbound' } : {}
+              ),
+              updatedBy: `${user.displayName} (${user.role.toUpperCase()})`,
+              updatedAt: new Date().toISOString(),
+              historyLogs: updatedLogs
+            })
+          );
+          showSuccessToast('Đã lưu thành công');
+        } catch (err) {
+          showErrorToast();
+          console.error(err);
+        }
+      },
+      poId
+    );
   };
 
   const workGroupSummaries = useMemo(() => {
-    const activeStatuses = new Set(['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused']);
+    const activeStatuses = new Set([
+      'not_started',
+      'in_progress',
+      'waiting_customer',
+      'support_requested',
+      'awaiting_confirmation',
+      'paused'
+    ]);
     const priorityRank = { urgent: 0, high: 1, normal: 2 } as const;
     return workScheduleGroups.map(group => {
       const tasks = workScheduleItems
@@ -461,7 +555,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           if (!Number.isFinite(rightDate)) return -1;
           return leftDate - rightDate;
         });
-      const priority = [...tasks].sort((left, right) => priorityRank[left.priority] - priorityRank[right.priority])[0]?.priority || 'normal';
+      const priority =
+        [...tasks].sort((left, right) => priorityRank[left.priority] - priorityRank[right.priority])[0]?.priority ||
+        'normal';
       return { group, tasks, priority, nearestDue: tasks[0]?.endAt || '' };
     });
   }, [workScheduleGroups, workScheduleItems]);
@@ -478,12 +574,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const rightTime = new Date(right.endAt).getTime();
       const normalizedLeftTime = Number.isFinite(leftTime) ? leftTime : Number.MAX_SAFE_INTEGER;
       const normalizedRightTime = Number.isFinite(rightTime) ? rightTime : Number.MAX_SAFE_INTEGER;
-      return normalizedLeftTime - normalizedRightTime
-        || priorityOrder[left.priority] - priorityOrder[right.priority];
+      return normalizedLeftTime - normalizedRightTime || priorityOrder[left.priority] - priorityOrder[right.priority];
     });
   const saleNow = new Date();
   const saleTodayStart = new Date(saleNow.getFullYear(), saleNow.getMonth(), saleNow.getDate()).getTime();
-  const saleTodayEnd = saleTodayStart + (24 * 60 * 60 * 1000) - 1;
+  const saleTodayEnd = saleTodayStart + 24 * 60 * 60 * 1000 - 1;
   const saleTodayTaskCount = saleActiveTasks.filter(item => {
     const dueAt = new Date(item.endAt).getTime();
     return Number.isFinite(dueAt) && dueAt >= saleTodayStart && dueAt <= saleTodayEnd;
@@ -499,13 +594,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }));
   const saleFunnelTotal = saleFunnelRows.reduce((total, row) => total + row.count, 0);
   let saleFunnelCursor = 0;
-  const saleFunnelBackground = saleFunnelTotal > 0
-    ? `conic-gradient(${saleFunnelRows.map(row => {
-      const start = saleFunnelCursor;
-      saleFunnelCursor += (row.count / saleFunnelTotal) * 100;
-      return `${row.color} ${start}% ${saleFunnelCursor}%`;
-    }).join(', ')})`
-    : '#e5eaf2';
+  const saleFunnelBackground =
+    saleFunnelTotal > 0
+      ? `conic-gradient(${saleFunnelRows
+          .map(row => {
+            const start = saleFunnelCursor;
+            saleFunnelCursor += (row.count / saleFunnelTotal) * 100;
+            return `${row.color} ${start}% ${saleFunnelCursor}%`;
+          })
+          .join(', ')})`
+      : '#e5eaf2';
   const salePriorityLeadCount = saleLeads.filter(lead => {
     if (['won', 'lost', 'converted'].includes(lead.stage) || !lead.nextFollowUpAt) return false;
     const nextFollowUpAt = new Date(lead.nextFollowUpAt).getTime();
@@ -513,10 +611,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }).length;
   const recentSalePOs = salePOs
     .filter(po => salePoFilter === 'all' || isPOInQueue(po, salePoFilter))
-    .sort((left, right) => (
-      new Date(right.updatedAt || right.orderDate || right.createdAt || '').getTime()
-      - new Date(left.updatedAt || left.orderDate || left.createdAt || '').getTime()
-    ))
+    .sort(
+      (left, right) =>
+        new Date(right.updatedAt || right.orderDate || right.createdAt || '').getTime() -
+        new Date(left.updatedAt || left.orderDate || left.createdAt || '').getTime()
+    )
     .slice(0, 5);
 
   const getSaleTaskState = (endAt: string, priority: WorkScheduleRecord['priority']) => {
@@ -533,7 +632,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const categoryPOs = getCategoryPOs(selectedProgressCategory);
 
     return (
-      <div className="dashboard-view dashboard-po-drilldown" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div
+        className="dashboard-view dashboard-po-drilldown"
+        style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+      >
         <div className="app-detail-heading-row">
           <PageBackButton
             onClick={() => {
@@ -544,7 +646,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div>
             <h1 className="page-title">{t('Chi tiết tiến độ đơn hàng')}</h1>
             <p className="page-subtitle">
-              {t('Phân nhóm:')} <strong>{categoryLabels[selectedProgressCategory]}</strong> ({categoryPOs.length} {t('đơn hàng')})
+              {t('Phân nhóm:')} <strong>{categoryLabels[selectedProgressCategory]}</strong> ({categoryPOs.length}{' '}
+              {t('đơn hàng')})
             </p>
           </div>
         </div>
@@ -574,7 +677,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <React.Fragment key={po.id}>
                       <tr
                         onClick={() => setExpandedPoId(isExpanded ? null : po.id)}
-                        style={{ cursor: 'pointer', backgroundColor: isExpanded ? 'var(--color-bg-light)' : 'transparent' }}
+                        style={{
+                          cursor: 'pointer',
+                          backgroundColor: isExpanded ? 'var(--color-bg-light)' : 'transparent'
+                        }}
                       >
                         <td style={{ textAlign: 'center' }}>
                           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -583,18 +689,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <td>{po.customerName}</td>
                         <td>{formatDate(po.orderDate, 'vi-VN', '')}</td>
                         <td>{formatDate(po.expectedDeliveryDate, 'vi-VN', '')}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{(po.netAmount || po.totalAmount || 0).toLocaleString()} đ</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                          {(po.netAmount || po.totalAmount || 0).toLocaleString()} đ
+                        </td>
                         <td>
-                          <span className={`badge ${getPOBadgeClass(po)}`}>
-                            {t(getPOQueueLabel(po))}
-                          </span>
+                          <span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span>
                         </td>
                         <td>{po.createdBy || t('Không rõ')}</td>
                         <td>
                           <button
                             type="button"
                             className="btn btn-sm btn-outline"
-                            onClick={(event) => {
+                            onClick={event => {
                               event.stopPropagation();
                               onOpenPO(po.id);
                             }}
@@ -606,11 +712,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                       {isExpanded && (
                         <tr>
-                          <td colSpan={9} style={{ padding: '20px', backgroundColor: '#f8fafc', borderBottom: '2px solid var(--color-border)' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }} className="po-details-expand-grid">
+                          <td
+                            colSpan={9}
+                            style={{
+                              padding: '20px',
+                              backgroundColor: '#f8fafc',
+                              borderBottom: '2px solid var(--color-border)'
+                            }}
+                          >
+                            <div
+                              style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px' }}
+                              className="po-details-expand-grid"
+                            >
                               {/* Left: Items list & Calculations */}
                               <div>
-                                <h4 style={{ color: 'var(--color-primary-dark)', fontSize: '14px', fontWeight: 700, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <h4
+                                  style={{
+                                    color: 'var(--color-primary-dark)',
+                                    fontSize: '14px',
+                                    fontWeight: 700,
+                                    marginBottom: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}
+                                >
                                   <Sliders size={16} />
                                   <span>{t('Danh Sách Sản Phẩm & Quy Cách')}</span>
                                 </h4>
@@ -638,17 +764,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                       {(po.items || []).map((item: any, idx: number) => {
                                         const financials = calculatePOItemFinancials(item);
 
-                                        const images = item.previewImages || (item.previewImage ? [item.previewImage] : []);
+                                        const images =
+                                          item.previewImages || (item.previewImage ? [item.previewImage] : []);
 
                                         return (
                                           <tr key={idx}>
                                             <td>{idx + 1}</td>
                                             <td style={{ fontWeight: 'bold' }}>{item.productCode}</td>
                                             <td>{item.productName}</td>
-                                            <td>{item.size || '—'} · {item.material || '—'}</td>
+                                            <td>
+                                              {item.size || '—'} · {item.material || '—'}
+                                            </td>
                                             <td>{item.unit || 'cái'}</td>
-                                            <td style={{ textAlign: 'right' }}>{financials.quantity.toLocaleString()}</td>
-                                            <td style={{ textAlign: 'right' }}>{financials.unitPrice.toLocaleString()} đ</td>
+                                            <td style={{ textAlign: 'right' }}>
+                                              {financials.quantity.toLocaleString()}
+                                            </td>
+                                            <td style={{ textAlign: 'right' }}>
+                                              {financials.unitPrice.toLocaleString()} đ
+                                            </td>
                                             <td>{item.supplierName || 'Chưa chọn'}</td>
                                             <td style={{ textAlign: 'right' }}>{financials.vatRate}%</td>
                                             <td style={{ textAlign: 'right' }}>
@@ -656,7 +789,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                                 ? `${Math.round(financials.discountAmount).toLocaleString()} đ`
                                                 : `${financials.discountRate}%`}
                                             </td>
-                                            <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--color-primary-dark)' }}>{Math.round(financials.amountWithVat).toLocaleString()} đ</td>
+                                            <td
+                                              style={{
+                                                textAlign: 'right',
+                                                fontWeight: 600,
+                                                color: 'var(--color-primary-dark)'
+                                              }}
+                                            >
+                                              {Math.round(financials.amountWithVat).toLocaleString()} đ
+                                            </td>
                                             <td style={{ textAlign: 'right' }}>{financials.kpiPo.toFixed(1)}%</td>
                                             <td>
                                               <div style={{ display: 'flex', gap: '4px' }}>
@@ -665,14 +806,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                                     key={iIdx}
                                                     src={img}
                                                     alt="layout"
-                                                    style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--color-border)' }}
-                                                    onClick={(e) => {
+                                                    style={{
+                                                      width: '28px',
+                                                      height: '28px',
+                                                      objectFit: 'cover',
+                                                      borderRadius: '4px',
+                                                      cursor: 'pointer',
+                                                      border: '1px solid var(--color-border)'
+                                                    }}
+                                                    onClick={e => {
                                                       e.stopPropagation();
                                                       setPreviewImage(img);
                                                     }}
                                                   />
                                                 ))}
-                                                {images.length === 0 && <span className="po-empty-value">{t('Chưa có')}</span>}
+                                                {images.length === 0 && (
+                                                  <span className="po-empty-value">{t('Chưa có')}</span>
+                                                )}
                                               </div>
                                             </td>
                                           </tr>
@@ -684,15 +834,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                                 {/* Quick transition status */}
                                 {(user.role === 'admin' || user.role === 'sale' || user.role === 'producer') && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'white', padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
-                                    <span style={{ fontSize: '13px', fontWeight: 600 }}>{t('Cập nhật nhanh trạng thái PO:')}</span>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '10px',
+                                      backgroundColor: 'white',
+                                      padding: '10px 14px',
+                                      borderRadius: '6px',
+                                      border: '1px solid var(--color-border-light)'
+                                    }}
+                                  >
+                                    <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                                      {t('Cập nhật nhanh trạng thái PO:')}
+                                    </span>
                                     <select
                                       value={getPOQueueStatus(po)}
-                                      onChange={(e) => handleUpdateStatus(po.id, e.target.value as POQueueStatus)}
-                                      style={{ padding: '4px 8px', fontSize: '13px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                                      onChange={e => handleUpdateStatus(po.id, e.target.value as POQueueStatus)}
+                                      style={{
+                                        padding: '4px 8px',
+                                        fontSize: '13px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--color-border)'
+                                      }}
                                     >
                                       {PO_QUEUE_STATES.map(state => (
-                                        <option key={state.value} value={state.value}>{state.label}</option>
+                                        <option key={state.value} value={state.value}>
+                                          {state.label}
+                                        </option>
                                       ))}
                                     </select>
                                   </div>
@@ -702,25 +871,65 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               {/* Right: Vertical Timeline & Reminders */}
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {/* REMINDERS MANAGER */}
-                                <div style={{ backgroundColor: 'white', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px' }}>
-                                  <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-primary-dark)', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div
+                                  style={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '8px',
+                                    padding: '14px'
+                                  }}
+                                >
+                                  <h4
+                                    style={{
+                                      fontSize: '13px',
+                                      fontWeight: 700,
+                                      color: 'var(--color-primary-dark)',
+                                      margin: '0 0 8px 0',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px'
+                                    }}
+                                  >
                                     <Bell size={14} />
-                                    <span>{t('Lời Nhắc Nhở Đơn Hàng')} ({poReminders.length})</span>
+                                    <span>
+                                      {t('Lời Nhắc Nhở Đơn Hàng')} ({poReminders.length})
+                                    </span>
                                   </h4>
 
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '140px', overflowY: 'auto', marginBottom: '10px' }}>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '8px',
+                                      maxHeight: '140px',
+                                      overflowY: 'auto',
+                                      marginBottom: '10px'
+                                    }}
+                                  >
                                     {poReminders.map(rem => (
-                                      <div key={rem.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px', borderBottom: '1px solid #f1f5f9', fontSize: '12.5px' }}>
+                                      <div
+                                        key={rem.id}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '8px',
+                                          padding: '6px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          fontSize: '12.5px'
+                                        }}
+                                      >
                                         <input
                                           type="checkbox"
                                           checked={rem.completed}
-                                          onChange={(e) => handleToggleReminder(rem.id, e.target.checked)}
+                                          onChange={e => handleToggleReminder(rem.id, e.target.checked)}
                                         />
-                                        <span style={{
-                                          flex: 1,
-                                          textDecoration: rem.completed ? 'line-through' : 'none',
-                                          color: rem.completed ? 'var(--color-text-muted)' : 'var(--color-text-main)'
-                                        }}>
+                                        <span
+                                          style={{
+                                            flex: 1,
+                                            textDecoration: rem.completed ? 'line-through' : 'none',
+                                            color: rem.completed ? 'var(--color-text-muted)' : 'var(--color-text-main)'
+                                          }}
+                                        >
                                           {rem.message}
                                         </span>
                                         <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
@@ -729,14 +938,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                         <button
                                           type="button"
                                           onClick={() => handleDeleteReminder(rem.id)}
-                                          style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                                          style={{
+                                            border: 'none',
+                                            background: 'transparent',
+                                            color: '#ef4444',
+                                            cursor: 'pointer'
+                                          }}
                                         >
                                           <Trash2 size={12} />
                                         </button>
                                       </div>
                                     ))}
                                     {poReminders.length === 0 && (
-                                      <span style={{ fontStyle: 'italic', fontSize: '12px', color: 'var(--color-text-muted)', padding: '6px 0' }}>
+                                      <span
+                                        style={{
+                                          fontStyle: 'italic',
+                                          fontSize: '12px',
+                                          color: 'var(--color-text-muted)',
+                                          padding: '6px 0'
+                                        }}
+                                      >
                                         {t('Chưa có lời nhắc nhở nào cho đơn này.')}
                                       </span>
                                     )}
@@ -747,14 +968,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                       type="text"
                                       placeholder={t('Nội dung nhắc...')}
                                       value={newReminderText}
-                                      onChange={(e) => setNewReminderText(e.target.value)}
-                                      style={{ flex: 1, padding: '4px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                                      onChange={e => setNewReminderText(e.target.value)}
+                                      style={{
+                                        flex: 1,
+                                        padding: '4px 8px',
+                                        fontSize: '12px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--color-border)'
+                                      }}
                                     />
                                     <input
                                       type="date"
                                       value={newReminderDate}
-                                      onChange={(e) => setNewReminderDate(e.target.value)}
-                                      style={{ padding: '4px 6px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--color-border)', width: '120px' }}
+                                      onChange={e => setNewReminderDate(e.target.value)}
+                                      style={{
+                                        padding: '4px 6px',
+                                        fontSize: '12px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--color-border)',
+                                        width: '120px'
+                                      }}
                                     />
                                     <button
                                       type="button"
@@ -768,8 +1001,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 </div>
 
                                 {/* Compact queue timeline; legacy log labels remain readable. */}
-                                <div style={{ backgroundColor: 'white', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '14px' }}>
-                                  <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-primary-dark)', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div
+                                  style={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '8px',
+                                    padding: '14px'
+                                  }}
+                                >
+                                  <h4
+                                    style={{
+                                      fontSize: '13px',
+                                      fontWeight: 700,
+                                      color: 'var(--color-primary-dark)',
+                                      margin: '0 0 12px 0',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '6px'
+                                    }}
+                                  >
                                     <Clock size={14} />
                                     <span>{t('Nhật Ký & Timeline Tiến Độ')}</span>
                                   </h4>
@@ -777,15 +1027,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   <div className="timeline" style={{ maxHeight: '180px', overflowY: 'auto' }}>
                                     {(po.historyLogs || []).map((log: any, lIdx: number) => (
                                       <div key={lIdx} className="timeline-item" style={{ paddingBottom: '10px' }}>
-                                        <div className="timeline-marker" style={{ width: '8px', height: '8px', top: '4px' }}></div>
+                                        <div
+                                          className="timeline-marker"
+                                          style={{ width: '8px', height: '8px', top: '4px' }}
+                                        ></div>
                                         <div className="timeline-content" style={{ marginLeft: '16px' }}>
-                                          <span className="timeline-title" style={{ fontSize: '12px', fontWeight: 700 }}>
+                                          <span
+                                            className="timeline-title"
+                                            style={{ fontSize: '12px', fontWeight: 700 }}
+                                          >
                                             {t(getPOHistoryStatusLabel(log.status))}
                                           </span>
-                                          <span className="timeline-date" style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', display: 'block' }}>
+                                          <span
+                                            className="timeline-date"
+                                            style={{
+                                              fontSize: '10.5px',
+                                              color: 'var(--color-text-muted)',
+                                              display: 'block'
+                                            }}
+                                          >
                                             {formatDateTime(log.updatedAt)} - {t('Nhân sự:')} {log.updatedBy}
                                           </span>
-                                          {log.note && <span style={{ fontSize: '11.5px', display: 'block', color: 'var(--color-text-main)' }}>{log.note}</span>}
+                                          {log.note && (
+                                            <span
+                                              style={{
+                                                fontSize: '11.5px',
+                                                display: 'block',
+                                                color: 'var(--color-text-main)'
+                                              }}
+                                            >
+                                              {log.note}
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
                                     ))}
@@ -799,7 +1072,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     </React.Fragment>
                   );
                 })}
-
               </tbody>
             </table>
           </div>
@@ -814,7 +1086,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             <div
               className="modal-content"
-              style={{ maxWidth: '90%', maxHeight: '90%', padding: '10px', position: 'relative', background: 'transparent', boxShadow: 'none' }}
+              style={{
+                maxWidth: '90%',
+                maxHeight: '90%',
+                padding: '10px',
+                position: 'relative',
+                background: 'transparent',
+                boxShadow: 'none'
+              }}
               onClick={e => e.stopPropagation()}
             >
               <button
@@ -842,7 +1121,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <img
                 src={previewImage}
                 alt="Layout Zoom"
-                style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '4px', border: '2px solid white' }}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '80vh',
+                  objectFit: 'contain',
+                  borderRadius: '4px',
+                  border: '2px solid white'
+                }}
               />
             </div>
           </div>
@@ -858,10 +1143,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <small>{t('Giá trị chưa bao gồm VAT')}</small>
       </header>
       <div className="dashboard-revenue-metrics">
-        <article><span>{t('Doanh thu tổng')}</span><strong>{revenueMetrics.gross.toLocaleString('vi-VN')} đ</strong></article>
-        <article><span>{t('Sau chiết khấu')}</span><strong>{revenueMetrics.net.toLocaleString('vi-VN')} đ</strong></article>
-        <article><span>{t('Khách hàng mới')}</span><strong>{newCustomerRevenue.toLocaleString('vi-VN')} đ</strong></article>
-        <article><span>{t('Chiết khấu phải trả')}</span><strong>{payableDiscount.toLocaleString('vi-VN')} đ</strong></article>
+        <article>
+          <span>{t('Doanh thu tổng')}</span>
+          <strong>{revenueMetrics.gross.toLocaleString('vi-VN')} đ</strong>
+        </article>
+        <article>
+          <span>{t('Sau chiết khấu')}</span>
+          <strong>{revenueMetrics.net.toLocaleString('vi-VN')} đ</strong>
+        </article>
+        <article>
+          <span>{t('Khách hàng mới')}</span>
+          <strong>{newCustomerRevenue.toLocaleString('vi-VN')} đ</strong>
+        </article>
+        <article>
+          <span>{t('Chiết khấu phải trả')}</span>
+          <strong>{payableDiscount.toLocaleString('vi-VN')} đ</strong>
+        </article>
       </div>
       <div className="dashboard-revenue-chart-heading">
         <span>{t('Giá trị PO 6 tháng gần nhất')}</span>
@@ -879,7 +1176,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="dashboard-po-queue-content">
         <div className="dashboard-po-queue-chart">
           <DonutChart data={poQueueChartData} />
-          <span className="dashboard-po-queue-total"><strong>{activePOs.length}</strong><small>{t('đang xử lý')}</small></span>
+          <span className="dashboard-po-queue-total">
+            <strong>{activePOs.length}</strong>
+            <small>{t('đang xử lý')}</small>
+          </span>
         </div>
         <div className="dashboard-po-queue-actions">
           {poQueueChartData.map(state => (
@@ -907,12 +1207,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="dashboard-task-list">
         {workGroupSummaries.map((summary, index) => (
           <article key={summary.group.id} className={`is-tone-${(index % 4) + 1}`}>
-            <span className="dashboard-task-list__icon"><ClipboardList size={17} aria-hidden="true" /></span>
+            <span className="dashboard-task-list__icon">
+              <ClipboardList size={17} aria-hidden="true" />
+            </span>
             <strong title={summary.group.name}>{summary.group.name}</strong>
-            <span className="dashboard-task-list__count">{summary.tasks.length} {t('việc')}</span>
-            <span className={`dashboard-task-list__priority is-${summary.priority}`}>{t(WORK_SCHEDULE_PRIORITY_LABELS[summary.priority])}</span>
+            <span className="dashboard-task-list__count">
+              {summary.tasks.length} {t('việc')}
+            </span>
+            <span className={`dashboard-task-list__priority is-${summary.priority}`}>
+              {t(WORK_SCHEDULE_PRIORITY_LABELS[summary.priority])}
+            </span>
             <time>{summary.nearestDue ? `${t('Hạn')}: ${formatDate(summary.nearestDue)}` : t('Chưa có việc')}</time>
-            <button type="button" className="btn btn-sm btn-outline" onClick={() => onNavigateWorkGroup(summary.group.id)}>{t('Xem')}</button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              onClick={() => onNavigateWorkGroup(summary.group.id)}
+            >
+              {t('Xem')}
+            </button>
           </article>
         ))}
       </div>
@@ -928,75 +1240,119 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* TIME RANGE & DATE FILTERS */}
         <div className="dashboard-overview-toolbar">
           {user.role === 'admin' && <h2>{t('Tổng quan khách hàng')}</h2>}
-          {user.role === 'sale' && <div className="sale-dashboard__heading">
-            <h2>{t('Tổng quan công việc')}</h2>
-            <p>{t('Xin chào')}, {user.displayName}</p>
-          </div>}
-          <div className="dashboard-overview-toolbar__actions">
-          <div className="dashboard-date-filters">
-          {/* Toggle filter mode */}
-          <div style={{ display: 'flex', border: '1px solid var(--color-border)', borderRadius: '6px', overflow: 'hidden', marginRight: '6px' }}>
-            <button
-              className={`btn btn-sm ${filterMode === 'month' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ padding: '4px 10px', fontSize: '12px', borderRadius: 0, border: 'none' }}
-              onClick={() => setFilterMode('month')}
-            >
-              {t('Theo Tháng')}
-            </button>
-            <button
-              className={`btn btn-sm ${filterMode === 'range' ? 'btn-primary' : 'btn-outline'}`}
-              style={{ padding: '4px 10px', fontSize: '12px', borderRadius: 0, border: 'none' }}
-              onClick={() => setFilterMode('range')}
-            >
-              {t('Khoảng Ngày')}
-            </button>
-          </div>
-
-          {filterMode === 'month' ? (
-            <>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <select
-                  value={selectedMonth}
-                  onChange={e => setSelectedMonth(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '12.5px', backgroundColor: '#fff' }}
-                >
-                  <option value="all">{t('Tất cả tháng')}</option>
-                  {Array.from({ length: 12 }, (_, i) => (
-                    <option key={i + 1} value={(i + 1).toString()}>{t('Tháng')} {i + 1}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <select
-                  value={selectedYear}
-                  onChange={e => setSelectedYear(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '12.5px', backgroundColor: '#fff' }}
-                >
-                  <option value="2026">2026</option>
-                  <option value="2025">2025</option>
-                  <option value="2024">2024</option>
-                </select>
-              </div>
-            </>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                style={{ padding: '5px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '12.5px' }}
-              />
-              <span style={{ fontSize: '12px', fontWeight: 600 }}>{t('đến')}</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                style={{ padding: '5px 8px', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '12.5px' }}
-              />
+          {user.role === 'sale' && (
+            <div className="sale-dashboard__heading">
+              <h2>{t('Tổng quan công việc')}</h2>
+              <p>
+                {t('Xin chào')}, {user.displayName}
+              </p>
             </div>
           )}
-          </div>
-          {user.role === 'sale' && <button type="button" className="btn btn-primary sale-dashboard__create-button" onClick={() => onNavigate('sales')}>{t('Tạo đơn hàng mới')}</button>}
+          <div className="dashboard-overview-toolbar__actions">
+            <div className="dashboard-date-filters">
+              {/* Toggle filter mode */}
+              <div
+                style={{
+                  display: 'flex',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '6px',
+                  overflow: 'hidden',
+                  marginRight: '6px'
+                }}
+              >
+                <button
+                  className={`btn btn-sm ${filterMode === 'month' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{ padding: '4px 10px', fontSize: '12px', borderRadius: 0, border: 'none' }}
+                  onClick={() => setFilterMode('month')}
+                >
+                  {t('Theo Tháng')}
+                </button>
+                <button
+                  className={`btn btn-sm ${filterMode === 'range' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{ padding: '4px 10px', fontSize: '12px', borderRadius: 0, border: 'none' }}
+                  onClick={() => setFilterMode('range')}
+                >
+                  {t('Khoảng Ngày')}
+                </button>
+              </div>
+
+              {filterMode === 'month' ? (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <select
+                      value={selectedMonth}
+                      onChange={e => setSelectedMonth(e.target.value)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--color-border)',
+                        fontSize: '12.5px',
+                        backgroundColor: '#fff'
+                      }}
+                    >
+                      <option value="all">{t('Tất cả tháng')}</option>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i + 1} value={(i + 1).toString()}>
+                          {t('Tháng')} {i + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <select
+                      value={selectedYear}
+                      onChange={e => setSelectedYear(e.target.value)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--color-border)',
+                        fontSize: '12.5px',
+                        backgroundColor: '#fff'
+                      }}
+                    >
+                      <option value="2026">2026</option>
+                      <option value="2025">2025</option>
+                      <option value="2024">2024</option>
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    style={{
+                      padding: '5px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-border)',
+                      fontSize: '12.5px'
+                    }}
+                  />
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>{t('đến')}</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    style={{
+                      padding: '5px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-border)',
+                      fontSize: '12.5px'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            {user.role === 'sale' && (
+              <button
+                type="button"
+                className="btn btn-primary sale-dashboard__create-button"
+                onClick={() => onNavigate('sales')}
+              >
+                {t('Tạo đơn hàng mới')}
+              </button>
+            )}
           </div>
         </div>
       </PageContextHeader>
@@ -1014,7 +1370,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             queueContent={adminQueueContent}
             tasksContent={adminTasksContent}
           />
-
         </>
       )}
 
@@ -1045,15 +1400,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <article className="sale-dashboard__metric is-warning">
               <span>{t('Đơn hàng trong kỳ')}</span>
               <strong>{salePOs.length}</strong>
-              <small>{salePOs.reduce((total, po) => total + Number(po.netAmount || po.totalAmount || 0), 0).toLocaleString('vi-VN')} đ</small>
+              <small>
+                {salePOs
+                  .reduce((total, po) => total + Number(po.netAmount || po.totalAmount || 0), 0)
+                  .toLocaleString('vi-VN')}{' '}
+                đ
+              </small>
             </article>
           </section>
 
           <div className="sale-dashboard__focus-grid">
-            <section className="sale-dashboard__panel sale-dashboard__tasks" aria-labelledby="sale-priority-tasks-title">
+            <section
+              className="sale-dashboard__panel sale-dashboard__tasks"
+              aria-labelledby="sale-priority-tasks-title"
+            >
               <header className="sale-dashboard__panel-header">
                 <h2 id="sale-priority-tasks-title">{t('Công việc ưu tiên hôm nay')}</h2>
-                <button type="button" className="sale-dashboard__text-action" onClick={() => onNavigate('work_schedule')}>{t('Xem tất cả')}</button>
+                <button
+                  type="button"
+                  className="sale-dashboard__text-action"
+                  onClick={() => onNavigate('work_schedule')}
+                >
+                  {t('Xem tất cả')}
+                </button>
               </header>
               <div className="sale-dashboard__task-table">
                 <div className="sale-dashboard__task-head" aria-hidden="true">
@@ -1064,35 +1433,57 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 {salePriorityTasks.map(task => {
                   const state = getSaleTaskState(task.endAt, task.priority);
-                  return <article key={task.id} className="sale-dashboard__task-row">
-                    <strong title={task.title}>{task.title || t('Công việc chưa đặt tên')}</strong>
-                    <span title={task.referenceLabel || task.groupName}>{task.referenceLabel || task.groupName || t('Công việc cá nhân')}</span>
-                    <time>{task.endAt ? formatDateTime(task.endAt) : t('Chưa đặt hạn')}</time>
-                    <span className={`sale-dashboard__status is-${state.tone}`}>{state.label}</span>
-                  </article>;
+                  return (
+                    <article key={task.id} className="sale-dashboard__task-row">
+                      <strong title={task.title}>{task.title || t('Công việc chưa đặt tên')}</strong>
+                      <span title={task.referenceLabel || task.groupName}>
+                        {task.referenceLabel || task.groupName || t('Công việc cá nhân')}
+                      </span>
+                      <time>{task.endAt ? formatDateTime(task.endAt) : t('Chưa đặt hạn')}</time>
+                      <span className={`sale-dashboard__status is-${state.tone}`}>{state.label}</span>
+                    </article>
+                  );
                 })}
-                {!salePriorityTasks.length && <p className="sale-dashboard__empty">{t('Không có công việc đang chờ xử lý.')}</p>}
+                {!salePriorityTasks.length && (
+                  <p className="sale-dashboard__empty">{t('Không có công việc đang chờ xử lý.')}</p>
+                )}
               </div>
             </section>
 
             <section className="sale-dashboard__panel sale-dashboard__funnel" aria-labelledby="sale-funnel-title">
               <header className="sale-dashboard__panel-header">
                 <h2 id="sale-funnel-title">{t('Phễu khách hàng của tôi')}</h2>
-                <button type="button" className="sale-dashboard__text-action" onClick={() => onNavigate('leads')}>{t('Xem chi tiết')}</button>
+                <button type="button" className="sale-dashboard__text-action" onClick={() => onNavigate('leads')}>
+                  {t('Xem chi tiết')}
+                </button>
               </header>
               <div className="sale-dashboard__funnel-content">
                 <div className="sale-dashboard__funnel-rows">
-                  {saleFunnelRows.map(row => <div key={row.id} className="sale-dashboard__funnel-row">
-                    <span>{t(row.label)}</span>
-                    <div><i style={{ width: `${saleFunnelTotal ? (row.count / saleFunnelTotal) * 100 : 0}%`, background: row.color }} /></div>
-                    <strong>{row.count}</strong>
-                  </div>)}
+                  {saleFunnelRows.map(row => (
+                    <div key={row.id} className="sale-dashboard__funnel-row">
+                      <span>{t(row.label)}</span>
+                      <div>
+                        <i
+                          style={{
+                            width: `${saleFunnelTotal ? (row.count / saleFunnelTotal) * 100 : 0}%`,
+                            background: row.color
+                          }}
+                        />
+                      </div>
+                      <strong>{row.count}</strong>
+                    </div>
+                  ))}
                 </div>
                 <div className="sale-dashboard__funnel-summary">
                   <div className="sale-dashboard__donut" style={{ background: saleFunnelBackground }}>
-                    <span><strong>{saleFunnelTotal}</strong><small>{t('Hồ sơ phụ trách')}</small></span>
+                    <span>
+                      <strong>{saleFunnelTotal}</strong>
+                      <small>{t('Hồ sơ phụ trách')}</small>
+                    </span>
                   </div>
-                  <p>{salePriorityLeadCount} {t('cần ưu tiên')}</p>
+                  <p>
+                    {salePriorityLeadCount} {t('cần ưu tiên')}
+                  </p>
                 </div>
               </div>
             </section>
@@ -1102,18 +1493,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <header className="sale-dashboard__panel-header sale-dashboard__orders-header">
               <h2 id="sale-orders-title">{t('Theo dõi đơn hàng PO gần đây')}</h2>
               <div className="sale-dashboard__filters" role="group" aria-label={t('Lọc tiến độ đơn hàng')}>
-                {([
-                  ['all', 'Tất cả'],
-                  ['waiting_design', 'Chờ thiết kế'],
-                  ['waiting_production', 'Chờ sản xuất'],
-                  ['waiting_delivery', 'Chờ giao']
-                ] as Array<[SalePoFilter, string]>).map(([value, label]) => <button
-                  key={value}
-                  type="button"
-                  className={salePoFilter === value ? 'is-active' : ''}
-                  aria-pressed={salePoFilter === value}
-                  onClick={() => setSalePoFilter(value)}
-                >{t(label)}</button>)}
+                {(
+                  [
+                    ['all', 'Tất cả'],
+                    ['waiting_design', 'Chờ thiết kế'],
+                    ['waiting_production', 'Chờ sản xuất'],
+                    ['waiting_delivery', 'Chờ giao']
+                  ] as Array<[SalePoFilter, string]>
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={salePoFilter === value ? 'is-active' : ''}
+                    aria-pressed={salePoFilter === value}
+                    onClick={() => setSalePoFilter(value)}
+                  >
+                    {t(label)}
+                  </button>
+                ))}
               </div>
             </header>
             <div className="table-container sale-dashboard__orders-table">
@@ -1129,15 +1526,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {recentSalePOs.map(po => <tr key={po.id}>
-                    <td><button type="button" className="sale-dashboard__po-link" onClick={() => onOpenPO(po.id)}>{po.poCode}</button></td>
-                    <td title={po.customerName}>{po.customerName}</td>
-                    <td>{formatDate(po.orderDate)}</td>
-                    <td className="is-number">{Number(po.netAmount || po.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
-                    <td><span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span></td>
-                    <td>{formatDateTime(po.updatedAt || po.orderDate || po.createdAt)}</td>
-                  </tr>)}
-                  {!recentSalePOs.length && <tr><td colSpan={6} className="sale-dashboard__table-empty">{t('Không có đơn hàng phù hợp trong kỳ đã chọn.')}</td></tr>}
+                  {recentSalePOs.map(po => (
+                    <tr key={po.id}>
+                      <td>
+                        <button type="button" className="sale-dashboard__po-link" onClick={() => onOpenPO(po.id)}>
+                          {po.poCode}
+                        </button>
+                      </td>
+                      <td title={po.customerName}>{po.customerName}</td>
+                      <td>{formatDate(po.orderDate)}</td>
+                      <td className="is-number">
+                        {Number(po.netAmount || po.totalAmount || 0).toLocaleString('vi-VN')} đ
+                      </td>
+                      <td>
+                        <span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span>
+                      </td>
+                      <td>{formatDateTime(po.updatedAt || po.orderDate || po.createdAt)}</td>
+                    </tr>
+                  ))}
+                  {!recentSalePOs.length && (
+                    <tr>
+                      <td colSpan={6} className="sale-dashboard__table-empty">
+                        {t('Không có đơn hàng phù hợp trong kỳ đã chọn.')}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1159,7 +1572,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="metric-card">
               <span className="metric-title">{t('Mẫu Đang Chờ Khách Duyệt')}</span>
               <span className="metric-value" style={{ color: 'var(--color-warning)' }}>
-                {activeDesignRequests.filter(request => request.approvalStatus === 'waiting_client').length} {t('yêu cầu')}
+                {activeDesignRequests.filter(request => request.approvalStatus === 'waiting_client').length}{' '}
+                {t('yêu cầu')}
               </span>
               <span className="metric-sub">{t('Đang chờ khách duyệt layout/màu')}</span>
             </div>
@@ -1173,10 +1587,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="card">
-            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              className="card-header"
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            >
               <span className="card-title">{t('Nhiệm Vụ Thiết Kế Chờ Xử Lý')}</span>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="btn btn-sm btn-primary" onClick={() => onNavigate('design')}>{t('Vào trang thiết kế')}</button>
+                <button className="btn btn-sm btn-primary" onClick={() => onNavigate('design')}>
+                  {t('Vào trang thiết kế')}
+                </button>
               </div>
             </div>
             <div className="table-container">
@@ -1190,14 +1609,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {activeDesignRequests.filter(request => request.workStatus !== 'completed').map(request => (
-                    <tr key={request.id}>
-                      <td style={{ fontWeight: 600 }}>{request.customerReferenceCode || request.poCode}</td>
-                      <td>{request.productName || t('Chưa đặt tên')}</td>
-                      <td>{request.size || '—'}{request.material ? ` (${request.material})` : ''}</td>
-                      <td style={{ color: 'var(--color-text-muted)' }}>{request.designBrief || t('Chưa có ghi chú')}</td>
-                    </tr>
-                  ))}
+                  {activeDesignRequests
+                    .filter(request => request.workStatus !== 'completed')
+                    .map(request => (
+                      <tr key={request.id}>
+                        <td style={{ fontWeight: 600 }}>{request.customerReferenceCode || request.poCode}</td>
+                        <td>{request.productName || t('Chưa đặt tên')}</td>
+                        <td>
+                          {request.size || '—'}
+                          {request.material ? ` (${request.material})` : ''}
+                        </td>
+                        <td style={{ color: 'var(--color-text-muted)' }}>
+                          {request.designBrief || t('Chưa có ghi chú')}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -1211,13 +1637,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="metrics-grid">
             <div className="metric-card">
               <span className="metric-title">{t('Vật Tư Cảnh Báo Sắp Thiếu')}</span>
-              <span className="metric-value" style={{ color: 'var(--color-danger)' }}>{lowStockMaterials.length} loại</span>
+              <span className="metric-value" style={{ color: 'var(--color-danger)' }}>
+                {lowStockMaterials.length} loại
+              </span>
               <span className="metric-sub">{t('Dưới định mức tồn kho tối thiểu')}</span>
             </div>
             <div className="metric-card">
               <span className="metric-title">{t('Đơn Mua Hàng Đã Gửi NCC')}</span>
               <span className="metric-value">
-                {filteredPurchaseOrders.filter(pur => pur.status === 'ordered' || pur.status === 'confirmed').length} {t('đơn')}
+                {filteredPurchaseOrders.filter(pur => pur.status === 'ordered' || pur.status === 'confirmed').length}{' '}
+                {t('đơn')}
               </span>
               <span className="metric-sub">{t('Chờ NCC giao hàng/xác nhận')}</span>
             </div>
@@ -1234,7 +1663,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="card">
               <div className="card-header">
                 <span className="card-title">{t('Cảnh Báo Tồn Kho Thấp')}</span>
-                <button className="btn btn-sm btn-outline" onClick={() => onNavigate('inventory')}>{t('Vào Kho')}</button>
+                <button className="btn btn-sm btn-outline" onClick={() => onNavigate('inventory')}>
+                  {t('Vào Kho')}
+                </button>
               </div>
               <div className="table-container">
                 <table>
@@ -1261,11 +1692,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             <div className="card">
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                className="card-header"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
                 <span className="card-title">{t('Đơn Mua Hàng Gần Đây')}</span>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" className="btn btn-sm btn-outline" style={{ fontSize: '11px' }} onClick={() => setSelectedProgressCategory('waiting_delivery')}>{t('Theo dõi hàng PO')}</button>
-                  <button className="btn btn-sm btn-primary" onClick={() => onNavigate('purchase')}>{t('Mua Vật Tư')}</button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline"
+                    style={{ fontSize: '11px' }}
+                    onClick={() => setSelectedProgressCategory('waiting_delivery')}
+                  >
+                    {t('Theo dõi hàng PO')}
+                  </button>
+                  <button className="btn btn-sm btn-primary" onClick={() => onNavigate('purchase')}>
+                    {t('Mua Vật Tư')}
+                  </button>
                 </div>
               </div>
               <div className="table-container">
@@ -1285,9 +1728,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <td>{pur.supplierName}</td>
                         <td>{pur.totalPrice.toLocaleString()} đ</td>
                         <td>
-                          <span className={`badge ${
-                            pur.status === 'received' ? 'badge-success' : 'badge-warning'
-                          }`}>{pur.status.toUpperCase()}</span>
+                          <span className={`badge ${pur.status === 'received' ? 'badge-success' : 'badge-warning'}`}>
+                            {pur.status.toUpperCase()}
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -1327,11 +1770,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           <div className="card">
-            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              className="card-header"
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            >
               <span className="card-title">{t('Tiến Độ Lệnh Sản Xuất Hiện Tại')}</span>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" className="btn btn-sm btn-outline" style={{ fontSize: '11px' }} onClick={() => setSelectedProgressCategory('waiting_production')}>{t('Theo dõi hàng PO')}</button>
-                <button className="btn btn-sm btn-primary" onClick={() => onNavigate('production')}>{t('Vào Xưởng')}</button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  style={{ fontSize: '11px' }}
+                  onClick={() => setSelectedProgressCategory('waiting_production')}
+                >
+                  {t('Theo dõi hàng PO')}
+                </button>
+                <button className="btn btn-sm btn-primary" onClick={() => onNavigate('production')}>
+                  {t('Vào Xưởng')}
+                </button>
               </div>
             </div>
             <div className="table-container">
@@ -1355,9 +1810,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <td>{cmd.shift}</td>
                       <td title={productionQuantityLabel(cmd)}>{productionQuantityLabel(cmd)}</td>
                       <td>
-                        <span className={`badge ${
-                          cmd.status === 'completed' ? 'badge-success' : 'badge-info'
-                        }`}>{PRODUCTION_STATUSES[cmd.status as ProductionStatus] || (cmd.status === 'transfer_pending' ? 'Chờ bàn giao' : 'Lệnh cũ')}</span>
+                        <span className={`badge ${cmd.status === 'completed' ? 'badge-success' : 'badge-info'}`}>
+                          {PRODUCTION_STATUSES[cmd.status as ProductionStatus] ||
+                            (cmd.status === 'transfer_pending' ? 'Chờ bàn giao' : 'Lệnh cũ')}
+                        </span>
                       </td>
                     </tr>
                   ))}

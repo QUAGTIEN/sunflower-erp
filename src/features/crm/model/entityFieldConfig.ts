@@ -59,9 +59,38 @@ export const ENTITY_FIELD_TABLE_LABELS: Record<EntityFieldTable, string> = {
 };
 
 export const ENTITY_SYSTEM_FIELD_LABELS: Record<EntityFieldTable, string[]> = {
-  lead_candidates: ['Doanh nghiệp', 'Mã số thuế', 'Tỉnh/thành', 'Thông tin liên hệ', 'Sale phụ trách', 'Trạng thái liên hệ', 'Mức độ tiềm năng', 'Lịch tiếp theo', 'Cập nhật gần nhất'],
-  leads: ['Doanh nghiệp', 'Mã số thuế', 'Liên hệ', 'Nguồn / khu vực', 'Giá trị tiềm năng', 'Sale phụ trách', 'Chăm sóc tiếp', 'Giai đoạn xử lý'],
-  customers: ['Khách hàng', 'Mã khách hàng', 'Phân loại', 'Mã số thuế', 'Số điện thoại', 'Email', 'Sale phụ trách', 'Kết quả kinh doanh', 'Nguyên vật liệu gốc']
+  lead_candidates: [
+    'Doanh nghiệp',
+    'Mã số thuế',
+    'Tỉnh/thành',
+    'Thông tin liên hệ',
+    'Sale phụ trách',
+    'Trạng thái liên hệ',
+    'Mức độ tiềm năng',
+    'Lịch tiếp theo',
+    'Cập nhật gần nhất'
+  ],
+  leads: [
+    'Doanh nghiệp',
+    'Mã số thuế',
+    'Liên hệ',
+    'Nguồn / khu vực',
+    'Giá trị tiềm năng',
+    'Sale phụ trách',
+    'Chăm sóc tiếp',
+    'Giai đoạn xử lý'
+  ],
+  customers: [
+    'Khách hàng',
+    'Mã khách hàng',
+    'Phân loại',
+    'Mã số thuế',
+    'Số điện thoại',
+    'Email',
+    'Sale phụ trách',
+    'Kết quả kinh doanh',
+    'Nguyên vật liệu gốc'
+  ]
 };
 
 export const ENTITY_FIELD_TYPE_LABELS: Record<EntityCustomFieldType, string> = {
@@ -95,11 +124,10 @@ const TABLES: EntityFieldTable[] = ['lead_candidates', 'leads', 'customers'];
 const TYPES = Object.keys(ENTITY_FIELD_TYPE_LABELS) as EntityCustomFieldType[];
 const SECTIONS: EntityFieldSection[] = ['company', 'classification', 'contact', 'needs', 'assignment', 'additional'];
 
-const asRecord = (value: unknown): Record<string, unknown> => (
-  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
-);
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 
-const asText = (value: unknown): string => typeof value === 'string' ? value : '';
+const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 const normalizeRoles = (value: unknown): EntityFieldRole[] => {
   if (!Array.isArray(value)) return [...ALL_ROLES];
@@ -107,15 +135,16 @@ const normalizeRoles = (value: unknown): EntityFieldRole[] => {
   return Array.from(new Set(['admin' as EntityFieldRole, ...roles]));
 };
 
-export const slugifyEntityFieldKey = (value: string): string => value
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .replace(/đ/g, 'd')
-  .replace(/Đ/g, 'D')
-  .toLocaleLowerCase('vi-VN')
-  .replace(/[^a-z0-9]+/g, '_')
-  .replace(/^_+|_+$/g, '')
-  .slice(0, 48);
+export const slugifyEntityFieldKey = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLocaleLowerCase('vi-VN')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48);
 
 export const normalizeEntityCustomFieldValues = (value: unknown): EntityCustomFieldValues => {
   const source = asRecord(value);
@@ -124,7 +153,12 @@ export const normalizeEntityCustomFieldValues = (value: unknown): EntityCustomFi
       result[key] = fieldValue.map(item => String(item)).filter(Boolean);
       return result;
     }
-    if (typeof fieldValue === 'string' || typeof fieldValue === 'number' || typeof fieldValue === 'boolean' || fieldValue === null) {
+    if (
+      typeof fieldValue === 'string' ||
+      typeof fieldValue === 'number' ||
+      typeof fieldValue === 'boolean' ||
+      fieldValue === null
+    ) {
       result[key] = fieldValue;
     }
     return result;
@@ -133,17 +167,25 @@ export const normalizeEntityCustomFieldValues = (value: unknown): EntityCustomFi
 
 export const normalizeEntityFieldDefinition = (value: unknown): EntityFieldDefinition => {
   const source = asRecord(value);
-  const table = TABLES.includes(source.table as EntityFieldTable) ? source.table as EntityFieldTable : 'lead_candidates';
-  const section = SECTIONS.includes(source.section as EntityFieldSection) ? source.section as EntityFieldSection : 'additional';
-  const type = TYPES.includes(source.type as EntityCustomFieldType) ? source.type as EntityCustomFieldType : 'text';
-  const options = Array.isArray(source.options) ? source.options.map((item, index) => {
-    const option = asRecord(item);
-    return {
-      id: asText(option.id) || `option_${index + 1}`,
-      label: asText(option.label),
-      active: option.active !== false
-    };
-  }).filter(option => option.label) : [];
+  const table = TABLES.includes(source.table as EntityFieldTable)
+    ? (source.table as EntityFieldTable)
+    : 'lead_candidates';
+  const section = SECTIONS.includes(source.section as EntityFieldSection)
+    ? (source.section as EntityFieldSection)
+    : 'additional';
+  const type = TYPES.includes(source.type as EntityCustomFieldType) ? (source.type as EntityCustomFieldType) : 'text';
+  const options = Array.isArray(source.options)
+    ? source.options
+        .map((item, index) => {
+          const option = asRecord(item);
+          return {
+            id: asText(option.id) || `option_${index + 1}`,
+            label: asText(option.label),
+            active: option.active !== false
+          };
+        })
+        .filter(option => option.label)
+    : [];
   const id = asText(source.id);
   const name = asText(source.name);
   return {
@@ -173,20 +215,19 @@ export const normalizeEntityFieldDefinition = (value: unknown): EntityFieldDefin
   };
 };
 
-export const normalizeEntityFieldDefinitions = (value: unknown): EntityFieldDefinition[] => (
+export const normalizeEntityFieldDefinitions = (value: unknown): EntityFieldDefinition[] =>
   Array.isArray(value)
-    ? value.map(normalizeEntityFieldDefinition).filter(definition => definition.id && definition.name)
-      .sort((left, right) => left.order - right.order || left.name.localeCompare(right.name, 'vi'))
-    : []
-);
+    ? value
+        .map(normalizeEntityFieldDefinition)
+        .filter(definition => definition.id && definition.name)
+        .sort((left, right) => left.order - right.order || left.name.localeCompare(right.name, 'vi'))
+    : [];
 
-export const canViewEntityField = (definition: EntityFieldDefinition, role: EntityFieldRole): boolean => (
-  role === 'admin' || definition.viewRoles.includes(role)
-);
+export const canViewEntityField = (definition: EntityFieldDefinition, role: EntityFieldRole): boolean =>
+  role === 'admin' || definition.viewRoles.includes(role);
 
-export const canEditEntityField = (definition: EntityFieldDefinition, role: EntityFieldRole): boolean => (
-  role === 'admin' || definition.editRoles.includes(role)
-);
+export const canEditEntityField = (definition: EntityFieldDefinition, role: EntityFieldRole): boolean =>
+  role === 'admin' || definition.editRoles.includes(role);
 
 export const coerceEntityCustomFieldValue = (
   definition: EntityFieldDefinition,
@@ -212,7 +253,10 @@ export const formatEntityCustomFieldValue = (
   if (value === null || value === undefined || value === '') return 'Chưa cập nhật';
   if (definition.type === 'boolean') return value === true ? 'Có' : 'Không';
   if (Array.isArray(value)) {
-    return value.map(optionId => definition.options.find(option => option.id === optionId)?.label || optionId).join(', ') || 'Chưa cập nhật';
+    return (
+      value.map(optionId => definition.options.find(option => option.id === optionId)?.label || optionId).join(', ') ||
+      'Chưa cập nhật'
+    );
   }
   if (definition.type === 'single_select') {
     return definition.options.find(option => option.id === String(value))?.label || String(value);
@@ -233,8 +277,10 @@ export const formatEntityCustomFieldValue = (
 export const getEntityCustomFieldSearchValues = (
   definitions: EntityFieldDefinition[],
   values: EntityCustomFieldValues | undefined
-): string[] => definitions.filter(definition => definition.active && definition.searchable)
-  .map(definition => formatEntityCustomFieldValue(definition, values?.[definition.id]));
+): string[] =>
+  definitions
+    .filter(definition => definition.active && definition.searchable)
+    .map(definition => formatEntityCustomFieldValue(definition, values?.[definition.id]));
 
 export const getEntityCustomFieldFilterTokens = (
   definition: EntityFieldDefinition,
@@ -253,17 +299,18 @@ export const getEntityCustomFieldFilterLabel = (definition: EntityFieldDefinitio
   return formatEntityCustomFieldValue(definition, token);
 };
 
-export const isEntityCustomFieldValueEmpty = (value: EntityCustomFieldValue | undefined): boolean => (
-  value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)
-);
+export const isEntityCustomFieldValueEmpty = (value: EntityCustomFieldValue | undefined): boolean =>
+  value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0);
 
 export const getMissingRequiredEntityFields = (
   definitions: EntityFieldDefinition[],
   values: EntityCustomFieldValues,
   role?: EntityFieldRole
-): EntityFieldDefinition[] => definitions.filter(definition => (
-  definition.active
-  && definition.required
-  && (!role || canEditEntityField(definition, role))
-  && isEntityCustomFieldValueEmpty(values[definition.id])
-));
+): EntityFieldDefinition[] =>
+  definitions.filter(
+    definition =>
+      definition.active &&
+      definition.required &&
+      (!role || canEditEntityField(definition, role)) &&
+      isEntityCustomFieldValueEmpty(values[definition.id])
+  );

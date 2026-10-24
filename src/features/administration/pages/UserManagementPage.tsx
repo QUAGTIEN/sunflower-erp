@@ -47,13 +47,20 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   // Map roles to Vietnamese text
   const getRoleLabel = (r: string) => {
     switch (r) {
-      case 'admin': return t('Giám Đốc');
-      case 'sale': return t('Nhân Viên Sale');
-      case 'designer': return t('Thiết Kế');
-      case 'purchaser': return t('Mua Vật Tư');
-      case 'producer': return t('Sản Xuất');
-      case 'accountant': return t('Kế Toán');
-      default: return r;
+      case 'admin':
+        return t('Giám Đốc');
+      case 'sale':
+        return t('Nhân Viên Sale');
+      case 'designer':
+        return t('Thiết Kế');
+      case 'purchaser':
+        return t('Mua Vật Tư');
+      case 'producer':
+        return t('Sản Xuất');
+      case 'accountant':
+        return t('Kế Toán');
+      default:
+        return r;
     }
   };
 
@@ -77,7 +84,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     { id: 'delivery', label: t('Phiếu Giao Hàng') },
     { id: 'accounting', label: t('Quản Lý Kế Toán') },
     { id: 'users', label: t('Quản Lý Tài Khoản') },
-    { id: 'recycle_bin', label: t('Kho Rác Hệ Thống') },
+    { id: 'recycle_bin', label: t('Kho Rác Hệ Thống') }
   ];
 
   const openAddModal = () => {
@@ -100,167 +107,184 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
-    return runMutationAction("UserManagementPage.tsx:handleAddUser", async () => {
-      e.preventDefault();
-      if (!displayName || !email || temporaryPassword.length < 8) return;
+    return runMutationAction(
+      'UserManagementPage.tsx:handleAddUser',
+      async () => {
+        e.preventDefault();
+        if (!displayName || !email || temporaryPassword.length < 8) return;
 
-      const emailTrim = email.trim().toLowerCase();
+        const emailTrim = email.trim().toLowerCase();
 
-      // Check if email already exists
-      const exists = users.some(u => u.email.toLowerCase() === emailTrim);
-      if (exists) {
-        alert(t('Email này đã được đăng ký trên hệ thống.'));
-        return;
-      }
+        // Check if email already exists
+        const exists = users.some(u => u.email.toLowerCase() === emailTrim);
+        if (exists) {
+          alert(t('Email này đã được đăng ký trên hệ thống.'));
+          return;
+        }
 
-      setIsSubmitting(true);
-      try {
-        await adminUserService.create({
-          displayName: displayName.trim(),
-          email: emailTrim,
-          password: temporaryPassword,
-          role,
-          active,
-          allowedPages
-        });
-        auditService.recordSafely(currentUser, {
-          category: 'administration',
-          module: 'account',
-          action: 'account_created',
-          summary: `Tạo tài khoản ${displayName.trim()}`,
-          targetType: 'user',
-          targetLabel: displayName.trim()
-        });
-        setShowAddModal(false);
-        onRefresh();
+        setIsSubmitting(true);
+        try {
+          await adminUserService.create({
+            displayName: displayName.trim(),
+            email: emailTrim,
+            password: temporaryPassword,
+            role,
+            active,
+            allowedPages
+          });
+          auditService.recordSafely(currentUser, {
+            category: 'administration',
+            module: 'account',
+            action: 'account_created',
+            summary: `Tạo tài khoản ${displayName.trim()}`,
+            targetType: 'user',
+            targetLabel: displayName.trim()
+          });
+          setShowAddModal(false);
+          onRefresh();
 
-        showSuccessToast("Đã thêm thành công");
-      } catch (error) {
-        showErrorToast();
-        alert(error instanceof Error ? error.message : t('Không thể tạo tài khoản.'));
-      } finally {
-        setIsSubmitting(false);
-      }
-    }, e);
+          showSuccessToast('Đã thêm thành công');
+        } catch (error) {
+          showErrorToast();
+          alert(error instanceof Error ? error.message : t('Không thể tạo tài khoản.'));
+        } finally {
+          setIsSubmitting(false);
+        }
+      },
+      e
+    );
   };
 
   const handleEditUser = async (e: React.FormEvent) => {
-    return runMutationAction("UserManagementPage.tsx:handleEditUser", async () => {
-      e.preventDefault();
-      if (!selectedUser) return;
+    return runMutationAction(
+      'UserManagementPage.tsx:handleEditUser',
+      async () => {
+        e.preventDefault();
+        if (!selectedUser) return;
 
-      // Prevent deactivating oneself
-      if (selectedUser.uid === currentUser.uid && !active) {
-        alert(t('Bạn không thể tự vô hiệu hóa tài khoản của chính mình.'));
-        return;
-      }
+        // Prevent deactivating oneself
+        if (selectedUser.uid === currentUser.uid && !active) {
+          alert(t('Bạn không thể tự vô hiệu hóa tài khoản của chính mình.'));
+          return;
+        }
 
-      // Prevent changing ones own role
-      if (selectedUser.uid === currentUser.uid && role !== 'admin') {
-        alert(t('Bạn không thể tự thay đổi vai trò Admin của chính mình.'));
-        return;
-      }
+        // Prevent changing ones own role
+        if (selectedUser.uid === currentUser.uid && role !== 'admin') {
+          alert(t('Bạn không thể tự thay đổi vai trò Admin của chính mình.'));
+          return;
+        }
 
-      setIsSubmitting(true);
-      try {
-        await adminUserService.update({
-          uid: selectedUser.uid,
-          displayName: displayName.trim(),
-          role,
-          active,
-          allowedPages
-        });
-        auditService.recordSafely(currentUser, {
-          category: 'administration',
-          module: 'account',
-          action: 'account_updated',
-          summary: `Cập nhật tài khoản ${selectedUser.displayName}`,
-          targetType: 'user',
-          targetId: selectedUser.uid,
-          targetLabel: selectedUser.displayName
-        });
-        setShowEditModal(false);
-        setSelectedUser(null);
-        onRefresh();
+        setIsSubmitting(true);
+        try {
+          await adminUserService.update({
+            uid: selectedUser.uid,
+            displayName: displayName.trim(),
+            role,
+            active,
+            allowedPages
+          });
+          auditService.recordSafely(currentUser, {
+            category: 'administration',
+            module: 'account',
+            action: 'account_updated',
+            summary: `Cập nhật tài khoản ${selectedUser.displayName}`,
+            targetType: 'user',
+            targetId: selectedUser.uid,
+            targetLabel: selectedUser.displayName
+          });
+          setShowEditModal(false);
+          setSelectedUser(null);
+          onRefresh();
 
-        showSuccessToast("Đã lưu thành công");
-      } catch (error) {
-        showErrorToast();
-        alert(error instanceof Error ? error.message : t('Không thể cập nhật tài khoản.'));
-      } finally {
-        setIsSubmitting(false);
-      }
-    }, e);
+          showSuccessToast('Đã lưu thành công');
+        } catch (error) {
+          showErrorToast();
+          alert(error instanceof Error ? error.message : t('Không thể cập nhật tài khoản.'));
+        } finally {
+          setIsSubmitting(false);
+        }
+      },
+      e
+    );
   };
 
   const handleToggleStatus = async (user: UserProfile) => {
-    return runMutationAction("UserManagementPage.tsx:handleToggleStatus", async () => {
-      if (user.uid === currentUser.uid) {
-        alert(t('Bạn không thể tự khóa tài khoản của chính mình.'));
-        return;
-      }
-
-      if (window.confirm(t(`Bạn có chắc chắn muốn thay đổi trạng thái tài khoản ${user.displayName}?`))) {
-        setIsSubmitting(true);
-        try {
-          await adminUserService.setActive(user.uid, !user.active);
-          auditService.recordSafely(currentUser, {
-            category: 'administration',
-            module: 'account',
-            action: user.active ? 'account_locked' : 'account_activated',
-            summary: `${user.active ? 'Khóa' : 'Kích hoạt'} tài khoản ${user.displayName}`,
-            targetType: 'user',
-            targetId: user.uid,
-            targetLabel: user.displayName
-          });
-          onRefresh();
-
-          showSuccessToast("Đã lưu thành công");
-        } catch (error) {
-          alert(error instanceof Error ? error.message : t('Không thể thay đổi trạng thái tài khoản.'));
-        } finally {
-          setIsSubmitting(false);
+    return runMutationAction(
+      'UserManagementPage.tsx:handleToggleStatus',
+      async () => {
+        if (user.uid === currentUser.uid) {
+          alert(t('Bạn không thể tự khóa tài khoản của chính mình.'));
+          return;
         }
-      }
-    }, user);
+
+        if (window.confirm(t(`Bạn có chắc chắn muốn thay đổi trạng thái tài khoản ${user.displayName}?`))) {
+          setIsSubmitting(true);
+          try {
+            await adminUserService.setActive(user.uid, !user.active);
+            auditService.recordSafely(currentUser, {
+              category: 'administration',
+              module: 'account',
+              action: user.active ? 'account_locked' : 'account_activated',
+              summary: `${user.active ? 'Khóa' : 'Kích hoạt'} tài khoản ${user.displayName}`,
+              targetType: 'user',
+              targetId: user.uid,
+              targetLabel: user.displayName
+            });
+            onRefresh();
+
+            showSuccessToast('Đã lưu thành công');
+          } catch (error) {
+            alert(error instanceof Error ? error.message : t('Không thể thay đổi trạng thái tài khoản.'));
+          } finally {
+            setIsSubmitting(false);
+          }
+        }
+      },
+      user
+    );
   };
 
   const handleDeleteUser = async (userToDelete: UserProfile) => {
-    return runMutationAction("UserManagementPage.tsx:handleDeleteUser", async () => {
-      if (userToDelete.uid === currentUser.uid) {
-        alert(t('Bạn không thể tự xóa tài khoản của chính mình.'));
-        return;
-      }
-
-      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản người dùng này?')))) {
-        setIsSubmitting(true);
-        try {
-          await adminUserService.delete(userToDelete.uid);
-          auditService.recordSafely(currentUser, {
-            category: 'administration',
-            module: 'account',
-            action: 'account_deleted',
-            summary: `Xóa tài khoản ${userToDelete.displayName}`,
-            targetType: 'user',
-            targetId: userToDelete.uid,
-            targetLabel: userToDelete.displayName
-          });
-          onRefresh();
-
-          showSuccessToast("Đã xóa thành công");
-        } catch (error) {
-          alert(error instanceof Error ? error.message : t('Không thể xóa tài khoản.'));
-        } finally {
-          setIsSubmitting(false);
+    return runMutationAction(
+      'UserManagementPage.tsx:handleDeleteUser',
+      async () => {
+        if (userToDelete.uid === currentUser.uid) {
+          alert(t('Bạn không thể tự xóa tài khoản của chính mình.'));
+          return;
         }
-      }
-    }, userToDelete);
+
+        if (await confirmDelete(t('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản người dùng này?'))) {
+          setIsSubmitting(true);
+          try {
+            await adminUserService.delete(userToDelete.uid);
+            auditService.recordSafely(currentUser, {
+              category: 'administration',
+              module: 'account',
+              action: 'account_deleted',
+              summary: `Xóa tài khoản ${userToDelete.displayName}`,
+              targetType: 'user',
+              targetId: userToDelete.uid,
+              targetLabel: userToDelete.displayName
+            });
+            onRefresh();
+
+            showSuccessToast('Đã xóa thành công');
+          } catch (error) {
+            alert(error instanceof Error ? error.message : t('Không thể xóa tài khoản.'));
+          } finally {
+            setIsSubmitting(false);
+          }
+        }
+      },
+      userToDelete
+    );
   };
 
   // Search and filter logic
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch =
+      u.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === 'all' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -299,47 +323,64 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
       custom: activityFrom ? new Date(`${activityFrom}T00:00:00`) : undefined
     };
     const start = startByPeriod[activityPeriod];
-    const end = activityPeriod === 'custom' && activityTo
-      ? new Date(`${activityTo}T23:59:59.999`)
-      : undefined;
+    const end = activityPeriod === 'custom' && activityTo ? new Date(`${activityTo}T23:59:59.999`) : undefined;
     const keyword = activityQuery.trim().toLocaleLowerCase('vi-VN');
     return activityEvents.filter(event => {
       const occurredAt = new Date(event.occurredAt);
       if (start && occurredAt < start) return false;
       if (end && occurredAt > end) return false;
       if (!keyword) return true;
-      return [event.summary, event.action, event.module, event.targetLabel, ...(event.changes || []).map(change => `${change.label} ${change.before || ''} ${change.after || ''}`)]
+      return [
+        event.summary,
+        event.action,
+        event.module,
+        event.targetLabel,
+        ...(event.changes || []).map(change => `${change.label} ${change.before || ''} ${change.after || ''}`)
+      ]
         .join(' ')
         .toLocaleLowerCase('vi-VN')
         .includes(keyword);
     });
   }, [activityEvents, activityFrom, activityPeriod, activityQuery, activityTo]);
 
-  const groupedActivityEvents = useMemo(() => visibleActivityEvents.reduce<Record<string, AuditEvent[]>>((groups, event) => {
-    const key = new Date(event.occurredAt).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
-    (groups[key] ||= []).push(event);
-    return groups;
-  }, {}), [visibleActivityEvents]);
+  const groupedActivityEvents = useMemo(
+    () =>
+      visibleActivityEvents.reduce<Record<string, AuditEvent[]>>((groups, event) => {
+        const key = new Date(event.occurredAt).toLocaleDateString('vi-VN', {
+          weekday: 'long',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+        (groups[key] ||= []).push(event);
+        return groups;
+      }, {}),
+    [visibleActivityEvents]
+  );
 
   return (
     <div className="users-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <PageContextHeader section={t('Tài khoản')} current={t('Danh sách người dùng')} />
 
       <div className="card">
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
           <div style={{ display: 'flex', gap: '10px' }}>
             <input
               type="text"
               placeholder={t('Tìm theo tên hoặc email...')}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               style={{ maxWidth: '300px' }}
             />
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              style={{ width: '180px' }}
-            >
+            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{ width: '180px' }}>
               <option value="all">{t('Tất Cả Vai Trò')}</option>
               <option value="admin">{t('Giám Đốc')}</option>
               <option value="sale">{t('Nhân Viên Sale')}</option>
@@ -348,9 +389,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
               <option value="producer">{t('Sản Xuất')}</option>
               <option value="accountant">{t('Kế Toán')}</option>
             </select>
-            <button className="btn btn-outline" onClick={() => { setSearchTerm(''); setRoleFilter('all'); }}>{t('Đặt Lại')}</button>
+            <button
+              className="btn btn-outline"
+              onClick={() => {
+                setSearchTerm('');
+                setRoleFilter('all');
+              }}
+            >
+              {t('Đặt Lại')}
+            </button>
           </div>
-          <button className="btn btn-primary" onClick={openAddModal}>{t('Thêm người dùng')}</button>
+          <button className="btn btn-primary" onClick={openAddModal}>
+            {t('Thêm người dùng')}
+          </button>
         </div>
 
         <div className="table-container">
@@ -371,7 +422,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 return (
                   <tr key={u.uid}>
                     <td style={{ fontWeight: 600 }}>
-                      {u.displayName} {isSelf && <span style={{ color: 'var(--color-primary)', fontSize: '11px' }}>(Bạn)</span>}
+                      {u.displayName}{' '}
+                      {isSelf && <span style={{ color: 'var(--color-primary)', fontSize: '11px' }}>(Bạn)</span>}
                     </td>
                     <td>{u.email}</td>
                     <td>
@@ -379,18 +431,30 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                     </td>
                     <td>
                       {u.active ? (
-                        <span style={{ color: 'var(--color-success)', fontWeight: 'bold', fontSize: '13px' }}>{t('Đang hoạt động')}</span>
+                        <span style={{ color: 'var(--color-success)', fontWeight: 'bold', fontSize: '13px' }}>
+                          {t('Đang hoạt động')}
+                        </span>
                       ) : (
-                        <span style={{ color: 'var(--color-danger)', fontWeight: 'bold', fontSize: '13px' }}>{t('Bị vô hiệu hóa')}</span>
+                        <span style={{ color: 'var(--color-danger)', fontWeight: 'bold', fontSize: '13px' }}>
+                          {t('Bị vô hiệu hóa')}
+                        </span>
                       )}
                     </td>
                     <td>{u.createdAt || 'N/A'}</td>
                     <td>
                       <div className="btn-group">
-                        <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => void openActivityHistory(u)} title="Lịch sử hoạt động">
+                        <button
+                          className="btn btn-sm btn-outline btn-symbol-sm"
+                          onClick={() => void openActivityHistory(u)}
+                          title="Lịch sử hoạt động"
+                        >
                           <History size={14} />
                         </button>
-                        <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => openEditModal(u)} title={t('Sửa')}>
+                        <button
+                          className="btn btn-sm btn-outline btn-symbol-sm"
+                          onClick={() => openEditModal(u)}
+                          title={t('Sửa')}
+                        >
                           <Pencil size={14} />
                         </button>
                         {!isSelf && (
@@ -402,7 +466,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                             >
                               {u.active ? t('Khóa Tài Khoản') : t('Kích Hoạt')}
                             </button>
-                            <button className="btn btn-sm btn-danger btn-symbol-sm" onClick={() => handleDeleteUser(u)} title={t('Xóa')} disabled={isSubmitting}>
+                            <button
+                              className="btn btn-sm btn-danger btn-symbol-sm"
+                              onClick={() => handleDeleteUser(u)}
+                              title={t('Xóa')}
+                              disabled={isSubmitting}
+                            >
                               <Trash2 size={14} />
                             </button>
                           </>
@@ -423,7 +492,9 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
           <div className="modal-content" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
               <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('THÊM NGƯỜI DÙNG MỚI')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowAddModal(false)}>{t('Đóng')}</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setShowAddModal(false)}>
+                {t('Đóng')}
+              </button>
             </div>
             <form onSubmit={handleAddUser}>
               <div className="modal-body">
@@ -483,10 +554,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                   </div>
                   <div className="form-group">
                     <label>{t('Trạng Thái Ban Đầu')}</label>
-                    <select
-                      value={active ? 'true' : 'false'}
-                      onChange={e => setActive(e.target.value === 'true')}
-                    >
+                    <select value={active ? 'true' : 'false'} onChange={e => setActive(e.target.value === 'true')}>
                       <option value="true">{t('Đang hoạt động')}</option>
                       <option value="false">{t('Tạm khóa')}</option>
                     </select>
@@ -494,16 +562,51 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 </div>
 
                 <div className="form-group">
-                  <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>{t('Trang Được Phép Truy Cập')}</label>
-                  {role === 'accountant' && allowedPages.includes('accounting') && <p>Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL/thành phẩm tại Vật liệu; chỉ Admin được đảo phiếu kho. Không được phát hành, chạy máy hoặc QC.</p>}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '10px', backgroundColor: 'var(--color-bg-light)', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                  <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
+                    {t('Trang Được Phép Truy Cập')}
+                  </label>
+                  {role === 'accountant' && allowedPages.includes('accounting') && (
+                    <p>
+                      Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL/thành phẩm tại Vật liệu;
+                      chỉ Admin được đảo phiếu kho. Không được phát hành, chạy máy hoặc QC.
+                    </p>
+                  )}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '8px',
+                      padding: '10px',
+                      backgroundColor: 'var(--color-bg-light)',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-border)'
+                    }}
+                  >
                     {ALL_PAGES.map(page => (
-                      <label key={page.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                      <label
+                        key={page.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px'
+                        }}
+                      >
                         <input
                           type="checkbox"
-                          checked={allowedPages.includes(page.id) || ['production', 'inventory'].includes(page.id) && role === 'accountant' && allowedPages.includes('accounting')}
-                          disabled={['production', 'inventory'].includes(page.id) && role === 'accountant' && allowedPages.includes('accounting')}
-                          onChange={(e) => {
+                          checked={
+                            allowedPages.includes(page.id) ||
+                            (['production', 'inventory'].includes(page.id) &&
+                              role === 'accountant' &&
+                              allowedPages.includes('accounting'))
+                          }
+                          disabled={
+                            ['production', 'inventory'].includes(page.id) &&
+                            role === 'accountant' &&
+                            allowedPages.includes('accounting')
+                          }
+                          onChange={e => {
                             if (e.target.checked) {
                               setAllowedPages([...allowedPages, page.id]);
                             } else {
@@ -517,15 +620,32 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: 'var(--color-bg-light)', padding: '12px', borderRadius: '4px', border: '1px solid var(--color-border)', marginTop: '8px' }}>
+                <div
+                  style={{
+                    backgroundColor: 'var(--color-bg-light)',
+                    padding: '12px',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-border)',
+                    marginTop: '8px'
+                  }}
+                >
                   <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{t('Tài khoản thật trên Firebase:')}</span>
                   <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                    {t('Khi lưu, hệ thống sẽ đồng thời tạo người dùng trong Firebase Authentication và hồ sơ phân quyền trong Firestore.')}
+                    {t(
+                      'Khi lưu, hệ thống sẽ đồng thời tạo người dùng trong Firebase Authentication và hồ sơ phân quyền trong Firestore.'
+                    )}
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAddModal(false)} disabled={isSubmitting}>{t('Hủy')}</button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowAddModal(false)}
+                  disabled={isSubmitting}
+                >
+                  {t('Hủy')}
+                </button>
                 <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                   {isSubmitting ? t('Đang tạo...') : t('Lưu Tài Khoản')}
                 </button>
@@ -541,22 +661,24 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
           <div className="modal-content" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
               <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHỈNH SỬA THÔNG TIN TÀI KHOẢN')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowEditModal(false)}>{t('Đóng')}</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setShowEditModal(false)}>
+                {t('Đóng')}
+              </button>
             </div>
             <form onSubmit={handleEditUser}>
               <div className="modal-body">
                 <div className="form-group">
                   <label>{t('Địa Chỉ Email (Không thể thay đổi)')}</label>
-                  <input type="text" value={selectedUser.email} disabled style={{ backgroundColor: 'var(--color-bg-light)' }} />
+                  <input
+                    type="text"
+                    value={selectedUser.email}
+                    disabled
+                    style={{ backgroundColor: 'var(--color-bg-light)' }}
+                  />
                 </div>
                 <div className="form-group">
                   <label>{t('Họ Và Tên Nhân Sự *')}</label>
-                  <input
-                    type="text"
-                    value={displayName}
-                    onChange={e => setDisplayName(e.target.value)}
-                    required
-                  />
+                  <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} required />
                 </div>
                 <div className="form-grid">
                   <div className="form-group">
@@ -592,16 +714,51 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 </div>
 
                 <div className="form-group">
-                  <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>{t('Trang Được Phép Truy Cập')}</label>
-                  {role === 'accountant' && allowedPages.includes('accounting') && <p>Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL/thành phẩm tại Vật liệu; chỉ Admin được đảo phiếu kho. Không được phát hành, chạy máy hoặc QC.</p>}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '10px', backgroundColor: 'var(--color-bg-light)', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                  <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
+                    {t('Trang Được Phép Truy Cập')}
+                  </label>
+                  {role === 'accountant' && allowedPages.includes('accounting') && (
+                    <p>
+                      Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL/thành phẩm tại Vật liệu;
+                      chỉ Admin được đảo phiếu kho. Không được phát hành, chạy máy hoặc QC.
+                    </p>
+                  )}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '8px',
+                      padding: '10px',
+                      backgroundColor: 'var(--color-bg-light)',
+                      borderRadius: '4px',
+                      border: '1px solid var(--color-border)'
+                    }}
+                  >
                     {ALL_PAGES.map(page => (
-                      <label key={page.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px' }}>
+                      <label
+                        key={page.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px'
+                        }}
+                      >
                         <input
                           type="checkbox"
-                          checked={allowedPages.includes(page.id) || ['production', 'inventory'].includes(page.id) && role === 'accountant' && allowedPages.includes('accounting')}
-                          disabled={['production', 'inventory'].includes(page.id) && role === 'accountant' && allowedPages.includes('accounting')}
-                          onChange={(e) => {
+                          checked={
+                            allowedPages.includes(page.id) ||
+                            (['production', 'inventory'].includes(page.id) &&
+                              role === 'accountant' &&
+                              allowedPages.includes('accounting'))
+                          }
+                          disabled={
+                            ['production', 'inventory'].includes(page.id) &&
+                            role === 'accountant' &&
+                            allowedPages.includes('accounting')
+                          }
+                          onChange={e => {
                             if (e.target.checked) {
                               setAllowedPages([...allowedPages, page.id]);
                             } else {
@@ -615,23 +772,54 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: 'var(--color-bg-light)', padding: '12px', borderRadius: '4px', border: '1px solid var(--color-border)', marginTop: '8px' }}>
+                <div
+                  style={{
+                    backgroundColor: 'var(--color-bg-light)',
+                    padding: '12px',
+                    borderRadius: '4px',
+                    border: '1px solid var(--color-border)',
+                    marginTop: '8px'
+                  }}
+                >
                   <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{t('Thông tin bảo mật:')}</span>
                   <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                    {t('Thay đổi vai trò, quyền truy cập hoặc trạng thái sẽ được đồng bộ qua API quản trị. Mật khẩu Firebase của nhân sự không bị thay đổi tại màn hình này.')}
+                    {t(
+                      'Thay đổi vai trò, quyền truy cập hoặc trạng thái sẽ được đồng bộ qua API quản trị. Mật khẩu Firebase của nhân sự không bị thay đổi tại màn hình này.'
+                    )}
                   </div>
                 </div>
 
                 {/* Audit trail */}
-                <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px' }}>
-                  <div>{t('Tạo bởi:')} {selectedUser.createdBy || t('Không xác định')} {selectedUser.createdAt && `(${selectedUser.createdAt})`}</div>
+                <div
+                  style={{
+                    marginTop: '12px',
+                    fontSize: '11px',
+                    color: 'var(--color-text-muted)',
+                    borderTop: '1px solid var(--color-border-light)',
+                    paddingTop: '8px'
+                  }}
+                >
+                  <div>
+                    {t('Tạo bởi:')} {selectedUser.createdBy || t('Không xác định')}{' '}
+                    {selectedUser.createdAt && `(${selectedUser.createdAt})`}
+                  </div>
                   {selectedUser.updatedBy && (
-                    <div>{t('Cập nhật bởi:')} {selectedUser.updatedBy} ({formatDateTime(selectedUser.updatedAt, t('vi-VN'), '')})</div>
+                    <div>
+                      {t('Cập nhật bởi:')} {selectedUser.updatedBy} (
+                      {formatDateTime(selectedUser.updatedAt, t('vi-VN'), '')})
+                    </div>
                   )}
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)} disabled={isSubmitting}>{t('Hủy')}</button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowEditModal(false)}
+                  disabled={isSubmitting}
+                >
+                  {t('Hủy')}
+                </button>
                 <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
                   {isSubmitting ? t('Đang lưu...') : t('Lưu Thay Đổi')}
                 </button>
@@ -646,47 +834,107 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
           <div className="modal-content user-activity-modal">
             <div className="modal-header">
               <div>
-                <div className="user-activity-modal__title"><Activity size={19} /> Giám sát hoạt động</div>
-                <div className="user-activity-modal__subtitle">{activityUser.displayName} · {activityUser.email}</div>
+                <div className="user-activity-modal__title">
+                  <Activity size={19} /> Giám sát hoạt động
+                </div>
+                <div className="user-activity-modal__subtitle">
+                  {activityUser.displayName} · {activityUser.email}
+                </div>
               </div>
-              <button className="btn btn-sm btn-outline btn-symbol-sm" onClick={() => setActivityUser(null)} title="Đóng"><X size={16} /></button>
+              <button
+                className="btn btn-sm btn-outline btn-symbol-sm"
+                onClick={() => setActivityUser(null)}
+                title="Đóng"
+              >
+                <X size={16} />
+              </button>
             </div>
             <div className="modal-body user-activity-modal__body">
               <section className="user-activity-summary">
                 <div>
-                  <span className={`user-activity-status user-activity-status--${activityPresence?.status === 'online' ? 'online' : 'offline'}`}>
+                  <span
+                    className={`user-activity-status user-activity-status--${activityPresence?.status === 'online' ? 'online' : 'offline'}`}
+                  >
                     {activityPresence?.status === 'online' ? 'Đang hoạt động' : 'Không trực tuyến'}
                   </span>
-                  <p>{activityPresence?.lastSeenAt ? `Hoạt động gần nhất: ${formatDateTime(activityPresence.lastSeenAt, 'vi-VN', 'Chưa có dữ liệu')}` : 'Chưa ghi nhận phiên hoạt động.'}</p>
+                  <p>
+                    {activityPresence?.lastSeenAt
+                      ? `Hoạt động gần nhất: ${formatDateTime(activityPresence.lastSeenAt, 'vi-VN', 'Chưa có dữ liệu')}`
+                      : 'Chưa ghi nhận phiên hoạt động.'}
+                  </p>
                 </div>
-                <div><strong>{visibleActivityEvents.length}</strong><span> hoạt động phù hợp</span></div>
+                <div>
+                  <strong>{visibleActivityEvents.length}</strong>
+                  <span> hoạt động phù hợp</span>
+                </div>
               </section>
 
               <section className="user-activity-filters">
-                <div className="user-activity-search"><Search size={16} /><input value={activityQuery} onChange={event => setActivityQuery(event.target.value)} placeholder="Tìm thao tác, khách hàng, Lead..." /></div>
-                <select value={activityPeriod} onChange={event => setActivityPeriod(event.target.value as typeof activityPeriod)}>
-                  <option value="today">Hôm nay</option><option value="7d">7 ngày gần đây</option><option value="30d">30 ngày gần đây</option><option value="all">Tất cả (tối đa 250)</option><option value="custom">Tùy chọn khoảng thời gian</option>
+                <div className="user-activity-search">
+                  <Search size={16} />
+                  <input
+                    value={activityQuery}
+                    onChange={event => setActivityQuery(event.target.value)}
+                    placeholder="Tìm thao tác, khách hàng, Lead..."
+                  />
+                </div>
+                <select
+                  value={activityPeriod}
+                  onChange={event => setActivityPeriod(event.target.value as typeof activityPeriod)}
+                >
+                  <option value="today">Hôm nay</option>
+                  <option value="7d">7 ngày gần đây</option>
+                  <option value="30d">30 ngày gần đây</option>
+                  <option value="all">Tất cả (tối đa 250)</option>
+                  <option value="custom">Tùy chọn khoảng thời gian</option>
                 </select>
-                {activityPeriod === 'custom' && <><input type="date" value={activityFrom} onChange={event => setActivityFrom(event.target.value)} /><input type="date" value={activityTo} onChange={event => setActivityTo(event.target.value)} /></>}
+                {activityPeriod === 'custom' && (
+                  <>
+                    <input type="date" value={activityFrom} onChange={event => setActivityFrom(event.target.value)} />
+                    <input type="date" value={activityTo} onChange={event => setActivityTo(event.target.value)} />
+                  </>
+                )}
               </section>
 
-              {isLoadingActivity ? <div className="user-activity-empty">Đang tải lịch sử hoạt động...</div>
-                : activityError ? <div className="user-activity-empty user-activity-empty--error">{activityError}</div>
-                : Object.keys(groupedActivityEvents).length === 0 ? <div className="user-activity-empty"><Clock3 size={20} /> Chưa có hoạt động phù hợp trong khoảng thời gian này.</div>
-                : <div className="user-activity-timeline">
+              {isLoadingActivity ? (
+                <div className="user-activity-empty">Đang tải lịch sử hoạt động...</div>
+              ) : activityError ? (
+                <div className="user-activity-empty user-activity-empty--error">{activityError}</div>
+              ) : Object.keys(groupedActivityEvents).length === 0 ? (
+                <div className="user-activity-empty">
+                  <Clock3 size={20} /> Chưa có hoạt động phù hợp trong khoảng thời gian này.
+                </div>
+              ) : (
+                <div className="user-activity-timeline">
                   {Object.entries(groupedActivityEvents).map(([dateLabel, events]) => (
                     <section key={dateLabel} className="user-activity-day">
                       <h3>{dateLabel}</h3>
                       {events.map(event => (
                         <article key={event.id} className="user-activity-event">
-                          <time>{new Date(event.occurredAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</time>
-                          <div><strong>{event.summary}</strong>{event.targetLabel && <span className="user-activity-event__target">{event.targetLabel}</span>}
-                            {(event.changes || []).map(change => <p key={change.field}>{change.label}: <b>{change.before || '—'}</b> → <b>{change.after || '—'}</b></p>)}</div>
+                          <time>
+                            {new Date(event.occurredAt).toLocaleTimeString('vi-VN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit'
+                            })}
+                          </time>
+                          <div>
+                            <strong>{event.summary}</strong>
+                            {event.targetLabel && (
+                              <span className="user-activity-event__target">{event.targetLabel}</span>
+                            )}
+                            {(event.changes || []).map(change => (
+                              <p key={change.field}>
+                                {change.label}: <b>{change.before || '—'}</b> → <b>{change.after || '—'}</b>
+                              </p>
+                            ))}
+                          </div>
                         </article>
                       ))}
                     </section>
                   ))}
-                </div>}
+                </div>
+              )}
             </div>
           </div>
         </div>

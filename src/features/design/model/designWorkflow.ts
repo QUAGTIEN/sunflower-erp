@@ -1,15 +1,6 @@
-export type DesignWorkStatus =
-  | 'unreviewed'
-  | 'queued'
-  | 'in_progress'
-  | 'waiting_info'
-  | 'completed';
+export type DesignWorkStatus = 'unreviewed' | 'queued' | 'in_progress' | 'waiting_info' | 'completed';
 
-export type DesignApprovalStatus =
-  | 'not_sent'
-  | 'waiting_client'
-  | 'revision_requested'
-  | 'approved';
+export type DesignApprovalStatus = 'not_sent' | 'waiting_client' | 'revision_requested' | 'approved';
 
 export interface DesignPOItem {
   itemId?: string;
@@ -168,40 +159,37 @@ export const DESIGN_APPROVAL_STATUSES: DesignStatusDefinition<DesignApprovalStat
   { value: 'approved', label: 'Khách đã duyệt mẫu', color: '#047857', background: '#ecfdf5' }
 ];
 
-export const getDesignWorkStatus = (value: unknown): DesignWorkStatus => (
-  DESIGN_WORK_STATUSES.some(status => status.value === value) ? value as DesignWorkStatus : 'unreviewed'
-);
+export const getDesignWorkStatus = (value: unknown): DesignWorkStatus =>
+  DESIGN_WORK_STATUSES.some(status => status.value === value) ? (value as DesignWorkStatus) : 'unreviewed';
 
-export const getDesignApprovalStatus = (value: unknown): DesignApprovalStatus => (
-  DESIGN_APPROVAL_STATUSES.some(status => status.value === value) ? value as DesignApprovalStatus : 'not_sent'
-);
+export const getDesignApprovalStatus = (value: unknown): DesignApprovalStatus =>
+  DESIGN_APPROVAL_STATUSES.some(status => status.value === value) ? (value as DesignApprovalStatus) : 'not_sent';
 
-export const getDesignWorkStatusDefinition = (value: unknown) => (
-  DESIGN_WORK_STATUSES.find(status => status.value === getDesignWorkStatus(value)) || DESIGN_WORK_STATUSES[0]
-);
+export const getDesignWorkStatusDefinition = (value: unknown) =>
+  DESIGN_WORK_STATUSES.find(status => status.value === getDesignWorkStatus(value)) || DESIGN_WORK_STATUSES[0];
 
-export const getDesignApprovalStatusDefinition = (value: unknown) => (
-  DESIGN_APPROVAL_STATUSES.find(status => status.value === getDesignApprovalStatus(value)) || DESIGN_APPROVAL_STATUSES[0]
-);
+export const getDesignApprovalStatusDefinition = (value: unknown) =>
+  DESIGN_APPROVAL_STATUSES.find(status => status.value === getDesignApprovalStatus(value)) ||
+  DESIGN_APPROVAL_STATUSES[0];
 
 export const getDesignRequestId = (poId: string, item: DesignPOItem, itemIndex: number) => {
   const itemKey = String(item?.itemId || `${item?.productCode || 'item'}-${itemIndex + 1}`)
     .trim()
     .replace(/[^a-zA-Z0-9_-]+/g, '-');
-  const poKey = String(poId).trim().replace(/[^a-zA-Z0-9_-]+/g, '-');
+  const poKey = String(poId)
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '-');
   return `design-request-${poKey}-${itemKey || itemIndex + 1}`;
 };
 
-export const getDesignRequestCode = (poCode: string, itemIndex: number) => (
-  `TK-${poCode || 'PO'}-${String(itemIndex + 1).padStart(2, '0')}`
-);
+export const getDesignRequestCode = (poCode: string, itemIndex: number) =>
+  `TK-${poCode || 'PO'}-${String(itemIndex + 1).padStart(2, '0')}`;
 
 export const getDesignRequestAgeDays = (request: Partial<DesignRequest>) => {
   const startTime = Date.parse(request?.createdAt || '');
   if (Number.isNaN(startTime)) return null;
-  const endTime = request?.workStatus === 'completed' && request?.completedAt
-    ? Date.parse(request.completedAt)
-    : Date.now();
+  const endTime =
+    request?.workStatus === 'completed' && request?.completedAt ? Date.parse(request.completedAt) : Date.now();
   if (Number.isNaN(endTime)) return null;
   return Math.max(0, Math.floor((endTime - startTime) / (24 * 60 * 60 * 1000)));
 };
@@ -212,11 +200,10 @@ export const isDesignRequestOverdue = (request: Partial<DesignRequest>) => {
   return !Number.isNaN(dueTime) && dueTime < Date.now();
 };
 
-export const resolveDesignForRequest = (designs: DesignRecord[], request: DesignRequest) => (
-  designs.find(design => design.designRequestId === request.id)
-  || designs.find(design => design.poId === request.poId && design.itemId && design.itemId === request.itemId)
-  || (request.itemIndex === 0
+export const resolveDesignForRequest = (designs: DesignRecord[], request: DesignRequest) =>
+  designs.find(design => design.designRequestId === request.id) ||
+  designs.find(design => design.poId === request.poId && design.itemId && design.itemId === request.itemId) ||
+  (request.itemIndex === 0
     ? designs.find(design => design.poId === request.poId && !design.itemId && !design.designRequestId)
-    : null)
-  || null
-);
+    : null) ||
+  null;

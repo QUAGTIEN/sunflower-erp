@@ -16,15 +16,14 @@ export interface ProvinceSynchronizationResult {
   unresolved: number;
 }
 
-const asRecord = (value: unknown): Record<string, unknown> => (
-  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
-);
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 
 export const synchronizeProvinceData = async (): Promise<ProvinceSynchronizationResult> => {
   const result: ProvinceSynchronizationResult = { inspected: 0, updated: 0, unresolved: 0 };
 
   for (const collectionName of PROVINCE_COLLECTIONS) {
-    const records = await dbService.getRawCollection(collectionName) as ProvinceSourceRecord[];
+    const records = (await dbService.getRawCollection(collectionName)) as ProvinceSourceRecord[];
     for (const record of records) {
       const id = typeof record.id === 'string' ? record.id : '';
       const currentProvince = typeof record.province === 'string' ? record.province.trim() : '';

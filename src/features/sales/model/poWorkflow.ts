@@ -8,7 +8,7 @@ export const PO_QUEUE_STATES = [
   { value: 'completed', label: 'Hoàn tất', color: '#059669', background: '#ecfdf5' }
 ] as const;
 
-export type POQueueStatus = typeof PO_QUEUE_STATES[number]['value'];
+export type POQueueStatus = (typeof PO_QUEUE_STATES)[number]['value'];
 export type PODeliveryStage = 'supplier_inbound' | 'customer_outbound';
 
 export interface POStatusLike {
@@ -70,9 +70,8 @@ export const getPOQueueState = (poOrStatus: POStatusLike | string | null | undef
   return PO_QUEUE_STATES.find(state => state.value === queueStatus) || PO_QUEUE_STATES[0];
 };
 
-export const getPOQueueLabel = (poOrStatus: POStatusLike | string | null | undefined): string => (
-  getPOQueueState(poOrStatus).label
-);
+export const getPOQueueLabel = (poOrStatus: POStatusLike | string | null | undefined): string =>
+  getPOQueueState(poOrStatus).label;
 
 export const getPOHistoryStatusLabel = (status?: string): string => {
   if (!status) return 'Không xác định';
@@ -80,13 +79,10 @@ export const getPOHistoryStatusLabel = (status?: string): string => {
   return LEGACY_STATUS_LABELS[status] || status;
 };
 
-export const isPOInQueue = (po: POStatusLike | null | undefined, queueStatus: POQueueStatus): boolean => (
-  getPOQueueStatus(po) === queueStatus
-);
+export const isPOInQueue = (po: POStatusLike | null | undefined, queueStatus: POQueueStatus): boolean =>
+  getPOQueueStatus(po) === queueStatus;
 
-export const isPOCompleted = (po: POStatusLike | null | undefined): boolean => (
-  getPOQueueStatus(po) === 'completed'
-);
+export const isPOCompleted = (po: POStatusLike | null | undefined): boolean => getPOQueueStatus(po) === 'completed';
 
 export const getPODeliveryStage = (po: POStatusLike | null | undefined): PODeliveryStage => {
   if (po?.deliveryStage === 'supplier_inbound' || po?.deliveryStage === 'customer_outbound') {
@@ -95,25 +91,23 @@ export const getPODeliveryStage = (po: POStatusLike | null | undefined): PODeliv
   return po?.status === 'supplier_ordered' ? 'supplier_inbound' : 'customer_outbound';
 };
 
-export const getPODeliveryStageLabel = (po: POStatusLike | null | undefined): string => (
-  getPODeliveryStage(po) === 'supplier_inbound'
-    ? 'Nhà cung cấp giao tới'
-    : 'Giao cho khách hàng'
-);
+export const getPODeliveryStageLabel = (po: POStatusLike | null | undefined): string =>
+  getPODeliveryStage(po) === 'supplier_inbound' ? 'Nhà cung cấp giao tới' : 'Giao cho khách hàng';
 
 export const getPOBadgeClass = (poOrStatus: POStatusLike | string | null | undefined): string => {
   switch (getPOQueueStatus(poOrStatus)) {
-    case 'completed': return 'badge-success';
-    case 'waiting_receivable': return 'badge-danger';
-    case 'waiting_production': return 'badge-info';
-    default: return 'badge-warning';
+    case 'completed':
+      return 'badge-success';
+    case 'waiting_receivable':
+      return 'badge-danger';
+    case 'waiting_production':
+      return 'badge-info';
+    default:
+      return 'badge-warning';
   }
 };
 
-export const getPOQueueUpdate = (
-  status: POQueueStatus,
-  extras: Record<string, unknown> = {}
-) => ({
+export const getPOQueueUpdate = (status: POQueueStatus, extras: Record<string, unknown> = {}) => ({
   status,
   workflowVersion: 2,
   ...extras

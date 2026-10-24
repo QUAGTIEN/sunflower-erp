@@ -61,14 +61,21 @@ export function buildCustomerOverview(
 
   const debtByCustomer = new Map<string, number>();
   invoices.forEach(invoice => {
-    if (!invoice.customerId || !visibleIds.has(invoice.customerId) || invoice.deleted === true || invoice.type !== 'receivable') return;
+    if (
+      !invoice.customerId ||
+      !visibleIds.has(invoice.customerId) ||
+      invoice.deleted === true ||
+      invoice.type !== 'receivable'
+    )
+      return;
     const balance = Math.max(0, nonnegative(invoice.amount) - nonnegative(invoice.paidAmount));
     debtByCustomer.set(invoice.customerId, (debtByCustomer.get(invoice.customerId) || 0) + balance);
   });
 
   const rows: CustomerOverviewRow[] = customers.map(customer => {
     const customerOrders = ordersByCustomer.get(customer.id) || [];
-    const datedOrders = customerOrders.map(order => validDate(order.orderDate) || validDate(order.createdAt))
+    const datedOrders = customerOrders
+      .map(order => validDate(order.orderDate) || validDate(order.createdAt))
       .filter((date): date is Date => date !== null && date.getTime() <= now.getTime());
     const lastOrderAt = datedOrders.length ? new Date(Math.max(...datedOrders.map(date => date.getTime()))) : null;
     return {
@@ -83,7 +90,8 @@ export function buildCustomerOverview(
 
   const purchased = rows.filter(row => row.orderCount > 0);
   const active = purchased.filter(row => row.daysSinceLastOrder !== null && row.daysSinceLastOrder <= 90);
-  const inactive = purchased.filter(row => row.daysSinceLastOrder !== null && row.daysSinceLastOrder > 90)
+  const inactive = purchased
+    .filter(row => row.daysSinceLastOrder !== null && row.daysSinceLastOrder > 90)
     .sort((a, b) => (b.daysSinceLastOrder || 0) - (a.daysSinceLastOrder || 0));
   const provinceMap = new Map<string, CustomerOverviewRow[]>();
   rows.forEach(row => {
@@ -92,7 +100,8 @@ export function buildCustomerOverview(
     provinceRows.push(row);
     provinceMap.set(label, provinceRows);
   });
-  const provinces: CustomerOverviewProvince[] = [...provinceMap].map(([label, provinceRows]) => ({ label, rows: provinceRows }))
+  const provinces: CustomerOverviewProvince[] = [...provinceMap]
+    .map(([label, provinceRows]) => ({ label, rows: provinceRows }))
     .sort((a, b) => b.rows.length - a.rows.length || a.label.localeCompare(b.label, 'vi-VN'));
 
   return {
@@ -111,7 +120,11 @@ export function buildCustomerOverview(
     ],
     inactive,
     provinces,
-    highestValue: [...purchased].sort((a, b) => b.orderValue - a.orderValue || a.customer.companyName.localeCompare(b.customer.companyName, 'vi-VN')).slice(0, 5),
+    highestValue: [...purchased]
+      .sort(
+        (a, b) => b.orderValue - a.orderValue || a.customer.companyName.localeCompare(b.customer.companyName, 'vi-VN')
+      )
+      .slice(0, 5),
     mostOrders: [...purchased].sort((a, b) => b.orderCount - a.orderCount || b.orderValue - a.orderValue).slice(0, 5)
   };
 }

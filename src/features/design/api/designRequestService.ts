@@ -17,11 +17,13 @@ interface DesignRequestActor {
   role?: string;
 }
 
-const uniqueStrings = (values: unknown[]) => Array.from(new Set(
-  values.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-));
+const uniqueStrings = (values: unknown[]) =>
+  Array.from(new Set(values.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)));
 
-const getInitialStatuses = (po: DesignPOLike, item: DesignPOItem): {
+const getInitialStatuses = (
+  po: DesignPOLike,
+  item: DesignPOItem
+): {
   workStatus: DesignWorkStatus;
   approvalStatus: DesignApprovalStatus;
 } => {
@@ -32,7 +34,9 @@ const getInitialStatuses = (po: DesignPOLike, item: DesignPOItem): {
     return { workStatus: 'completed', approvalStatus: 'waiting_client' };
   }
   if (po.designProgress === 'customer_approval_pending') {
-    const hasItemLevelReuse = (po.items || []).some(candidate => candidate.designReuseStatus === 'pending_verification');
+    const hasItemLevelReuse = (po.items || []).some(
+      candidate => candidate.designReuseStatus === 'pending_verification'
+    );
     if (hasItemLevelReuse) return { workStatus: 'unreviewed', approvalStatus: 'not_sent' };
     return { workStatus: 'completed', approvalStatus: 'waiting_client' };
   }
@@ -42,9 +46,8 @@ const getInitialStatuses = (po: DesignPOLike, item: DesignPOItem): {
   return { workStatus: 'unreviewed', approvalStatus: 'not_sent' };
 };
 
-const getDesignAssignment = (po: DesignPOLike): DesignAssignment | null => (
-  (po.assignments || []).find(assignment => assignment.department === 'designer') || null
-);
+const getDesignAssignment = (po: DesignPOLike): DesignAssignment | null =>
+  (po.assignments || []).find(assignment => assignment.department === 'designer') || null;
 
 const normalizePriority = (priority: unknown) => {
   if (priority === 'Cực gấp') return 'urgent';
@@ -61,17 +64,29 @@ const getHistoricalDesignCompletionAt = (po: DesignPOLike, fallback: string) => 
     'production_pending',
     'supplier_ordered'
   ]);
-  const matchingLog = [...(po.historyLogs || [])].reverse().find(log => (
-    completionStatuses.has(String(log.status || '')) && typeof log.updatedAt === 'string'
-  ));
-  return typeof matchingLog?.updatedAt === 'string'
-    ? matchingLog.updatedAt
-    : po.updatedAt || fallback;
+  const matchingLog = [...(po.historyLogs || [])]
+    .reverse()
+    .find(log => completionStatuses.has(String(log.status || '')) && typeof log.updatedAt === 'string');
+  return typeof matchingLog?.updatedAt === 'string' ? matchingLog.updatedAt : po.updatedAt || fallback;
 };
 
-const buildRequestFields = (po: DesignPOLike, item: DesignPOItem, itemIndex: number): Omit<DesignRequest,
-  'workStatus' | 'approvalStatus' | 'statusNote' | 'approvalNote' | 'startedAt' | 'completedAt'
-  | 'createdById' | 'createdBy' | 'createdAt' | 'history'> => {
+const buildRequestFields = (
+  po: DesignPOLike,
+  item: DesignPOItem,
+  itemIndex: number
+): Omit<
+  DesignRequest,
+  | 'workStatus'
+  | 'approvalStatus'
+  | 'statusNote'
+  | 'approvalNote'
+  | 'startedAt'
+  | 'completedAt'
+  | 'createdById'
+  | 'createdBy'
+  | 'createdAt'
+  | 'history'
+> => {
   const assignment = getDesignAssignment(po);
   const requestId = getDesignRequestId(po.id, item, itemIndex);
   return {
@@ -101,11 +116,10 @@ const buildRequestFields = (po: DesignPOLike, item: DesignPOItem, itemIndex: num
   };
 };
 
-const hasFieldChanges = (existing: DesignRequest, nextFields: Partial<DesignRequest>) => (
-  (Object.keys(nextFields) as Array<keyof DesignRequest>).some(key => (
-    JSON.stringify(existing[key] ?? null) !== JSON.stringify(nextFields[key] ?? null)
-  ))
-);
+const hasFieldChanges = (existing: DesignRequest, nextFields: Partial<DesignRequest>) =>
+  (Object.keys(nextFields) as Array<keyof DesignRequest>).some(
+    key => JSON.stringify(existing[key] ?? null) !== JSON.stringify(nextFields[key] ?? null)
+  );
 
 const synchronizePORequests = async (
   po: DesignPOLike,
@@ -125,11 +139,10 @@ const synchronizePORequests = async (
     activeRequestIds.add(requestFields.id);
 
     if (existing) {
-      const historicalCompletedAt = existing.workStatus === 'completed'
-        && existing.history?.length === 1
-        && existing.history[0]?.type === 'created'
-        ? getHistoricalDesignCompletionAt(po, existing.completedAt || new Date().toISOString())
-        : existing.completedAt;
+      const historicalCompletedAt =
+        existing.workStatus === 'completed' && existing.history?.length === 1 && existing.history[0]?.type === 'created'
+          ? getHistoricalDesignCompletionAt(po, existing.completedAt || new Date().toISOString())
+          : existing.completedAt;
       const shouldCorrectCompletedAt = historicalCompletedAt !== existing.completedAt;
       const assignmentChanged = existing.assignedDesignerId !== requestFields.assignedDesignerId;
       let assignmentUpdatedAt = existing.assignmentUpdatedAt || existing.createdAt;
@@ -174,22 +187,24 @@ const synchronizePORequests = async (
       createdById: actor.uid || '',
       createdBy: actor.displayName || 'Hệ thống',
       createdAt: po.createdAt || po.orderDate || now,
-      history: [{
-        type: 'created',
-        workStatus: initialStatuses.workStatus,
-        approvalStatus: initialStatuses.approvalStatus,
-        note: 'Tự động tạo yêu cầu thiết kế từ mặt hàng trong PO.',
-        updatedBy: actor.displayName || 'Hệ thống',
-        updatedAt: now
-      }]
+      history: [
+        {
+          type: 'created',
+          workStatus: initialStatuses.workStatus,
+          approvalStatus: initialStatuses.approvalStatus,
+          note: 'Tự động tạo yêu cầu thiết kế từ mặt hàng trong PO.',
+          updatedBy: actor.displayName || 'Hệ thống',
+          updatedAt: now
+        }
+      ]
     };
-    const created = await dbService.addDocument('design_requests', newRequest) as DesignRequest;
+    const created = (await dbService.addDocument('design_requests', newRequest)) as DesignRequest;
     syncedRequests.push(created);
   }
 
-  for (const obsoleteRequest of existingRequests.filter(request => (
-    !activeRequestIds.has(request.id) && request.archived !== true
-  ))) {
+  for (const obsoleteRequest of existingRequests.filter(
+    request => !activeRequestIds.has(request.id) && request.archived !== true
+  )) {
     await dbService.updateDocument('design_requests', obsoleteRequest.id, {
       archived: true,
       archivedReason: 'Mặt hàng không còn tồn tại trong PO.',
@@ -200,21 +215,30 @@ const synchronizePORequests = async (
   return syncedRequests;
 };
 
-export const syncDesignRequestsForPO = async (po: DesignPOLike, actor: DesignRequestActor): Promise<DesignRequest[]> => {
-  const existingRequests = ((await dbService.getCollection('design_requests')) as DesignRequest[])
-    .filter(request => request.poId === po.id);
+export const syncDesignRequestsForPO = async (
+  po: DesignPOLike,
+  actor: DesignRequestActor
+): Promise<DesignRequest[]> => {
+  const existingRequests = ((await dbService.getCollection('design_requests')) as DesignRequest[]).filter(
+    request => request.poId === po.id
+  );
   return synchronizePORequests(po, actor, existingRequests);
 };
 
-export const syncDesignRequestsForPOs = async (pos: DesignPOLike[], actor: DesignRequestActor): Promise<DesignRequest[]> => {
+export const syncDesignRequestsForPOs = async (
+  pos: DesignPOLike[],
+  actor: DesignRequestActor
+): Promise<DesignRequest[]> => {
   const existingRequests = (await dbService.getCollection('design_requests')) as DesignRequest[];
   const results: DesignRequest[] = [];
   for (const po of pos.filter(candidate => candidate && candidate.deleted !== true)) {
-    results.push(...await synchronizePORequests(
-      po,
-      actor,
-      existingRequests.filter(request => request.poId === po.id)
-    ));
+    results.push(
+      ...(await synchronizePORequests(
+        po,
+        actor,
+        existingRequests.filter(request => request.poId === po.id)
+      ))
+    );
   }
   return results;
 };

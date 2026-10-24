@@ -1,24 +1,11 @@
 import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Check,
-  ChevronDown,
-  LockKeyhole,
-  Plus,
-  Save,
-  Search,
-  Settings2,
-  Trash2
-} from 'lucide-react';
+import { Check, ChevronDown, LockKeyhole, Plus, Save, Search, Settings2, Trash2 } from 'lucide-react';
 import {
   mergeCustomerFilterDefinitions,
   type CustomerFilterDefinition
 } from '@/features/crm/model/customerFilterConfig';
-import type {
-  LeadCustomFieldType,
-  LeadFilterDefinition,
-  LeadFilterOption
-} from '@/features/crm/model/crmModels';
+import type { LeadCustomFieldType, LeadFilterDefinition, LeadFilterOption } from '@/features/crm/model/crmModels';
 import {
   compactLeadFilterDefinitionForStorage,
   LEAD_FILTER_IDS,
@@ -58,18 +45,20 @@ const createUniqueId = (baseId: string, existingIds: Set<string>) => {
   return candidate;
 };
 
-const normalizeSearch = (value: string) => value
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .replace(/đ/g, 'd')
-  .replace(/Đ/g, 'D')
-  .toLocaleLowerCase('vi-VN')
-  .trim();
+const normalizeSearch = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLocaleLowerCase('vi-VN')
+    .trim();
 
-const cloneOptions = (options: LeadFilterOption[]): LeadFilterOption[] => options.map(option => ({
-  ...option,
-  children: cloneOptions(option.children || [])
-}));
+const cloneOptions = (options: LeadFilterOption[]): LeadFilterOption[] =>
+  options.map(option => ({
+    ...option,
+    children: cloneOptions(option.children || [])
+  }));
 
 const SearchableLocationSelect: React.FC<{
   value: string;
@@ -120,12 +109,31 @@ const SearchableLocationSelect: React.FC<{
         <div className="system-location-select__dropdown">
           <div className="system-location-select__search">
             <Search size={14} />
-            <input autoFocus type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={searchPlaceholder} />
+            <input
+              autoFocus
+              type="search"
+              value={searchTerm}
+              onChange={event => setSearchTerm(event.target.value)}
+              placeholder={searchPlaceholder}
+            />
           </div>
           <div className="system-location-select__options" role="listbox">
             {visibleOptions.map(option => (
-              <button type="button" role="option" aria-selected={option.id === value} className={option.id === value ? 'is-selected' : ''} key={option.id} onClick={() => { onChange(option.id); setOpen(false); setSearchTerm(''); }}>
-                <span>{option.label}</span><small>{option.meta}</small>{option.id === value && <Check size={14} />}
+              <button
+                type="button"
+                role="option"
+                aria-selected={option.id === value}
+                className={option.id === value ? 'is-selected' : ''}
+                key={option.id}
+                onClick={() => {
+                  onChange(option.id);
+                  setOpen(false);
+                  setSearchTerm('');
+                }}
+              >
+                <span>{option.label}</span>
+                <small>{option.meta}</small>
+                {option.id === value && <Check size={14} />}
               </button>
             ))}
             {visibleOptions.length === 0 && <p>Không tìm thấy địa bàn phù hợp.</p>}
@@ -188,10 +196,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     };
   }, [showScopeMenu]);
 
-  const leadDefinitions = useMemo(
-    () => mergeLeadFilterDefinitions(storedLeadDefinitions),
-    [storedLeadDefinitions]
-  );
+  const leadDefinitions = useMemo(() => mergeLeadFilterDefinitions(storedLeadDefinitions), [storedLeadDefinitions]);
   const customerDefinitions = useMemo(
     () => mergeCustomerFilterDefinitions(storedCustomerDefinitions),
     [storedCustomerDefinitions]
@@ -208,10 +213,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
       updatedAt: new Date().toISOString()
     };
     await dbService.addDocument('lead_filter_definitions', savedDefinition);
-    setStoredLeadDefinitions(previous => [
-      ...previous.filter(item => item.id !== definition.id),
-      savedDefinition
-    ]);
+    setStoredLeadDefinitions(previous => [...previous.filter(item => item.id !== definition.id), savedDefinition]);
   };
 
   const saveCustomerDefinition = async (definition: CustomerFilterDefinition) => {
@@ -221,10 +223,7 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
       updatedAt: new Date().toISOString()
     };
     await dbService.addDocument('customer_filter_definitions', savedDefinition);
-    setStoredCustomerDefinitions(previous => [
-      ...previous.filter(item => item.id !== definition.id),
-      savedDefinition
-    ]);
+    setStoredCustomerDefinitions(previous => [...previous.filter(item => item.id !== definition.id), savedDefinition]);
   };
 
   const selectDefinition = (definition: SystemFilterDefinition) => {
@@ -232,9 +231,10 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
     const nextLeadDraft = matchingLeadDefinition
       ? { ...matchingLeadDefinition, options: cloneOptions(matchingLeadDefinition.options) }
       : null;
-    const initialProvince = nextLeadDraft?.id === LEAD_FILTER_IDS.industrialPark
-      ? nextLeadDraft.options.find(province => province.active && (province.children || []).some(park => park.active))
-      : undefined;
+    const initialProvince =
+      nextLeadDraft?.id === LEAD_FILTER_IDS.industrialPark
+        ? nextLeadDraft.options.find(province => province.active && (province.children || []).some(park => park.active))
+        : undefined;
     setSelectedDefinitionId(definition.id);
     setSystemDraft({ ...definition, scopes: [...definition.scopes] });
     setLeadDraft(nextLeadDraft);
@@ -286,32 +286,46 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
   };
 
   const updateScope = (scope: SystemFilterScope, checked: boolean) => {
-    setSystemDraft(previous => previous ? {
-      ...previous,
-      scopes: checked
-        ? Array.from(new Set([...previous.scopes, scope]))
-        : previous.scopes.filter(item => item !== scope)
-    } : previous);
+    setSystemDraft(previous =>
+      previous
+        ? {
+            ...previous,
+            scopes: checked
+              ? Array.from(new Set([...previous.scopes, scope]))
+              : previous.scopes.filter(item => item !== scope)
+          }
+        : previous
+    );
   };
 
   const updateOption = (optionId: string, label: string) => {
-    setLeadDraft(previous => previous ? {
-      ...previous,
-      options: previous.options.map(option => option.id === optionId ? { ...option, label } : option)
-    } : previous);
+    setLeadDraft(previous =>
+      previous
+        ? {
+            ...previous,
+            options: previous.options.map(option => (option.id === optionId ? { ...option, label } : option))
+          }
+        : previous
+    );
   };
 
   const archiveOption = (optionId: string) => {
-    setLeadDraft(previous => previous ? {
-      ...previous,
-      options: previous.options.map(option => option.id === optionId ? { ...option, active: false } : option)
-    } : previous);
+    setLeadDraft(previous =>
+      previous
+        ? {
+            ...previous,
+            options: previous.options.map(option => (option.id === optionId ? { ...option, active: false } : option))
+          }
+        : previous
+    );
   };
 
   const addOption = () => {
     const label = newOptionName.trim();
     if (!label || !leadDraft) return;
-    const duplicate = leadDraft.options.some(option => option.active && normalizeSearch(option.label) === normalizeSearch(label));
+    const duplicate = leadDraft.options.some(
+      option => option.active && normalizeSearch(option.label) === normalizeSearch(label)
+    );
     if (duplicate) {
       setSaveError('Mục con này đã tồn tại trong tiêu chí.');
       return;
@@ -323,38 +337,57 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
       color: OPTION_COLORS[leadDraft.options.length % OPTION_COLORS.length],
       active: true
     };
-    setLeadDraft(previous => previous ? { ...previous, options: [...previous.options, option] } : previous);
+    setLeadDraft(previous => (previous ? { ...previous, options: [...previous.options, option] } : previous));
     setNewOptionName('');
     setSaveError('');
   };
 
-  const activeProvinceOptions = leadDraft?.id === LEAD_FILTER_IDS.industrialPark
-    ? leadDraft.options.filter(option => option.active)
-    : [];
-  const selectedProvince = activeProvinceOptions.find(province => province.id === selectedProvinceId)
-    || activeProvinceOptions[0];
+  const activeProvinceOptions =
+    leadDraft?.id === LEAD_FILTER_IDS.industrialPark ? leadDraft.options.filter(option => option.active) : [];
+  const selectedProvince =
+    activeProvinceOptions.find(province => province.id === selectedProvinceId) || activeProvinceOptions[0];
   const activeRegions = (selectedProvince?.children || []).filter(region => region.active);
 
   const updateRegion = (regionId: string, label: string) => {
     if (!selectedProvince) return;
-    setLeadDraft(previous => previous ? {
-      ...previous,
-      options: previous.options.map(province => province.id !== selectedProvince.id ? province : {
-        ...province,
-        children: (province.children || []).map(region => region.id === regionId ? { ...region, label } : region)
-      })
-    } : previous);
+    setLeadDraft(previous =>
+      previous
+        ? {
+            ...previous,
+            options: previous.options.map(province =>
+              province.id !== selectedProvince.id
+                ? province
+                : {
+                    ...province,
+                    children: (province.children || []).map(region =>
+                      region.id === regionId ? { ...region, label } : region
+                    )
+                  }
+            )
+          }
+        : previous
+    );
   };
 
   const archiveRegion = (regionId: string) => {
     if (!selectedProvince) return;
-    setLeadDraft(previous => previous ? {
-      ...previous,
-      options: previous.options.map(province => province.id !== selectedProvince.id ? province : {
-        ...province,
-        children: (province.children || []).map(region => region.id === regionId ? { ...region, active: false } : region)
-      })
-    } : previous);
+    setLeadDraft(previous =>
+      previous
+        ? {
+            ...previous,
+            options: previous.options.map(province =>
+              province.id !== selectedProvince.id
+                ? province
+                : {
+                    ...province,
+                    children: (province.children || []).map(region =>
+                      region.id === regionId ? { ...region, active: false } : region
+                    )
+                  }
+            )
+          }
+        : previous
+    );
   };
 
   const addRegion = () => {
@@ -376,86 +409,101 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
       kind: 'region',
       system: false
     };
-    setLeadDraft(previous => previous ? {
-      ...previous,
-      options: previous.options.map(province => province.id !== selectedProvince.id ? province : {
-        ...province,
-        children: [...(province.children || []), region]
-      })
-    } : previous);
+    setLeadDraft(previous =>
+      previous
+        ? {
+            ...previous,
+            options: previous.options.map(province =>
+              province.id !== selectedProvince.id
+                ? province
+                : {
+                    ...province,
+                    children: [...(province.children || []), region]
+                  }
+            )
+          }
+        : previous
+    );
     setNewRegionName('');
     setSaveError('');
   };
 
   const saveSelectedDefinition = async () => {
-    return runMutationAction("SystemConfigurationPage.tsx:saveSelectedDefinition", async () => {
-      if (!systemDraft?.name.trim()) return;
-      const isLocationCatalog = leadDraft?.id === LEAD_FILTER_IDS.province
-        || leadDraft?.id === LEAD_FILTER_IDS.industrialPark;
-      const invalidOption = !isLocationCatalog
-        && leadDraft?.options.some(option => option.active && !option.label.trim());
-      const hasNoOption = !isLocationCatalog
-        && leadDraft?.options.every(option => !option.active);
-      const invalidRegion = leadDraft?.id === LEAD_FILTER_IDS.industrialPark
-        && leadDraft.options.some(province => (
-          (province.children || []).some(region => region.active && !region.label.trim())
-        ));
-      if (invalidOption || invalidRegion || hasNoOption) {
-        setSaveError(hasNoOption ? 'Tiêu chí mới cần có ít nhất một mục con.' : 'Tên mục con không được để trống.');
-        return;
-      }
-      setSaving(true);
-      setSaveError('');
-      setSaveSuccess('');
-      const savedSystemDefinition: SystemFilterDefinition = {
-        ...systemDraft,
-        name: systemDraft.name.trim(),
-        description: systemDraft.description.trim(),
-        scopes: systemDraft.scopes.filter(scope => systemDraft.availableScopes.includes(scope)),
-        controlType: leadDraft?.type === 'checkbox' ? 'boolean' : systemDraft.controlType,
-        updatedBy: currentUser.displayName,
-        updatedAt: new Date().toISOString()
-      };
-      try {
-        await dbService.addDocument('system_filter_definitions', savedSystemDefinition);
-        if (leadDraft) {
-          const storedLeadDefinition = storedLeadDefinitions.find(item => item.id === leadDraft.id);
-          await saveLeadDefinition({
-            ...leadDraft,
-            name: savedSystemDefinition.name,
-            active: savedSystemDefinition.active,
-            options: leadDraft.id === LEAD_FILTER_IDS.province
-              ? cloneOptions(storedLeadDefinition?.options || [])
-              : cloneOptions(leadDraft.options)
-          });
+    return runMutationAction(
+      'SystemConfigurationPage.tsx:saveSelectedDefinition',
+      async () => {
+        if (!systemDraft?.name.trim()) return;
+        const isLocationCatalog =
+          leadDraft?.id === LEAD_FILTER_IDS.province || leadDraft?.id === LEAD_FILTER_IDS.industrialPark;
+        const invalidOption =
+          !isLocationCatalog && leadDraft?.options.some(option => option.active && !option.label.trim());
+        const hasNoOption = !isLocationCatalog && leadDraft?.options.every(option => !option.active);
+        const invalidRegion =
+          leadDraft?.id === LEAD_FILTER_IDS.industrialPark &&
+          leadDraft.options.some(province =>
+            (province.children || []).some(region => region.active && !region.label.trim())
+          );
+        if (invalidOption || invalidRegion || hasNoOption) {
+          setSaveError(hasNoOption ? 'Tiêu chí mới cần có ít nhất một mục con.' : 'Tên mục con không được để trống.');
+          return;
         }
-        const customerDefinition = customerDefinitions.find(item => item.id === savedSystemDefinition.id);
-        if (customerDefinition) {
-          await saveCustomerDefinition({
-            ...customerDefinition,
-            name: savedSystemDefinition.name,
-            description: savedSystemDefinition.description,
-            active: savedSystemDefinition.active
-          });
-        }
-        setStoredSystemDefinitions(previous => [
-          ...previous.filter(item => item.id !== savedSystemDefinition.id),
-          savedSystemDefinition
-        ]);
-        setSystemDraft(savedSystemDefinition);
-        setSaveSuccess('Đã lưu tiêu chí và toàn bộ mục con.');
+        setSaving(true);
+        setSaveError('');
+        setSaveSuccess('');
+        const savedSystemDefinition: SystemFilterDefinition = {
+          ...systemDraft,
+          name: systemDraft.name.trim(),
+          description: systemDraft.description.trim(),
+          scopes: systemDraft.scopes.filter(scope => systemDraft.availableScopes.includes(scope)),
+          controlType: leadDraft?.type === 'checkbox' ? 'boolean' : systemDraft.controlType,
+          updatedBy: currentUser.displayName,
+          updatedAt: new Date().toISOString()
+        };
+        try {
+          await dbService.addDocument('system_filter_definitions', savedSystemDefinition);
+          if (leadDraft) {
+            const storedLeadDefinition = storedLeadDefinitions.find(item => item.id === leadDraft.id);
+            await saveLeadDefinition({
+              ...leadDraft,
+              name: savedSystemDefinition.name,
+              active: savedSystemDefinition.active,
+              options:
+                leadDraft.id === LEAD_FILTER_IDS.province
+                  ? cloneOptions(storedLeadDefinition?.options || [])
+                  : cloneOptions(leadDraft.options)
+            });
+          }
+          const customerDefinition = customerDefinitions.find(item => item.id === savedSystemDefinition.id);
+          if (customerDefinition) {
+            await saveCustomerDefinition({
+              ...customerDefinition,
+              name: savedSystemDefinition.name,
+              description: savedSystemDefinition.description,
+              active: savedSystemDefinition.active
+            });
+          }
+          setStoredSystemDefinitions(previous => [
+            ...previous.filter(item => item.id !== savedSystemDefinition.id),
+            savedSystemDefinition
+          ]);
+          setSystemDraft(savedSystemDefinition);
+          setSaveSuccess('Đã lưu tiêu chí và toàn bộ mục con.');
 
-        showSuccessToast("Đã lưu thành công");
-      } catch (error) {
-        showErrorToast();
-        const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
-        setSaveError(code.includes('permission-denied')
-          ? 'Firebase chưa cấp quyền quản trị cấu hình hệ thống. Hãy xuất bản Firestore Rules mới nhất.'
-          : 'Không thể lưu cấu hình lúc này. Vui lòng thử lại.');
-      } finally {
-        setSaving(false);
-      }
-    }, undefined);
+          showSuccessToast('Đã lưu thành công');
+        } catch (error) {
+          showErrorToast();
+          const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+          setSaveError(
+            code.includes('permission-denied')
+              ? 'Firebase chưa cấp quyền quản trị cấu hình hệ thống. Hãy xuất bản Firestore Rules mới nhất.'
+              : 'Không thể lưu cấu hình lúc này. Vui lòng thử lại.'
+          );
+        } finally {
+          setSaving(false);
+        }
+      },
+      undefined
+    );
   };
 
   const selectedChildCount = leadDraft
@@ -466,150 +514,389 @@ export const SystemConfiguration: React.FC<SystemConfigurationProps> = ({ curren
 
   return (
     <div className="system-config-view">
-      <PageContextHeader section="Cấu hình" current={configurationTab === 'custom_fields' ? 'Trường thông tin' : 'Tiêu chí bộ lọc'} />
+      <PageContextHeader
+        section="Cấu hình"
+        current={configurationTab === 'custom_fields' ? 'Trường thông tin' : 'Tiêu chí bộ lọc'}
+      />
 
       <nav className="system-config-tabs content-tabs" role="tablist" aria-label="Nhóm cấu hình">
-        <button type="button" role="tab" aria-selected={configurationTab === 'filters'} className={configurationTab === 'filters' ? 'is-active' : ''} onClick={() => setConfigurationTab('filters')}>Tiêu chí bộ lọc</button>
-        <button type="button" role="tab" aria-selected={configurationTab === 'custom_fields'} className={configurationTab === 'custom_fields' ? 'is-active' : ''} onClick={() => setConfigurationTab('custom_fields')}>Trường thông tin</button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={configurationTab === 'filters'}
+          className={configurationTab === 'filters' ? 'is-active' : ''}
+          onClick={() => setConfigurationTab('filters')}
+        >
+          Tiêu chí bộ lọc
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={configurationTab === 'custom_fields'}
+          className={configurationTab === 'custom_fields' ? 'is-active' : ''}
+          onClick={() => setConfigurationTab('custom_fields')}
+        >
+          Trường thông tin
+        </button>
       </nav>
 
       <div className="erp-tab-actionbar">
-        <span className="system-config-admin-badge"><LockKeyhole size={14} /> Chỉ Giám đốc/Admin</span>
+        <span className="system-config-admin-badge">
+          <LockKeyhole size={14} /> Chỉ Giám đốc/Admin
+        </span>
       </div>
 
-      {configurationTab === 'custom_fields' ? <CustomFieldConfiguration currentUser={currentUser} /> : <section className="system-filter-catalog">
-        <header className="system-filter-catalog__header">
-          <div><h2>Tiêu chí bộ lọc</h2><p>Chọn một tiêu chí để chỉnh sửa tên, mục con và nơi sử dụng.</p></div>
-          <button type="button" className="btn btn-primary" onClick={startCreateDefinition}><Plus size={14} /> Thêm tiêu chí</button>
-        </header>
+      {configurationTab === 'custom_fields' ? (
+        <CustomFieldConfiguration currentUser={currentUser} />
+      ) : (
+        <section className="system-filter-catalog">
+          <header className="system-filter-catalog__header">
+            <div>
+              <h2>Tiêu chí bộ lọc</h2>
+              <p>Chọn một tiêu chí để chỉnh sửa tên, mục con và nơi sử dụng.</p>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={startCreateDefinition}>
+              <Plus size={14} /> Thêm tiêu chí
+            </button>
+          </header>
 
-        <div className="system-filter-catalog__body">
-          <aside className="system-filter-list" aria-label="Danh sách tiêu chí bộ lọc">
-            <div className="system-filter-list__count"><strong>{systemDefinitions.length} tiêu chí</strong><span>{systemDefinitions.filter(item => item.active).length} đang sử dụng</span></div>
-            {systemDefinitions.map((definition, index) => {
-              const matchingLead = leadDefinitions.find(item => item.id === definition.id);
-              const childCount = matchingLead
-                ? definition.id === LEAD_FILTER_IDS.industrialPark
-                  ? matchingLead.options.flatMap(province => province.children || []).filter(region => region.active).length
-                  : matchingLead.options.filter(option => option.active).length
-                : null;
-              return (
-                <button type="button" key={definition.id} className={`${selectedDefinitionId === definition.id ? 'is-selected' : ''} ${!definition.active ? 'is-inactive' : ''}`} onClick={() => selectDefinition(definition)}>
-                  <span className="system-filter-list__number">{index + 1}</span>
-                  <div><strong>{definition.name}</strong><span>{childCount === null ? 'Danh sách tự động từ hệ thống' : definition.id === LEAD_FILTER_IDS.province ? `${childCount} tỉnh/thành` : definition.id === LEAD_FILTER_IDS.industrialPark ? `${childCount} KCN` : `${childCount} mục con`}</span></div>
-                  <ChevronDown size={15} />
-                </button>
-              );
-            })}
-          </aside>
-
-          <main className="system-filter-editor">
-            {systemDraft ? (
-              <>
-                <div className="system-filter-editor__heading">
-                  <div><h3>{systemDraft.name}</h3><p>{leadDraft ? `${selectedChildCount} mục con đang sử dụng` : 'Danh sách mục con được đồng bộ tự động'}</p></div>
-                  <label className="system-filter-status"><input type="checkbox" checked={systemDraft.active} onChange={event => setSystemDraft(previous => previous ? { ...previous, active: event.target.checked } : previous)} /><span>Đang sử dụng</span></label>
-                </div>
-
-                <div className="system-filter-basic-fields">
-                  <label><span>Tên tiêu chí *</span><input value={systemDraft.name} onChange={event => setSystemDraft(previous => previous ? { ...previous, name: event.target.value } : previous)} /></label>
-                  <label><span>Mô tả hướng dẫn</span><input value={systemDraft.description} onChange={event => setSystemDraft(previous => previous ? { ...previous, description: event.target.value } : previous)} /></label>
-                </div>
-
-                {leadDraft && leadDraft.id !== LEAD_FILTER_IDS.province && leadDraft.id !== LEAD_FILTER_IDS.industrialPark && (
-                  <section className="system-child-editor">
-                    <div className="system-child-editor__title">
-                      <div><h4>Các mục con</h4><p>Chỉnh sửa trực tiếp từng lựa chọn. Mục bị xóa sẽ được lưu trữ để không làm mất dữ liệu cũ.</p></div>
-                      <label><span>Cách lựa chọn</span><select value={leadDraft.type} onChange={event => setLeadDraft(previous => previous ? { ...previous, type: event.target.value as LeadCustomFieldType } : previous)}><option value="single_select">Chọn một</option><option value="multi_select">Chọn nhiều</option></select></label>
+          <div className="system-filter-catalog__body">
+            <aside className="system-filter-list" aria-label="Danh sách tiêu chí bộ lọc">
+              <div className="system-filter-list__count">
+                <strong>{systemDefinitions.length} tiêu chí</strong>
+                <span>{systemDefinitions.filter(item => item.active).length} đang sử dụng</span>
+              </div>
+              {systemDefinitions.map((definition, index) => {
+                const matchingLead = leadDefinitions.find(item => item.id === definition.id);
+                const childCount = matchingLead
+                  ? definition.id === LEAD_FILTER_IDS.industrialPark
+                    ? matchingLead.options.flatMap(province => province.children || []).filter(region => region.active)
+                        .length
+                    : matchingLead.options.filter(option => option.active).length
+                  : null;
+                return (
+                  <button
+                    type="button"
+                    key={definition.id}
+                    className={`${selectedDefinitionId === definition.id ? 'is-selected' : ''} ${!definition.active ? 'is-inactive' : ''}`}
+                    onClick={() => selectDefinition(definition)}
+                  >
+                    <span className="system-filter-list__number">{index + 1}</span>
+                    <div>
+                      <strong>{definition.name}</strong>
+                      <span>
+                        {childCount === null
+                          ? 'Danh sách tự động từ hệ thống'
+                          : definition.id === LEAD_FILTER_IDS.province
+                            ? `${childCount} tỉnh/thành`
+                            : definition.id === LEAD_FILTER_IDS.industrialPark
+                              ? `${childCount} KCN`
+                              : `${childCount} mục con`}
+                      </span>
                     </div>
-                    <div className="system-child-list">
-                      {leadDraft.options.filter(option => option.active).map((option, index) => (
-                        <div className="system-child-row" key={option.id}>
-                          <span>{index + 1}</span>
-                          <input value={option.label} onChange={event => updateOption(option.id, event.target.value)} />
-                          <button type="button" title="Ngừng sử dụng mục này" onClick={() => archiveOption(option.id)}><Trash2 size={14} /></button>
+                    <ChevronDown size={15} />
+                  </button>
+                );
+              })}
+            </aside>
+
+            <main className="system-filter-editor">
+              {systemDraft ? (
+                <>
+                  <div className="system-filter-editor__heading">
+                    <div>
+                      <h3>{systemDraft.name}</h3>
+                      <p>
+                        {leadDraft
+                          ? `${selectedChildCount} mục con đang sử dụng`
+                          : 'Danh sách mục con được đồng bộ tự động'}
+                      </p>
+                    </div>
+                    <label className="system-filter-status">
+                      <input
+                        type="checkbox"
+                        checked={systemDraft.active}
+                        onChange={event =>
+                          setSystemDraft(previous =>
+                            previous ? { ...previous, active: event.target.checked } : previous
+                          )
+                        }
+                      />
+                      <span>Đang sử dụng</span>
+                    </label>
+                  </div>
+
+                  <div className="system-filter-basic-fields">
+                    <label>
+                      <span>Tên tiêu chí *</span>
+                      <input
+                        value={systemDraft.name}
+                        onChange={event =>
+                          setSystemDraft(previous => (previous ? { ...previous, name: event.target.value } : previous))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Mô tả hướng dẫn</span>
+                      <input
+                        value={systemDraft.description}
+                        onChange={event =>
+                          setSystemDraft(previous =>
+                            previous ? { ...previous, description: event.target.value } : previous
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  {leadDraft &&
+                    leadDraft.id !== LEAD_FILTER_IDS.province &&
+                    leadDraft.id !== LEAD_FILTER_IDS.industrialPark && (
+                      <section className="system-child-editor">
+                        <div className="system-child-editor__title">
+                          <div>
+                            <h4>Các mục con</h4>
+                            <p>
+                              Chỉnh sửa trực tiếp từng lựa chọn. Mục bị xóa sẽ được lưu trữ để không làm mất dữ liệu cũ.
+                            </p>
+                          </div>
+                          <label>
+                            <span>Cách lựa chọn</span>
+                            <select
+                              value={leadDraft.type}
+                              onChange={event =>
+                                setLeadDraft(previous =>
+                                  previous ? { ...previous, type: event.target.value as LeadCustomFieldType } : previous
+                                )
+                              }
+                            >
+                              <option value="single_select">Chọn một</option>
+                              <option value="multi_select">Chọn nhiều</option>
+                            </select>
+                          </label>
                         </div>
-                      ))}
-                    </div>
-                    <div className="system-child-add">
-                      <input value={newOptionName} onChange={event => setNewOptionName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addOption(); } }} placeholder="Nhập tên mục con mới..." />
-                      <button type="button" className="btn btn-outline" onClick={addOption}><Plus size={14} /> Thêm mục con</button>
-                    </div>
-                  </section>
-                )}
-
-                {leadDraft?.id === LEAD_FILTER_IDS.province && (
-                  <section className="system-child-editor system-location-editor">
-                    <div className="system-child-editor__title"><div><h4>Danh mục tỉnh/thành</h4><p>Danh mục địa giới được hệ thống đồng bộ cố định và sử dụng độc lập với Khu công nghiệp.</p></div><span className="system-fixed-badge"><LockKeyhole size={12} /> Địa giới cố định</span></div>
-                    <div className="system-child-empty">Hệ thống đang sử dụng {leadDraft.options.filter(option => option.active).length} tỉnh/thành.</div>
-                  </section>
-                )}
-
-                {leadDraft?.id === LEAD_FILTER_IDS.industrialPark && (
-                  <section className="system-child-editor system-location-editor">
-                    <div className="system-child-editor__title"><div><h4>Danh mục khu công nghiệp theo tỉnh/thành</h4><p>Chọn tỉnh/thành trước, sau đó thêm hoặc chỉnh sửa các KCN thuộc địa bàn đó.</p></div></div>
-                    <div className="system-location-grid system-location-grid--single">
-                      <label><span>Tỉnh/Thành phố *</span><SearchableLocationSelect value={selectedProvince?.id || ''} placeholder="Chọn tỉnh/thành trước" searchPlaceholder="Tìm nhanh tỉnh/thành..." options={activeProvinceOptions.map(province => ({ id: province.id, label: province.label, meta: `${(province.children || []).filter(region => region.active).length} KCN` }))} onChange={provinceId => { setSelectedProvinceId(provinceId); setNewRegionName(''); setSaveError(''); }} /></label>
-                    </div>
-                    {selectedProvince && (
-                      <div className="system-region-workspace">
-                        <div className="system-region-workspace__heading"><strong>Khu công nghiệp tại {selectedProvince.label}</strong><span>{activeRegions.length} KCN</span></div>
                         <div className="system-child-list">
-                          {activeRegions.map((region, index) => (
-                            <div className="system-child-row" key={region.id}>
-                              <span>{index + 1}</span>
-                              <input value={region.label} onChange={event => updateRegion(region.id, event.target.value)} />
-                              <button type="button" title="Ngừng sử dụng KCN này" onClick={() => archiveRegion(region.id)}><Trash2 size={14} /></button>
-                            </div>
-                          ))}
-                          {activeRegions.length === 0 && <div className="system-child-empty">Tỉnh/thành này chưa có KCN được cấu hình.</div>}
+                          {leadDraft.options
+                            .filter(option => option.active)
+                            .map((option, index) => (
+                              <div className="system-child-row" key={option.id}>
+                                <span>{index + 1}</span>
+                                <input
+                                  value={option.label}
+                                  onChange={event => updateOption(option.id, event.target.value)}
+                                />
+                                <button
+                                  type="button"
+                                  title="Ngừng sử dụng mục này"
+                                  onClick={() => archiveOption(option.id)}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ))}
                         </div>
                         <div className="system-child-add">
-                          <input value={newRegionName} onChange={event => setNewRegionName(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addRegion(); } }} placeholder="Nhập tên khu công nghiệp..." />
-                          <button type="button" className="btn btn-outline" onClick={addRegion}><Plus size={14} /> Thêm KCN</button>
+                          <input
+                            value={newOptionName}
+                            onChange={event => setNewOptionName(event.target.value)}
+                            onKeyDown={event => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault();
+                                addOption();
+                              }
+                            }}
+                            placeholder="Nhập tên mục con mới..."
+                          />
+                          <button type="button" className="btn btn-outline" onClick={addOption}>
+                            <Plus size={14} /> Thêm mục con
+                          </button>
+                        </div>
+                      </section>
+                    )}
+
+                  {leadDraft?.id === LEAD_FILTER_IDS.province && (
+                    <section className="system-child-editor system-location-editor">
+                      <div className="system-child-editor__title">
+                        <div>
+                          <h4>Danh mục tỉnh/thành</h4>
+                          <p>Danh mục địa giới được hệ thống đồng bộ cố định và sử dụng độc lập với Khu công nghiệp.</p>
+                        </div>
+                        <span className="system-fixed-badge">
+                          <LockKeyhole size={12} /> Địa giới cố định
+                        </span>
+                      </div>
+                      <div className="system-child-empty">
+                        Hệ thống đang sử dụng {leadDraft.options.filter(option => option.active).length} tỉnh/thành.
+                      </div>
+                    </section>
+                  )}
+
+                  {leadDraft?.id === LEAD_FILTER_IDS.industrialPark && (
+                    <section className="system-child-editor system-location-editor">
+                      <div className="system-child-editor__title">
+                        <div>
+                          <h4>Danh mục khu công nghiệp theo tỉnh/thành</h4>
+                          <p>Chọn tỉnh/thành trước, sau đó thêm hoặc chỉnh sửa các KCN thuộc địa bàn đó.</p>
                         </div>
                       </div>
-                    )}
-                  </section>
-                )}
-
-                {!leadDraft && (
-                  <section className="system-child-editor system-child-editor--automatic">
-                    <LockKeyhole size={21} />
-                    <div><h4>Mục con được đồng bộ tự động</h4><p>Tiêu chí này lấy lựa chọn từ dữ liệu nghiệp vụ thực tế như tài khoản Sale, khách hàng hoặc đơn hàng. Không thể nhập thủ công để tránh tạo lựa chọn không có dữ liệu.</p></div>
-                  </section>
-                )}
-
-                <section className="system-filter-scope-section">
-                  <div><h4>Nơi hiển thị</h4><p>Chọn các màn hình sẽ có tiêu chí này trong nút Bộ lọc.</p></div>
-                  <div className={`system-scope-picker ${showScopeMenu ? 'is-open' : ''}`} ref={scopeMenuRef}>
-                    <button type="button" className="system-scope-picker__trigger" aria-haspopup="true" aria-expanded={showScopeMenu} onClick={() => setShowScopeMenu(previous => !previous)}>
-                      <span>{systemDraft.scopes.length > 0 ? `${systemDraft.scopes.length} nơi đã chọn` : 'Chọn nơi hiển thị'}</span>
-                      <ChevronDown size={15} />
-                    </button>
-                    {showScopeMenu && (
-                      <div className="system-scope-picker__menu">
-                        <strong>Hiển thị trong nút Bộ lọc tại</strong>
-                        {(Object.entries(SYSTEM_FILTER_SCOPE_LABELS) as Array<[SystemFilterScope, string]>).map(([scope, label]) => {
-                          const supported = systemDraft.availableScopes.includes(scope);
-                          return <label key={scope} className={!supported ? 'is-disabled' : ''}><input type="checkbox" disabled={!supported} checked={systemDraft.scopes.includes(scope)} onChange={event => updateScope(scope, event.target.checked)} /><span><b>{label}</b>{!supported && <small>Tiêu chí không hỗ trợ màn hình này</small>}</span></label>;
-                        })}
+                      <div className="system-location-grid system-location-grid--single">
+                        <label>
+                          <span>Tỉnh/Thành phố *</span>
+                          <SearchableLocationSelect
+                            value={selectedProvince?.id || ''}
+                            placeholder="Chọn tỉnh/thành trước"
+                            searchPlaceholder="Tìm nhanh tỉnh/thành..."
+                            options={activeProvinceOptions.map(province => ({
+                              id: province.id,
+                              label: province.label,
+                              meta: `${(province.children || []).filter(region => region.active).length} KCN`
+                            }))}
+                            onChange={provinceId => {
+                              setSelectedProvinceId(provinceId);
+                              setNewRegionName('');
+                              setSaveError('');
+                            }}
+                          />
+                        </label>
                       </div>
-                    )}
-                  </div>
-                </section>
+                      {selectedProvince && (
+                        <div className="system-region-workspace">
+                          <div className="system-region-workspace__heading">
+                            <strong>Khu công nghiệp tại {selectedProvince.label}</strong>
+                            <span>{activeRegions.length} KCN</span>
+                          </div>
+                          <div className="system-child-list">
+                            {activeRegions.map((region, index) => (
+                              <div className="system-child-row" key={region.id}>
+                                <span>{index + 1}</span>
+                                <input
+                                  value={region.label}
+                                  onChange={event => updateRegion(region.id, event.target.value)}
+                                />
+                                <button
+                                  type="button"
+                                  title="Ngừng sử dụng KCN này"
+                                  onClick={() => archiveRegion(region.id)}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ))}
+                            {activeRegions.length === 0 && (
+                              <div className="system-child-empty">Tỉnh/thành này chưa có KCN được cấu hình.</div>
+                            )}
+                          </div>
+                          <div className="system-child-add">
+                            <input
+                              value={newRegionName}
+                              onChange={event => setNewRegionName(event.target.value)}
+                              onKeyDown={event => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault();
+                                  addRegion();
+                                }
+                              }}
+                              placeholder="Nhập tên khu công nghiệp..."
+                            />
+                            <button type="button" className="btn btn-outline" onClick={addRegion}>
+                              <Plus size={14} /> Thêm KCN
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  )}
 
-                <div className="system-filter-editor__footer">
-                  <div>{saveError && <p className="is-error" role="alert">{saveError}</p>}{saveSuccess && <p className="is-success">{saveSuccess}</p>}</div>
-                  <button type="button" className="btn btn-primary" disabled={saving || !systemDraft.name.trim()} onClick={saveSelectedDefinition}><Save size={14} /> {saving ? 'Đang lưu...' : 'Lưu tiêu chí'}</button>
+                  {!leadDraft && (
+                    <section className="system-child-editor system-child-editor--automatic">
+                      <LockKeyhole size={21} />
+                      <div>
+                        <h4>Mục con được đồng bộ tự động</h4>
+                        <p>
+                          Tiêu chí này lấy lựa chọn từ dữ liệu nghiệp vụ thực tế như tài khoản Sale, khách hàng hoặc đơn
+                          hàng. Không thể nhập thủ công để tránh tạo lựa chọn không có dữ liệu.
+                        </p>
+                      </div>
+                    </section>
+                  )}
+
+                  <section className="system-filter-scope-section">
+                    <div>
+                      <h4>Nơi hiển thị</h4>
+                      <p>Chọn các màn hình sẽ có tiêu chí này trong nút Bộ lọc.</p>
+                    </div>
+                    <div className={`system-scope-picker ${showScopeMenu ? 'is-open' : ''}`} ref={scopeMenuRef}>
+                      <button
+                        type="button"
+                        className="system-scope-picker__trigger"
+                        aria-haspopup="true"
+                        aria-expanded={showScopeMenu}
+                        onClick={() => setShowScopeMenu(previous => !previous)}
+                      >
+                        <span>
+                          {systemDraft.scopes.length > 0
+                            ? `${systemDraft.scopes.length} nơi đã chọn`
+                            : 'Chọn nơi hiển thị'}
+                        </span>
+                        <ChevronDown size={15} />
+                      </button>
+                      {showScopeMenu && (
+                        <div className="system-scope-picker__menu">
+                          <strong>Hiển thị trong nút Bộ lọc tại</strong>
+                          {(Object.entries(SYSTEM_FILTER_SCOPE_LABELS) as Array<[SystemFilterScope, string]>).map(
+                            ([scope, label]) => {
+                              const supported = systemDraft.availableScopes.includes(scope);
+                              return (
+                                <label key={scope} className={!supported ? 'is-disabled' : ''}>
+                                  <input
+                                    type="checkbox"
+                                    disabled={!supported}
+                                    checked={systemDraft.scopes.includes(scope)}
+                                    onChange={event => updateScope(scope, event.target.checked)}
+                                  />
+                                  <span>
+                                    <b>{label}</b>
+                                    {!supported && <small>Tiêu chí không hỗ trợ màn hình này</small>}
+                                  </span>
+                                </label>
+                              );
+                            }
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <div className="system-filter-editor__footer">
+                    <div>
+                      {saveError && (
+                        <p className="is-error" role="alert">
+                          {saveError}
+                        </p>
+                      )}
+                      {saveSuccess && <p className="is-success">{saveSuccess}</p>}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={saving || !systemDraft.name.trim()}
+                      onClick={saveSelectedDefinition}
+                    >
+                      <Save size={14} /> {saving ? 'Đang lưu...' : 'Lưu tiêu chí'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="system-filter-editor__empty">
+                  <Settings2 size={34} />
+                  <strong>Chọn một tiêu chí để chỉnh sửa</strong>
+                  <span>Các mục con sẽ hiển thị trực tiếp tại đây.</span>
                 </div>
-              </>
-            ) : (
-              <div className="system-filter-editor__empty"><Settings2 size={34} /><strong>Chọn một tiêu chí để chỉnh sửa</strong><span>Các mục con sẽ hiển thị trực tiếp tại đây.</span></div>
-            )}
-          </main>
-        </div>
-      </section>}
+              )}
+            </main>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

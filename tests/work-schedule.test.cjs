@@ -128,7 +128,7 @@ test('work groups share one table workspace and status failure requires a note',
   assert.doesNotMatch(page, /work-schedule-group-header/);
   assert.match(page, /work-schedule-status-filters/);
   assert.match(page, /work-schedule-status--/);
-  assert.match(page, /setSelectedItem\(previous => previous\?\.id === item\.id \? updated : previous\)/);
+  assert.match(page, /setSelectedItem\(previous => \(?previous\?\.id === item\.id \? updated : previous\)?\)/);
   assert.match(page, /Xác nhận tình trạng công việc/);
   assert.match(page, /Vui lòng nhập lý do không xử lí được/);
   assert.match(page, /eventType: 'work_schedule_cannot_process'/);
@@ -151,7 +151,7 @@ test('dashboard work-group navigation opens the matching schedule group', () => 
 test('work table stays compact with flat filters, colored statuses and an empty state', () => {
   const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');
-  assert.match(page, /<th>Công việc<\/th><th>Nhóm công việc<\/th><th>Loại công việc<\/th><th>Người giao<\/th><th>Người nhận<\/th>/);
+  assert.match(page, /<th>Công việc<\/th>\s*<th>Nhóm công việc<\/th>\s*<th>Loại công việc<\/th>\s*<th>Người giao<\/th>\s*<th>Người nhận<\/th>/);
   assert.match(page, /<th>Thao tác<\/th>/);
   assert.match(page, /work-schedule-kanban/);
   assert.match(page, /aria-label=\{`Xem chi tiết công việc/);

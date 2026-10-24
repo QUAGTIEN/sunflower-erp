@@ -12,7 +12,7 @@ const items = [...source.matchAll(/item\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(custo
   .map(match => ({ id: match[1], label: match[2], module: match[3], derived: match[4] || '' }));
 
 test('customer insight catalog contains 8 groups and exactly 61 unique items', () => {
-  const groupIds = [...source.matchAll(/\{ id: '([^']+)', label: '[^']+', items: \[/g)].map(match => match[1]);
+  const groupIds = [...source.matchAll(/\{\s*id: '([^']+)',\s*label: '[^']+',\s*items: \[/g)].map(match => match[1]);
   assert.equal(groupIds.length, 8);
   assert.equal(new Set(groupIds).size, 8);
   assert.equal(items.length, 61);
@@ -99,8 +99,8 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.match(workspaceSource, /visibleCandidateInsightItems\.map/);
   assert.doesNotMatch(workspaceSource, /lead-candidate-drawer/);
   assert.doesNotMatch(workspaceSource, /label: 'Xem hồ sơ'/);
-  assert.match(workspaceSource, /className="lead-candidate-company-button" onClick=\{\(\) => openEditForm\(candidate\)\}/);
-  assert.match(workspaceSource, /className="lead-candidate-phone-link" onClick=\{\(\) => openEditForm\(candidate, 'profile'\)\}/);
+  assert.match(workspaceSource, /className="lead-candidate-company-button"\s+onClick=\{\(\) => openEditForm\(candidate\)\}/);
+  assert.match(workspaceSource, /className="lead-candidate-phone-link"\s+onClick=\{\(\) => openEditForm\(candidate, 'profile'\)\}/);
   assert.doesNotMatch(workspaceSource, /data-system-label="businessSector"/);
   assert.doesNotMatch(workspaceSource, /data-system-label="expectedProducts"/);
   assert.match(workspaceSource, /<h2>File liên quan<\/h2>/);

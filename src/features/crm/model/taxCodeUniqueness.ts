@@ -8,14 +8,13 @@ export type TaxCodeConflictRecord = {
   assignedSaleName: string;
 };
 
-export const normalizeTaxCode = (value: unknown): string => String(value ?? '')
-  .trim()
-  .toUpperCase()
-  .replace(/[^0-9A-Z]/g, '');
+export const normalizeTaxCode = (value: unknown): string =>
+  String(value ?? '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^0-9A-Z]/g, '');
 
-export const createLeadDocumentIdFromTaxCode = (taxCode: string): string => (
-  `lead-mst-${normalizeTaxCode(taxCode)}`
-);
+export const createLeadDocumentIdFromTaxCode = (taxCode: string): string => `lead-mst-${normalizeTaxCode(taxCode)}`;
 
 export const findTaxCodeConflict = (
   taxCode: string,
@@ -27,11 +26,10 @@ export const findTaxCodeConflict = (
   const normalizedTaxCode = normalizeTaxCode(taxCode);
   if (!normalizedTaxCode) return null;
 
-  const duplicateLead = leads.find(lead => (
-    lead.id !== excludedLeadId
-    && isActiveLeadRecord(lead)
-    && normalizeTaxCode(lead.taxCode) === normalizedTaxCode
-  ));
+  const duplicateLead = leads.find(
+    lead =>
+      lead.id !== excludedLeadId && isActiveLeadRecord(lead) && normalizeTaxCode(lead.taxCode) === normalizedTaxCode
+  );
   if (duplicateLead) {
     return {
       id: duplicateLead.id,
@@ -42,11 +40,9 @@ export const findTaxCodeConflict = (
     };
   }
 
-  const duplicateCustomer = customers.find(customer => (
-    customer.id !== excludedCustomerId
-    &&
-    normalizeTaxCode(customer.taxCode) === normalizedTaxCode
-  ));
+  const duplicateCustomer = customers.find(
+    customer => customer.id !== excludedCustomerId && normalizeTaxCode(customer.taxCode) === normalizedTaxCode
+  );
   if (!duplicateCustomer) return null;
 
   return {

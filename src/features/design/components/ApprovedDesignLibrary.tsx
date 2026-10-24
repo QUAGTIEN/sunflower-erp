@@ -36,43 +36,64 @@ export const ApprovedDesignLibrary: React.FC<ApprovedDesignLibraryProps> = ({ de
   const [searchQuery, setSearchQuery] = useState('');
   const [customerFilter, setCustomerFilter] = useState('all');
 
-  const approvedTemplates = useMemo<ApprovedTemplate[]>(() => designs
-    .filter(design => design.status === 'approved' && ((design.versions?.length || 0) > 0 || !!design.fileUrl))
-    .map(design => {
-      const po = pos.find(candidate => candidate.id === design.poId);
-      const version = design.versions?.[design.versions.length - 1] || (design.fileUrl ? {
-        versionNumber: design.currentVersion || 1,
-        previewImage: design.fileUrl,
-        aiLink: design.aiLink,
-        corelLink: design.corelLink,
-        comment: design.notes,
-        createdAt: design.updatedAt
-      } : undefined);
-      if (!po || !version) return null;
-      const item = po.items?.find(candidate => (
-        design.itemId && candidate.itemId === design.itemId
-      )) || po.items?.[design.itemIndex || 0] || po.items?.[0] || {};
-      const customerKey = currentUser?.role === 'designer'
-        ? design.customerReferenceCode || po.poCode || po.id
-        : po.customerId || po.customerName || po.id;
-      const customerLabel = currentUser?.role === 'designer'
-        ? design.customerReferenceCode || po.poCode || 'Chưa có mã khách hàng'
-        : po.customerName || 'Chưa xác định khách hàng';
-      return { design, po, item, version, customerKey, customerLabel };
-    })
-    .filter((template): template is ApprovedTemplate => template !== null)
-    .sort((a, b) => {
-      const aDate = new Date(a.version.feedbackAt || a.design.updatedAt || a.version.createdAt || 0).getTime();
-      const bDate = new Date(b.version.feedbackAt || b.design.updatedAt || b.version.createdAt || 0).getTime();
-      return bDate - aDate;
-    }), [currentUser?.role, designs, pos]);
+  const approvedTemplates = useMemo<ApprovedTemplate[]>(
+    () =>
+      designs
+        .filter(design => design.status === 'approved' && ((design.versions?.length || 0) > 0 || !!design.fileUrl))
+        .map(design => {
+          const po = pos.find(candidate => candidate.id === design.poId);
+          const version =
+            design.versions?.[design.versions.length - 1] ||
+            (design.fileUrl
+              ? {
+                  versionNumber: design.currentVersion || 1,
+                  previewImage: design.fileUrl,
+                  aiLink: design.aiLink,
+                  corelLink: design.corelLink,
+                  comment: design.notes,
+                  createdAt: design.updatedAt
+                }
+              : undefined);
+          if (!po || !version) return null;
+          const item =
+            po.items?.find(candidate => design.itemId && candidate.itemId === design.itemId) ||
+            po.items?.[design.itemIndex || 0] ||
+            po.items?.[0] ||
+            {};
+          const customerKey =
+            currentUser?.role === 'designer'
+              ? design.customerReferenceCode || po.poCode || po.id
+              : po.customerId || po.customerName || po.id;
+          const customerLabel =
+            currentUser?.role === 'designer'
+              ? design.customerReferenceCode || po.poCode || 'Chưa có mã khách hàng'
+              : po.customerName || 'Chưa xác định khách hàng';
+          return { design, po, item, version, customerKey, customerLabel };
+        })
+        .filter((template): template is ApprovedTemplate => template !== null)
+        .sort((a, b) => {
+          const aDate = new Date(a.version.feedbackAt || a.design.updatedAt || a.version.createdAt || 0).getTime();
+          const bDate = new Date(b.version.feedbackAt || b.design.updatedAt || b.version.createdAt || 0).getTime();
+          return bDate - aDate;
+        }),
+    [currentUser?.role, designs, pos]
+  );
 
-  const customers = useMemo(() => Array.from(new Map(
-    approvedTemplates.map(template => [template.customerKey, {
-      id: template.customerKey,
-      name: template.customerLabel
-    }])
-  ).values()).filter(customer => customer.id), [approvedTemplates]);
+  const customers = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          approvedTemplates.map(template => [
+            template.customerKey,
+            {
+              id: template.customerKey,
+              name: template.customerLabel
+            }
+          ])
+        ).values()
+      ).filter(customer => customer.id),
+    [approvedTemplates]
+  );
 
   const filteredTemplates = approvedTemplates.filter(template => {
     const haystack = [
@@ -83,7 +104,10 @@ export const ApprovedDesignLibrary: React.FC<ApprovedDesignLibraryProps> = ({ de
       template.item.productName,
       template.item.size,
       template.item.material
-    ].filter(Boolean).join(' ').toLocaleLowerCase('vi');
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLocaleLowerCase('vi');
     const matchesSearch = haystack.includes(searchQuery.trim().toLocaleLowerCase('vi'));
     const matchesCustomer = customerFilter === 'all' || template.customerKey === customerFilter;
     return matchesSearch && matchesCustomer;
@@ -94,7 +118,10 @@ export const ApprovedDesignLibrary: React.FC<ApprovedDesignLibraryProps> = ({ de
       <div className="card approved-library__intro">
         <div>
           <span className="card-title">KHO MẪU THIẾT KẾ ĐÃ DUYỆT</span>
-          <p>Tìm lại mẫu chuẩn theo khách hàng, mã hàng hoặc PO cũ. Đơn đặt lại sẽ tự sao chép mẫu vào phiên bản mới để kiểm tra và xác nhận.</p>
+          <p>
+            Tìm lại mẫu chuẩn theo khách hàng, mã hàng hoặc PO cũ. Đơn đặt lại sẽ tự sao chép mẫu vào phiên bản mới để
+            kiểm tra và xác nhận.
+          </p>
         </div>
         <div className="approved-library__count">
           <CheckCircle2 size={20} />
@@ -115,7 +142,11 @@ export const ApprovedDesignLibrary: React.FC<ApprovedDesignLibraryProps> = ({ de
         </div>
         <select value={customerFilter} onChange={event => setCustomerFilter(event.target.value)}>
           <option value="all">Tất cả khách hàng</option>
-          {customers.map(customer => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
+          {customers.map(customer => (
+            <option key={customer.id} value={customer.id}>
+              {customer.name}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -126,24 +157,51 @@ export const ApprovedDesignLibrary: React.FC<ApprovedDesignLibraryProps> = ({ de
               {version.previewImage ? (
                 <img src={version.previewImage} alt={`Mẫu ${item.productName || po.poCode || ''}`} />
               ) : (
-                <div className="approved-template-card__placeholder"><ImageIcon size={30} /><span>Chưa có ảnh xem trước</span></div>
+                <div className="approved-template-card__placeholder">
+                  <ImageIcon size={30} />
+                  <span>Chưa có ảnh xem trước</span>
+                </div>
               )}
-              <span className="approved-template-card__status"><CheckCircle2 size={13} /> Đã duyệt</span>
+              <span className="approved-template-card__status">
+                <CheckCircle2 size={13} /> Đã duyệt
+              </span>
             </div>
             <div className="approved-template-card__body">
               <div className="approved-template-card__customer">{customerLabel}</div>
               <h3>{item.productName || 'Sản phẩm chưa đặt tên'}</h3>
-              <div className="approved-template-card__code">{item.productCode || 'Chưa có mã hàng'} · {po.poCode || 'PO chưa xác định'}</div>
+              <div className="approved-template-card__code">
+                {item.productCode || 'Chưa có mã hàng'} · {po.poCode || 'PO chưa xác định'}
+              </div>
               <dl>
-                <div><dt>Quy cách</dt><dd>{item.size || 'Chưa khai báo'}</dd></div>
-                <div><dt>Chất liệu</dt><dd>{item.material || 'Chưa khai báo'}</dd></div>
-                <div><dt>Phiên bản</dt><dd>v{version.versionNumber || design.currentVersion || 1}</dd></div>
-                <div><dt>Ngày duyệt</dt><dd>{formatDate(version.feedbackAt || design.updatedAt || version.createdAt)}</dd></div>
+                <div>
+                  <dt>Quy cách</dt>
+                  <dd>{item.size || 'Chưa khai báo'}</dd>
+                </div>
+                <div>
+                  <dt>Chất liệu</dt>
+                  <dd>{item.material || 'Chưa khai báo'}</dd>
+                </div>
+                <div>
+                  <dt>Phiên bản</dt>
+                  <dd>v{version.versionNumber || design.currentVersion || 1}</dd>
+                </div>
+                <div>
+                  <dt>Ngày duyệt</dt>
+                  <dd>{formatDate(version.feedbackAt || design.updatedAt || version.createdAt)}</dd>
+                </div>
               </dl>
               {version.comment && <p className="approved-template-card__note">{version.comment}</p>}
               <div className="approved-template-card__links">
-                {version.aiLink && <a href={version.aiLink} target="_blank" rel="noopener noreferrer"><FileArchive size={14} /> File AI</a>}
-                {version.corelLink && <a href={version.corelLink} target="_blank" rel="noopener noreferrer"><FileArchive size={14} /> File Corel</a>}
+                {version.aiLink && (
+                  <a href={version.aiLink} target="_blank" rel="noopener noreferrer">
+                    <FileArchive size={14} /> File AI
+                  </a>
+                )}
+                {version.corelLink && (
+                  <a href={version.corelLink} target="_blank" rel="noopener noreferrer">
+                    <FileArchive size={14} /> File Corel
+                  </a>
+                )}
                 {!version.aiLink && !version.corelLink && <span>Chưa có liên kết file gốc</span>}
               </div>
             </div>

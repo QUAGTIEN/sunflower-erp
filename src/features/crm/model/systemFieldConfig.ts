@@ -12,24 +12,41 @@ export interface SystemFieldSpec {
 }
 
 const input = (key: string, label: string, aliases: string[] = [], protectedField = false): SystemFieldSpec => ({
-  key, label, aliases, kind: 'input', protected: protectedField,
+  key,
+  label,
+  aliases,
+  kind: 'input',
+  protected: protectedField,
   reason: 'Có thể đổi tên hiển thị; mã trường, kiểu dữ liệu và kiểm tra nhập liệu được giữ nguyên.'
 });
 const linked = (key: string, label: string, aliases: string[] = []): SystemFieldSpec => ({
-  key, label, aliases, kind: 'linked',
+  key,
+  label,
+  aliases,
+  kind: 'linked',
   reason: 'Giá trị liên kết với hồ sơ hoặc danh mục khác. Không đổi mã trường, kiểu dữ liệu hoặc quy tắc phân quyền.'
 });
 const computed = (key: string, label: string, aliases: string[] = []): SystemFieldSpec => ({
-  key, label, aliases, kind: 'computed',
+  key,
+  label,
+  aliases,
+  kind: 'computed',
   reason: 'Hệ thống tổng hợp từ nghiệp vụ. Chỉ chỉnh cách hiển thị, không nhập tay hoặc thay công thức.'
 });
 
-const formFields = (fields: Array<[string, string, string[]?]>): SystemFieldSpec[] => fields.map(([key, label, aliases]) => ({ ...input(key, label, aliases), formOnly: true }));
+const formFields = (fields: Array<[string, string, string[]?]>): SystemFieldSpec[] =>
+  fields.map(([key, label, aliases]) => ({ ...input(key, label, aliases), formOnly: true }));
 const commonFormFields = formFields([
-  ['taxCode', 'Mã số thuế'], ['contactPerson', 'Người liên hệ'], ['contactPosition', 'Chức vụ'],
-  ['phone', 'Điện thoại'], ['email', 'Email'], ['website', 'Website'],
-  ['businessSector', 'Lĩnh vực hoạt động'], ['address', 'Địa chỉ doanh nghiệp', ['Địa chỉ']],
-  ['expectedProducts', 'Sản phẩm / nhu cầu quan tâm'], ['note', 'Ghi chú']
+  ['taxCode', 'Mã số thuế'],
+  ['contactPerson', 'Người liên hệ'],
+  ['contactPosition', 'Chức vụ'],
+  ['phone', 'Điện thoại'],
+  ['email', 'Email'],
+  ['website', 'Website'],
+  ['businessSector', 'Lĩnh vực hoạt động'],
+  ['address', 'Địa chỉ doanh nghiệp', ['Địa chỉ']],
+  ['expectedProducts', 'Sản phẩm / nhu cầu quan tâm'],
+  ['note', 'Ghi chú']
 ]);
 
 export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> = {
@@ -42,8 +59,12 @@ export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> =
     linked('contactResult', 'Trạng thái liên hệ', ['Trạng thái']),
     linked('potentialLevel', 'Mức độ tiềm năng'),
     linked('nextContactAt', 'Lịch tiếp theo', ['Lịch hẹn', 'Lịch hẹn xử lý']),
-    computed('latest', 'Cập nhật gần nhất'), ...commonFormFields,
-    ...formFields([['source', 'Nguồn tìm kiếm'], ['sourceUrl', 'Đường dẫn nguồn']]),
+    computed('latest', 'Cập nhật gần nhất'),
+    ...commonFormFields,
+    ...formFields([
+      ['source', 'Nguồn tìm kiếm'],
+      ['sourceUrl', 'Đường dẫn nguồn']
+    ]),
     { ...linked('ward', 'Phường / xã'), formOnly: true },
     { ...linked('industrialPark', 'Khu công nghiệp'), formOnly: true }
   ],
@@ -53,7 +74,8 @@ export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> =
     linked('source', 'Nguồn / khu vực'),
     input('potentialValue', 'Giá trị tiềm năng', ['Giá trị tiềm năng (đ)']),
     linked('assignedSaleId', 'Sale phụ trách'),
-    linked('nextFollowUpAt', 'Chăm sóc tiếp', ['Lịch chăm sóc tiếp theo']), ...commonFormFields.map(field => field.key === 'taxCode' ? { ...field, protected: true } : field),
+    linked('nextFollowUpAt', 'Chăm sóc tiếp', ['Lịch chăm sóc tiếp theo']),
+    ...commonFormFields.map(field => (field.key === 'taxCode' ? { ...field, protected: true } : field)),
     { ...input('sourceUrl', 'Đường dẫn nguồn'), formOnly: true },
     { ...linked('discoveredById', 'Sale tìm được Lead'), formOnly: true },
     { ...linked('stage', 'Giai đoạn xử lý'), formOnly: true }
@@ -72,15 +94,21 @@ export const SYSTEM_FIELD_CATALOG: Record<EntityFieldTable, SystemFieldSpec[]> =
     { ...linked('ward', 'Phường / xã'), formOnly: true },
     { ...linked('industrialPark', 'Khu công nghiệp'), formOnly: true },
     ...formFields([
-      ['website', 'Website'], ['businessSector', 'Lĩnh vực hoạt động'],
-      ['contactPerson', 'Người liên hệ'], ['contactPosition', 'Chức vụ'],
-      ['source', 'Nguồn dữ liệu'], ['sourceUrl', 'Đường dẫn nguồn'],
+      ['website', 'Website'],
+      ['businessSector', 'Lĩnh vực hoạt động'],
+      ['contactPerson', 'Người liên hệ'],
+      ['contactPosition', 'Chức vụ'],
+      ['source', 'Nguồn dữ liệu'],
+      ['sourceUrl', 'Đường dẫn nguồn'],
       ['expectedProducts', 'Sản phẩm / nhu cầu quan tâm'],
       ['procurementPhone', 'SĐT thu mua'],
-      ['warehousePhone', 'SĐT nhận hàng / kho'], ['bankAccount', 'Tài khoản ngân hàng'],
+      ['warehousePhone', 'SĐT nhận hàng / kho'],
+      ['bankAccount', 'Tài khoản ngân hàng'],
       ['address', 'Địa chỉ giao hàng', ['Địa chỉ chi tiết / giao hàng']],
-      ['discountType', 'Hình thức chiết khấu'], ['debtLimit', 'Hạn mức công nợ (đ)'],
-      ['paymentTerms', 'Điều khoản thanh toán'], ['note', 'Ghi chú yêu cầu riêng']
+      ['discountType', 'Hình thức chiết khấu'],
+      ['debtLimit', 'Hạn mức công nợ (đ)'],
+      ['paymentTerms', 'Điều khoản thanh toán'],
+      ['note', 'Ghi chú yêu cầu riêng']
     ]),
     { ...linked('discoveredById', 'Sale tìm được khách hàng'), formOnly: true }
   ]
@@ -97,10 +125,10 @@ export interface SystemFieldOverride {
 export type SystemFieldOverrides = Record<string, SystemFieldOverride>;
 
 export function resolveSystemFields(table: EntityFieldTable, raw: unknown): SystemFieldOverride[] {
-  const overrides = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+  const overrides = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   return SYSTEM_FIELD_CATALOG[table].map((field, index) => {
     const value = overrides[field.key];
-    const item = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+    const item = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
     return {
       key: field.key,
       label: typeof item.label === 'string' && item.label.trim() ? item.label.trim().slice(0, 100) : field.label,
@@ -119,16 +147,28 @@ export function validateSystemFieldOverrides(table: EntityFieldTable, raw: unkno
   const source = raw as Record<string, unknown>;
   for (const [key, value] of Object.entries(source)) {
     const spec = SYSTEM_FIELD_CATALOG[table].find(field => field.key === key);
-    if (!spec || !value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Trường hệ thống không hợp lệ.');
+    if (!spec || !value || typeof value !== 'object' || Array.isArray(value))
+      throw new Error('Trường hệ thống không hợp lệ.');
     const item = value as Record<string, unknown>;
-    if (Object.keys(item).some(property => !['key', 'label', 'description', 'visible', 'removed', 'order'].includes(property))) throw new Error('Không được thay đổi cấu trúc trường hệ thống.');
-    if (typeof item.label !== 'string' || !item.label.trim() || item.label.length > 100) throw new Error('Tên trường cần từ 1 đến 100 ký tự.');
-    if (typeof item.description !== 'string' || item.description.length > 500) throw new Error('Mô tả tối đa 500 ký tự.');
-    if (typeof item.visible !== 'boolean' || (spec.protected && !spec.formOnly && !item.visible)) throw new Error('Không thể ẩn trường nhận diện hồ sơ.');
-    if (typeof item.removed !== 'boolean' || (spec.protected && item.removed)) throw new Error('Không thể xóa trường bắt buộc hoặc trường nhận diện hồ sơ.');
-    if (typeof item.order !== 'number' || !Number.isFinite(item.order) || item.order < 0) throw new Error('Thứ tự không hợp lệ.');
+    if (
+      Object.keys(item).some(
+        property => !['key', 'label', 'description', 'visible', 'removed', 'order'].includes(property)
+      )
+    )
+      throw new Error('Không được thay đổi cấu trúc trường hệ thống.');
+    if (typeof item.label !== 'string' || !item.label.trim() || item.label.length > 100)
+      throw new Error('Tên trường cần từ 1 đến 100 ký tự.');
+    if (typeof item.description !== 'string' || item.description.length > 500)
+      throw new Error('Mô tả tối đa 500 ký tự.');
+    if (typeof item.visible !== 'boolean' || (spec.protected && !spec.formOnly && !item.visible))
+      throw new Error('Không thể ẩn trường nhận diện hồ sơ.');
+    if (typeof item.removed !== 'boolean' || (spec.protected && item.removed))
+      throw new Error('Không thể xóa trường bắt buộc hoặc trường nhận diện hồ sơ.');
+    if (typeof item.order !== 'number' || !Number.isFinite(item.order) || item.order < 0)
+      throw new Error('Thứ tự không hợp lệ.');
   }
   const result = resolveSystemFields(table, source);
-  if (new Set(result.map(field => field.label.toLocaleLowerCase('vi'))).size !== result.length) throw new Error('Tên hiển thị của các trường không được trùng nhau.');
+  if (new Set(result.map(field => field.label.toLocaleLowerCase('vi'))).size !== result.length)
+    throw new Error('Tên hiển thị của các trường không được trùng nhau.');
   return Object.fromEntries(result.map(field => [field.key, field]));
 }

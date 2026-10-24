@@ -3,14 +3,7 @@ import { canonicalizeVietnamProvince } from '@/data/vietnamProvinceCatalog';
 export type SourcingType = 'finished_good' | 'raw_material' | 'subcontract';
 
 export type ProcurementStatus =
-  | 'new'
-  | 'reviewing'
-  | 'quoting'
-  | 'supplier_selected'
-  | 'ordered'
-  | 'partially_received'
-  | 'received'
-  | 'cancelled';
+  'new' | 'reviewing' | 'quoting' | 'supplier_selected' | 'ordered' | 'partially_received' | 'received' | 'cancelled';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -120,13 +113,12 @@ export interface SupplierRecommendation {
   reasons: string[];
 }
 
-const asRecord = (value: unknown): UnknownRecord => (
-  value && typeof value === 'object' && !Array.isArray(value) ? value as UnknownRecord : {}
-);
+const asRecord = (value: unknown): UnknownRecord =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {};
 
-const asText = (value: unknown): string => typeof value === 'string' ? value.trim() : '';
-const asNumber = (value: unknown): number => Number.isFinite(Number(value)) ? Number(value) : 0;
-const asArray = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
+const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+const asNumber = (value: unknown): number => (Number.isFinite(Number(value)) ? Number(value) : 0);
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 const asBoolean = (value: unknown): boolean => value === true;
 
 const normalizeSourcingType = (value: unknown): SourcingType => {
@@ -138,36 +130,42 @@ const normalizeSourcingType = (value: unknown): SourcingType => {
 
 const normalizeProcurementStatus = (value: unknown): ProcurementStatus => {
   const statuses: ProcurementStatus[] = [
-    'new', 'reviewing', 'quoting', 'supplier_selected', 'ordered',
-    'partially_received', 'received', 'cancelled'
+    'new',
+    'reviewing',
+    'quoting',
+    'supplier_selected',
+    'ordered',
+    'partially_received',
+    'received',
+    'cancelled'
   ];
-  return statuses.includes(value as ProcurementStatus) ? value as ProcurementStatus : 'new';
+  return statuses.includes(value as ProcurementStatus) ? (value as ProcurementStatus) : 'new';
 };
 
-export const getSourcingTypeLabel = (value: SourcingType): string => ({
-  finished_good: 'Mua thành phẩm',
-  raw_material: 'Mua nguyên vật liệu',
-  subcontract: 'Thuê NCC gia công'
-}[value]);
+export const getSourcingTypeLabel = (value: SourcingType): string =>
+  ({
+    finished_good: 'Mua thành phẩm',
+    raw_material: 'Mua nguyên vật liệu',
+    subcontract: 'Thuê NCC gia công'
+  })[value];
 
-export const getProcurementStatusLabel = (value: ProcurementStatus): string => ({
-  new: 'Mới từ Sale',
-  reviewing: 'Đang phân tích',
-  quoting: 'Đang lấy báo giá',
-  supplier_selected: 'Đã chọn NCC',
-  ordered: 'Đã đặt hàng',
-  partially_received: 'Nhận một phần',
-  received: 'Đã nhận hàng',
-  cancelled: 'Đã hủy'
-}[value]);
+export const getProcurementStatusLabel = (value: ProcurementStatus): string =>
+  ({
+    new: 'Mới từ Sale',
+    reviewing: 'Đang phân tích',
+    quoting: 'Đang lấy báo giá',
+    supplier_selected: 'Đã chọn NCC',
+    ordered: 'Đã đặt hàng',
+    partially_received: 'Nhận một phần',
+    received: 'Đã nhận hàng',
+    cancelled: 'Đã hủy'
+  })[value];
 
-export const getProcurementRequestId = (poId: string, itemId: string, itemIndex: number): string => (
-  `procurement-${poId}-${itemId || itemIndex}`
-);
+export const getProcurementRequestId = (poId: string, itemId: string, itemIndex: number): string =>
+  `procurement-${poId}-${itemId || itemIndex}`;
 
-export const getProcurementRequestCode = (poCode: string, itemIndex: number): string => (
-  `MH-${poCode.replace(/^PO-/, '')}-${String(itemIndex + 1).padStart(2, '0')}`
-);
+export const getProcurementRequestCode = (poCode: string, itemIndex: number): string =>
+  `MH-${poCode.replace(/^PO-/, '')}-${String(itemIndex + 1).padStart(2, '0')}`;
 
 export const normalizeSupplierRecord = (value: unknown): SupplierRecord => {
   const source = asRecord(value);
@@ -254,9 +252,8 @@ export const normalizeSupplierRecord = (value: unknown): SupplierRecord => {
   };
 };
 
-export const normalizeSupplierRecords = (values: unknown): SupplierRecord[] => (
-  asArray(values).map(normalizeSupplierRecord)
-);
+export const normalizeSupplierRecords = (values: unknown): SupplierRecord[] =>
+  asArray(values).map(normalizeSupplierRecord);
 
 export const normalizeProcurementRequest = (value: unknown): ProcurementRequestRecord => {
   const source = asRecord(value);
@@ -297,21 +294,24 @@ export const normalizeProcurementRequest = (value: unknown): ProcurementRequestR
   };
 };
 
-export const normalizeProcurementRequests = (values: unknown): ProcurementRequestRecord[] => (
-  asArray(values).map(normalizeProcurementRequest)
-);
+export const normalizeProcurementRequests = (values: unknown): ProcurementRequestRecord[] =>
+  asArray(values).map(normalizeProcurementRequest);
 
-const normalizeSearchText = (value: unknown): string => String(value ?? '')
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLocaleLowerCase('vi-VN')
-  .replace(/đ/g, 'd');
+const normalizeSearchText = (value: unknown): string =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('vi-VN')
+    .replace(/đ/g, 'd');
 
-const tokenize = (values: unknown[]): string[] => Array.from(new Set(
-  normalizeSearchText(values.filter(Boolean).join(' '))
-    .split(/[^a-z0-9]+/)
-    .filter(token => token.length >= 2)
-));
+const tokenize = (values: unknown[]): string[] =>
+  Array.from(
+    new Set(
+      normalizeSearchText(values.filter(Boolean).join(' '))
+        .split(/[^a-z0-9]+/)
+        .filter(token => token.length >= 2)
+    )
+  );
 
 export const buildSupplierRecommendations = (
   request: ProcurementRequestRecord,
@@ -329,50 +329,58 @@ export const buildSupplierRecommendations = (
   const candidates = suppliers
     .filter(supplier => !supplier.deleted)
     .map(supplier => {
-      const orders = purchaseOrders.filter(order => (
-        asText(order.supplierId) === supplier.id && !asBoolean(order.deleted)
-      ));
-      const matchingItems = orders.flatMap(order => {
-        const createdAt = asText(order.createdAt);
-        return asArray(order.items).map(itemValue => {
-          const item = asRecord(itemValue);
-          const itemTokens = tokenize([
-            item.productCode,
-            item.productName,
-            item.materialName,
-            item.material,
-            item.size
-          ]);
-          const overlap = requestTokens.filter(token => itemTokens.includes(token)).length;
-          return { item, createdAt, overlap };
-        });
-      }).filter(entry => entry.overlap > 0);
+      const orders = purchaseOrders.filter(
+        order => asText(order.supplierId) === supplier.id && !asBoolean(order.deleted)
+      );
+      const matchingItems = orders
+        .flatMap(order => {
+          const createdAt = asText(order.createdAt);
+          return asArray(order.items).map(itemValue => {
+            const item = asRecord(itemValue);
+            const itemTokens = tokenize([
+              item.productCode,
+              item.productName,
+              item.materialName,
+              item.material,
+              item.size
+            ]);
+            const overlap = requestTokens.filter(token => itemTokens.includes(token)).length;
+            return { item, createdAt, overlap };
+          });
+        })
+        .filter(entry => entry.overlap > 0);
 
       const priceEntries = matchingItems
         .map(entry => ({ price: asNumber(entry.item.unitPrice), createdAt: entry.createdAt }))
         .filter(entry => entry.price > 0)
         .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
       const deliveries = orders.filter(order => asText(order.actualReceiveDate) && asText(order.expectedReceiveDate));
-      const onTimeCount = deliveries.filter(order => (
-        Date.parse(asText(order.actualReceiveDate)) <= Date.parse(asText(order.expectedReceiveDate))
-      )).length;
+      const onTimeCount = deliveries.filter(
+        order => Date.parse(asText(order.actualReceiveDate)) <= Date.parse(asText(order.expectedReceiveDate))
+      ).length;
       const onTimeRate = deliveries.length > 0 ? onTimeCount / deliveries.length : null;
-      const lastOrderedAt = orders.map(order => asText(order.createdAt)).filter(Boolean)
-        .sort((a, b) => Date.parse(b) - Date.parse(a))[0] || '';
+      const lastOrderedAt =
+        orders
+          .map(order => asText(order.createdAt))
+          .filter(Boolean)
+          .sort((a, b) => Date.parse(b) - Date.parse(a))[0] || '';
       const categoryText = normalizeSearchText([...supplier.categories, supplier.supplierName].join(' '));
       const categoryMatches = requestTokens.filter(token => categoryText.includes(token)).length;
 
       const matchScore = Math.min(35, matchingItems.length * 8 + categoryMatches * 5);
       const historyScore = Math.min(15, orders.length * 2.5);
       const deliveryScore = onTimeRate === null ? 5 : onTimeRate * 15;
-      const recencyDays = lastOrderedAt ? (Date.now() - Date.parse(lastOrderedAt)) / 86_400_000 : Number.POSITIVE_INFINITY;
+      const recencyDays = lastOrderedAt
+        ? (Date.now() - Date.parse(lastOrderedAt)) / 86_400_000
+        : Number.POSITIVE_INFINITY;
       const recencyScore = recencyDays <= 90 ? 10 : recencyDays <= 365 ? 6 : orders.length > 0 ? 2 : 0;
       const ratingScore = Math.min(10, Math.max(0, supplier.rating * 2));
       const score = Math.round(matchScore + historyScore + deliveryScore + recencyScore + ratingScore);
 
       const reasons: string[] = [];
       if (matchingItems.length > 0) reasons.push(`Đã cung cấp ${matchingItems.length} lần mặt hàng tương tự`);
-      if (priceEntries[0]) reasons.push(`Giá gần nhất ${priceEntries[0].price.toLocaleString('vi-VN')} đ/${request.unit || 'đơn vị'}`);
+      if (priceEntries[0])
+        reasons.push(`Giá gần nhất ${priceEntries[0].price.toLocaleString('vi-VN')} đ/${request.unit || 'đơn vị'}`);
       if (onTimeRate !== null) reasons.push(`Giao đúng hạn ${Math.round(onTimeRate * 100)}%`);
       if (orders.length > 0) reasons.push(`Tổng ${orders.length} đơn mua trong lịch sử`);
       if (reasons.length === 0) reasons.push('Chưa đủ dữ liệu lịch sử; cần lấy báo giá để đánh giá');
@@ -383,9 +391,8 @@ export const buildSupplierRecommendations = (
         orderCount: orders.length,
         matchingOrderCount: matchingItems.length,
         lastUnitPrice: priceEntries[0]?.price || 0,
-        averageUnitPrice: priceEntries.length > 0
-          ? priceEntries.reduce((sum, entry) => sum + entry.price, 0) / priceEntries.length
-          : 0,
+        averageUnitPrice:
+          priceEntries.length > 0 ? priceEntries.reduce((sum, entry) => sum + entry.price, 0) / priceEntries.length : 0,
         onTimeRate,
         lastOrderedAt,
         reasons
@@ -393,18 +400,19 @@ export const buildSupplierRecommendations = (
     });
 
   const pricedCandidates = candidates.filter(candidate => candidate.lastUnitPrice > 0);
-  const lowestPrice = pricedCandidates.length > 0
-    ? Math.min(...pricedCandidates.map(candidate => candidate.lastUnitPrice))
-    : 0;
+  const lowestPrice =
+    pricedCandidates.length > 0 ? Math.min(...pricedCandidates.map(candidate => candidate.lastUnitPrice)) : 0;
 
   return candidates
     .map(candidate => ({
       ...candidate,
-      score: Math.min(100, candidate.score + (
-        lowestPrice > 0 && candidate.lastUnitPrice > 0
-          ? Math.round((lowestPrice / candidate.lastUnitPrice) * 15)
-          : 0
-      ))
+      score: Math.min(
+        100,
+        candidate.score +
+          (lowestPrice > 0 && candidate.lastUnitPrice > 0
+            ? Math.round((lowestPrice / candidate.lastUnitPrice) * 15)
+            : 0)
+      )
     }))
     .sort((a, b) => b.score - a.score || b.matchingOrderCount - a.matchingOrderCount)
     .slice(0, 3);

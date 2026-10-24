@@ -15,13 +15,25 @@ export interface CallDraft {
 }
 
 export const EMPTY_CALL_DRAFT: CallDraft = {
-  need: '', product: '', quantity: '', targetPrice: '', note: '', potentialLevel: '',
-  nextAction: 'none', followUpAt: '', followUpNote: ''
+  need: '',
+  product: '',
+  quantity: '',
+  targetPrice: '',
+  note: '',
+  potentialLevel: '',
+  nextAction: 'none',
+  followUpAt: '',
+  followUpNote: ''
 };
 
 export const CALL_NEXT_ACTION_LABELS: Record<CallNextAction, string> = {
-  none: 'Không có', callback: 'Gọi lại', quote: 'Gửi báo giá', sample: 'Gửi mẫu',
-  meeting: 'Hẹn gặp', zalo: 'Nhắn Zalo', email: 'Gửi email'
+  none: 'Không có',
+  callback: 'Gọi lại',
+  quote: 'Gửi báo giá',
+  sample: 'Gửi mẫu',
+  meeting: 'Hẹn gặp',
+  zalo: 'Nhắn Zalo',
+  email: 'Gửi email'
 };
 
 export const callDraftStorageKey = (userId: string, subjectKey: string, phone: string) =>
@@ -34,11 +46,16 @@ export function callSummaryNote(draft: CallDraft): string {
     draft.quantity.trim() && `Số lượng: ${draft.quantity.trim()}`,
     draft.targetPrice.trim() && `Giá mục tiêu: ${draft.targetPrice.trim()}`,
     draft.note.trim() && `Ghi chú: ${draft.note.trim()}`,
-    draft.potentialLevel && `Mức độ tiềm năng: ${{ high: 'Cao', medium: 'Trung bình', low: 'Thấp' }[draft.potentialLevel]}`,
+    draft.potentialLevel &&
+      `Mức độ tiềm năng: ${{ high: 'Cao', medium: 'Trung bình', low: 'Thấp' }[draft.potentialLevel]}`,
     draft.nextAction !== 'none' && `Bước tiếp theo: ${CALL_NEXT_ACTION_LABELS[draft.nextAction]}`,
-    draft.nextAction !== 'none' && draft.followUpAt && `Thời hạn: ${new Date(draft.followUpAt).toLocaleString('vi-VN')}`,
+    draft.nextAction !== 'none' &&
+      draft.followUpAt &&
+      `Thời hạn: ${new Date(draft.followUpAt).toLocaleString('vi-VN')}`,
     draft.nextAction !== 'none' && draft.followUpNote.trim() && `Cần làm: ${draft.followUpNote.trim()}`
-  ].filter(Boolean).join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 export function validateCallWrap(result: CallResult | '', draft: CallDraft, now = Date.now()): string {
@@ -50,5 +67,7 @@ export function validateCallWrap(result: CallResult | '', draft: CallDraft, now 
     }
   }
   const noteLength = callSummaryNote(draft).length;
-  return noteLength > 500 ? `Nội dung cuộc gọi vượt giới hạn 500 ký tự (${noteLength}/500). Vui lòng rút gọn ghi chú.` : '';
+  return noteLength > 500
+    ? `Nội dung cuộc gọi vượt giới hạn 500 ký tự (${noteLength}/500). Vui lòng rút gọn ghi chú.`
+    : '';
 }

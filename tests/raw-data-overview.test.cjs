@@ -56,7 +56,7 @@ test('raw data tabs preserve prepared views and overview data between switches',
   assert.doesNotMatch(workspaceSource, /requestIdleCallback\(prepare/);
   assert.match(workspaceSource, /hidden=\{adminRawView === 'list'\}/);
   // Since 08f11a8 the list surface hides purely by the selected admin view.
-  assert.match(workspaceSource, /className="lead-candidate-workspace" hidden=\{adminRawView !== 'list'\}/);
+  assert.match(workspaceSource, /className="lead-candidate-workspace"\s+hidden=\{adminRawView !== 'list'\}/);
   assert.match(workspaceStyles, /\.lead-candidate-workspace\[hidden\]\s*\{\s*display:\s*none;/);
   assert.doesNotMatch(workspaceSource, /if \(currentUser\.role === 'admin' && adminRawView !== 'list'\)/);
 });

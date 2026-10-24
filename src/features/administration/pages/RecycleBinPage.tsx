@@ -1,5 +1,10 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
-import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
+import {
+  requireConfirmedMutation,
+  showErrorToast,
+  showSuccessToast,
+  runMutationAction
+} from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { useLanguage } from '@/context/LanguageContext';
@@ -40,12 +45,14 @@ interface RecycleCollectionDefinition {
   getName: (item: RecycleRecord) => string;
 }
 
-const financiallyProtected = (item: DeletedItem) => item.collection === 'invoices' || 'financeLinked' in item.originalData && item.originalData.financeLinked === true || 'accountingFlowVersion' in item.originalData && item.originalData.accountingFlowVersion === 1;
+const financiallyProtected = (item: DeletedItem) =>
+  item.collection === 'invoices' ||
+  ('financeLinked' in item.originalData && item.originalData.financeLinked === true) ||
+  ('accountingFlowVersion' in item.originalData && item.originalData.accountingFlowVersion === 1);
 
-const asText = (value: unknown): string => typeof value === 'string' ? value : '';
-const readName = (item: RecycleRecord, ...keys: string[]): string => (
-  keys.map(key => asText(item[key])).find(Boolean) || item.id
-);
+const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
+const readName = (item: RecycleRecord, ...keys: string[]): string =>
+  keys.map(key => asText(item[key])).find(Boolean) || item.id;
 
 const toRecycleRecord = (value: unknown): RecycleRecord | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -62,7 +69,11 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
 
   useEffect(() => {
     const collections: RecycleCollectionDefinition[] = [
-      { name: 'customers', label: 'Khách hàng', getName: item => readName(item, 'companyName', 'name', 'customerCode', 'code') },
+      {
+        name: 'customers',
+        label: 'Khách hàng',
+        getName: item => readName(item, 'companyName', 'name', 'customerCode', 'code')
+      },
       { name: 'leads', label: 'Khách hàng tiềm năng', getName: item => readName(item, 'companyName', 'name') },
       { name: 'pos', label: 'Đơn đặt hàng PO', getName: item => readName(item, 'poCode') },
       { name: 'suppliers', label: 'Nhà cung cấp', getName: item => readName(item, 'supplierName', 'name', 'code') },
@@ -94,20 +105,23 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
 
           // Scan for soft-deleted products inside active customers
           if (col.name === 'customers' && item.deleted !== true && Array.isArray(item.products)) {
-            item.products.map(toRecycleRecord).filter((product): product is RecycleRecord => Boolean(product)).forEach(prod => {
-              if (prod.deleted === true) {
-                const companyName = readName(item, 'companyName', 'name');
-                allDeleted.push({
-                  id: `${item.id}::${prod.id}`,
-                  collection: 'customer_products',
-                  typeLabel: 'Mã sản phẩm khách hàng',
-                  name: `[${companyName}] ${readName(prod, 'productCode')} - ${readName(prod, 'productName')}`,
-                  deletedAt: prod.deletedAt || item.updatedAt || item.createdAt || 'N/A',
-                  details: JSON.stringify({ customerId: item.id, product: prod }),
-                  originalData: { customerId: item.id, product: prod }
-                });
-              }
-            });
+            item.products
+              .map(toRecycleRecord)
+              .filter((product): product is RecycleRecord => Boolean(product))
+              .forEach(prod => {
+                if (prod.deleted === true) {
+                  const companyName = readName(item, 'companyName', 'name');
+                  allDeleted.push({
+                    id: `${item.id}::${prod.id}`,
+                    collection: 'customer_products',
+                    typeLabel: 'Mã sản phẩm khách hàng',
+                    name: `[${companyName}] ${readName(prod, 'productCode')} - ${readName(prod, 'productName')}`,
+                    deletedAt: prod.deletedAt || item.updatedAt || item.createdAt || 'N/A',
+                    details: JSON.stringify({ customerId: item.id, product: prod }),
+                    originalData: { customerId: item.id, product: prod }
+                  });
+                }
+              });
           }
         });
       });
@@ -118,7 +132,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
     };
 
     collections.forEach(col => {
-      const unsub = dbService.subscribeCollection(col.name, (data) => {
+      const unsub = dbService.subscribeCollection(col.name, data => {
         rawData[col.name] = data.map(toRecycleRecord).filter((item): item is RecycleRecord => Boolean(item));
         updateList();
       });
@@ -131,74 +145,99 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
   }, []);
 
   const handleRestore = async (item: DeletedItem) => {
-    return runMutationAction("RecycleBinPage.tsx:handleRestore", async () => {
-      if (item.collection === 'invoices') { showErrorToast('Hóa đơn cũ chỉ đọc để đối soát tại Kế toán.'); return; }
-      if (!window.confirm(`Bạn có chắc chắn muốn khôi phục "${item.name}" (${item.typeLabel})?`)) {
-        return;
-      }
-      try {
-        if (item.collection === 'customer_products') {
-          const { customerId, product } = item.originalData as DeletedProductData;
-          const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
-          if (customer) {
-            const updatedProducts = (customer.products || []).map(toRecycleRecord).filter((entry): entry is RecycleRecord => Boolean(entry)).map(p => {
-              if (p.id === product.id) {
-                const restoredProduct = { ...p };
-                delete restoredProduct.deleted;
-                delete restoredProduct.deletedAt;
-                return restoredProduct;
-              }
-              return p;
-            });
-            await requireConfirmedMutation(dbService.updateDocument('customers', customerId, { products: updatedProducts }));
-            showSuccessToast("Đã khôi phục thành công");
-            onRefresh();
-            return;
-          }
+    return runMutationAction(
+      'RecycleBinPage.tsx:handleRestore',
+      async () => {
+        if (item.collection === 'invoices') {
+          showErrorToast('Hóa đơn cũ chỉ đọc để đối soát tại Kế toán.');
+          return;
         }
+        if (!window.confirm(`Bạn có chắc chắn muốn khôi phục "${item.name}" (${item.typeLabel})?`)) {
+          return;
+        }
+        try {
+          if (item.collection === 'customer_products') {
+            const { customerId, product } = item.originalData as DeletedProductData;
+            const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
+            if (customer) {
+              const updatedProducts = (customer.products || [])
+                .map(toRecycleRecord)
+                .filter((entry): entry is RecycleRecord => Boolean(entry))
+                .map(p => {
+                  if (p.id === product.id) {
+                    const restoredProduct = { ...p };
+                    delete restoredProduct.deleted;
+                    delete restoredProduct.deletedAt;
+                    return restoredProduct;
+                  }
+                  return p;
+                });
+              await requireConfirmedMutation(
+                dbService.updateDocument('customers', customerId, { products: updatedProducts })
+              );
+              showSuccessToast('Đã khôi phục thành công');
+              onRefresh();
+              return;
+            }
+          }
 
-        await requireConfirmedMutation(dbService.updateDocument(item.collection, item.id, { deleted: false }));
-        showSuccessToast("Đã khôi phục thành công");
-        onRefresh();
-      } catch (err) {
-        showErrorToast();
-        console.error(err);
-        alert('Có lỗi xảy ra khi khôi phục.');
-      }
-    }, item);
+          await requireConfirmedMutation(dbService.updateDocument(item.collection, item.id, { deleted: false }));
+          showSuccessToast('Đã khôi phục thành công');
+          onRefresh();
+        } catch (err) {
+          showErrorToast();
+          console.error(err);
+          alert('Có lỗi xảy ra khi khôi phục.');
+        }
+      },
+      item
+    );
   };
 
   const handleHardDelete = async (item: DeletedItem) => {
-    return runMutationAction("RecycleBinPage.tsx:handleHardDelete", async () => {
-      if (financiallyProtected(item)) { showErrorToast('Hồ sơ đã có chứng từ kế toán, cần giữ để đối soát.'); return; }
-      if (!(await confirmDelete(`CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN "${item.name}" (${item.typeLabel})? Hành động này không thể hoàn tác.`))) {
-        return;
-      }
-      try {
-        if (item.collection === 'customer_products') {
-          const { customerId, product } = item.originalData as DeletedProductData;
-          const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
-          if (customer) {
-            const updatedProducts = (customer.products || [])
-              .map(toRecycleRecord)
-              .filter((entry): entry is RecycleRecord => Boolean(entry))
-              .filter(entry => entry.id !== product.id);
-            await requireConfirmedMutation(dbService.updateDocument('customers', customerId, { products: updatedProducts }));
-            showSuccessToast("Đã xóa thành công");
-            onRefresh();
-            return;
-          }
+    return runMutationAction(
+      'RecycleBinPage.tsx:handleHardDelete',
+      async () => {
+        if (financiallyProtected(item)) {
+          showErrorToast('Hồ sơ đã có chứng từ kế toán, cần giữ để đối soát.');
+          return;
         }
+        if (
+          !(await confirmDelete(
+            `CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN "${item.name}" (${item.typeLabel})? Hành động này không thể hoàn tác.`
+          ))
+        ) {
+          return;
+        }
+        try {
+          if (item.collection === 'customer_products') {
+            const { customerId, product } = item.originalData as DeletedProductData;
+            const customer = toRecycleRecord(await dbService.getDocument('customers', customerId));
+            if (customer) {
+              const updatedProducts = (customer.products || [])
+                .map(toRecycleRecord)
+                .filter((entry): entry is RecycleRecord => Boolean(entry))
+                .filter(entry => entry.id !== product.id);
+              await requireConfirmedMutation(
+                dbService.updateDocument('customers', customerId, { products: updatedProducts })
+              );
+              showSuccessToast('Đã xóa thành công');
+              onRefresh();
+              return;
+            }
+          }
 
-        await requireConfirmedMutation(dbService.deleteDocument(item.collection, item.id));
-        showSuccessToast("Đã xóa thành công");
-        onRefresh();
-      } catch (err) {
-        showErrorToast();
-        console.error(err);
-        alert('Có lỗi xảy ra khi xóa vĩnh viễn.');
-      }
-    }, item);
+          await requireConfirmedMutation(dbService.deleteDocument(item.collection, item.id));
+          showSuccessToast('Đã xóa thành công');
+          onRefresh();
+        } catch (err) {
+          showErrorToast();
+          console.error(err);
+          alert('Có lỗi xảy ra khi xóa vĩnh viễn.');
+        }
+      },
+      item
+    );
   };
 
   const filtered = deletedItems.filter(item => {
@@ -233,7 +272,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
             <label style={{ marginRight: '8px', fontWeight: 'bold' }}>{t('Lọc theo loại')}:</label>
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
+              onChange={e => setFilterType(e.target.value)}
               className="form-control"
               style={{ width: '220px', display: 'inline-block' }}
             >
@@ -262,7 +301,16 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
           <div>{t('Đang tải dữ liệu Kho Rác...')}</div>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card text-center text-muted" style={{ padding: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div
+          className="card text-center text-muted"
+          style={{
+            padding: '50px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
           <Archive size={48} style={{ color: '#94a3b8', marginBottom: '12px' }} />
           <p>{t('Kho rác trống. Không có tài liệu nào bị xóa tạm thời.')}</p>
         </div>
@@ -284,20 +332,27 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
                 <tr key={`${item.collection}-${item.id}`}>
                   <td>{index + 1}</td>
                   <td>
-                    <span className="badge" style={{
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                      color: 'var(--accent-red)',
-                      border: '1px solid var(--accent-red)',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold'
-                    }}>
+                    <span
+                      className="badge"
+                      style={{
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        color: 'var(--accent-red)',
+                        border: '1px solid var(--accent-red)',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
                       {item.typeLabel}
                     </span>
                   </td>
-                  <td><strong>{item.name}</strong></td>
-                  <td><code style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.id}</code></td>
+                  <td>
+                    <strong>{item.name}</strong>
+                  </td>
+                  <td>
+                    <code style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.id}</code>
+                  </td>
                   <td>{item.deletedAt}</td>
                   <td style={{ textAlign: 'right' }}>
                     <button

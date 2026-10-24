@@ -10,11 +10,10 @@ import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGa
 
 type UnknownRecord = Record<string, unknown>;
 
-const asRecord = (value: unknown): UnknownRecord => (
-  value && typeof value === 'object' && !Array.isArray(value) ? value as UnknownRecord : {}
-);
-const asText = (value: unknown): string => typeof value === 'string' ? value.trim() : '';
-const asNumber = (value: unknown): number => Number.isFinite(Number(value)) ? Number(value) : 0;
+const asRecord = (value: unknown): UnknownRecord =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {};
+const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+const asNumber = (value: unknown): number => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
 const getSourcingType = (item: UnknownRecord): SourcingType => {
   const value = asText(item.sourcingType ?? item.workType);
@@ -89,13 +88,20 @@ export const synchronizeProcurementRequestsForPO = async (
     }
   }
 
-  await Promise.all(existingForPO
-    .filter(request => !activeRequestIds.has(request.id) && !['ordered', 'partially_received', 'received'].includes(request.status))
-    .map(request => dbService.updateDocument('procurement_requests', request.id, {
-      status: 'cancelled',
-      deleted: true,
-      updatedBy: actor.displayName
-    })));
+  await Promise.all(
+    existingForPO
+      .filter(
+        request =>
+          !activeRequestIds.has(request.id) && !['ordered', 'partially_received', 'received'].includes(request.status)
+      )
+      .map(request =>
+        dbService.updateDocument('procurement_requests', request.id, {
+          status: 'cancelled',
+          deleted: true,
+          updatedBy: actor.displayName
+        })
+      )
+  );
 
   return synchronized;
 };

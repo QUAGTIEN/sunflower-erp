@@ -14,30 +14,30 @@ export interface ChatAttachmentRecord {
 export const CHAT_ATTACHMENT_MAX_FILES = 5;
 export const CHAT_ATTACHMENT_MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const safePathSegment = (value: string) => value
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .replace(/[^a-zA-Z0-9._-]+/g, '-')
-  .replace(/^-+|-+$/g, '')
-  .slice(0, 120) || 'file';
+const safePathSegment = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120) || 'file';
 
-const createAttachmentId = () => (
+const createAttachmentId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
-    : `attachment-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-);
+    : `attachment-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const isCloudStorageEnabled = Boolean(
-  import.meta.env.VITE_FIREBASE_STORAGE_BUCKET
-  && import.meta.env.VITE_FIREBASE_AUTH_MODE === 'email-password'
+  import.meta.env.VITE_FIREBASE_STORAGE_BUCKET && import.meta.env.VITE_FIREBASE_AUTH_MODE === 'email-password'
 );
 
-const readAsDataUrl = (file: File): Promise<string> => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => resolve(String(reader.result || ''));
-  reader.onerror = () => reject(reader.error || new Error('Không thể đọc tệp đính kèm.'));
-  reader.readAsDataURL(file);
-});
+const readAsDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Không thể đọc tệp đính kèm.'));
+    reader.readAsDataURL(file);
+  });
 
 export const uploadChatAttachments = async (
   files: File[],
@@ -48,20 +48,22 @@ export const uploadChatAttachments = async (
   if (files.length === 0) return [];
 
   if (!isCloudStorageEnabled) {
-    return Promise.all(files.map(async file => {
-      if (file.size > 700 * 1024) {
-        throw new Error('Chế độ dữ liệu cục bộ chỉ hỗ trợ tệp nhỏ hơn 700 KB.');
-      }
-      return {
-        id: createAttachmentId(),
-        name: file.name,
-        url: await readAsDataUrl(file),
-        storagePath: '',
-        mimeType: file.type || 'application/octet-stream',
-        size: file.size,
-        kind: file.type.startsWith('image/') ? 'image' as const : 'file' as const
-      };
-    }));
+    return Promise.all(
+      files.map(async file => {
+        if (file.size > 700 * 1024) {
+          throw new Error('Chế độ dữ liệu cục bộ chỉ hỗ trợ tệp nhỏ hơn 700 KB.');
+        }
+        return {
+          id: createAttachmentId(),
+          name: file.name,
+          url: await readAsDataUrl(file),
+          storagePath: '',
+          mimeType: file.type || 'application/octet-stream',
+          size: file.size,
+          kind: file.type.startsWith('image/') ? ('image' as const) : ('file' as const)
+        };
+      })
+    );
   }
 
   if (getApps().length === 0) throw new Error('Firebase chưa được khởi tạo.');
@@ -103,10 +105,7 @@ export const uploadChatAttachments = async (
     return uploadedAttachments;
   } catch (error) {
     await Promise.allSettled(
-      [
-        ...uploadedAttachments.map(attachment => attachment.storagePath),
-        currentUploadPath
-      ]
+      [...uploadedAttachments.map(attachment => attachment.storagePath), currentUploadPath]
         .filter(Boolean)
         .map(storagePath => deleteObject(ref(storage, storagePath)))
     );

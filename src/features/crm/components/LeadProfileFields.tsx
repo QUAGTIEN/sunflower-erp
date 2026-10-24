@@ -1,11 +1,7 @@
 import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState } from 'react';
 import { ArrowDown, ArrowUp, Eye, EyeOff, LockKeyhole, Pencil, Plus, Save, Settings2 } from 'lucide-react';
-import type {
-  LeadCustomFieldType,
-  LeadFilterOption,
-  LeadProfileFieldDefinition
-} from '@/features/crm/model/crmModels';
+import type { LeadCustomFieldType, LeadFilterOption, LeadProfileFieldDefinition } from '@/features/crm/model/crmModels';
 import { slugifyLeadFilterId } from '@/features/crm/model/leadFilterConfig';
 import { isLeadSystemProfileField } from '@/features/crm/model/leadProfileConfig';
 
@@ -43,10 +39,24 @@ export const LeadProfileFieldControl: React.FC<LeadProfileFieldControlProps> = (
   if (field.type === 'single_select') {
     return (
       <div className="form-group">
-        <label>{field.name}{field.required ? ' *' : ''}</label>
-        <select value={fieldValues[0] || ''} required={field.required} disabled={disabled} onChange={event => onChange(event.target.value ? [event.target.value] : [])}>
+        <label>
+          {field.name}
+          {field.required ? ' *' : ''}
+        </label>
+        <select
+          value={fieldValues[0] || ''}
+          required={field.required}
+          disabled={disabled}
+          onChange={event => onChange(event.target.value ? [event.target.value] : [])}
+        >
           <option value="">Chưa chọn</option>
-          {field.options.filter(option => option.active).map(option => <option key={option.id} value={option.id}>{option.label}</option>)}
+          {field.options
+            .filter(option => option.active)
+            .map(option => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
         </select>
       </div>
     );
@@ -55,24 +65,29 @@ export const LeadProfileFieldControl: React.FC<LeadProfileFieldControlProps> = (
   if (field.type === 'multi_select') {
     return (
       <div className="form-group lead-profile-multi-field">
-        <label>{field.name}{field.required ? ' *' : ''}</label>
+        <label>
+          {field.name}
+          {field.required ? ' *' : ''}
+        </label>
         <div className="lead-profile-option-grid">
-          {field.options.filter(option => option.active).map(option => {
-            const selected = fieldValues.includes(option.id);
-            return (
-              <button
-                key={option.id}
-                type="button"
-                className={selected ? 'is-selected' : ''}
-                disabled={disabled}
-                onClick={() => onChange(selected
-                  ? fieldValues.filter(value => value !== option.id)
-                  : [...fieldValues, option.id])}
-              >
-                {option.label}
-              </button>
-            );
-          })}
+          {field.options
+            .filter(option => option.active)
+            .map(option => {
+              const selected = fieldValues.includes(option.id);
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={selected ? 'is-selected' : ''}
+                  disabled={disabled}
+                  onClick={() =>
+                    onChange(selected ? fieldValues.filter(value => value !== option.id) : [...fieldValues, option.id])
+                  }
+                >
+                  {option.label}
+                </button>
+              );
+            })}
         </div>
       </div>
     );
@@ -82,8 +97,16 @@ export const LeadProfileFieldControl: React.FC<LeadProfileFieldControlProps> = (
     const selected = fieldValues[0] === 'true';
     return (
       <div className="form-group">
-        <label>{field.name}{field.required ? ' *' : ''}</label>
-        <button type="button" className={`lead-profile-boolean ${selected ? 'is-selected' : ''}`} disabled={disabled} onClick={() => onChange(selected ? [] : ['true'])}>
+        <label>
+          {field.name}
+          {field.required ? ' *' : ''}
+        </label>
+        <button
+          type="button"
+          className={`lead-profile-boolean ${selected ? 'is-selected' : ''}`}
+          disabled={disabled}
+          onClick={() => onChange(selected ? [] : ['true'])}
+        >
           {selected ? 'Có' : 'Không'}
         </button>
       </div>
@@ -92,7 +115,10 @@ export const LeadProfileFieldControl: React.FC<LeadProfileFieldControlProps> = (
 
   return (
     <div className="form-group">
-      <label>{field.name}{field.required ? ' *' : ''}</label>
+      <label>
+        {field.name}
+        {field.required ? ' *' : ''}
+      </label>
       <input
         type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
         value={fieldValues[0] || ''}
@@ -104,12 +130,7 @@ export const LeadProfileFieldControl: React.FC<LeadProfileFieldControlProps> = (
   );
 };
 
-export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
-  definitions,
-  values,
-  canEditAll,
-  onChange
-}) => {
+export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({ definitions, values, canEditAll, onChange }) => {
   const activeDefinitions = definitions.filter(field => field.active).sort((a, b) => a.order - b.order);
   if (activeDefinitions.length === 0) return null;
 
@@ -137,9 +158,7 @@ interface LeadProfileStructureEditorProps {
   onSaveDefinition: (definition: LeadProfileFieldDefinition) => Promise<void>;
 }
 
-const createEmptyDefinition = (
-  definitions: LeadProfileFieldDefinition[]
-): LeadProfileFieldDefinition => ({
+const createEmptyDefinition = (definitions: LeadProfileFieldDefinition[]): LeadProfileFieldDefinition => ({
   id: `lead_profile_${Date.now().toString(36)}`,
   name: '',
   type: 'text',
@@ -170,21 +189,34 @@ export const LeadProfileStructureEditor: React.FC<LeadProfileStructureEditorProp
   const startEdit = (definition: LeadProfileFieldDefinition) => {
     setEditingId(definition.id);
     setDraft({ ...definition, options: definition.options.map(option => ({ ...option })) });
-    setOptionLines(definition.options.filter(option => option.active).map(option => option.label).join('\n'));
+    setOptionLines(
+      definition.options
+        .filter(option => option.active)
+        .map(option => option.label)
+        .join('\n')
+    );
   };
 
   const updateOptionLines = (value: string) => {
     setOptionLines(value);
-    const labels = value.split('\n').map(line => line.trim()).filter(Boolean);
+    const labels = value
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
     setDraft(previous => {
       const previousActiveOptions = previous.options.filter(option => option.active);
       const usedIds = new Set<string>();
       const activeOptions: LeadFilterOption[] = labels.map((label, index) => {
-        const sameLabel = previous.options.find(option => option.label.toLocaleLowerCase('vi-VN') === label.toLocaleLowerCase('vi-VN'));
+        const sameLabel = previous.options.find(
+          option => option.label.toLocaleLowerCase('vi-VN') === label.toLocaleLowerCase('vi-VN')
+        );
         const samePosition = previousActiveOptions[index];
-        const existing = sameLabel && !usedIds.has(sameLabel.id)
-          ? sameLabel
-          : samePosition && !usedIds.has(samePosition.id) ? samePosition : null;
+        const existing =
+          sameLabel && !usedIds.has(sameLabel.id)
+            ? sameLabel
+            : samePosition && !usedIds.has(samePosition.id)
+              ? samePosition
+              : null;
         const nextOption = existing
           ? { ...existing, label, active: true }
           : {
@@ -205,69 +237,81 @@ export const LeadProfileStructureEditor: React.FC<LeadProfileStructureEditorProp
   };
 
   const saveDraft = async () => {
-    return runMutationAction("LeadProfileFields.tsx:saveDraft", async () => {
-      if (!draft.name.trim()) return;
-      const needsOptions = draft.type === 'single_select' || draft.type === 'multi_select';
-      if (needsOptions && draft.options.filter(option => option.active).length === 0) return;
-      setSaving(true);
-      setSaveError('');
-      try {
-        await onSaveDefinition({ ...draft, name: draft.name.trim() });
-        setEditingId('');
+    return runMutationAction(
+      'LeadProfileFields.tsx:saveDraft',
+      async () => {
+        if (!draft.name.trim()) return;
+        const needsOptions = draft.type === 'single_select' || draft.type === 'multi_select';
+        if (needsOptions && draft.options.filter(option => option.active).length === 0) return;
+        setSaving(true);
+        setSaveError('');
+        try {
+          await onSaveDefinition({ ...draft, name: draft.name.trim() });
+          setEditingId('');
 
-        showSuccessToast("Đã lưu thành công");
-      } catch {
-        showErrorToast();
-        setSaveError('Không thể lưu cấu trúc trường. Vui lòng thử lại.');
-      } finally {
-        setSaving(false);
-      }
-    }, undefined);
+          showSuccessToast('Đã lưu thành công');
+        } catch {
+          showErrorToast();
+          setSaveError('Không thể lưu cấu trúc trường. Vui lòng thử lại.');
+        } finally {
+          setSaving(false);
+        }
+      },
+      undefined
+    );
   };
 
   const toggleActive = async (definition: LeadProfileFieldDefinition) => {
-    return runMutationAction("LeadProfileFields.tsx:toggleActive", async () => {
-      const protectedField = definition.systemKey === 'companyName' || definition.systemKey === 'taxCode';
-      if (protectedField) return;
-      setSaving(true);
-      setSaveError('');
-      try {
-        await onSaveDefinition({ ...definition, active: !definition.active });
-        if (editingId === definition.id) setEditingId('');
+    return runMutationAction(
+      'LeadProfileFields.tsx:toggleActive',
+      async () => {
+        const protectedField = definition.systemKey === 'companyName' || definition.systemKey === 'taxCode';
+        if (protectedField) return;
+        setSaving(true);
+        setSaveError('');
+        try {
+          await onSaveDefinition({ ...definition, active: !definition.active });
+          if (editingId === definition.id) setEditingId('');
 
-        showSuccessToast("Đã lưu thành công");
-      } catch {
-        showErrorToast();
-        setSaveError('Không thể thay đổi trạng thái trường. Vui lòng thử lại.');
-      } finally {
-        setSaving(false);
-      }
-    }, definition);
+          showSuccessToast('Đã lưu thành công');
+        } catch {
+          showErrorToast();
+          setSaveError('Không thể thay đổi trạng thái trường. Vui lòng thử lại.');
+        } finally {
+          setSaving(false);
+        }
+      },
+      definition
+    );
   };
 
   const moveDefinition = async (definition: LeadProfileFieldDefinition, direction: -1 | 1) => {
-    return runMutationAction("LeadProfileFields.tsx:moveDefinition", async () => {
-      const currentIndex = definitions.findIndex(item => item.id === definition.id);
-      const adjacentDefinition = definitions[currentIndex + direction];
-      if (!adjacentDefinition) return;
-      const reorderedDefinitions = [...definitions];
-      reorderedDefinitions[currentIndex] = adjacentDefinition;
-      reorderedDefinitions[currentIndex + direction] = definition;
-      setSaving(true);
-      setSaveError('');
-      try {
-        await Promise.all(reorderedDefinitions.map((item, index) => (
-          onSaveDefinition({ ...item, order: (index + 1) * 10 })
-        )));
+    return runMutationAction(
+      'LeadProfileFields.tsx:moveDefinition',
+      async () => {
+        const currentIndex = definitions.findIndex(item => item.id === definition.id);
+        const adjacentDefinition = definitions[currentIndex + direction];
+        if (!adjacentDefinition) return;
+        const reorderedDefinitions = [...definitions];
+        reorderedDefinitions[currentIndex] = adjacentDefinition;
+        reorderedDefinitions[currentIndex + direction] = definition;
+        setSaving(true);
+        setSaveError('');
+        try {
+          await Promise.all(
+            reorderedDefinitions.map((item, index) => onSaveDefinition({ ...item, order: (index + 1) * 10 }))
+          );
 
-        showSuccessToast("Đã lưu thành công");
-      } catch {
-        showErrorToast();
-        setSaveError('Không thể thay đổi thứ tự trường. Vui lòng thử lại.');
-      } finally {
-        setSaving(false);
-      }
-    }, definition);
+          showSuccessToast('Đã lưu thành công');
+        } catch {
+          showErrorToast();
+          setSaveError('Không thể thay đổi thứ tự trường. Vui lòng thử lại.');
+        } finally {
+          setSaving(false);
+        }
+      },
+      definition
+    );
   };
 
   const usesOptions = draft.type === 'single_select' || draft.type === 'multi_select';
@@ -278,23 +322,80 @@ export const LeadProfileStructureEditor: React.FC<LeadProfileStructureEditorProp
     <div className="lead-profile-structure-editor">
       <div className="lead-config-list">
         <div className="lead-config-list__header">
-          <div><strong>{definitions.length} trường thông tin</strong><span>Kéo thứ tự bằng nút lên/xuống; trường ẩn vẫn giữ nguyên dữ liệu cũ.</span></div>
-          <button type="button" className="btn btn-sm btn-primary" disabled={saving} onClick={startCreate}><Plus size={13} /> Thêm trường</button>
+          <div>
+            <strong>{definitions.length} trường thông tin</strong>
+            <span>Kéo thứ tự bằng nút lên/xuống; trường ẩn vẫn giữ nguyên dữ liệu cũ.</span>
+          </div>
+          <button type="button" className="btn btn-sm btn-primary" disabled={saving} onClick={startCreate}>
+            <Plus size={13} /> Thêm trường
+          </button>
         </div>
         <div className="lead-profile-structure-list">
           {definitions.map((definition, index) => {
             const protectedField = definition.systemKey === 'companyName' || definition.systemKey === 'taxCode';
             return (
-              <div key={definition.id} className={`lead-config-item ${!definition.active ? 'is-inactive' : ''} ${editingId === definition.id ? 'is-editing' : ''}`}>
+              <div
+                key={definition.id}
+                className={`lead-config-item ${!definition.active ? 'is-inactive' : ''} ${editingId === definition.id ? 'is-editing' : ''}`}
+              >
                 <div>
                   <strong>{definition.name}</strong>
-                  <span>{isLeadSystemProfileField(definition) ? 'Trường hệ thống' : PROFILE_FIELD_TYPE_LABELS[definition.type]}{definition.required ? ' · Bắt buộc' : ''}</span>
+                  <span>
+                    {isLeadSystemProfileField(definition)
+                      ? 'Trường hệ thống'
+                      : PROFILE_FIELD_TYPE_LABELS[definition.type]}
+                    {definition.required ? ' · Bắt buộc' : ''}
+                  </span>
                 </div>
                 <div>
-                  <button type="button" className="btn btn-sm btn-outline btn-symbol-sm" disabled={saving || index === 0} title="Đưa lên" onClick={() => moveDefinition(definition, -1)}><ArrowUp size={13} /></button>
-                  <button type="button" className="btn btn-sm btn-outline btn-symbol-sm" disabled={saving || index === definitions.length - 1} title="Đưa xuống" onClick={() => moveDefinition(definition, 1)}><ArrowDown size={13} /></button>
-                  <button type="button" className="btn btn-sm btn-outline btn-symbol-sm" disabled={saving || protectedField} title={protectedField ? 'Trường hệ thống bắt buộc luôn được hiển thị' : definition.active ? 'Ẩn / ngừng sử dụng' : 'Hiển thị / sử dụng lại'} onClick={() => toggleActive(definition)}>{protectedField ? <LockKeyhole size={13} /> : definition.active ? <EyeOff size={13} /> : <Eye size={13} />}</button>
-                  <button type="button" className="btn btn-sm btn-outline btn-symbol-sm" disabled={saving} title="Chỉnh sửa" onClick={() => startEdit(definition)}><Pencil size={13} /></button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline btn-symbol-sm"
+                    disabled={saving || index === 0}
+                    title="Đưa lên"
+                    onClick={() => moveDefinition(definition, -1)}
+                  >
+                    <ArrowUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline btn-symbol-sm"
+                    disabled={saving || index === definitions.length - 1}
+                    title="Đưa xuống"
+                    onClick={() => moveDefinition(definition, 1)}
+                  >
+                    <ArrowDown size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline btn-symbol-sm"
+                    disabled={saving || protectedField}
+                    title={
+                      protectedField
+                        ? 'Trường hệ thống bắt buộc luôn được hiển thị'
+                        : definition.active
+                          ? 'Ẩn / ngừng sử dụng'
+                          : 'Hiển thị / sử dụng lại'
+                    }
+                    onClick={() => toggleActive(definition)}
+                  >
+                    {protectedField ? (
+                      <LockKeyhole size={13} />
+                    ) : definition.active ? (
+                      <EyeOff size={13} />
+                    ) : (
+                      <Eye size={13} />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline btn-symbol-sm"
+                    disabled={saving}
+                    title="Chỉnh sửa"
+                    onClick={() => startEdit(definition)}
+                  >
+                    <Pencil size={13} />
+                  </button>
                 </div>
               </div>
             );
@@ -305,24 +406,106 @@ export const LeadProfileStructureEditor: React.FC<LeadProfileStructureEditorProp
       <div className="lead-config-editor">
         {editingId ? (
           <>
-            <h3>{definitions.some(item => item.id === editingId) ? 'Chỉnh sửa trường thông tin' : 'Tạo trường thông tin mới'}</h3>
-            {isSystemDraft && <div className="lead-profile-system-notice"><LockKeyhole size={14} /><span>Đây là trường hệ thống. Có thể đổi nhãn hiển thị nhưng mã kỹ thuật và loại dữ liệu được giữ nguyên.</span></div>}
-            <label><span>Tên hiển thị *</span><input value={draft.name} onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))} /></label>
-            <label><span>Loại dữ liệu</span><select value={draft.type} disabled={isSystemDraft} onChange={event => setDraft(previous => ({ ...previous, type: event.target.value as LeadCustomFieldType }))}>{Object.entries(PROFILE_FIELD_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            {usesOptions && !isSystemDraft && <label><span>Các lựa chọn (mỗi dòng một lựa chọn)</span><textarea rows={6} value={optionLines} onChange={event => updateOptionLines(event.target.value)} /></label>}
+            <h3>
+              {definitions.some(item => item.id === editingId)
+                ? 'Chỉnh sửa trường thông tin'
+                : 'Tạo trường thông tin mới'}
+            </h3>
+            {isSystemDraft && (
+              <div className="lead-profile-system-notice">
+                <LockKeyhole size={14} />
+                <span>
+                  Đây là trường hệ thống. Có thể đổi nhãn hiển thị nhưng mã kỹ thuật và loại dữ liệu được giữ nguyên.
+                </span>
+              </div>
+            )}
+            <label>
+              <span>Tên hiển thị *</span>
+              <input
+                value={draft.name}
+                onChange={event => setDraft(previous => ({ ...previous, name: event.target.value }))}
+              />
+            </label>
+            <label>
+              <span>Loại dữ liệu</span>
+              <select
+                value={draft.type}
+                disabled={isSystemDraft}
+                onChange={event =>
+                  setDraft(previous => ({ ...previous, type: event.target.value as LeadCustomFieldType }))
+                }
+              >
+                {Object.entries(PROFILE_FIELD_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {usesOptions && !isSystemDraft && (
+              <label>
+                <span>Các lựa chọn (mỗi dòng một lựa chọn)</span>
+                <textarea rows={6} value={optionLines} onChange={event => updateOptionLines(event.target.value)} />
+              </label>
+            )}
             <div className="lead-config-checks">
-              <label><input type="checkbox" checked={draft.required} disabled={isProtectedDraft} onChange={event => setDraft(previous => ({ ...previous, required: event.target.checked, saleEditable: event.target.checked ? true : previous.saleEditable }))} /> Bắt buộc nhập</label>
-              <label><input type="checkbox" checked={draft.saleEditable} disabled={draft.required} onChange={event => setDraft(previous => ({ ...previous, saleEditable: event.target.checked }))} /> Sale được chỉnh sửa</label>
-              <label><input type="checkbox" checked={draft.active} disabled={isProtectedDraft} onChange={event => setDraft(previous => ({ ...previous, active: event.target.checked }))} /> Đang hiển thị</label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={draft.required}
+                  disabled={isProtectedDraft}
+                  onChange={event =>
+                    setDraft(previous => ({
+                      ...previous,
+                      required: event.target.checked,
+                      saleEditable: event.target.checked ? true : previous.saleEditable
+                    }))
+                  }
+                />{' '}
+                Bắt buộc nhập
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={draft.saleEditable}
+                  disabled={draft.required}
+                  onChange={event => setDraft(previous => ({ ...previous, saleEditable: event.target.checked }))}
+                />{' '}
+                Sale được chỉnh sửa
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={draft.active}
+                  disabled={isProtectedDraft}
+                  onChange={event => setDraft(previous => ({ ...previous, active: event.target.checked }))}
+                />{' '}
+                Đang hiển thị
+              </label>
             </div>
             {saveError && <div className="lead-config-error">{saveError}</div>}
             <div className="lead-config-editor__actions">
-              <button type="button" className="btn btn-outline" disabled={saving} onClick={() => setEditingId('')}>Hủy</button>
-              <button type="button" className="btn btn-primary" disabled={saving || !draft.name.trim()} onClick={saveDraft}><Save size={14} /> {saving ? 'Đang lưu...' : 'Lưu trường'}</button>
+              <button type="button" className="btn btn-outline" disabled={saving} onClick={() => setEditingId('')}>
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={saving || !draft.name.trim()}
+                onClick={saveDraft}
+              >
+                <Save size={14} /> {saving ? 'Đang lưu...' : 'Lưu trường'}
+              </button>
             </div>
           </>
         ) : (
-          <div className="lead-config-placeholder"><Settings2 size={34} /><strong>Chọn một trường để chỉnh sửa</strong><span>Tên doanh nghiệp và Mã số thuế luôn được bảo vệ. Các trường khác chỉ được ẩn, không xóa dữ liệu lịch sử.</span></div>
+          <div className="lead-config-placeholder">
+            <Settings2 size={34} />
+            <strong>Chọn một trường để chỉnh sửa</strong>
+            <span>
+              Tên doanh nghiệp và Mã số thuế luôn được bảo vệ. Các trường khác chỉ được ẩn, không xóa dữ liệu lịch sử.
+            </span>
+          </div>
         )}
       </div>
     </div>

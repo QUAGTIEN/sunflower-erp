@@ -1,10 +1,7 @@
 const ALLOWED_TAGS = new Set(['P', 'DIV', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'UL', 'OL', 'LI', 'A']);
 
-export const plainTextToNoteHtml = (value: string) => value
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/\n/g, '<br>');
+export const plainTextToNoteHtml = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 
 export const sanitizeCustomerNoteHtml = (value: string) => {
   if (typeof window === 'undefined') return value;
@@ -16,9 +13,8 @@ export const sanitizeCustomerNoteHtml = (value: string) => {
     }
     [...element.attributes].forEach(attribute => {
       const isSafeLink = element.tagName === 'A' && attribute.name === 'href';
-      const alignment = attribute.name === 'style'
-        ? attribute.value.match(/^text-align:\s*(left|center|right|justify);?$/i)?.[1]
-        : '';
+      const alignment =
+        attribute.name === 'style' ? attribute.value.match(/^text-align:\s*(left|center|right|justify);?$/i)?.[1] : '';
       const isSafeAlignment = Boolean(alignment) && (element.tagName === 'P' || element.tagName === 'DIV');
       if (!isSafeLink && !isSafeAlignment) element.removeAttribute(attribute.name);
       if (isSafeAlignment) element.setAttribute('style', `text-align: ${alignment?.toLowerCase()}`);

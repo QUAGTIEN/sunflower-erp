@@ -11,7 +11,8 @@ export type CustomerDocumentCategory = 'contract' | 'acceptance' | 'qc' | 'qa' |
 export type LeadStage = 'new' | 'contacted' | 'quoted' | 'negotiating' | 'won' | 'lost' | 'converted';
 export type LeadCompanySize = '' | 'large' | 'medium' | 'small';
 export type LeadCustomFieldType = 'multi_select' | 'single_select' | 'checkbox' | 'text' | 'number' | 'date';
-export type LeadSystemProfileFieldKey = 'companyName' | 'contactPerson' | 'phone' | 'email' | 'taxCode' | 'address' | 'note';
+export type LeadSystemProfileFieldKey =
+  'companyName' | 'contactPerson' | 'phone' | 'email' | 'taxCode' | 'address' | 'note';
 
 export interface LeadFilterOption {
   id: string;
@@ -345,60 +346,47 @@ export interface LeadRecord extends UnknownRecord {
   updatedBy: string;
 }
 
-const isRecord = (value: unknown): value is UnknownRecord => (
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-);
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const asRecord = (value: unknown): UnknownRecord => (
-  isRecord(value) ? value : {}
-);
+const asRecord = (value: unknown): UnknownRecord => (isRecord(value) ? value : {});
 
-const asText = (value: unknown, fallback = ''): string => (
-  typeof value === 'string' ? value : fallback
-);
+const asText = (value: unknown, fallback = ''): string => (typeof value === 'string' ? value : fallback);
 
 const asNumber = (value: unknown, fallback = 0): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const asArray = (value: unknown): unknown[] => (
-  Array.isArray(value) ? value : []
-);
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
-const clamp = (value: number, min: number, max: number): number => (
-  Math.min(Math.max(value, min), max)
-);
+const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
 export const normalizeCustomerRank = (value: unknown): CustomerRank => {
   const rank = asText(value).toUpperCase();
   return rank === 'A' || rank === 'B' || rank === 'C' || rank === 'D' ? rank : '';
 };
 
-export const normalizeDiscountType = (value: unknown): PODiscountType => (
-  value === 'amount' ? 'amount' : 'percent'
-);
+export const normalizeDiscountType = (value: unknown): PODiscountType => (value === 'amount' ? 'amount' : 'percent');
 
 const normalizeContactRole = (value: unknown): CustomerContactRole => {
   const roles: CustomerContactRole[] = ['primary', 'procurement', 'warehouse', 'accounting', 'other'];
-  return roles.includes(value as CustomerContactRole) ? value as CustomerContactRole : 'other';
+  return roles.includes(value as CustomerContactRole) ? (value as CustomerContactRole) : 'other';
 };
 
 const normalizeDocumentCategory = (value: unknown): CustomerDocumentCategory => {
   const categories: CustomerDocumentCategory[] = ['contract', 'acceptance', 'qc', 'qa', 'artwork', 'other'];
-  return categories.includes(value as CustomerDocumentCategory)
-    ? value as CustomerDocumentCategory
-    : 'other';
+  return categories.includes(value as CustomerDocumentCategory) ? (value as CustomerDocumentCategory) : 'other';
 };
 
 const normalizeLeadStage = (value: unknown): LeadStage => {
   const stages: LeadStage[] = ['new', 'contacted', 'quoted', 'negotiating', 'won', 'lost', 'converted'];
-  return stages.includes(value as LeadStage) ? value as LeadStage : 'new';
+  return stages.includes(value as LeadStage) ? (value as LeadStage) : 'new';
 };
 
 const normalizeLeadCompanySize = (value: unknown): LeadCompanySize => {
   const sizes: LeadCompanySize[] = ['', 'large', 'medium', 'small'];
-  return sizes.includes(value as LeadCompanySize) ? value as LeadCompanySize : '';
+  return sizes.includes(value as LeadCompanySize) ? (value as LeadCompanySize) : '';
 };
 
 export const normalizeCustomerContact = (value: unknown, index = 0): CustomerContactRecord => {
@@ -548,29 +536,41 @@ const buildLegacyContacts = (source: UnknownRecord): CustomerContactRecord[] => 
   const warehousePhone = asText(source.warehousePhone);
 
   if (primaryName || primaryPhone || primaryEmail) {
-    contacts.push(normalizeCustomerContact({
-      id: 'primary',
-      name: primaryName,
-      role: 'primary',
-      phone: primaryPhone,
-      email: primaryEmail
-    }));
+    contacts.push(
+      normalizeCustomerContact({
+        id: 'primary',
+        name: primaryName,
+        role: 'primary',
+        phone: primaryPhone,
+        email: primaryEmail
+      })
+    );
   }
 
   if (procurementPhone && procurementPhone !== primaryPhone) {
-    contacts.push(normalizeCustomerContact({
-      id: 'procurement',
-      role: 'procurement',
-      phone: procurementPhone
-    }, contacts.length));
+    contacts.push(
+      normalizeCustomerContact(
+        {
+          id: 'procurement',
+          role: 'procurement',
+          phone: procurementPhone
+        },
+        contacts.length
+      )
+    );
   }
 
   if (warehousePhone && warehousePhone !== primaryPhone && warehousePhone !== procurementPhone) {
-    contacts.push(normalizeCustomerContact({
-      id: 'warehouse',
-      role: 'warehouse',
-      phone: warehousePhone
-    }, contacts.length));
+    contacts.push(
+      normalizeCustomerContact(
+        {
+          id: 'warehouse',
+          role: 'warehouse',
+          phone: warehousePhone
+        },
+        contacts.length
+      )
+    );
   }
 
   return contacts;
@@ -615,7 +615,9 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     filterValues: Object.fromEntries(
       Object.entries(asRecord(source.filterValues)).map(([fieldId, fieldValue]) => [
         fieldId,
-        asArray(fieldValue).map(item => asText(item)).filter(Boolean)
+        asArray(fieldValue)
+          .map(item => asText(item))
+          .filter(Boolean)
       ])
     ),
     customerInsightValues: normalizeCustomerInsightValues(source.customerInsightValues),
@@ -630,9 +632,8 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
     noteHtml: asText(source.noteHtml),
     customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
     lastOrderAt: source.lastOrderAt ? asText(source.lastOrderAt) : null,
-    contacts: existingContacts.length > 0
-      ? existingContacts.map(normalizeCustomerContact)
-      : buildLegacyContacts(source),
+    contacts:
+      existingContacts.length > 0 ? existingContacts.map(normalizeCustomerContact) : buildLegacyContacts(source),
     products,
     documents,
     files: asArray(source.files).map(normalizeCustomerFile),
@@ -651,9 +652,8 @@ export const normalizeCustomerRecord = (value: unknown): CustomerRecord => {
   };
 };
 
-export const normalizeCustomerRecords = (values: unknown): CustomerRecord[] => (
-  asArray(values).map(normalizeCustomerRecord)
-);
+export const normalizeCustomerRecords = (values: unknown): CustomerRecord[] =>
+  asArray(values).map(normalizeCustomerRecord);
 
 const normalizeLeadActivity = (value: unknown, index = 0): LeadActivityRecord => {
   const source = asRecord(value);
@@ -727,14 +727,18 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
     filterValues: Object.fromEntries(
       Object.entries(asRecord(source.filterValues)).map(([fieldId, fieldValue]) => [
         fieldId,
-        asArray(fieldValue).map(item => asText(item)).filter(Boolean)
+        asArray(fieldValue)
+          .map(item => asText(item))
+          .filter(Boolean)
       ])
     ),
     customerInsightValues: normalizeCustomerInsightValues(source.customerInsightValues),
     profileValues: Object.fromEntries(
       Object.entries(asRecord(source.profileValues)).map(([fieldId, fieldValue]) => [
         fieldId,
-        asArray(fieldValue).map(item => asText(item)).filter(Boolean)
+        asArray(fieldValue)
+          .map(item => asText(item))
+          .filter(Boolean)
       ])
     ),
     customFieldValues: normalizeEntityCustomFieldValues(source.customFieldValues),
@@ -766,10 +770,6 @@ export const normalizeLeadRecord = (value: unknown): LeadRecord => {
   };
 };
 
-export const normalizeLeadRecords = (values: unknown): LeadRecord[] => (
-  asArray(values).map(normalizeLeadRecord)
-);
+export const normalizeLeadRecords = (values: unknown): LeadRecord[] => asArray(values).map(normalizeLeadRecord);
 
-export const isActiveLeadRecord = (lead: LeadRecord): boolean => (
-  !lead.deleted && !lead.returnedToRawData
-);
+export const isActiveLeadRecord = (lead: LeadRecord): boolean => !lead.deleted && !lead.returnedToRawData;

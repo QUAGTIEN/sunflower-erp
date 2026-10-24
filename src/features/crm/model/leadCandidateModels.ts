@@ -140,13 +140,10 @@ export type CandidateDuplicate = {
   reason: 'taxCode' | 'phone' | 'companyName';
 };
 
-const asRecord = (value: unknown): Record<string, unknown> => (
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {}
-);
+const asRecord = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 
-const asText = (value: unknown): string => typeof value === 'string' ? value : '';
+const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 const asNonNegativeInteger = (value: unknown): number => {
   const parsed = Number(value);
@@ -155,7 +152,7 @@ const asNonNegativeInteger = (value: unknown): number => {
 
 const normalizeStatus = (value: unknown): LeadCandidateStatus => {
   const statuses: LeadCandidateStatus[] = ['new', 'retry', 'disqualified', 'converted'];
-  return statuses.includes(value as LeadCandidateStatus) ? value as LeadCandidateStatus : 'new';
+  return statuses.includes(value as LeadCandidateStatus) ? (value as LeadCandidateStatus) : 'new';
 };
 
 const normalizeTaskStatus = (value: unknown, nextContactAt: string): LeadCandidateTaskStatus => {
@@ -206,9 +203,7 @@ const normalizeContactOutcome = (value: unknown): LeadCandidateContactOutcome | 
     'potential',
     'task_completed'
   ];
-  return outcomes.includes(value as LeadCandidateContactOutcome)
-    ? value as LeadCandidateContactOutcome
-    : '';
+  return outcomes.includes(value as LeadCandidateContactOutcome) ? (value as LeadCandidateContactOutcome) : '';
 };
 
 const normalizeContactResult = (
@@ -219,8 +214,15 @@ const normalizeContactResult = (
   if (results.includes(value as LeadCandidateContactResult)) return value as LeadCandidateContactResult;
   if (value === 'connected' || value === 'unreachable') return 'called';
   if (legacyOutcome === 'call_back') return 'callback';
-  if (legacyOutcome === 'connected' || legacyOutcome === 'potential' || legacyOutcome === 'task_completed') return 'called';
-  if (legacyOutcome === 'no_answer' || legacyOutcome === 'busy' || legacyOutcome === 'wrong_number' || legacyOutcome === 'not_interested') return 'called';
+  if (legacyOutcome === 'connected' || legacyOutcome === 'potential' || legacyOutcome === 'task_completed')
+    return 'called';
+  if (
+    legacyOutcome === 'no_answer' ||
+    legacyOutcome === 'busy' ||
+    legacyOutcome === 'wrong_number' ||
+    legacyOutcome === 'not_interested'
+  )
+    return 'called';
   return 'not_contacted';
 };
 
@@ -237,65 +239,66 @@ const normalizePotentialLevel = (
 
 const normalizeActivityType = (value: unknown): LeadCandidateActivityType | '' => {
   const types: LeadCandidateActivityType[] = ['call', 'message', 'email', 'meeting', 'note'];
-  return types.includes(value as LeadCandidateActivityType) ? value as LeadCandidateActivityType : '';
+  return types.includes(value as LeadCandidateActivityType) ? (value as LeadCandidateActivityType) : '';
 };
 
 const normalizeLogEventType = (value: unknown): LeadCandidateLogEventType => {
   const types: LeadCandidateLogEventType[] = ['contact_result', 'potential_level', 'schedule', 'activity'];
-  return types.includes(value as LeadCandidateLogEventType) ? value as LeadCandidateLogEventType : 'contact_result';
+  return types.includes(value as LeadCandidateLogEventType) ? (value as LeadCandidateLogEventType) : 'contact_result';
 };
 
-const normalizeContactLogs = (value: unknown): LeadCandidateContactLog[] => (
+const normalizeContactLogs = (value: unknown): LeadCandidateContactLog[] =>
   Array.isArray(value)
     ? value.slice(0, 50).map(item => {
-      const log = asRecord(item);
-      const outcome = normalizeContactOutcome(log.outcome) || 'connected';
-      const legacyPotentialLevel = outcome === 'potential'
-        ? 'potential'
-        : outcome === 'not_interested' ? 'not_fit' : '';
-      return {
-        id: asText(log.id),
-        occurredAt: asText(log.occurredAt),
-        outcome,
-        eventType: asText(log.eventType)
-          ? normalizeLogEventType(log.eventType)
-          : legacyPotentialLevel ? 'potential_level' : 'contact_result',
-        activityType: normalizeActivityType(log.activityType),
-        contactResult: asText(log.contactResult)
-          ? normalizeContactResult(log.contactResult, outcome)
-          : normalizeContactResult('', outcome),
-        potentialLevel: asText(log.potentialLevel)
-          ? normalizePotentialLevel(log.potentialLevel, outcome)
-          : legacyPotentialLevel,
-        description: asText(log.description),
-        note: asText(log.note),
-        nextContactAt: asText(log.nextContactAt),
-        createdById: asText(log.createdById),
-        createdByName: asText(log.createdByName)
-      };
-    })
-    : []
-);
+        const log = asRecord(item);
+        const outcome = normalizeContactOutcome(log.outcome) || 'connected';
+        const legacyPotentialLevel =
+          outcome === 'potential' ? 'potential' : outcome === 'not_interested' ? 'not_fit' : '';
+        return {
+          id: asText(log.id),
+          occurredAt: asText(log.occurredAt),
+          outcome,
+          eventType: asText(log.eventType)
+            ? normalizeLogEventType(log.eventType)
+            : legacyPotentialLevel
+              ? 'potential_level'
+              : 'contact_result',
+          activityType: normalizeActivityType(log.activityType),
+          contactResult: asText(log.contactResult)
+            ? normalizeContactResult(log.contactResult, outcome)
+            : normalizeContactResult('', outcome),
+          potentialLevel: asText(log.potentialLevel)
+            ? normalizePotentialLevel(log.potentialLevel, outcome)
+            : legacyPotentialLevel,
+          description: asText(log.description),
+          note: asText(log.note),
+          nextContactAt: asText(log.nextContactAt),
+          createdById: asText(log.createdById),
+          createdByName: asText(log.createdByName)
+        };
+      })
+    : [];
 
-const normalizeFiles = (value: unknown): LeadCandidateFileRecord[] => (
+const normalizeFiles = (value: unknown): LeadCandidateFileRecord[] =>
   Array.isArray(value)
-    ? value.map(item => {
-      const file = asRecord(item);
-      return {
-        id: asText(file.id),
-        name: asText(file.name),
-        size: asNonNegativeInteger(file.size),
-        folderId: asText(file.folderId),
-        folder: asText(file.folder),
-        url: asText(file.url),
-        data: asText(file.data),
-        createdAt: asText(file.createdAt),
-        createdById: asText(file.createdById),
-        createdBy: asText(file.createdBy ?? file.createdByName)
-      };
-    }).filter(file => file.id && file.name)
-    : []
-);
+    ? value
+        .map(item => {
+          const file = asRecord(item);
+          return {
+            id: asText(file.id),
+            name: asText(file.name),
+            size: asNonNegativeInteger(file.size),
+            folderId: asText(file.folderId),
+            folder: asText(file.folder),
+            url: asText(file.url),
+            data: asText(file.data),
+            createdAt: asText(file.createdAt),
+            createdById: asText(file.createdById),
+            createdBy: asText(file.createdBy ?? file.createdByName)
+          };
+        })
+        .filter(file => file.id && file.name)
+    : [];
 
 export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecord => {
   const source = asRecord(value);
@@ -303,9 +306,10 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
   const taskStatus = normalizeTaskStatus(source.taskStatus, nextContactAt);
   const contactLogs = normalizeContactLogs(source.contactLogs);
   const taskSource = normalizeTaskSource(source.taskSource, nextContactAt, contactLogs);
-  const legacyTaskLog = taskSource === 'admin_assigned'
-    ? contactLogs.find(log => log.description.startsWith('Bàn giao cho Sale'))
-    : contactLogs.find(log => log.eventType === 'schedule');
+  const legacyTaskLog =
+    taskSource === 'admin_assigned'
+      ? contactLogs.find(log => log.description.startsWith('Bàn giao cho Sale'))
+      : contactLogs.find(log => log.eventType === 'schedule');
   const lastContactAt = asText(source.lastContactAt);
   const lastContactOutcome = normalizeContactOutcome(source.lastContactOutcome);
   const canonicalProvince = canonicalizeVietnamProvince(source.province, source.provinceId);
@@ -314,14 +318,16 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
   const scoringMode: LeadCandidateScoringMode = source.scoringMode === 'manual' ? 'manual' : 'automatic';
   const effectiveScore = scoringMode === 'manual' ? manualScore : automaticScore;
   const scoreBreakdown = Array.isArray(source.scoreBreakdown)
-    ? source.scoreBreakdown.map(value => {
-      const entry = asRecord(value);
-      return {
-        itemId: asText(entry.itemId),
-        label: asText(entry.label),
-        points: Number(entry.points) || 0
-      };
-    }).filter(entry => entry.itemId && entry.label)
+    ? source.scoreBreakdown
+        .map(value => {
+          const entry = asRecord(value);
+          return {
+            itemId: asText(entry.itemId),
+            label: asText(entry.label),
+            points: Number(entry.points) || 0
+          };
+        })
+        .filter(entry => entry.itemId && entry.label)
     : [];
   return {
     ...source,
@@ -380,9 +386,7 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
     taskAssignedAt: asText(source.taskAssignedAt) || legacyTaskLog?.occurredAt || '',
     taskAssignedById: asText(source.taskAssignedById) || legacyTaskLog?.createdById || '',
     taskAssignedByName: asText(source.taskAssignedByName) || legacyTaskLog?.createdByName || '',
-    workQueueHidden: typeof source.workQueueHidden === 'boolean'
-      ? source.workQueueHidden
-      : !nextContactAt,
+    workQueueHidden: typeof source.workQueueHidden === 'boolean' ? source.workQueueHidden : !nextContactAt,
     workStatus: normalizeWorkStatus(source.workStatus, taskStatus, nextContactAt, contactLogs, lastContactAt),
     pinned: source.pinned === true,
     archived: source.archived === true,
@@ -400,20 +404,19 @@ export const normalizeLeadCandidateRecord = (value: unknown): LeadCandidateRecor
   };
 };
 
-export const normalizeLeadCandidateRecords = (values: unknown): LeadCandidateRecord[] => (
-  Array.isArray(values) ? values.map(normalizeLeadCandidateRecord) : []
-);
+export const normalizeLeadCandidateRecords = (values: unknown): LeadCandidateRecord[] =>
+  Array.isArray(values) ? values.map(normalizeLeadCandidateRecord) : [];
 
-export const createCandidateDocumentIdFromTaxCode = (taxCode: string): string => (
-  `candidate-mst-${normalizeTaxCode(taxCode)}`
-);
+export const createCandidateDocumentIdFromTaxCode = (taxCode: string): string =>
+  `candidate-mst-${normalizeTaxCode(taxCode)}`;
 
-const normalizeCompanyName = (value: unknown): string => String(value ?? '')
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLocaleLowerCase('vi-VN')
-  .replace(/đ/g, 'd')
-  .replace(/[^a-z0-9]/g, '');
+const normalizeCompanyName = (value: unknown): string =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('vi-VN')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]/g, '');
 
 const normalizePhone = (value: unknown): string => String(value ?? '').replace(/\D/g, '');
 
@@ -439,21 +442,36 @@ export const findCandidateDuplicate = (
   if (taxCode) {
     const duplicate = sources.find(item => normalizeTaxCode(item.taxCode) === taxCode);
     if (duplicate) {
-      return { id: duplicate.id, recordType: duplicate.recordType, companyName: duplicate.companyName, reason: 'taxCode' };
+      return {
+        id: duplicate.id,
+        recordType: duplicate.recordType,
+        companyName: duplicate.companyName,
+        reason: 'taxCode'
+      };
     }
   }
 
   if (phone.length >= 8) {
     const duplicate = sources.find(item => normalizePhone(item.phone) === phone);
     if (duplicate) {
-      return { id: duplicate.id, recordType: duplicate.recordType, companyName: duplicate.companyName, reason: 'phone' };
+      return {
+        id: duplicate.id,
+        recordType: duplicate.recordType,
+        companyName: duplicate.companyName,
+        reason: 'phone'
+      };
     }
   }
 
   if (companyName.length >= 5) {
     const duplicate = sources.find(item => normalizeCompanyName(item.companyName) === companyName);
     if (duplicate) {
-      return { id: duplicate.id, recordType: duplicate.recordType, companyName: duplicate.companyName, reason: 'companyName' };
+      return {
+        id: duplicate.id,
+        recordType: duplicate.recordType,
+        companyName: duplicate.companyName,
+        reason: 'companyName'
+      };
     }
   }
 

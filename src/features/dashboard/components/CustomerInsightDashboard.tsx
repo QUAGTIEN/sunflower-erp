@@ -27,9 +27,8 @@ interface InsightRecord {
   values: string[];
 }
 
-const activeLead = (lead: LeadRecord) => (
-  !lead.deleted && !lead.returnedToRawData && lead.stage !== 'converted' && !lead.convertedCustomerId
-);
+const activeLead = (lead: LeadRecord) =>
+  !lead.deleted && !lead.returnedToRawData && lead.stage !== 'converted' && !lead.convertedCustomerId;
 
 const DASHBOARD_GROUP_IDS = ['product_needs', 'contact_interaction'] as const;
 
@@ -58,30 +57,33 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
   const activeLeads = useMemo(() => leads.filter(activeLead), [leads]);
   const activeCustomers = useMemo(() => customers.filter(customer => !customer.deleted), [customers]);
 
-  const insightRecords = useMemo<InsightRecord[]>(() => [
-    ...activeCandidates.map(candidate => ({
-      key: `customer_data:${candidate.id}`,
-      values: candidate.customerInsightValues || []
-    })),
-    ...activeLeads.map(lead => ({
-      key: `leads:${lead.id}`,
-      values: lead.customerInsightValues || []
-    }))
-  ], [activeCandidates, activeLeads]);
-
-  const dashboardGroups = DASHBOARD_GROUP_IDS
-    .map(groupId => CUSTOMER_INSIGHT_GROUPS.find(group => group.id === groupId))
-    .filter((group): group is CustomerInsightGroup => Boolean(group));
-
-  const itemCount = (item: CustomerInsightItem) => (
-    insightRecords.filter(record => record.values.includes(item.id)).length
+  const insightRecords = useMemo<InsightRecord[]>(
+    () => [
+      ...activeCandidates.map(candidate => ({
+        key: `customer_data:${candidate.id}`,
+        values: candidate.customerInsightValues || []
+      })),
+      ...activeLeads.map(lead => ({
+        key: `leads:${lead.id}`,
+        values: lead.customerInsightValues || []
+      }))
+    ],
+    [activeCandidates, activeLeads]
   );
 
-  const groupRecordCount = (group: CustomerInsightGroup) => new Set(
-    insightRecords
-      .filter(record => group.items.some(item => record.values.includes(item.id)))
-      .map(record => record.key)
-  ).size;
+  const dashboardGroups = DASHBOARD_GROUP_IDS.map(groupId =>
+    CUSTOMER_INSIGHT_GROUPS.find(group => group.id === groupId)
+  ).filter((group): group is CustomerInsightGroup => Boolean(group));
+
+  const itemCount = (item: CustomerInsightItem) =>
+    insightRecords.filter(record => record.values.includes(item.id)).length;
+
+  const groupRecordCount = (group: CustomerInsightGroup) =>
+    new Set(
+      insightRecords
+        .filter(record => group.items.some(item => record.values.includes(item.id)))
+        .map(record => record.key)
+    ).size;
 
   const openItem = (item: CustomerInsightItem) => {
     const target = getCustomerInsightNavigation(item.id);
@@ -92,16 +94,32 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
     <section className="customer-insight-dashboard" aria-label="Tổng quan thông tin khách hàng">
       <div className="customer-insight-kpis">
         <article className="is-raw">
-          <div><span>Dữ liệu thô</span><strong>{activeCandidates.length} hồ sơ</strong><small>Thông tin doanh nghiệp mới thu thập</small></div>
+          <div>
+            <span>Dữ liệu thô</span>
+            <strong>{activeCandidates.length} hồ sơ</strong>
+            <small>Thông tin doanh nghiệp mới thu thập</small>
+          </div>
         </article>
         <article className="is-lead">
-          <div><span>Tiềm năng</span><strong>{activeLeads.length} Lead</strong><small>Khách hàng đang được chăm sóc</small></div>
+          <div>
+            <span>Tiềm năng</span>
+            <strong>{activeLeads.length} Lead</strong>
+            <small>Khách hàng đang được chăm sóc</small>
+          </div>
         </article>
         <article className="is-customer">
-          <div><span>Khách hàng</span><strong>{activeCustomers.length} khách hàng</strong><small>Hồ sơ đã chuyển thành khách hàng</small></div>
+          <div>
+            <span>Khách hàng</span>
+            <strong>{activeCustomers.length} khách hàng</strong>
+            <small>Hồ sơ đã chuyển thành khách hàng</small>
+          </div>
         </article>
         <article className="is-orders">
-          <div><span>PO đang hoạt động</span><strong>{activeOrdersCount} đơn</strong><small>PO chưa hoàn thành trong kỳ đang chọn</small></div>
+          <div>
+            <span>PO đang hoạt động</span>
+            <strong>{activeOrdersCount} đơn</strong>
+            <small>PO chưa hoàn thành trong kỳ đang chọn</small>
+          </div>
         </article>
       </div>
 
@@ -110,7 +128,10 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
         {queueContent}
         {tasksContent}
 
-        <section className="customer-overview-panel customer-insight-summary-panel" aria-labelledby="customer-insight-summary-title">
+        <section
+          className="customer-overview-panel customer-insight-summary-panel"
+          aria-labelledby="customer-insight-summary-title"
+        >
           <header className="customer-overview-panel__header">
             <h3 id="customer-insight-summary-title">Các nhóm thông tin khách hàng</h3>
             <small>{dashboardGroups.reduce((total, group) => total + group.items.length, 0)} phân loại</small>
@@ -120,12 +141,20 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
               const presentation = GROUP_PRESENTATION[group.id as keyof typeof GROUP_PRESENTATION];
               const Icon = presentation.Icon;
               return (
-                <section key={group.id} className="customer-insight-expanded-group" aria-labelledby={`customer-insight-group-${group.id}`}>
+                <section
+                  key={group.id}
+                  className="customer-insight-expanded-group"
+                  aria-labelledby={`customer-insight-group-${group.id}`}
+                >
                   <header>
-                    <span className="customer-insight-summary-card__icon"><Icon size={20} aria-hidden="true" /></span>
+                    <span className="customer-insight-summary-card__icon">
+                      <Icon size={20} aria-hidden="true" />
+                    </span>
                     <div>
                       <strong id={`customer-insight-group-${group.id}`}>{group.label}</strong>
-                      <small>{groupRecordCount(group)} hồ sơ · {group.items.length} phân loại</small>
+                      <small>
+                        {groupRecordCount(group)} hồ sơ · {group.items.length} phân loại
+                      </small>
                     </div>
                   </header>
                   <div className="customer-insight-classification-list">

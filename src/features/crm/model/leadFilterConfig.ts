@@ -38,12 +38,14 @@ const SYSTEM_PROVINCE_OPTIONS: LeadFilterOption[] = VIETNAM_ADMINISTRATIVE_UNITS
   }))
 }));
 
-const SYSTEM_INDUSTRIAL_PARK_OPTIONS: LeadFilterOption[] = VIETNAM_ADMINISTRATIVE_UNITS.map((province, provinceIndex) => ({
-  ...option(province.id, province.label, provinceIndex),
-  kind: 'province',
-  system: true,
-  children: []
-}));
+const SYSTEM_INDUSTRIAL_PARK_OPTIONS: LeadFilterOption[] = VIETNAM_ADMINISTRATIVE_UNITS.map(
+  (province, provinceIndex) => ({
+    ...option(province.id, province.label, provinceIndex),
+    kind: 'province',
+    system: true,
+    children: []
+  })
+);
 
 export const LEAD_FILTER_IDS = {
   companySize: 'company_size',
@@ -173,9 +175,8 @@ export const findLeadFilterOptionPathInOptions = (
   return [];
 };
 
-export const flattenLeadFilterOptions = (options: LeadFilterOption[]): LeadFilterOption[] => (
-  options.flatMap(currentOption => [currentOption, ...flattenLeadFilterOptions(currentOption.children || [])])
-);
+export const flattenLeadFilterOptions = (options: LeadFilterOption[]): LeadFilterOption[] =>
+  options.flatMap(currentOption => [currentOption, ...flattenLeadFilterOptions(currentOption.children || [])]);
 
 export const findLeadFilterOptionPath = (
   definitions: LeadFilterDefinition[],
@@ -187,37 +188,28 @@ export const findLeadFilterOptionPath = (
   return findLeadFilterOptionPathInOptions(field.options, optionId) || [];
 };
 
-export const findLeadFilterOption = (
-  definitions: LeadFilterDefinition[],
-  fieldId: string,
-  optionId: string
-) => {
+export const findLeadFilterOption = (definitions: LeadFilterDefinition[], fieldId: string, optionId: string) => {
   const path = findLeadFilterOptionPath(definitions, fieldId, optionId);
   return path.at(-1);
 };
 
-export const findLeadFilterParentOption = (
-  definitions: LeadFilterDefinition[],
-  fieldId: string,
-  optionId: string
-) => {
+export const findLeadFilterParentOption = (definitions: LeadFilterDefinition[], fieldId: string, optionId: string) => {
   return findLeadFilterOptionPath(definitions, fieldId, optionId)[0];
 };
 
-export const findLeadFilterOptionId = (
-  definitions: LeadFilterDefinition[],
-  fieldId: string,
-  labelOrId: string
-) => {
+export const findLeadFilterOptionId = (definitions: LeadFilterDefinition[], fieldId: string, labelOrId: string) => {
   if (!labelOrId) return '';
   const normalizedValue = slugifyLeadFilterId(labelOrId);
   const field = definitions.find(definition => definition.id === fieldId);
   const options = flattenLeadFilterOptions(field?.options || []);
-  return options.find(item => (
-    item.id === labelOrId
-    || slugifyLeadFilterId(item.id) === normalizedValue
-    || slugifyLeadFilterId(item.label) === normalizedValue
-  ))?.id || '';
+  return (
+    options.find(
+      item =>
+        item.id === labelOrId ||
+        slugifyLeadFilterId(item.id) === normalizedValue ||
+        slugifyLeadFilterId(item.label) === normalizedValue
+    )?.id || ''
+  );
 };
 
 const getLegacyProgressValues = (stage: LeadStage, existingValues: Record<string, string[]>) => {
@@ -234,10 +226,20 @@ const getLegacyProgressValues = (stage: LeadStage, existingValues: Record<string
       .filter(value => ['quote_sent', 'quote_received'].includes(value))
       .map(() => 'quote_sent'),
     ...(existingValues.negotiation_progress || [])
-      .filter(value => ['negotiating', 'price_negotiation', 'quantity_negotiation', 'payment_negotiation', 'delivery_negotiation'].includes(value))
+      .filter(value =>
+        [
+          'negotiating',
+          'price_negotiation',
+          'quantity_negotiation',
+          'payment_negotiation',
+          'delivery_negotiation'
+        ].includes(value)
+      )
       .map(() => 'negotiating'),
     ...(existingValues.negotiation_progress || [])
-      .filter(value => ['waiting_feedback', 'waiting_procurement', 'waiting_accounting', 'waiting_management'].includes(value))
+      .filter(value =>
+        ['waiting_feedback', 'waiting_procurement', 'waiting_accounting', 'waiting_management'].includes(value)
+      )
       .map(() => 'waiting_feedback')
   ];
 
@@ -253,27 +255,28 @@ export const getLeadFilterValues = (
   definitions: LeadFilterDefinition[] = DEFAULT_LEAD_FILTER_DEFINITIONS
 ): Record<string, string[]> => {
   const existingValues = lead.filterValues || {};
-  const companySizeValues = existingValues[LEAD_FILTER_IDS.companySize]
-    || (lead.companySize ? [lead.companySize] : []);
-  const rawProvinceValues = existingValues[LEAD_FILTER_IDS.province]
-    || [lead.provinceId || findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)].filter(Boolean);
-  const deepestProvinceValue = [...rawProvinceValues].reverse().find(value => (
-    findLeadFilterOptionPath(definitions, LEAD_FILTER_IDS.province, value).length > 0
-  ));
+  const companySizeValues = existingValues[LEAD_FILTER_IDS.companySize] || (lead.companySize ? [lead.companySize] : []);
+  const rawProvinceValues =
+    existingValues[LEAD_FILTER_IDS.province] ||
+    [lead.provinceId || findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)].filter(Boolean);
+  const deepestProvinceValue = [...rawProvinceValues]
+    .reverse()
+    .find(value => findLeadFilterOptionPath(definitions, LEAD_FILTER_IDS.province, value).length > 0);
   const resolvedProvincePath = deepestProvinceValue
     ? findLeadFilterOptionPath(definitions, LEAD_FILTER_IDS.province, deepestProvinceValue)
     : [];
-  const provinceValues = [resolvedProvincePath[0]?.id
-    || lead.provinceId
-    || findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)]
-    .filter(Boolean);
-  const industrialParkValues = existingValues[LEAD_FILTER_IDS.industrialPark]
-    || [findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.industrialPark, lead.industrialPark)].filter(Boolean);
-  const productNeedValues = existingValues[LEAD_FILTER_IDS.productNeed]
-    || existingValues.product_interest
-    || [];
-  const sourceValues = existingValues[LEAD_FILTER_IDS.source]
-    || [findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.source, lead.source)].filter(Boolean);
+  const provinceValues = [
+    resolvedProvincePath[0]?.id ||
+      lead.provinceId ||
+      findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.province, lead.province)
+  ].filter(Boolean);
+  const industrialParkValues =
+    existingValues[LEAD_FILTER_IDS.industrialPark] ||
+    [findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.industrialPark, lead.industrialPark)].filter(Boolean);
+  const productNeedValues = existingValues[LEAD_FILTER_IDS.productNeed] || existingValues.product_interest || [];
+  const sourceValues =
+    existingValues[LEAD_FILTER_IDS.source] ||
+    [findLeadFilterOptionId(definitions, LEAD_FILTER_IDS.source, lead.source)].filter(Boolean);
 
   return {
     ...existingValues,
@@ -294,12 +297,9 @@ export const mergeLeadFilterDefinitions = (stored: LeadFilterDefinition[] = []):
     if (!savedField) {
       return defaultField.id === LEAD_FILTER_IDS.industrialPark
         ? {
-          ...defaultField,
-          options: mergeIndustrialParkFilterOptions(
-            [],
-            storedById.get(LEAD_FILTER_IDS.province)?.options || []
-          )
-        }
+            ...defaultField,
+            options: mergeIndustrialParkFilterOptions([], storedById.get(LEAD_FILTER_IDS.province)?.options || [])
+          }
         : defaultField;
     }
     return {
@@ -307,21 +307,26 @@ export const mergeLeadFilterDefinitions = (stored: LeadFilterDefinition[] = []):
       ...savedField,
       id: defaultField.id,
       showInQuickFilter: true,
-      options: defaultField.id === LEAD_FILTER_IDS.province
-        ? mergeProvinceFilterOptions(Array.isArray(savedField.options) ? savedField.options : [])
-        : defaultField.id === LEAD_FILTER_IDS.industrialPark
-          ? mergeIndustrialParkFilterOptions(
-            Array.isArray(savedField.options) ? savedField.options : [],
-            storedById.get(LEAD_FILTER_IDS.province)?.options || []
-          )
-          : Array.isArray(savedField.options) ? savedField.options : defaultField.options
+      options:
+        defaultField.id === LEAD_FILTER_IDS.province
+          ? mergeProvinceFilterOptions(Array.isArray(savedField.options) ? savedField.options : [])
+          : defaultField.id === LEAD_FILTER_IDS.industrialPark
+            ? mergeIndustrialParkFilterOptions(
+                Array.isArray(savedField.options) ? savedField.options : [],
+                storedById.get(LEAD_FILTER_IDS.province)?.options || []
+              )
+            : Array.isArray(savedField.options)
+              ? savedField.options
+              : defaultField.options
     };
   });
-  const customDefinitions = stored.filter(field => !defaultIds.has(field.id)).map(field => ({
-    ...field,
-    showInQuickFilter: true,
-    options: Array.isArray(field.options) ? field.options : []
-  }));
+  const customDefinitions = stored
+    .filter(field => !defaultIds.has(field.id))
+    .map(field => ({
+      ...field,
+      showInQuickFilter: true,
+      options: Array.isArray(field.options) ? field.options : []
+    }));
 
   return [...defaultDefinitions, ...customDefinitions].sort((a, b) => a.order - b.order);
 };
@@ -329,21 +334,23 @@ export const mergeLeadFilterDefinitions = (stored: LeadFilterDefinition[] = []):
 const mergeProvinceFilterOptions = (storedOptions: LeadFilterOption[]): LeadFilterOption[] => {
   const matchedStoredProvinceIds = new Set<string>();
   const mergedSystemProvinces = SYSTEM_PROVINCE_OPTIONS.map(systemProvince => {
-    const storedProvince = storedOptions.find(candidate => (
-      candidate.id === systemProvince.id
-      || slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemProvince.label)
-    ));
+    const storedProvince = storedOptions.find(
+      candidate =>
+        candidate.id === systemProvince.id ||
+        slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemProvince.label)
+    );
     if (!storedProvince) return systemProvince;
     matchedStoredProvinceIds.add(storedProvince.id);
 
     const storedChildren = storedProvince.children || [];
     const matchedStoredWardIds = new Set<string>();
     const mergedSystemWards = (systemProvince.children || []).map(systemWard => {
-      const storedWard = storedChildren.find(candidate => (
-        candidate.kind === 'ward'
-        && (candidate.id === systemWard.id
-          || slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemWard.label))
-      ));
+      const storedWard = storedChildren.find(
+        candidate =>
+          candidate.kind === 'ward' &&
+          (candidate.id === systemWard.id ||
+            slugifyLeadFilterId(candidate.label) === slugifyLeadFilterId(systemWard.label))
+      );
       if (!storedWard) return systemWard;
       matchedStoredWardIds.add(storedWard.id);
       return {
@@ -383,44 +390,42 @@ const mergeProvinceFilterOptions = (storedOptions: LeadFilterOption[]): LeadFilt
 const mergeIndustrialParkFilterOptions = (
   storedOptions: LeadFilterOption[],
   legacyProvinceOptions: LeadFilterOption[]
-): LeadFilterOption[] => SYSTEM_INDUSTRIAL_PARK_OPTIONS.map(systemProvince => {
-  const belongsToSystemProvince = (candidate: LeadFilterOption) => (
-    candidate.id === systemProvince.id
-    || resolveVietnamProvince(candidate.label, candidate.id)?.id === systemProvince.id
-  );
-  const matchingStoredProvinces = storedOptions.filter(belongsToSystemProvince);
-  const matchingLegacyProvinces = legacyProvinceOptions.filter(belongsToSystemProvince);
-  const storedParks = matchingStoredProvinces.flatMap(province => province.children || []).flatMap(child => (
-    child.kind === 'ward' ? child.children || [] : [child]
-  ));
-  const legacyParks = matchingLegacyProvinces.flatMap(province => province.children || []).flatMap(child => (
-    child.kind === 'ward' ? child.children || [] : child.kind === 'region' ? [child] : []
-  ));
-  const parksByLabel = new Map<string, LeadFilterOption>();
-  [...legacyParks, ...storedParks].forEach(park => {
-    const normalizedLabel = slugifyLeadFilterId(park.label);
-    if (!normalizedLabel) return;
-    parksByLabel.set(normalizedLabel, {
-      ...park,
-      kind: 'region',
-      system: false
+): LeadFilterOption[] =>
+  SYSTEM_INDUSTRIAL_PARK_OPTIONS.map(systemProvince => {
+    const belongsToSystemProvince = (candidate: LeadFilterOption) =>
+      candidate.id === systemProvince.id ||
+      resolveVietnamProvince(candidate.label, candidate.id)?.id === systemProvince.id;
+    const matchingStoredProvinces = storedOptions.filter(belongsToSystemProvince);
+    const matchingLegacyProvinces = legacyProvinceOptions.filter(belongsToSystemProvince);
+    const storedParks = matchingStoredProvinces
+      .flatMap(province => province.children || [])
+      .flatMap(child => (child.kind === 'ward' ? child.children || [] : [child]));
+    const legacyParks = matchingLegacyProvinces
+      .flatMap(province => province.children || [])
+      .flatMap(child => (child.kind === 'ward' ? child.children || [] : child.kind === 'region' ? [child] : []));
+    const parksByLabel = new Map<string, LeadFilterOption>();
+    [...legacyParks, ...storedParks].forEach(park => {
+      const normalizedLabel = slugifyLeadFilterId(park.label);
+      if (!normalizedLabel) return;
+      parksByLabel.set(normalizedLabel, {
+        ...park,
+        kind: 'region',
+        system: false
+      });
     });
+    return {
+      ...systemProvince,
+      ...matchingStoredProvinces.find(province => province.id === systemProvince.id),
+      id: systemProvince.id,
+      label: systemProvince.label,
+      kind: 'province',
+      system: true,
+      active: true,
+      children: Array.from(parksByLabel.values())
+    };
   });
-  return {
-    ...systemProvince,
-    ...matchingStoredProvinces.find(province => province.id === systemProvince.id),
-    id: systemProvince.id,
-    label: systemProvince.label,
-    kind: 'province',
-    system: true,
-    active: true,
-    children: Array.from(parksByLabel.values())
-  };
-});
 
-export const compactLeadFilterDefinitionForStorage = (
-  definition: LeadFilterDefinition
-): LeadFilterDefinition => {
+export const compactLeadFilterDefinitionForStorage = (definition: LeadFilterDefinition): LeadFilterDefinition => {
   if (definition.id === LEAD_FILTER_IDS.province) {
     const configuredOptions = definition.options.flatMap(province => {
       const configuredWards = (province.children || []).flatMap(ward => {

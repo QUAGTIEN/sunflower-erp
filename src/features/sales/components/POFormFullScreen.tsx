@@ -2,9 +2,18 @@ import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Plus, Search, Trash2, X, Download, Folder, FileText,
-  Upload, CheckSquare,
-  History, Paperclip, SlidersHorizontal
+  Plus,
+  Search,
+  Trash2,
+  X,
+  Download,
+  Folder,
+  FileText,
+  Upload,
+  CheckSquare,
+  History,
+  Paperclip,
+  SlidersHorizontal
 } from 'lucide-react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { calculatePOItemFinancials, withCalculatedPOFinancials } from '@/domain/poFinancials';
@@ -16,7 +25,16 @@ import {
 } from '@/features/crm/model/crmModels';
 import '@/components/CustomerHistory.css';
 import { formatDate, toDateInputValue } from '@/shared/utils/dateFormatting';
-import { applyCustomerProductToOrderItem, findCustomerProductForOrderItem, getActiveCustomerProducts, getCustomerProductSpecSummary, normalizeProductCode, openCustomerProductAsset, refreshCustomerProductOrderItem, type ProductAttachment } from '@/features/crm/model/customerProductCatalog';
+import {
+  applyCustomerProductToOrderItem,
+  findCustomerProductForOrderItem,
+  getActiveCustomerProducts,
+  getCustomerProductSpecSummary,
+  normalizeProductCode,
+  openCustomerProductAsset,
+  refreshCustomerProductOrderItem,
+  type ProductAttachment
+} from '@/features/crm/model/customerProductCatalog';
 import { CustomerProductPicker } from './CustomerProductPicker';
 import './POFormCatalog.css';
 
@@ -34,16 +52,18 @@ const getDraftSafeLink = (value: unknown) => {
 const getDraftSafeValue = (value: unknown): unknown => {
   if (typeof value === 'string') return getDraftSafeLink(value);
   if (Array.isArray(value)) return value.map(getDraftSafeValue);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, getDraftSafeValue(item)]));
+  if (value && typeof value === 'object')
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, getDraftSafeValue(item)]));
   return value;
 };
-const getDraftSafeItems = (items: any[]) => items.map(item => ({
-  ...item,
-  previewImage: getDraftSafeLink(item.previewImage),
-  previewImages: (item.previewImages || []).map(getDraftSafeLink).filter(Boolean),
-  productFiles: getDraftSafeValue(item.productFiles || []),
-  specifications: getDraftSafeValue(item.specifications || {})
-}));
+const getDraftSafeItems = (items: any[]) =>
+  items.map(item => ({
+    ...item,
+    previewImage: getDraftSafeLink(item.previewImage),
+    previewImages: (item.previewImages || []).map(getDraftSafeLink).filter(Boolean),
+    productFiles: getDraftSafeValue(item.productFiles || []),
+    specifications: getDraftSafeValue(item.specifications || {})
+  }));
 
 interface POFormFullScreenProps {
   isOpen: boolean;
@@ -124,9 +144,10 @@ export default function POFormFullScreen({
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftResetRevision, setDraftResetRevision] = useState(0);
   const initializedFormKeyRef = useRef('');
-  const draftKey = !po && workflowMode === 'standard' && currentUser?.uid
-    ? `sunflower:po-draft:${currentUser.uid}:${templatePo?.id || initialCustomerId || 'new'}`
-    : '';
+  const draftKey =
+    !po && workflowMode === 'standard' && currentUser?.uid
+      ? `sunflower:po-draft:${currentUser.uid}:${templatePo?.id || initialCustomerId || 'new'}`
+      : '';
   const orderItems = useMemo(() => {
     if (!refreshCatalogProducts) return poItems;
     const products = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
@@ -178,7 +199,7 @@ export default function POFormFullScreen({
       const items = (po.items || []).map((item: any) => ({
         ...item,
         itemId: item.itemId || `item-${Math.random().toString(36).substr(2, 9)}`,
-        price: item.price !== undefined ? item.price : (item.unitPrice || 0),
+        price: item.price !== undefined ? item.price : item.unitPrice || 0,
         discountType: item.discountType === 'amount' ? 'amount' : 'percent',
         discountRate: item.discountRate !== undefined ? item.discountRate : 0,
         discountAmount: item.discountAmount !== undefined ? item.discountAmount : 0,
@@ -235,9 +256,14 @@ export default function POFormFullScreen({
           sourcePoId: templatePo.id,
           sourcePoCode: templatePo.poCode,
           sourceItemId: item.itemId,
-          designReuseRequested: (!catalogProduct || (applyCustomerProductToOrderItem({}, catalogProduct).size === (item.size || '')
-            && (catalogProduct.material || '') === (item.material || '')))
-            && (previewImages.length > 0 || !!item.designLayouts?.length || !!templatePo.links?.aiLink || !!templatePo.links?.corelLink),
+          designReuseRequested:
+            (!catalogProduct ||
+              (applyCustomerProductToOrderItem({}, catalogProduct).size === (item.size || '') &&
+                (catalogProduct.material || '') === (item.material || ''))) &&
+            (previewImages.length > 0 ||
+              !!item.designLayouts?.length ||
+              !!templatePo.links?.aiLink ||
+              !!templatePo.links?.corelLink),
           pricingNeedsReview: true,
           purchaseNeedsReview: true
         };
@@ -254,8 +280,8 @@ export default function POFormFullScreen({
       setCustomerRank(initialCustomer?.customerRank || '');
       setCustomerPoCode(preparedOrder?.customerPoCode || '');
       setExpectedDeliveryDate(
-        toDateInputValue(preparedOrder?.expectedDeliveryDate)
-        || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        toDateInputValue(preparedOrder?.expectedDeliveryDate) ||
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       );
       setNotes(preparedOrder?.notes || '');
       setPdfFile(getDraftSafeLink(preparedOrder?.links?.pdfLink));
@@ -264,19 +290,21 @@ export default function POFormFullScreen({
       setCorelFile(getDraftSafeLink(preparedOrder?.links?.corelLink));
       setContractFile(getDraftSafeLink(preparedOrder?.links?.contractLink));
       setQuoteFile(getDraftSafeLink(preparedOrder?.links?.quoteLink));
-      setPoItems((preparedOrder?.items || []).map((item: any) => ({
-        ...item,
-        itemId: item.itemId || `item-${Math.random().toString(36).slice(2, 11)}`,
-        discountType: item.discountType === 'amount' ? 'amount' : 'percent',
-        discountRate: Number(item.discountRate) || 0,
-        discountAmount: Number(item.discountAmount) || 0,
-        vatRate: item.vatRate === undefined ? 8 : Number(item.vatRate),
-        deliveryDate: toDateInputValue(item.deliveryDate || preparedOrder?.expectedDeliveryDate),
-        previewImages: item.previewImages || (item.previewImage ? [item.previewImage] : []),
-        unit: item.unit || 'cái',
-        material: item.material || '',
-        size: item.size || ''
-      })));
+      setPoItems(
+        (preparedOrder?.items || []).map((item: any) => ({
+          ...item,
+          itemId: item.itemId || `item-${Math.random().toString(36).slice(2, 11)}`,
+          discountType: item.discountType === 'amount' ? 'amount' : 'percent',
+          discountRate: Number(item.discountRate) || 0,
+          discountAmount: Number(item.discountAmount) || 0,
+          vatRate: item.vatRate === undefined ? 8 : Number(item.vatRate),
+          deliveryDate: toDateInputValue(item.deliveryDate || preparedOrder?.expectedDeliveryDate),
+          previewImages: item.previewImages || (item.previewImage ? [item.previewImage] : []),
+          unit: item.unit || 'cái',
+          material: item.material || '',
+          size: item.size || ''
+        }))
+      );
       setAssignments([]);
       setShowAssignments(Boolean(preparedOrder) && workflowMode === 'standard');
     }
@@ -301,7 +329,9 @@ export default function POFormFullScreen({
             setCustomerRank(
               initialCustomerId
                 ? restoredCustomer?.customerRank || ''
-                : typeof draft.customerRank === 'string' ? draft.customerRank : ''
+                : typeof draft.customerRank === 'string'
+                  ? draft.customerRank
+                  : ''
             );
             setCustomerPoCode(typeof draft.customerPoCode === 'string' ? draft.customerPoCode : '');
             if (typeof draft.expectedDeliveryDate === 'string' && draft.expectedDeliveryDate) {
@@ -340,7 +370,12 @@ export default function POFormFullScreen({
       notes.trim() ||
       poItems.length > 0 ||
       assignments.length > 0 ||
-      pdfFile || excelFile || aiFile || corelFile || contractFile || quoteFile
+      pdfFile ||
+      excelFile ||
+      aiFile ||
+      corelFile ||
+      contractFile ||
+      quoteFile
     );
 
     const timer = window.setTimeout(() => {
@@ -350,24 +385,27 @@ export default function POFormFullScreen({
       }
 
       try {
-        window.localStorage.setItem(draftKey, JSON.stringify({
-          savedAt: Date.now(),
-          customerId,
-          customerRank,
-          customerPoCode,
-          expectedDeliveryDate,
-          notes,
-          poItems: getDraftSafeItems(poItems),
-          assignments,
-          links: {
-            pdfLink: getDraftSafeLink(pdfFile),
-            excelLink: getDraftSafeLink(excelFile),
-            aiLink: getDraftSafeLink(aiFile),
-            corelLink: getDraftSafeLink(corelFile),
-            contractLink: getDraftSafeLink(contractFile),
-            quoteLink: getDraftSafeLink(quoteFile)
-          }
-        }));
+        window.localStorage.setItem(
+          draftKey,
+          JSON.stringify({
+            savedAt: Date.now(),
+            customerId,
+            customerRank,
+            customerPoCode,
+            expectedDeliveryDate,
+            notes,
+            poItems: getDraftSafeItems(poItems),
+            assignments,
+            links: {
+              pdfLink: getDraftSafeLink(pdfFile),
+              excelLink: getDraftSafeLink(excelFile),
+              aiLink: getDraftSafeLink(aiFile),
+              corelLink: getDraftSafeLink(corelFile),
+              contractLink: getDraftSafeLink(contractFile),
+              quoteLink: getDraftSafeLink(quoteFile)
+            }
+          })
+        );
       } catch (error) {
         console.warn('Unable to save PO draft:', error);
       }
@@ -437,11 +475,13 @@ export default function POFormFullScreen({
         });
         if (!cancelled) setPastProducts(uniqueItems);
       } catch (err) {
-        console.error("Error fetching past products:", err);
+        console.error('Error fetching past products:', err);
       }
     };
     fetchPastProducts();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [customerId, usesCatalogProducts]);
 
   if (!isOpen) return null;
@@ -451,7 +491,7 @@ export default function POFormFullScreen({
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = (event) => {
+      reader.onload = event => {
         const img = new Image();
         img.src = event.target?.result as string;
         img.onload = () => {
@@ -479,9 +519,9 @@ export default function POFormFullScreen({
           ctx?.drawImage(img, 0, 0, width, height);
           resolve(canvas.toDataURL('image/jpeg', 0.6));
         };
-        img.onerror = (err) => reject(err);
+        img.onerror = err => reject(err);
       };
-      reader.onerror = (err) => reject(err);
+      reader.onerror = err => reject(err);
     });
   };
 
@@ -489,7 +529,7 @@ export default function POFormFullScreen({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = event => {
       setBase64(event.target?.result as string);
     };
     reader.readAsDataURL(file);
@@ -508,9 +548,7 @@ export default function POFormFullScreen({
     }
 
     try {
-      const compressedB64s = await Promise.all(
-        Array.from(files).map(file => compressImage(file))
-      );
+      const compressedB64s = await Promise.all(Array.from(files).map(file => compressImage(file)));
 
       const updated = [...poItems];
       updated[rowIndex] = {
@@ -519,7 +557,7 @@ export default function POFormFullScreen({
       };
       setPoItems(updated);
     } catch (error) {
-      console.error("Failed to compress uploaded files:", error);
+      console.error('Failed to compress uploaded files:', error);
       alert(t('Lỗi khi nén ảnh layout. Vui lòng thử lại.'));
     }
 
@@ -541,29 +579,32 @@ export default function POFormFullScreen({
     const currentCustomer = customers.find(c => c.id === customerId);
     const discountRate = currentCustomer ? currentCustomer.discountRate : 0;
 
-    setPoItems(previous => [...previous, {
-      itemId: `item-${Math.random().toString(36).substr(2, 9)}`,
-      ...(usesCatalogProducts ? { customerProductId: '' } : {}),
-      productCode: '',
-      productName: '',
-      size: '',
-      material: usesCatalogProducts ? '' : 'Decal Giấy Fasson AW0339F',
-      unit: 'cái',
-      quantity: 1000,
-      price: 0,
-      discountType: 'percent',
-      discountRate: discountRate,
-      discountAmount: 0,
-      vatRate: 8,
-      deliveryDate: expectedDeliveryDate || '',
-      note: '',
-      previewImages: [],
-      supplierId: '',
-      supplierName: '',
-      purchasePrice: 0,
-      workType: 'gia_cong',
-      specifications: {}
-    }]);
+    setPoItems(previous => [
+      ...previous,
+      {
+        itemId: `item-${Math.random().toString(36).substr(2, 9)}`,
+        ...(usesCatalogProducts ? { customerProductId: '' } : {}),
+        productCode: '',
+        productName: '',
+        size: '',
+        material: usesCatalogProducts ? '' : 'Decal Giấy Fasson AW0339F',
+        unit: 'cái',
+        quantity: 1000,
+        price: 0,
+        discountType: 'percent',
+        discountRate: discountRate,
+        discountAmount: 0,
+        vatRate: 8,
+        deliveryDate: expectedDeliveryDate || '',
+        note: '',
+        previewImages: [],
+        supplierId: '',
+        supplierName: '',
+        purchasePrice: 0,
+        workType: 'gia_cong',
+        specifications: {}
+      }
+    ]);
   };
 
   const handleRemoveRow = (index: number) => {
@@ -571,9 +612,9 @@ export default function POFormFullScreen({
   };
 
   const toggleItemDetails = (itemId: string) => {
-    setExpandedItemIds(current => current.includes(itemId)
-      ? current.filter(id => id !== itemId)
-      : [...current, itemId]);
+    setExpandedItemIds(current =>
+      current.includes(itemId) ? current.filter(id => id !== itemId) : [...current, itemId]
+    );
   };
 
   const getProductSize = (prod: any) => {
@@ -592,8 +633,12 @@ export default function POFormFullScreen({
   };
 
   const handleUpdateRowField = (index: number, field: string, value: any) => {
-    if (usesCatalogProducts && poItems[index]?.customerProductId
-      && ['productCode', 'productName', 'size', 'material', 'unit'].includes(field)) return;
+    if (
+      usesCatalogProducts &&
+      poItems[index]?.customerProductId &&
+      ['productCode', 'productName', 'size', 'material', 'unit'].includes(field)
+    )
+      return;
     const updated = [...poItems];
     updated[index] = { ...updated[index], [field]: value };
 
@@ -630,25 +675,34 @@ export default function POFormFullScreen({
   const handleSelectSearchedProduct = (product: any) => {
     if (searchRowIndex === null) return;
 
-    const catalogProduct = getActiveCustomerProducts(customers.find(customer => customer.id === customerId))
-      .find(candidate => normalizeProductCode(candidate.productCode) === normalizeProductCode(product.productCode));
+    const catalogProduct = getActiveCustomerProducts(customers.find(customer => customer.id === customerId)).find(
+      candidate => normalizeProductCode(candidate.productCode) === normalizeProductCode(product.productCode)
+    );
     const updated = [...poItems];
-    updated[searchRowIndex] = catalogProduct && !product.poCode ? applyCustomerProductToOrderItem(updated[searchRowIndex], catalogProduct) : {
-      ...updated[searchRowIndex],
-      customerProductId: '',
-      productCode: product.productCode || product.code || 'MANUAL',
-      productName: product.productName || product.name || '',
-      size: getProductSize(product),
-      material: product.material || product.specifications?.material || (product.productType === 'tem_trang_cuon' ? 'Decal Giấy Fasson AW0339F' : 'Decal nhựa PVC'),
-      unit: product.unit || 'cái',
-      price: product.currentPrice || product.price || 0,
-      supplierId: product.supplierId || '',
-      supplierName: product.supplierName || '',
-      purchasePrice: product.purchasePrice || 0,
-      workType: product.workType || (product.productType === 'muc_in' ? 'mua_nvl' : 'gia_cong'),
-      previewImages: product.previewImages || (product.layoutUrl ? [product.layoutUrl] : (product.previewImage ? [product.previewImage] : [])),
-      specifications: product.specifications || {}
-    };
+    updated[searchRowIndex] =
+      catalogProduct && !product.poCode
+        ? applyCustomerProductToOrderItem(updated[searchRowIndex], catalogProduct)
+        : {
+            ...updated[searchRowIndex],
+            customerProductId: '',
+            productCode: product.productCode || product.code || 'MANUAL',
+            productName: product.productName || product.name || '',
+            size: getProductSize(product),
+            material:
+              product.material ||
+              product.specifications?.material ||
+              (product.productType === 'tem_trang_cuon' ? 'Decal Giấy Fasson AW0339F' : 'Decal nhựa PVC'),
+            unit: product.unit || 'cái',
+            price: product.currentPrice || product.price || 0,
+            supplierId: product.supplierId || '',
+            supplierName: product.supplierName || '',
+            purchasePrice: product.purchasePrice || 0,
+            workType: product.workType || (product.productType === 'muc_in' ? 'mua_nvl' : 'gia_cong'),
+            previewImages:
+              product.previewImages ||
+              (product.layoutUrl ? [product.layoutUrl] : product.previewImage ? [product.previewImage] : []),
+            specifications: product.specifications || {}
+          };
 
     setPoItems(updated);
     setSearchPopupOpen(false);
@@ -667,14 +721,27 @@ export default function POFormFullScreen({
     const selected = ids.map(id => products.find(product => product.id === id)).filter(product => Boolean(product));
     if (!selected.length) return;
     if (searchRowIndex !== null && searchRowIndex >= 0) {
-      setPoItems(previous => previous.map((item, index) => index === searchRowIndex ? applyCustomerProductToOrderItem(item, selected[0]!) : item));
+      setPoItems(previous =>
+        previous.map((item, index) =>
+          index === searchRowIndex ? applyCustomerProductToOrderItem(item, selected[0]!) : item
+        )
+      );
     } else {
       const customer = customers.find(record => record.id === customerId);
-      const rows = selected.map(product => applyCustomerProductToOrderItem({
-        itemId: crypto.randomUUID(), quantity: 1, deliveryDate: expectedDeliveryDate, note: '',
-        discountType: customer?.discountType || 'percent', discountRate: Number(customer?.discountRate || 0),
-        discountAmount: Number(customer?.discountAmount || 0)
-      }, product!));
+      const rows = selected.map(product =>
+        applyCustomerProductToOrderItem(
+          {
+            itemId: crypto.randomUUID(),
+            quantity: 1,
+            deliveryDate: expectedDeliveryDate,
+            note: '',
+            discountType: customer?.discountType || 'percent',
+            discountRate: Number(customer?.discountRate || 0),
+            discountAmount: Number(customer?.discountAmount || 0)
+          },
+          product!
+        )
+      );
       setPoItems(previous => [...previous, ...rows]);
     }
     setSearchPopupOpen(false);
@@ -683,14 +750,17 @@ export default function POFormFullScreen({
 
   // Assignments helpers
   const handleAddAssignment = () => {
-    setAssignments([...assignments, {
-      id: `assign-${Math.random().toString(36).substr(2, 9)}`,
-      department: 'designer',
-      userIds: [],
-      description: '',
-      dueDate: expectedDeliveryDate || '',
-      priority: 'Bình thường'
-    }]);
+    setAssignments([
+      ...assignments,
+      {
+        id: `assign-${Math.random().toString(36).substr(2, 9)}`,
+        department: 'designer',
+        userIds: [],
+        description: '',
+        dueDate: expectedDeliveryDate || '',
+        priority: 'Bình thường'
+      }
+    ]);
   };
 
   const handleRemoveAssignment = (index: number) => {
@@ -723,14 +793,18 @@ export default function POFormFullScreen({
   };
 
   const hasUnsavedCreateData = Boolean(
-    !po && (
-      templatePo ||
+    !po &&
+    (templatePo ||
       customerPoCode.trim() ||
       notes.trim() ||
       poItems.length > 0 ||
       assignments.length > 0 ||
-      pdfFile || excelFile || aiFile || corelFile || contractFile || quoteFile
-    )
+      pdfFile ||
+      excelFile ||
+      aiFile ||
+      corelFile ||
+      contractFile ||
+      quoteFile)
   );
 
   const handleClose = () => {
@@ -747,7 +821,7 @@ export default function POFormFullScreen({
 
   const handleDiscardDraft = async () => {
     if (!draftKey) return;
-    const shouldDiscard = (await confirmDelete('Bạn có chắc muốn xóa bản nháp và bắt đầu lại?'));
+    const shouldDiscard = await confirmDelete('Bạn có chắc muốn xóa bản nháp và bắt đầu lại?');
     if (!shouldDiscard) return;
     window.localStorage.removeItem(draftKey);
     setDraftRestored(false);
@@ -756,142 +830,151 @@ export default function POFormFullScreen({
 
   // Form submit
   const handleSubmit = async (e: React.FormEvent) => {
-    return runMutationAction("POFormFullScreen.tsx:handleSubmit", async () => {
-      e.preventDefault();
-      if (isSaving) return;
-      if (!customerId) {
-        setShowOrderInfo(true);
-        alert(t('Vui lòng chọn khách hàng!'));
-        return;
-      }
-      if (!expectedDeliveryDate || Number.isNaN(Date.parse(expectedDeliveryDate))) {
-        setShowOrderInfo(true);
-        alert(t('Vui lòng chọn ngày giao hàng dự kiến hợp lệ!'));
-        return;
-      }
-      if (!['A', 'B', 'C', 'D'].includes(customerRank)) {
-        setShowOrderInfo(true);
-        alert(t('Vui lòng chọn hạng khách hàng A, B, C hoặc D!'));
-        return;
-      }
-      if (poItems.length === 0) {
-        alert(t('Vui lòng thêm ít nhất 1 mặt hàng vào PO!'));
-        return;
-      }
-
-      // Validate that all items have a name and quantity
-      const customerCatalog = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
-      const preparedProductCodes = new Set<string>();
-      for (let i = 0; i < orderItems.length; i++) {
-        const productCode = String(orderItems[i].productCode || '').trim();
-        if (refreshCatalogProducts && orderItems[i].customerProductId
-          && !findCustomerProductForOrderItem(orderItems[i], customerCatalog)) {
-          alert(t(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`));
+    return runMutationAction(
+      'POFormFullScreen.tsx:handleSubmit',
+      async () => {
+        e.preventDefault();
+        if (isSaving) return;
+        if (!customerId) {
+          setShowOrderInfo(true);
+          alert(t('Vui lòng chọn khách hàng!'));
           return;
         }
-        if (workflowMode === 'customer_onboarding' && !productCode) {
-          alert(t(`Dòng ${i + 1}: Vui lòng nhập mã hàng để lưu vào hồ sơ khách hàng!`));
+        if (!expectedDeliveryDate || Number.isNaN(Date.parse(expectedDeliveryDate))) {
+          setShowOrderInfo(true);
+          alert(t('Vui lòng chọn ngày giao hàng dự kiến hợp lệ!'));
           return;
         }
-        const normalizedProductCode = productCode.toLocaleUpperCase('vi-VN');
-        if (workflowMode === 'customer_onboarding' && preparedProductCodes.has(normalizedProductCode)) {
-          alert(t(`Dòng ${i + 1}: Mã hàng ${productCode} đang bị trùng trong danh sách!`));
+        if (!['A', 'B', 'C', 'D'].includes(customerRank)) {
+          setShowOrderInfo(true);
+          alert(t('Vui lòng chọn hạng khách hàng A, B, C hoặc D!'));
           return;
         }
-        if (normalizedProductCode) preparedProductCodes.add(normalizedProductCode);
-        if (!String(orderItems[i].productName || '').trim()) {
-          alert(t(`Dòng ${i + 1}: Vui lòng nhập tên hàng!`));
+        if (poItems.length === 0) {
+          alert(t('Vui lòng thêm ít nhất 1 mặt hàng vào PO!'));
           return;
         }
-        if (!String(orderItems[i].unit || '').trim()) {
-          alert(t(`Dòng ${i + 1}: Vui lòng nhập đơn vị tính!`));
+
+        // Validate that all items have a name and quantity
+        const customerCatalog = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
+        const preparedProductCodes = new Set<string>();
+        for (let i = 0; i < orderItems.length; i++) {
+          const productCode = String(orderItems[i].productCode || '').trim();
+          if (
+            refreshCatalogProducts &&
+            orderItems[i].customerProductId &&
+            !findCustomerProductForOrderItem(orderItems[i], customerCatalog)
+          ) {
+            alert(t(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`));
+            return;
+          }
+          if (workflowMode === 'customer_onboarding' && !productCode) {
+            alert(t(`Dòng ${i + 1}: Vui lòng nhập mã hàng để lưu vào hồ sơ khách hàng!`));
+            return;
+          }
+          const normalizedProductCode = productCode.toLocaleUpperCase('vi-VN');
+          if (workflowMode === 'customer_onboarding' && preparedProductCodes.has(normalizedProductCode)) {
+            alert(t(`Dòng ${i + 1}: Mã hàng ${productCode} đang bị trùng trong danh sách!`));
+            return;
+          }
+          if (normalizedProductCode) preparedProductCodes.add(normalizedProductCode);
+          if (!String(orderItems[i].productName || '').trim()) {
+            alert(t(`Dòng ${i + 1}: Vui lòng nhập tên hàng!`));
+            return;
+          }
+          if (!String(orderItems[i].unit || '').trim()) {
+            alert(t(`Dòng ${i + 1}: Vui lòng nhập đơn vị tính!`));
+            return;
+          }
+          if (!Number.isFinite(Number(orderItems[i].quantity)) || Number(orderItems[i].quantity) <= 0) {
+            alert(t(`Dòng ${i + 1}: Số lượng phải lớn hơn 0!`));
+            return;
+          }
+          if (templatePo && (!orderItems[i].price || Number(orderItems[i].price) <= 0)) {
+            alert(`Dòng ${i + 1}: Vui lòng kiểm tra và nhập đơn giá hiện hành trước khi lưu đơn đặt lại.`);
+            return;
+          }
+        }
+
+        const normalizedItems = orderItems.map(item => {
+          const catalogProduct = findCustomerProductForOrderItem(item, customerCatalog);
+          return withCalculatedPOFinancials(
+            refreshCatalogProducts && catalogProduct ? refreshCustomerProductOrderItem(item, catalogProduct) : item
+          );
+        });
+
+        // Calculate totals
+        let totalBeforeVat = 0;
+        let totalAfterVat = 0;
+
+        normalizedItems.forEach(item => {
+          const financials = calculatePOItemFinancials(item);
+          totalBeforeVat += financials.amountBeforeVat;
+          totalAfterVat += financials.amountWithVat;
+        });
+
+        const customerObj = customers.find(c => c.id === customerId);
+        if (!customerObj) {
+          alert(t('Không tìm thấy hồ sơ khách hàng. Vui lòng tải lại trang và chọn lại khách hàng.'));
           return;
         }
-        if (!Number.isFinite(Number(orderItems[i].quantity)) || Number(orderItems[i].quantity) <= 0) {
-          alert(t(`Dòng ${i + 1}: Số lượng phải lớn hơn 0!`));
-          return;
+
+        const normalizedCustomerRank = customerRank as CustomerRank;
+        const existingSnapshot =
+          po?.customerId === customerId ? (po.customerSnapshot as CustomerSnapshot | undefined) : undefined;
+        const customerSnapshot: CustomerSnapshot = existingSnapshot
+          ? { ...existingSnapshot, customerRank: normalizedCustomerRank }
+          : createCustomerSnapshot(customerObj, normalizedCustomerRank);
+
+        const poData = {
+          id: po?.id || undefined,
+          customerId,
+          customerName: customerSnapshot.companyName,
+          customerRank: normalizedCustomerRank,
+          customerSnapshot,
+          customerPoCode,
+          expectedDeliveryDate: new Date(expectedDeliveryDate).toISOString(),
+          notes,
+          items: normalizedItems,
+          assignments,
+          totalAmount: totalBeforeVat, // For consistency, totalAmount is subtotal
+          discountAmount: normalizedItems.reduce(
+            (acc, item) => acc + Math.round(calculatePOItemFinancials(item).discountAmount),
+            0
+          ),
+          netAmount: totalAfterVat, // Store final VAT-included total here or match DB convention
+          links: {
+            pdfLink: pdfFile,
+            excelLink: excelFile,
+            aiLink: aiFile,
+            corelLink: corelFile,
+            contractLink: contractFile,
+            quoteLink: quoteFile
+          },
+          orderType: templatePo ? 'repeat' : po?.orderType || 'new',
+          repeatSourcePoId: templatePo?.id || po?.repeatSourcePoId || '',
+          repeatSourcePoCode: templatePo?.poCode || po?.repeatSourcePoCode || '',
+          designReuseRequested: templatePo
+            ? poItems.some(item => item.designReuseRequested)
+            : Boolean(po?.designReuseRequested)
+        };
+
+        setIsSaving(true);
+        setSaveError('');
+        try {
+          await onSave(poData);
+          if (draftKey) window.localStorage.removeItem(draftKey);
+          setIsTableFocusMode(false);
+        } catch (error) {
+          console.error('Error saving PO:', error);
+          setSaveError('Không thể lưu đơn hàng. Vui lòng kiểm tra kết nối và thử lại.');
+          alert('Không thể lưu đơn hàng. Dữ liệu vẫn được giữ trong bản nháp để bạn thử lại.');
+        } finally {
+          setIsSaving(false);
         }
-        if (templatePo && (!orderItems[i].price || Number(orderItems[i].price) <= 0)) {
-          alert(`Dòng ${i + 1}: Vui lòng kiểm tra và nhập đơn giá hiện hành trước khi lưu đơn đặt lại.`);
-          return;
-        }
-      }
-
-      const normalizedItems = orderItems.map(item => {
-        const catalogProduct = findCustomerProductForOrderItem(item, customerCatalog);
-        return withCalculatedPOFinancials(refreshCatalogProducts && catalogProduct ? refreshCustomerProductOrderItem(item, catalogProduct) : item);
-      });
-
-      // Calculate totals
-      let totalBeforeVat = 0;
-      let totalAfterVat = 0;
-
-      normalizedItems.forEach(item => {
-        const financials = calculatePOItemFinancials(item);
-        totalBeforeVat += financials.amountBeforeVat;
-        totalAfterVat += financials.amountWithVat;
-      });
-
-      const customerObj = customers.find(c => c.id === customerId);
-      if (!customerObj) {
-        alert(t('Không tìm thấy hồ sơ khách hàng. Vui lòng tải lại trang và chọn lại khách hàng.'));
-        return;
-      }
-
-      const normalizedCustomerRank = customerRank as CustomerRank;
-      const existingSnapshot = po?.customerId === customerId
-        ? po.customerSnapshot as CustomerSnapshot | undefined
-        : undefined;
-      const customerSnapshot: CustomerSnapshot = existingSnapshot
-        ? { ...existingSnapshot, customerRank: normalizedCustomerRank }
-        : createCustomerSnapshot(customerObj, normalizedCustomerRank);
-
-      const poData = {
-        id: po?.id || undefined,
-        customerId,
-        customerName: customerSnapshot.companyName,
-        customerRank: normalizedCustomerRank,
-        customerSnapshot,
-        customerPoCode,
-        expectedDeliveryDate: new Date(expectedDeliveryDate).toISOString(),
-        notes,
-        items: normalizedItems,
-        assignments,
-        totalAmount: totalBeforeVat, // For consistency, totalAmount is subtotal
-        discountAmount: normalizedItems.reduce((acc, item) => (
-          acc + Math.round(calculatePOItemFinancials(item).discountAmount)
-        ), 0),
-        netAmount: totalAfterVat, // Store final VAT-included total here or match DB convention
-        links: {
-          pdfLink: pdfFile,
-          excelLink: excelFile,
-          aiLink: aiFile,
-          corelLink: corelFile,
-          contractLink: contractFile,
-          quoteLink: quoteFile
-        },
-        orderType: templatePo ? 'repeat' : (po?.orderType || 'new'),
-        repeatSourcePoId: templatePo?.id || po?.repeatSourcePoId || '',
-        repeatSourcePoCode: templatePo?.poCode || po?.repeatSourcePoCode || '',
-        designReuseRequested: templatePo
-          ? poItems.some(item => item.designReuseRequested)
-          : Boolean(po?.designReuseRequested)
-      };
-
-      setIsSaving(true);
-      setSaveError('');
-      try {
-        await onSave(poData);
-        if (draftKey) window.localStorage.removeItem(draftKey);
-        setIsTableFocusMode(false);
-      } catch (error) {
-        console.error('Error saving PO:', error);
-        setSaveError('Không thể lưu đơn hàng. Vui lòng kiểm tra kết nối và thử lại.');
-        alert('Không thể lưu đơn hàng. Dữ liệu vẫn được giữ trong bản nháp để bạn thử lại.');
-      } finally {
-        setIsSaving(false);
-      }
-    }, e);
+      },
+      e
+    );
   };
 
   // Calculations for totals footer
@@ -923,20 +1006,20 @@ export default function POFormFullScreen({
   // Catalog products + past history filter
   const currentCustomer = customers.find(c => c.id === customerId);
   const isCustomerOnboarding = workflowMode === 'customer_onboarding';
-  const isPreparedAssignment = !po
-    && !templatePo
-    && !isCustomerOnboarding
-    && Boolean(currentCustomer?.pendingOrderDraft);
+  const isPreparedAssignment =
+    !po && !templatePo && !isCustomerOnboarding && Boolean(currentCustomer?.pendingOrderDraft);
   const catalogProducts = getActiveCustomerProducts(currentCustomer);
 
-  const filteredCatalog = catalogProducts.filter((p: any) =>
-    (p.productCode && p.productCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (p.productName && p.productName.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredCatalog = catalogProducts.filter(
+    (p: any) =>
+      (p.productCode && p.productCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.productName && p.productName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const filteredHistory = pastProducts.filter((p: any) =>
-    (p.productCode && p.productCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (p.productName && p.productName.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredHistory = pastProducts.filter(
+    (p: any) =>
+      (p.productCode && p.productCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.productName && p.productName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Departments for tasks mapping
@@ -949,368 +1032,544 @@ export default function POFormFullScreen({
     { value: 'admin', label: t('Ban Giám Đốc (ADMIN)') }
   ];
 
-  const orderAttachments = <>
-            {/* Document upload / repository repo link */}
-            <div className="po-attachments-card">
+  const orderAttachments = (
+    <>
+      {/* Document upload / repository repo link */}
+      <div className="po-attachments-card">
+        <button
+          type="button"
+          className="po-collapse-trigger"
+          onClick={() => setShowAttachments(current => !current)}
+          aria-expanded={showAttachments}
+          aria-controls="po-attachment-content"
+        >
+          <span>
+            <Paperclip size={15} />
+            {t('Tệp đơn hàng & thiết kế')}
+            {attachmentCount > 0 && <small>{attachmentCount}</small>}
+          </span>
+          <span className="po-section-action">{showAttachments ? t('Thu gọn') : t('Mở rộng')}</span>
+        </button>
+
+        {showAttachments && (
+          <div id="po-attachment-content" className="po-attachment-content">
+            {customerId && (
               <button
                 type="button"
-                className="po-collapse-trigger"
-                onClick={() => setShowAttachments(current => !current)}
-                aria-expanded={showAttachments}
-                aria-controls="po-attachment-content"
+                className="btn btn-sm btn-outline"
+                onClick={() => setShowRepoModal(true)}
+                style={{
+                  marginBottom: '12px',
+                  width: '100%',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  borderColor: 'var(--color-primary)',
+                  color: 'var(--color-primary)'
+                }}
               >
-                <span>
-                  <Paperclip size={15} />
-                  {t('Tệp đơn hàng & thiết kế')}
-                  {attachmentCount > 0 && <small>{attachmentCount}</small>}
-                </span>
-                <span className="po-section-action">{showAttachments ? t('Thu gọn') : t('Mở rộng')}</span>
+                <Folder size={14} />
+                <span>{t('Chọn từ kho tệp khách hàng')}</span>
               </button>
+            )}
 
-              {showAttachments && <div id="po-attachment-content" className="po-attachment-content">
-                {customerId && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline"
-                  onClick={() => setShowRepoModal(true)}
-                  style={{
-                    marginBottom: '12px',
-                    width: '100%',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    borderColor: 'var(--color-primary)',
-                    color: 'var(--color-primary)'
-                  }}
-                >
-                  <Folder size={14} />
-                  <span>{t('Chọn từ kho tệp khách hàng')}</span>
-                </button>
+            <div className="po-attachment-fields">
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
+                  {t('File PDF Đơn Hàng')}
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  onChange={e => handleLinkFileChange(e, setPdfFile)}
+                  style={{ fontSize: '11px', width: '100%' }}
+                />
+                {pdfFile && (
+                  <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
+                    ✓ {t('Đã tải lên')}
+                  </span>
                 )}
-
-              <div className="po-attachment-fields">
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>{t('File PDF Đơn Hàng')}</label>
-                  <input type="file" accept="application/pdf,image/*" onChange={e => handleLinkFileChange(e, setPdfFile)} style={{ fontSize: '11px', width: '100%' }} />
-                  {pdfFile && <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>✓ {t('Đã tải lên')}</span>}
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>{t('Bản Báo Giá Excel')}</label>
-                  <input type="file" accept=".xls,.xlsx" onChange={e => handleLinkFileChange(e, setExcelFile)} style={{ fontSize: '11px', width: '100%' }} />
-                  {excelFile && <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>✓ {t('Đã tải lên')}</span>}
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>{t('File Thiết kế AI')}</label>
-                  <input type="file" accept="*/*" onChange={e => handleLinkFileChange(e, setAiFile)} style={{ fontSize: '11px', width: '100%' }} />
-                  {aiFile && <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>✓ {t('Đã tải lên')}</span>}
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>{t('File Thiết kế Corel (.cdr)')}</label>
-                  <input type="file" accept="*/*" onChange={e => handleLinkFileChange(e, setCorelFile)} style={{ fontSize: '11px', width: '100%' }} />
-                  {corelFile && <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>✓ {t('Đã tải lên')}</span>}
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>{t('File Hợp Đồng')}</label>
-                  <input type="file" accept="application/pdf,image/*" onChange={e => handleLinkFileChange(e, setContractFile)} style={{ fontSize: '11px', width: '100%' }} />
-                  {contractFile && <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>✓ {t('Đã tải lên')}</span>}
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>{t('Bản Báo Giá PDF')}</label>
-                  <input type="file" accept="application/pdf,image/*" onChange={e => handleLinkFileChange(e, setQuoteFile)} style={{ fontSize: '11px', width: '100%' }} />
-                  {quoteFile && <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>✓ {t('Đã tải lên')}</span>}
-                </div>
               </div>
-              </div>}
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
+                  {t('Bản Báo Giá Excel')}
+                </label>
+                <input
+                  type="file"
+                  accept=".xls,.xlsx"
+                  onChange={e => handleLinkFileChange(e, setExcelFile)}
+                  style={{ fontSize: '11px', width: '100%' }}
+                />
+                {excelFile && (
+                  <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
+                    ✓ {t('Đã tải lên')}
+                  </span>
+                )}
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
+                  {t('File Thiết kế AI')}
+                </label>
+                <input
+                  type="file"
+                  accept="*/*"
+                  onChange={e => handleLinkFileChange(e, setAiFile)}
+                  style={{ fontSize: '11px', width: '100%' }}
+                />
+                {aiFile && (
+                  <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
+                    ✓ {t('Đã tải lên')}
+                  </span>
+                )}
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
+                  {t('File Thiết kế Corel (.cdr)')}
+                </label>
+                <input
+                  type="file"
+                  accept="*/*"
+                  onChange={e => handleLinkFileChange(e, setCorelFile)}
+                  style={{ fontSize: '11px', width: '100%' }}
+                />
+                {corelFile && (
+                  <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
+                    ✓ {t('Đã tải lên')}
+                  </span>
+                )}
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
+                  {t('File Hợp Đồng')}
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  onChange={e => handleLinkFileChange(e, setContractFile)}
+                  style={{ fontSize: '11px', width: '100%' }}
+                />
+                {contractFile && (
+                  <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
+                    ✓ {t('Đã tải lên')}
+                  </span>
+                )}
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
+                  {t('Bản Báo Giá PDF')}
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  onChange={e => handleLinkFileChange(e, setQuoteFile)}
+                  style={{ fontSize: '11px', width: '100%' }}
+                />
+                {quoteFile && (
+                  <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
+                    ✓ {t('Đã tải lên')}
+                  </span>
+                )}
+              </div>
             </div>
-  </>;
+          </div>
+        )}
+      </div>
+    </>
+  );
 
   const orderAssignments = (
-            <div className="po-assignment-card" style={{
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              backgroundColor: 'white',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-              overflow: 'hidden',
-              display: isCustomerOnboarding ? 'none' : undefined
-            }}>
-              <button type="button" className="po-collapse-trigger po-assignment-header" onClick={() => setShowAssignments(current => !current)} aria-expanded={showAssignments} aria-controls="po-assignment-content">
-                <span>{t('Phân công công việc')} <small>{assignments.length}</small></span>
-                <span className="po-section-action">{showAssignments ? t('Thu gọn') : t('Mở rộng')}</span>
-              </button>
+    <div
+      className="po-assignment-card"
+      style={{
+        border: '1px solid var(--color-border)',
+        borderRadius: '8px',
+        backgroundColor: 'white',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        overflow: 'hidden',
+        display: isCustomerOnboarding ? 'none' : undefined
+      }}
+    >
+      <button
+        type="button"
+        className="po-collapse-trigger po-assignment-header"
+        onClick={() => setShowAssignments(current => !current)}
+        aria-expanded={showAssignments}
+        aria-controls="po-assignment-content"
+      >
+        <span>
+          {t('Phân công công việc')} <small>{assignments.length}</small>
+        </span>
+        <span className="po-section-action">{showAssignments ? t('Thu gọn') : t('Mở rộng')}</span>
+      </button>
 
-              {showAssignments && (
-                <div id="po-assignment-content" className="po-assignment-content" style={{ padding: '16px' }}>
+      {showAssignments && (
+        <div id="po-assignment-content" className="po-assignment-content" style={{ padding: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '14px' }}>
+            {assignments.map((assign, index) => {
+              // Users that match the role of the department
+              const deptUsers = users.filter(u => u.role === assign.department && u.active);
 
+              return (
+                <div
+                  key={assign.id}
+                  className="po-assignment-entry"
+                  style={{
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '6px',
+                    padding: '12px',
+                    backgroundColor: '#fafbfc',
+                    display: 'grid',
+                    gridTemplateColumns: '200px 1.5fr 150px 120px 30px',
+                    gap: '12px',
+                    alignItems: 'start'
+                  }}
+                >
+                  {/* Department Selector */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Bộ phận chịu trách nhiệm')}</label>
+                    <select
+                      value={assign.department}
+                      onChange={e => handleUpdateAssignment(index, 'department', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px',
+                        fontSize: '12.5px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--color-border)'
+                      }}
+                    >
+                      {departments.map(d => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '14px' }}>
-                    {assignments.map((assign, index) => {
-                      // Users that match the role of the department
-                      const deptUsers = users.filter(u => u.role === assign.department && u.active);
-
-                      return (
-                        <div key={assign.id} className="po-assignment-entry" style={{
-                          border: '1px solid var(--color-border-light)',
-                          borderRadius: '6px',
-                          padding: '12px',
-                          backgroundColor: '#fafbfc',
-                          display: 'grid',
-                          gridTemplateColumns: '200px 1.5fr 150px 120px 30px',
-                          gap: '12px',
-                          alignItems: 'start'
-                        }}>
-                          {/* Department Selector */}
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Bộ phận chịu trách nhiệm')}</label>
-                            <select
-                              value={assign.department}
-                              onChange={(e) => handleUpdateAssignment(index, 'department', e.target.value)}
-                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-                            >
-                              {departments.map(d => (
-                                <option key={d.value} value={d.value}>{d.label}</option>
-                              ))}
-                            </select>
-
-                            {/* Personnel check list */}
-                            <div style={{ marginTop: '8px' }}>
-                              <label style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>
-                                {t('Chọn Nhân Sự Phụ Trách')}
-                              </label>
-                              <div style={{
-                                maxHeight: '100px',
-                                overflowY: 'auto',
-                                border: '1px solid #e2e8f0',
-                                padding: '4px 6px',
-                                borderRadius: '4px',
-                                backgroundColor: 'white',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '3px'
-                              }}>
-                                {deptUsers.map(u => (
-                                  <label key={u.uid} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', cursor: 'pointer', margin: 0 }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={(assign.userIds || []).includes(u.uid)}
-                                      onChange={() => handleToggleUserInAssignment(index, u.uid)}
-                                    />
-                                    <span>{u.displayName}</span>
-                                  </label>
-                                ))}
-                                {deptUsers.length === 0 && (
-                                  <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                                    {t('Không có nhân sự cho bộ phận này')}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Task Description */}
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Nội dung công việc bàn giao')}</label>
-                            <textarea
-                              value={assign.description}
-                              onChange={(e) => handleUpdateAssignment(index, 'description', e.target.value)}
-                              placeholder={t('Ví dụ: Bế tem trắng, gửi mẫu layout duyệt, đặt mua mực màu đen...')}
-                              rows={3}
-                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-                            />
-                          </div>
-
-                          {/* Due date */}
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Hạn hoàn thành')}</label>
+                    {/* Personnel check list */}
+                    <div style={{ marginTop: '8px' }}>
+                      <label
+                        style={{
+                          fontSize: '10.5px',
+                          color: 'var(--color-text-muted)',
+                          display: 'block',
+                          marginBottom: '4px'
+                        }}
+                      >
+                        {t('Chọn Nhân Sự Phụ Trách')}
+                      </label>
+                      <div
+                        style={{
+                          maxHeight: '100px',
+                          overflowY: 'auto',
+                          border: '1px solid #e2e8f0',
+                          padding: '4px 6px',
+                          borderRadius: '4px',
+                          backgroundColor: 'white',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '3px'
+                        }}
+                      >
+                        {deptUsers.map(u => (
+                          <label
+                            key={u.uid}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '11.5px',
+                              cursor: 'pointer',
+                              margin: 0
+                            }}
+                          >
                             <input
-                              type="date"
-                              value={assign.dueDate}
-                              onChange={(e) => handleUpdateAssignment(index, 'dueDate', e.target.value)}
-                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
+                              type="checkbox"
+                              checked={(assign.userIds || []).includes(u.uid)}
+                              onChange={() => handleToggleUserInAssignment(index, u.uid)}
                             />
-                          </div>
-
-                          {/* Priority Selector */}
-                          <div className="form-group" style={{ margin: 0 }}>
-                            <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Độ ưu tiên')}</label>
-                            <select
-                              value={assign.priority}
-                              onChange={(e) => handleUpdateAssignment(index, 'priority', e.target.value)}
-                              style={{ width: '100%', padding: '6px', fontSize: '12.5px', borderRadius: '4px', border: '1px solid var(--color-border)' }}
-                            >
-                              <option value="Cực gấp">{t('Cực gấp')}</option>
-                              <option value="Gấp">{t('Gấp')}</option>
-                              <option value="Bình thường">{t('Bình thường')}</option>
-                              <option value="Thong thả">{t('Thong thả')}</option>
-                            </select>
-                          </div>
-
-                          {/* Delete Assignment Row */}
-                          <div style={{ alignSelf: 'center', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                              onClick={() => handleRemoveAssignment(index)}
-                              title={t('Xóa phân công')}
-                            >
-                              {t('Xóa phân công')}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {assignments.length === 0 && (
-                      <div style={{
-                        textAlign: 'center',
-                        padding: '20px',
-                        border: '1px dashed #cbd5e1',
-                        borderRadius: '6px',
-                        color: 'var(--color-text-muted)',
-                        fontStyle: 'italic',
-                        fontSize: '12.5px'
-                      }}>
-                        {t('Chưa phân công công việc phòng ban nào cho PO này.')}
+                            <span>{u.displayName}</span>
+                          </label>
+                        ))}
+                        {deptUsers.length === 0 && (
+                          <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                            {t('Không có nhân sự cho bộ phận này')}
+                          </span>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline"
-                    onClick={handleAddAssignment}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}
-                  >
-                    <Plus size={14} />
-                    <span>{t('Thêm phân công phòng ban')}</span>
-                  </button>
+                  {/* Task Description */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Nội dung công việc bàn giao')}</label>
+                    <textarea
+                      value={assign.description}
+                      onChange={e => handleUpdateAssignment(index, 'description', e.target.value)}
+                      placeholder={t('Ví dụ: Bế tem trắng, gửi mẫu layout duyệt, đặt mua mực màu đen...')}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '6px',
+                        fontSize: '12.5px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--color-border)'
+                      }}
+                    />
+                  </div>
+
+                  {/* Due date */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Hạn hoàn thành')}</label>
+                    <input
+                      type="date"
+                      value={assign.dueDate}
+                      onChange={e => handleUpdateAssignment(index, 'dueDate', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px',
+                        fontSize: '12.5px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--color-border)'
+                      }}
+                    />
+                  </div>
+
+                  {/* Priority Selector */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Độ ưu tiên')}</label>
+                    <select
+                      value={assign.priority}
+                      onChange={e => handleUpdateAssignment(index, 'priority', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px',
+                        fontSize: '12.5px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--color-border)'
+                      }}
+                    >
+                      <option value="Cực gấp">{t('Cực gấp')}</option>
+                      <option value="Gấp">{t('Gấp')}</option>
+                      <option value="Bình thường">{t('Bình thường')}</option>
+                      <option value="Thong thả">{t('Thong thả')}</option>
+                    </select>
+                  </div>
+
+                  {/* Delete Assignment Row */}
+                  <div style={{ alignSelf: 'center', textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        padding: '4px'
+                      }}
+                      onClick={() => handleRemoveAssignment(index)}
+                      title={t('Xóa phân công')}
+                    >
+                      {t('Xóa phân công')}
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+            })}
+
+            {assignments.length === 0 && (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '20px',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '6px',
+                  color: 'var(--color-text-muted)',
+                  fontStyle: 'italic',
+                  fontSize: '12.5px'
+                }}
+              >
+                {t('Chưa phân công công việc phòng ban nào cho PO này.')}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={handleAddAssignment}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}
+          >
+            <Plus size={14} />
+            <span>{t('Thêm phân công phòng ban')}</span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 
   const orderInfo = (
     <section className="po-order-info">
-      <button type="button" className="po-collapse-trigger" onClick={() => setShowOrderInfo(current => !current)} aria-expanded={showOrderInfo} aria-controls="po-order-info-content">
+      <button
+        type="button"
+        className="po-collapse-trigger"
+        onClick={() => setShowOrderInfo(current => !current)}
+        aria-expanded={showOrderInfo}
+        aria-controls="po-order-info-content"
+      >
         <span>{t('Thông tin đơn hàng')}</span>
         <span className="po-section-action">{showOrderInfo ? t('Thu gọn') : t('Mở rộng')}</span>
       </button>
-      {!showOrderInfo && <div className="po-order-info-summary">
-        <strong title={currentCustomer?.companyName}>{currentCustomer?.companyName || t('Chưa chọn khách hàng')}</strong>
-        <span>{t('Ngày giao')}: {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}</span>
-      </div>}
+      {!showOrderInfo && (
+        <div className="po-order-info-summary">
+          <strong title={currentCustomer?.companyName}>
+            {currentCustomer?.companyName || t('Chưa chọn khách hàng')}
+          </strong>
+          <span>
+            {t('Ngày giao')}: {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}
+          </span>
+        </div>
+      )}
       <div id="po-order-info-content" className="po-order-info-fields" hidden={!showOrderInfo}>
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Khách hàng *')}</label>
-              <select
-                value={customerId}
-                onChange={(e) => {
-                  const nextCustomerId = e.target.value;
-                  if (nextCustomerId !== customerId && poItems.length && !window.confirm(t('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong PO. Bạn có muốn tiếp tục?'))) return;
-                  const nextCustomer = customers.find(customer => customer.id === nextCustomerId);
-                  setCustomerId(nextCustomerId);
-                  setCustomerRank(nextCustomer?.customerRank || '');
-                  setPoItems([]); // Reset items on customer change
-                  setPastProducts([]);
-                  setSearchPopupOpen(false);
-                  setSearchRowIndex(null);
-                }}
-                disabled={!!po || !!templatePo || Boolean(initialCustomerId)} // Linked onboarding/repeat orders must stay with the original customer
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              >
-                <option value="">{t('Chọn khách hàng')}</option>
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.companyName} ({t('CK')}: {c.discountRate}%)
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="form-group">
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Khách hàng *')}</label>
+          <select
+            value={customerId}
+            onChange={e => {
+              const nextCustomerId = e.target.value;
+              if (
+                nextCustomerId !== customerId &&
+                poItems.length &&
+                !window.confirm(t('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong PO. Bạn có muốn tiếp tục?'))
+              )
+                return;
+              const nextCustomer = customers.find(customer => customer.id === nextCustomerId);
+              setCustomerId(nextCustomerId);
+              setCustomerRank(nextCustomer?.customerRank || '');
+              setPoItems([]); // Reset items on customer change
+              setPastProducts([]);
+              setSearchPopupOpen(false);
+              setSearchRowIndex(null);
+            }}
+            disabled={!!po || !!templatePo || Boolean(initialCustomerId)} // Linked onboarding/repeat orders must stay with the original customer
+            required
+            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+          >
+            <option value="">{t('Chọn khách hàng')}</option>
+            {customers.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.companyName} ({t('CK')}: {c.discountRate}%)
+              </option>
+            ))}
+          </select>
+        </div>
 
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng khách hàng *')}</label>
-              <select
-                value={customerRank}
-                onChange={(e) => setCustomerRank(e.target.value)}
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              >
-                <option value="">{t('-- Chọn hạng khách hàng --')}</option>
-                {['A', 'B', 'C', 'D'].map(rank => (
-                  <option key={rank} value={rank}>{t('Hạng')} {rank}</option>
-                ))}
-              </select>
-              <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.')}</span>
-            </div>
+        <div className="form-group">
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng khách hàng *')}</label>
+          <select
+            value={customerRank}
+            onChange={e => setCustomerRank(e.target.value)}
+            required
+            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+          >
+            <option value="">{t('-- Chọn hạng khách hàng --')}</option>
+            {['A', 'B', 'C', 'D'].map(rank => (
+              <option key={rank} value={rank}>
+                {t('Hạng')} {rank}
+              </option>
+            ))}
+          </select>
+          <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.')}</span>
+        </div>
 
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số PO khách hàng')}</label>
-              <input
-                type="text"
-                value={customerPoCode}
-                onChange={(e) => setCustomerPoCode(e.target.value)}
-                placeholder={t('Ví dụ: VFT26-553...')}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              />
-            </div>
+        <div className="form-group">
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số PO khách hàng')}</label>
+          <input
+            type="text"
+            value={customerPoCode}
+            onChange={e => setCustomerPoCode(e.target.value)}
+            placeholder={t('Ví dụ: VFT26-553...')}
+            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+          />
+        </div>
 
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày giao dự kiến *')}</label>
-              <input
-                type="date"
-                value={expectedDeliveryDate}
-                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-              />
-            </div>
+        <div className="form-group">
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày giao dự kiến *')}</label>
+          <input
+            type="date"
+            value={expectedDeliveryDate}
+            onChange={e => setExpectedDeliveryDate(e.target.value)}
+            required
+            style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+          />
+        </div>
 
-            <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi chú đơn hàng')}</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={t('Chi tiết giao hàng, yêu cầu riêng...')}
-                rows={3}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '13px' }}
-              />
-            </div>
+        <div className="form-group">
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi chú đơn hàng')}</label>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder={t('Chi tiết giao hàng, yêu cầu riêng...')}
+            rows={3}
+            style={{
+              width: '100%',
+              padding: '8px',
+              borderRadius: '6px',
+              border: '1px solid var(--color-border)',
+              fontSize: '13px'
+            }}
+          />
+        </div>
 
-        {draftRestored && <button type="button" className="po-discard-draft" onClick={handleDiscardDraft}>{t('Bỏ bản nháp')}</button>}
+        {draftRestored && (
+          <button type="button" className="po-discard-draft" onClick={handleDiscardDraft}>
+            {t('Bỏ bản nháp')}
+          </button>
+        )}
       </div>
     </section>
   );
 
-  const statusNotices = <>
-            {saveError && (
-              <div className="po-save-error" role="alert">
-                {saveError}
-              </div>
-            )}
-            {templatePo && (
-              <div className="repeat-order-banner">
-                <History size={18} />
-                <div>
-                  <strong>Đang tạo đơn đặt lại từ {templatePo.poCode}</strong>
-                  <span>Hệ thống đã lấy lại mã hàng, quy cách và mẫu thiết kế. Đơn giá hiện hành, số lượng, ngày giao và người phụ trách phải được xác nhận lại trước khi lưu.</span>
-                </div>
-              </div>
-            )}
-            {isPreparedAssignment && (
-              <div className="prepared-order-banner" role="status">
-                <CheckSquare size={18} />
-                <div>
-                  <strong>{t('Thông tin đơn đầu tiên đã được chuẩn bị từ CRM')}</strong>
-                  <span>{t('Mặt hàng, giá, ngày giao và tệp liên quan đã được điền sẵn. Hãy bổ sung phân công phòng ban rồi lưu để phát hành PO.')}</span>
-                </div>
-              </div>
-            )}
-  </>;
+  const statusNotices = (
+    <>
+      {saveError && (
+        <div className="po-save-error" role="alert">
+          {saveError}
+        </div>
+      )}
+      {templatePo && (
+        <div className="repeat-order-banner">
+          <History size={18} />
+          <div>
+            <strong>Đang tạo đơn đặt lại từ {templatePo.poCode}</strong>
+            <span>
+              Hệ thống đã lấy lại mã hàng, quy cách và mẫu thiết kế. Đơn giá hiện hành, số lượng, ngày giao và người phụ
+              trách phải được xác nhận lại trước khi lưu.
+            </span>
+          </div>
+        </div>
+      )}
+      {isPreparedAssignment && (
+        <div className="prepared-order-banner" role="status">
+          <CheckSquare size={18} />
+          <div>
+            <strong>{t('Thông tin đơn đầu tiên đã được chuẩn bị từ CRM')}</strong>
+            <span>
+              {t(
+                'Mặt hàng, giá, ngày giao và tệp liên quan đã được điền sẵn. Hãy bổ sung phân công phòng ban rồi lưu để phát hành PO.'
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div className="modal-overlay-fullscreen">
-      <div className={`modal-content-fullscreen po-form-workspace ${usesCatalogProducts ? 'po-form-workspace--catalog' : ''}`}>
+      <div
+        className={`modal-content-fullscreen po-form-workspace ${usesCatalogProducts ? 'po-form-workspace--catalog' : ''}`}
+      >
         {/* HEADER */}
         <div className="po-form-header">
           <div className="po-form-heading">
@@ -1319,29 +1578,24 @@ export default function POFormFullScreen({
                 {isCustomerOnboarding
                   ? t('Chuẩn bị đơn hàng đầu tiên')
                   : po
-                  ? `${t('Chỉnh sửa đơn hàng PO')}: ${po.poCode}`
-                  : templatePo
-                    ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
-                    : t('Tạo đơn hàng khách hàng (PO)')}
+                    ? `${t('Chỉnh sửa đơn hàng PO')}: ${po.poCode}`
+                    : templatePo
+                      ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
+                      : t('Tạo đơn hàng khách hàng (PO)')}
               </h2>
               <p>
                 {isCustomerOnboarding
                   ? t('Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại Sale PO.')
                   : po
-                  ? `${t('Mã PO nội bộ:')} ${po.poCode}`
-                  : templatePo
-                    ? 'Kế thừa thông số và mẫu đã duyệt; giá, ngày giao và phân công cần kiểm tra lại.'
-                    : t('Khởi tạo tệp thông tin đơn hàng mới và phân công sản xuất')}
+                    ? `${t('Mã PO nội bộ:')} ${po.poCode}`
+                    : templatePo
+                      ? 'Kế thừa thông số và mẫu đã duyệt; giá, ngày giao và phân công cần kiểm tra lại.'
+                      : t('Khởi tạo tệp thông tin đơn hàng mới và phân công sản xuất')}
               </p>
             </div>
           </div>
           <div className="po-form-header-actions">
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={handleClose}
-              disabled={isSaving}
-            >
+            <button type="button" className="btn btn-outline" onClick={handleClose} disabled={isSaving}>
               {t('Quay lại')}
             </button>
             <button
@@ -1351,23 +1605,27 @@ export default function POFormFullScreen({
               disabled={isSaving}
               aria-busy={isSaving}
             >
-              <span>{isSaving
-                ? t('Đang lưu...')
-                : isCustomerOnboarding
-                  ? t('Lưu khách hàng & chuẩn bị PO')
-                  : t('Lưu Đơn Hàng PO')}</span>
+              <span>
+                {isSaving
+                  ? t('Đang lưu...')
+                  : isCustomerOnboarding
+                    ? t('Lưu khách hàng & chuẩn bị PO')
+                    : t('Lưu Đơn Hàng PO')}
+              </span>
             </button>
           </div>
         </div>
 
         {/* SCROLLABLE BODY */}
-        <div style={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: '300px minmax(0, 1fr)',
-          overflowY: 'auto'
-        }} className="po-form-body-container">
-
+        <div
+          style={{
+            flex: 1,
+            display: 'grid',
+            gridTemplateColumns: '300px minmax(0, 1fr)',
+            overflowY: 'auto'
+          }}
+          className="po-form-body-container"
+        >
           <aside className="po-order-sidebar">
             {orderInfo}
             {orderAttachments}
@@ -1375,20 +1633,27 @@ export default function POFormFullScreen({
           </aside>
 
           {/* RIGHT GRID PANEL: Items Grid & Assignments */}
-          <div className="po-order-main" style={{
-            padding: '20px 24px',
-            overflowY: 'visible',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px'
-          }}>
+          <div
+            className="po-order-main"
+            style={{
+              padding: '20px 24px',
+              overflowY: 'visible',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}
+          >
             {statusNotices}
             {/* INLINE EDITING EXCEL-LIKE GRID */}
             <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
               <div className="po-items-card-header">
                 <div>
-                  <h3>{usesCatalogProducts ? t('Sản phẩm trong đơn hàng') : t('Danh sách mã hàng cần in và sản xuất')}</h3>
-                  <span>{poItems.length} {t('mã hàng')} · {currentCustomer?.companyName || t('Chưa chọn khách hàng')}</span>
+                  <h3>
+                    {usesCatalogProducts ? t('Sản phẩm trong đơn hàng') : t('Danh sách mã hàng cần in và sản xuất')}
+                  </h3>
+                  <span>
+                    {poItems.length} {t('mã hàng')} · {currentCustomer?.companyName || t('Chưa chọn khách hàng')}
+                  </span>
                 </div>
                 <div className="po-items-card-actions">
                   <div className="po-grid-zoom-control" role="group" aria-label={t('Thu phóng bảng mã hàng')}>
@@ -1413,10 +1678,22 @@ export default function POFormFullScreen({
                   >
                     {isTableFocusMode ? t('Thu gọn') : t('Mở toàn màn hình')}
                   </button>
-                  {usesCatalogProducts && <button type="button" className="btn btn-outline" onClick={() => openSearchPopup(-1)} disabled={!customerId || !catalogProducts.length || isSaving}>
-                    {t('Chọn sản phẩm')}
-                  </button>}
-                  <button type="button" className="btn btn-outline" onClick={handleAddRow} disabled={isSaving || (usesCatalogProducts && !customerId)}>
+                  {usesCatalogProducts && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => openSearchPopup(-1)}
+                      disabled={!customerId || !catalogProducts.length || isSaving}
+                    >
+                      {t('Chọn sản phẩm')}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={handleAddRow}
+                    disabled={isSaving || (usesCatalogProducts && !customerId)}
+                  >
                     {usesCatalogProducts ? t('Thêm dòng nhập tay') : t('Thêm mã hàng')}
                   </button>
                 </div>
@@ -1424,21 +1701,46 @@ export default function POFormFullScreen({
 
               {isTableFocusMode && (
                 <div className="po-order-context-summary" aria-label={t('Tóm tắt đơn hàng')}>
-                  <span><strong>{t('Khách hàng')}:</strong> {currentCustomer?.companyName || t('Chưa chọn')}</span>
-                  <span><strong>{t('Hạng')}:</strong> {customerRank || '—'}</span>
-                  <span><strong>{t('Số PO')}:</strong> {customerPoCode || '—'}</span>
-                  <span><strong>{t('Ngày giao')}:</strong> {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}</span>
+                  <span>
+                    <strong>{t('Khách hàng')}:</strong> {currentCustomer?.companyName || t('Chưa chọn')}
+                  </span>
+                  <span>
+                    <strong>{t('Hạng')}:</strong> {customerRank || '—'}
+                  </span>
+                  <span>
+                    <strong>{t('Số PO')}:</strong> {customerPoCode || '—'}
+                  </span>
+                  <span>
+                    <strong>{t('Ngày giao')}:</strong>{' '}
+                    {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}
+                  </span>
                 </div>
               )}
 
               {isTableFocusMode && saveError && (
-                <div className="po-save-error" role="alert">{saveError}</div>
+                <div className="po-save-error" role="alert">
+                  {saveError}
+                </div>
               )}
 
-              {usesCatalogProducts && customerId && catalogProducts.length === 0 && <div className="po-catalog-empty" role="status">
-                <span>{t('Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.')}</span>
-                {onOpenCustomerDetails && <button type="button" className="btn btn-outline" disabled={!customerId} onClick={() => { onClose(); onOpenCustomerDetails(customerId); }}>{t('Mở hồ sơ khách hàng')}</button>}
-              </div>}
+              {usesCatalogProducts && customerId && catalogProducts.length === 0 && (
+                <div className="po-catalog-empty" role="status">
+                  <span>{t('Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.')}</span>
+                  {onOpenCustomerDetails && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      disabled={!customerId}
+                      onClick={() => {
+                        onClose();
+                        onOpenCustomerDetails(customerId);
+                      }}
+                    >
+                      {t('Mở hồ sơ khách hàng')}
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="po-inline-grid-container">
                 <table className="po-inline-grid po-items-overview-table" style={{ zoom: tableZoom / 100 }}>
                   <thead>
@@ -1454,7 +1756,9 @@ export default function POFormFullScreen({
                       <th style={{ width: '190px' }}>{t('Chiết khấu')}</th>
                       <th style={{ width: '125px' }}>{t('Thành tiền (gồm VAT)')}</th>
                       <th style={{ width: '85px' }}>{t('KPI PO')}</th>
-                      <th style={{ width: usesCatalogProducts ? '180px' : '140px' }}>{usesCatalogProducts ? t('Thao tác') : t('File liên quan')}</th>
+                      <th style={{ width: usesCatalogProducts ? '180px' : '140px' }}>
+                        {usesCatalogProducts ? t('Thao tác') : t('File liên quan')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1466,249 +1770,431 @@ export default function POFormFullScreen({
                       const itemKey = item.itemId || String(index);
                       const isExpanded = expandedItemIds.includes(itemKey);
                       const lockedFields = usesCatalogProducts && Boolean(item.customerProductId);
-                      const technicalSummary = getCustomerProductSpecSummary(item.specifications || {}, item.productType || '');
-                      const productAssets = Array.isArray(item.productFiles) ? (item.productFiles as ProductAttachment[]).filter(file => file && typeof file.url === 'string' && file.url) : [];
+                      const technicalSummary = getCustomerProductSpecSummary(
+                        item.specifications || {},
+                        item.productType || ''
+                      );
+                      const productAssets = Array.isArray(item.productFiles)
+                        ? (item.productFiles as ProductAttachment[]).filter(
+                            file => file && typeof file.url === 'string' && file.url
+                          )
+                        : [];
                       const rowAttachments = (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {/* Multiple image thumbnails */}
-                              {imagesList.length > 0 && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                  {imagesList.map((img: string, imgIdx: number) => (
-                                    <div key={imgIdx} style={{ position: 'relative', width: '32px', height: '32px' }}>
-                                      <img
-                                        src={img}
-                                        alt="layout"
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--color-border)' }}
-                                        onClick={() => setPreviewImage(img)}
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => deleteRowImage(index, imgIdx)}
-                                        style={{
-                                          position: 'absolute',
-                                          top: '-4px',
-                                          right: '-4px',
-                                          backgroundColor: '#ef4444',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: '50%',
-                                          width: '12px',
-                                          height: '12px',
-                                          fontSize: '8px',
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          cursor: 'pointer'
-                                        }}
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Upload triggers */}
-                              {imagesList.length < 5 && (
-                                <label style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontSize: '11px',
-                                  color: 'var(--color-primary)',
-                                  cursor: 'pointer',
-                                  padding: '2px 4px',
-                                  border: '1px dashed var(--color-primary)',
-                                  borderRadius: '4px',
-                                  width: 'fit-content'
-                                }}>
-                                  <Upload size={10} />
-                                  <span>+ {t('File')}</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={(e) => handleRowFileChange(e, index)}
-                                    style={{ display: 'none' }}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {/* Multiple image thumbnails */}
+                          {imagesList.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {imagesList.map((img: string, imgIdx: number) => (
+                                <div key={imgIdx} style={{ position: 'relative', width: '32px', height: '32px' }}>
+                                  <img
+                                    src={img}
+                                    alt="layout"
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      border: '1px solid var(--color-border)'
+                                    }}
+                                    onClick={() => setPreviewImage(img)}
                                   />
-                                </label>
-                              )}
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteRowImage(index, imgIdx)}
+                                    style={{
+                                      position: 'absolute',
+                                      top: '-4px',
+                                      right: '-4px',
+                                      backgroundColor: '#ef4444',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '50%',
+                                      width: '12px',
+                                      height: '12px',
+                                      fontSize: '8px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
                             </div>
+                          )}
+
+                          {/* Upload triggers */}
+                          {imagesList.length < 5 && (
+                            <label
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '11px',
+                                color: 'var(--color-primary)',
+                                cursor: 'pointer',
+                                padding: '2px 4px',
+                                border: '1px dashed var(--color-primary)',
+                                borderRadius: '4px',
+                                width: 'fit-content'
+                              }}
+                            >
+                              <Upload size={10} />
+                              <span>+ {t('File')}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={e => handleRowFileChange(e, index)}
+                                style={{ display: 'none' }}
+                              />
+                            </label>
+                          )}
+                        </div>
                       );
                       return (
                         <React.Fragment key={itemKey}>
-                        <tr>
-                          <td className="po-item-index-cell">
-                            <strong>{index + 1}</strong>
-                            {!usesCatalogProducts && <div className="po-row-actions">
-                              <button
-                                type="button"
-                                className={`po-detail-toggle ${isExpanded ? 'is-active' : ''}`}
-                                onClick={() => toggleItemDetails(itemKey)}
-                                title={isExpanded ? t('Ẩn chi tiết') : t('Mở ngày giao và ghi chú')}
-                                aria-expanded={isExpanded}
-                              >
-                                <SlidersHorizontal size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-danger po-row-delete"
-                                onClick={() => handleRemoveRow(index)}
-                                title={t('Xóa dòng')}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>}
-                          </td>
-                          <td>
-                            {lockedFields ? <span className="po-source-text" title={item.productCode}>{item.productCode || '—'}</span> : <div className="po-product-code-control">
-                              <input type="text" className="po-grid-input" value={item.productCode || ''} onChange={event => handleUpdateRowField(index, 'productCode', event.target.value)} placeholder={t('Mã sản phẩm')} list={`product-codes-list-${index}`} />
-                              <datalist id={`product-codes-list-${index}`}>{catalogProducts.map(product => <option key={product.id} value={product.productCode}>{product.productName}</option>)}</datalist>
-                              {!usesCatalogProducts && <button type="button" className="btn btn-outline" onClick={() => openSearchPopup(index)}>{t('Chọn')}</button>}
-                            </div>}
-                          </td>
-                          <td>
-                            {lockedFields ? <span className="po-source-text" title={item.productName}>{item.productName || '—'}</span> : <>
-                              <input type="text" className="po-grid-input" value={item.productName || ''} onChange={event => handleUpdateRowField(index, 'productName', event.target.value)} placeholder={t('Tên sản phẩm')} list={`product-names-list-${index}`} />
-                              <datalist id={`product-names-list-${index}`}>{catalogProducts.map(product => <option key={product.id} value={product.productName}>{product.productCode}</option>)}</datalist>
-                            </>}
-                          </td>
-                          <td>
-                            {lockedFields ? <span className="po-source-text" title={[item.size, item.material].filter(Boolean).join(' · ')}>{[item.size, item.material].filter(Boolean).join(' · ') || '—'}</span> : <>
-                              <div className="po-item-spec-cell">
-                                <input type="text" className="po-grid-input" value={item.size || ''} onChange={event => handleUpdateRowField(index, 'size', event.target.value)} placeholder={t('Quy cách')} />
-                                <input type="text" className="po-grid-input" value={item.material || ''} onChange={event => handleUpdateRowField(index, 'material', event.target.value)} placeholder={t('Chất liệu')} list={`materials-suggest-${index}`} />
-                              </div>
-                              <datalist id={`materials-suggest-${index}`}>
-                                <option value="Decal Giấy Fasson AW0339F" /><option value="Decal Nhựa PVC Avery Dennison" /><option value="Màng BOPP bóng 12mic" /><option value="Giấy Ford" />
-                              </datalist>
-                            </>}
-                          </td>
-                          <td>
-                            {lockedFields ? <span className="po-source-text" title={item.unit}>{item.unit || '—'}</span> : <input type="text" className="po-grid-input" value={item.unit || ''} onChange={event => handleUpdateRowField(index, 'unit', event.target.value)} placeholder={t('ĐVT')} />}
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="po-grid-input"
-                              value={item.quantity}
-                              onChange={(e) => handleUpdateRowField(index, 'quantity', Number(e.target.value))}
-                              min="1"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="po-grid-input"
-                              value={item.price}
-                              onChange={(e) => handleUpdateRowField(index, 'price', Number(e.target.value))}
-                              min="0"
-                              step="any"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="po-grid-input"
-                              value={item.vatRate}
-                              onChange={(e) => handleUpdateRowField(index, 'vatRate', Number(e.target.value))}
-                              min="0"
-                              max="100"
-                            />
-                          </td>
-                          <td>
-                            <div className="po-discount-editor">
-                              <select
-                                className="po-grid-input po-discount-mode"
-                                value={financials.discountType}
-                                title={financials.discountType === 'amount' ? t('Tiền chênh (VNĐ)') : t('Theo phần trăm')}
-                                aria-label={t('Hình thức chiết khấu')}
-                                onChange={(e) => {
-                                  const discountType = e.target.value === 'amount' ? 'amount' : 'percent';
-                                  handleUpdateRowField(index, 'discountType', discountType);
-                                }}
-                              >
-                                <option value="percent">%</option>
-                                <option value="amount">{t('Tiền chênh')}</option>
-                              </select>
-                              <input
-                                type="number"
-                                className="po-grid-input po-discount-value"
-                                value={financials.discountType === 'amount' ? (item.discountAmount || 0) : (item.discountRate || 0)}
-                                onChange={(e) => handleUpdateRowField(
-                                  index,
-                                  financials.discountType === 'amount' ? 'discountAmount' : 'discountRate',
-                                  Number(e.target.value)
-                                )}
-                                min="0"
-                                max={financials.discountType === 'percent' ? 100 : (financials.grossAmount || undefined)}
-                                step="any"
-                              />
-                              <span className="po-discount-hint">
-                                -{Math.round(financials.discountAmount).toLocaleString()} đ
-                              </span>
-                            </div>
-                          </td>
-                          <td className="po-money-cell">
-                            {Math.round(financials.amountWithVat).toLocaleString()} đ
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <span
-                              className="po-kpi-badge"
-                              title={t('Tỷ lệ giá trị còn lại sau chiết khấu')}
-                            >
-                              {financials.kpiPo.toFixed(1)}%
-                            </span>
-                          </td>
-                          <td>
-                            {usesCatalogProducts ? <div className="po-catalog-row-actions">
-                              <button type="button" aria-expanded={isExpanded} onClick={() => toggleItemDetails(itemKey)}>{isExpanded ? t('Thu gọn') : t('Chi tiết')}</button>
-                              <button type="button" onClick={() => openSearchPopup(index)} disabled={!catalogProducts.length || isSaving} aria-label={`${t('Đổi sản phẩm')}: ${item.productCode || index + 1}`}>{t('Đổi')}</button>
-                              <button type="button" className="po-catalog-row-delete" onClick={() => handleRemoveRow(index)} aria-label={`${t('Xóa dòng')}: ${item.productCode || index + 1}`}>{t('Xóa')}</button>
-                            </div> : rowAttachments}
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr className="po-item-detail-row">
-                            <td colSpan={12}>
-                              {usesCatalogProducts && <section className="po-catalog-row-files"><h4>{t('Ảnh thiết kế / layout')}</h4>{rowAttachments}</section>}
-                              {(technicalSummary.length > 0 || productAssets.length > 0 || item.productNote) && <div className="po-inherited-details">
-                                {technicalSummary.length > 0 && <section><h4>{t('Thông số kỹ thuật')}</h4><dl>{technicalSummary.map(field => <div key={field.id}><dt>{t(field.label)}</dt><dd>{t(field.value)}</dd></div>)}</dl></section>}
-                                {productAssets.length > 0 && <section><h4>{t('Tệp của sản phẩm')}</h4><div className="po-inherited-files">{productAssets.map((file, fileIndex) => <button key={file.id || fileIndex} type="button" className="btn btn-outline" onClick={() => openCustomerProductAsset(file.url)} title={file.name}>{file.name || t('Xem tệp')}</button>)}</div></section>}
-                                {item.productNote && <section><h4>{t('Ghi chú sản phẩm')}</h4><p>{item.productNote}</p></section>}
-                              </div>}
-                              <div className="po-item-detail-grid">
-                                <div className="form-group">
-                                  <label>{t('Ngày giao của mã hàng')}</label>
-                                  <input
-                                    type="date"
-                                    value={item.deliveryDate}
-                                    onChange={(e) => handleUpdateRowField(index, 'deliveryDate', e.target.value)}
-                                  />
+                          <tr>
+                            <td className="po-item-index-cell">
+                              <strong>{index + 1}</strong>
+                              {!usesCatalogProducts && (
+                                <div className="po-row-actions">
+                                  <button
+                                    type="button"
+                                    className={`po-detail-toggle ${isExpanded ? 'is-active' : ''}`}
+                                    onClick={() => toggleItemDetails(itemKey)}
+                                    title={isExpanded ? t('Ẩn chi tiết') : t('Mở ngày giao và ghi chú')}
+                                    aria-expanded={isExpanded}
+                                  >
+                                    <SlidersHorizontal size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger po-row-delete"
+                                    onClick={() => handleRemoveRow(index)}
+                                    title={t('Xóa dòng')}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
                                 </div>
-                                <div className="form-group po-item-note-field">
-                                  <label>{t('Ghi chú dòng hàng')}</label>
+                              )}
+                            </td>
+                            <td>
+                              {lockedFields ? (
+                                <span className="po-source-text" title={item.productCode}>
+                                  {item.productCode || '—'}
+                                </span>
+                              ) : (
+                                <div className="po-product-code-control">
                                   <input
                                     type="text"
-                                    value={item.note || ''}
-                                    onChange={(e) => handleUpdateRowField(index, 'note', e.target.value)}
-                                    placeholder={t('Yêu cầu riêng cho mã hàng...')}
+                                    className="po-grid-input"
+                                    value={item.productCode || ''}
+                                    onChange={event => handleUpdateRowField(index, 'productCode', event.target.value)}
+                                    placeholder={t('Mã sản phẩm')}
+                                    list={`product-codes-list-${index}`}
                                   />
+                                  <datalist id={`product-codes-list-${index}`}>
+                                    {catalogProducts.map(product => (
+                                      <option key={product.id} value={product.productCode}>
+                                        {product.productName}
+                                      </option>
+                                    ))}
+                                  </datalist>
+                                  {!usesCatalogProducts && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline"
+                                      onClick={() => openSearchPopup(index)}
+                                    >
+                                      {t('Chọn')}
+                                    </button>
+                                  )}
                                 </div>
-                                <div className="po-item-calculation">
-                                  <span>{t('Trước chiết khấu')}: <strong>{Math.round(financials.grossAmount).toLocaleString()} đ</strong></span>
-                                  <span>{t('Chiết khấu')}: <strong>{Math.round(financials.discountAmount).toLocaleString()} đ</strong></span>
-                                  <span>{t('Trước VAT')}: <strong>{Math.round(financials.amountBeforeVat).toLocaleString()} đ</strong></span>
-                                  <span>{t('Sau VAT')}: <strong>{Math.round(financials.amountWithVat).toLocaleString()} đ</strong></span>
-                                </div>
+                              )}
+                            </td>
+                            <td>
+                              {lockedFields ? (
+                                <span className="po-source-text" title={item.productName}>
+                                  {item.productName || '—'}
+                                </span>
+                              ) : (
+                                <>
+                                  <input
+                                    type="text"
+                                    className="po-grid-input"
+                                    value={item.productName || ''}
+                                    onChange={event => handleUpdateRowField(index, 'productName', event.target.value)}
+                                    placeholder={t('Tên sản phẩm')}
+                                    list={`product-names-list-${index}`}
+                                  />
+                                  <datalist id={`product-names-list-${index}`}>
+                                    {catalogProducts.map(product => (
+                                      <option key={product.id} value={product.productName}>
+                                        {product.productCode}
+                                      </option>
+                                    ))}
+                                  </datalist>
+                                </>
+                              )}
+                            </td>
+                            <td>
+                              {lockedFields ? (
+                                <span
+                                  className="po-source-text"
+                                  title={[item.size, item.material].filter(Boolean).join(' · ')}
+                                >
+                                  {[item.size, item.material].filter(Boolean).join(' · ') || '—'}
+                                </span>
+                              ) : (
+                                <>
+                                  <div className="po-item-spec-cell">
+                                    <input
+                                      type="text"
+                                      className="po-grid-input"
+                                      value={item.size || ''}
+                                      onChange={event => handleUpdateRowField(index, 'size', event.target.value)}
+                                      placeholder={t('Quy cách')}
+                                    />
+                                    <input
+                                      type="text"
+                                      className="po-grid-input"
+                                      value={item.material || ''}
+                                      onChange={event => handleUpdateRowField(index, 'material', event.target.value)}
+                                      placeholder={t('Chất liệu')}
+                                      list={`materials-suggest-${index}`}
+                                    />
+                                  </div>
+                                  <datalist id={`materials-suggest-${index}`}>
+                                    <option value="Decal Giấy Fasson AW0339F" />
+                                    <option value="Decal Nhựa PVC Avery Dennison" />
+                                    <option value="Màng BOPP bóng 12mic" />
+                                    <option value="Giấy Ford" />
+                                  </datalist>
+                                </>
+                              )}
+                            </td>
+                            <td>
+                              {lockedFields ? (
+                                <span className="po-source-text" title={item.unit}>
+                                  {item.unit || '—'}
+                                </span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  className="po-grid-input"
+                                  value={item.unit || ''}
+                                  onChange={event => handleUpdateRowField(index, 'unit', event.target.value)}
+                                  placeholder={t('ĐVT')}
+                                />
+                              )}
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="po-grid-input"
+                                value={item.quantity}
+                                onChange={e => handleUpdateRowField(index, 'quantity', Number(e.target.value))}
+                                min="1"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="po-grid-input"
+                                value={item.price}
+                                onChange={e => handleUpdateRowField(index, 'price', Number(e.target.value))}
+                                min="0"
+                                step="any"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="po-grid-input"
+                                value={item.vatRate}
+                                onChange={e => handleUpdateRowField(index, 'vatRate', Number(e.target.value))}
+                                min="0"
+                                max="100"
+                              />
+                            </td>
+                            <td>
+                              <div className="po-discount-editor">
+                                <select
+                                  className="po-grid-input po-discount-mode"
+                                  value={financials.discountType}
+                                  title={
+                                    financials.discountType === 'amount' ? t('Tiền chênh (VNĐ)') : t('Theo phần trăm')
+                                  }
+                                  aria-label={t('Hình thức chiết khấu')}
+                                  onChange={e => {
+                                    const discountType = e.target.value === 'amount' ? 'amount' : 'percent';
+                                    handleUpdateRowField(index, 'discountType', discountType);
+                                  }}
+                                >
+                                  <option value="percent">%</option>
+                                  <option value="amount">{t('Tiền chênh')}</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  className="po-grid-input po-discount-value"
+                                  value={
+                                    financials.discountType === 'amount'
+                                      ? item.discountAmount || 0
+                                      : item.discountRate || 0
+                                  }
+                                  onChange={e =>
+                                    handleUpdateRowField(
+                                      index,
+                                      financials.discountType === 'amount' ? 'discountAmount' : 'discountRate',
+                                      Number(e.target.value)
+                                    )
+                                  }
+                                  min="0"
+                                  max={
+                                    financials.discountType === 'percent' ? 100 : financials.grossAmount || undefined
+                                  }
+                                  step="any"
+                                />
+                                <span className="po-discount-hint">
+                                  -{Math.round(financials.discountAmount).toLocaleString()} đ
+                                </span>
                               </div>
                             </td>
+                            <td className="po-money-cell">{Math.round(financials.amountWithVat).toLocaleString()} đ</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <span className="po-kpi-badge" title={t('Tỷ lệ giá trị còn lại sau chiết khấu')}>
+                                {financials.kpiPo.toFixed(1)}%
+                              </span>
+                            </td>
+                            <td>
+                              {usesCatalogProducts ? (
+                                <div className="po-catalog-row-actions">
+                                  <button
+                                    type="button"
+                                    aria-expanded={isExpanded}
+                                    onClick={() => toggleItemDetails(itemKey)}
+                                  >
+                                    {isExpanded ? t('Thu gọn') : t('Chi tiết')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openSearchPopup(index)}
+                                    disabled={!catalogProducts.length || isSaving}
+                                    aria-label={`${t('Đổi sản phẩm')}: ${item.productCode || index + 1}`}
+                                  >
+                                    {t('Đổi')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="po-catalog-row-delete"
+                                    onClick={() => handleRemoveRow(index)}
+                                    aria-label={`${t('Xóa dòng')}: ${item.productCode || index + 1}`}
+                                  >
+                                    {t('Xóa')}
+                                  </button>
+                                </div>
+                              ) : (
+                                rowAttachments
+                              )}
+                            </td>
                           </tr>
-                        )}
+                          {isExpanded && (
+                            <tr className="po-item-detail-row">
+                              <td colSpan={12}>
+                                {usesCatalogProducts && (
+                                  <section className="po-catalog-row-files">
+                                    <h4>{t('Ảnh thiết kế / layout')}</h4>
+                                    {rowAttachments}
+                                  </section>
+                                )}
+                                {(technicalSummary.length > 0 || productAssets.length > 0 || item.productNote) && (
+                                  <div className="po-inherited-details">
+                                    {technicalSummary.length > 0 && (
+                                      <section>
+                                        <h4>{t('Thông số kỹ thuật')}</h4>
+                                        <dl>
+                                          {technicalSummary.map(field => (
+                                            <div key={field.id}>
+                                              <dt>{t(field.label)}</dt>
+                                              <dd>{t(field.value)}</dd>
+                                            </div>
+                                          ))}
+                                        </dl>
+                                      </section>
+                                    )}
+                                    {productAssets.length > 0 && (
+                                      <section>
+                                        <h4>{t('Tệp của sản phẩm')}</h4>
+                                        <div className="po-inherited-files">
+                                          {productAssets.map((file, fileIndex) => (
+                                            <button
+                                              key={file.id || fileIndex}
+                                              type="button"
+                                              className="btn btn-outline"
+                                              onClick={() => openCustomerProductAsset(file.url)}
+                                              title={file.name}
+                                            >
+                                              {file.name || t('Xem tệp')}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </section>
+                                    )}
+                                    {item.productNote && (
+                                      <section>
+                                        <h4>{t('Ghi chú sản phẩm')}</h4>
+                                        <p>{item.productNote}</p>
+                                      </section>
+                                    )}
+                                  </div>
+                                )}
+                                <div className="po-item-detail-grid">
+                                  <div className="form-group">
+                                    <label>{t('Ngày giao của mã hàng')}</label>
+                                    <input
+                                      type="date"
+                                      value={item.deliveryDate}
+                                      onChange={e => handleUpdateRowField(index, 'deliveryDate', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="form-group po-item-note-field">
+                                    <label>{t('Ghi chú dòng hàng')}</label>
+                                    <input
+                                      type="text"
+                                      value={item.note || ''}
+                                      onChange={e => handleUpdateRowField(index, 'note', e.target.value)}
+                                      placeholder={t('Yêu cầu riêng cho mã hàng...')}
+                                    />
+                                  </div>
+                                  <div className="po-item-calculation">
+                                    <span>
+                                      {t('Trước chiết khấu')}:{' '}
+                                      <strong>{Math.round(financials.grossAmount).toLocaleString()} đ</strong>
+                                    </span>
+                                    <span>
+                                      {t('Chiết khấu')}:{' '}
+                                      <strong>{Math.round(financials.discountAmount).toLocaleString()} đ</strong>
+                                    </span>
+                                    <span>
+                                      {t('Trước VAT')}:{' '}
+                                      <strong>{Math.round(financials.amountBeforeVat).toLocaleString()} đ</strong>
+                                    </span>
+                                    <span>
+                                      {t('Sau VAT')}:{' '}
+                                      <strong>{Math.round(financials.amountWithVat).toLocaleString()} đ</strong>
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
                         </React.Fragment>
                       );
                     })}
-
                   </tbody>
                 </table>
               </div>
@@ -1716,30 +2202,55 @@ export default function POFormFullScreen({
               {/* FOOTER ACTIONS */}
               <div className="po-items-footer">
                 {/* TOTAL SUMMARY CARD */}
-                <div className="po-total-summary-card" style={{
-                  backgroundColor: '#f1f5f9',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  minWidth: '340px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  fontSize: '13px'
-                }}>
+                <div
+                  className="po-total-summary-card"
+                  style={{
+                    backgroundColor: '#f1f5f9',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    minWidth: '340px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    fontSize: '13px'
+                  }}
+                >
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>{t('Số lượng theo ĐVT:')}</span>
-                    <strong style={{ fontSize: '14px' }}>{[...quantitiesByUnit].map(([unit, quantity]) => `${quantity.toLocaleString('vi-VN')} ${unit}`).join(' · ') || '—'}</strong>
+                    <strong style={{ fontSize: '14px' }}>
+                      {[...quantitiesByUnit]
+                        .map(([unit, quantity]) => `${quantity.toLocaleString('vi-VN')} ${unit}`)
+                        .join(' · ') || '—'}
+                    </strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #cbd5e1', paddingBottom: '6px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      borderBottom: '1px solid #cbd5e1',
+                      paddingBottom: '6px'
+                    }}
+                  >
                     <span>{t('Tổng tiền chưa VAT:')}</span>
-                    <span style={{ fontWeight: 600 }}>{Math.round(footerTotals.totalBeforeVat).toLocaleString()} đ</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {Math.round(footerTotals.totalBeforeVat).toLocaleString()} đ
+                    </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)' }}>
                     <span>{t('Thuế GTGT (VAT):')}</span>
                     <span>{Math.round(footerTotals.totalVat).toLocaleString()} đ</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-primary-dark)', fontSize: '15px', fontWeight: 'bold', paddingTop: '4px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      color: 'var(--color-primary-dark)',
+                      fontSize: '15px',
+                      fontWeight: 'bold',
+                      paddingTop: '4px'
+                    }}
+                  >
                     <span>{t('TỔNG CỘNG (GỒM VAT):')}</span>
                     <span>{Math.round(footerTotals.totalAfterVat).toLocaleString()} đ</span>
                   </div>
@@ -1752,16 +2263,34 @@ export default function POFormFullScreen({
         </div>
 
         {/* SEARCH MÃ HÀNG POPUP (Catalog & Past History) */}
-        {searchPopupOpen && usesCatalogProducts && <CustomerProductPicker
-          companyName={currentCustomer?.companyName || ''} products={catalogProducts}
-          single={searchRowIndex !== null && searchRowIndex >= 0}
-          initialIds={searchRowIndex !== null && searchRowIndex >= 0 ? [findCustomerProductForOrderItem(poItems[searchRowIndex], catalogProducts)?.id || ''].filter(Boolean) : []}
-          t={t} onClose={closeCatalogPicker} onConfirm={addCatalogProducts} />}
+        {searchPopupOpen && usesCatalogProducts && (
+          <CustomerProductPicker
+            companyName={currentCustomer?.companyName || ''}
+            products={catalogProducts}
+            single={searchRowIndex !== null && searchRowIndex >= 0}
+            initialIds={
+              searchRowIndex !== null && searchRowIndex >= 0
+                ? [findCustomerProductForOrderItem(poItems[searchRowIndex], catalogProducts)?.id || ''].filter(Boolean)
+                : []
+            }
+            t={t}
+            onClose={closeCatalogPicker}
+            onConfirm={addCatalogProducts}
+          />
+        )}
         {searchPopupOpen && !usesCatalogProducts && searchRowIndex !== null && (
           <div className="modal-overlay" style={{ zIndex: 1200 }}>
             <div className="modal-content" style={{ maxWidth: '750px', width: '90%' }}>
               <div className="modal-header">
-                <span style={{ fontWeight: 700, fontSize: '16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
                   <Search size={18} />
                   <span>{t('TÌM KIẾM MÃ HÀNG NHẬP NHANH')}</span>
                 </span>
@@ -1775,16 +2304,45 @@ export default function POFormFullScreen({
                     type="text"
                     placeholder={t('Nhập mã hàng hoặc tên hàng cần tìm...')}
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--color-border)'
+                    }}
                     autoFocus
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', height: '320px', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '16px',
+                    height: '320px',
+                    overflow: 'hidden'
+                  }}
+                >
                   {/* Catalog list */}
-                  <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f8fafc', fontWeight: 600, fontSize: '13px', color: 'var(--color-primary)' }}>
+                  <div
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '8px 12px',
+                        borderBottom: '1px solid var(--color-border)',
+                        backgroundColor: '#f8fafc',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        color: 'var(--color-primary)'
+                      }}
+                    >
                       {t('Sản phẩm của khách hàng')}
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
@@ -1794,22 +2352,47 @@ export default function POFormFullScreen({
                           className="chat-suggestion-item"
                           role="button"
                           tabIndex={0}
-                          onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleSelectSearchedProduct(prod); } }}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              handleSelectSearchedProduct(prod);
+                            }
+                          }}
                           onClick={() => handleSelectSearchedProduct(prod)}
-                          style={{ borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', padding: '8px', cursor: 'pointer' }}
+                          style={{
+                            borderBottom: '1px solid var(--color-border-light)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '8px',
+                            cursor: 'pointer'
+                          }}
                         >
                           <div>
                             <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{prod.productCode}</div>
                             <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{prod.productName}</div>
                           </div>
                           <div style={{ textAlign: 'right', fontSize: '12px' }}>
-                            <div style={{ fontWeight: 600 }}>{Number(prod.currentPrice) > 0 ? `${Number(prod.currentPrice).toLocaleString('vi-VN')} đ` : t('Chưa có giá')}</div>
-                            <div style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>{getProductSize(prod)}</div>
+                            <div style={{ fontWeight: 600 }}>
+                              {Number(prod.currentPrice) > 0
+                                ? `${Number(prod.currentPrice).toLocaleString('vi-VN')} đ`
+                                : t('Chưa có giá')}
+                            </div>
+                            <div style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>
+                              {getProductSize(prod)}
+                            </div>
                           </div>
                         </div>
                       ))}
                       {filteredCatalog.length === 0 && (
-                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '12px' }}>
+                        <div
+                          style={{
+                            padding: '20px',
+                            textAlign: 'center',
+                            color: 'var(--color-text-muted)',
+                            fontStyle: 'italic',
+                            fontSize: '12px'
+                          }}
+                        >
                           {t('Không có sản phẩm nào khớp.')}
                         </div>
                       )}
@@ -1817,8 +2400,24 @@ export default function POFormFullScreen({
                   </div>
 
                   {/* History list */}
-                  <div style={{ border: '1px solid var(--color-border)', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', backgroundColor: '#f8fafc', fontWeight: 600, fontSize: '13px', color: 'var(--color-success-dark)' }}>
+                  <div
+                    style={{
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '8px 12px',
+                        borderBottom: '1px solid var(--color-border)',
+                        backgroundColor: '#f8fafc',
+                        fontWeight: 600,
+                        fontSize: '13px',
+                        color: 'var(--color-success-dark)'
+                      }}
+                    >
                       {t('Lịch Sử Đã Đặt Đơn Hàng Cũ (History)')}
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
@@ -1827,7 +2426,13 @@ export default function POFormFullScreen({
                           key={pIdx}
                           className="chat-suggestion-item"
                           onClick={() => handleSelectSearchedProduct(prod)}
-                          style={{ borderBottom: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'space-between', padding: '8px', cursor: 'pointer' }}
+                          style={{
+                            borderBottom: '1px solid var(--color-border-light)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '8px',
+                            cursor: 'pointer'
+                          }}
                         >
                           <div>
                             <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{prod.productCode}</div>
@@ -1843,7 +2448,15 @@ export default function POFormFullScreen({
                         </div>
                       ))}
                       {filteredHistory.length === 0 && (
-                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '12px' }}>
+                        <div
+                          style={{
+                            padding: '20px',
+                            textAlign: 'center',
+                            color: 'var(--color-text-muted)',
+                            fontStyle: 'italic',
+                            fontSize: '12px'
+                          }}
+                        >
                           {t('Không có lịch sử cũ nào khớp.')}
                         </div>
                       )}
@@ -1852,7 +2465,9 @@ export default function POFormFullScreen({
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setSearchPopupOpen(false)}>{t('Đóng')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setSearchPopupOpen(false)}>
+                  {t('Đóng')}
+                </button>
               </div>
             </div>
           </div>
@@ -1863,7 +2478,15 @@ export default function POFormFullScreen({
           <div className="modal-overlay" style={{ zIndex: 1200 }}>
             <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
               <div className="modal-header">
-                <span style={{ fontWeight: 700, fontSize: '16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
                   <Folder size={18} />
                   <span>
                     {t('KHO LƯU TRỮ TỆP KHÁCH HÀNG')}: {currentCustomer?.companyName || ''}
@@ -1899,20 +2522,55 @@ export default function POFormFullScreen({
 
                       {Object.entries(folderGroups).map(([folderName, folderFiles]: any) => (
                         <div key={folderName} style={{ marginBottom: '16px' }}>
-                          <h5 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '4px', marginBottom: '8px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                          <h5
+                            style={{
+                              borderBottom: '1px solid var(--color-border)',
+                              paddingBottom: '4px',
+                              marginBottom: '8px',
+                              color: 'var(--color-primary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '13px'
+                            }}
+                          >
                             <Folder size={14} />
                             <span>{folderName}</span>
                           </h5>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {folderFiles.map((file: any, fIdx: number) => (
-                              <div key={fIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', backgroundColor: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', borderRadius: '4px' }}>
-                                <span style={{ fontWeight: 500, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px', display: 'inline-flex', alignItems: 'center', gap: '6px' }} title={file.name}>
+                              <div
+                                key={fIdx}
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  padding: '6px 10px',
+                                  backgroundColor: 'var(--color-bg-light)',
+                                  border: '1px solid var(--color-border-light)',
+                                  borderRadius: '4px'
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight: 500,
+                                    fontSize: '13px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: '280px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}
+                                  title={file.name}
+                                >
                                   <FileText size={14} />
                                   <span>{file.name}</span>
                                 </span>
                                 <div>
                                   <select
-                                    onChange={(e) => {
+                                    onChange={e => {
                                       const target = e.target.value;
                                       if (!target) return;
 
@@ -1947,7 +2605,9 @@ export default function POFormFullScreen({
                 })()}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowRepoModal(false)}>{t('Hoàn thành')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowRepoModal(false)}>
+                  {t('Hoàn thành')}
+                </button>
               </div>
             </div>
           </div>
@@ -1962,7 +2622,14 @@ export default function POFormFullScreen({
           >
             <div
               className="modal-content"
-              style={{ maxWidth: '90%', maxHeight: '90%', padding: '12px', position: 'relative', background: 'transparent', boxShadow: 'none' }}
+              style={{
+                maxWidth: '90%',
+                maxHeight: '90%',
+                padding: '12px',
+                position: 'relative',
+                background: 'transparent',
+                boxShadow: 'none'
+              }}
               onClick={e => e.stopPropagation()}
             >
               <button
@@ -1991,7 +2658,13 @@ export default function POFormFullScreen({
               <img
                 src={previewImage}
                 alt="Layout Zoom"
-                style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '4px', border: '2px solid white' }}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '80vh',
+                  objectFit: 'contain',
+                  borderRadius: '4px',
+                  border: '2px solid white'
+                }}
               />
               <div style={{ textAlign: 'center', marginTop: '14px' }}>
                 <a

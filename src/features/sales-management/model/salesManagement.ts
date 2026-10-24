@@ -21,12 +21,31 @@ export const SALES_MODULE_LABELS: Record<SalesManagementModule, string> = {
 };
 
 export const SALES_ACTIVITY_ACTIONS = new Set([
-  'candidate_phone_called', 'phone_call_started', 'phone_call_confirmed', 'phone_call_manual_recorded',
-  'candidate_opened', 'candidate_added_to_work_queue', 'candidate_assigned_to_sale', 'candidate_updated',
-  'candidate_created', 'follow_up_scheduled', 'candidate_pin_toggled', 'contact_status_updated',
-  'potential_updated', 'candidate_task_dismissed', 'candidate_archived', 'candidate_converted_to_lead',
-  'lead_follow_up_scheduled', 'lead_updated', 'lead_created', 'lead_returned_to_raw_data',
-  'lead_follow_up_handled', 'lead_deleted', 'customer_created', 'customer_updated', 'customer_note_updated'
+  'candidate_phone_called',
+  'phone_call_started',
+  'phone_call_confirmed',
+  'phone_call_manual_recorded',
+  'candidate_opened',
+  'candidate_added_to_work_queue',
+  'candidate_assigned_to_sale',
+  'candidate_updated',
+  'candidate_created',
+  'follow_up_scheduled',
+  'candidate_pin_toggled',
+  'contact_status_updated',
+  'potential_updated',
+  'candidate_task_dismissed',
+  'candidate_archived',
+  'candidate_converted_to_lead',
+  'lead_follow_up_scheduled',
+  'lead_updated',
+  'lead_created',
+  'lead_returned_to_raw_data',
+  'lead_follow_up_handled',
+  'lead_deleted',
+  'customer_created',
+  'customer_updated',
+  'customer_note_updated'
 ]);
 
 const ACTION_LABELS: Record<string, string> = {
@@ -57,7 +76,8 @@ const ACTION_LABELS: Record<string, string> = {
   customer_note_updated: 'Cập nhật ghi chú Khách hàng'
 };
 
-export const getSalesActionLabel = (event: AuditEvent): string => ACTION_LABELS[event.action] || event.summary || 'Cập nhật hồ sơ';
+export const getSalesActionLabel = (event: AuditEvent): string =>
+  ACTION_LABELS[event.action] || event.summary || 'Cập nhật hồ sơ';
 
 export const getSalesReportWindow = (
   period: SalesReportPeriod,
@@ -85,7 +105,8 @@ export const getSalesReportWindow = (
   if (!customStart || !customEnd) return null;
   const selectedStart = new Date(`${customStart}T00:00:00`);
   const selectedEnd = new Date(`${customEnd}T23:59:59.999`);
-  if (Number.isNaN(selectedStart.getTime()) || Number.isNaN(selectedEnd.getTime()) || selectedStart > selectedEnd) return null;
+  if (Number.isNaN(selectedStart.getTime()) || Number.isNaN(selectedEnd.getTime()) || selectedStart > selectedEnd)
+    return null;
   return { startAt: selectedStart.getTime(), endAt: selectedEnd.getTime(), label: `${customStart} đến ${customEnd}` };
 };
 
@@ -100,7 +121,8 @@ export const getSaleActivityStatus = (
   referenceTime: number,
   lastBusinessActivityAt = ''
 ): { status: SalesActivityStatus; minutesSinceSeen: number } => {
-  const isBusinessPage = presence?.lastPageId === 'customer_data' || presence?.lastPageId === 'leads' || presence?.lastPageId === 'crm';
+  const isBusinessPage =
+    presence?.lastPageId === 'customer_data' || presence?.lastPageId === 'leads' || presence?.lastPageId === 'crm';
   const presenceTime = isBusinessPage && presence?.lastSeenAt ? new Date(presence.lastSeenAt).getTime() : 0;
   const businessActivityTime = lastBusinessActivityAt ? new Date(lastBusinessActivityAt).getTime() : 0;
   const lastSeenTime = Math.max(
@@ -116,17 +138,31 @@ export const getSaleActivityStatus = (
   return { status: 'offline', minutesSinceSeen };
 };
 
-export const isActiveLead = (lead: LeadRecord): boolean => (
-  !lead.deleted && !lead.returnedToRawData && lead.stage !== 'converted' && !lead.convertedCustomerId
-);
+export const isActiveLead = (lead: LeadRecord): boolean =>
+  !lead.deleted && !lead.returnedToRawData && lead.stage !== 'converted' && !lead.convertedCustomerId;
 
 export const getLeadBlockerLabel = (lead: LeadRecord): string => {
   const blockerIds = new Set([
-    'sample_reviewing', 'sample_test_not_ok', 'sample_planning', 'sample_promised_not_received',
-    'target_price_promised', 'price_low', 'price_high', 'price_surveying',
-    'zalo_connected_no_interaction', 'zalo_unconfirmed', 'indifferent', 'contact_later',
-    'supplier_designated', 'supplier_change_refused', 'hard_to_source_material', 'certificate_required',
-    'schedule_required', 'strict_quality_required', 'nearby_supplier_required', 'industry_reference_required',
+    'sample_reviewing',
+    'sample_test_not_ok',
+    'sample_planning',
+    'sample_promised_not_received',
+    'target_price_promised',
+    'price_low',
+    'price_high',
+    'price_surveying',
+    'zalo_connected_no_interaction',
+    'zalo_unconfirmed',
+    'indifferent',
+    'contact_later',
+    'supplier_designated',
+    'supplier_change_refused',
+    'hard_to_source_material',
+    'certificate_required',
+    'schedule_required',
+    'strict_quality_required',
+    'nearby_supplier_required',
+    'industry_reference_required',
     'factory_audit_required'
   ]);
   const classifiedReason = (lead.customerInsightValues || [])
@@ -187,31 +223,49 @@ export const buildSalePerformance = ({
     .filter(event => event.actorId === sale.uid)
     .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt));
   const saleEvents = allSaleEvents.filter(event => isWithinWindow(event.occurredAt, window));
-  const foundCandidates = candidates.filter(candidate => (
-    !candidate.archived
-    && (candidate.discoveredById === sale.uid || (!candidate.discoveredById && candidate.createdById === sale.uid))
-    && isWithinWindow(candidate.createdAt, window)
-  ));
-  const assignedCandidates = candidates.filter(candidate => !candidate.archived && candidate.assignedSaleId === sale.uid);
+  const foundCandidates = candidates.filter(
+    candidate =>
+      !candidate.archived &&
+      (candidate.discoveredById === sale.uid || (!candidate.discoveredById && candidate.createdById === sale.uid)) &&
+      isWithinWindow(candidate.createdAt, window)
+  );
+  const assignedCandidates = candidates.filter(
+    candidate => !candidate.archived && candidate.assignedSaleId === sale.uid
+  );
   const assignedLeads = leads.filter(lead => isActiveLead(lead) && lead.assignedSaleId === sale.uid);
   const assignedCustomers = customers.filter(customer => !customer.deleted && customer.assignedSaleId === sale.uid);
   const foundCandidateIds = new Set(foundCandidates.map(candidate => candidate.id));
-  const processedIds = new Set(saleEvents
-    .filter(event => event.module === 'lead_candidates' && Boolean(event.targetId) && foundCandidateIds.has(event.targetId || ''))
-    .map(event => event.targetId as string));
-  const convertedLeadRecords = leads.filter(lead => (
-    Boolean(lead.sourceCandidateId)
-    && foundCandidateIds.has(lead.sourceCandidateId)
-    && isWithinWindow(lead.createdAt || lead.convertedAt, window)
-  ));
+  const processedIds = new Set(
+    saleEvents
+      .filter(
+        event =>
+          event.module === 'lead_candidates' && Boolean(event.targetId) && foundCandidateIds.has(event.targetId || '')
+      )
+      .map(event => event.targetId as string)
+  );
+  const convertedLeadRecords = leads.filter(
+    lead =>
+      Boolean(lead.sourceCandidateId) &&
+      foundCandidateIds.has(lead.sourceCandidateId) &&
+      isWithinWindow(lead.createdAt || lead.convertedAt, window)
+  );
   const convertedLeadIds = new Set(convertedLeadRecords.map(lead => lead.id));
-  const convertedCustomers = customers.filter(customer => (
-    Boolean(customer.sourceLeadId)
-    && convertedLeadIds.has(customer.sourceLeadId)
-    && isWithinWindow(customer.convertedAt || customer.createdAt, window)
-  ));
-  const overdueCount = assignedCandidates.filter(candidate => candidate.nextContactAt && new Date(candidate.nextContactAt).getTime() < referenceTime && candidate.taskStatus === 'pending').length
-    + assignedLeads.filter(lead => lead.nextFollowUpAt && !lead.followUpHandledAt && new Date(lead.nextFollowUpAt).getTime() < referenceTime).length;
+  const convertedCustomers = customers.filter(
+    customer =>
+      Boolean(customer.sourceLeadId) &&
+      convertedLeadIds.has(customer.sourceLeadId) &&
+      isWithinWindow(customer.convertedAt || customer.createdAt, window)
+  );
+  const overdueCount =
+    assignedCandidates.filter(
+      candidate =>
+        candidate.nextContactAt &&
+        new Date(candidate.nextContactAt).getTime() < referenceTime &&
+        candidate.taskStatus === 'pending'
+    ).length +
+    assignedLeads.filter(
+      lead => lead.nextFollowUpAt && !lead.followUpHandledAt && new Date(lead.nextFollowUpAt).getTime() < referenceTime
+    ).length;
   const presenceStatus = getSaleActivityStatus(presence, referenceTime, allSaleEvents[0]?.occurredAt);
   return {
     sale,
@@ -224,8 +278,14 @@ export const buildSalePerformance = ({
     assignedCustomers,
     events: saleEvents,
     processedCount: processedIds.size,
-    callCount: saleEvents.filter(event => ['candidate_phone_called', 'phone_call_started', 'phone_call_confirmed', 'phone_call_manual_recorded'].includes(event.action)).length,
-    scheduleCount: saleEvents.filter(event => ['follow_up_scheduled', 'lead_follow_up_scheduled'].includes(event.action)).length,
+    callCount: saleEvents.filter(event =>
+      ['candidate_phone_called', 'phone_call_started', 'phone_call_confirmed', 'phone_call_manual_recorded'].includes(
+        event.action
+      )
+    ).length,
+    scheduleCount: saleEvents.filter(event =>
+      ['follow_up_scheduled', 'lead_follow_up_scheduled'].includes(event.action)
+    ).length,
     overdueCount,
     convertedLeadCount: convertedLeadIds.size,
     convertedCustomerCount: convertedCustomers.length,

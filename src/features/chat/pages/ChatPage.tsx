@@ -1,5 +1,10 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
-import { requireConfirmedMutation, showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
+import {
+  requireConfirmedMutation,
+  showErrorToast,
+  showSuccessToast,
+  runMutationAction
+} from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
@@ -23,32 +28,19 @@ interface PendingChatAttachment {
   previewUrl: string;
 }
 
-const createPendingAttachmentId = () => (
+const createPendingAttachmentId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
-    : `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-);
+    : `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const createMessageId = () => (
+const createMessageId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? `message-${crypto.randomUUID()}`
-    : `message-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-);
+    : `message-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-const isSafeAttachmentUrl = (url: string) => (
-  /^https:\/\//i.test(url) || /^data:/i.test(url)
-);
+const isSafeAttachmentUrl = (url: string) => /^https:\/\//i.test(url) || /^data:/i.test(url);
 
-const CHAT_CHANNEL_COLORS = [
-  '#1e40af',
-  '#0f766e',
-  '#7c3aed',
-  '#b45309',
-  '#be123c',
-  '#0369a1',
-  '#4338ca',
-  '#166534'
-];
+const CHAT_CHANNEL_COLORS = ['#1e40af', '#0f766e', '#7c3aed', '#b45309', '#be123c', '#0369a1', '#4338ca', '#166534'];
 
 interface ChatPageProps {
   currentUser: UserProfile;
@@ -86,11 +78,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     pendingAttachmentsRef.current = pendingAttachments;
   }, [pendingAttachments]);
 
-  useEffect(() => () => {
-    pendingAttachmentsRef.current.forEach(attachment => {
-      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
-    });
-  }, []);
+  useEffect(
+    () => () => {
+      pendingAttachmentsRef.current.forEach(attachment => {
+        if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+      });
+    },
+    []
+  );
 
   // Modals state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -105,44 +100,54 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [editChannelMembers, setEditChannelMembers] = useState<string[]>([]);
 
   const handleCreateChannelSubmit = async (e: React.FormEvent) => {
-    return runMutationAction("ChatPage.tsx:handleCreateChannelSubmit", async () => {
-      e.preventDefault();
-      if (!newChannelName.trim()) return;
+    return runMutationAction(
+      'ChatPage.tsx:handleCreateChannelSubmit',
+      async () => {
+        e.preventDefault();
+        if (!newChannelName.trim()) return;
 
-      const newChannel = {
-        name: newChannelName.trim(),
-        desc: newChannelDesc.trim(),
-        members: [...newChannelMembers, currentUser.uid], // Creator is always a member
-        roles: [],
-        createdBy: currentUser.uid,
-        createdAt: new Date().toISOString()
-      };
+        const newChannel = {
+          name: newChannelName.trim(),
+          desc: newChannelDesc.trim(),
+          members: [...newChannelMembers, currentUser.uid], // Creator is always a member
+          roles: [],
+          createdBy: currentUser.uid,
+          createdAt: new Date().toISOString()
+        };
 
-      const created = await dbService.addDocument('channels', newChannel);
-      if (created) {
-        setActiveChannelId(created.id);
-      }
-      setShowCreateModal(false);
+        const created = await dbService.addDocument('channels', newChannel);
+        if (created) {
+          setActiveChannelId(created.id);
+        }
+        setShowCreateModal(false);
 
-      showSuccessToast("Đã thêm thành công");
-    }, e);
+        showSuccessToast('Đã thêm thành công');
+      },
+      e
+    );
   };
 
   const handleEditChannelSubmit = async (e: React.FormEvent) => {
-    return runMutationAction("ChatPage.tsx:handleEditChannelSubmit", async () => {
-      e.preventDefault();
-      if (!editChannelName.trim() || !activeChannelId) return;
+    return runMutationAction(
+      'ChatPage.tsx:handleEditChannelSubmit',
+      async () => {
+        e.preventDefault();
+        if (!editChannelName.trim() || !activeChannelId) return;
 
-      await requireConfirmedMutation(dbService.updateDocument('channels', activeChannelId, {
-        name: editChannelName.trim(),
-        desc: editChannelDesc.trim(),
-        members: editChannelMembers
-      }));
+        await requireConfirmedMutation(
+          dbService.updateDocument('channels', activeChannelId, {
+            name: editChannelName.trim(),
+            desc: editChannelDesc.trim(),
+            members: editChannelMembers
+          })
+        );
 
-      setShowEditModal(false);
+        setShowEditModal(false);
 
-      showSuccessToast("Đã lưu thành công");
-    }, e);
+        showSuccessToast('Đã lưu thành công');
+      },
+      e
+    );
   };
 
   const handleToggleMember = (userId: string, isEdit: boolean) => {
@@ -151,13 +156,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       return;
     }
     if (isEdit) {
-      setEditChannelMembers(prev =>
-        prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-      );
+      setEditChannelMembers(prev => (prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]));
     } else {
-      setNewChannelMembers(prev =>
-        prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
-      );
+      setNewChannelMembers(prev => (prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]));
     }
   };
 
@@ -173,11 +174,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   };
 
   const removePendingAttachment = (attachmentId: string) => {
-    setPendingAttachments(current => current.filter(attachment => {
-      if (attachment.id !== attachmentId) return true;
-      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
-      return false;
-    }));
+    setPendingAttachments(current =>
+      current.filter(attachment => {
+        if (attachment.id !== attachmentId) return true;
+        if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+        return false;
+      })
+    );
     setAttachmentError('');
   };
 
@@ -222,32 +225,40 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
   };
 
-  const handleDeleteMessage = async (message: { id: string; senderName?: string; attachments?: ChatAttachmentRecord[] }) => {
-    return runMutationAction("ChatPage.tsx:handleDeleteMessage", async () => {
-      if (currentUser.role !== 'admin') return;
-      if (!(await confirmDelete(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.')))) return;
+  const handleDeleteMessage = async (message: {
+    id: string;
+    senderName?: string;
+    attachments?: ChatAttachmentRecord[];
+  }) => {
+    return runMutationAction(
+      'ChatPage.tsx:handleDeleteMessage',
+      async () => {
+        if (currentUser.role !== 'admin') return;
+        if (!(await confirmDelete(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.')))) return;
 
-      try {
-        await requireConfirmedMutation(dbService.deleteDocument('messages', message.id));
-        await deleteChatAttachments(message.attachments || []);
-        auditService.recordSafely(currentUser, {
-          category: 'administration',
-          module: 'system',
-          action: 'chat_message_deleted',
-          summary: `Xóa tin nhắn của ${message.senderName || 'người dùng'} trong kênh chat`,
-          targetType: 'message',
-          targetId: message.id,
-          targetLabel: activeChannel?.name || activeChannelId,
-          pageId: 'chat'
-        });
+        try {
+          await requireConfirmedMutation(dbService.deleteDocument('messages', message.id));
+          await deleteChatAttachments(message.attachments || []);
+          auditService.recordSafely(currentUser, {
+            category: 'administration',
+            module: 'system',
+            action: 'chat_message_deleted',
+            summary: `Xóa tin nhắn của ${message.senderName || 'người dùng'} trong kênh chat`,
+            targetType: 'message',
+            targetId: message.id,
+            targetLabel: activeChannel?.name || activeChannelId,
+            pageId: 'chat'
+          });
 
-        showSuccessToast("Đã xóa thành công");
-      } catch (error) {
-        showErrorToast();
-        console.error('[Chat] Could not delete message.', error);
-        window.alert(t('Không thể xóa tin nhắn. Vui lòng thử lại.'));
-      }
-    }, message);
+          showSuccessToast('Đã xóa thành công');
+        } catch (error) {
+          showErrorToast();
+          console.error('[Chat] Could not delete message.', error);
+          window.alert(t('Không thể xóa tin nhắn. Vui lòng thử lại.'));
+        }
+      },
+      message
+    );
   };
 
   // Auto-complete suggestions states
@@ -276,9 +287,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   // Filter items
   const getFilteredSuggestions = () => {
     if (suggestionType === 'member') {
-      return (users || []).filter(u =>
-        u.displayName.toLowerCase().includes(suggestionQuery.toLowerCase()) ||
-        u.role.toLowerCase().includes(suggestionQuery.toLowerCase())
+      return (users || []).filter(
+        u =>
+          u.displayName.toLowerCase().includes(suggestionQuery.toLowerCase()) ||
+          u.role.toLowerCase().includes(suggestionQuery.toLowerCase())
       );
     } else {
       const matchedPos = (pos || [])
@@ -297,9 +309,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
   const handleSelectSuggestion = (item: any) => {
     const beforeTrigger = messageText.substring(0, suggestionTriggerIndex);
-    const replacement = suggestionType === 'member'
-      ? `@${item.displayName} `
-      : `${item.code} `;
+    const replacement = suggestionType === 'member' ? `@${item.displayName} ` : `${item.code} `;
 
     setMessageText(beforeTrigger + replacement);
     setShowSuggestions(false);
@@ -335,12 +345,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     setAttachmentError('');
 
     try {
-      uploadedAttachments = await uploadChatAttachments(
-        filesToUpload,
-        activeChannelId,
-        messageId,
-        currentUser.uid
-      );
+      uploadedAttachments = await uploadChatAttachments(filesToUpload, activeChannelId, messageId, currentUser.uid);
 
       const newMessage = {
         id: messageId,
@@ -352,13 +357,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         messageText: messageText.trim(),
         attachments: uploadedAttachments,
         createdAt: new Date().toISOString(),
-        ...(replyingTo ? {
-          replyTo: {
-            id: replyingTo.id,
-            senderName: replyingTo.senderName,
-            text: replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')
-          }
-        } : {})
+        ...(replyingTo
+          ? {
+              replyTo: {
+                id: replyingTo.id,
+                senderName: replyingTo.senderName,
+                text: replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')
+              }
+            }
+          : {})
       };
 
       await dbService.addDocument('messages', newMessage);
@@ -370,9 +377,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     } catch (error) {
       await deleteChatAttachments(uploadedAttachments);
       console.error('[Chat] Could not send attachments.', error);
-      setAttachmentError(error instanceof Error
-        ? error.message
-        : t('Không thể gửi tệp đính kèm. Vui lòng thử lại.'));
+      setAttachmentError(error instanceof Error ? error.message : t('Không thể gửi tệp đính kèm. Vui lòng thử lại.'));
     } finally {
       setIsSendingMessage(false);
     }
@@ -397,13 +402,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           if (!po) return null;
           return (
             <div key={po.id} className="chat-task-card">
-              <span className="chat-task-card-title">{t('Đơn Hàng')} {poCode}</span>
-              <span className="chat-task-card-desc">{po.customerName} - {po.items?.[0]?.productName || t('Tem Nhãn')} ({t(getPOQueueLabel(po))})</span>
-              <button
-                type="button"
-                className="chat-task-card-btn"
-                onClick={() => onNavigateToPO(po.id)}
-              >
+              <span className="chat-task-card-title">
+                {t('Đơn Hàng')} {poCode}
+              </span>
+              <span className="chat-task-card-desc">
+                {po.customerName} - {po.items?.[0]?.productName || t('Tem Nhãn')} ({t(getPOQueueLabel(po))})
+              </span>
+              <button type="button" className="chat-task-card-btn" onClick={() => onNavigateToPO(po.id)}>
                 {t('Xem Chi Tiết Đơn Hàng')} →
               </button>
             </div>
@@ -416,13 +421,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           if (!lsx) return null;
           return (
             <div key={lsx.id} className="chat-task-card">
-              <span className="chat-task-card-title">{t('Lệnh Sản Xuất')} {lsxCode}</span>
-              <span className="chat-task-card-desc">{lsx.productName} — {productionQuantityLabel(lsx)} ({t(lsx.status)})</span>
-              <button
-                type="button"
-                className="chat-task-card-btn"
-                onClick={() => onNavigateToLSX(lsx.id)}
-              >
+              <span className="chat-task-card-title">
+                {t('Lệnh Sản Xuất')} {lsxCode}
+              </span>
+              <span className="chat-task-card-desc">
+                {lsx.productName} — {productionQuantityLabel(lsx)} ({t(lsx.status)})
+              </span>
+              <button type="button" className="chat-task-card-btn" onClick={() => onNavigateToLSX(lsx.id)}>
                 {t('Xem Lệnh Sản Xuất')} →
               </button>
             </div>
@@ -433,14 +438,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   };
 
   const renderMessageAttachments = (attachments: ChatAttachmentRecord[] = []) => {
-    const safeAttachments = attachments.filter(attachment => (
-      attachment?.url && isSafeAttachmentUrl(attachment.url)
-    ));
+    const safeAttachments = attachments.filter(attachment => attachment?.url && isSafeAttachmentUrl(attachment.url));
     if (safeAttachments.length === 0) return null;
 
     return (
       <div className="chat-message-attachments">
-        {safeAttachments.map(attachment => (
+        {safeAttachments.map(attachment =>
           attachment.kind === 'image' ? (
             <a
               key={attachment.id}
@@ -471,7 +474,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               <Download size={16} aria-hidden="true" />
             </a>
           )
-        ))}
+        )}
       </div>
     );
   };
@@ -480,11 +483,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const getUnreadCount = (channelId: string) => {
     const lastReadStr = localStorage.getItem(`erp_last_read_ch_${currentUser.uid}_${channelId}`);
     if (!lastReadStr) {
-      return messages.filter(message => (
-        message.type === 'channel'
-        && message.targetId === channelId
-        && message.senderId !== currentUser.uid
-      )).length;
+      return messages.filter(
+        message => message.type === 'channel' && message.targetId === channelId && message.senderId !== currentUser.uid
+      ).length;
     }
     const lastReadTime = new Date(lastReadStr).getTime();
 
@@ -506,7 +507,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         {/* Sidebar Kênh */}
         <div className="chat-channels-list">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', margin: 0 }}>
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                color: 'var(--color-text-muted)',
+                textTransform: 'uppercase',
+                margin: 0
+              }}
+            >
               {t('Kênh thảo luận')}
             </span>
             <button
@@ -530,7 +539,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               <button
                 key={ch.id}
                 className={`chat-channel-btn ${activeChannelId === ch.id ? 'active' : ''}`}
-                style={{ '--chat-channel-color': CHAT_CHANNEL_COLORS[channelIndex % CHAT_CHANNEL_COLORS.length] } as React.CSSProperties}
+                style={
+                  {
+                    '--chat-channel-color': CHAT_CHANNEL_COLORS[channelIndex % CHAT_CHANNEL_COLORS.length]
+                  } as React.CSSProperties
+                }
                 onClick={() => {
                   clearPendingAttachments();
                   setReplyingTo(null);
@@ -546,26 +559,32 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
         {/* Khung Chat */}
         <div className="chat-box-panel">
-          <div className="chat-box-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div
+            className="chat-box-header"
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+          >
             <div>
-              <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '15px' }}># {activeChannel?.name}</span>
+              <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '15px' }}>
+                # {activeChannel?.name}
+              </span>
               <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>{activeChannel?.desc}</p>
             </div>
-            {(currentUser.role === 'admin' || activeChannel?.createdBy === currentUser.uid) && activeChannel?.id !== 'all' && (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline"
-                style={{ fontSize: '12px', padding: '4px 10px' }}
-                onClick={() => {
-                  setEditChannelName(activeChannel.name);
-                  setEditChannelDesc(activeChannel.desc || '');
-                  setEditChannelMembers(activeChannel.members || []);
-                  setShowEditModal(true);
-                }}
-              >
-                {t('Sửa kênh')}
-              </button>
-            )}
+            {(currentUser.role === 'admin' || activeChannel?.createdBy === currentUser.uid) &&
+              activeChannel?.id !== 'all' && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline"
+                  style={{ fontSize: '12px', padding: '4px 10px' }}
+                  onClick={() => {
+                    setEditChannelName(activeChannel.name);
+                    setEditChannelDesc(activeChannel.desc || '');
+                    setEditChannelMembers(activeChannel.members || []);
+                    setShowEditModal(true);
+                  }}
+                >
+                  {t('Sửa kênh')}
+                </button>
+              )}
           </div>
 
           <div className="chat-messages-area">
@@ -573,9 +592,19 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               const isMe = msg.senderId === currentUser.uid;
               return (
                 <div key={msg.id} className={`chat-message-row ${isMe ? 'me' : 'other'}`}>
-                  <div className="chat-message-meta" style={{ display: 'flex', gap: '6px', justifyContent: isMe ? 'flex-end' : 'flex-start', alignItems: 'center' }}>
+                  <div
+                    className="chat-message-meta"
+                    style={{
+                      display: 'flex',
+                      gap: '6px',
+                      justifyContent: isMe ? 'flex-end' : 'flex-start',
+                      alignItems: 'center'
+                    }}
+                  >
                     <span style={{ fontWeight: 600 }}>{msg.senderName}</span>
-                    <span style={{ fontSize: '10px', opacity: 0.8 }}>({String(msg.senderRole || '').toUpperCase()})</span>
+                    <span style={{ fontSize: '10px', opacity: 0.8 }}>
+                      ({String(msg.senderRole || '').toUpperCase()})
+                    </span>
                     <span>•</span>
                     <span>{formatTime(msg.createdAt)}</span>
                     {!msg.recalled && (
@@ -583,7 +612,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                         <span>•</span>
                         <button
                           onClick={() => setReplyingTo(msg)}
-                          style={{ border: 'none', background: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
+                          style={{
+                            border: 'none',
+                            background: 'none',
+                            color: 'var(--color-primary)',
+                            cursor: 'pointer',
+                            padding: 0,
+                            fontSize: '10px'
+                          }}
                         >
                           {t('Trả lời')}
                         </button>
@@ -592,7 +628,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                             <span>•</span>
                             <button
                               onClick={() => void handleRecallMessage(msg)}
-                              style={{ border: 'none', background: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                color: 'var(--color-danger)',
+                                cursor: 'pointer',
+                                padding: 0,
+                                fontSize: '10px'
+                              }}
                             >
                               {t('Thu hồi')}
                             </button>
@@ -603,7 +646,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                             <span>•</span>
                             <button
                               onClick={() => void handleDeleteMessage(msg)}
-                              style={{ border: 'none', background: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                color: 'var(--color-danger)',
+                                cursor: 'pointer',
+                                padding: 0,
+                                fontSize: '10px'
+                              }}
                               title={t('Xóa vĩnh viễn tin nhắn')}
                             >
                               {t('Xóa')}
@@ -615,26 +665,26 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                   </div>
                   <div className="chat-message-bubble">
                     {msg.recalled ? (
-                      <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>
-                        {t('Tin nhắn đã bị thu hồi')}
-                      </span>
+                      <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>{t('Tin nhắn đã bị thu hồi')}</span>
                     ) : (
                       <>
                         {msg.replyTo && (
-                          <div style={{
-                            padding: '4px 8px',
-                            backgroundColor: isMe ? 'rgba(255, 255, 255, 0.15)' : '#f1f5f9',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            marginBottom: '6px',
-                            borderLeft: '3px solid var(--color-primary)',
-                            color: isMe ? '#e2e8f0' : 'var(--color-text-muted)',
-                            fontStyle: 'italic',
-                            maxWidth: '100%',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
+                          <div
+                            style={{
+                              padding: '4px 8px',
+                              backgroundColor: isMe ? 'rgba(255, 255, 255, 0.15)' : '#f1f5f9',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              marginBottom: '6px',
+                              borderLeft: '3px solid var(--color-primary)',
+                              color: isMe ? '#e2e8f0' : 'var(--color-text-muted)',
+                              fontStyle: 'italic',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
                             <strong>@{msg.replyTo.senderName}:</strong> "{msg.replyTo.text || t('Tệp đính kèm')}"
                           </div>
                         )}
@@ -648,7 +698,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             })}
             <div ref={messagesEndRef} />
             {channelMessages.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+              <div
+                style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}
+              >
                 {t('Chưa có tin nhắn nào trong kênh này. Hãy bắt đầu cuộc hội thoại!')}
               </div>
             )}
@@ -661,11 +713,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                   {suggestionType === 'member' ? t('Gợi ý tag nhân viên') : t('Gợi ý mã liên kết')}
                 </div>
                 {filteredSuggestions.map((item: any) => (
-                  <div
-                    key={item.id}
-                    className="chat-suggestion-item"
-                    onClick={() => handleSelectSuggestion(item)}
-                  >
+                  <div key={item.id} className="chat-suggestion-item" onClick={() => handleSelectSuggestion(item)}>
                     <span className="chat-suggestion-item-main">
                       {suggestionType === 'member' ? `@${item.displayName}` : item.code}
                     </span>
@@ -677,20 +725,24 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               </div>
             )}
             {replyingTo && (
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '6px 12px',
-                backgroundColor: '#f1f5f9',
-                borderTop: '1px solid var(--color-border-light)',
-                fontSize: '12px',
-                color: 'var(--color-text-muted)',
-                borderRadius: '4px 4px 0 0',
-                margin: '0 10px -1px 10px'
-              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '6px 12px',
+                  backgroundColor: '#f1f5f9',
+                  borderTop: '1px solid var(--color-border-light)',
+                  fontSize: '12px',
+                  color: 'var(--color-text-muted)',
+                  borderRadius: '4px 4px 0 0',
+                  margin: '0 10px -1px 10px'
+                }}
+              >
                 <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
-                  <strong>{t('Trả lời')} {replyingTo.senderName}:</strong>{' '}
+                  <strong>
+                    {t('Trả lời')} {replyingTo.senderName}:
+                  </strong>{' '}
                   "{replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')}"
                 </div>
                 <button
@@ -735,7 +787,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               </div>
             )}
             {attachmentError && (
-              <div className="chat-attachment-error" role="alert">{attachmentError}</div>
+              <div className="chat-attachment-error" role="alert">
+                {attachmentError}
+              </div>
             )}
             <form onSubmit={handleSendMessage} className="chat-input-bar">
               <input
@@ -783,7 +837,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
             <div className="modal-header">
               <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('TẠO KÊNH THẢO LUẬN MỚI')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowCreateModal(false)}>{t('Đóng')}</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setShowCreateModal(false)}>
+                {t('Đóng')}
+              </button>
             </div>
             <form onSubmit={handleCreateChannelSubmit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -808,23 +864,46 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 </div>
                 <div className="form-group">
                   <label style={{ fontWeight: 600 }}>{t('Thành Viên Tham Gia')}</label>
-                  <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'white' }}>
-                    {users.filter(u => u.uid !== currentUser.uid && u.active).map(u => (
-                      <label key={u.uid} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
-                        <input
-                          type="checkbox"
-                          checked={newChannelMembers.includes(u.uid)}
-                          onChange={() => handleToggleMember(u.uid, false)}
-                        />
-                        <span style={{ fontSize: '13px' }}>{u.displayName} ({t(u.role.toUpperCase())})</span>
-                      </label>
-                    ))}
+                  <div
+                    style={{
+                      maxHeight: '180px',
+                      overflowY: 'auto',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '4px',
+                      padding: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    {users
+                      .filter(u => u.uid !== currentUser.uid && u.active)
+                      .map(u => (
+                        <label
+                          key={u.uid}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={newChannelMembers.includes(u.uid)}
+                            onChange={() => handleToggleMember(u.uid, false)}
+                          />
+                          <span style={{ fontSize: '13px' }}>
+                            {u.displayName} ({t(u.role.toUpperCase())})
+                          </span>
+                        </label>
+                      ))}
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Tạo Kênh')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>
+                  {t('Hủy')}
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {t('Tạo Kênh')}
+                </button>
               </div>
             </form>
           </div>
@@ -837,7 +916,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
             <div className="modal-header">
               <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHỈNH SỬA THÔNG TIN KÊNH')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowEditModal(false)}>{t('Đóng')}</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setShowEditModal(false)}>
+                {t('Đóng')}
+              </button>
             </div>
             <form onSubmit={handleEditChannelSubmit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -852,31 +933,50 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 </div>
                 <div className="form-group">
                   <label>{t('Mô Tả Kênh')}</label>
-                  <input
-                    type="text"
-                    value={editChannelDesc}
-                    onChange={e => setEditChannelDesc(e.target.value)}
-                  />
+                  <input type="text" value={editChannelDesc} onChange={e => setEditChannelDesc(e.target.value)} />
                 </div>
                 <div className="form-group">
                   <label style={{ fontWeight: 600 }}>{t('Thành Viên Kênh')}</label>
-                  <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: 'white' }}>
-                    {users.filter(u => u.uid !== currentUser.uid && u.active).map(u => (
-                      <label key={u.uid} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
-                        <input
-                          type="checkbox"
-                          checked={editChannelMembers.includes(u.uid)}
-                          onChange={() => handleToggleMember(u.uid, true)}
-                        />
-                        <span style={{ fontSize: '13px' }}>{u.displayName} ({t(u.role.toUpperCase())})</span>
-                      </label>
-                    ))}
+                  <div
+                    style={{
+                      maxHeight: '180px',
+                      overflowY: 'auto',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '4px',
+                      padding: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      backgroundColor: 'white'
+                    }}
+                  >
+                    {users
+                      .filter(u => u.uid !== currentUser.uid && u.active)
+                      .map(u => (
+                        <label
+                          key={u.uid}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={editChannelMembers.includes(u.uid)}
+                            onChange={() => handleToggleMember(u.uid, true)}
+                          />
+                          <span style={{ fontSize: '13px' }}>
+                            {u.displayName} ({t(u.role.toUpperCase())})
+                          </span>
+                        </label>
+                      ))}
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Lưu Thay Đổi')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>
+                  {t('Hủy')}
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {t('Lưu Thay Đổi')}
+                </button>
               </div>
             </form>
           </div>

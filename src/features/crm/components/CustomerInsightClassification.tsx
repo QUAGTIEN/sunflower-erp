@@ -60,74 +60,144 @@ export const CustomerInsightClassification: React.FC<CustomerInsightClassificati
   }, [draft.length, savedValues, selected]);
 
   const toggle = (itemId: string, checked: boolean) => {
-    const next = checked
-      ? Array.from(new Set([...draft, itemId]))
-      : draft.filter(value => value !== itemId);
+    const next = checked ? Array.from(new Set([...draft, itemId])) : draft.filter(value => value !== itemId);
     setDraft(next);
     onDraftChange?.(next);
     setMessage('');
   };
 
   const save = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    return runMutationAction("CustomerInsightClassification.tsx:save", async () => {
-      if (!canEdit || !hasChanges || saving) return;
-      setSaving(true);
-      setMessage('');
-      try {
-        await onSave(draft);
-        setSavedValues(draft);
-      } catch {
-        setMessage('Không thể lưu phân loại. Vui lòng kiểm tra kết nối và thử lại.');
-      } finally {
-        setSaving(false);
-      }
-    }, event);
+    return runMutationAction(
+      'CustomerInsightClassification.tsx:save',
+      async () => {
+        if (!canEdit || !hasChanges || saving) return;
+        setSaving(true);
+        setMessage('');
+        try {
+          await onSave(draft);
+          setSavedValues(draft);
+        } catch {
+          setMessage('Không thể lưu phân loại. Vui lòng kiểm tra kết nối và thử lại.');
+        } finally {
+          setSaving(false);
+        }
+      },
+      event
+    );
   };
 
-  return <main className="customer-classification" aria-label={`Phân loại ${companyName}`}>
-    <header className="customer-classification__header">
-      <div>
-        <h2><span><Layers3 size={17} aria-hidden="true" /></span>Phân loại thông tin khách hàng</h2>
-        <div className="customer-classification__progress">
-          <strong>{draft.length}/{CUSTOMER_INSIGHT_ITEMS.length} mục đã xác nhận</strong>
-          <span role="progressbar" aria-label="Tiến độ phân loại" aria-valuemin={0} aria-valuemax={CUSTOMER_INSIGHT_ITEMS.length} aria-valuenow={draft.length}>
-            <i style={{ width: `${draft.length / CUSTOMER_INSIGHT_ITEMS.length * 100}%` }} />
-          </span>
+  return (
+    <main className="customer-classification" aria-label={`Phân loại ${companyName}`}>
+      <header className="customer-classification__header">
+        <div>
+          <h2>
+            <span>
+              <Layers3 size={17} aria-hidden="true" />
+            </span>
+            Phân loại thông tin khách hàng
+          </h2>
+          <div className="customer-classification__progress">
+            <strong>
+              {draft.length}/{CUSTOMER_INSIGHT_ITEMS.length} mục đã xác nhận
+            </strong>
+            <span
+              role="progressbar"
+              aria-label="Tiến độ phân loại"
+              aria-valuemin={0}
+              aria-valuemax={CUSTOMER_INSIGHT_ITEMS.length}
+              aria-valuenow={draft.length}
+            >
+              <i style={{ width: `${(draft.length / CUSTOMER_INSIGHT_ITEMS.length) * 100}%` }} />
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="customer-classification__tools">
-        <label>
-          <span className="sr-only">Tìm trong {CUSTOMER_INSIGHT_ITEMS.length} mục</span>
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder={`Tìm trong ${CUSTOMER_INSIGHT_ITEMS.length} mục...`} />
-        </label>
-        {toolbarActions && <div className="customer-classification__record-actions">{toolbarActions}</div>}
-        {onScore && <button type="button" className="btn btn-outline" disabled={!canEdit || hasChanges || saving} title={hasChanges ? 'Lưu phân loại trước khi chấm điểm' : 'Chấm điểm khách hàng'} onClick={onScore}><BarChart3 size={14} aria-hidden="true" /> Chấm điểm</button>}
-        <button type="button" className="btn btn-primary" disabled={!canEdit || !hasChanges || saving} aria-busy={saving} onClick={event => void save(event)}>{saving ? 'Đang lưu…' : 'Lưu phân loại'}</button>
-      </div>
-    </header>
+        <div className="customer-classification__tools">
+          <label>
+            <span className="sr-only">Tìm trong {CUSTOMER_INSIGHT_ITEMS.length} mục</span>
+            <input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder={`Tìm trong ${CUSTOMER_INSIGHT_ITEMS.length} mục...`}
+            />
+          </label>
+          {toolbarActions && <div className="customer-classification__record-actions">{toolbarActions}</div>}
+          {onScore && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              disabled={!canEdit || hasChanges || saving}
+              title={hasChanges ? 'Lưu phân loại trước khi chấm điểm' : 'Chấm điểm khách hàng'}
+              onClick={onScore}
+            >
+              <BarChart3 size={14} aria-hidden="true" /> Chấm điểm
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!canEdit || !hasChanges || saving}
+            aria-busy={saving}
+            onClick={event => void save(event)}
+          >
+            {saving ? 'Đang lưu…' : 'Lưu phân loại'}
+          </button>
+        </div>
+      </header>
 
-    {message && <p className="customer-classification__message is-error" role="alert">{message}</p>}
-    {!canEdit && <p className="customer-classification__message">Bạn chỉ có quyền xem phân loại của hồ sơ này.</p>}
+      {message && (
+        <p className="customer-classification__message is-error" role="alert">
+          {message}
+        </p>
+      )}
+      {!canEdit && <p className="customer-classification__message">Bạn chỉ có quyền xem phân loại của hồ sơ này.</p>}
 
-    <div className="customer-classification__groups">
-      {CUSTOMER_INSIGHT_GROUPS.map((group, groupIndex) => {
-        const visibleItems = group.items.filter(item => {
-          if (normalizedSearch && !item.label.toLocaleLowerCase('vi-VN').includes(normalizedSearch)) return false;
-          return true;
-        });
-        const selectedCount = group.items.filter(item => selected.has(item.id)).length;
-        const presentation = GROUP_PRESENTATION[group.id];
-        const GroupIcon = presentation.icon;
-        return <section key={group.id} className={`customer-classification__group customer-classification__group--${presentation.tone}`}>
-          <header><h3><span className="customer-classification__group-icon"><GroupIcon size={15} aria-hidden="true" /></span><span className="customer-classification__group-number">{groupIndex + 1}</span><span className="customer-classification__group-label">{group.label}</span></h3><strong>{selectedCount}/{group.items.length}</strong></header>
-          {visibleItems.length > 0 ? <div className="customer-classification__options">
-            {visibleItems.map(item => <label key={item.id}>
-              <input type="checkbox" checked={selected.has(item.id)} disabled={!canEdit || saving} onChange={event => toggle(item.id, event.target.checked)} />
-              <span>{item.label}</span>
-            </label>)}
-          </div> : <p className="customer-classification__empty">Không có mục phù hợp bộ lọc.</p>}
-        </section>;
-      })}
-    </div>
-  </main>;
+      <div className="customer-classification__groups">
+        {CUSTOMER_INSIGHT_GROUPS.map((group, groupIndex) => {
+          const visibleItems = group.items.filter(item => {
+            if (normalizedSearch && !item.label.toLocaleLowerCase('vi-VN').includes(normalizedSearch)) return false;
+            return true;
+          });
+          const selectedCount = group.items.filter(item => selected.has(item.id)).length;
+          const presentation = GROUP_PRESENTATION[group.id];
+          const GroupIcon = presentation.icon;
+          return (
+            <section
+              key={group.id}
+              className={`customer-classification__group customer-classification__group--${presentation.tone}`}
+            >
+              <header>
+                <h3>
+                  <span className="customer-classification__group-icon">
+                    <GroupIcon size={15} aria-hidden="true" />
+                  </span>
+                  <span className="customer-classification__group-number">{groupIndex + 1}</span>
+                  <span className="customer-classification__group-label">{group.label}</span>
+                </h3>
+                <strong>
+                  {selectedCount}/{group.items.length}
+                </strong>
+              </header>
+              {visibleItems.length > 0 ? (
+                <div className="customer-classification__options">
+                  {visibleItems.map(item => (
+                    <label key={item.id}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(item.id)}
+                        disabled={!canEdit || saving}
+                        onChange={event => toggle(item.id, event.target.checked)}
+                      />
+                      <span>{item.label}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="customer-classification__empty">Không có mục phù hợp bộ lọc.</p>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </main>
+  );
 };

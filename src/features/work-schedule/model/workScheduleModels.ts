@@ -1,20 +1,22 @@
-export type WorkScheduleStatus = 'not_started' | 'in_progress' | 'waiting_customer' | 'support_requested' | 'awaiting_confirmation' | 'paused' | 'cannot_process' | 'completed' | 'cancelled';
+export type WorkScheduleStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'waiting_customer'
+  | 'support_requested'
+  | 'awaiting_confirmation'
+  | 'paused'
+  | 'cannot_process'
+  | 'completed'
+  | 'cancelled';
 export type WorkSchedulePriority = 'normal' | 'high' | 'urgent';
 export type WorkScheduleTaskType = 'assigned_task' | 'support_request' | 'personal_task';
 export type WorkScheduleGroupId = 'boss_to_staff' | 'staff_to_company' | 'staff_to_staff' | 'self' | 'automatic';
-export type WorkScheduleWorkType = 'technical' | 'business' | 'accounting' | 'delivery' | 'purchasing' | 'production' | 'design' | 'other';
+export type WorkScheduleWorkType =
+  'technical' | 'business' | 'accounting' | 'delivery' | 'purchasing' | 'production' | 'design' | 'other';
 export type WorkScheduleDisplayStatus = 'in_progress' | 'not_started' | 'cannot_process' | 'completed';
 
 export type WorkScheduleReferenceType =
-  | 'none'
-  | 'lead_candidate'
-  | 'customer'
-  | 'lead'
-  | 'po'
-  | 'design_request'
-  | 'production_order'
-  | 'delivery'
-  | 'other';
+  'none' | 'lead_candidate' | 'customer' | 'lead' | 'po' | 'design_request' | 'production_order' | 'delivery' | 'other';
 
 export interface WorkScheduleRecord {
   id: string;
@@ -63,21 +65,77 @@ export interface WorkScheduleGroupRecord {
 }
 
 export const DEFAULT_WORK_SCHEDULE_GROUPS: WorkScheduleGroupRecord[] = [
-  { id: 'boss_to_staff', name: 'Sếp giao cho nhân sự', order: 10, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'staff_to_company', name: 'Nhân sự giao việc lại cho công ty', order: 20, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'staff_to_staff', name: 'Nhân sự giao cho nhân sự khác', order: 30, active: true, system: true, createdAt: '', updatedAt: '' },
-  { id: 'self', name: 'Việc tự tạo cho chính mình', order: 40, active: true, system: true, createdAt: '', updatedAt: '' },
+  {
+    id: 'boss_to_staff',
+    name: 'Sếp giao cho nhân sự',
+    order: 10,
+    active: true,
+    system: true,
+    createdAt: '',
+    updatedAt: ''
+  },
+  {
+    id: 'staff_to_company',
+    name: 'Nhân sự giao việc lại cho công ty',
+    order: 20,
+    active: true,
+    system: true,
+    createdAt: '',
+    updatedAt: ''
+  },
+  {
+    id: 'staff_to_staff',
+    name: 'Nhân sự giao cho nhân sự khác',
+    order: 30,
+    active: true,
+    system: true,
+    createdAt: '',
+    updatedAt: ''
+  },
+  {
+    id: 'self',
+    name: 'Việc tự tạo cho chính mình',
+    order: 40,
+    active: true,
+    system: true,
+    createdAt: '',
+    updatedAt: ''
+  },
   { id: 'automatic', name: 'Việc tự động nhảy', order: 50, active: true, system: true, createdAt: '', updatedAt: '' }
 ];
 export const WORK_SCHEDULE_WORK_TYPE_LABELS: Record<WorkScheduleWorkType, string> = {
-  technical: 'Kỹ thuật', business: 'Kinh doanh', accounting: 'Kế toán', delivery: 'Vận chuyển',
-  purchasing: 'Mua hàng', production: 'Sản xuất', design: 'Thiết kế', other: 'Khác'
+  technical: 'Kỹ thuật',
+  business: 'Kinh doanh',
+  accounting: 'Kế toán',
+  delivery: 'Vận chuyển',
+  purchasing: 'Mua hàng',
+  production: 'Sản xuất',
+  design: 'Thiết kế',
+  other: 'Khác'
 };
 const WORK_TYPE_VALUES = Object.keys(WORK_SCHEDULE_WORK_TYPE_LABELS) as WorkScheduleWorkType[];
 
-const STATUS_VALUES: WorkScheduleStatus[] = ['not_started', 'in_progress', 'waiting_customer', 'support_requested', 'awaiting_confirmation', 'paused', 'cannot_process', 'completed', 'cancelled'];
+const STATUS_VALUES: WorkScheduleStatus[] = [
+  'not_started',
+  'in_progress',
+  'waiting_customer',
+  'support_requested',
+  'awaiting_confirmation',
+  'paused',
+  'cannot_process',
+  'completed',
+  'cancelled'
+];
 const REFERENCE_VALUES: WorkScheduleReferenceType[] = [
-  'none', 'lead_candidate', 'customer', 'lead', 'po', 'design_request', 'production_order', 'delivery', 'other'
+  'none',
+  'lead_candidate',
+  'customer',
+  'lead',
+  'po',
+  'design_request',
+  'production_order',
+  'delivery',
+  'other'
 ];
 const PRIORITY_VALUES: WorkSchedulePriority[] = ['normal', 'high', 'urgent'];
 const TASK_TYPE_VALUES: WorkScheduleTaskType[] = ['assigned_task', 'support_request', 'personal_task'];
@@ -96,21 +154,20 @@ const asNumber = (value: unknown, fallback = 0): number => {
   return Number.isFinite(parsed) ? Math.min(100, Math.max(0, parsed)) : fallback;
 };
 
-const asStatus = (value: unknown): WorkScheduleStatus => (
+const asStatus = (value: unknown): WorkScheduleStatus =>
   value === 'paused'
     ? 'in_progress'
-    : value === 'cancelled' ? 'cannot_process'
-    : STATUS_VALUES.includes(value as WorkScheduleStatus) ? value as WorkScheduleStatus : 'not_started'
-);
+    : value === 'cancelled'
+      ? 'cannot_process'
+      : STATUS_VALUES.includes(value as WorkScheduleStatus)
+        ? (value as WorkScheduleStatus)
+        : 'not_started';
 
-const asReferenceType = (value: unknown): WorkScheduleReferenceType => (
-  REFERENCE_VALUES.includes(value as WorkScheduleReferenceType)
-    ? value as WorkScheduleReferenceType
-    : 'none'
-);
+const asReferenceType = (value: unknown): WorkScheduleReferenceType =>
+  REFERENCE_VALUES.includes(value as WorkScheduleReferenceType) ? (value as WorkScheduleReferenceType) : 'none';
 
 export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord => {
-  const source = typeof value === 'object' && value !== null ? value as Record<string, unknown> : {};
+  const source = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
   const completedAt = asText(source.completedAt);
   const deletedAt = asText(source.deletedAt);
   return {
@@ -136,12 +193,16 @@ export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord 
     cannotProcessAt: asText(source.cannotProcessAt),
     cannotProcessById: asText(source.cannotProcessById),
     cannotProcessByName: asText(source.cannotProcessByName),
-    priority: PRIORITY_VALUES.includes(source.priority as WorkSchedulePriority) ? source.priority as WorkSchedulePriority : 'normal',
-    taskType: TASK_TYPE_VALUES.includes(source.taskType as WorkScheduleTaskType) ? source.taskType as WorkScheduleTaskType : 'assigned_task',
+    priority: PRIORITY_VALUES.includes(source.priority as WorkSchedulePriority)
+      ? (source.priority as WorkSchedulePriority)
+      : 'normal',
+    taskType: TASK_TYPE_VALUES.includes(source.taskType as WorkScheduleTaskType)
+      ? (source.taskType as WorkScheduleTaskType)
+      : 'assigned_task',
     groupId: asText(source.groupId),
     groupName: asText(source.groupName),
     workType: WORK_TYPE_VALUES.includes(source.workType as WorkScheduleWorkType)
-      ? source.workType as WorkScheduleWorkType
+      ? (source.workType as WorkScheduleWorkType)
       : inferLegacyWorkType(source),
     requestedById: asText(source.requestedById),
     requestedByName: asText(source.requestedByName),
@@ -154,7 +215,7 @@ export const normalizeWorkScheduleRecord = (value: unknown): WorkScheduleRecord 
 };
 
 export const normalizeWorkScheduleGroup = (value: unknown): WorkScheduleGroupRecord => {
-  const source = typeof value === 'object' && value !== null ? value as Record<string, unknown> : {};
+  const source = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
   return {
     id: asText(source.id),
     name: asText(source.name),
@@ -169,18 +230,32 @@ export const normalizeWorkScheduleGroup = (value: unknown): WorkScheduleGroupRec
 export const mergeWorkScheduleGroups = (values: unknown): WorkScheduleGroupRecord[] => {
   const stored = Array.isArray(values) ? values.map(normalizeWorkScheduleGroup).filter(group => group.id) : [];
   const storedById = new Map(stored.map(group => [group.id, group]));
-  return DEFAULT_WORK_SCHEDULE_GROUPS.map(group => ({ ...group, ...(storedById.get(group.id) || {}), name: group.name, active: true, system: true }));
+  return DEFAULT_WORK_SCHEDULE_GROUPS.map(group => ({
+    ...group,
+    ...(storedById.get(group.id) || {}),
+    name: group.name,
+    active: true,
+    system: true
+  }));
 };
 
 const inferLegacyWorkType = (source: Record<string, unknown>): WorkScheduleWorkType => {
-  const value = `${asText(source.groupId)} ${asText(source.department)} ${asText(source.referenceType)}`.toLocaleLowerCase('vi-VN');
+  const value =
+    `${asText(source.groupId)} ${asText(source.department)} ${asText(source.referenceType)}`.toLocaleLowerCase('vi-VN');
   if (value.includes('kế toán') || value.includes('accountant')) return 'accounting';
   if (value.includes('giao hàng') || value.includes('vận chuyển') || value.includes('delivery')) return 'delivery';
   if (value.includes('mua hàng') || value.includes('logistic') || value.includes('purchaser')) return 'purchasing';
   if (value.includes('sản xuất') || value.includes('xưởng') || value.includes('producer')) return 'production';
   if (value.includes('thiết kế') || value.includes('designer')) return 'design';
   if (value.includes('kỹ thuật') || value.includes('technical')) return 'technical';
-  if (value.includes('kinh doanh') || value.includes('business') || value.includes('sale') || value.includes('lead') || value.includes('customer')) return 'business';
+  if (
+    value.includes('kinh doanh') ||
+    value.includes('business') ||
+    value.includes('sale') ||
+    value.includes('lead') ||
+    value.includes('customer')
+  )
+    return 'business';
   return 'other';
 };
 
@@ -192,11 +267,18 @@ export const getWorkScheduleDisplayStatus = (status: WorkScheduleStatus): WorkSc
 };
 
 export const compareWorkScheduleItems = (left: WorkScheduleRecord, right: WorkScheduleRecord): number => {
-  const statusRank: Record<WorkScheduleDisplayStatus, number> = { in_progress: 0, not_started: 1, cannot_process: 2, completed: 3 };
+  const statusRank: Record<WorkScheduleDisplayStatus, number> = {
+    in_progress: 0,
+    not_started: 1,
+    cannot_process: 2,
+    completed: 3
+  };
   const priorityRank: Record<WorkSchedulePriority, number> = { urgent: 0, high: 1, normal: 2 };
-  return statusRank[getWorkScheduleDisplayStatus(left.status)] - statusRank[getWorkScheduleDisplayStatus(right.status)]
-    || priorityRank[left.priority] - priorityRank[right.priority]
-    || left.endAt.localeCompare(right.endAt);
+  return (
+    statusRank[getWorkScheduleDisplayStatus(left.status)] - statusRank[getWorkScheduleDisplayStatus(right.status)] ||
+    priorityRank[left.priority] - priorityRank[right.priority] ||
+    left.endAt.localeCompare(right.endAt)
+  );
 };
 
 export const inferWorkScheduleGroupId = (item: Partial<WorkScheduleRecord>): string => {
@@ -209,13 +291,11 @@ export const inferWorkScheduleGroupId = (item: Partial<WorkScheduleRecord>): str
   return 'self';
 };
 
-export const normalizeWorkScheduleRecords = (values: unknown): WorkScheduleRecord[] => (
-  Array.isArray(values) ? values.map(normalizeWorkScheduleRecord) : []
-);
+export const normalizeWorkScheduleRecords = (values: unknown): WorkScheduleRecord[] =>
+  Array.isArray(values) ? values.map(normalizeWorkScheduleRecord) : [];
 
-export const canPermanentlyDeleteWorkSchedule = (role: string, status: WorkScheduleStatus): boolean => (
-  role === 'admin' && status === 'completed'
-);
+export const canPermanentlyDeleteWorkSchedule = (role: string, status: WorkScheduleStatus): boolean =>
+  role === 'admin' && status === 'completed';
 
 export const WORK_SCHEDULE_STATUS_LABELS: Record<WorkScheduleStatus, string> = {
   not_started: 'Chưa xử lí',

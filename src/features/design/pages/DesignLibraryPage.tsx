@@ -20,10 +20,15 @@ export const DesignLibrary: React.FC<DesignLibraryProps> = ({ pos, currentUser }
   useEffect(() => dbService.subscribeCollection('designs', data => setDesigns(data as DesignRecord[])), []);
 
   const approvedCount = designs.filter(design => design.status === 'approved').length;
-  const versionCount = designs.reduce((total, design) => total + (design.versions?.length || (design.fileUrl ? 1 : 0)), 0);
-  const sourceFileCount = designs.reduce((total, design) => total + (design.versions || []).filter((version: DesignVersion) => (
-    version.aiLink || version.corelLink
-  )).length, 0);
+  const versionCount = designs.reduce(
+    (total, design) => total + (design.versions?.length || (design.fileUrl ? 1 : 0)),
+    0
+  );
+  const sourceFileCount = designs.reduce(
+    (total, design) =>
+      total + (design.versions || []).filter((version: DesignVersion) => version.aiLink || version.corelLink).length,
+    0
+  );
 
   return (
     <div className="design-library-view">
@@ -32,15 +37,24 @@ export const DesignLibrary: React.FC<DesignLibraryProps> = ({ pos, currentUser }
       <div className="design-library-metrics">
         <div className="design-metric-card">
           <CheckCircle2 size={20} />
-          <div><strong>{approvedCount}</strong><span>{t('Mẫu đã được khách hàng duyệt')}</span></div>
+          <div>
+            <strong>{approvedCount}</strong>
+            <span>{t('Mẫu đã được khách hàng duyệt')}</span>
+          </div>
         </div>
         <div className="design-metric-card">
           <Archive size={20} />
-          <div><strong>{versionCount}</strong><span>{t('Phiên bản đang được lưu trữ')}</span></div>
+          <div>
+            <strong>{versionCount}</strong>
+            <span>{t('Phiên bản đang được lưu trữ')}</span>
+          </div>
         </div>
         <div className="design-metric-card">
           <FolderOpen size={20} />
-          <div><strong>{sourceFileCount}</strong><span>{t('Phiên bản có file thiết kế gốc')}</span></div>
+          <div>
+            <strong>{sourceFileCount}</strong>
+            <span>{t('Phiên bản có file thiết kế gốc')}</span>
+          </div>
         </div>
       </div>
 

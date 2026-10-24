@@ -36,21 +36,19 @@ interface MutableMaterialUsage {
   lastPoCode: string;
 }
 
-const asRecord = (value: unknown): UnknownRecord => (
-  value && typeof value === 'object' && !Array.isArray(value) ? value as UnknownRecord : {}
-);
+const asRecord = (value: unknown): UnknownRecord =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {};
 
-const asText = (value: unknown): string => (
-  typeof value === 'string' ? value.trim() : ''
-);
+const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
-const normalizeMaterialKey = (value: string): string => value
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '')
-  .toLocaleLowerCase('vi-VN')
-  .replace(/đ/g, 'd')
-  .replace(/\s+/g, ' ')
-  .trim();
+const normalizeMaterialKey = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('vi-VN')
+    .replace(/đ/g, 'd')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const getOrderTimestamp = (value: string): number => {
   const timestamp = Date.parse(value);
@@ -60,16 +58,12 @@ const getOrderTimestamp = (value: string): number => {
 const getSampleKey = (item: UnknownRecord): string => {
   const productCode = asText(item.productCode);
   if (productCode) return `code:${normalizeMaterialKey(productCode)}`;
-  return `sample:${normalizeMaterialKey([
-    asText(item.productName),
-    asText(item.size),
-    asText(item.material)
-  ].filter(Boolean).join('|'))}`;
+  return `sample:${normalizeMaterialKey(
+    [asText(item.productName), asText(item.size), asText(item.material)].filter(Boolean).join('|')
+  )}`;
 };
 
-export const buildCustomerMaterialHistory = (
-  orders: unknown[]
-): Record<string, CustomerMaterialUsage[]> => {
+export const buildCustomerMaterialHistory = (orders: unknown[]): Record<string, CustomerMaterialUsage[]> => {
   const historyByCustomer = new Map<string, Map<string, MutableMaterialUsage>>();
 
   orders.forEach((orderValue, orderIndex) => {
@@ -89,9 +83,7 @@ export const buildCustomerMaterialHistory = (
     items.forEach(itemValue => {
       const item = asRecord(itemValue);
       const itemSpecifications = asRecord(item.specifications);
-      const materialName = asText(item.material)
-        || asText(item.materialName)
-        || asText(itemSpecifications.material);
+      const materialName = asText(item.material) || asText(item.materialName) || asText(itemSpecifications.material);
       const key = normalizeMaterialKey(materialName);
       if (!key) return;
 
@@ -127,10 +119,11 @@ export const buildCustomerMaterialHistory = (
     Array.from(historyByCustomer.entries()).map(([customerId, materials]) => [
       customerId,
       Array.from(materials.values())
-        .sort((left, right) => (
-          right.lastUsedTimestamp - left.lastUsedTimestamp
-          || left.materialName.localeCompare(right.materialName, 'vi-VN')
-        ))
+        .sort(
+          (left, right) =>
+            right.lastUsedTimestamp - left.lastUsedTimestamp ||
+            left.materialName.localeCompare(right.materialName, 'vi-VN')
+        )
         .map(material => ({
           key: material.key,
           materialName: material.materialName,
@@ -144,13 +137,17 @@ export const buildCustomerMaterialHistory = (
   );
 };
 
-export const buildCustomerOrderedSampleHistory = (
-  orders: unknown[]
-): Record<string, CustomerOrderedSample[]> => {
-  const samplesByCustomer = new Map<string, Map<string, CustomerOrderedSample & {
-    orderIds: Set<string>;
-    lastOrderedTimestamp: number;
-  }>>();
+export const buildCustomerOrderedSampleHistory = (orders: unknown[]): Record<string, CustomerOrderedSample[]> => {
+  const samplesByCustomer = new Map<
+    string,
+    Map<
+      string,
+      CustomerOrderedSample & {
+        orderIds: Set<string>;
+        lastOrderedTimestamp: number;
+      }
+    >
+  >();
 
   orders.forEach((orderValue, orderIndex) => {
     const order = asRecord(orderValue);
@@ -217,10 +214,11 @@ export const buildCustomerOrderedSampleHistory = (
     Array.from(samplesByCustomer.entries()).map(([customerId, samples]) => [
       customerId,
       Array.from(samples.values())
-        .sort((left, right) => (
-          right.lastOrderedTimestamp - left.lastOrderedTimestamp
-          || left.productName.localeCompare(right.productName, 'vi-VN')
-        ))
+        .sort(
+          (left, right) =>
+            right.lastOrderedTimestamp - left.lastOrderedTimestamp ||
+            left.productName.localeCompare(right.productName, 'vi-VN')
+        )
         .map(({ orderIds: _orderIds, lastOrderedTimestamp: _lastOrderedTimestamp, ...sample }) => sample)
     ])
   );

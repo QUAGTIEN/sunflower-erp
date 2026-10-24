@@ -1,7 +1,8 @@
 import type { CustomerRecord, LeadRecord } from './crmModels';
 import type { LeadCandidateRecord } from './leadCandidateModels';
 
-export type CallResult = 'pending' | 'discussed' | 'no_answer' | 'busy' | 'callback' | 'wrong_number' | 'not_interested';
+export type CallResult =
+  'pending' | 'discussed' | 'no_answer' | 'busy' | 'callback' | 'wrong_number' | 'not_interested';
 export type CallSource = 'dial' | 'manual';
 
 export interface PhoneCallRecord {

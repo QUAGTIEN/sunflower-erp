@@ -111,9 +111,8 @@ export const normalizeLeadCandidateScore = (value: unknown) => {
   return clampScore(Math.round(numeric / LEAD_CANDIDATE_SCORE_STEP) * LEAD_CANDIDATE_SCORE_STEP);
 };
 
-const asRecord = (value: unknown): Record<string, unknown> => (
-  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
-);
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 
 const normalizeRuleValue = (value: unknown, fallback: number, min: number, max: number) => {
   const numeric = Number(value);
@@ -126,14 +125,18 @@ export const normalizeLeadCandidateScoringRules = (value: unknown): LeadCandidat
   const pointSource = asRecord(source.points);
   const capSource = asRecord(source.groupCaps);
   return {
-    points: Object.fromEntries(Object.keys(LEAD_CANDIDATE_SCORE_POINTS).map(itemId => [
-      itemId,
-      normalizeRuleValue(pointSource[itemId], LEAD_CANDIDATE_SCORE_POINTS[itemId], -100, 100)
-    ])),
-    groupCaps: Object.fromEntries(Object.keys(LEAD_CANDIDATE_GROUP_CAPS).map(groupId => [
-      groupId,
-      normalizeRuleValue(capSource[groupId], LEAD_CANDIDATE_GROUP_CAPS[groupId], 0, 100)
-    ]))
+    points: Object.fromEntries(
+      Object.keys(LEAD_CANDIDATE_SCORE_POINTS).map(itemId => [
+        itemId,
+        normalizeRuleValue(pointSource[itemId], LEAD_CANDIDATE_SCORE_POINTS[itemId], -100, 100)
+      ])
+    ),
+    groupCaps: Object.fromEntries(
+      Object.keys(LEAD_CANDIDATE_GROUP_CAPS).map(groupId => [
+        groupId,
+        normalizeRuleValue(capSource[groupId], LEAD_CANDIDATE_GROUP_CAPS[groupId], 0, 100)
+      ])
+    )
   };
 };
 
@@ -175,11 +178,14 @@ export const LEAD_CANDIDATE_PRIORITY_LABELS: Record<LeadCandidatePriorityLevel, 
   low: 'Thấp'
 };
 
-export const getLeadCandidateEffectiveScore = (candidate: {
-  customerInsightValues?: string[];
-  scoringMode?: LeadCandidateScoringMode;
-  manualScore?: number;
-}, rules: LeadCandidateScoringRules = DEFAULT_LEAD_CANDIDATE_SCORING_RULES) => {
+export const getLeadCandidateEffectiveScore = (
+  candidate: {
+    customerInsightValues?: string[];
+    scoringMode?: LeadCandidateScoringMode;
+    manualScore?: number;
+  },
+  rules: LeadCandidateScoringRules = DEFAULT_LEAD_CANDIDATE_SCORING_RULES
+) => {
   const automatic = calculateLeadCandidateAutomaticScore(candidate.customerInsightValues || [], rules).automaticScore;
   return candidate.scoringMode === 'manual' ? normalizeLeadCandidateScore(candidate.manualScore) : automatic;
 };

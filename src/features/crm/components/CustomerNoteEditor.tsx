@@ -44,21 +44,57 @@ export function CustomerNoteEditor({ value, disabled = false, placeholder, onCha
   return (
     <div className={`customer-rich-note ${disabled ? 'is-disabled' : ''}`}>
       {!disabled && (
-        <div className="customer-rich-note__toolbar" aria-label="Công cụ định dạng ghi chú" onMouseDown={event => event.preventDefault()}>
-          <button type="button" title="Đậm" aria-label="Đậm" onClick={() => runCommand('bold')}><Bold size={15} /></button>
-          <button type="button" title="Nghiêng" aria-label="Nghiêng" onClick={() => runCommand('italic')}><Italic size={15} /></button>
-          <button type="button" title="Gạch chân" aria-label="Gạch chân" onClick={() => runCommand('underline')}><Underline size={15} /></button>
+        <div
+          className="customer-rich-note__toolbar"
+          aria-label="Công cụ định dạng ghi chú"
+          onMouseDown={event => event.preventDefault()}
+        >
+          <button type="button" title="Đậm" aria-label="Đậm" onClick={() => runCommand('bold')}>
+            <Bold size={15} />
+          </button>
+          <button type="button" title="Nghiêng" aria-label="Nghiêng" onClick={() => runCommand('italic')}>
+            <Italic size={15} />
+          </button>
+          <button type="button" title="Gạch chân" aria-label="Gạch chân" onClick={() => runCommand('underline')}>
+            <Underline size={15} />
+          </button>
           <span className="customer-rich-note__toolbar-divider" aria-hidden="true" />
-          <button type="button" title="Danh sách chấm" aria-label="Danh sách chấm" onClick={() => runCommand('insertUnorderedList')}><List size={15} /></button>
-          <button type="button" title="Danh sách số" aria-label="Danh sách số" onClick={() => runCommand('insertOrderedList')}><ListOrdered size={15} /></button>
+          <button
+            type="button"
+            title="Danh sách chấm"
+            aria-label="Danh sách chấm"
+            onClick={() => runCommand('insertUnorderedList')}
+          >
+            <List size={15} />
+          </button>
+          <button
+            type="button"
+            title="Danh sách số"
+            aria-label="Danh sách số"
+            onClick={() => runCommand('insertOrderedList')}
+          >
+            <ListOrdered size={15} />
+          </button>
           <span className="customer-rich-note__toolbar-divider" aria-hidden="true" />
-          <button type="button" title="Căn trái" aria-label="Căn trái" onClick={() => runCommand('justifyLeft')}><AlignLeft size={15} /></button>
-          <button type="button" title="Căn giữa" aria-label="Căn giữa" onClick={() => runCommand('justifyCenter')}><AlignCenter size={15} /></button>
-          <button type="button" title="Căn phải" aria-label="Căn phải" onClick={() => runCommand('justifyRight')}><AlignRight size={15} /></button>
+          <button type="button" title="Căn trái" aria-label="Căn trái" onClick={() => runCommand('justifyLeft')}>
+            <AlignLeft size={15} />
+          </button>
+          <button type="button" title="Căn giữa" aria-label="Căn giữa" onClick={() => runCommand('justifyCenter')}>
+            <AlignCenter size={15} />
+          </button>
+          <button type="button" title="Căn phải" aria-label="Căn phải" onClick={() => runCommand('justifyRight')}>
+            <AlignRight size={15} />
+          </button>
           <span className="customer-rich-note__toolbar-divider" aria-hidden="true" />
-          <button type="button" title="Thêm liên kết" aria-label="Thêm liên kết" onClick={addLink}><Link2 size={15} /></button>
-          <button type="button" title="Hoàn tác" aria-label="Hoàn tác" onClick={() => runCommand('undo')}><Undo2 size={15} /></button>
-          <button type="button" title="Làm lại" aria-label="Làm lại" onClick={() => runCommand('redo')}><Redo2 size={15} /></button>
+          <button type="button" title="Thêm liên kết" aria-label="Thêm liên kết" onClick={addLink}>
+            <Link2 size={15} />
+          </button>
+          <button type="button" title="Hoàn tác" aria-label="Hoàn tác" onClick={() => runCommand('undo')}>
+            <Undo2 size={15} />
+          </button>
+          <button type="button" title="Làm lại" aria-label="Làm lại" onClick={() => runCommand('redo')}>
+            <Redo2 size={15} />
+          </button>
         </div>
       )}
       <div

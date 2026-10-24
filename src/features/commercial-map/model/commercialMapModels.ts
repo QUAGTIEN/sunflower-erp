@@ -2,10 +2,7 @@ import { isActiveLeadRecord, type CustomerRecord, type LeadRecord } from '@/feat
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import type { CompatiblePORecord } from '@/domain/poCompatibility';
 import type { UserProfile } from '@/shared/types';
-import {
-  normalizeVietnameseLocationText,
-  resolveVietnamProvinceFromText
-} from '@/data/vietnamProvinceCatalog';
+import { normalizeVietnameseLocationText, resolveVietnamProvinceFromText } from '@/data/vietnamProvinceCatalog';
 
 export type CommercialMapLayer = 'all' | 'customers' | 'leads' | 'processing' | 'unassigned';
 export type CommercialMapRecordType = 'customer' | 'lead' | 'candidate';
@@ -49,31 +46,33 @@ export const normalizeVietnameseText = normalizeVietnameseLocationText;
 
 export const resolveCommercialProvince = (...values: Array<string | null | undefined>) => {
   const resolved = resolveVietnamProvinceFromText(...values);
-  return resolved
-    ? { id: resolved.id, name: resolved.label }
-    : { id: 'unknown', name: 'Chưa xác định' };
+  return resolved ? { id: resolved.id, name: resolved.label } : { id: 'unknown', name: 'Chưa xác định' };
 };
 
-const text = (value: unknown): string => typeof value === 'string' ? value : '';
-const isCandidateProcessing = (candidate: LeadCandidateRecord) => (
-  Boolean(candidate.assignedSaleId)
-  && !candidate.workQueueHidden
-  && candidate.taskStatus !== 'dismissed'
-);
+const text = (value: unknown): string => (typeof value === 'string' ? value : '');
+const isCandidateProcessing = (candidate: LeadCandidateRecord) =>
+  Boolean(candidate.assignedSaleId) && !candidate.workQueueHidden && candidate.taskStatus !== 'dismissed';
 
-const candidatePotentialLabel = (candidate: LeadCandidateRecord): string => ({
-  unrated: 'Chưa đánh giá',
-  not_fit: 'Không phù hợp',
-  low: 'Tiềm năng thấp',
-  potential: 'Có tiềm năng',
-  promising: 'Khả quan',
-  high: 'Tiềm năng cao'
-}[candidate.potentialLevel] || 'Chưa đánh giá');
+const candidatePotentialLabel = (candidate: LeadCandidateRecord): string =>
+  ({
+    unrated: 'Chưa đánh giá',
+    not_fit: 'Không phù hợp',
+    low: 'Tiềm năng thấp',
+    potential: 'Có tiềm năng',
+    promising: 'Khả quan',
+    high: 'Tiềm năng cao'
+  })[candidate.potentialLevel] || 'Chưa đánh giá';
 
-const leadStageLabel = (lead: LeadRecord): string => ({
-  new: 'Mới', contacted: 'Đã liên hệ', quoted: 'Đã báo giá', negotiating: 'Đang đàm phán',
-  won: 'Thành công', lost: 'Không thành công', converted: 'Đã chuyển khách hàng'
-}[lead.stage] || lead.stage);
+const leadStageLabel = (lead: LeadRecord): string =>
+  ({
+    new: 'Mới',
+    contacted: 'Đã liên hệ',
+    quoted: 'Đã báo giá',
+    negotiating: 'Đang đàm phán',
+    won: 'Thành công',
+    lost: 'Không thành công',
+    converted: 'Đã chuyển khách hàng'
+  })[lead.stage] || lead.stage;
 
 export const buildCommercialMapRecords = ({
   customers,
@@ -99,58 +98,65 @@ export const buildCommercialMapRecords = ({
   });
 
   const records: CommercialMapRecord[] = [];
-  customers.filter(customer => !customer.deleted).forEach(customer => {
-    const province = resolveCommercialProvince(text(customer.province), customer.address);
-    const orderSummary = customerOrderSummary.get(customer.id) || { revenue: 0, orderCount: 0 };
-    records.push({
-      key: `customer:${customer.id}`,
-      id: customer.id,
-      type: 'customer',
-      companyName: customer.companyName,
-      taxCode: customer.taxCode,
-      provinceId: province.id,
-      provinceName: province.name,
-      ward: customer.ward,
-      industrialPark: customer.industrialPark,
-      address: [customer.address, customer.industrialPark, customer.ward, customer.province].filter(Boolean).join(', '),
-      contactPerson: customer.contactPerson,
-      phone: customer.phone,
-      assignedSaleId: customer.assignedSaleId,
-      assignedSaleName: userNames.get(customer.assignedSaleId) || 'Chưa phân công',
-      statusLabel: orderSummary.orderCount > 0 ? 'Đang hợp tác' : 'Khách hàng hợp tác',
-      potentialLabel: customer.customerRank ? `Hạng ${customer.customerRank}` : 'Chưa xếp hạng',
-      lastActivityAt: customer.lastOrderAt || customer.updatedAt || customer.createdAt,
-      revenue: orderSummary.revenue,
-      orderCount: orderSummary.orderCount
+  customers
+    .filter(customer => !customer.deleted)
+    .forEach(customer => {
+      const province = resolveCommercialProvince(text(customer.province), customer.address);
+      const orderSummary = customerOrderSummary.get(customer.id) || { revenue: 0, orderCount: 0 };
+      records.push({
+        key: `customer:${customer.id}`,
+        id: customer.id,
+        type: 'customer',
+        companyName: customer.companyName,
+        taxCode: customer.taxCode,
+        provinceId: province.id,
+        provinceName: province.name,
+        ward: customer.ward,
+        industrialPark: customer.industrialPark,
+        address: [customer.address, customer.industrialPark, customer.ward, customer.province]
+          .filter(Boolean)
+          .join(', '),
+        contactPerson: customer.contactPerson,
+        phone: customer.phone,
+        assignedSaleId: customer.assignedSaleId,
+        assignedSaleName: userNames.get(customer.assignedSaleId) || 'Chưa phân công',
+        statusLabel: orderSummary.orderCount > 0 ? 'Đang hợp tác' : 'Khách hàng hợp tác',
+        potentialLabel: customer.customerRank ? `Hạng ${customer.customerRank}` : 'Chưa xếp hạng',
+        lastActivityAt: customer.lastOrderAt || customer.updatedAt || customer.createdAt,
+        revenue: orderSummary.revenue,
+        orderCount: orderSummary.orderCount
+      });
     });
-  });
 
-  leads.filter(lead => isActiveLeadRecord(lead) && lead.stage !== 'converted' && !lead.convertedCustomerId).forEach(lead => {
-    const province = resolveCommercialProvince(lead.province, lead.address);
-    records.push({
-      key: `lead:${lead.id}`,
-      id: lead.id,
-      type: 'lead',
-      companyName: lead.companyName,
-      taxCode: lead.taxCode,
-      provinceId: province.id,
-      provinceName: province.name,
-      ward: lead.ward,
-      industrialPark: lead.industrialPark,
-      address: [lead.address, lead.industrialPark, lead.ward, lead.province].filter(Boolean).join(', '),
-      contactPerson: lead.contactPerson,
-      phone: lead.phone,
-      assignedSaleId: lead.assignedSaleId,
-      assignedSaleName: lead.assignedSaleName || userNames.get(lead.assignedSaleId) || 'Chưa phân công',
-      statusLabel: leadStageLabel(lead),
-      potentialLabel: lead.potentialValue > 0 ? `${lead.potentialValue.toLocaleString('vi-VN')} đ` : 'Chưa đánh giá',
-      lastActivityAt: lead.updatedAt || lead.createdAt,
-      revenue: 0,
-      orderCount: 0
+  leads
+    .filter(lead => isActiveLeadRecord(lead) && lead.stage !== 'converted' && !lead.convertedCustomerId)
+    .forEach(lead => {
+      const province = resolveCommercialProvince(lead.province, lead.address);
+      records.push({
+        key: `lead:${lead.id}`,
+        id: lead.id,
+        type: 'lead',
+        companyName: lead.companyName,
+        taxCode: lead.taxCode,
+        provinceId: province.id,
+        provinceName: province.name,
+        ward: lead.ward,
+        industrialPark: lead.industrialPark,
+        address: [lead.address, lead.industrialPark, lead.ward, lead.province].filter(Boolean).join(', '),
+        contactPerson: lead.contactPerson,
+        phone: lead.phone,
+        assignedSaleId: lead.assignedSaleId,
+        assignedSaleName: lead.assignedSaleName || userNames.get(lead.assignedSaleId) || 'Chưa phân công',
+        statusLabel: leadStageLabel(lead),
+        potentialLabel: lead.potentialValue > 0 ? `${lead.potentialValue.toLocaleString('vi-VN')} đ` : 'Chưa đánh giá',
+        lastActivityAt: lead.updatedAt || lead.createdAt,
+        revenue: 0,
+        orderCount: 0
+      });
     });
-  });
 
-  candidates.filter(candidate => !candidate.archived && candidate.status !== 'converted' && !candidate.convertedLeadId)
+  candidates
+    .filter(candidate => !candidate.archived && candidate.status !== 'converted' && !candidate.convertedLeadId)
     .forEach(candidate => {
       const province = resolveCommercialProvince(candidate.province, candidate.address);
       records.push({
@@ -163,12 +169,18 @@ export const buildCommercialMapRecords = ({
         provinceName: province.name,
         ward: candidate.ward,
         industrialPark: candidate.industrialPark,
-        address: [candidate.address, candidate.industrialPark, candidate.ward, candidate.province].filter(Boolean).join(', '),
+        address: [candidate.address, candidate.industrialPark, candidate.ward, candidate.province]
+          .filter(Boolean)
+          .join(', '),
         contactPerson: candidate.contactPerson,
         phone: candidate.phone,
         assignedSaleId: candidate.assignedSaleId,
         assignedSaleName: candidate.assignedSaleName || userNames.get(candidate.assignedSaleId) || 'Chưa phân công',
-        statusLabel: isCandidateProcessing(candidate) ? 'Đang được Sale xử lý' : candidate.assignedSaleId ? 'Đã phân công' : 'Chưa phân công',
+        statusLabel: isCandidateProcessing(candidate)
+          ? 'Đang được Sale xử lý'
+          : candidate.assignedSaleId
+            ? 'Đã phân công'
+            : 'Chưa phân công',
         potentialLabel: candidatePotentialLabel(candidate),
         lastActivityAt: candidate.updatedAt || candidate.lastContactAt || candidate.createdAt,
         revenue: 0,
@@ -182,13 +194,14 @@ export const buildCommercialMapRecords = ({
 export const filterCommercialMapRecords = (
   records: CommercialMapRecord[],
   layer: CommercialMapLayer
-): CommercialMapRecord[] => records.filter(record => {
-  if (layer === 'all') return true;
-  if (layer === 'customers') return record.type === 'customer';
-  if (layer === 'leads') return record.type === 'lead';
-  if (layer === 'processing') return record.type === 'candidate' && record.statusLabel === 'Đang được Sale xử lý';
-  return !record.assignedSaleId;
-});
+): CommercialMapRecord[] =>
+  records.filter(record => {
+    if (layer === 'all') return true;
+    if (layer === 'customers') return record.type === 'customer';
+    if (layer === 'leads') return record.type === 'lead';
+    if (layer === 'processing') return record.type === 'candidate' && record.statusLabel === 'Đang được Sale xử lý';
+    return !record.assignedSaleId;
+  });
 
 export const summarizeCommercialProvinces = (records: CommercialMapRecord[]): CommercialProvinceSummary[] => {
   const summaries = new Map<string, CommercialProvinceSummary>();
@@ -215,5 +228,7 @@ export const summarizeCommercialProvinces = (records: CommercialMapRecord[]): Co
     current.orderCount += record.orderCount;
     summaries.set(record.provinceId, current);
   });
-  return Array.from(summaries.values()).sort((left, right) => right.total - left.total || left.provinceName.localeCompare(right.provinceName, 'vi'));
+  return Array.from(summaries.values()).sort(
+    (left, right) => right.total - left.total || left.provinceName.localeCompare(right.provinceName, 'vi')
+  );
 };
