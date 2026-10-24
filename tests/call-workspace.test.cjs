@@ -10,12 +10,23 @@ const model = {};
 new Function('exports', outputText)(model);
 
 test('call draft keys remain separate for each Sale, record and phone', () => {
-  assert.notEqual(model.callDraftStorageKey('sale-a', 'customer:1', '0901'), model.callDraftStorageKey('sale-b', 'customer:1', '0901'));
-  assert.notEqual(model.callDraftStorageKey('sale-a', 'customer:1', '0901'), model.callDraftStorageKey('sale-a', 'customer:1', '0902'));
+  assert.notEqual(
+    model.callDraftStorageKey('sale-a', 'customer:1', '0901'),
+    model.callDraftStorageKey('sale-b', 'customer:1', '0901')
+  );
+  assert.notEqual(
+    model.callDraftStorageKey('sale-a', 'customer:1', '0901'),
+    model.callDraftStorageKey('sale-a', 'customer:1', '0902')
+  );
 });
 
 test('wrap-up requires result and a dated next action only when selected', () => {
-  const draft = { ...model.EMPTY_CALL_DRAFT, need: 'Tem nhãn cuộn', followUpAt: '2026-10-01T09:00', followUpNote: 'Hỏi kết quả mẫu' };
+  const draft = {
+    ...model.EMPTY_CALL_DRAFT,
+    need: 'Tem nhãn cuộn',
+    followUpAt: '2026-10-01T09:00',
+    followUpNote: 'Hỏi kết quả mẫu'
+  };
   const now = new Date('2026-09-22T00:00:00').getTime();
   assert.match(model.validateCallWrap('', draft, now), /chọn kết quả/);
   assert.equal(model.validateCallWrap('discussed', draft, now), '');

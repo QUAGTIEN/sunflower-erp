@@ -5,7 +5,9 @@ const path = require('node:path');
 const ts = require('typescript');
 
 const source = fs.readFileSync(path.join(__dirname, '../src/shared/feedback/mutationFeedback.ts'), 'utf8');
-const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+const code = ts.transpileModule(source, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+}).outputText;
 
 function setup() {
   let now = 0;
@@ -16,21 +18,50 @@ function setup() {
     disabled = false;
     dataset = {};
     attributes = new Map();
-    getAttribute(key) { return this.attributes.get(key) ?? null; }
-    setAttribute(key, value) { this.attributes.set(key, value); }
-    removeAttribute(key) { this.attributes.delete(key); }
+    getAttribute(key) {
+      return this.attributes.get(key) ?? null;
+    }
+    setAttribute(key, value) {
+      this.attributes.set(key, value);
+    }
+    removeAttribute(key) {
+      this.attributes.delete(key);
+    }
   }
   class Form extends Element {}
   const document = { activeElement: null };
   const loaded = { exports: {} };
-  new Function('module', 'exports', 'setTimeout', 'clearTimeout', 'document', 'HTMLButtonElement', 'HTMLFormElement', 'Element', code)(
-    loaded, loaded.exports,
-    (callback, delay) => { const id = ++nextId; timers.set(id, { callback, due: now + delay }); return id; },
-    id => timers.delete(id), document, Button, Form, Element
+  new Function(
+    'module',
+    'exports',
+    'setTimeout',
+    'clearTimeout',
+    'document',
+    'HTMLButtonElement',
+    'HTMLFormElement',
+    'Element',
+    code
+  )(
+    loaded,
+    loaded.exports,
+    (callback, delay) => {
+      const id = ++nextId;
+      timers.set(id, { callback, due: now + delay });
+      return id;
+    },
+    id => timers.delete(id),
+    document,
+    Button,
+    Form,
+    Element
   );
   const advance = ms => {
     now += ms;
-    for (const [id, timer] of [...timers]) if (timer.due <= now) { timers.delete(id); timer.callback(); }
+    for (const [id, timer] of [...timers])
+      if (timer.due <= now) {
+        timers.delete(id);
+        timer.callback();
+      }
   };
   return { ...loaded.exports, advance, document, Button, Form, Element };
 }
@@ -79,7 +110,9 @@ test('feedback supports contextual descriptions without claiming permanent delet
 test('manual dismissal cancels the timer and subscribers can unsubscribe', () => {
   const store = setup();
   let changes = 0;
-  const unsubscribe = store.subscribeToToast(() => { changes++; });
+  const unsubscribe = store.subscribeToToast(() => {
+    changes++;
+  });
   store.showSuccessToast();
   store.dismissToast();
   store.advance(3000);
@@ -98,7 +131,9 @@ test('a cancelled or unchanged action does not announce a successful save', asyn
 test('a failed save keeps the rejection and only shows failure feedback', async () => {
   const store = setup();
   const error = new Error('permission-denied');
-  const save = store.withMutationFeedback('save', async () => { throw error; });
+  const save = store.withMutationFeedback('save', async () => {
+    throw error;
+  });
   await assert.rejects(save, candidate => candidate === error);
   assert.equal(store.getToastSnapshot().tone, 'error');
 });
@@ -119,7 +154,9 @@ test('save feedback waits for completion and duplicate submissions are blocked',
   const button = new store.Button();
   store.document.activeElement = button;
   let finish;
-  const pending = new Promise(resolve => { finish = resolve; });
+  const pending = new Promise(resolve => {
+    finish = resolve;
+  });
   let calls = 0;
   const save = store.withMutationFeedback('save', async () => {
     calls++;
@@ -157,7 +194,9 @@ test('nested saves leave the outer action button locked until the entire operati
 test('keyboard submissions are guarded even when no button has focus', async () => {
   const store = setup();
   let finish;
-  const pending = new Promise(resolve => { finish = resolve; });
+  const pending = new Promise(resolve => {
+    finish = resolve;
+  });
   let calls = 0;
   const save = store.withMutationFeedback('keyboard-save', async () => {
     calls++;
@@ -178,7 +217,9 @@ test('the clicked save button stays busy even when focus is elsewhere', async ()
   const unrelatedButton = new store.Button();
   store.document.activeElement = unrelatedButton;
   let finish;
-  const pending = new Promise(resolve => { finish = resolve; });
+  const pending = new Promise(resolve => {
+    finish = resolve;
+  });
   const save = store.withMutationFeedback('clicked-save', async () => pending);
   const saving = save({ currentTarget: button });
   assert.equal(button.disabled, true);
@@ -194,7 +235,9 @@ test('the clicked save button stays busy even when focus is elsewhere', async ()
 test('a rejected save releases its button so the user can retry', async () => {
   const store = setup();
   const button = new store.Button();
-  const save = store.withMutationFeedback('retry-save', async () => { throw new Error('offline'); });
+  const save = store.withMutationFeedback('retry-save', async () => {
+    throw new Error('offline');
+  });
   await assert.rejects(save({ currentTarget: button }));
   assert.equal(button.disabled, false);
   assert.equal(button.dataset.mutationPending, undefined);
@@ -207,7 +250,13 @@ test('automatic field updates are not dropped or allowed to lock an unrelated bu
   const button = new store.Button();
   store.document.activeElement = button;
   let calls = 0;
-  const update = store.withMutationFeedback('field', async () => { calls++; }, { busy: false });
+  const update = store.withMutationFeedback(
+    'field',
+    async () => {
+      calls++;
+    },
+    { busy: false }
+  );
   await Promise.all([update(), update()]);
   assert.equal(calls, 2);
   assert.equal(button.disabled, false);

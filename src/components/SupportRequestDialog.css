@@ -70,7 +70,9 @@
   cursor: pointer;
 }
 
-.support-request-dialog header > button:hover { background: #f1f5f9; }
+.support-request-dialog header > button:hover {
+  background: #f1f5f9;
+}
 
 .support-request-dialog__body {
   display: grid;
@@ -108,7 +110,9 @@
 }
 
 .support-request-dialog__body input,
-.support-request-dialog__body select { min-height: 38px; }
+.support-request-dialog__body select {
+  min-height: 38px;
+}
 
 .support-request-dialog__body textarea:focus {
   border-color: #6687c7;
@@ -133,8 +137,16 @@
   text-align: center;
 }
 
-.support-request-dialog__sent strong { color: #172554; font-size: 14px; }
-.support-request-dialog__sent span { max-width: 390px; color: #64748b; font-size: 12px; line-height: 1.5; }
+.support-request-dialog__sent strong {
+  color: #172554;
+  font-size: 14px;
+}
+.support-request-dialog__sent span {
+  max-width: 390px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
 
 .support-request-dialog footer {
   justify-content: flex-end;

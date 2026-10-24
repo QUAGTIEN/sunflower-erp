@@ -127,7 +127,7 @@
   color: #3157c8;
   font-size: 10.5px;
   font-weight: 750;
-  letter-spacing: .08em;
+  letter-spacing: 0.08em;
 }
 
 .data-filter-panel > header h2 {
@@ -230,7 +230,7 @@
 .data-filter-section__heading > svg {
   flex: 0 0 auto;
   color: #64748b;
-  transition: transform .15s ease;
+  transition: transform 0.15s ease;
 }
 
 .data-filter-section.is-expanded .data-filter-section__heading > svg {
@@ -401,10 +401,31 @@
   }
 }
 
-.data-filter-button--text { width: auto; min-width: 76px; flex: 0 0 auto; padding: 0 12px; }
-.data-filter-panel--text > header > button { width: auto; min-width: 48px; padding: 0 8px; }
-.data-filter-panel--text svg { display: none; }
-.data-filter-chips--text button { border: 0; border-radius: 0; background: transparent; padding: 0 4px; color: #334155; }
+.data-filter-button--text {
+  width: auto;
+  min-width: 76px;
+  flex: 0 0 auto;
+  padding: 0 12px;
+}
+.data-filter-panel--text > header > button {
+  width: auto;
+  min-width: 48px;
+  padding: 0 8px;
+}
+.data-filter-panel--text svg {
+  display: none;
+}
+.data-filter-chips--text button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 4px;
+  color: #334155;
+}
 
-
-.data-filter-panel--text .data-filter-section__count { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.data-filter-panel--text .data-filter-section__count {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}

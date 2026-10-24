@@ -18,14 +18,23 @@ test('call history follows a customer from raw data through lead and order', () 
   assert.deepEqual(callModule.leadCallHistoryKeys(lead), ['lead:lead-1', 'candidate:raw-1']);
   assert.equal(callModule.customerCallSubjectKey(customer), 'customer:customer-1');
   assert.deepEqual(callModule.customerCallHistoryKeys(customer, []), ['customer:customer-1', 'lead:lead-1']);
-  assert.deepEqual(callModule.customerCallHistoryKeys(customer, [lead]), ['customer:customer-1', 'lead:lead-1', 'candidate:raw-1']);
+  assert.deepEqual(callModule.customerCallHistoryKeys(customer, [lead]), [
+    'customer:customer-1',
+    'lead:lead-1',
+    'candidate:raw-1'
+  ]);
 });
 
 test('standalone customers and leads do not share another business history', () => {
   const lead = { id: 'lead-2', sourceCandidateId: '' };
   assert.equal(callModule.leadCallSubjectKey(lead), 'lead:lead-2');
-  assert.deepEqual(callModule.customerCallHistoryKeys({ id: 'customer-2', sourceLeadId: lead.id }, [lead]), ['customer:customer-2', 'lead:lead-2']);
-  assert.deepEqual(callModule.customerCallHistoryKeys({ id: 'customer-3', sourceLeadId: '' }, [lead]), ['customer:customer-3']);
+  assert.deepEqual(callModule.customerCallHistoryKeys({ id: 'customer-2', sourceLeadId: lead.id }, [lead]), [
+    'customer:customer-2',
+    'lead:lead-2'
+  ]);
+  assert.deepEqual(callModule.customerCallHistoryKeys({ id: 'customer-3', sourceLeadId: '' }, [lead]), [
+    'customer:customer-3'
+  ]);
 });
 
 test('manual call time must be valid and cannot be in the future', () => {

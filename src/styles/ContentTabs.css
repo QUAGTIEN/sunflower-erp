@@ -67,7 +67,9 @@
   content: '';
   opacity: 0;
   transform: scaleX(0.45);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
 }
 
 .content-tabs.content-tabs > button:hover {

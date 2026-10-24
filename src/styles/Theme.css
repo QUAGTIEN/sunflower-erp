@@ -13,7 +13,10 @@
   color: var(--color-text-muted);
   background: transparent;
   cursor: pointer;
-  transition: color var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
 .theme-toggle-btn:hover {
@@ -112,7 +115,7 @@ html[data-theme='dark'] .sidebar-logo {
 }
 
 html[data-theme='dark'] .sidebar-logo-image {
-  filter: brightness(1.65) saturate(.9);
+  filter: brightness(1.65) saturate(0.9);
 }
 
 html[data-theme='dark'] .sidebar-item {
@@ -300,7 +303,11 @@ html[data-theme='dark'] table th {
 
 html[data-theme='dark'] table td,
 html[data-theme='dark'] .crm-customer-table.is-compact tbody tr:nth-child(even):not(.crm-material-history-row) > td,
-html[data-theme='dark'] .lead-candidate-table.is-compact tbody tr:nth-child(even):not(.is-selected):not(.is-overdue) > td {
+html[data-theme='dark']
+  .lead-candidate-table.is-compact
+  tbody
+  tr:nth-child(even):not(.is-selected):not(.is-overdue)
+  > td {
   color: var(--color-text-main);
   background: var(--bg-card) !important;
   border-color: var(--color-border-light) !important;

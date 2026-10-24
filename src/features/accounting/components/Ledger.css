@@ -1,19 +1,62 @@
-.ledger-workspace { display: flex; flex-direction: column; min-width: 0; gap: var(--erp-page-gap); }
-.ledger-workspace .ledger-number, .ledger-dialog .ledger-number { text-align: right; font-variant-numeric: tabular-nums; }
-.ledger-total { margin: 0; text-align: right; font-weight: 600; }
-.ledger-entry-table { min-width: 1440px !important; }
-.ledger-entry-table th:first-child { width: 240px; }
-.ledger-entry-table th:nth-child(2) { width: 240px; }
-.ledger-workspace .ledger-list { min-width: 1400px; }
-.ledger-workspace .ledger-list th:first-child { width: 220px; }
-.ledger-workspace .ledger-list th:nth-child(2) { width: 240px; }
-.ledger-workspace .ledger-list th:last-child { width: 88px; }
+.ledger-workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--erp-page-gap);
+}
+.ledger-workspace .ledger-number,
+.ledger-dialog .ledger-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ledger-total {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+}
+.ledger-entry-table {
+  min-width: 1440px !important;
+}
+.ledger-entry-table th:first-child {
+  width: 240px;
+}
+.ledger-entry-table th:nth-child(2) {
+  width: 240px;
+}
+.ledger-workspace .ledger-list {
+  min-width: 1400px;
+}
+.ledger-workspace .ledger-list th:first-child {
+  width: 220px;
+}
+.ledger-workspace .ledger-list th:nth-child(2) {
+  width: 240px;
+}
+.ledger-workspace .ledger-list th:last-child {
+  width: 88px;
+}
 
-.ledger-report-table { min-width: 1800px; }
-.ledger-report-table th:first-child { width: 240px; }
-.ledger-report-table th:last-child { width: 160px; }
-.ledger-report-table tfoot td { background: #f8fafc; font-weight: 600; }
-.ledger-workspace .warehouse-toolbar input[type="number"] { width: 100px; }
+.ledger-report-table {
+  min-width: 1800px;
+}
+.ledger-report-table th:first-child {
+  width: 240px;
+}
+.ledger-report-table th:last-child {
+  width: 160px;
+}
+.ledger-report-table tfoot td {
+  background: #f8fafc;
+  font-weight: 600;
+}
+.ledger-workspace .warehouse-toolbar input[type='number'] {
+  width: 100px;
+}
 
-.partner-debt-summary { grid-column: 1 / -1; min-width: 0; }
-.partner-debt-summary p { margin: 4px 0; }
+.partner-debt-summary {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.partner-debt-summary p {
+  margin: 4px 0;
+}

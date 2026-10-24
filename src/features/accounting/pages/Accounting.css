@@ -1,16 +1,41 @@
-.accounting-view .table-container { overflow-x: auto; }
+.accounting-view .table-container {
+  overflow-x: auto;
+}
 
 /* Stable columns keep amounts, dates and actions inside their own cells. */
 .accounting-view .accounting-invoice-table,
-.accounting-view .accounting-costing-table { table-layout: fixed; min-width: 1740px; }
-.accounting-invoice-table th:nth-child(1) { width: 190px; }
-.accounting-invoice-table th:nth-child(2) { width: 180px; }
-.accounting-invoice-table th:nth-child(3) { width: 280px; }
-.accounting-invoice-table th:nth-child(4) { width: 170px; }
-.accounting-invoice-table th:nth-child(8) { width: 120px; }
-.accounting-invoice-table th:nth-child(9) { width: 190px; }
+.accounting-view .accounting-costing-table {
+  table-layout: fixed;
+  min-width: 1740px;
+}
+.accounting-invoice-table th:nth-child(1) {
+  width: 190px;
+}
+.accounting-invoice-table th:nth-child(2) {
+  width: 180px;
+}
+.accounting-invoice-table th:nth-child(3) {
+  width: 280px;
+}
+.accounting-invoice-table th:nth-child(4) {
+  width: 170px;
+}
+.accounting-invoice-table th:nth-child(8) {
+  width: 120px;
+}
+.accounting-invoice-table th:nth-child(9) {
+  width: 190px;
+}
 .accounting-invoice-table th:last-child,
-.accounting-costing-table th:last-child { width: 80px; }
-.accounting-costing-table th:nth-child(1) { width: 180px; }
-.accounting-costing-table th:nth-child(2) { width: 280px; }
-.accounting-costing-table th:nth-child(10) { width: 180px; }
+.accounting-costing-table th:last-child {
+  width: 80px;
+}
+.accounting-costing-table th:nth-child(1) {
+  width: 180px;
+}
+.accounting-costing-table th:nth-child(2) {
+  width: 280px;
+}
+.accounting-costing-table th:nth-child(10) {
+  width: 180px;
+}

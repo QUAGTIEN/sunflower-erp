@@ -111,11 +111,11 @@
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns:
-    minmax(105px, .72fr)
-    minmax(130px, .9fr)
-    minmax(145px, .92fr)
+    minmax(105px, 0.72fr)
+    minmax(130px, 0.9fr)
+    minmax(145px, 0.92fr)
     minmax(165px, 1.05fr)
-    minmax(135px, .9fr)
+    minmax(135px, 0.9fr)
     minmax(165px, 1.08fr);
   min-width: 0;
   gap: 8px;
@@ -172,10 +172,22 @@
   border-radius: 8px;
 }
 
-.crm-record-header-facts__icon--tax { background: #eaf9f2; color: #159766; }
-.crm-record-header-facts__icon--sale { background: #eaf3ff; color: #2473db; }
-.crm-record-header-facts__icon--stage { background: #edf4ff; color: #2a6bd1; }
-.crm-record-header-facts__icon--care { background: #f4edff; color: #8250d1; }
+.crm-record-header-facts__icon--tax {
+  background: #eaf9f2;
+  color: #159766;
+}
+.crm-record-header-facts__icon--sale {
+  background: #eaf3ff;
+  color: #2473db;
+}
+.crm-record-header-facts__icon--stage {
+  background: #edf4ff;
+  color: #2a6bd1;
+}
+.crm-record-header-facts__icon--care {
+  background: #f4edff;
+  color: #8250d1;
+}
 
 .crm-record-header-facts__ring {
   display: grid;
@@ -223,7 +235,6 @@
   .crm-record-header-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
 }
 
 @media (max-width: 430px) {

@@ -9,10 +9,14 @@ function load(file, stubs = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX }
   }).outputText;
   const module = { exports: {} };
-  new Function('require', 'module', 'exports', code)(name => {
-    if (Object.hasOwn(stubs, name)) return stubs[name];
-    throw new Error(`Unexpected import ${name}`);
-  }, module, module.exports);
+  new Function('require', 'module', 'exports', code)(
+    name => {
+      if (Object.hasOwn(stubs, name)) return stubs[name];
+      throw new Error(`Unexpected import ${name}`);
+    },
+    module,
+    module.exports
+  );
   return module.exports;
 }
 const model = load('src/features/crm/model/customerProductCatalog.ts');
@@ -20,11 +24,23 @@ const admin = { uid: 'admin', role: 'admin', active: true, displayName: 'Admin' 
 const sale = { uid: 'sale-a', role: 'sale', active: true, displayName: 'Sale A' };
 const customer = { id: 'customer-a', assignedSaleId: sale.uid, products: [] };
 const input = () => ({
-  productCode: ' SP001 ', productName: ' Giấy ', productType: 'giay', material: 'Giấy', unit: 'tờ',
-  currentPrice: 0, purchasePrice: 0, vatRate: 8, supplierId: '', supplierName: '', leadTimeDays: 0,
-  note: '', fields: model.getProductSpecFields('giay'), files: []
+  productCode: ' SP001 ',
+  productName: ' Giấy ',
+  productType: 'giay',
+  material: 'Giấy',
+  unit: 'tờ',
+  currentPrice: 0,
+  purchasePrice: 0,
+  vatRate: 8,
+  supplierId: '',
+  supplierName: '',
+  leadTimeDays: 0,
+  note: '',
+  fields: model.getProductSpecFields('giay'),
+  files: []
 });
-const product = (values = {}) => model.buildCustomerProduct({ ...input(), ...values }, 'product-a', '2026-10-13T00:00:00.000Z');
+const product = (values = {}) =>
+  model.buildCustomerProduct({ ...input(), ...values }, 'product-a', '2026-10-13T00:00:00.000Z');
 
 test('a customer product can be registered before price and before any PO', () => {
   const result = product();
@@ -36,16 +52,25 @@ test('a customer product can be registered before price and before any PO', () =
 });
 test('codes are unique within a customer, case-insensitive, but may exist at different customers', () => {
   const result = product();
-  assert.throws(() => model.appendCustomerProduct({ ...customer, products: [result] }, product({ productCode: 'sp001' }), admin), /đã tồn tại/);
+  assert.throws(
+    () => model.appendCustomerProduct({ ...customer, products: [result] }, product({ productCode: 'sp001' }), admin),
+    /đã tồn tại/
+  );
   assert.equal(model.appendCustomerProduct({ ...customer, id: 'customer-b' }, result, admin).length, 1);
 });
 test('retired and previous codes stay reserved to protect historical orders', () => {
   const retired = { ...product(), deleted: true, productCode: 'NEW', previousProductCodes: ['SP001'] };
-  assert.throws(() => model.appendCustomerProduct({ ...customer, products: [retired] }, product(), admin), /đã tồn tại/);
+  assert.throws(
+    () => model.appendCustomerProduct({ ...customer, products: [retired] }, product(), admin),
+    /đã tồn tại/
+  );
   assert.equal(model.hasCustomerProductCode([retired], 'NEW', retired.id), false);
 });
 test('sales cannot create another sales customer products, and inactive users are rejected', () => {
-  assert.throws(() => model.appendCustomerProduct({ ...customer, assignedSaleId: 'sale-b' }, product(), sale), /không có quyền/);
+  assert.throws(
+    () => model.appendCustomerProduct({ ...customer, assignedSaleId: 'sale-b' }, product(), sale),
+    /không có quyền/
+  );
   assert.throws(() => model.appendCustomerProduct(customer, product(), { ...admin, active: false }), /không có quyền/);
   assert.equal(model.canManageCustomerProducts(sale, { ...customer, deleted: true }), false);
 });
@@ -66,7 +91,9 @@ test('oversized attachments are rejected before the customer document is written
   assert.throws(() => model.appendCustomerProduct(customer, large, admin), /dung lượng/);
 });
 test('PO selection makes a deep snapshot and preserves the order quantity and commercial discount', () => {
-  const catalog = product({ files: [{ id: 'file', name: 'drawing', url: 'https://example.com/design', kind: 'design' }] });
+  const catalog = product({
+    files: [{ id: 'file', name: 'drawing', url: 'https://example.com/design', kind: 'design' }]
+  });
   catalog.specifications.width = 30;
   const item = model.applyCustomerProductToOrderItem({ itemId: 'row-a', quantity: 2000, discountRate: 5 }, catalog);
   catalog.specifications.width = 99;
@@ -78,18 +105,36 @@ test('PO selection makes a deep snapshot and preserves the order quantity and co
   assert.equal(item.discountRate, 5);
 });
 test('deleted products are never suggested in a new PO', () => {
-  assert.deepEqual(model.getActiveCustomerProducts({ products: [product(), { ...product(), id: 'retired', deleted: true }] }).map(item => item.id), ['product-a']);
+  assert.deepEqual(
+    model
+      .getActiveCustomerProducts({ products: [product(), { ...product(), id: 'retired', deleted: true }] })
+      .map(item => item.id),
+    ['product-a']
+  );
 });
 test('a product history follows its stable id and legacy codes without changing historical snapshots', () => {
   const catalog = { ...product(), productCode: 'NEW', previousProductCodes: ['SP001'] };
   const orders = [
     { id: 'po1', poCode: 'PO1', orderDate: '2026-09-01', items: [{ productCode: 'SP001', quantity: 100 }] },
-    { id: 'po2', poCode: 'PO2', orderDate: '2026-10-01', items: [{ customerProductId: catalog.id, productCode: 'OLD', quantity: 200 }, { customerProductId: catalog.id, quantity: 50 }] },
+    {
+      id: 'po2',
+      poCode: 'PO2',
+      orderDate: '2026-10-01',
+      items: [
+        { customerProductId: catalog.id, productCode: 'OLD', quantity: 200 },
+        { customerProductId: catalog.id, quantity: 50 }
+      ]
+    },
     { id: 'po3', deleted: true, items: [{ productCode: 'NEW', quantity: 900 }] },
     { id: 'po4', items: [{ customerProductId: 'other', productCode: 'NEW', quantity: 900 }] }
   ];
   const original = structuredClone(orders);
-  assert.deepEqual(model.getCustomerProductOrderHistory(catalog, orders), { orderCount: 2, totalQuantity: 350, lastPoId: 'po2', lastPoCode: 'PO2' });
+  assert.deepEqual(model.getCustomerProductOrderHistory(catalog, orders), {
+    orderCount: 2,
+    totalQuantity: 350,
+    lastPoId: 'po2',
+    lastPoCode: 'PO2'
+  });
   assert.deepEqual(orders, original);
 });
 function api({ remote = true, failure, initial = customer } = {}) {
@@ -97,19 +142,31 @@ function api({ remote = true, failure, initial = customer } = {}) {
   const writes = [];
   const service = load('src/features/crm/api/customerProductService.ts', {
     '../model/customerProductCatalog': model,
-    '../model/crmModels': { normalizeCustomerProduct: (record, index) => ({ ...record, id: record.id || `product-${index + 1}` }) },
-    '@/infrastructure/firebase/client': { getFirebaseDatabase: async () => remote ? {} : null },
-    '@/infrastructure/firebase/erpDataGateway': { dbService: {
-      getDocument: async () => structuredClone(latest),
-      updateDocument: async (_collection, _id, patch) => { latest = { ...latest, ...patch }; writes.push(patch); return true; }
-    } },
+    '../model/crmModels': {
+      normalizeCustomerProduct: (record, index) => ({ ...record, id: record.id || `product-${index + 1}` })
+    },
+    '@/infrastructure/firebase/client': { getFirebaseDatabase: async () => (remote ? {} : null) },
+    '@/infrastructure/firebase/erpDataGateway': {
+      dbService: {
+        getDocument: async () => structuredClone(latest),
+        updateDocument: async (_collection, _id, patch) => {
+          latest = { ...latest, ...patch };
+          writes.push(patch);
+          return true;
+        }
+      }
+    },
     'firebase/firestore': {
       doc: (_db, collection, id) => ({ collection, id }),
       runTransaction: async (_db, run) => {
         if (failure) throw failure;
         return run({
           get: async ref => ({ exists: () => true, id: ref.id, data: () => structuredClone(latest) }),
-          update: (ref, patch) => { assert.equal(ref.collection, 'customers'); latest = { ...latest, ...patch }; writes.push(patch); }
+          update: (ref, patch) => {
+            assert.equal(ref.collection, 'customers');
+            latest = { ...latest, ...patch };
+            writes.push(patch);
+          }
         });
       }
     }
@@ -133,7 +190,12 @@ test('production write failure never falls back to local data', async () => {
 test('legacy products without explicit ids remain editable through their normalized identity', async () => {
   const legacy = { ...product(), id: undefined };
   const client = api({ initial: { ...customer, products: [legacy] } });
-  const products = await client.service.updateCustomerProduct(customer.id, { ...legacy, id: 'product-1', productName: 'New name' }, admin, model.getCustomerProductVersion(legacy));
+  const products = await client.service.updateCustomerProduct(
+    customer.id,
+    { ...legacy, id: 'product-1', productName: 'New name' },
+    admin,
+    model.getCustomerProductVersion(legacy)
+  );
   assert.equal(products[0].id, 'product-1');
   assert.equal(products[0].productName, 'New name');
 });
@@ -141,10 +203,18 @@ test('editing and approving one product keeps newly added products and rejects s
   const existing = { ...product({ productCode: 'EXISTING' }), id: 'existing' };
   const client = api({ initial: { ...customer, products: [existing] } });
   await client.service.createCustomerProduct(customer.id, input(), sale);
-  const products = await client.service.updateCustomerProduct(customer.id, { ...existing, productCode: 'RENAMED' }, admin, model.getCustomerProductVersion(existing));
+  const products = await client.service.updateCustomerProduct(
+    customer.id,
+    { ...existing, productCode: 'RENAMED' },
+    admin,
+    model.getCustomerProductVersion(existing)
+  );
   assert.equal(products.length, 2);
   assert.deepEqual(products[0].previousProductCodes, ['EXISTING']);
-  await assert.rejects(client.service.updateCustomerProduct(customer.id, existing, admin, model.getCustomerProductVersion(existing)), /người khác/);
+  await assert.rejects(
+    client.service.updateCustomerProduct(customer.id, existing, admin, model.getCustomerProductVersion(existing)),
+    /người khác/
+  );
   await assert.rejects(client.service.updateCustomerProduct(customer.id, existing, sale), /Chỉ Admin/);
 });
 test('remote ownership check and local demo obey the same permission and uniqueness rules', async () => {
@@ -161,29 +231,51 @@ test('the full-page form has technical groups, optional price, and a pinned save
   const React = require('react');
   const { renderToStaticMarkup } = require('react-dom/server');
   const { CustomerProductEditor } = load('src/features/crm/components/CustomerProductEditor.tsx', {
-    '@/shared/feedback/mutationFeedback': { runMutationAction: (_key, action) => action(), showSuccessToast() {}, showErrorToast() {} },
-    'react': React, 'react/jsx-runtime': require('react/jsx-runtime'), 'lucide-react': require('lucide-react'),
+    '@/shared/feedback/mutationFeedback': {
+      runMutationAction: (_key, action) => action(),
+      showSuccessToast() {},
+      showErrorToast() {}
+    },
+    react: React,
+    'react/jsx-runtime': require('react/jsx-runtime'),
+    'lucide-react': require('lucide-react'),
     '@/components/PageBackButton': { PageBackButton: () => React.createElement('button', { type: 'button' }, 'Back') },
     '@/components/PageContextHeader': { PageContextHeader: () => null },
     '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) },
     '../model/customerProductCatalog': model,
-    '../api/customerProductService': { createCustomerProduct: () => { throw new Error('unexpected write'); } },
+    '../api/customerProductService': {
+      createCustomerProduct: () => {
+        throw new Error('unexpected write');
+      }
+    },
     './CustomerProductEditor.css': {}
   });
-  const html = renderToStaticMarkup(React.createElement(CustomerProductEditor, {
-    customer: { ...customer, companyName: 'Công ty A', customerCode: 'KH-A' }, currentUser: sale,
-    classifications: [], suppliers: [], onClose() {}, onCreated() {}
-  }));
+  const html = renderToStaticMarkup(
+    React.createElement(CustomerProductEditor, {
+      customer: { ...customer, companyName: 'Công ty A', customerCode: 'KH-A' },
+      currentUser: sale,
+      classifications: [],
+      suppliers: [],
+      onClose() {},
+      onCreated() {}
+    })
+  );
   assert.match(html, /Công ty A/);
   assert.match(html, /Thông số kỹ thuật/);
   assert.match(html, /Giá bán tham khảo \(đ\)<\/span><input type="number" min="0" value=""/);
   assert.match(html, /<footer class="customer-product-editor__footer"/);
   assert.match(html, /Lưu mã sản phẩm/);
   assert.doesNotMatch(html, /modal-overlay/);
-  const denied = renderToStaticMarkup(React.createElement(CustomerProductEditor, {
-    customer: { ...customer, assignedSaleId: 'other' }, currentUser: sale,
-    classifications: [], suppliers: [], onClose() {}, onCreated() {}
-  }));
+  const denied = renderToStaticMarkup(
+    React.createElement(CustomerProductEditor, {
+      customer: { ...customer, assignedSaleId: 'other' },
+      currentUser: sale,
+      classifications: [],
+      suppliers: [],
+      onClose() {},
+      onCreated() {}
+    })
+  );
   assert.match(denied, /không có quyền/);
   assert.doesNotMatch(denied, /<form/);
 });

@@ -11,7 +11,10 @@ const source = readModuleSource('src/features/crm/pages/LeadsPage.tsx', 'src/fea
 // when the list tab opens and then stays mounted so switching tabs keeps its state.
 test('lead list is prepared when the list tab opens and preserved between workspace tabs', () => {
   assert.match(source, /const \[leadListPrepared, setLeadListPrepared\] = useState\(false\)/);
-  assert.match(source, /const openLeadListTab = \(\) => \{[^}]*setLeadListPrepared\(true\);[^}]*setWorkspaceTab\('list'\);/);
+  assert.match(
+    source,
+    /const openLeadListTab = \(\) => \{[^}]*setLeadListPrepared\(true\);[^}]*setWorkspaceTab\('list'\);/
+  );
   assert.doesNotMatch(source, /requestAnimationFrame\(\(\) => setLeadListPrepared\(true\)\)/);
   assert.doesNotMatch(source, /requestIdleCallback\(prepare/);
   assert.match(source, /leadListPrepared \|\| workspaceTab === 'list'/);

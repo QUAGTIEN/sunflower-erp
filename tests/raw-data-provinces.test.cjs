@@ -12,14 +12,22 @@ new Function('exports', outputText)(model);
 test('province chart counts every visible record, including unknown and grouped provinces', () => {
   const candidates = [
     ...Array.from({ length: 3 }, () => ({ province: 'Hà Nội' })),
-    ...['Hải Phòng', 'Hải Dương', 'Bắc Ninh', 'Hưng Yên', 'Thanh Hóa', 'Đà Nẵng', 'Nghệ An'].map(province => ({ province })),
+    ...['Hải Phòng', 'Hải Dương', 'Bắc Ninh', 'Hưng Yên', 'Thanh Hóa', 'Đà Nẵng', 'Nghệ An'].map(province => ({
+      province
+    })),
     { province: '  ' }
   ];
   const rows = model.countRawDataByProvince(candidates);
   assert.equal(rows[0].label, 'Hà Nội');
   assert.equal(rows[0].count, 3);
-  assert.deepEqual(rows.slice(-2), [{ label: 'Tỉnh khác', count: 2 }, { label: 'Chưa xác định', count: 1 }]);
-  assert.equal(rows.reduce((sum, row) => sum + row.count, 0), candidates.length);
+  assert.deepEqual(rows.slice(-2), [
+    { label: 'Tỉnh khác', count: 2 },
+    { label: 'Chưa xác định', count: 1 }
+  ]);
+  assert.equal(
+    rows.reduce((sum, row) => sum + row.count, 0),
+    candidates.length
+  );
 });
 
 test('empty and unknown-only data remain legible', () => {

@@ -30,7 +30,10 @@ test('general situation, inactive group and provinces use only visible customers
       { customerId: 'hidden', type: 'receivable', amount: 999 }
     ],
     now,
-    new Map([['a', 'Hà Nội'], ['b', 'Hà Nội']])
+    new Map([
+      ['a', 'Hà Nội'],
+      ['b', 'Hà Nội']
+    ])
   );
   assert.equal(overview.customerCount, 3);
   assert.equal(overview.purchasedCount, 2);
@@ -42,14 +45,24 @@ test('general situation, inactive group and provinces use only visible customers
   assert.equal(overview.debtCount, 1);
   assert.equal(overview.highestValue[0].orderValue, 500);
   assert.equal(overview.mostOrders[0].orderCount, 2);
-  assert.deepEqual(overview.provinces.map(province => [province.label, province.rows.length]), [['Hà Nội', 2], ['Chưa xác định', 1]]);
+  assert.deepEqual(
+    overview.provinces.map(province => [province.label, province.rows.length]),
+    [
+      ['Hà Nội', 2],
+      ['Chưa xác định', 1]
+    ]
+  );
 });
 
 test('value and PO count rankings are independent', () => {
   const overview = model.buildCustomerOverview(
     [customer('high-value'), customer('many-orders')],
-    [{ customerId: 'high-value', totalAmount: 1000 }, ...Array.from({ length: 4 }, () => ({ customerId: 'many-orders', totalAmount: 10 }))],
-    [], now
+    [
+      { customerId: 'high-value', totalAmount: 1000 },
+      ...Array.from({ length: 4 }, () => ({ customerId: 'many-orders', totalAmount: 10 }))
+    ],
+    [],
+    now
   );
   assert.equal(overview.highestValue[0].customer.id, 'high-value');
   assert.equal(overview.mostOrders[0].customer.id, 'many-orders');
@@ -58,7 +71,11 @@ test('value and PO count rankings are independent', () => {
 
 test('inactive age boundaries start after 90 days', () => {
   const customers = [90, 91, 181, 366].map(days => customer(String(days)));
-  const orders = [90, 91, 181, 366].map(days => ({ customerId: String(days), orderDate: daysAgo(days), totalAmount: 1 }));
+  const orders = [90, 91, 181, 366].map(days => ({
+    customerId: String(days),
+    orderDate: daysAgo(days),
+    totalAmount: 1
+  }));
   const overview = model.buildCustomerOverview(customers, orders, [], now);
   assert.equal(overview.activeCount, 1);
   assert.equal(overview.inactiveCount, 3);

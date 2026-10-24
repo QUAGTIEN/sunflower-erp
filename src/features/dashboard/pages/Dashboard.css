@@ -100,10 +100,18 @@
   content: '';
 }
 
-.sale-dashboard__metric.is-danger::before { background: #dc4c64; }
-.sale-dashboard__metric.is-success::before { background: #2f9a68; }
-.sale-dashboard__metric.is-violet::before { background: #7758c8; }
-.sale-dashboard__metric.is-warning::before { background: #d88724; }
+.sale-dashboard__metric.is-danger::before {
+  background: #dc4c64;
+}
+.sale-dashboard__metric.is-success::before {
+  background: #2f9a68;
+}
+.sale-dashboard__metric.is-violet::before {
+  background: #7758c8;
+}
+.sale-dashboard__metric.is-warning::before {
+  background: #d88724;
+}
 
 .sale-dashboard__metric > span {
   overflow: hidden;
@@ -122,10 +130,18 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sale-dashboard__metric.is-danger > strong { color: #b4233d; }
-.sale-dashboard__metric.is-success > strong { color: #18744d; }
-.sale-dashboard__metric.is-violet > strong { color: #5f42ad; }
-.sale-dashboard__metric.is-warning > strong { color: #b46516; }
+.sale-dashboard__metric.is-danger > strong {
+  color: #b4233d;
+}
+.sale-dashboard__metric.is-success > strong {
+  color: #18744d;
+}
+.sale-dashboard__metric.is-violet > strong {
+  color: #5f42ad;
+}
+.sale-dashboard__metric.is-warning > strong {
+  color: #b46516;
+}
 
 .sale-dashboard__metric > small {
   overflow: hidden;
@@ -190,7 +206,10 @@
 }
 
 .sale-dashboard__text-action:hover,
-.sale-dashboard__po-link:hover { color: #173e8f; text-decoration: underline; }
+.sale-dashboard__po-link:hover {
+  color: #173e8f;
+  text-decoration: underline;
+}
 
 .sale-dashboard__text-action:focus-visible,
 .sale-dashboard__po-link:focus-visible {
@@ -229,7 +248,9 @@
   font-size: 12px;
 }
 
-.sale-dashboard__task-row:last-child { border-bottom: 0; }
+.sale-dashboard__task-row:last-child {
+  border-bottom: 0;
+}
 
 .sale-dashboard__task-row strong,
 .sale-dashboard__task-row > span:not(.sale-dashboard__status),
@@ -239,8 +260,15 @@
   white-space: nowrap;
 }
 
-.sale-dashboard__task-row strong { color: #213a64; font-weight: 650; }
-.sale-dashboard__task-row time { color: #52647f; font-size: 11px; font-style: normal; }
+.sale-dashboard__task-row strong {
+  color: #213a64;
+  font-weight: 650;
+}
+.sale-dashboard__task-row time {
+  color: #52647f;
+  font-size: 11px;
+  font-style: normal;
+}
 
 .sale-dashboard__status {
   display: inline-flex;
@@ -257,8 +285,14 @@
   white-space: nowrap;
 }
 
-.sale-dashboard__status.is-danger { background: #fff0f1; color: #c92c45; }
-.sale-dashboard__status.is-warning { background: #fff4df; color: #b5650b; }
+.sale-dashboard__status.is-danger {
+  background: #fff0f1;
+  color: #c92c45;
+}
+.sale-dashboard__status.is-warning {
+  background: #fff4df;
+  color: #b5650b;
+}
 
 .sale-dashboard__empty {
   margin: 0;
@@ -346,8 +380,17 @@
   background: #fff;
 }
 
-.sale-dashboard__donut strong { color: #172554; font-size: 23px; line-height: 1; }
-.sale-dashboard__donut small { color: #64748b; font-size: 9.5px; font-weight: 600; text-align: center; }
+.sale-dashboard__donut strong {
+  color: #172554;
+  font-size: 23px;
+  line-height: 1;
+}
+.sale-dashboard__donut small {
+  color: #64748b;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-align: center;
+}
 
 .sale-dashboard__funnel-summary p {
   margin: 0;
@@ -380,16 +423,44 @@
 }
 
 .sale-dashboard__filters button:hover,
-.sale-dashboard__filters button:focus-visible { border-color: #6687c7; background: #f5f8fd; }
-.sale-dashboard__filters button:focus-visible { outline: 2px solid var(--erp-focus-ring, #bfdbfe); outline-offset: 1px; }
-.sale-dashboard__filters button.is-active { border-color: #21469b; background: #21469b; color: #fff; }
+.sale-dashboard__filters button:focus-visible {
+  border-color: #6687c7;
+  background: #f5f8fd;
+}
+.sale-dashboard__filters button:focus-visible {
+  outline: 2px solid var(--erp-focus-ring, #bfdbfe);
+  outline-offset: 1px;
+}
+.sale-dashboard__filters button.is-active {
+  border-color: #21469b;
+  background: #21469b;
+  color: #fff;
+}
 
-.sale-dashboard__orders-table table { min-width: 920px; }
+.sale-dashboard__orders-table table {
+  min-width: 920px;
+}
 .sale-dashboard__orders-table th.is-number,
-.sale-dashboard__orders-table td.is-number { text-align: right; }
-.sale-dashboard__orders-table td { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sale-dashboard__po-link { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sale-dashboard__table-empty { padding: 36px 16px !important; color: #718096; text-align: center !important; }
+.sale-dashboard__orders-table td.is-number {
+  text-align: right;
+}
+.sale-dashboard__orders-table td {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sale-dashboard__po-link {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sale-dashboard__table-empty {
+  padding: 36px 16px !important;
+  color: #718096;
+  text-align: center !important;
+}
 
 .dashboard-revenue-panel .customer-overview-panel__header small {
   color: #64748b;
@@ -433,8 +504,12 @@
   white-space: nowrap;
 }
 
-.dashboard-revenue-metrics article:nth-child(2) strong { color: #087a55; }
-.dashboard-revenue-metrics article:nth-child(4) strong { color: #b45309; }
+.dashboard-revenue-metrics article:nth-child(2) strong {
+  color: #087a55;
+}
+.dashboard-revenue-metrics article:nth-child(4) strong {
+  color: #b45309;
+}
 
 .dashboard-revenue-chart-heading {
   display: flex;
@@ -466,12 +541,32 @@
   min-height: 142px;
 }
 
-.dashboard-revenue-trend__grid { stroke: #dfe7f2; stroke-width: 1; stroke-dasharray: 4 4; }
-.dashboard-revenue-trend__net { fill: #24476b; }
-.dashboard-revenue-trend__discount { fill: #c6a15b; }
-.dashboard-revenue-trend__axis-label { fill: #71819a; font-size: 9px; font-weight: 500; }
-.dashboard-revenue-trend__value { fill: #173a5e; font-size: 9.5px; font-weight: 700; }
-.dashboard-revenue-trend__label { fill: #5b6d88; font-size: 11px; font-weight: 550; }
+.dashboard-revenue-trend__grid {
+  stroke: #dfe7f2;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.dashboard-revenue-trend__net {
+  fill: #24476b;
+}
+.dashboard-revenue-trend__discount {
+  fill: #c6a15b;
+}
+.dashboard-revenue-trend__axis-label {
+  fill: #71819a;
+  font-size: 9px;
+  font-weight: 500;
+}
+.dashboard-revenue-trend__value {
+  fill: #173a5e;
+  font-size: 9.5px;
+  font-weight: 700;
+}
+.dashboard-revenue-trend__label {
+  fill: #5b6d88;
+  font-size: 11px;
+  font-weight: 550;
+}
 
 .dashboard-revenue-trend__legend {
   display: flex;
@@ -481,14 +576,27 @@
   font-size: 10.5px;
 }
 
-.dashboard-revenue-trend__legend span { display: inline-flex; align-items: center; gap: 5px; }
-.dashboard-revenue-trend__legend i { display: inline-block; width: 14px; height: 7px; border-radius: 2px; }
-.dashboard-revenue-trend__legend i.is-net { background: #24476b; }
-.dashboard-revenue-trend__legend i.is-discount { background: #c6a15b; }
+.dashboard-revenue-trend__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dashboard-revenue-trend__legend i {
+  display: inline-block;
+  width: 14px;
+  height: 7px;
+  border-radius: 2px;
+}
+.dashboard-revenue-trend__legend i.is-net {
+  background: #24476b;
+}
+.dashboard-revenue-trend__legend i.is-discount {
+  background: #c6a15b;
+}
 
 .dashboard-po-queue-content {
   display: grid;
-  grid-template-columns: minmax(190px, .8fr) minmax(260px, 1.2fr);
+  grid-template-columns: minmax(190px, 0.8fr) minmax(260px, 1.2fr);
   flex: 1;
   align-items: center;
   gap: 12px;
@@ -518,8 +626,16 @@
   pointer-events: none;
 }
 
-.dashboard-po-queue-total strong { color: #172554; font-size: 22px; font-weight: 700; }
-.dashboard-po-queue-total small { color: #64748b; font-size: 11px; font-weight: 550; }
+.dashboard-po-queue-total strong {
+  color: #172554;
+  font-size: 22px;
+  font-weight: 700;
+}
+.dashboard-po-queue-total small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 550;
+}
 
 .dashboard-po-queue-actions {
   display: grid;
@@ -544,10 +660,26 @@
 }
 
 .dashboard-po-queue-actions button:hover,
-.dashboard-po-queue-actions button:focus-visible { border-color: #6687c7; background: #f5f8fd; }
-.dashboard-po-queue-actions button:focus-visible { outline: 2px solid var(--erp-focus-ring, #bfdbfe); outline-offset: 1px; }
-.dashboard-po-queue-actions button span { min-width: 0; overflow: hidden; font-size: 11.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.dashboard-po-queue-actions button strong { font-size: 17px; font-weight: 700; }
+.dashboard-po-queue-actions button:focus-visible {
+  border-color: #6687c7;
+  background: #f5f8fd;
+}
+.dashboard-po-queue-actions button:focus-visible {
+  outline: 2px solid var(--erp-focus-ring, #bfdbfe);
+  outline-offset: 1px;
+}
+.dashboard-po-queue-actions button span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dashboard-po-queue-actions button strong {
+  font-size: 17px;
+  font-weight: 700;
+}
 
 .dashboard-task-list {
   display: grid;
@@ -567,11 +699,36 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
-.dashboard-task-list article:last-child { border-bottom: 0; }
-.dashboard-task-list article strong { overflow: hidden; color: #263e66; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.dashboard-task-list article time { overflow: hidden; color: #60728e; font-size: 10.5px; font-style: normal; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.dashboard-task-list .btn { min-width: 82px; white-space: nowrap; }
-.dashboard-task-list__count { color: #415878; font-size: 10.5px; font-weight: 650; white-space: nowrap; }
+.dashboard-task-list article:last-child {
+  border-bottom: 0;
+}
+.dashboard-task-list article strong {
+  overflow: hidden;
+  color: #263e66;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dashboard-task-list article time {
+  overflow: hidden;
+  color: #60728e;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dashboard-task-list .btn {
+  min-width: 82px;
+  white-space: nowrap;
+}
+.dashboard-task-list__count {
+  color: #415878;
+  font-size: 10.5px;
+  font-weight: 650;
+  white-space: nowrap;
+}
 
 .dashboard-task-list__icon {
   display: grid;
@@ -583,10 +740,22 @@
   color: #2563eb;
 }
 
-.dashboard-task-list article.is-tone-1 .dashboard-task-list__icon { background: #edf2f7; color: #4f6478; }
-.dashboard-task-list article.is-tone-2 .dashboard-task-list__icon { background: #e6f6f5; color: #0f777d; }
-.dashboard-task-list article.is-tone-3 .dashboard-task-list__icon { background: #eaf5ef; color: #356f53; }
-.dashboard-task-list article.is-tone-4 .dashboard-task-list__icon { background: #fff2e6; color: #a8581d; }
+.dashboard-task-list article.is-tone-1 .dashboard-task-list__icon {
+  background: #edf2f7;
+  color: #4f6478;
+}
+.dashboard-task-list article.is-tone-2 .dashboard-task-list__icon {
+  background: #e6f6f5;
+  color: #0f777d;
+}
+.dashboard-task-list article.is-tone-3 .dashboard-task-list__icon {
+  background: #eaf5ef;
+  color: #356f53;
+}
+.dashboard-task-list article.is-tone-4 .dashboard-task-list__icon {
+  background: #fff2e6;
+  color: #a8581d;
+}
 
 .dashboard-task-list__priority {
   display: inline-flex;
@@ -603,15 +772,30 @@
   white-space: nowrap;
 }
 
-.dashboard-task-list__priority.is-urgent { background: #fff0f0; color: #dc2626; }
-.dashboard-task-list__priority.is-high { background: #fff3df; color: #d97706; }
-.dashboard-task-list__priority.is-normal { background: #edf4ff; color: #2563eb; }
+.dashboard-task-list__priority.is-urgent {
+  background: #fff0f0;
+  color: #dc2626;
+}
+.dashboard-task-list__priority.is-high {
+  background: #fff3df;
+  color: #d97706;
+}
+.dashboard-task-list__priority.is-normal {
+  background: #edf4ff;
+  color: #2563eb;
+}
 
 @media (max-width: 1380px) {
-  .dashboard-revenue-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dashboard-revenue-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-  .sale-dashboard__metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .sale-dashboard__focus-grid { grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr); }
+  .sale-dashboard__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .sale-dashboard__focus-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr);
+  }
 
   .sale-dashboard__task-head,
   .sale-dashboard__task-row {
@@ -686,7 +870,7 @@
   font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .03em;
+  letter-spacing: 0.03em;
 }
 
 .dashboard-activity-feed__row {
@@ -736,9 +920,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dashboard-po-queue-content { grid-template-columns: minmax(0, 1fr); }
-  .sale-dashboard__focus-grid { grid-template-columns: minmax(0, 1fr); }
-  .sale-dashboard__funnel-content { grid-template-columns: minmax(0, 1fr) 160px; }
+  .dashboard-po-queue-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sale-dashboard__focus-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sale-dashboard__funnel-content {
+    grid-template-columns: minmax(0, 1fr) 160px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -789,10 +979,16 @@
     flex-direction: column;
   }
 
-  .sale-dashboard__create-button { width: 100%; }
-  .sale-dashboard__metrics { grid-template-columns: minmax(0, 1fr); }
+  .sale-dashboard__create-button {
+    width: 100%;
+  }
+  .sale-dashboard__metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-  .sale-dashboard__task-head { display: none; }
+  .sale-dashboard__task-head {
+    display: none;
+  }
 
   .sale-dashboard__task-row {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -801,8 +997,13 @@
   }
 
   .sale-dashboard__task-row > span:not(.sale-dashboard__status),
-  .sale-dashboard__task-row time { grid-column: 1; }
-  .sale-dashboard__task-row .sale-dashboard__status { grid-column: 2; grid-row: 1 / span 3; }
+  .sale-dashboard__task-row time {
+    grid-column: 1;
+  }
+  .sale-dashboard__task-row .sale-dashboard__status {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
 
   .sale-dashboard__funnel-content {
     grid-template-columns: minmax(0, 1fr);
@@ -815,7 +1016,10 @@
     border-left: 0;
   }
 
-  .sale-dashboard__orders-header { align-items: flex-start; flex-direction: column; }
+  .sale-dashboard__orders-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 
   .dashboard-view .dashboard-admin-metrics {
     grid-template-columns: 1fr;
@@ -827,7 +1031,13 @@
   }
 
   .dashboard-revenue-metrics,
-  .dashboard-po-queue-actions { grid-template-columns: minmax(0, 1fr); }
+  .dashboard-po-queue-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-  .dashboard-revenue-chart-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .dashboard-revenue-chart-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
 }

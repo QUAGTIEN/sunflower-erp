@@ -92,7 +92,7 @@
 }
 
 .advanced-data-filters__group-heading svg {
-  transition: transform .15s ease;
+  transition: transform 0.15s ease;
 }
 
 .advanced-data-filters__group.is-expanded .advanced-data-filters__group-heading svg {

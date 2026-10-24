@@ -21,14 +21,45 @@
   box-shadow: 0 3px 10px rgb(15 23 42 / 12%);
 }
 
-.customer-insight-kpis article div { display: grid; min-width: 0; gap: 2px; }
-.customer-insight-kpis article span { color: #fff; font-size: 11px; line-height: 1.2; font-weight: 700; text-transform: uppercase; }
-.customer-insight-kpis article strong { color: #fff; font-size: 20px; line-height: 1.15; font-weight: 750; }
-.customer-insight-kpis article small { overflow: hidden; color: rgb(255 255 255 / 90%); font-size: 10.5px; line-height: 1.25; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
-.customer-insight-kpis article.is-raw { background: #4f6478; }
-.customer-insight-kpis article.is-lead { background: #0f777d; }
-.customer-insight-kpis article.is-customer { background: #356f53; }
-.customer-insight-kpis article.is-orders { background: #a8581d; }
+.customer-insight-kpis article div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.customer-insight-kpis article span {
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.customer-insight-kpis article strong {
+  color: #fff;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 750;
+}
+.customer-insight-kpis article small {
+  overflow: hidden;
+  color: rgb(255 255 255 / 90%);
+  font-size: 10.5px;
+  line-height: 1.25;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customer-insight-kpis article.is-raw {
+  background: #4f6478;
+}
+.customer-insight-kpis article.is-lead {
+  background: #0f777d;
+}
+.customer-insight-kpis article.is-customer {
+  background: #356f53;
+}
+.customer-insight-kpis article.is-orders {
+  background: #a8581d;
+}
 
 .customer-insight-overview-grid {
   display: grid;
@@ -58,8 +89,17 @@
   border-bottom: 1px solid #dbe3ef;
 }
 
-.customer-overview-panel__header h3 { margin: 0; color: #172554; font-size: 16px; font-weight: 600; }
-.customer-overview-panel__header > small { color: #60728e; font-size: 11px; font-weight: 600; }
+.customer-overview-panel__header h3 {
+  margin: 0;
+  color: #172554;
+  font-size: 16px;
+  font-weight: 600;
+}
+.customer-overview-panel__header > small {
+  color: #60728e;
+  font-size: 11px;
+  font-weight: 600;
+}
 
 .customer-insight-expanded-groups {
   display: grid;
@@ -80,7 +120,9 @@
   background: #f8fbff;
 }
 
-.customer-insight-expanded-group:last-child { background: #f5fbf8; }
+.customer-insight-expanded-group:last-child {
+  background: #f5fbf8;
+}
 
 .customer-insight-expanded-group > header {
   display: flex;
@@ -91,9 +133,21 @@
   border-bottom: 1px solid #dbe3ef;
 }
 
-.customer-insight-expanded-group > header > div { display: grid; min-width: 0; gap: 2px; }
-.customer-insight-expanded-group > header strong { color: #173a7a; font-size: 13px; line-height: 1.3; font-weight: 700; }
-.customer-insight-expanded-group > header small { color: #60728e; font-size: 10.5px; }
+.customer-insight-expanded-group > header > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.customer-insight-expanded-group > header strong {
+  color: #173a7a;
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+.customer-insight-expanded-group > header small {
+  color: #60728e;
+  font-size: 10.5px;
+}
 
 .customer-insight-summary-card__icon {
   display: grid;
@@ -133,22 +187,43 @@
   cursor: pointer;
 }
 
-.customer-insight-classification-list > button:last-child { border-bottom: 0; }
+.customer-insight-classification-list > button:last-child {
+  border-bottom: 0;
+}
 .customer-insight-classification-list > button:hover,
-.customer-insight-classification-list > button:focus-visible { background: #f5f8fd; }
-.customer-insight-classification-list > button > span { min-width: 0; font-size: 12px; line-height: 1.35; font-weight: 600; }
-.customer-insight-classification-list > button > small { color: #60728e; font-size: 10.5px; white-space: nowrap; }
-.customer-insight-classification-list > button > svg { color: #1d5fc7; }
+.customer-insight-classification-list > button:focus-visible {
+  background: #f5f8fd;
+}
+.customer-insight-classification-list > button > span {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+.customer-insight-classification-list > button > small {
+  color: #60728e;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.customer-insight-classification-list > button > svg {
+  color: #1d5fc7;
+}
 
 @media (max-width: 1120px) {
-  .customer-insight-overview-grid { grid-template-columns: minmax(0, 1fr); }
+  .customer-insight-overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 900px) {
-  .customer-insight-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .customer-insight-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
   .customer-insight-kpis,
-  .customer-insight-expanded-groups { grid-template-columns: minmax(0, 1fr); }
+  .customer-insight-expanded-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -4,10 +4,30 @@
   min-width: 0;
 }
 
-.phone-call-toolbar { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
-.phone-call-toolbar .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
-.app-main .phone-call-toolbar .btn:not(.btn-symbol):not(.btn-symbol-sm) > svg { display: block; flex: 0 0 auto; }
-.phone-call-cell__menu-error { padding: 8px 10px; color: #b91c1c; font-size: 12px; line-height: 1.4; }
+.phone-call-toolbar {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.phone-call-toolbar .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.app-main .phone-call-toolbar .btn:not(.btn-symbol):not(.btn-symbol-sm) > svg {
+  display: block;
+  flex: 0 0 auto;
+}
+.phone-call-cell__menu-error {
+  padding: 8px 10px;
+  color: #b91c1c;
+  font-size: 12px;
+  line-height: 1.4;
+}
 
 .app-main .phone-call-cell__number {
   display: block !important;
@@ -34,10 +54,20 @@
   white-space: normal;
 }
 
-.app-main .phone-call-cell__number:hover { text-decoration: underline; }
-.app-main .phone-call-cell__number:focus-visible { outline: 2px solid #6687c7; outline-offset: 2px; }
-.app-main .phone-call-cell__number:disabled { opacity: .6; cursor: wait; }
-.phone-call-cell__empty { color: #94a3b8; }
+.app-main .phone-call-cell__number:hover {
+  text-decoration: underline;
+}
+.app-main .phone-call-cell__number:focus-visible {
+  outline: 2px solid #6687c7;
+  outline-offset: 2px;
+}
+.app-main .phone-call-cell__number:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.phone-call-cell__empty {
+  color: #94a3b8;
+}
 
 .phone-call-cell__menu {
   position: fixed;
@@ -70,4 +100,6 @@
 }
 
 .phone-call-cell__menu button:hover,
-.phone-call-cell__menu button:focus-visible { background: #eff6ff; }
+.phone-call-cell__menu button:focus-visible {
+  background: #eff6ff;
+}

@@ -6,7 +6,9 @@ const ts = require('typescript');
 
 function setup() {
   const source = fs.readFileSync(path.join(__dirname, '../src/shared/feedback/deleteConfirmation.ts'), 'utf8');
-  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const code = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText;
   const loaded = { exports: {} };
   new Function('module', 'exports', code)(loaded, loaded.exports);
   return loaded.exports;
@@ -16,7 +18,7 @@ test('delete waits for explicit consent before running the mutation', async () =
   const store = setup();
   let deleted = false;
   const action = (async () => {
-    if (!await store.confirmDelete('Xóa vĩnh viễn bản ghi?')) return;
+    if (!(await store.confirmDelete('Xóa vĩnh viễn bản ghi?'))) return;
     deleted = true;
   })();
   await Promise.resolve();
@@ -58,7 +60,10 @@ test('concurrent requests are queued and stale clicks cannot confirm the next re
 
 test('deletion requests retain their distinct wording and button label', async () => {
   const store = setup();
-  const pending = store.confirmDelete('Gửi yêu cầu xóa tới Admin?', { title: 'Xác nhận yêu cầu xóa', confirmLabel: 'Gửi yêu cầu' });
+  const pending = store.confirmDelete('Gửi yêu cầu xóa tới Admin?', {
+    title: 'Xác nhận yêu cầu xóa',
+    confirmLabel: 'Gửi yêu cầu'
+  });
   const snapshot = store.getDeleteConfirmationSnapshot();
   assert.equal(snapshot.title, 'Xác nhận yêu cầu xóa');
   assert.equal(snapshot.confirmLabel, 'Gửi yêu cầu');
@@ -69,7 +74,9 @@ test('deletion requests retain their distinct wording and button label', async (
 test('unmount cancels every queued confirmation without deleting anything', async () => {
   const store = setup();
   let changes = 0;
-  const unsubscribe = store.subscribeToDeleteConfirmation(() => { changes++; });
+  const unsubscribe = store.subscribeToDeleteConfirmation(() => {
+    changes++;
+  });
   const first = store.confirmDelete('A');
   const second = store.confirmDelete('B');
   store.cancelDeleteConfirmations();

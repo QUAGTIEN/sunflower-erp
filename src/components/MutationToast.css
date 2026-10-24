@@ -27,16 +27,71 @@
   text-align: left;
   pointer-events: auto;
 }
-.mutation-toast--info { --feedback-accent: #2563eb; --feedback-soft: #dbeafe; }
-.mutation-toast--error { --feedback-accent: #dc2626; --feedback-soft: #fee2e2; }
-.mutation-toast__icon { display: grid; width: 40px; height: 40px; flex: 0 0 40px; place-items: center; border-radius: 50%; background: var(--feedback-soft); color: var(--feedback-accent); }
-.mutation-toast__icon svg { box-sizing: content-box; padding: 4px; border-radius: 50%; background: var(--feedback-accent); color: #fff; }
-.mutation-toast__content { min-width: 0; flex: 1; padding-top: 2px; }
-.mutation-toast__content strong { display: block; font-size: 14px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
-.mutation-toast__content p { margin: 4px 0 0; color: #526581; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-.mutation-toast__close { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #64748b; cursor: pointer; }
-.mutation-toast__close:hover { background: #f1f5f9; color: #172554; }
-.mutation-toast__close:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.mutation-toast--info {
+  --feedback-accent: #2563eb;
+  --feedback-soft: #dbeafe;
+}
+.mutation-toast--error {
+  --feedback-accent: #dc2626;
+  --feedback-soft: #fee2e2;
+}
+.mutation-toast__icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--feedback-soft);
+  color: var(--feedback-accent);
+}
+.mutation-toast__icon svg {
+  box-sizing: content-box;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--feedback-accent);
+  color: #fff;
+}
+.mutation-toast__content {
+  min-width: 0;
+  flex: 1;
+  padding-top: 2px;
+}
+.mutation-toast__content strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.mutation-toast__content p {
+  margin: 4px 0 0;
+  color: #526581;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.mutation-toast__close {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+.mutation-toast__close:hover {
+  background: #f1f5f9;
+  color: #172554;
+}
+.mutation-toast__close:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
 /* Busy saves and inactive primary actions share a neutral, readable disabled state. */
 button.btn-primary:disabled,
 button[aria-busy='true'],
@@ -53,7 +108,27 @@ button[data-mutation-pending='true'][aria-busy='true'] {
   color: transparent !important;
   cursor: wait;
 }
-button[data-mutation-pending='true'] > * { visibility: hidden; }
-button[data-mutation-pending='true']::after { position: absolute; inset: 0; display: grid; place-items: center; padding: 0 4px; overflow: hidden; color: #475569; content: 'Đang lưu…'; font-size: 12px; white-space: nowrap; }
-html[lang='en'] button[data-mutation-pending='true']::after { content: 'Saving…'; }
-@media (max-width: 600px) { .mutation-toast-region { top: 12px; right: 16px; } }
+button[data-mutation-pending='true'] > * {
+  visibility: hidden;
+}
+button[data-mutation-pending='true']::after {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  overflow: hidden;
+  color: #475569;
+  content: 'Đang lưu…';
+  font-size: 12px;
+  white-space: nowrap;
+}
+html[lang='en'] button[data-mutation-pending='true']::after {
+  content: 'Saving…';
+}
+@media (max-width: 600px) {
+  .mutation-toast-region {
+    top: 12px;
+    right: 16px;
+  }
+}

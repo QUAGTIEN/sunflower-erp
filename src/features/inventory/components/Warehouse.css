@@ -1,41 +1,209 @@
-.warehouse-workspace { display: flex; flex-direction: column; min-width: 0; gap: var(--erp-page-gap); }
-.warehouse-toolbar { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; }
-.warehouse-toolbar > input[type='search'] { flex: 1 1 240px; min-width: 160px; }
-.warehouse-toolbar > label { display: flex; flex-direction: column; gap: 4px; }
-.warehouse-toolbar > .warehouse-check, .warehouse-check { display: flex; flex-direction: row; align-items: center; gap: 8px; }
-.warehouse-list-frame { min-width: 0; background: white; }
-.warehouse-list { min-width: 1080px; }
-.warehouse-list th:last-child { width: 100px; }
-.warehouse-list .warehouse-number { text-align: right; font-variant-numeric: tabular-nums; }
-.warehouse-error, .warehouse-warning { padding: 12px; border: 1px solid #f5c7c7; background: #fff8f8; color: #991b1b; border-radius: var(--erp-control-radius); }
-.warehouse-danger, .warehouse-workspace td.warehouse-danger, .warehouse-dialog td.warehouse-danger { color: #b91c1c; }
-.warehouse-note { margin: 0; color: #64748b; font-size: 12px; }
-.warehouse-dialog { width: min(1120px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 20px; border: 1px solid var(--erp-border-color); border-radius: var(--erp-control-radius); color: #334155; background: white; }
-.warehouse-dialog::backdrop { background: rgb(15 23 42 / 40%); }
-.warehouse-dialog header, .warehouse-dialog footer { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.warehouse-dialog header { justify-content: space-between; margin-bottom: 16px; }
-.warehouse-dialog header h2 { font-size: var(--erp-page-title-size); margin: 0; overflow-wrap: anywhere; }
-.warehouse-dialog footer { justify-content: flex-end; margin-top: 16px; }
-.warehouse-dialog fieldset { display: grid; min-width: 0; gap: 16px; border: 0; padding: 0; margin: 0; }
-.warehouse-dialog label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
-.warehouse-dialog label.warehouse-check { flex-direction: row; align-items: center; }
-.warehouse-dialog input, .warehouse-dialog select, .warehouse-dialog textarea { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--erp-border-color); border-radius: var(--erp-control-radius); font: inherit; }
-.warehouse-dialog input[type='checkbox'] { width: 15px; }
-.warehouse-dialog input[type='number'], .warehouse-dialog td.warehouse-number { text-align: right; font-variant-numeric: tabular-nums; }
-.warehouse-dialog input:read-only { background: #f8fafc; }
-.warehouse-dialog :focus-visible { outline: 2px solid #6687c7; outline-offset: 2px; }
-.warehouse-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.warehouse-grid-scroll { overflow: auto; max-height: 360px; border: 1px solid var(--erp-border-color); }
-.warehouse-grid-scroll table { width: 100%; min-width: 700px; table-layout: fixed; border-collapse: collapse; }
-.warehouse-grid-scroll :is(td, th) { padding: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: 1px solid var(--erp-row-divider); }
-.warehouse-grid-scroll th { background: var(--erp-table-header-bg); text-align: left; }
-.warehouse-entry-table { min-width: 1180px !important; }
-.warehouse-entry-table th:nth-child(1) { width: 200px; }
-.warehouse-entry-table th:nth-child(2) { width: 260px; }
-.warehouse-entry-table th:last-child { width: 240px; }
-@media (max-width: 680px) { .warehouse-fields { grid-template-columns: 1fr; } .warehouse-dialog { padding: 12px; } }
-.goods-entry-table { min-width: 1380px !important; }
-.goods-entry-table th:nth-child(-n+3) { width: 240px; }
-.goods-entry-table th:last-child { width: 220px; }
-.goods-proof-image { display: block; max-width: min(100%, 400px); max-height: 240px; object-fit: contain; margin: 8px 0; border: 1px solid var(--erp-border-color); }
-.goods-signature-pad { display: block; width: min(100%, 600px); height: 180px; margin: 8px 0; border: 1px solid var(--erp-border-color); background: white; touch-action: none; }
+.warehouse-workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--erp-page-gap);
+}
+.warehouse-toolbar {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.warehouse-toolbar > input[type='search'] {
+  flex: 1 1 240px;
+  min-width: 160px;
+}
+.warehouse-toolbar > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.warehouse-toolbar > .warehouse-check,
+.warehouse-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.warehouse-list-frame {
+  min-width: 0;
+  background: white;
+}
+.warehouse-list {
+  min-width: 1080px;
+}
+.warehouse-list th:last-child {
+  width: 100px;
+}
+.warehouse-list .warehouse-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.warehouse-error,
+.warehouse-warning {
+  padding: 12px;
+  border: 1px solid #f5c7c7;
+  background: #fff8f8;
+  color: #991b1b;
+  border-radius: var(--erp-control-radius);
+}
+.warehouse-danger,
+.warehouse-workspace td.warehouse-danger,
+.warehouse-dialog td.warehouse-danger {
+  color: #b91c1c;
+}
+.warehouse-note {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+.warehouse-dialog {
+  width: min(1120px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  color: #334155;
+  background: white;
+}
+.warehouse-dialog::backdrop {
+  background: rgb(15 23 42 / 40%);
+}
+.warehouse-dialog header,
+.warehouse-dialog footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.warehouse-dialog header {
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.warehouse-dialog header h2 {
+  font-size: var(--erp-page-title-size);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.warehouse-dialog footer {
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+.warehouse-dialog fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.warehouse-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+.warehouse-dialog label.warehouse-check {
+  flex-direction: row;
+  align-items: center;
+}
+.warehouse-dialog input,
+.warehouse-dialog select,
+.warehouse-dialog textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  font: inherit;
+}
+.warehouse-dialog input[type='checkbox'] {
+  width: 15px;
+}
+.warehouse-dialog input[type='number'],
+.warehouse-dialog td.warehouse-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.warehouse-dialog input:read-only {
+  background: #f8fafc;
+}
+.warehouse-dialog :focus-visible {
+  outline: 2px solid #6687c7;
+  outline-offset: 2px;
+}
+.warehouse-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.warehouse-grid-scroll {
+  overflow: auto;
+  max-height: 360px;
+  border: 1px solid var(--erp-border-color);
+}
+.warehouse-grid-scroll table {
+  width: 100%;
+  min-width: 700px;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.warehouse-grid-scroll :is(td, th) {
+  padding: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid var(--erp-row-divider);
+}
+.warehouse-grid-scroll th {
+  background: var(--erp-table-header-bg);
+  text-align: left;
+}
+.warehouse-entry-table {
+  min-width: 1180px !important;
+}
+.warehouse-entry-table th:nth-child(1) {
+  width: 200px;
+}
+.warehouse-entry-table th:nth-child(2) {
+  width: 260px;
+}
+.warehouse-entry-table th:last-child {
+  width: 240px;
+}
+@media (max-width: 680px) {
+  .warehouse-fields {
+    grid-template-columns: 1fr;
+  }
+  .warehouse-dialog {
+    padding: 12px;
+  }
+}
+.goods-entry-table {
+  min-width: 1380px !important;
+}
+.goods-entry-table th:nth-child(-n + 3) {
+  width: 240px;
+}
+.goods-entry-table th:last-child {
+  width: 220px;
+}
+.goods-proof-image {
+  display: block;
+  max-width: min(100%, 400px);
+  max-height: 240px;
+  object-fit: contain;
+  margin: 8px 0;
+  border: 1px solid var(--erp-border-color);
+}
+.goods-signature-pad {
+  display: block;
+  width: min(100%, 600px);
+  height: 180px;
+  margin: 8px 0;
+  border: 1px solid var(--erp-border-color);
+  background: white;
+  touch-action: none;
+}

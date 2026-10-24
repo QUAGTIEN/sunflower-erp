@@ -14,7 +14,7 @@ function setup() {
         add: (...names) => names.forEach(name => classes.add(name)),
         remove: (...names) => names.forEach(name => classes.delete(name)),
         contains: name => classes.has(name),
-        toggle: (name, enabled) => enabled ? classes.add(name) : classes.delete(name)
+        toggle: (name, enabled) => (enabled ? classes.add(name) : classes.delete(name))
       };
       this.style = {
         setProperty: (key, value) => styles.set(key, value),
@@ -36,7 +36,7 @@ function setup() {
   container.nextElementSibling = pagination;
   let content = false;
   container.querySelector = () => ({});
-  container.closest = selector => selector.includes('data-erp-table-layout') && content ? {} : null;
+  container.closest = selector => (selector.includes('data-erp-table-layout') && content ? {} : null);
   container.matches = selector => selector.includes('.erp-primary-data-table');
   root.querySelectorAll = selector => {
     if (selector === 'table') return []; // Column sizing is covered separately.
@@ -48,25 +48,47 @@ function setup() {
   let nextFrame = 0;
   const window = {
     getComputedStyle: () => ({ paddingBottom: '16px', borderBottomWidth: '1px', rowGap: '12px' }),
-    requestAnimationFrame: callback => { scheduled.set(++nextFrame, callback); return nextFrame; },
+    requestAnimationFrame: callback => {
+      scheduled.set(++nextFrame, callback);
+      return nextFrame;
+    },
     cancelAnimationFrame: id => scheduled.delete(id),
     addEventListener: (name, callback) => listeners.set(name, callback),
     removeEventListener: name => listeners.delete(name)
   };
-  class Observer { observe() {} disconnect() {} }
+  class Observer {
+    observe() {}
+    disconnect() {}
+  }
   let cleanup;
   const module = { exports: {} };
   const source = fs.readFileSync(path.join(__dirname, '../src/hooks/useGlobalTableColumnResize.ts'), 'utf8');
-  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const code = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+  }).outputText;
   const requireStub = name => {
-    if (name === 'react') return { useEffect: callback => { cleanup = callback(); } };
+    if (name === 'react')
+      return {
+        useEffect: callback => {
+          cleanup = callback();
+        }
+      };
     if (name.includes('tableColumnLayout')) return {};
     if (name.includes('tableColumnSizing')) return {};
     throw new Error(`Unexpected import: ${name}`);
   };
-  new Function('require', 'module', 'exports', 'document', 'window', 'HTMLElement', 'Element', 'MutationObserver', 'ResizeObserver', code)(
-    requireStub, module, module.exports, { querySelector: () => root }, window, Element, Element, Observer, Observer
-  );
+  new Function(
+    'require',
+    'module',
+    'exports',
+    'document',
+    'window',
+    'HTMLElement',
+    'Element',
+    'MutationObserver',
+    'ResizeObserver',
+    code
+  )(requireStub, module, module.exports, { querySelector: () => root }, window, Element, Element, Observer, Observer);
   module.exports.useGlobalTableColumnResize('sales', 'sale1', { layouts: {}, canEditColumns: false });
   const update = nextContent => {
     content = nextContent;

@@ -9,8 +9,9 @@ const source = fs.readFileSync(
   'utf8'
 );
 
-const items = [...source.matchAll(/item\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(customer_data|leads|crm|sales)'(?:\s*,\s*'([^']+)')?\)/g)]
-  .map(match => ({ id: match[1], label: match[2], module: match[3], derived: match[4] || '' }));
+const items = [
+  ...source.matchAll(/item\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(customer_data|leads|crm|sales)'(?:\s*,\s*'([^']+)')?\)/g)
+].map(match => ({ id: match[1], label: match[2], module: match[3], derived: match[4] || '' }));
 
 test('customer insight catalog contains 8 groups and exactly 61 unique items', () => {
   const groupIds = [...source.matchAll(/\{\s*id: '([^']+)',\s*label: '[^']+',\s*items: \[/g)].map(match => match[1]);
@@ -84,7 +85,10 @@ test('dashboard renders the focused overview and limits classification records t
 });
 
 test('raw data and leads share the 61-item classification page and list controls', () => {
-  const workspaceSource = readModuleSource('src/features/crm/components/LeadCandidateWorkspace.tsx', 'src/features/crm/components/leadCandidateWorkspace');
+  const workspaceSource = readModuleSource(
+    'src/features/crm/components/LeadCandidateWorkspace.tsx',
+    'src/features/crm/components/leadCandidateWorkspace'
+  );
   const classificationSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'components', 'CustomerInsightClassification.tsx'),
     'utf8'
@@ -97,8 +101,14 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.match(workspaceSource, /visibleCandidateInsightItems\.map/);
   assert.doesNotMatch(workspaceSource, /lead-candidate-drawer/);
   assert.doesNotMatch(workspaceSource, /label: 'Xem hồ sơ'/);
-  assert.match(workspaceSource, /className="lead-candidate-company-button"\s+onClick=\{\(\) => openEditForm\(candidate\)\}/);
-  assert.match(workspaceSource, /className="lead-candidate-phone-link"\s+onClick=\{\(\) => openEditForm\(candidate, 'profile'\)\}/);
+  assert.match(
+    workspaceSource,
+    /className="lead-candidate-company-button"\s+onClick=\{\(\) => openEditForm\(candidate\)\}/
+  );
+  assert.match(
+    workspaceSource,
+    /className="lead-candidate-phone-link"\s+onClick=\{\(\) => openEditForm\(candidate, 'profile'\)\}/
+  );
   assert.doesNotMatch(workspaceSource, /data-system-label="businessSector"/);
   assert.doesNotMatch(workspaceSource, /data-system-label="expectedProducts"/);
   assert.match(workspaceSource, /<h2>File liên quan<\/h2>/);
@@ -115,7 +125,10 @@ test('raw data and leads share the 61-item classification page and list controls
     'utf8'
   );
   assert.match(customerDataCss, /\.customer-classification__groups\s*\{[^}]*grid-template-columns:\s*repeat\(4,/s);
-  assert.match(customerDataCss, /@media \(max-width: 1500px\)[\s\S]*\.customer-classification__groups\s*\{[^}]*repeat\(2,/);
+  assert.match(
+    customerDataCss,
+    /@media \(max-width: 1500px\)[\s\S]*\.customer-classification__groups\s*\{[^}]*repeat\(2,/
+  );
 
   const leadsSource = readModuleSource('src/features/crm/pages/LeadsPage.tsx', 'src/features/crm/pages/leadsPage');
   assert.match(leadsSource, /CUSTOMER_INSIGHT_GROUPS\.flatMap/);
@@ -155,10 +168,7 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.match(sharedHeaderSource, /Giai đoạn hiện tại/);
   assert.match(sharedHeaderSource, /Chăm sóc tiếp/);
 
-  const leadsCss = fs.readFileSync(
-    path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'Leads.css'),
-    'utf8'
-  );
+  const leadsCss = fs.readFileSync(path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'Leads.css'), 'utf8');
   assert.match(leadsCss, /\.lead-form-page__header\.lead-record-header\s*\{[^}]*display: grid !important/s);
   assert.match(leadsCss, /\.lead-form-page__header\.lead-record-header\s*\{[^}]*min-height: 70px !important/s);
   assert.match(leadsCss, /\.lead-form-page__header\.lead-record-header\s*\{[^}]*padding: 10px 12px !important/s);
@@ -176,10 +186,7 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.doesNotMatch(customerSource, /getCustomerInsightGroupsForModule\('crm'\)/);
   assert.doesNotMatch(salesSource, /getCustomerInsightGroupsForModule\('sales'\)/);
 
-  const appShellSource = fs.readFileSync(
-    path.join(__dirname, '..', 'src', 'app', 'AppShell.tsx'),
-    'utf8'
-  );
+  const appShellSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'AppShell.tsx'), 'utf8');
   assert.match(appShellSource, /normalizeLeadRecords\(data\)/);
   assert.match(leadsSource, /\(selectedLead\.files \|\| \[\]\)\.filter/);
 });

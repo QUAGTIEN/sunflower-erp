@@ -24,7 +24,8 @@ test('new and existing work items keep their status codes with clear labels', ()
   assert.equal(WORK_SCHEDULE_STATUS_LABELS.cannot_process, 'Không xử lí được');
   assert.equal(WORK_SCHEDULE_STATUS_LABELS.completed, 'Đã xử lí');
   const blocked = normalizeWorkScheduleRecord({
-    status: 'cannot_process', cannotProcessNote: 'Thiếu thông tin kỹ thuật',
+    status: 'cannot_process',
+    cannotProcessNote: 'Thiếu thông tin kỹ thuật',
     cannotProcessByName: 'Khánh Ly'
   });
   assert.equal(blocked.cannotProcessNote, 'Thiếu thông tin kỹ thuật');
@@ -34,12 +35,23 @@ test('new and existing work items keep their status codes with clear labels', ()
 test('five assignment groups stay fixed and legacy tasks remain visible', () => {
   const { mergeWorkScheduleGroups, inferWorkScheduleGroupId, normalizeWorkScheduleRecord } = loadScheduleModel();
   const defaults = mergeWorkScheduleGroups([]);
-  assert.deepEqual(defaults.map(group => group.id), ['boss_to_staff', 'staff_to_company', 'staff_to_staff', 'self', 'automatic']);
+  assert.deepEqual(
+    defaults.map(group => group.id),
+    ['boss_to_staff', 'staff_to_company', 'staff_to_staff', 'self', 'automatic']
+  );
   const changed = mergeWorkScheduleGroups([{ id: 'business', name: 'Kinh doanh cũ', order: 30, active: true }]);
   assert.equal(changed.length, 5);
   assert.equal(inferWorkScheduleGroupId({ taskType: 'support_request', groupId: 'boss' }), 'staff_to_company');
   assert.equal(inferWorkScheduleGroupId({ taskType: 'personal_task', groupId: 'business' }), 'self');
-  assert.equal(inferWorkScheduleGroupId({ taskType: 'assigned_task', groupId: 'business', assignedById: 'admin', assigneeId: 'sale' }), 'boss_to_staff');
+  assert.equal(
+    inferWorkScheduleGroupId({
+      taskType: 'assigned_task',
+      groupId: 'business',
+      assignedById: 'admin',
+      assigneeId: 'sale'
+    }),
+    'boss_to_staff'
+  );
   assert.equal(normalizeWorkScheduleRecord({ groupId: 'business' }).workType, 'business');
 });
 
@@ -53,7 +65,10 @@ test('tasks sort by status before priority and deadline', () => {
     task('processing-urgent', 'in_progress', 'urgent', '2026-01-03T00:00:00.000Z'),
     task('blocked', 'cannot_process', 'urgent', '2026-01-01T00:00:00.000Z')
   ].sort(compareWorkScheduleItems);
-  assert.deepEqual(rows.map(row => row.id), ['processing-urgent', 'processing-normal', 'pending', 'blocked', 'completed']);
+  assert.deepEqual(
+    rows.map(row => row.id),
+    ['processing-urgent', 'processing-normal', 'pending', 'blocked', 'completed']
+  );
 });
 
 test('permanent deletion is limited to completed work and administrators', () => {
@@ -89,13 +104,18 @@ test('support requests become managed work items', () => {
 });
 
 test('staff assignments are restricted by group in Firestore rules', () => {
-  const rules = read('firestore.rules').split('match /work_schedule_items/{documentId}')[1].split('match /work_schedule_groups/{documentId}')[0];
+  const rules = read('firestore.rules')
+    .split('match /work_schedule_items/{documentId}')[1]
+    .split('match /work_schedule_groups/{documentId}')[0];
   assert.match(rules, /resource\.data\.assignedById == request\.auth\.uid/);
   assert.match(rules, /groupId == 'self'/);
   assert.match(rules, /groupId == 'staff_to_company'/);
   assert.match(rules, /groupId == 'staff_to_staff'/);
   assert.match(rules, /validWorkAssignee\(\)/);
-  assert.doesNotMatch(rules.match(/request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\[([^]*?)\]\)/)?.[1] || '', /'groupId'/);
+  assert.doesNotMatch(
+    rules.match(/request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\[([^]*?)\]\)/)?.[1] || '',
+    /'groupId'/
+  );
 });
 
 test('task status and priority use colored text without badge styling', () => {
@@ -118,7 +138,11 @@ test('work page requires a group and uses the shared funnel filter panel', () =>
   assert.match(page, /work-schedule-group-cards/);
   assert.match(page, /Loại công việc \*/);
   assert.match(rules, /match \/work_schedule_groups\/\{documentId\}/);
-  for (const file of ['src/components/WorkAssignmentDialog.tsx', 'src/components/SupportRequestDialog.tsx', 'src/components/CallWorkspace.tsx']) {
+  for (const file of [
+    'src/components/WorkAssignmentDialog.tsx',
+    'src/components/SupportRequestDialog.tsx',
+    'src/components/CallWorkspace.tsx'
+  ]) {
     assert.match(read(file), /groupId:/);
   }
 });
@@ -155,7 +179,10 @@ test('dashboard work-group navigation opens the matching schedule group', () => 
 test('work table stays compact with flat filters, colored statuses and an empty state', () => {
   const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');
-  assert.match(page, /<th>Công việc<\/th>\s*<th>Nhóm công việc<\/th>\s*<th>Loại công việc<\/th>\s*<th>Người giao<\/th>\s*<th>Người nhận<\/th>/);
+  assert.match(
+    page,
+    /<th>Công việc<\/th>\s*<th>Nhóm công việc<\/th>\s*<th>Loại công việc<\/th>\s*<th>Người giao<\/th>\s*<th>Người nhận<\/th>/
+  );
   assert.match(page, /<th>Thao tác<\/th>/);
   assert.match(page, /work-schedule-kanban/);
   assert.match(page, /aria-label=\{`Xem chi tiết công việc/);
