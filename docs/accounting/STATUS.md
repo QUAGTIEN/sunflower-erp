@@ -55,4 +55,3 @@ Khi được phép triển khai:
 - Chưa có giá vốn, sổ cái, tích hợp thuế/ngân hàng, hay tự gửi cảnh báo nền.
 - Chưa đọc `.xlsx` trực tiếp; danh mục nhập bằng CSV UTF-8.
 - Dòng PO/LSX cũ thiếu ID liên kết theo vị trí + dấu nội dung; chưa backfill ID.
-- Hai test lỗi có sẵn, không thuộc kế toán: `lead-workspace-tabs`, `raw-data-overview`.

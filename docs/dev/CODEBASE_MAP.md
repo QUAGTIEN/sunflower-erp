@@ -79,8 +79,10 @@ và `poCompatibility.ts`.
 
 ## Test
 
-- `tests/*.test.cjs` dùng `node:test` và loader tự viết: transpile TypeScript bằng `typescript`, resolve alias
-  `@/`, stub CSS. Firebase/Admin được stub bằng store trong bộ nhớ.
+- `tests/*.test.cjs` dùng `node:test`; chạy tất cả bằng `npm test`. Loader dùng chung
+  `tests/helpers/loadTs.cjs` (`createLoader(stubs)`) transpile TypeScript, resolve alias `@/` và `.js → .ts`, stub CSS.
+  Một số test cũ (`customer-product-catalog`, `po-manual-entry`…) cố ý dùng loader chặt: import chưa stub là lỗi.
+  Firebase/Admin được stub bằng store trong bộ nhớ.
 - Nhiều test đọc mã nguồn dạng văn bản để kiểm tra hợp đồng tĩnh, kể cả `firestore.rules`. Đổi tên hàm hoặc
   class có thể làm test lỗi dù hành vi không đổi.
 - File lớn cần đọc có mục tiêu: `CrmPage.tsx` (~4.3k dòng), `LeadCandidateWorkspace.tsx`, `LeadsPage.tsx`,

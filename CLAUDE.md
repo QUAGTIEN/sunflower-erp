@@ -24,14 +24,19 @@ nghiệp vụ viết bằng tiếng Việt; định danh trong code (biến, col
 |---|---|
 | Chạy giao diện | `npm run dev` — chỉ Vite, **không phục vụ `/api`** (cần `vercel dev`) |
 | Build (client + server + Vite) | `npm run build` |
-| Toàn bộ test | `node --test --test-concurrency=2 tests/*.test.cjs` |
+| Toàn bộ test | `npm test` |
 | Một bộ test | `node --test tests/<ten>.test.cjs` |
 | Lint | `npm run lint` hoặc `npx eslint <file>` |
+| Định dạng | `npm run format -- <file>` / `npm run format:check -- <file>` (Prettier, cấu hình `.prettierrc.json`) |
 
-Baseline ngày 24/10/2026 (commit `4853828`):
+Baseline ngày 24/10/2026:
 - Build đạt; có sẵn cảnh báo chunk > 500 KB.
-- Test 340/342; 2 lỗi có sẵn: `lead-workspace-tabs`, `raw-data-overview`.
+- Test 346/346 đạt.
 - Lint 305 lỗi nằm ở 18 file cũ, lớn nhất là `CrmPage`, `SalesPage`, `POFormFullScreen`.
+- Prettier chưa áp dụng cho code cũ. Không chạy `prettier --write .` trên toàn repo; chỉ định dạng từng file theo mục D5.
+
+Test mới nạp file TypeScript bằng `tests/helpers/loadTs.cjs` (`createLoader(stubs)`, `readSource`).
+Không chép lại loader vào từng file test.
 
 Khi chạy nặng thì chạy tuần tự (Node từng hết bộ nhớ khi build, test và lint chạy song song).
 
