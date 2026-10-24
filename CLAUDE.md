@@ -189,7 +189,8 @@ Trước khi sửa, đối chiếu với ít nhất một màn hình cùng loạ
    Chỉ stage đúng file của công việc; không commit file chưa được theo dõi của người dùng.
 2. Hoàn thành một việc (đã build/test/lint đạt) thì **commit thẳng `main` và push `origin/main`**.
    Không dùng `--force`, không sửa lịch sử đã push, không bỏ qua hook. Kiểm tra không đạt thì không commit,
-   báo lại người dùng.
+   báo lại người dùng. Lệnh commit phải phụ thuộc vào **mã thoát** của build/test
+   (`npm test && git commit ...`), không chỉ in kết quả ra rồi commit tiếp.
 3. **Push ≠ deploy.** Không tự deploy Vercel, deploy `firestore.rules`/indexes, hay ghi/chuyển dữ liệu Firebase
    thật. Web + API + rules cùng phiên bản phải được deploy cùng nhau khi người dùng cho phép.
 
