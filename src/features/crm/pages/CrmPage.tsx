@@ -41,7 +41,6 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
-import { AdvancedDataFilters } from '@/components/AdvancedDataFilters';
 import {
   countAdvancedFilters,
   getAdvancedFilterKindForFieldType,
@@ -436,7 +435,6 @@ export const Crm: React.FC<CrmProps> = ({
   const [priceHistoryProduct, setPriceHistoryProduct] = useState<any | null>(null);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [selectedEditRequest, setSelectedEditRequest] = useState<any | null>(null);
-  const [windDirectionFiles, setWindDirectionFiles] = useState<any[]>([]);
 
   const customerColumnOptions = useMemo<TableColumnOption[]>(() => {
     const sectionLabels: Record<string, string> = {
@@ -566,25 +564,6 @@ export const Crm: React.FC<CrmProps> = ({
     [customerFilterDefinitions]
   );
   const systemFilterDefinitions = useSystemFilterConfiguration([], customerFilterDefinitions);
-
-  const handleWindDirectionFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-    const base64Promises = Array.from(files).map(file => {
-      return new Promise<any>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve({ name: file.name, url: reader.result as string });
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
-    });
-    try {
-      const base64Files = await Promise.all(base64Promises);
-      setWindDirectionFiles(prev => [...prev, ...base64Files]);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleUpdateFieldValue = (fieldId: string, value: any) => {
     setSpecFields(prev => prev.map(f => (f.id === fieldId ? { ...f, value } : f)));
@@ -843,35 +822,6 @@ export const Crm: React.FC<CrmProps> = ({
   const [productDiscountRate, setProductDiscountRate] = useState(0);
   const [productDiscountAmount, setProductDiscountAmount] = useState(0);
   const [productLeadTimeDays, setProductLeadTimeDays] = useState(0);
-
-  // Specs - Ribbon
-  const [specRibbonType, setSpecRibbonType] = useState('WAX PREMIUM');
-  const [specRibbonDirection, setSpecRibbonDirection] = useState('Out side');
-  const [specRibbonSize, setSpecRibbonSize] = useState('110mm x 300m');
-  const [specRibbonColor, setSpecRibbonColor] = useState('Đen');
-
-  // Specs - White roll
-  const [specWidth, setSpecWidth] = useState(80);
-  const [specHeight, setSpecHeight] = useState(55);
-  const [specGap, setSpecGap] = useState(3);
-  const [specPitch, setSpecPitch] = useState(58);
-  const [specQtyPerRoll, setSpecQtyPerRoll] = useState(1000);
-  const [specCore, setSpecCore] = useState('76mm');
-  const [specDieCut, setSpecDieCut] = useState('Bo góc R2');
-  const [specPerforated, setSpecPerforated] = useState('Không');
-  const [specWindDirection, setSpecWindDirection] = useState('Ra đầu trước');
-
-  // Specs - Color roll
-  const [specColorColors, setSpecColorColors] = useState('4 màu');
-  const [specColorForm, setSpecColorForm] = useState('Cuộn');
-  const [specColorWindingCore, setSpecColorWindingCore] = useState('76mm');
-  const [specColorProcessing, setSpecColorProcessing] = useState<string[]>([]);
-
-  // Specs - Color sheet
-  const [specSheetCorner, setSpecSheetCorner] = useState('Bo góc R2');
-  const [specSheetLamination, setSpecSheetLamination] = useState('Cán bóng');
-  const [specSheetFinished, setSpecSheetFinished] = useState('Xén thành phẩm');
-  const [specSheetType, setSpecSheetType] = useState('A4');
   const [productMaterial, setProductMaterial] = useState('');
   const [specCustomRows, setSpecCustomRows] = useState<{ key: string; value: string }[]>([]);
   const [specFields, setSpecFields] = useState<any[]>([]);
@@ -1384,7 +1334,6 @@ export const Crm: React.FC<CrmProps> = ({
     setProductLeadTimeDays(Number(prod.leadTimeDays || 0));
     setSpecCustomRows(prod.specifications?.custom || []);
     setProductLayoutBase64(prod.layoutUrl || '');
-    setWindDirectionFiles(prod.specifications?.windDirectionFiles || []);
     setSpecFields(loadSpecsToFields(prod.productType, prod.specifications));
     setShowEditProductModal(true);
   };
@@ -2042,46 +1991,6 @@ export const Crm: React.FC<CrmProps> = ({
       setProductLayoutBase64(event.target?.result as string);
     };
     reader.readAsDataURL(file);
-  };
-
-  const handleDeleteProduct = async (productId: string) => {
-    return runMutationAction(
-      'CrmPage.tsx:handleDeleteProduct',
-      async () => {
-        if (!selectedCustomer) return;
-        if (await confirmDelete(t('Bạn có chắc chắn muốn xóa mã sản phẩm này?'))) {
-          const updatedProducts = (selectedCustomer.products || []).map((p: any) => {
-            if (p.id === productId) {
-              return { ...p, deleted: true, deletedAt: new Date().toISOString() };
-            }
-            return p;
-          });
-
-          await requireConfirmedMutation(
-            dbService.updateDocument('customers', selectedCustomer.id, {
-              products: updatedProducts
-            })
-          );
-
-          setSelectedCustomer((prev: any) => ({
-            ...prev,
-            products: updatedProducts
-          }));
-
-          onRefresh();
-
-          showSuccessToast('Đã xóa thành công');
-        }
-      },
-      productId
-    );
-  };
-
-  const handleOpenRequote = (prod: any) => {
-    setSelectedProduct(prod);
-    setRequotePrice(prod.currentPrice);
-    setRequoteNote('');
-    setShowRequoteModal(true);
   };
 
   const handleRequoteSubmit = async (e: React.FormEvent) => {

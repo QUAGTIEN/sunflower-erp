@@ -46,7 +46,7 @@ import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateF
 import { normalizeCustomerProduct, type CustomerRecord, type LeadRecord } from '@/features/crm/model/crmModels';
 import { synchronizeCustomerProductOrderItems } from '@/features/crm/model/customerProductCatalog';
 import '@/components/CustomerHistory.css';
-import { Plus, Trash2, Pencil, Check, Copy, Folder, FileText, Settings2 } from 'lucide-react';
+import { Trash2, Pencil, Check, Copy, FileText, Settings2 } from 'lucide-react';
 
 interface SalesProps {
   pos: any[];

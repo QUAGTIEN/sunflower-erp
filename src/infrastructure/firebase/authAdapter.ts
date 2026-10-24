@@ -78,7 +78,7 @@ setFirebaseSessionUnavailableHandler(() => {
 export const authService = {
   async login(identifier: string, password: string): Promise<UserProfile> {
     const searchIdentifier = identifier.toLowerCase().trim();
-    let user: UserProfile | null = null;
+    let user: UserProfile | null;
 
     if (firebaseAuthMode === 'email-password') {
       const firebaseEmail = searchIdentifier.includes('@')
@@ -102,18 +102,20 @@ export const authService = {
       } catch (error) {
         const code = getFirebaseErrorCode(error);
         if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-          throw new Error('Mật khẩu hoặc tài khoản Firebase không đúng. Vui lòng thử lại.');
+          throw new Error('Mật khẩu hoặc tài khoản Firebase không đúng. Vui lòng thử lại.', { cause: error });
         }
         if (code === 'auth/configuration-not-found' || code === 'auth/operation-not-allowed') {
-          throw new Error('Firebase Authentication chưa được bật chế độ Email/Password.');
+          throw new Error('Firebase Authentication chưa được bật chế độ Email/Password.', { cause: error });
         }
         if (code === 'auth/user-disabled') {
-          throw new Error('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.');
+          throw new Error('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.', { cause: error });
         }
         if (code === 'auth/profile-not-found') {
           throw error;
         }
-        throw new Error(`Không thể đăng nhập Firebase (${code}). Vui lòng kiểm tra cấu hình hệ thống.`);
+        throw new Error(`Không thể đăng nhập Firebase (${code}). Vui lòng kiểm tra cấu hình hệ thống.`, {
+          cause: error
+        });
       }
     } else {
       const dbUsers = await dbService.getCollection('users');

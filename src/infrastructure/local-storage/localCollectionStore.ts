@@ -34,7 +34,7 @@ export const initializeLocalStorage = () => {
     localStorage.setItem('erp_reminders', JSON.stringify([]));
   }
 
-  let customers = localStorage.getItem('erp_customers') ? JSON.parse(localStorage.getItem('erp_customers')!) : [];
+  const customers = localStorage.getItem('erp_customers') ? JSON.parse(localStorage.getItem('erp_customers')!) : [];
   DEFAULT_CUSTOMERS.forEach(defCust => {
     if (!customers.some((c: any) => c.id === defCust.id)) {
       customers.push(defCust);
@@ -50,7 +50,7 @@ export const initializeLocalStorage = () => {
     : [];
   localStorage.setItem('erp_notifications', JSON.stringify(normalizeNotificationRecords(notifications)));
 
-  let suppliers = localStorage.getItem('erp_suppliers') ? JSON.parse(localStorage.getItem('erp_suppliers')!) : [];
+  const suppliers = localStorage.getItem('erp_suppliers') ? JSON.parse(localStorage.getItem('erp_suppliers')!) : [];
   DEFAULT_SUPPLIERS.forEach(defSup => {
     if (!suppliers.some((s: any) => s.id === defSup.id)) {
       suppliers.push(defSup);
@@ -63,7 +63,7 @@ export const initializeLocalStorage = () => {
     : [];
   localStorage.setItem('erp_procurement_requests', JSON.stringify(normalizeProcurementRequests(procurementRequests)));
 
-  let pos = localStorage.getItem('erp_pos') ? JSON.parse(localStorage.getItem('erp_pos')!) : [];
+  const pos = localStorage.getItem('erp_pos') ? JSON.parse(localStorage.getItem('erp_pos')!) : [];
   DEFAULT_POS.forEach(defPo => {
     if (!pos.some((p: any) => p.id === defPo.id)) {
       pos.push(defPo);
@@ -71,7 +71,7 @@ export const initializeLocalStorage = () => {
   });
   localStorage.setItem('erp_pos', JSON.stringify(pos));
 
-  let purchaseOrders = localStorage.getItem('erp_purchase_orders')
+  const purchaseOrders = localStorage.getItem('erp_purchase_orders')
     ? JSON.parse(localStorage.getItem('erp_purchase_orders')!)
     : [];
   DEFAULT_PURCHASE_ORDERS.forEach(defPur => {

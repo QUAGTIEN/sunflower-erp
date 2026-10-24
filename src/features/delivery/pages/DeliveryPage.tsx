@@ -133,7 +133,6 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   const [activeTab, setActiveTab] = useState<DeliveryTab>('control');
   const [vehicles, setVehicles] = useState<DeliveryVehicle[]>([]);
   const [showVehicleModal, setShowVehicleModal] = useState(false);
-  const [fleetLoading, setFleetLoading] = useState(true);
 
   // Form states - Delivery Trip
   const [region, setRegion] = useState('Hải Dương');
@@ -192,10 +191,8 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
   };
 
   const fetchVehicles = async () => {
-    setFleetLoading(true);
     const list = (await dbService.getCollection('delivery_vehicles')) as Array<DeliveryVehicle & { deleted?: boolean }>;
     setVehicles(list.filter(vehicle => !vehicle.deleted));
-    setFleetLoading(false);
   };
 
   useEffect(() => {
