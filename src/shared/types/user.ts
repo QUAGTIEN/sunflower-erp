@@ -1,10 +1,4 @@
-export type UserRole =
-  | 'admin'
-  | 'sale'
-  | 'designer'
-  | 'purchaser'
-  | 'producer'
-  | 'accountant';
+export type UserRole = 'admin' | 'sale' | 'designer' | 'purchaser' | 'producer' | 'accountant';
 
 export interface UserProfile {
   uid: string;

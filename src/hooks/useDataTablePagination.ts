@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export const useDataTablePagination = <T,>(items: T[], initialPageSize = 25) => {
+export const useDataTablePagination = <T>(items: T[], initialPageSize = 25) => {
   const [pageSize, setPageSizeState] = useState(initialPageSize);
   const [page, setPageState] = useState(1);
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));

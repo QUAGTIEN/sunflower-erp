@@ -5,7 +5,12 @@ import { ExpandableTableText } from '@/components/ExpandableTableText';
 interface ReorderableTableCellsProps {
   order: string[];
   children: React.ReactNode;
-  getHeaderProps?: (columnId: string, label: string, currentClassName?: string, currentStyle?: React.CSSProperties) => HeaderInteractionProps;
+  getHeaderProps?: (
+    columnId: string,
+    label: string,
+    currentClassName?: string,
+    currentStyle?: React.CSSProperties
+  ) => HeaderInteractionProps;
   labels?: Record<string, string>;
   expandOverflowText?: boolean;
 }
@@ -37,13 +42,19 @@ export const ReorderableTableCells: React.FC<ReorderableTableCellsProps> = ({
           if (cell.type !== 'td') return cell;
           const bodyProps = cell.props as { children?: React.ReactNode };
           const bodyChildren = React.Children.toArray(bodyProps.children);
-          const containsTextOnly = bodyChildren.length > 0 && bodyChildren.every(child => (
-            typeof child === 'string' || typeof child === 'number'
-          ));
+          const containsTextOnly =
+            bodyChildren.length > 0 &&
+            bodyChildren.every(child => typeof child === 'string' || typeof child === 'number');
           if (!containsTextOnly) return cell;
-          return React.cloneElement(cell, {}, expandOverflowText
-            ? <ExpandableTableText>{bodyProps.children}</ExpandableTableText>
-            : <span className="erp-table-cell-text">{bodyProps.children}</span>);
+          return React.cloneElement(
+            cell,
+            {},
+            expandOverflowText ? (
+              <ExpandableTableText>{bodyProps.children}</ExpandableTableText>
+            ) : (
+              <span className="erp-table-cell-text">{bodyProps.children}</span>
+            )
+          );
         }
         const props = cell.props as { className?: string; children?: React.ReactNode; style?: React.CSSProperties };
         const label = labels[columnId] || (typeof props.children === 'string' ? props.children : columnId);

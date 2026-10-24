@@ -21,8 +21,15 @@ interface SearchableLocationSelectProps {
 }
 
 export const SearchableLocationSelect: React.FC<SearchableLocationSelectProps> = ({
-  value, options, onChange, valueKey = 'label', disabled = false, inputId,
-  ariaLabel, placeholder, emptyMessage
+  value,
+  options,
+  onChange,
+  valueKey = 'label',
+  disabled = false,
+  inputId,
+  ariaLabel,
+  placeholder,
+  emptyMessage
 }) => {
   const selectedOption = options.find(option => option[valueKey] === value);
   const displayValue = selectedOption?.label || '';
@@ -77,12 +84,20 @@ export const SearchableLocationSelect: React.FC<SearchableLocationSelectProps> =
         aria-autocomplete="list"
         aria-controls={listboxId}
         aria-expanded={open}
-        aria-activedescendant={open && filteredOptions[activeIndex] ? `${listboxId}-${filteredOptions[activeIndex].id}` : undefined}
+        aria-activedescendant={
+          open && filteredOptions[activeIndex] ? `${listboxId}-${filteredOptions[activeIndex].id}` : undefined
+        }
         value={query}
         placeholder={placeholder}
         disabled={disabled}
-        onFocus={() => { setActiveIndex(0); setOpen(true); }}
-        onClick={() => { setActiveIndex(0); setOpen(true); }}
+        onFocus={() => {
+          setActiveIndex(0);
+          setOpen(true);
+        }}
+        onClick={() => {
+          setActiveIndex(0);
+          setOpen(true);
+        }}
         onChange={event => {
           const nextQuery = event.target.value;
           setQuery(nextQuery);
@@ -119,7 +134,9 @@ export const SearchableLocationSelect: React.FC<SearchableLocationSelectProps> =
               className={`${option[valueKey] === value ? 'is-selected' : ''} ${index === activeIndex ? 'is-active' : ''}`.trim()}
               onPointerMove={() => setActiveIndex(index)}
               onClick={() => selectOption(option)}
-            >{option.label}</button>
+            >
+              {option.label}
+            </button>
           ))}
           {filteredOptions.length === 0 && <p>{emptyMessage}</p>}
         </div>
@@ -139,10 +156,26 @@ interface SearchableProvinceSelectProps {
 }
 
 export const SearchableProvinceSelect: React.FC<SearchableProvinceSelectProps> = ({
-  value, onChange, disabled = false, inputId, ariaLabel = 'Tỉnh / thành',
-  placeholder = 'Chọn hoặc gõ để tìm tỉnh/thành', options = VIETNAM_ADMINISTRATIVE_UNITS
+  value,
+  onChange,
+  disabled = false,
+  inputId,
+  ariaLabel = 'Tỉnh / thành',
+  placeholder = 'Chọn hoặc gõ để tìm tỉnh/thành',
+  options = VIETNAM_ADMINISTRATIVE_UNITS
 }) => {
   const exactValue = options.find(province => province.label === value)?.label;
   const canonicalValue = exactValue || resolveVietnamProvince(value)?.label || value;
-  return <SearchableLocationSelect value={canonicalValue} options={options} onChange={onChange} disabled={disabled} inputId={inputId} ariaLabel={ariaLabel} placeholder={placeholder} emptyMessage="Không tìm thấy tỉnh/thành phù hợp." />;
+  return (
+    <SearchableLocationSelect
+      value={canonicalValue}
+      options={options}
+      onChange={onChange}
+      disabled={disabled}
+      inputId={inputId}
+      ariaLabel={ariaLabel}
+      placeholder={placeholder}
+      emptyMessage="Không tìm thấy tỉnh/thành phù hợp."
+    />
+  );
 };

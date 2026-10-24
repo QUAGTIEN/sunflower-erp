@@ -12,7 +12,8 @@ const getInitialColumnWidth = (header: HTMLTableCellElement, measuredWidth: numb
   const labelWidth = Math.min(240, Math.max(80, label.length * 7.5 + 30));
   if (/thao tác|hành động|action/i.test(label)) return Math.max(96, measuredWidth, labelWidth);
   if (/trạng thái|phương án|tiến độ/i.test(label)) return Math.max(150, measuredWidth, labelWidth);
-  if (/doanh nghiệp|khách hàng|nhà cung cấp|mặt hàng|sản phẩm|tên tem|tên vật tư/i.test(label)) return Math.max(220, measuredWidth, labelWidth);
+  if (/doanh nghiệp|khách hàng|nhà cung cấp|mặt hàng|sản phẩm|tên tem|tên vật tư/i.test(label))
+    return Math.max(220, measuredWidth, labelWidth);
   return Math.max(measuredWidth, labelWidth);
 };
 
@@ -28,65 +29,81 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
       const rootStyle = window.getComputedStyle(root);
       const rootBottom = root.getBoundingClientRect().bottom;
       const rootContentBottom = rootBottom - (Number.parseFloat(rootStyle.paddingBottom) || 0);
-      root.querySelectorAll<HTMLElement>([
-        '.table-container',
-        '.work-schedule-table-wrap',
-        '.custom-field-config__table-wrap',
-        '.customer-data-table-wrap',
-        '.customer-onboarding-items__table-wrap',
-        '.crm-customer-table-wrap'
-      ].join(', ')).forEach(container => {
-        if (container.closest('.modal-overlay, .header-notification-panel')) return;
-        if (container.offsetParent === null) return;
-        const table = container.querySelector(':scope > table');
-        if (!table) return;
-        // Tables embedded in forms/details follow their content height, even on
-        // wide screens. Keep column resizing without stretching each form section.
-        if (container.closest('[data-erp-table-layout="content"]')) {
-          container.classList.remove('erp-viewport-table-scroll', 'erp-viewport-table-scroll--fill');
-          container.style.removeProperty('--erp-table-viewport-height');
-          return;
-        }
+      root
+        .querySelectorAll<HTMLElement>(
+          [
+            '.table-container',
+            '.work-schedule-table-wrap',
+            '.custom-field-config__table-wrap',
+            '.customer-data-table-wrap',
+            '.customer-onboarding-items__table-wrap',
+            '.crm-customer-table-wrap'
+          ].join(', ')
+        )
+        .forEach(container => {
+          if (container.closest('.modal-overlay, .header-notification-panel')) return;
+          if (container.offsetParent === null) return;
+          const table = container.querySelector(':scope > table');
+          if (!table) return;
+          // Tables embedded in forms/details follow their content height, even on
+          // wide screens. Keep column resizing without stretching each form section.
+          if (container.closest('[data-erp-table-layout="content"]')) {
+            container.classList.remove('erp-viewport-table-scroll', 'erp-viewport-table-scroll--fill');
+            container.style.removeProperty('--erp-table-viewport-height');
+            return;
+          }
 
-        const pagination = container.nextElementSibling instanceof HTMLElement
-          && /pagination/i.test(container.nextElementSibling.className)
-          ? container.nextElementSibling
-          : null;
-        const reservedHeight = pagination?.getBoundingClientRect().height || 0;
-        const parentStyle = container.parentElement ? window.getComputedStyle(container.parentElement) : null;
-        const parentBottomInset = parentStyle
-          ? (Number.parseFloat(parentStyle.paddingBottom) || 0) + (Number.parseFloat(parentStyle.borderBottomWidth) || 0)
-          : 0;
-        const footerGap = pagination && parentStyle ? Number.parseFloat(parentStyle.rowGap) || 0 : 0;
-        const viewportBottom = container.matches('.erp-primary-data-table') ? rootContentBottom : rootBottom;
+          const pagination =
+            container.nextElementSibling instanceof HTMLElement &&
+            /pagination/i.test(container.nextElementSibling.className)
+              ? container.nextElementSibling
+              : null;
+          const reservedHeight = pagination?.getBoundingClientRect().height || 0;
+          const parentStyle = container.parentElement ? window.getComputedStyle(container.parentElement) : null;
+          const parentBottomInset = parentStyle
+            ? (Number.parseFloat(parentStyle.paddingBottom) || 0) +
+              (Number.parseFloat(parentStyle.borderBottomWidth) || 0)
+            : 0;
+          const footerGap = pagination && parentStyle ? Number.parseFloat(parentStyle.rowGap) || 0 : 0;
+          const viewportBottom = container.matches('.erp-primary-data-table') ? rootContentBottom : rootBottom;
 
-        if (pagination && container.parentElement) {
-          const frame = container.parentElement;
-          const frameHeight = Math.max(160, Math.floor(
-            rootBottom - frame.getBoundingClientRect().top - TABLE_FRAME_BOTTOM_GAP
-          ));
-          frame.classList.add('erp-data-table-frame');
-          frame.style.setProperty('--erp-table-frame-height', `${frameHeight}px`);
-          activeFrames.add(frame);
-        }
+          if (pagination && container.parentElement) {
+            const frame = container.parentElement;
+            const frameHeight = Math.max(
+              160,
+              Math.floor(rootBottom - frame.getBoundingClientRect().top - TABLE_FRAME_BOTTOM_GAP)
+            );
+            frame.classList.add('erp-data-table-frame');
+            frame.style.setProperty('--erp-table-frame-height', `${frameHeight}px`);
+            activeFrames.add(frame);
+          }
 
-        const availableHeight = Math.max(180, Math.floor(
-          viewportBottom - container.getBoundingClientRect().top - reservedHeight - parentBottomInset - footerGap - 8
-        ));
-        container.style.setProperty('--erp-table-viewport-height', `${availableHeight}px`);
-        container.classList.add('erp-viewport-table-scroll');
+          const availableHeight = Math.max(
+            180,
+            Math.floor(
+              viewportBottom -
+                container.getBoundingClientRect().top -
+                reservedHeight -
+                parentBottomInset -
+                footerGap -
+                8
+            )
+          );
+          container.style.setProperty('--erp-table-viewport-height', `${availableHeight}px`);
+          container.classList.add('erp-viewport-table-scroll');
 
-        const isKnownPrimaryWorkspaceTable = container.matches(
-          '.erp-primary-data-table, '
-          + '.lead-data-workspace > .lead-table-card > .table-container, '
-          + '.lead-candidate-workspace > .lead-table-card > .table-container, '
-          + '.crm-data-workspace .crm-customer-table-wrap'
-        );
-        const isWidePageTable = container.clientWidth >= root.clientWidth * 0.72
-          && !container.closest('.dashboard-view, .crm-view--detail, .modal-content');
-        const isPrimaryWorkspaceTable = isKnownPrimaryWorkspaceTable || isWidePageTable;
-        container.classList.toggle('erp-viewport-table-scroll--fill', isPrimaryWorkspaceTable);
-      });
+          const isKnownPrimaryWorkspaceTable = container.matches(
+            '.erp-primary-data-table, ' +
+              '.lead-data-workspace > .lead-table-card > .table-container, ' +
+              '.lead-candidate-workspace > .lead-table-card > .table-container, ' +
+              '.crm-data-workspace .crm-customer-table-wrap'
+          );
+          const isWidePageTable =
+            container.clientWidth >= root.clientWidth * 0.72 &&
+            !container.closest('.dashboard-view, .crm-view--detail, .modal-content');
+          const isPrimaryWorkspaceTable = isKnownPrimaryWorkspaceTable || isWidePageTable;
+          container.classList.toggle('erp-viewport-table-scroll--fill', isPrimaryWorkspaceTable);
+        });
 
       root.querySelectorAll<HTMLElement>('.erp-data-table-frame').forEach(frame => {
         if (activeFrames.has(frame)) return;
@@ -119,19 +136,22 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
         const storageVersion = isPrimaryDataTable ? `${TABLE_WIDTH_STORAGE_VERSION}:` : '';
         const storageKey = `sunflower:table-column-widths:${storageVersion}${userId}:${pageId}:${tableKey}`;
         const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>('thead th'));
-        const layoutId = getGenericTableLayoutId(pageId, table.dataset.resizeKey || `${tableKey}:${table.className}:${headers.length}`);
+        const layoutId = getGenericTableLayoutId(
+          pageId,
+          table.dataset.resizeKey || `${tableKey}:${table.className}:${headers.length}`
+        );
         if (canEditColumns) migrateLayout(layoutId, { widths: readLegacyColumnWidths(storageKey) });
         const hasNewHeaders = headers.some(header => !header.classList.contains('erp-generic-resizable-header'));
-        const needsTableMeasurement = forceTableMeasurement
-          || becameVisible
-          || hasNewHeaders
-          || table.dataset.erpResizePrepared !== 'true';
+        const needsTableMeasurement =
+          forceTableMeasurement || becameVisible || hasNewHeaders || table.dataset.erpResizePrepared !== 'true';
         const widths = needsTableMeasurement ? layouts[layoutId]?.widths || {} : {};
-        const measuredWidths = needsTableMeasurement ? headers.map(header => {
-          const previousWidth = Number.parseFloat(header.style.getPropertyValue('--erp-column-resized-width'));
-          const measuredWidth = previousWidth || Math.round(header.getBoundingClientRect().width);
-          return isPrimaryDataTable ? getInitialColumnWidth(header, measuredWidth) : measuredWidth;
-        }) : [];
+        const measuredWidths = needsTableMeasurement
+          ? headers.map(header => {
+              const previousWidth = Number.parseFloat(header.style.getPropertyValue('--erp-column-resized-width'));
+              const measuredWidth = previousWidth || Math.round(header.getBoundingClientRect().width);
+              return isPrimaryDataTable ? getInitialColumnWidth(header, measuredWidth) : measuredWidth;
+            })
+          : [];
         const resolvedWidths = measuredWidths.map((width, columnIndex) => widths[String(columnIndex)] || width);
         if (needsTableMeasurement) {
           headers.forEach((header, columnIndex) => {
@@ -144,12 +164,13 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
             if (width) header.style.setProperty('--erp-column-resized-width', `${width}px`);
           });
         }
-        if (isPrimaryDataTable) table.querySelectorAll<HTMLTableCellElement>('tbody td:not([data-erp-resize-prepared])').forEach(cell => {
-          cell.dataset.erpResizePrepared = 'true';
-          if (cell.title || cell.querySelector('button, input, select, textarea')) return;
-          const label = cell.textContent?.replace(/\s+/g, ' ').trim();
-          if (label) cell.title = label;
-        });
+        if (isPrimaryDataTable)
+          table.querySelectorAll<HTMLTableCellElement>('tbody td:not([data-erp-resize-prepared])').forEach(cell => {
+            cell.dataset.erpResizePrepared = 'true';
+            if (cell.title || cell.querySelector('button, input, select, textarea')) return;
+            const label = cell.textContent?.replace(/\s+/g, ' ').trim();
+            if (label) cell.title = label;
+          });
         if (needsTableMeasurement) {
           const minimumTableWidth = table.parentElement?.clientWidth || 0;
           const tableWidth = widths.__tableWidth || resolvedWidths.reduce((total, width) => total + width, 0);
@@ -174,16 +195,19 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
       window.cancelAnimationFrame(viewportAnimationFrame);
       viewportAnimationFrame = window.requestAnimationFrame(prepareTableViewports);
     };
-    const containsTableContent = (node: Node) => node instanceof Element && (
-      node.matches('table, thead, tbody, tr, th, td, .table-container, .customer-data-table-wrap, .crm-customer-table-wrap')
-      || Boolean(node.querySelector('table, th, td'))
-    );
+    const containsTableContent = (node: Node) =>
+      node instanceof Element &&
+      (node.matches(
+        'table, thead, tbody, tr, th, td, .table-container, .customer-data-table-wrap, .crm-customer-table-wrap'
+      ) ||
+        Boolean(node.querySelector('table, th, td')));
     const observer = new MutationObserver(records => {
-      const tableChanged = records.some(record => (
-        (record.target instanceof Element && Boolean(record.target.closest('table')))
-        || Array.from(record.addedNodes).some(containsTableContent)
-        || Array.from(record.removedNodes).some(containsTableContent)
-      ));
+      const tableChanged = records.some(
+        record =>
+          (record.target instanceof Element && Boolean(record.target.closest('table'))) ||
+          Array.from(record.addedNodes).some(containsTableContent) ||
+          Array.from(record.removedNodes).some(containsTableContent)
+      );
       if (tableChanged) schedulePrepare(false);
     });
     observer.observe(root, { childList: true, subtree: true });
@@ -217,9 +241,10 @@ export const useGlobalTableColumnResize = (pageId: string, userId: string, manag
       const table = header.closest('table');
       const fillsLastColumn = table?.classList.contains('erp-table-last-column-fill');
       const startWidth = fillsLastColumn ? getTableColumnBaseWidth(header) : bounds.width;
-      const startTableWidth = table && fillsLastColumn
-        ? Number.parseFloat(table.style.getPropertyValue('--erp-table-resized-width'))
-        : table?.getBoundingClientRect().width || 0;
+      const startTableWidth =
+        table && fillsLastColumn
+          ? Number.parseFloat(table.style.getPropertyValue('--erp-table-resized-width'))
+          : table?.getBoundingClientRect().width || 0;
       const initialHeaderWidth = header.style.getPropertyValue('--erp-column-resized-width');
       const initialTableWidth = table?.style.getPropertyValue('--erp-table-resized-width') || '';
       let finalWidth = startWidth;

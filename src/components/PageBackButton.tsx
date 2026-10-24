@@ -28,7 +28,9 @@ export const PageBackButton: React.FC<PageBackButtonProps> = ({
       title={title || buttonLabel}
       aria-label={buttonLabel}
     >
-      <span className="app-back-button__icon"><ArrowLeft size={iconOnly ? 20 : 15} aria-hidden="true" /></span>
+      <span className="app-back-button__icon">
+        <ArrowLeft size={iconOnly ? 20 : 15} aria-hidden="true" />
+      </span>
       {!iconOnly && <span>{buttonLabel}</span>}
     </button>
   );

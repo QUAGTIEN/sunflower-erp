@@ -63,7 +63,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Tạo đơn hàng': 'Create Order',
     'Đơn hàng': 'Orders',
     'Thêm dòng nhập tay': 'Add manual item',
-    'Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.': 'This customer has no registered products. You can add items manually to create an order.',
+    'Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.':
+      'This customer has no registered products. You can add items manually to create an order.',
     'Dữ liệu thô': 'Raw Data',
     'Chuyển về Dữ liệu thô': 'Move to Raw Data',
     'Đang chuyển...': 'Moving...',
@@ -125,7 +126,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'CÔNG NỢ PHẢI THU (AR)': 'ACCOUNTS RECEIVABLE (AR)',
     'CÔNG NỢ PHẢI TRẢ (AP)': 'ACCOUNTS PAYABLE (AP)',
     'ĐƠN ĐANG XỬ LÝ': 'ACTIVE ORDERS',
-    'đơn': 'orders',
+    đơn: 'orders',
     'Bảng tin hoạt động': 'Activity feed',
     'Xem lịch sử': 'View history',
     'Thời gian': 'Time',
@@ -145,13 +146,15 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Hoàn tất': 'Completed',
     'YÊU CẦU THIẾT KẾ': 'DESIGN REQUESTS',
     'KHO THIẾT KẾ & LAYOUT': 'DESIGN & LAYOUT LIBRARY',
-    'Mỗi mặt hàng trong PO là một công việc thiết kế độc lập, chỉ hiển thị thông tin cần thiết cho bộ phận Thiết kế.': 'Each PO item is an independent design task and shows only the information required by the Design team.',
+    'Mỗi mặt hàng trong PO là một công việc thiết kế độc lập, chỉ hiển thị thông tin cần thiết cho bộ phận Thiết kế.':
+      'Each PO item is an independent design task and shows only the information required by the Design team.',
     'Mỗi mặt hàng là một yêu cầu độc lập': 'Each item is an independent request',
     'Yêu Cầu Chờ Thiết Kế': 'Pending Design Requests',
     'Mẫu Đang Chờ Khách Duyệt': 'Designs Waiting for Customer Approval',
     'Mẫu Đã Duyệt Chốt': 'Approved Designs',
     'ngày xử lý': 'processing days',
-    'Kho tài sản thiết kế của công ty, lưu mẫu chuẩn theo mã khách hàng, sản phẩm và phiên bản.': 'Company design asset library organized by customer code, product and version.',
+    'Kho tài sản thiết kế của công ty, lưu mẫu chuẩn theo mã khách hàng, sản phẩm và phiên bản.':
+      'Company design asset library organized by customer code, product and version.',
     'Chưa kiểm tra': 'Unreviewed',
     'Chưa xử lý': 'Queued',
     'Đang xử lý': 'In progress',
@@ -210,7 +213,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // CRM Page
     'QUẢN LÝ KHÁCH HÀNG (CRM)': 'CUSTOMER RELATIONSHIP MANAGEMENT (CRM)',
-    'Quản lý danh sách, hồ sơ liên hệ, hạn mức công nợ và cảnh báo chăm sóc khách hàng.': 'Manage customer list, contact logs, credit limits, and relationship alerts.',
+    'Quản lý danh sách, hồ sơ liên hệ, hạn mức công nợ và cảnh báo chăm sóc khách hàng.':
+      'Manage customer list, contact logs, credit limits, and relationship alerts.',
     'Thêm Khách Hàng Mới': 'Add New Customer',
     'Tìm tên công ty, liên hệ, SĐT...': 'Search company, contact, phone...',
     'Xóa Tìm Kiếm': 'Clear Search',
@@ -222,8 +226,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Đơn Cuối Cùng': 'Last Order',
     'Thao Tác': 'Actions',
     'Chi Tiết': 'Details',
-    'Sửa': 'Edit',
-    'Xóa': 'Delete',
+    Sửa: 'Edit',
+    Xóa: 'Delete',
     'Không tìm thấy khách hàng nào.': 'No customers found.',
     'HỒ SƠ KHÁCH HÀNG:': 'CUSTOMER PROFILE:',
     'Đóng chi tiết': 'Close Details',
@@ -266,26 +270,29 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Ghi Chú Yêu Cầu Riêng': 'Special Client Requests / Notes',
     'Lưu Khách Hàng': 'Save Customer',
     'Cập Nhật': 'Update Info',
-    'Hủy': 'Cancel',
-    'Đóng': 'Close',
+    Hủy: 'Cancel',
+    Đóng: 'Close',
 
     // PO Sales Page
     'TIẾP NHẬN ĐƠN HÀNG (SALES PO)': 'SALES ORDER MANAGEMENT (PO)',
-    'Tạo đơn hàng PO mới, theo dõi hàng đợi công việc và quản lý file thiết kế, thông số kỹ thuật.': 'Create sales orders, monitor work queues, and manage design files and technical specifications.',
-    'Tạo đơn hàng PO mới, theo dõi 15 trạng thái sản xuất và quản lý file thiết kế, thông số kỹ thuật.': 'Create new orders, monitor 15 production statuses, and manage design files.',
+    'Tạo đơn hàng PO mới, theo dõi hàng đợi công việc và quản lý file thiết kế, thông số kỹ thuật.':
+      'Create sales orders, monitor work queues, and manage design files and technical specifications.',
+    'Tạo đơn hàng PO mới, theo dõi 15 trạng thái sản xuất và quản lý file thiết kế, thông số kỹ thuật.':
+      'Create new orders, monitor 15 production statuses, and manage design files.',
     'Nhập mã PO, tên sản phẩm hoặc khách hàng...': 'Search by PO code, product or client...',
     'Chọn danh sách Sale PO': 'Choose a Sales PO list',
     'Danh sách PO': 'PO list',
     'Khách hàng chờ lên đơn': 'Customers awaiting first PO',
     'Khách hàng đã có hồ sơ nhưng chưa có PO': 'Customers with a CRM profile but no PO',
-    'Danh sách được tự động đối chiếu từ CRM và các PO hiện có. Khi lưu PO đầu tiên, khách hàng sẽ tự rời khỏi danh sách này.': 'This list is automatically reconciled against CRM and existing POs. After the first PO is saved, the customer is removed from this list.',
+    'Danh sách được tự động đối chiếu từ CRM và các PO hiện có. Khi lưu PO đầu tiên, khách hàng sẽ tự rời khỏi danh sách này.':
+      'This list is automatically reconciled against CRM and existing POs. After the first PO is saved, the customer is removed from this list.',
     'khách hàng': 'customers',
     'Tìm mã khách hàng, công ty, người liên hệ...': 'Search customer code, company, or contact...',
     'Mã khách hàng': 'Customer code',
     'Sale phụ trách': 'Assigned sales',
     'Ngày tạo': 'Created date',
     'Số ngày chờ': 'Days waiting',
-    'ngày': 'days',
+    ngày: 'days',
     'Tạo PO': 'Create PO',
     'Không tìm thấy khách hàng chờ lên đơn phù hợp.': 'No matching customers awaiting a PO were found.',
     'Không có khách hàng nào đang chờ lên đơn.': 'No customers are awaiting a PO.',
@@ -299,7 +306,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Sản Phẩm': 'Product',
     'Quy Cách': 'Specification',
     'Chất Liệu': 'Material',
-    'ĐVT': 'Unit',
+    ĐVT: 'Unit',
     'Vật Tư': 'Material',
     'Số Lượng': 'Quantity',
     'Đơn Giá': 'Unit Price',
@@ -308,9 +315,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Thuế (%)': 'VAT (%)',
     'Thành Tiền (gồm VAT)': 'Amount (incl. VAT)',
     'Ảnh Layout (Max 5)': 'Layouts (Max 5)',
-    'Layout': 'Layout',
+    Layout: 'Layout',
     'Thành Tiền': 'Total Value',
-    'Mẫu': 'Sample',
+    Mẫu: 'Sample',
     'Tải Files': 'Open Files',
     'Lịch Sử Trạng Thái': 'Status History',
     'Thời Gian': 'Timestamp',
@@ -334,8 +341,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Hạng Khách Hàng *': 'Customer Tier *',
     'Hạng Khách Hàng': 'Customer Tier',
     '-- Chọn hạng khách hàng --': '-- Select customer tier --',
-    'Hạng': 'Tier',
-    'Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.': 'The tier is saved to the customer profile when the PO is saved.',
+    Hạng: 'Tier',
+    'Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.':
+      'The tier is saved to the customer profile when the PO is saved.',
     'Vui lòng chọn hạng khách hàng A, B, C hoặc D!': 'Please select customer tier A, B, C, or D!',
     'Chưa xếp hạng': 'Not ranked',
     'Tên Sản Phẩm Nhãn *': 'Product Label Name *',
@@ -354,7 +362,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Trước chiết khấu': 'Before discount',
     'Tỷ lệ giá trị còn lại sau chiết khấu': 'Value retained after discount',
     'KPI PO': 'PO KPI',
-    'KPI PO là tỷ lệ giá trị còn lại sau chiết khấu.': 'PO KPI is the percentage of order value retained after discount.',
+    'KPI PO là tỷ lệ giá trị còn lại sau chiết khấu.':
+      'PO KPI is the percentage of order value retained after discount.',
     'Quy Cách / Chất Liệu': 'Specification / Material',
     'Mã hàng': 'Item code',
     'Tên hàng': 'Item name',
@@ -370,15 +379,17 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Quy cách': 'Specification',
     'Chất liệu': 'Material',
     'File Liên Quan': 'Related Files',
-    'File': 'File',
+    File: 'File',
     'Chưa chọn': 'Not selected',
     'Chưa chọn nhà cung cấp': 'No supplier selected',
     'Đã áp dụng chiết khấu tự động từ hồ sơ khách hàng.': 'Automatically loaded discount rate from client profile.',
     'Thành Tiền Sau Chiết Khấu': 'Net Value After Discount',
     'Hình Ảnh Nhãn Mẫu': 'Sample Label Image',
     'Chọn ảnh mẫu': 'Select sample image',
-    'Ảnh mẫu sẽ được nén Base64 tự động để lưu trữ an toàn dưới 100KB.': 'Sample image is auto-resized & compressed under 100KB as Base64.',
-    'Liên Kết File Bản Vẽ Gốc & Tài Liệu Lớn (Google Drive / OneDrive)': 'Source Files & Documents Shared Links (Google Drive / OneDrive)',
+    'Ảnh mẫu sẽ được nén Base64 tự động để lưu trữ an toàn dưới 100KB.':
+      'Sample image is auto-resized & compressed under 100KB as Base64.',
+    'Liên Kết File Bản Vẽ Gốc & Tài Liệu Lớn (Google Drive / OneDrive)':
+      'Source Files & Documents Shared Links (Google Drive / OneDrive)',
     'Đường dẫn File PDF Đơn Hàng': 'PDF File Link',
     'Đường dẫn File Excel Báo Giá': 'Excel File Link',
     'Đường dẫn Thiết kế Gốc AI (Adobe Illustrator)': 'AI Source File Link',
@@ -389,7 +400,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Design View
     'QUẢN LÝ THIẾT KẾ & DUYỆT MẪU': 'DESIGN & COLOR PROOFING',
-    'Tải lên bản vẽ layout duyệt màu (Base64) và liên kết file thiết kế gốc (AI, Corel) trên Google Drive.': 'Upload design color proof layout (Base64) and link source design files.',
+    'Tải lên bản vẽ layout duyệt màu (Base64) và liên kết file thiết kế gốc (AI, Corel) trên Google Drive.':
+      'Upload design color proof layout (Base64) and link source design files.',
     'Nhập mã PO hoặc sản phẩm...': 'Search PO code or product...',
     'Đợi Thiết Kế': 'Pending Design',
     'Chờ Khách Duyệt': 'Pending Client Approval',
@@ -413,16 +425,18 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Purchase Page
     'MUA HÀNG VÀ ĐẶT HÀNG NCC': 'MATERIAL PROCUREMENT & BUYING',
-    'Tạo yêu cầu mua decal, mực in, màng từ NCC, đối chiếu BOM và theo dõi tiến độ giao hàng của NCC.': 'Issue procurement orders, cross-reference BOM, and track vendor deliveries.',
+    'Tạo yêu cầu mua decal, mực in, màng từ NCC, đối chiếu BOM và theo dõi tiến độ giao hàng của NCC.':
+      'Issue procurement orders, cross-reference BOM, and track vendor deliveries.',
     'Mã Đơn Mua': 'Purchase Order Code',
     'Nhà Cung Cấp': 'Supplier',
     'PO Liên Kết': 'Linked Sales PO',
-    'expectedReceiveDate': 'Expected Delivery Date',
+    expectedReceiveDate: 'Expected Delivery Date',
     'Đã Đặt Hàng': 'Ordered',
     'Đang Giao': 'Shipping',
     'Đã Nhận Kho': 'Goods Received',
     'Chi Tiết Đơn Mua Hàng': 'Purchase Order Details',
-    'Nhập kho thành công! Số lượng vật tư đã được cộng vào Kho tồn hiện tại.': 'Received successfully! Inventory balances updated.',
+    'Nhập kho thành công! Số lượng vật tư đã được cộng vào Kho tồn hiện tại.':
+      'Received successfully! Inventory balances updated.',
     'Báo Nhận Kho': 'Log Receipt',
     'Chưa có đơn mua hàng nào.': 'No purchase orders recorded.',
     'TẠO ĐƠN MUA HÀNG VẬT TƯ MỚI': 'CREATE VENDOR PURCHASE ORDER',
@@ -441,7 +455,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Inventory Page
     'KHO NGUYÊN VẬT LIỆU & TỒN KHO': 'RAW MATERIAL INVENTORY & BALANCES',
-    'Quản lý số lượng tồn kho khả dụng của decal cuộn, mực in, màng cán và tự động cảnh báo tồn kho thấp.': 'Manage available balances of roll stock, inks, films, and trace alerts.',
+    'Quản lý số lượng tồn kho khả dụng của decal cuộn, mực in, màng cán và tự động cảnh báo tồn kho thấp.':
+      'Manage available balances of roll stock, inks, films, and trace alerts.',
     'Cảnh Báo Tồn Kho Thấp': 'Low Stock Alert',
     'Nhập tên vật tư cần tìm...': 'Search raw material name...',
     'Tất Cả Danh Mục': 'All Categories',
@@ -465,7 +480,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Production Page
     'LỆNH SẢN XUẤT (LSX)': 'PRODUCTION COMMANDS (LSX)',
-    'Phát hành lệnh sản xuất, phân bổ máy in, ca máy, thợ in và ghi nhận sản lượng hoàn thành, hao hụt.': 'Issue production orders, allocate printers, shifts, crews, and log outputs.',
+    'Phát hành lệnh sản xuất, phân bổ máy in, ca máy, thợ in và ghi nhận sản lượng hoàn thành, hao hụt.':
+      'Issue production orders, allocate printers, shifts, crews, and log outputs.',
     'Mã LSX': 'LSX Code',
     'Máy In': 'Printers',
     'Ca In': 'Production Shift',
@@ -474,10 +490,12 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Đang Chạy Máy': 'In Production',
     'Đã Hoàn Thành': 'Completed',
     'Báo Cáo Sản Lượng Hoàn Thành': 'Production Output Report',
-    'Lệnh sản xuất đã hoàn thành! Dữ liệu tồn kho decal, mực in, màng đã tự động bị trừ tương ứng.': 'Command completed! Material balances subtracted from inventory database.',
+    'Lệnh sản xuất đã hoàn thành! Dữ liệu tồn kho decal, mực in, màng đã tự động bị trừ tương ứng.':
+      'Command completed! Material balances subtracted from inventory database.',
     'Số lượng in hoàn thành đạt QC *': 'Completed Output Qty (QC Passed) *',
     'Số lượng phế liệu hao hụt (tem hỏng) *': 'Scrap / Defective Label Qty *',
-    'Nhập Ghi Chú Ca Máy (Ví dụ: Sự cố máy, hết mực...)': 'Operator Shift Log / Shift Remarks (e.g. printer errors, runouts)',
+    'Nhập Ghi Chú Ca Máy (Ví dụ: Sự cố máy, hết mực...)':
+      'Operator Shift Log / Shift Remarks (e.g. printer errors, runouts)',
     'Lưu Báo Cáo': 'Save Production Report',
     'Không có lệnh sản xuất nào được ghi nhận.': 'No production commands issued.',
 
@@ -496,7 +514,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Mực in Cyan cần dùng:': 'Estimated Cyan Ink:',
     'Màng cán cần dùng:': 'Estimated Film Laminate:',
     'Lõi giấy cần dùng:': 'Estimated Paper Cores:',
-    'Lõi': 'cores',
+    Lõi: 'cores',
     'Chỉ Định Máy In *': 'Assign Printing Machine *',
     'Máy Flexo 8 màu': '8-color Flexo Press',
     'Máy Flexo 6 màu': '6-color Flexo Press',
@@ -512,10 +530,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Delivery Page
     'ĐIỀU HÀNH & KẾ HOẠCH GIAO HÀNG': 'DELIVERY PLANNING & LOGISTICS',
-    'Gom đơn hàng đã đóng gói theo khu vực, lập chuyến xe và ký xác nhận giao nhận trực tuyến (Base64).': 'Consolidate packed orders by destination, assign vehicles, and capture digital sign-offs.',
-    'expectedDeliveryDate': 'Delivery Date',
-    'driverName': 'Driver',
-    'vehiclePlate': 'Vehicle Plate',
+    'Gom đơn hàng đã đóng gói theo khu vực, lập chuyến xe và ký xác nhận giao nhận trực tuyến (Base64).':
+      'Consolidate packed orders by destination, assign vehicles, and capture digital sign-offs.',
+    expectedDeliveryDate: 'Delivery Date',
+    driverName: 'Driver',
+    vehiclePlate: 'Vehicle Plate',
     'Lập Chuyến': 'Plan Route',
     'Đang Đi Giao': 'Out for Delivery',
     'Giao Thành Công': 'Delivered Successfully',
@@ -524,7 +543,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Khách hàng:': 'Customer:',
     'Số lượng giao:': 'Delivery Qty:',
     'Địa chỉ giao:': 'Destination:',
-    'Bấm chuột/Vẽ ngón tay lên khung dưới đây để ký nhận biên bản:': 'Please draw signature on the box below to sign receipt:',
+    'Bấm chuột/Vẽ ngón tay lên khung dưới đây để ký nhận biên bản:':
+      'Please draw signature on the box below to sign receipt:',
     'Xóa Chữ Ký': 'Clear Drawing',
     'Xác Nhận Đã Giao': 'Confirm Delivery',
     'Không có chuyến giao hàng nào.': 'No delivery trips planned.',
@@ -538,18 +558,19 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Nhân Viên Sale Đi Cùng (Nếu có)': 'Sales Representative Escort (If any)',
     '-- Không có --': '-- None --',
     'Chọn Các Đơn Hàng Sẵn Sàng Giao (QC Đã Duyệt)': 'Select Ready Orders to Load (QC Passed)',
-    'Chọn': 'Load',
-    'Hàng': 'item',
+    Chọn: 'Load',
+    Hàng: 'item',
     'Lưu Chuyến Xe': 'Save Delivery Route',
 
     // Accounting Page
     'KẾ TOÁN & CÔNG NỢ - LÃI GỘP': 'FINANCES, DEBTS & PROFITS',
-    'Theo dõi công nợ phải thu (AR) / phải trả (AP), hóa đơn VAT, phân tích lãi gộp của từng PO thực tế.': 'Track AR/AP ledgers, VAT invoices, and evaluate PO gross profits.',
+    'Theo dõi công nợ phải thu (AR) / phải trả (AP), hóa đơn VAT, phân tích lãi gộp của từng PO thực tế.':
+      'Track AR/AP ledgers, VAT invoices, and evaluate PO gross profits.',
     'Công Nợ Phải Thu': 'Accounts Receivable (AR)',
     'Công Nợ Phải Trả': 'Accounts Payable (AP)',
     'Báo Cáo Lãi Gộp Đơn Hàng': 'Sales Order Gross Profit Report',
     'Số Hóa Đơn': 'Invoice ID',
-    'Loại': 'Type',
+    Loại: 'Type',
     'Trị Giá': 'Amount',
     'Đã Thanh Toán': 'Paid Amount',
     'Cần Thu': 'Balance Due',
@@ -574,7 +595,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Users Page
     'QUẢN LÝ TÀI KHOẢN & PHÂN QUYỀN': 'USER MANAGEMENT & PRIVILEGES',
-    'Xem danh sách nhân sự, phân quyền vai trò phòng ban và quản lý trạng thái hoạt động.': 'View personnel registry, assign department access, and toggle active status.',
+    'Xem danh sách nhân sự, phân quyền vai trò phòng ban và quản lý trạng thái hoạt động.':
+      'View personnel registry, assign department access, and toggle active status.',
     'Tìm theo tên hoặc email...': 'Search by name or email...',
     'Tất Cả Vai Trò': 'All Roles',
     'Đặt Lại': 'Reset Filter',
@@ -591,13 +613,15 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     'Tạm khóa': 'Blocked',
     'Thông tin đăng nhập mặc định:': 'Default Sign-in Credentials:',
     'Quy định đổi vai:': 'Role Switch Logic:',
-    'Hệ thống ERP hỗ trợ chuyển đổi nhanh vai trò trên thanh Header để tiện kiểm thử.': 'The system supports quick-switching roles in the Header for testing.',
+    'Hệ thống ERP hỗ trợ chuyển đổi nhanh vai trò trên thanh Header để tiện kiểm thử.':
+      'The system supports quick-switching roles in the Header for testing.',
     'Lưu Tài Khoản': 'Create Account',
     'Địa Chỉ Email (Không thể thay đổi)': 'Email Address (Cannot be changed)',
     'Trạng Thái Hoạt Động': 'Account Status',
     'Vô hiệu hóa (Khóa)': 'Disable (Block)',
     'Thông tin bảo mật:': 'Security Information:',
-    'Nếu đổi vai trò phòng ban của nhân sự, mật khẩu đăng nhập của họ cũng sẽ tự động chuyển thành mật khẩu tương ứng với vai trò mới (ví dụ:': 'If the role changes, the default password is also updated accordingly (e.g. ',
+    'Nếu đổi vai trò phòng ban của nhân sự, mật khẩu đăng nhập của họ cũng sẽ tự động chuyển thành mật khẩu tương ứng với vai trò mới (ví dụ:':
+      'If the role changes, the default password is also updated accordingly (e.g. ',
     'để phù hợp với cơ chế xác thực gọn nhẹ.': 'to match the lightweight authentication mechanism.',
     'Lưu Thay Đổi': 'Save Changes',
     'Khóa Tài Khoản': 'Disable Account',
@@ -628,9 +652,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage: changeLanguage, t }}>
-      {children}
-    </LanguageContext.Provider>
+    <LanguageContext.Provider value={{ language, setLanguage: changeLanguage, t }}>{children}</LanguageContext.Provider>
   );
 };
 

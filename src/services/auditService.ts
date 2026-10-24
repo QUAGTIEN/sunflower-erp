@@ -1,13 +1,7 @@
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 
 export type AuditCategory = 'session' | 'navigation' | 'business' | 'administration';
-export type AuditModule =
-  | 'authentication'
-  | 'account'
-  | 'lead_candidates'
-  | 'leads'
-  | 'crm'
-  | 'system';
+export type AuditModule = 'authentication' | 'account' | 'lead_candidates' | 'leads' | 'crm' | 'system';
 
 export interface AuditChange {
   field: string;
@@ -97,13 +91,9 @@ export const auditService = {
     void this.record(actor, input).catch(error => logFailure(input.action, error));
   },
 
-  async updatePresence(
-    actor: UserProfile,
-    status: UserPresence['status'],
-    pageId = ''
-  ): Promise<void> {
+  async updatePresence(actor: UserProfile, status: UserPresence['status'], pageId = ''): Promise<void> {
     const now = new Date().toISOString();
-    const previous = await dbService.getDocument('user_presence', actor.uid) as UserPresence | null;
+    const previous = (await dbService.getDocument('user_presence', actor.uid)) as UserPresence | null;
     const nextPresence: UserPresence = {
       userId: actor.uid,
       displayName: actor.displayName,

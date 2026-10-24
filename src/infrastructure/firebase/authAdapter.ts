@@ -3,13 +3,7 @@ import {
   signOut as signOutFirebase,
   type User as FirebaseUser
 } from 'firebase/auth';
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc
-} from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { DEFAULT_USERS } from '@/data/seeds/erpSeedData';
 import type { UserProfile } from '@/shared/types';
 import {
@@ -89,7 +83,9 @@ export const authService = {
     if (firebaseAuthMode === 'email-password') {
       const firebaseEmail = searchIdentifier.includes('@')
         ? searchIdentifier
-        : searchIdentifier === 'admin' ? FIREBASE_BOOTSTRAP_ADMIN_EMAIL : '';
+        : searchIdentifier === 'admin'
+          ? FIREBASE_BOOTSTRAP_ADMIN_EMAIL
+          : '';
       if (!firebaseEmail) {
         throw new Error('Tài khoản không tồn tại trên hệ thống.');
       }
@@ -99,10 +95,9 @@ export const authService = {
         user = await getOrCreateFirebaseUserProfile(firebaseUser);
         if (!user) {
           await signOutFirebase(firebaseAuth!);
-          throw Object.assign(
-            new Error('Tài khoản Firebase chưa có hồ sơ phân quyền trong ERP.'),
-            { code: 'auth/profile-not-found' }
-          );
+          throw Object.assign(new Error('Tài khoản Firebase chưa có hồ sơ phân quyền trong ERP.'), {
+            code: 'auth/profile-not-found'
+          });
         }
       } catch (error) {
         const code = getFirebaseErrorCode(error);
@@ -122,15 +117,18 @@ export const authService = {
       }
     } else {
       const dbUsers = await dbService.getCollection('users');
-      user = dbUsers.find((candidate: UserProfile) =>
-        candidate.email.toLowerCase() === searchIdentifier
-        || candidate.email.toLowerCase().split('@')[0] === searchIdentifier
-      ) || null;
+      user =
+        dbUsers.find(
+          (candidate: UserProfile) =>
+            candidate.email.toLowerCase() === searchIdentifier ||
+            candidate.email.toLowerCase().split('@')[0] === searchIdentifier
+        ) || null;
 
       if (!user) {
-        const defaultUser = DEFAULT_USERS.find(candidate =>
-          candidate.email.toLowerCase() === searchIdentifier
-          || candidate.email.toLowerCase().split('@')[0] === searchIdentifier
+        const defaultUser = DEFAULT_USERS.find(
+          candidate =>
+            candidate.email.toLowerCase() === searchIdentifier ||
+            candidate.email.toLowerCase().split('@')[0] === searchIdentifier
         );
         if (defaultUser) {
           user = await dbService.addDocument('users', defaultUser);
@@ -147,11 +145,18 @@ export const authService = {
     }
 
     if (firebaseAuthMode === 'local') {
-      const expectedPassword = user.role === 'admin' ? 'admin123' :
-                               user.role === 'sale' ? 'sale123' :
-                               user.role === 'designer' ? 'design123' :
-                               user.role === 'purchaser' ? 'purchase123' :
-                               user.role === 'producer' ? 'produce123' : 'account123';
+      const expectedPassword =
+        user.role === 'admin'
+          ? 'admin123'
+          : user.role === 'sale'
+            ? 'sale123'
+            : user.role === 'designer'
+              ? 'design123'
+              : user.role === 'purchaser'
+                ? 'purchase123'
+                : user.role === 'producer'
+                  ? 'produce123'
+                  : 'account123';
 
       if (password !== expectedPassword && password !== '123456') {
         throw new Error('Mật khẩu không đúng. Vui lòng thử lại.');
@@ -183,7 +188,7 @@ export const authService = {
 
     if (firebaseAuthMode === 'email-password' && firebaseAuth) {
       let active = true;
-      const unsubscribeFirebase = onFirebaseAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+      const unsubscribeFirebase = onFirebaseAuthStateChanged(firebaseAuth, async firebaseUser => {
         if (!active) return;
 
         if (!firebaseUser?.email) {

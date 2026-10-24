@@ -42,9 +42,7 @@ export const initializeLocalStorage = () => {
   });
   localStorage.setItem('erp_customers', JSON.stringify(normalizeCustomerRecords(customers)));
 
-  const leads = localStorage.getItem('erp_leads')
-    ? JSON.parse(localStorage.getItem('erp_leads')!)
-    : [];
+  const leads = localStorage.getItem('erp_leads') ? JSON.parse(localStorage.getItem('erp_leads')!) : [];
   localStorage.setItem('erp_leads', JSON.stringify(normalizeLeadRecords(leads)));
 
   const notifications = localStorage.getItem('erp_notifications')
@@ -73,7 +71,9 @@ export const initializeLocalStorage = () => {
   });
   localStorage.setItem('erp_pos', JSON.stringify(pos));
 
-  let purchaseOrders = localStorage.getItem('erp_purchase_orders') ? JSON.parse(localStorage.getItem('erp_purchase_orders')!) : [];
+  let purchaseOrders = localStorage.getItem('erp_purchase_orders')
+    ? JSON.parse(localStorage.getItem('erp_purchase_orders')!)
+    : [];
   DEFAULT_PURCHASE_ORDERS.forEach(defPur => {
     if (!purchaseOrders.some((p: any) => p.id === defPur.id)) {
       purchaseOrders.push(defPur);
@@ -84,9 +84,12 @@ export const initializeLocalStorage = () => {
   if (!localStorage.getItem('erp_designs')) localStorage.setItem('erp_designs', JSON.stringify(DEFAULT_DESIGNS));
   if (!localStorage.getItem('erp_design_requests')) localStorage.setItem('erp_design_requests', '[]');
   if (!localStorage.getItem('erp_inventory')) localStorage.setItem('erp_inventory', JSON.stringify(DEFAULT_INVENTORY));
-  if (!localStorage.getItem('erp_production_commands')) localStorage.setItem('erp_production_commands', JSON.stringify(DEFAULT_PRODUCTION_COMMANDS));
-  if (!localStorage.getItem('erp_deliveries')) localStorage.setItem('erp_deliveries', JSON.stringify(DEFAULT_DELIVERIES));
-  if (!localStorage.getItem('erp_delivery_vehicles')) localStorage.setItem('erp_delivery_vehicles', JSON.stringify(DEFAULT_DELIVERY_VEHICLES));
+  if (!localStorage.getItem('erp_production_commands'))
+    localStorage.setItem('erp_production_commands', JSON.stringify(DEFAULT_PRODUCTION_COMMANDS));
+  if (!localStorage.getItem('erp_deliveries'))
+    localStorage.setItem('erp_deliveries', JSON.stringify(DEFAULT_DELIVERIES));
+  if (!localStorage.getItem('erp_delivery_vehicles'))
+    localStorage.setItem('erp_delivery_vehicles', JSON.stringify(DEFAULT_DELIVERY_VEHICLES));
   if (!localStorage.getItem('erp_invoices')) localStorage.setItem('erp_invoices', JSON.stringify(DEFAULT_INVOICES));
 
   if (!localStorage.getItem('erp_product_classifications')) {
@@ -101,7 +104,7 @@ type CollectionCallback = (data: any[]) => void;
 
 const subscribers: Record<string, CollectionCallback[]> = {};
 
-export const normalizeCollectionRecords = <T,>(colName: string, data: T[]): T[] => {
+export const normalizeCollectionRecords = <T>(colName: string, data: T[]): T[] => {
   if (colName === 'customers') {
     return normalizeCustomerRecords(data) as T[];
   }
@@ -202,10 +205,7 @@ export const deleteLocalDocument = (colName: string, docId: string): boolean => 
   return true;
 };
 
-export const subscribeLocalCollection = (
-  colName: string,
-  callback: CollectionCallback
-): (() => void) => {
+export const subscribeLocalCollection = (colName: string, callback: CollectionCallback): (() => void) => {
   if (!subscribers[colName]) {
     subscribers[colName] = [];
   }

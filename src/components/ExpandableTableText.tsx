@@ -8,11 +8,7 @@ interface ExpandableTableTextProps {
   fullText?: string;
 }
 
-export const ExpandableTableText: React.FC<ExpandableTableTextProps> = ({
-  children,
-  className = '',
-  fullText
-}) => {
+export const ExpandableTableText: React.FC<ExpandableTableTextProps> = ({ children, className = '', fullText }) => {
   const textRef = useRef<HTMLSpanElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -20,9 +16,10 @@ export const ExpandableTableText: React.FC<ExpandableTableTextProps> = ({
   useEffect(() => {
     const element = textRef.current;
     if (!element) return undefined;
-    const measure = () => setIsOverflowing(
-      element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1
-    );
+    const measure = () =>
+      setIsOverflowing(
+        element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1
+      );
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
     const observer = new ResizeObserver(measure);
@@ -41,28 +38,57 @@ export const ExpandableTableText: React.FC<ExpandableTableTextProps> = ({
 
   return (
     <span className={`erp-expandable-table-text ${className}`.trim()}>
-      <span ref={textRef} className="erp-table-cell-text" title={fullText}>{children}</span>
+      <span ref={textRef} className="erp-table-cell-text" title={fullText}>
+        {children}
+      </span>
       {isOverflowing && (
         <button
           type="button"
           className="erp-table-more-button"
-          onClick={event => { event.stopPropagation(); setIsOpen(true); }}
+          onClick={event => {
+            event.stopPropagation();
+            setIsOpen(true);
+          }}
           aria-label="Xem đầy đủ nội dung"
           title="Xem đầy đủ"
-        >...</button>
+        >
+          ...
+        </button>
       )}
-      {isOpen && createPortal(
-        <div className="erp-table-text-dialog" role="presentation" onMouseDown={event => { event.stopPropagation(); setIsOpen(false); }}>
-          <div role="dialog" aria-modal="true" aria-label="Nội dung đầy đủ" onMouseDown={event => event.stopPropagation()}>
-            <header>
-              <strong>Nội dung đầy đủ</strong>
-              <button type="button" onClick={event => { event.stopPropagation(); setIsOpen(false); }} aria-label="Đóng"><X size={16} /></button>
-            </header>
-            <p>{fullText || children}</p>
-          </div>
-        </div>,
-        document.body
-      )}
+      {isOpen &&
+        createPortal(
+          <div
+            className="erp-table-text-dialog"
+            role="presentation"
+            onMouseDown={event => {
+              event.stopPropagation();
+              setIsOpen(false);
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Nội dung đầy đủ"
+              onMouseDown={event => event.stopPropagation()}
+            >
+              <header>
+                <strong>Nội dung đầy đủ</strong>
+                <button
+                  type="button"
+                  onClick={event => {
+                    event.stopPropagation();
+                    setIsOpen(false);
+                  }}
+                  aria-label="Đóng"
+                >
+                  <X size={16} />
+                </button>
+              </header>
+              <p>{fullText || children}</p>
+            </div>
+          </div>,
+          document.body
+        )}
     </span>
   );
 };

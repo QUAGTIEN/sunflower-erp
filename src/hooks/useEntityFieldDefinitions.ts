@@ -15,18 +15,43 @@ export const useEntityFieldDefinitions = (table?: EntityFieldTable, role?: Entit
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    const unsubscribe = dbService.subscribeCollection('entity_field_definitions', data => {
-      setAllDefinitions(normalizeEntityFieldDefinitions(data));
-      setLoading(false);
-      setError('');
-    }, { onError: () => { setError('Không tải được danh sách trường. Kiểm tra quyền Firebase và thử lại.'); setLoading(false); } });
+    const unsubscribe = dbService.subscribeCollection(
+      'entity_field_definitions',
+      data => {
+        setAllDefinitions(normalizeEntityFieldDefinitions(data));
+        setLoading(false);
+        setError('');
+      },
+      {
+        onError: () => {
+          setError('Không tải được danh sách trường. Kiểm tra quyền Firebase và thử lại.');
+          setLoading(false);
+        }
+      }
+    );
     return unsubscribe;
   }, [revision]);
 
-  const definitions = useMemo(() => allDefinitions.filter(definition => (
-    !definition.removed && (!table || definition.table === table)
-    && (!role || canViewEntityField(definition, role))
-  )), [allDefinitions, role, table]);
+  const definitions = useMemo(
+    () =>
+      allDefinitions.filter(
+        definition =>
+          !definition.removed &&
+          (!table || definition.table === table) &&
+          (!role || canViewEntityField(definition, role))
+      ),
+    [allDefinitions, role, table]
+  );
 
-  return { definitions, allDefinitions, loading, error, retry: () => { setLoading(true); setError(''); setRevision(value => value + 1); } };
+  return {
+    definitions,
+    allDefinitions,
+    loading,
+    error,
+    retry: () => {
+      setLoading(true);
+      setError('');
+      setRevision(value => value + 1);
+    }
+  };
 };

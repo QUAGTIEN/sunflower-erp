@@ -9,7 +9,12 @@ interface SharedTableColumnsOptions {
   legacyWidthKey?: string;
 }
 
-export const useSharedTableColumns = ({ layoutId, legacySelectionKey, legacySelectionView, legacyWidthKey }: SharedTableColumnsOptions) => {
+export const useSharedTableColumns = ({
+  layoutId,
+  legacySelectionKey,
+  legacySelectionView,
+  legacyWidthKey
+}: SharedTableColumnsOptions) => {
   const { layouts, canEditColumns, saveLayout, migrateLayout } = useTableColumnLayouts();
   useEffect(() => {
     if (!canEditColumns) return;

@@ -64,7 +64,12 @@ export const useReorderableTableColumns = ({
   const resizeActiveRef = useRef(false);
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const columnWidths = layouts[layoutId]?.widths || {};
-  useEffect(() => () => { resizeCleanupRef.current?.(); }, [layoutId, canEditColumns]);
+  useEffect(
+    () => () => {
+      resizeCleanupRef.current?.();
+    },
+    [layoutId, canEditColumns]
+  );
   const orderedColumnIds = useMemo(
     () => normalizeTableColumnOrder(columns, selectedIds, lockedStartIds, lockedEndIds),
     [columns, lockedEndIds, lockedStartIds, selectedIds]
@@ -85,7 +90,9 @@ export const useReorderableTableColumns = ({
     const currentTargetIndex = next.indexOf(targetId);
     const insertionIndex = lockedEndSet.has(targetId)
       ? currentTargetIndex
-      : sourceIndex < targetIndex ? currentTargetIndex + 1 : currentTargetIndex;
+      : sourceIndex < targetIndex
+        ? currentTargetIndex + 1
+        : currentTargetIndex;
     next.splice(insertionIndex, 0, sourceId);
     onOrderChange(next);
   };
@@ -110,9 +117,18 @@ export const useReorderableTableColumns = ({
   ): HeaderInteractionProps => {
     const movable = canEditColumns && !lockedStartSet.has(columnId) && !lockedEndSet.has(columnId);
     const savedWidth = columnWidths[columnId];
-    const className = [currentClassName, 'reorderable-table-header', canEditColumns ? 'is-resizable' : 'is-readonly', movable ? 'is-movable' : 'is-locked', canEditColumns && draggingId === columnId ? 'is-dragging' : '', canEditColumns && dropTargetId === columnId ? 'is-drop-target' : ''].filter(Boolean).join(' ');
+    const className = [
+      currentClassName,
+      'reorderable-table-header',
+      canEditColumns ? 'is-resizable' : 'is-readonly',
+      movable ? 'is-movable' : 'is-locked',
+      canEditColumns && draggingId === columnId ? 'is-dragging' : '',
+      canEditColumns && dropTargetId === columnId ? 'is-drop-target' : ''
+    ]
+      .filter(Boolean)
+      .join(' ');
     const style = savedWidth
-      ? { ...currentStyle, '--erp-column-resized-width': `${savedWidth}px` } as React.CSSProperties
+      ? ({ ...currentStyle, '--erp-column-resized-width': `${savedWidth}px` } as React.CSSProperties)
       : currentStyle;
     if (!canEditColumns) return { draggable: false, title: label, className, style, 'data-table-layout-id': layoutId };
     const sharedProps: HeaderInteractionProps = {
@@ -133,16 +149,20 @@ export const useReorderableTableColumns = ({
         const table = header.closest('table');
         const fillsLastColumn = table?.classList.contains('erp-table-last-column-fill');
         const startWidth = fillsLastColumn ? getTableColumnBaseWidth(header) : bounds.width;
-        const startTableWidth = table && fillsLastColumn
-          ? Number.parseFloat(table.style.getPropertyValue('--erp-table-resized-width'))
-          : table?.getBoundingClientRect().width || 0;
+        const startTableWidth =
+          table && fillsLastColumn
+            ? Number.parseFloat(table.style.getPropertyValue('--erp-table-resized-width'))
+            : table?.getBoundingClientRect().width || 0;
         const initialHeaderWidth = header.style.getPropertyValue('--erp-column-resized-width');
         const initialTableWidth = table?.style.getPropertyValue('--erp-table-resized-width') || '';
         let finalWidth = startWidth;
         let finalTableWidth = startTableWidth;
         const onPointerMove = (moveEvent: PointerEvent) => {
           finalWidth = Math.min(4096, Math.max(64, Math.round(startWidth + moveEvent.clientX - startX)));
-          finalTableWidth = Math.max(orderedColumnIds.length * 64, Math.round(startTableWidth + finalWidth - startWidth));
+          finalTableWidth = Math.max(
+            orderedColumnIds.length * 64,
+            Math.round(startTableWidth + finalWidth - startWidth)
+          );
           header.style.setProperty('--erp-column-resized-width', `${finalWidth}px`);
           table?.style.setProperty('--erp-table-resized-width', `${finalTableWidth}px`);
         };

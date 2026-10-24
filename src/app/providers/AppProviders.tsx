@@ -4,5 +4,9 @@ import { MutationToast } from '@/components/MutationToast';
 import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
 
 export const AppProviders = ({ children }: PropsWithChildren) => (
-  <LanguageProvider>{children}<MutationToast /><DeleteConfirmationDialog /></LanguageProvider>
+  <LanguageProvider>
+    {children}
+    <MutationToast />
+    <DeleteConfirmationDialog />
+  </LanguageProvider>
 );

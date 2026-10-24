@@ -14,12 +14,7 @@ import {
   where,
   type QueryConstraint
 } from 'firebase/firestore';
-import {
-  firebaseAuth,
-  getFirebaseDatabase,
-  isFirebaseRuntimeEnabled,
-  reportFirebaseFailure
-} from './client';
+import { firebaseAuth, getFirebaseDatabase, isFirebaseRuntimeEnabled, reportFirebaseFailure } from './client';
 import {
   deleteLocalDocument,
   initializeLocalStorage,
@@ -36,10 +31,8 @@ if (!isFirebaseRuntimeEnabled) {
   initializeLocalStorage();
 }
 
-const createDocumentAlreadyExistsError = (existingDocument: unknown) => Object.assign(
-  new Error('Document already exists.'),
-  { code: 'document-already-exists', existingDocument }
-);
+const createDocumentAlreadyExistsError = (existingDocument: unknown) =>
+  Object.assign(new Error('Document already exists.'), { code: 'document-already-exists', existingDocument });
 
 interface CollectionSubscriptionOptions {
   onError?: (error: unknown) => void;
@@ -65,21 +58,18 @@ const serializeSubscriptionValue = (value: unknown): string => {
   }
 };
 
-const getSubscriptionCacheKey = (colName: string, options?: CollectionSubscriptionOptions): string => [
-  colName,
-  options?.fieldName || '',
-  serializeSubscriptionValue(options?.fieldValue),
-  options?.orderByField || '',
-  options?.orderDirection || '',
-  options?.maxResults || ''
-].join('|');
+const getSubscriptionCacheKey = (colName: string, options?: CollectionSubscriptionOptions): string =>
+  [
+    colName,
+    options?.fieldName || '',
+    serializeSubscriptionValue(options?.fieldValue),
+    options?.orderByField || '',
+    options?.orderDirection || '',
+    options?.maxResults || ''
+  ].join('|');
 
-export const isDocumentAlreadyExistsError = (error: unknown): boolean => (
-  typeof error === 'object'
-  && error !== null
-  && 'code' in error
-  && error.code === 'document-already-exists'
-);
+export const isDocumentAlreadyExistsError = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && 'code' in error && error.code === 'document-already-exists';
 
 // ----------------------------------------------------
 // DB SERVICE WRAPPER (Firestore or Mock DB)
@@ -146,30 +136,37 @@ export const dbService = {
         }
         constraints.push(limit(maxResults));
         const snap = await getDocs(query(collection(database, colName), ...constraints));
-        return normalizeCollectionRecords(colName, snap.docs.map(item => ({ id: item.id, ...item.data() })));
+        return normalizeCollectionRecords(
+          colName,
+          snap.docs.map(item => ({ id: item.id, ...item.data() }))
+        );
       } catch (error) {
         reportFirebaseFailure(`querying collection ${colName}`, error);
         throw error;
       }
     }
 
-    const records = readLocalCollection(colName)
-      .filter((item: any) => item?.[fieldName] === fieldValue);
+    const records = readLocalCollection(colName).filter((item: any) => item?.[fieldName] === fieldValue);
     if (options.orderByField) {
       const direction = options.direction === 'asc' ? 1 : -1;
-      records.sort((left: any, right: any) => String(left?.[options.orderByField!] || '')
-        .localeCompare(String(right?.[options.orderByField!] || '')) * direction);
+      records.sort(
+        (left: any, right: any) =>
+          String(left?.[options.orderByField!] || '').localeCompare(String(right?.[options.orderByField!] || '')) *
+          direction
+      );
     }
     return records.slice(0, maxResults);
   },
 
   async addDocument(colName: string, docData: any): Promise<any> {
     const docId = docData.id || `${colName.substring(0, 3)}-${Math.random().toString(36).substr(2, 9)}`;
-    const finalDoc = normalizeCollectionRecords(colName, [{
-      ...docData,
-      id: docId,
-      createdAt: docData.createdAt || new Date().toISOString()
-    }])[0];
+    const finalDoc = normalizeCollectionRecords(colName, [
+      {
+        ...docData,
+        id: docId,
+        createdAt: docData.createdAt || new Date().toISOString()
+      }
+    ])[0];
 
     const database = await getFirebaseDatabase(`creating document in ${colName}`);
     if (database) {
@@ -187,11 +184,13 @@ export const dbService = {
   },
 
   async addDocumentIfAbsent(colName: string, docId: string, docData: any): Promise<any> {
-    const finalDoc = normalizeCollectionRecords(colName, [{
-      ...docData,
-      id: docId,
-      createdAt: docData.createdAt || new Date().toISOString()
-    }])[0];
+    const finalDoc = normalizeCollectionRecords(colName, [
+      {
+        ...docData,
+        id: docId,
+        createdAt: docData.createdAt || new Date().toISOString()
+      }
+    ])[0];
 
     const database = await getFirebaseDatabase(`creating unique document in ${colName}`);
     if (database) {
@@ -272,7 +271,11 @@ export const dbService = {
     return deleteLocalDocument(colName, docId);
   },
 
-  subscribeCollection(colName: string, callback: (data: any[]) => void, options?: CollectionSubscriptionOptions): () => void {
+  subscribeCollection(
+    colName: string,
+    callback: (data: any[]) => void,
+    options?: CollectionSubscriptionOptions
+  ): () => void {
     if (isFirebaseRuntimeEnabled) {
       const cacheKey = getSubscriptionCacheKey(colName, options);
       const currentUserId = firebaseAuth?.currentUser?.uid || '';
@@ -301,28 +304,33 @@ export const dbService = {
           if (options?.maxResults && options.maxResults > 0) {
             constraints.push(limit(options.maxResults));
           }
-          const collectionQuery = constraints.length > 0
-            ? query(collection(database, colName), ...constraints)
-            : collection(database, colName);
+          const collectionQuery =
+            constraints.length > 0
+              ? query(collection(database, colName), ...constraints)
+              : collection(database, colName);
 
-          unsubscribeRemote = onSnapshot(collectionQuery, (snapshot) => {
-            if (!active) return;
-            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            const normalizedData = normalizeCollectionRecords(colName, data);
-            const snapshotUserId = firebaseAuth?.currentUser?.uid || '';
-            if (snapshotUserId) {
-              subscriptionSnapshotCache.set(cacheKey, {
-                userId: snapshotUserId,
-                data: normalizedData
-              });
+          unsubscribeRemote = onSnapshot(
+            collectionQuery,
+            snapshot => {
+              if (!active) return;
+              const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              const normalizedData = normalizeCollectionRecords(colName, data);
+              const snapshotUserId = firebaseAuth?.currentUser?.uid || '';
+              if (snapshotUserId) {
+                subscriptionSnapshotCache.set(cacheKey, {
+                  userId: snapshotUserId,
+                  data: normalizedData
+                });
+              }
+              callback(normalizedData);
+            },
+            error => {
+              if (!active) return;
+              reportFirebaseFailure(`subscribing to ${colName}`, error);
+              if (options?.onError) options.onError(error);
+              else if (!deliveredCachedSnapshot) callback([]);
             }
-            callback(normalizedData);
-          }, (error) => {
-            if (!active) return;
-            reportFirebaseFailure(`subscribing to ${colName}`, error);
-            if (options?.onError) options.onError(error);
-            else if (!deliveredCachedSnapshot) callback([]);
-          });
+          );
         } catch (error) {
           if (!active) return;
           reportFirebaseFailure(`subscribing to ${colName}`, error);

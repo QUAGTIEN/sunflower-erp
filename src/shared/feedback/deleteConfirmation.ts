@@ -17,17 +17,28 @@ const publish = () => {
 export const getDeleteConfirmationSnapshot = () => current;
 export const subscribeToDeleteConfirmation = (listener: () => void) => {
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 };
 
 /** Await consent before running a destructive action; concurrent requests never overwrite one another. */
 export const confirmDelete = (
   message: string,
   options: { title?: string; confirmLabel?: string } = {}
-): Promise<boolean> => new Promise(resolve => {
-  queue.push({ request: { id: ++sequence, message, title: options.title ?? 'Xác nhận xóa', confirmLabel: options.confirmLabel ?? 'Xóa' }, resolve });
-  publish();
-});
+): Promise<boolean> =>
+  new Promise(resolve => {
+    queue.push({
+      request: {
+        id: ++sequence,
+        message,
+        title: options.title ?? 'Xác nhận xóa',
+        confirmLabel: options.confirmLabel ?? 'Xóa'
+      },
+      resolve
+    });
+    publish();
+  });
 
 export const resolveDeleteConfirmation = (id: number, confirmed: boolean) => {
   if (queue[0]?.request.id !== id) return;

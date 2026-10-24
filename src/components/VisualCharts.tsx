@@ -30,7 +30,12 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
 
   return (
     <div className="visual-chart-surface visual-chart-surface--bar">
-      <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} width="100%" height={chartHeight} style={{ overflow: 'visible' }}>
+      <svg
+        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+        width="100%"
+        height={chartHeight}
+        style={{ overflow: 'visible' }}
+      >
         {/* Gradients */}
         <defs>
           <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
@@ -45,35 +50,36 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
           const val = roundMax * ratio;
           return (
             <g key={idx}>
-              <line 
-                x1={paddingLeft} 
-                y1={y} 
-                x2={chartWidth - paddingRight} 
-                y2={y} 
+              <line
+                x1={paddingLeft}
+                y1={y}
+                x2={chartWidth - paddingRight}
+                y2={y}
                 stroke="var(--chart-grid, #e2e8f0)"
-                strokeWidth="1" 
+                strokeWidth="1"
                 strokeDasharray="4 4"
               />
-              <text 
-                x={paddingLeft - 10} 
-                y={y + 4} 
-                textAnchor="end" 
-                fontSize="11" 
+              <text
+                x={paddingLeft - 10}
+                y={y + 4}
+                textAnchor="end"
+                fontSize="11"
                 fill="var(--chart-muted-label, #64748b)"
                 fontWeight="500"
               >
-                {val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : val.toLocaleString()}{yAxisSuffix}
+                {val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : val.toLocaleString()}
+                {yAxisSuffix}
               </text>
             </g>
           );
         })}
 
         {/* X-Axis Line */}
-        <line 
-          x1={paddingLeft} 
-          y1={paddingTop + graphHeight} 
-          x2={chartWidth - paddingRight} 
-          y2={paddingTop + graphHeight} 
+        <line
+          x1={paddingLeft}
+          y1={paddingTop + graphHeight}
+          x2={chartWidth - paddingRight}
+          y2={paddingTop + graphHeight}
           stroke="var(--chart-axis, #cbd5e1)"
           strokeWidth="1.5"
         />
@@ -81,7 +87,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
         {/* Bars */}
         {data.map((item, idx) => {
           const barHeight = (item.value / roundMax) * graphHeight;
-          const x = paddingLeft + (idx * stepX) + (stepX - barWidth) / 2;
+          const x = paddingLeft + idx * stepX + (stepX - barWidth) / 2;
           const y = paddingTop + graphHeight - barHeight;
 
           return (
@@ -127,7 +133,6 @@ export const BarChart: React.FC<BarChartProps> = ({ data, yAxisSuffix = '', heig
     </div>
   );
 };
-
 
 // ----------------------------------------------------
 // 2. DONUT CHART (Biểu đồ Hình tròn rỗng)
@@ -191,9 +196,19 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data }) => {
           const percent = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
           return (
             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px' }}>
-              <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '3px', backgroundColor: item.color }} />
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '3px',
+                  backgroundColor: item.color
+                }}
+              />
               <span style={{ fontWeight: 500, color: 'var(--color-text-main)' }}>{item.label}:</span>
-              <strong style={{ marginLeft: 'auto' }}>{item.value} ({percent}%)</strong>
+              <strong style={{ marginLeft: 'auto' }}>
+                {item.value} ({percent}%)
+              </strong>
             </div>
           );
         })}
@@ -201,7 +216,6 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data }) => {
     </div>
   );
 };
-
 
 // ----------------------------------------------------
 // 3. HORIZONTAL BAR CHART (Biểu đồ Cột ngang)
@@ -220,25 +234,23 @@ export const HorizontalBarChart: React.FC<HorizontalBarChartProps> = ({ data, va
         const percentWidth = (item.value / maxVal) * 100;
         return (
           <div key={idx} className="horizontal-bar-chart__row">
-            <span 
-              className="horizontal-bar-chart__label"
-              title={item.label}
-            >
+            <span className="horizontal-bar-chart__label" title={item.label}>
               {item.label}
             </span>
             <div className="horizontal-bar-chart__track">
-              <div 
-                style={{ 
-                  width: `${percentWidth}%`, 
-                  height: '100%', 
-                  background: 'linear-gradient(90deg, #93c5fd, #1d4ed8)', 
+              <div
+                style={{
+                  width: `${percentWidth}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #93c5fd, #1d4ed8)',
                   borderRadius: '4px',
-                  transition: 'width 0.6s ease' 
-                }} 
+                  transition: 'width 0.6s ease'
+                }}
               />
             </div>
             <span className="horizontal-bar-chart__value">
-              {item.value.toLocaleString()}{valueSuffix}
+              {item.value.toLocaleString()}
+              {valueSuffix}
             </span>
           </div>
         );

@@ -14,12 +14,10 @@ export interface CompatiblePORecord extends PORecord {
   netAmount: number;
 }
 
-const asRecord = (value: unknown): PORecord => (
-  value && typeof value === 'object' ? value as PORecord : {}
-);
+const asRecord = (value: unknown): PORecord => (value && typeof value === 'object' ? (value as PORecord) : {});
 
-const asText = (value: unknown): string => typeof value === 'string' ? value : '';
-const asNumber = (value: unknown): number => Number.isFinite(Number(value)) ? Number(value) : 0;
+const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
+const asNumber = (value: unknown): number => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
 export const normalizePORecord = (value: unknown): CompatiblePORecord => {
   const source = asRecord(value);
@@ -41,6 +39,5 @@ export const normalizePORecord = (value: unknown): CompatiblePORecord => {
   };
 };
 
-export const normalizePORecords = (values: unknown): CompatiblePORecord[] => (
-  Array.isArray(values) ? values.map(normalizePORecord) : []
-);
+export const normalizePORecords = (values: unknown): CompatiblePORecord[] =>
+  Array.isArray(values) ? values.map(normalizePORecord) : [];

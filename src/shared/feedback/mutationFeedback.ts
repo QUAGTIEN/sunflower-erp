@@ -14,7 +14,9 @@ const pendingActions = new Set<string>();
 export const getToastSnapshot = () => current;
 export const subscribeToToast = (listener: () => void) => {
   listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return () => {
+    listeners.delete(listener);
+  };
 };
 
 export const dismissToast = () => {
@@ -33,16 +35,19 @@ const showToast = (text: string, tone: ToastMessage['tone'], detail = '') => {
 
 export const showSuccessToast = (text = 'Đã lưu thành công', detail?: string) => {
   const isAdded = /^Đã (thêm|tạo)/i.test(text);
-  const description = detail ?? (isAdded
-    ? 'Dữ liệu mới đã được tạo trong hệ thống.'
-    : /^Đã xóa/i.test(text)
-      ? 'Thao tác xóa đã được thực hiện thành công.'
-      : /^Đã lưu/i.test(text)
-        ? 'Dữ liệu đã được lưu vào hệ thống.'
-        : 'Thao tác đã được thực hiện thành công.');
+  const description =
+    detail ??
+    (isAdded
+      ? 'Dữ liệu mới đã được tạo trong hệ thống.'
+      : /^Đã xóa/i.test(text)
+        ? 'Thao tác xóa đã được thực hiện thành công.'
+        : /^Đã lưu/i.test(text)
+          ? 'Dữ liệu đã được lưu vào hệ thống.'
+          : 'Thao tác đã được thực hiện thành công.');
   showToast(text, isAdded ? 'info' : 'success', description);
 };
-export const showErrorToast = (text = 'Không thể lưu. Vui lòng thử lại.') => showToast('Không thể hoàn tất', 'error', text);
+export const showErrorToast = (text = 'Không thể lưu. Vui lòng thử lại.') =>
+  showToast('Không thể hoàn tất', 'error', text);
 
 export const requireConfirmedMutation = async <Result>(operation: Promise<Result>): Promise<Result> => {
   const result = await operation;
@@ -55,8 +60,12 @@ const getActionButton = (firstArgument: unknown): HTMLButtonElement | null => {
   const event = firstArgument as { currentTarget?: unknown; nativeEvent?: { submitter?: unknown } } | null;
   const target = event?.nativeEvent?.submitter || event?.currentTarget;
   if (target instanceof HTMLButtonElement) return target;
-  if (target instanceof HTMLFormElement && document.activeElement instanceof HTMLButtonElement
-    && document.activeElement.form === target) return document.activeElement;
+  if (
+    target instanceof HTMLFormElement &&
+    document.activeElement instanceof HTMLButtonElement &&
+    document.activeElement.form === target
+  )
+    return document.activeElement;
   if (event?.currentTarget instanceof Element) return null;
   return document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
 };
@@ -99,8 +108,11 @@ export const runMutationAction = async <Result>(
   }
 };
 
-export const withMutationFeedback = <Args extends unknown[], Result>(
-  key: string,
-  action: (...args: Args) => Promise<Result>,
-  options: { busy?: boolean } = {}
-) => (...args: Args) => runMutationAction(key, () => action(...args), args[0], options);
+export const withMutationFeedback =
+  <Args extends unknown[], Result>(
+    key: string,
+    action: (...args: Args) => Promise<Result>,
+    options: { busy?: boolean } = {}
+  ) =>
+  (...args: Args) =>
+    runMutationAction(key, () => action(...args), args[0], options);

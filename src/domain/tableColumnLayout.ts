@@ -14,23 +14,31 @@ export interface TableColumnLayoutPatch {
   widths?: Record<string, number>;
 }
 
-export const canEditTableColumns = (user: Pick<UserProfile, 'role' | 'active'> | null) => (
-  user?.role === 'admin' && user.active === true
-);
+export const canEditTableColumns = (user: Pick<UserProfile, 'role' | 'active'> | null) =>
+  user?.role === 'admin' && user.active === true;
 
 export const normalizeColumnWidths = (value: unknown): Record<string, number> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  return Object.fromEntries(Object.entries(value).filter(([key, width]) => (
-    key.length <= 180 && typeof width === 'number' && Number.isFinite(width)
-    && width >= 64 && width <= (key === '__tableWidth' ? 100_000 : 4096)
-  )).slice(0, 256));
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        ([key, width]) =>
+          key.length <= 180 &&
+          typeof width === 'number' &&
+          Number.isFinite(width) &&
+          width >= 64 &&
+          width <= (key === '__tableWidth' ? 100_000 : 4096)
+      )
+      .slice(0, 256)
+  );
 };
 
-export const normalizeColumnSelection = (value: unknown): string[] | undefined => (
+export const normalizeColumnSelection = (value: unknown): string[] | undefined =>
   Array.isArray(value)
-    ? Array.from(new Set(value.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 180))).slice(0, 256)
-    : undefined
-);
+    ? Array.from(
+        new Set(value.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 180))
+      ).slice(0, 256)
+    : undefined;
 
 export const normalizeTableColumnLayout = (value: unknown): TableColumnLayout | null => {
   if (!value || typeof value !== 'object') return null;

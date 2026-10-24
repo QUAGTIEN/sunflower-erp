@@ -33,19 +33,12 @@ export interface UserNotificationRecord extends UnknownRecord {
   readAt: string | null;
 }
 
-const asRecord = (value: unknown): UnknownRecord => (
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as UnknownRecord
-    : {}
-);
+const asRecord = (value: unknown): UnknownRecord =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as UnknownRecord) : {};
 
-const asText = (value: unknown, fallback = ''): string => (
-  typeof value === 'string' ? value : fallback
-);
+const asText = (value: unknown, fallback = ''): string => (typeof value === 'string' ? value : fallback);
 
-const asArray = (value: unknown): unknown[] => (
-  Array.isArray(value) ? value : []
-);
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
 const normalizeModule = (value: unknown): NotificationModule => {
   const modules: NotificationModule[] = [
@@ -62,9 +55,7 @@ const normalizeModule = (value: unknown): NotificationModule => {
     'accounting',
     'system'
   ];
-  return modules.includes(value as NotificationModule)
-    ? value as NotificationModule
-    : 'system';
+  return modules.includes(value as NotificationModule) ? (value as NotificationModule) : 'system';
 };
 
 export const normalizeNotificationRecord = (value: unknown): UserNotificationRecord => {
@@ -92,20 +83,11 @@ export const normalizeNotificationRecord = (value: unknown): UserNotificationRec
   };
 };
 
-export const normalizeNotificationRecords = (values: unknown): UserNotificationRecord[] => (
-  asArray(values).map(normalizeNotificationRecord)
-);
+export const normalizeNotificationRecords = (values: unknown): UserNotificationRecord[] =>
+  asArray(values).map(normalizeNotificationRecord);
 
-export const isUnreadNotificationForUser = (
-  notification: UserNotificationRecord,
-  userId: string
-): boolean => (
-  notification.recipientId === userId && notification.readAt === null
-);
+export const isUnreadNotificationForUser = (notification: UserNotificationRecord, userId: string): boolean =>
+  notification.recipientId === userId && notification.readAt === null;
 
-export const getNotificationDocumentId = (
-  recipientId: string,
-  eventKey: string
-): string => (
-  `notification-${encodeURIComponent(`${recipientId}|${eventKey}`)}`
-);
+export const getNotificationDocumentId = (recipientId: string, eventKey: string): string =>
+  `notification-${encodeURIComponent(`${recipientId}|${eventKey}`)}`;

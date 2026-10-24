@@ -52,25 +52,21 @@ const getFirstValidTimestamp = (values: readonly unknown[]): number | null => {
  * Returns a stable copy ordered from newest to oldest without mutating the
  * collection supplied by Firebase or by a parent component.
  */
-export const sortNewestFirst = <T>(
-  records: readonly T[],
-  getDateCandidates: (record: T) => readonly unknown[]
-): T[] => records
-  .map((record, originalIndex) => ({
-    record,
-    originalIndex,
-    timestamp: getFirstValidTimestamp(getDateCandidates(record))
-  }))
-  .sort((recordA, recordB) => {
-    if (recordA.timestamp === null && recordB.timestamp === null) {
-      return recordA.originalIndex - recordB.originalIndex;
-    }
-    if (recordA.timestamp === null) return 1;
-    if (recordB.timestamp === null) return -1;
+export const sortNewestFirst = <T>(records: readonly T[], getDateCandidates: (record: T) => readonly unknown[]): T[] =>
+  records
+    .map((record, originalIndex) => ({
+      record,
+      originalIndex,
+      timestamp: getFirstValidTimestamp(getDateCandidates(record))
+    }))
+    .sort((recordA, recordB) => {
+      if (recordA.timestamp === null && recordB.timestamp === null) {
+        return recordA.originalIndex - recordB.originalIndex;
+      }
+      if (recordA.timestamp === null) return 1;
+      if (recordB.timestamp === null) return -1;
 
-    const timestampDifference = recordB.timestamp - recordA.timestamp;
-    return timestampDifference !== 0
-      ? timestampDifference
-      : recordA.originalIndex - recordB.originalIndex;
-  })
-  .map(({ record }) => record);
+      const timestampDifference = recordB.timestamp - recordA.timestamp;
+      return timestampDifference !== 0 ? timestampDifference : recordA.originalIndex - recordB.originalIndex;
+    })
+    .map(({ record }) => record);

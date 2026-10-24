@@ -12,7 +12,12 @@ import {
 
 export const TABLE_COLUMN_LAYOUT_COLLECTION = 'table_column_layouts';
 
-export async function saveTableColumnLayout(user: UserProfile, id: string, patch: TableColumnLayoutPatch, onlyIfAbsent = false) {
+export async function saveTableColumnLayout(
+  user: UserProfile,
+  id: string,
+  patch: TableColumnLayoutPatch,
+  onlyIfAbsent = false
+) {
   if (!canEditTableColumns(user)) throw new Error('Chỉ Admin được thiết lập cột.');
   if (!/^[a-zA-Z0-9:_-]{1,180}$/.test(id)) throw new Error('Bảng không hợp lệ.');
   const selectedIds = patch.selectedIds === undefined ? undefined : normalizeColumnSelection(patch.selectedIds);

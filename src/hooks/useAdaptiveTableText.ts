@@ -27,9 +27,8 @@ const getTextTarget = (cell: HTMLTableCellElement): HTMLElement | null => {
 
 const isWiderThanOneLine = (element: HTMLElement, context: CanvasRenderingContext2D) => {
   const style = window.getComputedStyle(element);
-  const availableWidth = element.clientWidth
-    - Number.parseFloat(style.paddingLeft || '0')
-    - Number.parseFloat(style.paddingRight || '0');
+  const availableWidth =
+    element.clientWidth - Number.parseFloat(style.paddingLeft || '0') - Number.parseFloat(style.paddingRight || '0');
   if (availableWidth <= 0) return false;
   context.font = style.font;
   const label = element.textContent?.replace(/\s+/g, ' ').trim() || '';
@@ -41,9 +40,11 @@ const isWiderThanOneLine = (element: HTMLElement, context: CanvasRenderingContex
 const countTextLines = (element: HTMLElement) => {
   const range = document.createRange();
   range.selectNodeContents(element);
-  return new Set(Array.from(range.getClientRects())
-    .filter(rect => rect.width > 0 && rect.height > 0)
-    .map(rect => Math.round(rect.top))).size;
+  return new Set(
+    Array.from(range.getClientRects())
+      .filter(rect => rect.width > 0 && rect.height > 0)
+      .map(rect => Math.round(rect.top))
+  ).size;
 };
 
 /** Keep the normal font on one-line values, including after a column is widened. */
@@ -99,19 +100,16 @@ export const useAdaptiveTableText = (pageId: string, userId: string) => {
       frame = window.requestAnimationFrame(updateText);
     };
     scheduleUpdate();
-    const containsTableContent = (node: Node) => node instanceof Element && (
-      node.matches('table, thead, tbody, tr, th, td')
-      || Boolean(node.querySelector('table, th, td'))
-    );
+    const containsTableContent = (node: Node) =>
+      node instanceof Element &&
+      (node.matches('table, thead, tbody, tr, th, td') || Boolean(node.querySelector('table, th, td')));
     const mutationObserver = new MutationObserver(records => {
       const tableChanged = records.some(record => {
-        const targetElement = record.target instanceof Element
-          ? record.target
-          : record.target.parentElement;
+        const targetElement = record.target instanceof Element ? record.target : record.target.parentElement;
         return (
-          Boolean(targetElement?.closest('table'))
-          || Array.from(record.addedNodes).some(containsTableContent)
-          || Array.from(record.removedNodes).some(containsTableContent)
+          Boolean(targetElement?.closest('table')) ||
+          Array.from(record.addedNodes).some(containsTableContent) ||
+          Array.from(record.removedNodes).some(containsTableContent)
         );
       });
       if (tableChanged) scheduleUpdate();

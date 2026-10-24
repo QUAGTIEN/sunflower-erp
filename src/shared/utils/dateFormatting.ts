@@ -37,26 +37,17 @@ export const parseValidDate = (value: unknown): Date | null => {
   return null;
 };
 
-export const formatDate = (
-  value: unknown,
-  locale = 'vi-VN',
-  fallback = '—'
-): string => parseValidDate(value)?.toLocaleDateString(locale) || fallback;
+export const formatDate = (value: unknown, locale = 'vi-VN', fallback = '—'): string =>
+  parseValidDate(value)?.toLocaleDateString(locale) || fallback;
 
-export const formatDateTime = (
-  value: unknown,
-  locale = 'vi-VN',
-  fallback = '—'
-): string => parseValidDate(value)?.toLocaleString(locale) || fallback;
+export const formatDateTime = (value: unknown, locale = 'vi-VN', fallback = '—'): string =>
+  parseValidDate(value)?.toLocaleString(locale) || fallback;
 
-export const formatTime = (
-  value: unknown,
-  locale = 'vi-VN',
-  fallback = '—'
-): string => parseValidDate(value)?.toLocaleTimeString(locale, {
-  hour: '2-digit',
-  minute: '2-digit'
-}) || fallback;
+export const formatTime = (value: unknown, locale = 'vi-VN', fallback = '—'): string =>
+  parseValidDate(value)?.toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit'
+  }) || fallback;
 
 export const toDateInputValue = (value: unknown): string => {
   if (typeof value === 'string') {

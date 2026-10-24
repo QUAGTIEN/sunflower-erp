@@ -41,9 +41,7 @@ interface WorkflowNotificationInput {
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
-const asText = (value: unknown): string => (
-  typeof value === 'string' ? value.trim() : ''
-);
+const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
 const asNumber = (value: unknown): number => {
   const parsed = Number(value);
@@ -52,20 +50,16 @@ const asNumber = (value: unknown): number => {
 
 const asBoolean = (value: unknown): boolean => value === true;
 
-const getEntityId = (record: UnknownRecord): string => (
-  asText(record.id) || asText(record.code)
-);
+const getEntityId = (record: UnknownRecord): string => asText(record.id) || asText(record.code);
 
-const getRoleUserIds = (users: UserProfile[], role: UserProfile['role']): string[] => (
+const getRoleUserIds = (users: UserProfile[], role: UserProfile['role']): string[] =>
   users
     .filter(user => user.active !== false && user.role === role)
     .map(user => user.uid)
-    .filter(Boolean)
-);
+    .filter(Boolean);
 
-const uniqueRecipientIds = (values: string[]): string[] => (
-  Array.from(new Set(values.map(value => value.trim()).filter(Boolean)))
-);
+const uniqueRecipientIds = (values: string[]): string[] =>
+  Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
 
 const addForRecipients = (
   candidates: NotificationCandidate[],
@@ -77,16 +71,11 @@ const addForRecipients = (
   });
 };
 
-const getRecordCreatedAt = (record: UnknownRecord): string => (
-  asText(record.createdAt)
-  || asText(record.orderDate)
-  || asText(record.updatedAt)
-  || '1970-01-01T00:00:00.000Z'
-);
+const getRecordCreatedAt = (record: UnknownRecord): string =>
+  asText(record.createdAt) || asText(record.orderDate) || asText(record.updatedAt) || '1970-01-01T00:00:00.000Z';
 
-const getNotificationIdentity = (
-  notification: Pick<UserNotificationRecord, 'recipientId' | 'eventKey'>
-): string => `${notification.recipientId}|${notification.eventKey}`;
+const getNotificationIdentity = (notification: Pick<UserNotificationRecord, 'recipientId' | 'eventKey'>): string =>
+  `${notification.recipientId}|${notification.eventKey}`;
 
 export const buildWorkflowNotificationCandidates = ({
   users,
@@ -159,11 +148,7 @@ export const buildWorkflowNotificationCandidates = ({
     if (asBoolean(po.deleted) || asText(po.status) !== 'waiting_design') return;
     const poId = getEntityId(po);
     const poCode = asText(po.poCode) || poId;
-    addForRecipients(candidates, [
-      ...adminIds,
-      asText(po.saleId),
-      asText(po.assignedSaleId)
-    ], {
+    addForRecipients(candidates, [...adminIds, asText(po.saleId), asText(po.assignedSaleId)], {
       module: 'sales',
       eventType: 'workflow_po_waiting_design',
       eventKey: `sales:waiting-design:${poId}:${getRecordCreatedAt(po)}`,
@@ -178,9 +163,7 @@ export const buildWorkflowNotificationCandidates = ({
 
   procurementRequests.forEach(request => {
     if (request.deleted || !['new', 'reviewing', 'quoting', 'supplier_selected'].includes(request.status)) return;
-    const recipients = request.assignedPurchaserId
-      ? [request.assignedPurchaserId]
-      : purchaserIds;
+    const recipients = request.assignedPurchaserId ? [request.assignedPurchaserId] : purchaserIds;
     addForRecipients(candidates, [...adminIds, ...recipients], {
       module: 'purchase',
       eventType: 'workflow_procurement_request',
@@ -197,9 +180,7 @@ export const buildWorkflowNotificationCandidates = ({
   designRequests.forEach(request => {
     if (request.archived || request.workStatus === 'completed') return;
     const assignmentVersion = request.assignmentUpdatedAt || request.createdAt;
-    const recipients = request.assignedDesignerId
-      ? [request.assignedDesignerId]
-      : designerIds;
+    const recipients = request.assignedDesignerId ? [request.assignedDesignerId] : designerIds;
     addForRecipients(candidates, [...adminIds, ...recipients], {
       module: 'design',
       eventType: 'workflow_design_assigned',
@@ -249,10 +230,7 @@ export const buildWorkflowNotificationCandidates = ({
     const commandId = getEntityId(command);
     const commandCode = asText(command.commandCode) || asText(command.lsxCode) || commandId;
     const operatorId = asText(command.operatorId);
-    addForRecipients(candidates, [
-      ...adminIds,
-      ...(operatorId ? [operatorId] : producerIds)
-    ], {
+    addForRecipients(candidates, [...adminIds, ...(operatorId ? [operatorId] : producerIds)], {
       module: 'production',
       eventType: 'workflow_production_action',
       eventKey: `production:${status}:${commandId}:${operatorId || 'team'}`,
@@ -305,10 +283,7 @@ export const buildWorkflowNotificationCandidates = ({
     const invoiceId = getEntityId(invoice);
     const invoiceCode = asText(invoice.invoiceCode) || invoiceId;
     const assignedAccountantId = asText(invoice.assignedAccountantId);
-    addForRecipients(candidates, [
-      ...adminIds,
-      ...(assignedAccountantId ? [assignedAccountantId] : accountantIds)
-    ], {
+    addForRecipients(candidates, [...adminIds, ...(assignedAccountantId ? [assignedAccountantId] : accountantIds)], {
       module: 'accounting',
       eventType: 'workflow_invoice_unpaid',
       eventKey: `accounting:unpaid:${invoiceId}:${asText(invoice.dueDate)}`,
@@ -324,9 +299,7 @@ export const buildWorkflowNotificationCandidates = ({
   return candidates;
 };
 
-export const synchronizeWorkflowNotifications = async (
-  input: WorkflowNotificationInput
-): Promise<void> => {
+export const synchronizeWorkflowNotifications = async (input: WorkflowNotificationInput): Promise<void> => {
   const candidates = buildWorkflowNotificationCandidates(input);
   const relevantCandidates = input.recipientId
     ? candidates.filter(candidate => candidate.recipientId === input.recipientId)
@@ -357,25 +330,30 @@ export const synchronizeWorkflowNotifications = async (
 
   const createOperations = relevantCandidates
     .filter(candidate => !existingIdentities.has(getNotificationIdentity(candidate)))
-    .map(candidate => dbService.addDocument('notifications', {
-      ...candidate,
-      id: getNotificationDocumentId(candidate.recipientId, candidate.eventKey),
-      schemaVersion: 1,
-      source: 'workflow',
-      readAt: null
-    }));
+    .map(candidate =>
+      dbService.addDocument('notifications', {
+        ...candidate,
+        id: getNotificationDocumentId(candidate.recipientId, candidate.eventKey),
+        schemaVersion: 1,
+        source: 'workflow',
+        readAt: null
+      })
+    );
 
   const closeOperations = relevantNotifications
-    .filter(notification => (
-      notification.source === 'workflow'
-      && notification.readAt === null
-      && knownEntityIds[notification.module].has(notification.entityId)
-      && !activeIdentities.has(getNotificationIdentity(notification))
-    ))
-    .map(notification => dbService.updateDocument('notifications', notification.id, {
-      readAt: now,
-      readReason: 'workflow_inactive'
-    }));
+    .filter(
+      notification =>
+        notification.source === 'workflow' &&
+        notification.readAt === null &&
+        knownEntityIds[notification.module].has(notification.entityId) &&
+        !activeIdentities.has(getNotificationIdentity(notification))
+    )
+    .map(notification =>
+      dbService.updateDocument('notifications', notification.id, {
+        readAt: now,
+        readReason: 'workflow_inactive'
+      })
+    );
 
   await Promise.all([...createOperations, ...closeOperations]);
 };
@@ -386,17 +364,18 @@ export const markModuleNotificationsRead = async (
   module: NotificationModule
 ): Promise<void> => {
   const readAt = new Date().toISOString();
-  const unread = notifications.filter(notification => (
-    notification.recipientId === recipientId
-    && notification.module === module
-    && notification.readAt === null
-  ));
-  await Promise.all(unread.map(notification => (
-    dbService.updateDocument('notifications', notification.id, {
-      readAt,
-      readById: recipientId
-    })
-  )));
+  const unread = notifications.filter(
+    notification =>
+      notification.recipientId === recipientId && notification.module === module && notification.readAt === null
+  );
+  await Promise.all(
+    unread.map(notification =>
+      dbService.updateDocument('notifications', notification.id, {
+        readAt,
+        readById: recipientId
+      })
+    )
+  );
 };
 
 export const markNotificationRead = async (
@@ -415,13 +394,15 @@ export const markAllNotificationsRead = async (
   recipientId: string
 ): Promise<void> => {
   const readAt = new Date().toISOString();
-  const unread = notifications.filter(notification => (
-    notification.recipientId === recipientId && notification.readAt === null
-  ));
-  await Promise.all(unread.map(notification => (
-    dbService.updateDocument('notifications', notification.id, {
-      readAt,
-      readById: recipientId
-    })
-  )));
+  const unread = notifications.filter(
+    notification => notification.recipientId === recipientId && notification.readAt === null
+  );
+  await Promise.all(
+    unread.map(notification =>
+      dbService.updateDocument('notifications', notification.id, {
+        readAt,
+        readById: recipientId
+      })
+    )
+  );
 };

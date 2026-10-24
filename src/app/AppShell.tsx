@@ -1,5 +1,10 @@
 import React, { lazy, Suspense, useCallback, useState, useEffect, useRef } from 'react';
-import { authService, dbService, isFirebaseRuntimeEnabled, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
+import {
+  authService,
+  dbService,
+  isFirebaseRuntimeEnabled,
+  UserProfile
+} from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
 import { Dashboard } from '@/features/dashboard';
 import { useLanguage } from '@/context/LanguageContext';
@@ -28,10 +33,7 @@ import { normalizeLeadRecords, type CustomerRecord, type LeadRecord } from '@/fe
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import type { ProcurementRequestRecord } from '@/features/procurement/model/purchaseModels';
 import type { UserNotificationRecord } from '@/domain/notificationModels';
-import {
-  markAllNotificationsRead,
-  markNotificationRead
-} from '@/services/notificationService';
+import { markAllNotificationsRead, markNotificationRead } from '@/services/notificationService';
 import { synchronizeProvinceData } from '@/features/crm/api/provinceDataSynchronization';
 import {
   LayoutDashboard,
@@ -73,7 +75,9 @@ const loadCommercialMapModule = () => import('@/features/commercial-map');
 const loadWorkScheduleModule = () => import('@/features/work-schedule');
 const loadAttendanceModule = () => import('@/features/attendance');
 
-const SalesManagementPage = lazy(() => loadSalesManagementModule().then(module => ({ default: module.SalesManagementPage })));
+const SalesManagementPage = lazy(() =>
+  loadSalesManagementModule().then(module => ({ default: module.SalesManagementPage }))
+);
 const Crm = lazy(() => loadCrmModule().then(module => ({ default: module.Crm })));
 const CustomerData = lazy(() => loadCrmModule().then(module => ({ default: module.CustomerData })));
 const Leads = lazy(() => loadCrmModule().then(module => ({ default: module.Leads })));
@@ -158,22 +162,26 @@ function AppShell() {
     localStorage.setItem('erp_color_theme', 'light');
   }, []);
 
-  const handlePageContextChange = useCallback((context: AppPageContext) => {
-    setReportedPageContext(previous => {
-      if (
-        previous?.pageId === activePage
-        && previous.section === context.section
-        && previous.current === context.current
-      ) {
-        return previous;
-      }
-      return { ...context, pageId: activePage };
-    });
-  }, [activePage]);
+  const handlePageContextChange = useCallback(
+    (context: AppPageContext) => {
+      setReportedPageContext(previous => {
+        if (
+          previous?.pageId === activePage &&
+          previous.section === context.section &&
+          previous.current === context.current
+        ) {
+          return previous;
+        }
+        return { ...context, pageId: activePage };
+      });
+    },
+    [activePage]
+  );
 
-  const pageContext = reportedPageContext?.pageId === activePage
-    ? reportedPageContext
-    : (DEFAULT_PAGE_CONTEXTS[activePage] ?? { section: activePage });
+  const pageContext =
+    reportedPageContext?.pageId === activePage
+      ? reportedPageContext
+      : (DEFAULT_PAGE_CONTEXTS[activePage] ?? { section: activePage });
 
   const isPageAllowed = (pageId: string): boolean => canAccessPage(user, pageId);
   const tableColumnLayouts = useTableColumnLayoutManager(user);
@@ -214,36 +222,57 @@ function AppShell() {
     if (preload) void preload().catch(() => undefined);
   }, []);
 
-  const handleSidebarPreload = useCallback((event: React.SyntheticEvent<HTMLElement>) => {
-    const eventTarget = event.target;
-    if (!(eventTarget instanceof Element)) return;
-    const pageId = eventTarget.closest<HTMLButtonElement>('button[data-page-id]')?.dataset.pageId;
-    if (pageId) preloadPageModule(pageId);
-  }, [preloadPageModule]);
+  const handleSidebarPreload = useCallback(
+    (event: React.SyntheticEvent<HTMLElement>) => {
+      const eventTarget = event.target;
+      if (!(eventTarget instanceof Element)) return;
+      const pageId = eventTarget.closest<HTMLButtonElement>('button[data-page-id]')?.dataset.pageId;
+      if (pageId) preloadPageModule(pageId);
+    },
+    [preloadPageModule]
+  );
 
   useEffect(() => {
     if (!user) return;
     const allowedPages = user.allowedPages || getDefaultPagesForRole(user.role);
     const preferredOrder = [
-      'customer_data', 'leads', 'crm', 'sales', 'work_schedule', 'chat',
-      'commercial_map', 'sales_management', 'design', 'purchase', 'suppliers',
-      'inventory', 'production', 'delivery', 'accounting', 'users', 'recycle_bin'
+      'customer_data',
+      'leads',
+      'crm',
+      'sales',
+      'work_schedule',
+      'chat',
+      'commercial_map',
+      'sales_management',
+      'design',
+      'purchase',
+      'suppliers',
+      'inventory',
+      'production',
+      'delivery',
+      'accounting',
+      'users',
+      'recycle_bin'
     ];
-    const preloaders = Array.from(new Set(
-      preferredOrder
-        .filter(pageId => allowedPages.includes(pageId))
-        .map(pageId => PAGE_MODULE_PRELOADERS[pageId])
-        .filter((preload): preload is () => Promise<unknown> => Boolean(preload))
-    ));
+    const preloaders = Array.from(
+      new Set(
+        preferredOrder
+          .filter(pageId => allowedPages.includes(pageId))
+          .map(pageId => PAGE_MODULE_PRELOADERS[pageId])
+          .filter((preload): preload is () => Promise<unknown> => Boolean(preload))
+      )
+    );
     let cancelled = false;
     let preloadIndex = 0;
     let preloadTimer = 0;
     const preloadNext = () => {
       if (cancelled || preloadIndex >= preloaders.length) return;
       const preload = preloaders[preloadIndex++];
-      void preload().catch(() => undefined).finally(() => {
-        if (!cancelled) preloadTimer = window.setTimeout(preloadNext, 250);
-      });
+      void preload()
+        .catch(() => undefined)
+        .finally(() => {
+          if (!cancelled) preloadTimer = window.setTimeout(preloadNext, 250);
+        });
     };
     preloadTimer = window.setTimeout(preloadNext, 1_200);
     return () => {
@@ -277,8 +306,14 @@ function AppShell() {
   const [preparedCustomerId, setPreparedCustomerId] = useState<string>('');
   const [leadOnboarding, setLeadOnboarding] = useState<LeadRecord | null>(null);
   const [candidateLeadConversion, setCandidateLeadConversion] = useState<LeadCandidateRecord | null>(null);
-  const [supportNavigationTarget, setSupportNavigationTarget] = useState<{ module: 'customer_data' | 'leads' | 'crm'; entityId: string } | null>(null);
-  const [customerInsightNavigation, setCustomerInsightNavigation] = useState<{ module: 'customer_data' | 'leads' | 'crm' | 'sales'; itemId: string } | null>(null);
+  const [supportNavigationTarget, setSupportNavigationTarget] = useState<{
+    module: 'customer_data' | 'leads' | 'crm';
+    entityId: string;
+  } | null>(null);
+  const [customerInsightNavigation, setCustomerInsightNavigation] = useState<{
+    module: 'customer_data' | 'leads' | 'crm' | 'sales';
+    itemId: string;
+  } | null>(null);
   const [workScheduleGroupNavigation, setWorkScheduleGroupNavigation] = useState('');
 
   const handleRepeatOrderRequest = (poId: string) => {
@@ -327,7 +362,7 @@ function AppShell() {
 
   // Handle Authentication State Change
   useEffect(() => {
-    const unsubAuth = authService.onAuthStateChanged((currUser) => {
+    const unsubAuth = authService.onAuthStateChanged(currUser => {
       setUser(currUser);
     });
     return () => unsubAuth();
@@ -365,30 +400,40 @@ function AppShell() {
   useEffect(() => {
     if (!user) return;
 
-    const unsubUsers = dbService.subscribeCollection('users', (data) => setUsers(data as UserProfile[]));
-    const unsubMessages = dbService.subscribeCollection('messages', data => {
-      setMessages([...data].sort((left, right) => (
-        String(left.createdAt || '').localeCompare(String(right.createdAt || ''))
-      )));
-    }, {
-      orderByField: 'createdAt',
-      orderDirection: 'desc',
-      maxResults: 250
-    });
+    const unsubUsers = dbService.subscribeCollection('users', data => setUsers(data as UserProfile[]));
+    const unsubMessages = dbService.subscribeCollection(
+      'messages',
+      data => {
+        setMessages(
+          [...data].sort((left, right) => String(left.createdAt || '').localeCompare(String(right.createdAt || '')))
+        );
+      },
+      {
+        orderByField: 'createdAt',
+        orderDirection: 'desc',
+        maxResults: 250
+      }
+    );
     const unsubChannels = dbService.subscribeCollection('channels', setChannels);
     let unsubNotifications: () => void = () => undefined;
     if (user.role === 'admin') {
-      unsubNotifications = dbService.subscribeCollection('notifications', (data) => {
-        setNotifications(sortNewestFirst(
-          (data as UserNotificationRecord[]).filter(notification => notification.recipientId === user.uid),
-          notification => [notification.createdAt]
-        ));
-      }, {
-        fieldName: 'eventType',
-        fieldValue: 'support_request',
-        maxResults: 100,
-        onError: () => setNotifications([])
-      });
+      unsubNotifications = dbService.subscribeCollection(
+        'notifications',
+        data => {
+          setNotifications(
+            sortNewestFirst(
+              (data as UserNotificationRecord[]).filter(notification => notification.recipientId === user.uid),
+              notification => [notification.createdAt]
+            )
+          );
+        },
+        {
+          fieldName: 'eventType',
+          fieldValue: 'support_request',
+          maxResults: 100,
+          onError: () => setNotifications([])
+        }
+      );
     } else {
       window.setTimeout(() => setNotifications([]), 0);
     }
@@ -418,11 +463,7 @@ function AppShell() {
     }
 
     const pageNeeds = (...pages: string[]) => pages.includes(activePage);
-    const syncSubscription = (
-      collectionName: string,
-      needed: boolean,
-      subscribe: () => () => void
-    ) => {
+    const syncSubscription = (collectionName: string, needed: boolean, subscribe: () => () => void) => {
       const existing = businessSubscriptionsRef.current.get(collectionName);
       if (needed && !existing) {
         businessSubscriptionsRef.current.set(collectionName, subscribe());
@@ -435,99 +476,131 @@ function AppShell() {
     syncSubscription(
       'customers',
       pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
-      () => dbService.subscribeCollection('customers', data => {
-        setCustomers(data as CustomerRecord[]);
-      }, user.role === 'sale' ? {
-        fieldName: 'assignedSaleId',
-        fieldValue: user.uid
-      } : undefined)
+      () =>
+        dbService.subscribeCollection(
+          'customers',
+          data => {
+            setCustomers(data as CustomerRecord[]);
+          },
+          user.role === 'sale'
+            ? {
+                fieldName: 'assignedSaleId',
+                fieldValue: user.uid
+              }
+            : undefined
+        )
     );
-    syncSubscription(
-      'leads',
-      pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
-      () => dbService.subscribeCollection('leads', data => {
-        setLeads(sortNewestFirst(normalizeLeadRecords(data), lead => [lead.createdAt, lead.updatedAt]));
-      }, user.role === 'sale' ? {
-        fieldName: 'assignedSaleId',
-        fieldValue: user.uid
-      } : undefined)
+    syncSubscription('leads', pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'), () =>
+      dbService.subscribeCollection(
+        'leads',
+        data => {
+          setLeads(sortNewestFirst(normalizeLeadRecords(data), lead => [lead.createdAt, lead.updatedAt]));
+        },
+        user.role === 'sale'
+          ? {
+              fieldName: 'assignedSaleId',
+              fieldValue: user.uid
+            }
+          : undefined
+      )
     );
-    syncSubscription(
-      'lead_candidates',
-      pageNeeds('dashboard'),
-      () => dbService.subscribeCollection('lead_candidates', data => {
-        setLeadCandidates(sortNewestFirst(data as LeadCandidateRecord[], candidate => [candidate.createdAt, candidate.updatedAt]));
-      }, user.role === 'sale' ? {
-        fieldName: 'assignedSaleId',
-        fieldValue: user.uid
-      } : undefined)
+    syncSubscription('lead_candidates', pageNeeds('dashboard'), () =>
+      dbService.subscribeCollection(
+        'lead_candidates',
+        data => {
+          setLeadCandidates(
+            sortNewestFirst(data as LeadCandidateRecord[], candidate => [candidate.createdAt, candidate.updatedAt])
+          );
+        },
+        user.role === 'sale'
+          ? {
+              fieldName: 'assignedSaleId',
+              fieldValue: user.uid
+            }
+          : undefined
+      )
     );
     syncSubscription(
       'pos',
-      pageNeeds('dashboard', 'crm', 'commercial_map', 'sales', 'design', 'design_library', 'purchase', 'production', 'delivery', 'accounting', 'chat'),
-      () => dbService.subscribeCollection('pos', data => {
-        setPOs(sortNewestFirst(normalizePORecords(data), po => [po.createdAt, po.orderDate]));
-      })
+      pageNeeds(
+        'dashboard',
+        'crm',
+        'commercial_map',
+        'sales',
+        'design',
+        'design_library',
+        'purchase',
+        'production',
+        'delivery',
+        'accounting',
+        'chat'
+      ),
+      () =>
+        dbService.subscribeCollection('pos', data => {
+          setPOs(sortNewestFirst(normalizePORecords(data), po => [po.createdAt, po.orderDate]));
+        })
     );
-    syncSubscription(
-      'purchase_orders',
-      pageNeeds('dashboard', 'purchase', 'suppliers'),
-      () => dbService.subscribeCollection('purchase_orders', data => {
+    syncSubscription('purchase_orders', pageNeeds('dashboard', 'purchase', 'suppliers'), () =>
+      dbService.subscribeCollection('purchase_orders', data => {
         setPurchaseOrders(sortNewestFirst(data, purchaseOrder => [purchaseOrder.createdAt]));
       })
     );
-    syncSubscription(
-      'procurement_requests',
-      pageNeeds('dashboard', 'purchase'),
-      () => dbService.subscribeCollection('procurement_requests', data => {
-        setProcurementRequests(sortNewestFirst(
-          data as ProcurementRequestRecord[],
-          request => [request.createdAt, request.updatedAt]
-        ));
+    syncSubscription('procurement_requests', pageNeeds('dashboard', 'purchase'), () =>
+      dbService.subscribeCollection('procurement_requests', data => {
+        setProcurementRequests(
+          sortNewestFirst(data as ProcurementRequestRecord[], request => [request.createdAt, request.updatedAt])
+        );
       })
     );
-    syncSubscription(
-      'production_commands',
-      pageNeeds('dashboard', 'production', 'chat'),
-      () => dbService.subscribeCollection('production_commands', data => {
+    syncSubscription('production_commands', pageNeeds('dashboard', 'production', 'chat'), () =>
+      dbService.subscribeCollection('production_commands', data => {
         setProductionCommands(sortNewestFirst(data, command => [command.createdAt, command.startedAt]));
       })
     );
-    syncSubscription(
-      'deliveries',
-      pageNeeds('commercial_map'),
-      () => dbService.subscribeCollection('deliveries', data => {
+    syncSubscription('deliveries', pageNeeds('commercial_map'), () =>
+      dbService.subscribeCollection('deliveries', data => {
         setDeliveries(sortNewestFirst(data, delivery => [delivery.createdAt]));
       })
     );
-    syncSubscription(
-      'invoices',
-      pageNeeds('dashboard', 'crm'),
-      () => dbService.subscribeCollection('invoices', data => {
+    syncSubscription('invoices', pageNeeds('dashboard', 'crm'), () =>
+      dbService.subscribeCollection('invoices', data => {
         setInvoices(sortNewestFirst(data, invoice => [invoice.createdAt]));
       })
     );
     syncSubscription(
       'inventory',
       pageNeeds('dashboard') && !!user && canReadWarehouse(user) && isFirebaseRuntimeEnabled,
-      () => dbService.subscribeCollection('warehouse_balances', rows => setInventory(rows.filter(row => row.warehouseId !== 'finished_main').map(row => ({ ...row, materialName: row.name, qtyInStock: row.quantity, minQtyAlert: row.minQuantity ?? null }))), { onError: () => setInventory([]) })
+      () =>
+        dbService.subscribeCollection(
+          'warehouse_balances',
+          rows =>
+            setInventory(
+              rows
+                .filter(row => row.warehouseId !== 'finished_main')
+                .map(row => ({
+                  ...row,
+                  materialName: row.name,
+                  qtyInStock: row.quantity,
+                  minQtyAlert: row.minQuantity ?? null
+                }))
+            ),
+          { onError: () => setInventory([]) }
+        )
     );
-    syncSubscription(
-      'design_requests',
-      pageNeeds('dashboard', 'design'),
-      () => dbService.subscribeCollection('design_requests', data => {
-        setDesignRequests(sortNewestFirst(
-          data as DesignRequest[],
-          request => [request.createdAt]
-        ));
+    syncSubscription('design_requests', pageNeeds('dashboard', 'design'), () =>
+      dbService.subscribeCollection('design_requests', data => {
+        setDesignRequests(sortNewestFirst(data as DesignRequest[], request => [request.createdAt]));
       })
     );
   }, [activePage, user]);
 
-  useEffect(() => () => {
-    businessSubscriptionsRef.current.forEach(unsubscribe => unsubscribe());
-    businessSubscriptionsRef.current.clear();
-  }, []);
+  useEffect(
+    () => () => {
+      businessSubscriptionsRef.current.forEach(unsubscribe => unsubscribe());
+      businessSubscriptionsRef.current.clear();
+    },
+    []
+  );
 
   useEffect(() => {
     if (!isNotificationPanelOpen) return;
@@ -615,20 +688,24 @@ function AppShell() {
     for (const ch of userChannels) {
       const lastReadStr = localStorage.getItem(`erp_last_read_ch_${user.uid}_${ch.id}`);
       if (!lastReadStr) {
-        total += messages.filter(msg => msg.type === 'channel' && msg.targetId === ch.id && msg.senderId !== user.uid).length;
+        total += messages.filter(
+          msg => msg.type === 'channel' && msg.targetId === ch.id && msg.senderId !== user.uid
+        ).length;
       } else {
         const lastReadTime = new Date(lastReadStr).getTime();
         total += messages.filter(
-          msg => msg.type === 'channel' && msg.targetId === ch.id && msg.senderId !== user.uid && new Date(msg.createdAt).getTime() > lastReadTime
+          msg =>
+            msg.type === 'channel' &&
+            msg.targetId === ch.id &&
+            msg.senderId !== user.uid &&
+            new Date(msg.createdAt).getTime() > lastReadTime
         ).length;
       }
     }
     return total;
   };
 
-  const allUserNotifications = user
-    ? notifications.filter(notification => notification.recipientId === user.uid)
-    : [];
+  const allUserNotifications = user ? notifications.filter(notification => notification.recipientId === user.uid) : [];
   const userNotifications = allUserNotifications.slice(0, 20);
   const unreadNotificationTotal = allUserNotifications.filter(notification => notification.readAt === null).length;
 
@@ -640,8 +717,8 @@ function AppShell() {
     });
     const targetPage = notification.module === 'system' ? 'dashboard' : notification.module;
     if (
-      notification.eventType === 'support_request'
-      && (notification.module === 'customer_data' || notification.module === 'leads' || notification.module === 'crm')
+      notification.eventType === 'support_request' &&
+      (notification.module === 'customer_data' || notification.module === 'leads' || notification.module === 'crm')
     ) {
       setSupportNavigationTarget({ module: notification.module, entityId: notification.entityId });
     }
@@ -665,7 +742,10 @@ function AppShell() {
 
     switch (activePage) {
       case 'crm':
-        if (!isPageAllowed('crm')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('crm')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return (
           <Crm
             customers={customers}
@@ -685,7 +765,10 @@ function AppShell() {
           />
         );
       case 'leads':
-        if (!isPageAllowed('leads')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('leads')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return (
           <Leads
             customers={customers}
@@ -699,20 +782,29 @@ function AppShell() {
             onInitialCandidateConsumed={handleCandidateLeadConversionConsumed}
             initialLeadId={supportNavigationTarget?.module === 'leads' ? supportNavigationTarget.entityId : ''}
             onInitialLeadOpened={() => setSupportNavigationTarget(null)}
-            initialInsightFilterId={customerInsightNavigation?.module === 'leads' ? customerInsightNavigation.itemId : ''}
+            initialInsightFilterId={
+              customerInsightNavigation?.module === 'leads' ? customerInsightNavigation.itemId : ''
+            }
           />
         );
       case 'customer_data':
-        if (!isPageAllowed('customer_data')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('customer_data')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return (
           <CustomerData
             customers={customers}
             leads={leads}
             users={users}
             currentUser={user}
-            initialCandidateId={supportNavigationTarget?.module === 'customer_data' ? supportNavigationTarget.entityId : ''}
+            initialCandidateId={
+              supportNavigationTarget?.module === 'customer_data' ? supportNavigationTarget.entityId : ''
+            }
             onInitialCandidateOpened={() => setSupportNavigationTarget(null)}
-            initialInsightFilterId={customerInsightNavigation?.module === 'customer_data' ? customerInsightNavigation.itemId : ''}
+            initialInsightFilterId={
+              customerInsightNavigation?.module === 'customer_data' ? customerInsightNavigation.itemId : ''
+            }
             onStartConversion={candidate => {
               setCandidateLeadConversion(candidate);
               setActivePage('leads');
@@ -720,7 +812,10 @@ function AppShell() {
           />
         );
       case 'commercial_map':
-        if (!isPageAllowed('commercial_map')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('commercial_map')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return (
           <CommercialMap
             customers={customers}
@@ -737,10 +832,30 @@ function AppShell() {
         if (!isPageAllowed('attendance')) return null;
         return <AttendancePage currentUser={user} />;
       case 'work_schedule':
-        if (!isPageAllowed('work_schedule')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
-        return <WorkSchedule currentUser={user} users={users} candidates={leadCandidates} leads={leads} customers={customers} initialGroupId={workScheduleGroupNavigation} onInitialGroupConsumed={() => setWorkScheduleGroupNavigation('')} onOpenRecord={(module, id) => { setSupportNavigationTarget({ module, entityId: id }); setActivePage(module); }} />;
+        if (!isPageAllowed('work_schedule')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
+        return (
+          <WorkSchedule
+            currentUser={user}
+            users={users}
+            candidates={leadCandidates}
+            leads={leads}
+            customers={customers}
+            initialGroupId={workScheduleGroupNavigation}
+            onInitialGroupConsumed={() => setWorkScheduleGroupNavigation('')}
+            onOpenRecord={(module, id) => {
+              setSupportNavigationTarget({ module, entityId: id });
+              setActivePage(module);
+            }}
+          />
+        );
       case 'sales':
-        if (!isPageAllowed('sales')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('sales')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return (
           <Sales
             pos={pos}
@@ -753,13 +868,19 @@ function AppShell() {
             initialPreparedCustomerId={preparedCustomerId}
             onRepeatOrderOpened={() => setRepeatSourcePoId('')}
             onPreparedOrderOpened={handlePreparedOrderOpened}
-            onOpenCustomerDetails={customerId => { setSupportNavigationTarget({ module: 'crm', entityId: customerId }); setActivePage('crm'); }}
+            onOpenCustomerDetails={customerId => {
+              setSupportNavigationTarget({ module: 'crm', entityId: customerId });
+              setActivePage('crm');
+            }}
             messages={messages}
             users={users}
           />
         );
       case 'sales_management':
-        if (!isPageAllowed('sales_management')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('sales_management')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return (
           <SalesManagementPage
             users={users}
@@ -774,22 +895,51 @@ function AppShell() {
           />
         );
       case 'design':
-        if (!isPageAllowed('design')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
-        return <Design pos={pos} designRequests={designRequests} users={users} currentUser={user} onRefresh={refreshData} />;
+        if (!isPageAllowed('design')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
+        return (
+          <Design pos={pos} designRequests={designRequests} users={users} currentUser={user} onRefresh={refreshData} />
+        );
       case 'design_library':
-        if (!isPageAllowed('design')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('design')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return <DesignLibrary pos={pos} currentUser={user} />;
       case 'purchase':
-        if (!isPageAllowed('purchase')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
-        return <Purchase pos={pos} purchaseOrders={purchaseOrders} procurementRequests={procurementRequests} currentUser={user} onRefresh={refreshData} users={users} />;
+        if (!isPageAllowed('purchase')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
+        return (
+          <Purchase
+            pos={pos}
+            purchaseOrders={purchaseOrders}
+            procurementRequests={procurementRequests}
+            currentUser={user}
+            onRefresh={refreshData}
+            users={users}
+          />
+        );
       case 'suppliers':
-        if (!isPageAllowed('suppliers')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('suppliers')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return <Suppliers purchaseOrders={purchaseOrders} currentUser={user} users={users} />;
       case 'inventory':
-        if (!isPageAllowed('inventory')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('inventory')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return <Inventory currentUser={user} onRefresh={refreshData} />;
       case 'production':
-        if (!isPageAllowed('production')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('production')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return (
           <Production
             pos={pos}
@@ -802,24 +952,33 @@ function AppShell() {
           />
         );
       case 'delivery':
-        if (!isPageAllowed('delivery')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('delivery')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return <Delivery pos={pos} currentUser={user} onRefresh={refreshData} />;
       case 'accounting':
-        if (!isPageAllowed('accounting')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('accounting')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return <Accounting pos={pos} currentUser={user} onRefresh={refreshData} users={users} />;
       case 'chat':
-        if (!isPageAllowed('chat')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('chat')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return (
           <ChatPage
             currentUser={user}
             messages={messages}
             pos={pos}
             productionCommands={productionCommands}
-            onNavigateToPO={(poId) => {
+            onNavigateToPO={poId => {
               setSelectedPoId(poId);
               setActivePage('sales');
             }}
-            onNavigateToLSX={(lsxId) => {
+            onNavigateToLSX={lsxId => {
               setSelectedLsxId(lsxId);
               setActivePage('production');
             }}
@@ -828,7 +987,10 @@ function AppShell() {
           />
         );
       case 'recycle_bin':
-        if (!isPageAllowed('recycle_bin')) { setTimeout(() => setActivePage('dashboard'), 0); return null; }
+        if (!isPageAllowed('recycle_bin')) {
+          setTimeout(() => setActivePage('dashboard'), 0);
+          return null;
+        }
         return <RecycleBin currentUser={user} onRefresh={refreshData} />;
       case 'users':
         if (!isPageAllowed('users')) {
@@ -850,16 +1012,16 @@ function AppShell() {
             purchaseOrders={purchaseOrders}
             productionCommands={productionCommands}
             invoices={invoices}
-            onNavigate={(page) => setActivePage(page)}
+            onNavigate={page => setActivePage(page)}
             onNavigateInsight={(module, itemId) => {
               setCustomerInsightNavigation({ module, itemId });
               setActivePage(module);
             }}
-            onNavigateWorkGroup={(groupId) => {
+            onNavigateWorkGroup={groupId => {
               setWorkScheduleGroupNavigation(groupId);
               setActivePage('work_schedule');
             }}
-            onOpenPO={(poId) => {
+            onOpenPO={poId => {
               setSelectedPoId(poId);
               setActivePage('sales');
             }}
@@ -881,7 +1043,9 @@ function AppShell() {
               <p className="login-hero-sub">{t('Hệ thống quản trị sản xuất tem nhãn chuyên nghiệp')}</p>
               <div className="login-hero-divider"></div>
               <p className="login-hero-desc">
-                {t('Giải pháp ERP toàn diện giúp tối ưu quy trình sản xuất tem nhãn từ nhận PO đến giao hàng và quản lý công nợ hiệu quả.')}
+                {t(
+                  'Giải pháp ERP toàn diện giúp tối ưu quy trình sản xuất tem nhãn từ nhận PO đến giao hàng và quản lý công nợ hiệu quả.'
+                )}
               </p>
               <div className="login-hero-flow">
                 <span>PO</span>
@@ -913,7 +1077,10 @@ function AppShell() {
         {/* Right Panel: Floating Login Card */}
         <div className="login-form-panel">
           <div className="login-card-glass">
-            <div className="login-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <div
+              className="login-header"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}
+            >
               <img
                 src={APP_LOGO_PATH}
                 alt="Sunflower"
@@ -942,7 +1109,7 @@ function AppShell() {
                 <label className="login-label">{t('Mật khẩu')}</label>
                 <div className="input-wrapper password-input-wrapper">
                   <input
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     placeholder={t('Nhập mật khẩu')}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -956,12 +1123,30 @@ function AppShell() {
                     aria-label="Toggle password visibility"
                   >
                     {showPassword ? (
-                      <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                         <line x1="1" y1="1" x2="23" y2="23"></line>
                       </svg>
                     ) : (
-                      <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                       </svg>
@@ -972,18 +1157,12 @@ function AppShell() {
 
               <div className="login-options">
                 <label className="remember-me">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={e => setRememberMe(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
                   <span>{t('Ghi nhớ đăng nhập')}</span>
                 </label>
               </div>
 
-              {errorMsg && (
-                <div className="login-error-alert">{errorMsg}</div>
-              )}
+              {errorMsg && <div className="login-error-alert">{errorMsg}</div>}
 
               <button type="submit" className="login-btn-submit">
                 {t('Đăng Nhập Hệ Thống')}
@@ -991,11 +1170,18 @@ function AppShell() {
             </form>
 
             <div className="login-card-footer">
-              <button
-                className="lang-toggle-btn"
-                onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
-              >
-                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}>
+              <button className="lang-toggle-btn" onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}>
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}
+                >
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="2" y1="12" x2="22" y2="12"></line>
                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
@@ -1018,467 +1204,600 @@ function AppShell() {
 
   return (
     <TableColumnLayoutContext.Provider value={tableColumnLayouts}>
-    <PageContextProvider onChange={handlePageContextChange}>
-    <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      {/* Mobile backdrop overlay */}
-      <div
-        className={`sidebar-overlay-mobile ${isSidebarOpen ? 'show' : ''}`}
-        onClick={() => setIsSidebarOpen(false)}
-      />
-
-      {/* APP SIDEBAR NAVIGATION (Strictly Text Links, No Icons) */}
-      <aside className={`app-sidebar ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-        <nav className="sidebar-menu" onPointerOver={handleSidebarPreload} onFocusCapture={handleSidebarPreload}>
-          {isPageAllowed('dashboard') && (
-            <button
-              data-page-id="dashboard"
-              className={`sidebar-item ${activePage === 'dashboard' ? 'active' : ''}`}
-              onClick={() => { setActivePage('dashboard'); setIsSidebarOpen(false); }}
-              title={t('Tổng Quan Dashboards')}
-            >
-              <div className="sidebar-item-content">
-                <LayoutDashboard size={16} />
-                <span className="sidebar-item-label">Tổng quan</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('chat') && (
-            <button
-              data-page-id="chat"
-              className={`sidebar-item ${activePage === 'chat' ? 'active' : ''}`}
-              onClick={() => { setActivePage('chat'); setIsSidebarOpen(false); }}
-              title={t('Kênh Thảo Luận')}
-            >
-              <div className="sidebar-item-content">
-                <MessageSquare size={16} />
-                <span className="sidebar-item-label">Kênh chat</span>
-              </div>
-              {unreadChannelCount > 0 && <span className="sidebar-badge">{unreadChannelCount}</span>}
-            </button>
-          )}
-
-          {isPageAllowed('work_schedule') && (
-            <button
-              data-page-id="work_schedule"
-              className={`sidebar-item ${activePage === 'work_schedule' ? 'active' : ''}`}
-              onClick={() => { setActivePage('work_schedule'); setIsSidebarOpen(false); }}
-              title={t('Công việc')}
-            >
-              <div className="sidebar-item-content">
-                <CalendarDays size={16} />
-                <span className="sidebar-item-label">Công việc</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('attendance') && (
-            <button data-page-id="attendance" className={`sidebar-item ${activePage === 'attendance' ? 'active' : ''}`}
-              onClick={() => { setActivePage('attendance'); setIsSidebarOpen(false); }} title="Chấm công">
-              <div className="sidebar-item-content"><CalendarDays size={16} /><span className="sidebar-item-label">Chấm công</span></div>
-            </button>
-          )}
-
-          {isPageAllowed('sales_management') && (
-            <button
-              data-page-id="sales_management"
-              className={`sidebar-item ${activePage === 'sales_management' ? 'active' : ''}`}
-              onClick={() => { setActivePage('sales_management'); setIsSidebarOpen(false); }}
-              title={t('Quản lý Sale')}
-            >
-              <div className="sidebar-item-content">
-                <UserCog size={16} />
-                <span className="sidebar-item-label">Quản lý Sale</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('commercial_map') && (
-            <button
-              data-page-id="commercial_map"
-              className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
-              onClick={() => { setActivePage('commercial_map'); setIsSidebarOpen(false); }}
-              title={t('Thương mại')}
-            >
-              <div className="sidebar-item-content">
-                <MapPinned size={16} />
-                <span className="sidebar-item-label">Thương mại</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('customer_data') && (
-            <button
-              data-page-id="customer_data"
-              className={`sidebar-item ${activePage === 'customer_data' ? 'active' : ''}`}
-              onClick={() => { setActivePage('customer_data'); setIsSidebarOpen(false); }}
-              title={t('Dữ liệu thô')}
-            >
-              <div className="sidebar-item-content">
-                <Archive size={16} />
-                <span className="sidebar-item-label">Dữ liệu thô</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('leads') && (
-            <button
-              data-page-id="leads"
-              className={`sidebar-item ${activePage === 'leads' ? 'active' : ''}`}
-              onClick={() => { setActivePage('leads'); setIsSidebarOpen(false); }}
-              title={t('Khách Hàng Tiềm Năng (Lead)')}
-            >
-              <div className="sidebar-item-content">
-                <Target size={16} />
-                <span className="sidebar-item-label">Tiềm năng</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('crm') && (
-            <button
-              data-page-id="crm"
-              className={`sidebar-item ${activePage === 'crm' ? 'active' : ''}`}
-              onClick={() => { setActivePage('crm'); setIsSidebarOpen(false); }}
-              title={t('Khách Hàng Hợp Tác')}
-            >
-              <div className="sidebar-item-content">
-                <Users size={16} />
-                <span className="sidebar-item-label">Khách hàng</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('sales') && (
-            <button
-              data-page-id="sales"
-              className={`sidebar-item ${activePage === 'sales' ? 'active' : ''}`}
-              onClick={() => { setActivePage('sales'); setIsSidebarOpen(false); }}
-              title={t('Đơn hàng')}
-            >
-              <div className="sidebar-item-content">
-                <FileText size={16} />
-                <span className="sidebar-item-label">{t('Đơn hàng')}</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('production') && (
-            <button
-              data-page-id="production"
-              className={`sidebar-item ${activePage === 'production' ? 'active' : ''}`}
-              onClick={() => { setActivePage('production'); setIsSidebarOpen(false); }}
-              title={t('Lệnh Sản Xuất (LSX)')}
-            >
-              <div className="sidebar-item-content">
-                <Settings size={16} />
-                <span className="sidebar-item-label">Sản xuất</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('design') && (
-            <>
-              <button
-                data-page-id="design"
-                className={`sidebar-item ${activePage === 'design' ? 'active' : ''}`}
-                onClick={() => { setActivePage('design'); setIsSidebarOpen(false); }}
-                title={t('Yêu Cầu Thiết Kế')}
-              >
-                <div className="sidebar-item-content">
-                  <Palette size={16} />
-                  <span className="sidebar-item-label">Thiết kế</span>
-                </div>
-              </button>
-              <button
-                data-page-id="design_library"
-                className={`sidebar-item ${activePage === 'design_library' ? 'active' : ''}`}
-                onClick={() => { setActivePage('design_library'); setIsSidebarOpen(false); }}
-                title={t('Kho Thiết Kế & Layout')}
-              >
-                <div className="sidebar-item-content">
-                  <FolderOpen size={16} />
-                  <span className="sidebar-item-label">Kho mẫu</span>
-                </div>
-              </button>
-            </>
-          )}
-
-          {isPageAllowed('purchase') && (
-            <button
-              data-page-id="purchase"
-              className={`sidebar-item ${activePage === 'purchase' ? 'active' : ''}`}
-              onClick={() => { setActivePage('purchase'); setIsSidebarOpen(false); }}
-              title={t('Mua Hàng')}
-            >
-              <div className="sidebar-item-content">
-                <ShoppingBag size={16} />
-                <span className="sidebar-item-label">Mua hàng</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('suppliers') && (
-            <button
-              data-page-id="suppliers"
-              className={`sidebar-item ${activePage === 'suppliers' ? 'active' : ''}`}
-              onClick={() => { setActivePage('suppliers'); setIsSidebarOpen(false); }}
-              title={t('Danh Sách Nhà Cung Cấp')}
-            >
-              <div className="sidebar-item-content">
-                <Building2 size={16} />
-                <span className="sidebar-item-label">Nhà cung cấp</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('inventory') && (
-            <button
-              data-page-id="inventory"
-              className={`sidebar-item ${activePage === 'inventory' ? 'active' : ''}`}
-              onClick={() => { setActivePage('inventory'); setIsSidebarOpen(false); }}
-              title={t('Kho Nguyên Vật Tư')}
-            >
-              <div className="sidebar-item-content">
-                <Archive size={16} />
-                <span className="sidebar-item-label">Vật liệu</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('delivery') && (
-            <button
-              data-page-id="delivery"
-              className={`sidebar-item ${activePage === 'delivery' ? 'active' : ''}`}
-              onClick={() => { setActivePage('delivery'); setIsSidebarOpen(false); }}
-              title={t('Kế Hoạch Giao Hàng')}
-            >
-              <div className="sidebar-item-content">
-                <Truck size={16} />
-                <span className="sidebar-item-label">Giao hàng</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('accounting') && (
-            <button
-              data-page-id="accounting"
-              className={`sidebar-item ${activePage === 'accounting' ? 'active' : ''}`}
-              onClick={() => { setActivePage('accounting'); setIsSidebarOpen(false); }}
-              title={t('Kế Toán & Lãi Gộp')}
-            >
-              <div className="sidebar-item-content">
-                <DollarSign size={16} />
-                <span className="sidebar-item-label">Kế toán</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('recycle_bin') && (
-            <button
-              data-page-id="recycle_bin"
-              className={`sidebar-item ${activePage === 'recycle_bin' ? 'active' : ''}`}
-              onClick={() => { setActivePage('recycle_bin'); setIsSidebarOpen(false); }}
-              title={t('Thùng Rác')}
-            >
-              <div className="sidebar-item-content sidebar-item-content-danger">
-                <Trash2 size={16} />
-                <span className="sidebar-item-label">Thùng rác</span>
-              </div>
-            </button>
-          )}
-
-          {isPageAllowed('users') && (
-            <button
-              data-page-id="users"
-              className={`sidebar-item ${activePage === 'users' ? 'active' : ''}`}
-              onClick={() => { setActivePage('users'); setIsSidebarOpen(false); }}
-              title={t('Quản Lý Tài Khoản')}
-            >
-              <div className="sidebar-item-content">
-                <UserCog size={16} />
-                <span className="sidebar-item-label">Tài khoản</span>
-              </div>
-            </button>
-          )}
-        </nav>
-        <div className="sidebar-footer">
-          <button
-            type="button"
-            className="sidebar-collapse-btn"
-            onClick={() => {
-              setIsSidebarCollapsed(true);
-              localStorage.setItem('erp_sidebar_collapsed', 'true');
-            }}
-            aria-label="Thu gọn thanh menu"
-            title="Thu gọn thanh menu"
-          >
-            <PanelLeftClose size={17} aria-hidden="true" />
-          </button>
-          <button
-            className="btn btn-outline sidebar-logout-btn"
-            onClick={() => { handleLogout(); setIsSidebarOpen(false); }}
-          >
-            <LogOut size={16} />
-            <span>{t('Đăng Xuất')}</span>
-          </button>
-        </div>
-      </aside>
-
-      <button
-        type="button"
-        className="sidebar-collapsed-toggle"
-        onClick={() => {
-          setIsSidebarCollapsed(false);
-          localStorage.setItem('erp_sidebar_collapsed', 'false');
-        }}
-        aria-label="Mở thanh menu"
-        title="Mở thanh menu"
-      >
-        <PanelLeftOpen size={17} aria-hidden="true" />
-      </button>
-
-      {/* APP HEADER */}
-      <header className="app-header">
-        <div className="sidebar-logo">
-          <img
-            src={APP_LOGO_PATH}
-            alt="Sunflower"
-            className="sidebar-logo-image"
+      <PageContextProvider onChange={handlePageContextChange}>
+        <div className={`app-container ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+          {/* Mobile backdrop overlay */}
+          <div
+            className={`sidebar-overlay-mobile ${isSidebarOpen ? 'show' : ''}`}
+            onClick={() => setIsSidebarOpen(false)}
           />
-        </div>
-        <div className="header-title-container">
-          {/* Hamburger menu toggle button for mobile */}
+
+          {/* APP SIDEBAR NAVIGATION (Strictly Text Links, No Icons) */}
+          <aside className={`app-sidebar ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+            <nav className="sidebar-menu" onPointerOver={handleSidebarPreload} onFocusCapture={handleSidebarPreload}>
+              {isPageAllowed('dashboard') && (
+                <button
+                  data-page-id="dashboard"
+                  className={`sidebar-item ${activePage === 'dashboard' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('dashboard');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Tổng Quan Dashboards')}
+                >
+                  <div className="sidebar-item-content">
+                    <LayoutDashboard size={16} />
+                    <span className="sidebar-item-label">Tổng quan</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('chat') && (
+                <button
+                  data-page-id="chat"
+                  className={`sidebar-item ${activePage === 'chat' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('chat');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Kênh Thảo Luận')}
+                >
+                  <div className="sidebar-item-content">
+                    <MessageSquare size={16} />
+                    <span className="sidebar-item-label">Kênh chat</span>
+                  </div>
+                  {unreadChannelCount > 0 && <span className="sidebar-badge">{unreadChannelCount}</span>}
+                </button>
+              )}
+
+              {isPageAllowed('work_schedule') && (
+                <button
+                  data-page-id="work_schedule"
+                  className={`sidebar-item ${activePage === 'work_schedule' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('work_schedule');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Công việc')}
+                >
+                  <div className="sidebar-item-content">
+                    <CalendarDays size={16} />
+                    <span className="sidebar-item-label">Công việc</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('attendance') && (
+                <button
+                  data-page-id="attendance"
+                  className={`sidebar-item ${activePage === 'attendance' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('attendance');
+                    setIsSidebarOpen(false);
+                  }}
+                  title="Chấm công"
+                >
+                  <div className="sidebar-item-content">
+                    <CalendarDays size={16} />
+                    <span className="sidebar-item-label">Chấm công</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('sales_management') && (
+                <button
+                  data-page-id="sales_management"
+                  className={`sidebar-item ${activePage === 'sales_management' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('sales_management');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Quản lý Sale')}
+                >
+                  <div className="sidebar-item-content">
+                    <UserCog size={16} />
+                    <span className="sidebar-item-label">Quản lý Sale</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('commercial_map') && (
+                <button
+                  data-page-id="commercial_map"
+                  className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('commercial_map');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Thương mại')}
+                >
+                  <div className="sidebar-item-content">
+                    <MapPinned size={16} />
+                    <span className="sidebar-item-label">Thương mại</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('customer_data') && (
+                <button
+                  data-page-id="customer_data"
+                  className={`sidebar-item ${activePage === 'customer_data' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('customer_data');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Dữ liệu thô')}
+                >
+                  <div className="sidebar-item-content">
+                    <Archive size={16} />
+                    <span className="sidebar-item-label">Dữ liệu thô</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('leads') && (
+                <button
+                  data-page-id="leads"
+                  className={`sidebar-item ${activePage === 'leads' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('leads');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Khách Hàng Tiềm Năng (Lead)')}
+                >
+                  <div className="sidebar-item-content">
+                    <Target size={16} />
+                    <span className="sidebar-item-label">Tiềm năng</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('crm') && (
+                <button
+                  data-page-id="crm"
+                  className={`sidebar-item ${activePage === 'crm' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('crm');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Khách Hàng Hợp Tác')}
+                >
+                  <div className="sidebar-item-content">
+                    <Users size={16} />
+                    <span className="sidebar-item-label">Khách hàng</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('sales') && (
+                <button
+                  data-page-id="sales"
+                  className={`sidebar-item ${activePage === 'sales' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('sales');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Đơn hàng')}
+                >
+                  <div className="sidebar-item-content">
+                    <FileText size={16} />
+                    <span className="sidebar-item-label">{t('Đơn hàng')}</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('production') && (
+                <button
+                  data-page-id="production"
+                  className={`sidebar-item ${activePage === 'production' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('production');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Lệnh Sản Xuất (LSX)')}
+                >
+                  <div className="sidebar-item-content">
+                    <Settings size={16} />
+                    <span className="sidebar-item-label">Sản xuất</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('design') && (
+                <>
+                  <button
+                    data-page-id="design"
+                    className={`sidebar-item ${activePage === 'design' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActivePage('design');
+                      setIsSidebarOpen(false);
+                    }}
+                    title={t('Yêu Cầu Thiết Kế')}
+                  >
+                    <div className="sidebar-item-content">
+                      <Palette size={16} />
+                      <span className="sidebar-item-label">Thiết kế</span>
+                    </div>
+                  </button>
+                  <button
+                    data-page-id="design_library"
+                    className={`sidebar-item ${activePage === 'design_library' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActivePage('design_library');
+                      setIsSidebarOpen(false);
+                    }}
+                    title={t('Kho Thiết Kế & Layout')}
+                  >
+                    <div className="sidebar-item-content">
+                      <FolderOpen size={16} />
+                      <span className="sidebar-item-label">Kho mẫu</span>
+                    </div>
+                  </button>
+                </>
+              )}
+
+              {isPageAllowed('purchase') && (
+                <button
+                  data-page-id="purchase"
+                  className={`sidebar-item ${activePage === 'purchase' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('purchase');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Mua Hàng')}
+                >
+                  <div className="sidebar-item-content">
+                    <ShoppingBag size={16} />
+                    <span className="sidebar-item-label">Mua hàng</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('suppliers') && (
+                <button
+                  data-page-id="suppliers"
+                  className={`sidebar-item ${activePage === 'suppliers' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('suppliers');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Danh Sách Nhà Cung Cấp')}
+                >
+                  <div className="sidebar-item-content">
+                    <Building2 size={16} />
+                    <span className="sidebar-item-label">Nhà cung cấp</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('inventory') && (
+                <button
+                  data-page-id="inventory"
+                  className={`sidebar-item ${activePage === 'inventory' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('inventory');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Kho Nguyên Vật Tư')}
+                >
+                  <div className="sidebar-item-content">
+                    <Archive size={16} />
+                    <span className="sidebar-item-label">Vật liệu</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('delivery') && (
+                <button
+                  data-page-id="delivery"
+                  className={`sidebar-item ${activePage === 'delivery' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('delivery');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Kế Hoạch Giao Hàng')}
+                >
+                  <div className="sidebar-item-content">
+                    <Truck size={16} />
+                    <span className="sidebar-item-label">Giao hàng</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('accounting') && (
+                <button
+                  data-page-id="accounting"
+                  className={`sidebar-item ${activePage === 'accounting' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('accounting');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Kế Toán & Lãi Gộp')}
+                >
+                  <div className="sidebar-item-content">
+                    <DollarSign size={16} />
+                    <span className="sidebar-item-label">Kế toán</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('recycle_bin') && (
+                <button
+                  data-page-id="recycle_bin"
+                  className={`sidebar-item ${activePage === 'recycle_bin' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('recycle_bin');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Thùng Rác')}
+                >
+                  <div className="sidebar-item-content sidebar-item-content-danger">
+                    <Trash2 size={16} />
+                    <span className="sidebar-item-label">Thùng rác</span>
+                  </div>
+                </button>
+              )}
+
+              {isPageAllowed('users') && (
+                <button
+                  data-page-id="users"
+                  className={`sidebar-item ${activePage === 'users' ? 'active' : ''}`}
+                  onClick={() => {
+                    setActivePage('users');
+                    setIsSidebarOpen(false);
+                  }}
+                  title={t('Quản Lý Tài Khoản')}
+                >
+                  <div className="sidebar-item-content">
+                    <UserCog size={16} />
+                    <span className="sidebar-item-label">Tài khoản</span>
+                  </div>
+                </button>
+              )}
+            </nav>
+            <div className="sidebar-footer">
+              <button
+                type="button"
+                className="sidebar-collapse-btn"
+                onClick={() => {
+                  setIsSidebarCollapsed(true);
+                  localStorage.setItem('erp_sidebar_collapsed', 'true');
+                }}
+                aria-label="Thu gọn thanh menu"
+                title="Thu gọn thanh menu"
+              >
+                <PanelLeftClose size={17} aria-hidden="true" />
+              </button>
+              <button
+                className="btn btn-outline sidebar-logout-btn"
+                onClick={() => {
+                  handleLogout();
+                  setIsSidebarOpen(false);
+                }}
+              >
+                <LogOut size={16} />
+                <span>{t('Đăng Xuất')}</span>
+              </button>
+            </div>
+          </aside>
+
           <button
             type="button"
-            className="mobile-menu-btn"
-            onClick={() => setIsSidebarOpen((currentValue) => !currentValue)}
-            aria-label={isSidebarOpen ? 'Đóng thanh menu' : 'Mở thanh menu'}
-            aria-expanded={isSidebarOpen}
+            className="sidebar-collapsed-toggle"
+            onClick={() => {
+              setIsSidebarCollapsed(false);
+              localStorage.setItem('erp_sidebar_collapsed', 'false');
+            }}
+            aria-label="Mở thanh menu"
+            title="Mở thanh menu"
           >
-            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-            <span>Menu</span>
-          </button>
-          <div className="header-page-context" aria-label="Vị trí hiện tại">
-            <span className="header-page-context__section">{t(pageContext.section)}</span>
-            {pageContext.current && (
-              <>
-                <span className="header-page-context__separator" aria-hidden="true">›</span>
-                <span className="header-page-context__current">{t(pageContext.current)}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="header-actions">
-          {/* Globe Language Toggle */}
-          <button
-            className="lang-toggle-btn"
-            onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
-            title={language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-          >
-            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="2" y1="12" x2="22" y2="12"></line>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-            </svg>
-            <span>{language === 'vi' ? 'EN' : 'VI'}</span>
+            <PanelLeftOpen size={17} aria-hidden="true" />
           </button>
 
-          <div className="header-notification-center" ref={notificationCenterRef}>
-            <button
-              type="button"
-              className={`header-notification-button ${isNotificationPanelOpen ? 'is-active' : ''}`}
-              onClick={() => setIsNotificationPanelOpen(open => !open)}
-              aria-label={`Thông báo${unreadNotificationTotal > 0 ? `, ${unreadNotificationTotal} chưa đọc` : ''}`}
-              aria-expanded={isNotificationPanelOpen}
-              title="Thông báo"
-            >
-              <Bell size={19} aria-hidden="true" />
-              {unreadNotificationTotal > 0 && (
-                <span>{unreadNotificationTotal > 99 ? '99+' : unreadNotificationTotal}</span>
-              )}
-            </button>
+          {/* APP HEADER */}
+          <header className="app-header">
+            <div className="sidebar-logo">
+              <img src={APP_LOGO_PATH} alt="Sunflower" className="sidebar-logo-image" />
+            </div>
+            <div className="header-title-container">
+              {/* Hamburger menu toggle button for mobile */}
+              <button
+                type="button"
+                className="mobile-menu-btn"
+                onClick={() => setIsSidebarOpen(currentValue => !currentValue)}
+                aria-label={isSidebarOpen ? 'Đóng thanh menu' : 'Mở thanh menu'}
+                aria-expanded={isSidebarOpen}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}
+                >
+                  <line x1="3" y1="12" x2="21" y2="12"></line>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+                <span>Menu</span>
+              </button>
+              <div className="header-page-context" aria-label="Vị trí hiện tại">
+                <span className="header-page-context__section">{t(pageContext.section)}</span>
+                {pageContext.current && (
+                  <>
+                    <span className="header-page-context__separator" aria-hidden="true">
+                      ›
+                    </span>
+                    <span className="header-page-context__current">{t(pageContext.current)}</span>
+                  </>
+                )}
+              </div>
+            </div>
 
-            {isNotificationPanelOpen && (
-              <section className="header-notification-panel" aria-label="Thông báo mới nhất">
-                <header>
-                  <div>
-                    <strong>Thông báo</strong>
-                    <span>{unreadNotificationTotal > 0 ? `${unreadNotificationTotal} thông báo chưa đọc` : 'Bạn đã xem tất cả thông báo'}</span>
-                  </div>
-                  <button type="button" onClick={readAllNotifications} disabled={unreadNotificationTotal === 0} title="Đánh dấu tất cả đã đọc">
-                    <CheckCheck size={17} /> <span>Đã đọc tất cả</span>
-                  </button>
-                </header>
-                <div className="header-notification-list">
-                  {userNotifications.map(notification => {
-                    const actorName = users.find(candidate => candidate.uid === notification.createdById)?.displayName || 'Sunflower ERP';
-                    return (
+            <div className="header-actions">
+              {/* Globe Language Toggle */}
+              <button
+                className="lang-toggle-btn"
+                onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+                title={language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="15"
+                  height="15"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ display: 'inline-block', verticalAlign: 'middle' }}
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                <span>{language === 'vi' ? 'EN' : 'VI'}</span>
+              </button>
+
+              <div className="header-notification-center" ref={notificationCenterRef}>
+                <button
+                  type="button"
+                  className={`header-notification-button ${isNotificationPanelOpen ? 'is-active' : ''}`}
+                  onClick={() => setIsNotificationPanelOpen(open => !open)}
+                  aria-label={`Thông báo${unreadNotificationTotal > 0 ? `, ${unreadNotificationTotal} chưa đọc` : ''}`}
+                  aria-expanded={isNotificationPanelOpen}
+                  title="Thông báo"
+                >
+                  <Bell size={19} aria-hidden="true" />
+                  {unreadNotificationTotal > 0 && (
+                    <span>{unreadNotificationTotal > 99 ? '99+' : unreadNotificationTotal}</span>
+                  )}
+                </button>
+
+                {isNotificationPanelOpen && (
+                  <section className="header-notification-panel" aria-label="Thông báo mới nhất">
+                    <header>
+                      <div>
+                        <strong>Thông báo</strong>
+                        <span>
+                          {unreadNotificationTotal > 0
+                            ? `${unreadNotificationTotal} thông báo chưa đọc`
+                            : 'Bạn đã xem tất cả thông báo'}
+                        </span>
+                      </div>
                       <button
                         type="button"
-                        key={notification.id}
-                        className={notification.readAt === null ? 'is-unread' : ''}
-                        onClick={() => openNotification(notification)}
+                        onClick={readAllNotifications}
+                        disabled={unreadNotificationTotal === 0}
+                        title="Đánh dấu tất cả đã đọc"
                       >
-                        <span className="header-notification-avatar">{getInitials(actorName)}</span>
-                        <span className="header-notification-content">
-                          <span><strong>{notification.title || 'Thông báo mới'}</strong>{notification.readAt === null && <i aria-label="Chưa đọc" />}</span>
-                          <span>{notification.message || notification.entityCode}</span>
-                          <small>{formatNotificationTime(notification.createdAt)} · {NOTIFICATION_MODULE_LABELS[notification.module]}</small>
-                        </span>
+                        <CheckCheck size={17} /> <span>Đã đọc tất cả</span>
                       </button>
-                    );
-                  })}
-                  {userNotifications.length === 0 && (
-                    <div className="header-notification-empty">
-                      <Bell size={24} />
-                      <strong>Chưa có thông báo</strong>
-                      <span>Yêu cầu hỗ trợ từ Sale sẽ xuất hiện tại đây.</span>
+                    </header>
+                    <div className="header-notification-list">
+                      {userNotifications.map(notification => {
+                        const actorName =
+                          users.find(candidate => candidate.uid === notification.createdById)?.displayName ||
+                          'Sunflower ERP';
+                        return (
+                          <button
+                            type="button"
+                            key={notification.id}
+                            className={notification.readAt === null ? 'is-unread' : ''}
+                            onClick={() => openNotification(notification)}
+                          >
+                            <span className="header-notification-avatar">{getInitials(actorName)}</span>
+                            <span className="header-notification-content">
+                              <span>
+                                <strong>{notification.title || 'Thông báo mới'}</strong>
+                                {notification.readAt === null && <i aria-label="Chưa đọc" />}
+                              </span>
+                              <span>{notification.message || notification.entityCode}</span>
+                              <small>
+                                {formatNotificationTime(notification.createdAt)} ·{' '}
+                                {NOTIFICATION_MODULE_LABELS[notification.module]}
+                              </small>
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {userNotifications.length === 0 && (
+                        <div className="header-notification-empty">
+                          <Bell size={24} />
+                          <strong>Chưa có thông báo</strong>
+                          <span>Yêu cầu hỗ trợ từ Sale sẽ xuất hiện tại đây.</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </section>
+                )}
+              </div>
+
+              {!isFirebaseRuntimeEnabled && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span
+                    style={{
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                      color: 'var(--color-text-muted)',
+                      display: 'inline-block'
+                    }}
+                  >
+                    {t('Chuyển nhanh vai trò:')}
+                  </span>
+                  <select
+                    value={user.role}
+                    onChange={e => handleSwitchRole(e.target.value)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '4px',
+                      width: '115px'
+                    }}
+                  >
+                    <option value="admin">{t('Giám Đốc')}</option>
+                    <option value="sale">{t('Nhân Viên Sale')}</option>
+                    <option value="designer">{t('Thiết Kế')}</option>
+                    <option value="purchaser">{t('Mua Vật Tư')}</option>
+                    <option value="producer">{t('Sản Xuất')}</option>
+                    <option value="accountant">{t('Kế Toán')}</option>
+                  </select>
                 </div>
-              </section>
-            )}
-          </div>
+              )}
 
-          {!isFirebaseRuntimeEnabled && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--color-text-muted)', display: 'inline-block' }}>{t('Chuyển nhanh vai trò:')}</span>
-              <select
-                value={user.role}
-                onChange={e => handleSwitchRole(e.target.value)}
-                style={{ padding: '4px 8px', fontSize: '12px', border: '1px solid var(--color-border)', borderRadius: '4px', width: '115px' }}
-              >
-                <option value="admin">{t('Giám Đốc')}</option>
-                <option value="sale">{t('Nhân Viên Sale')}</option>
-                <option value="designer">{t('Thiết Kế')}</option>
-                <option value="purchaser">{t('Mua Vật Tư')}</option>
-                <option value="producer">{t('Sản Xuất')}</option>
-                <option value="accountant">{t('Kế Toán')}</option>
-              </select>
+              <div className="header-user-badge">
+                <span style={{ fontWeight: 600 }}>{user.displayName}</span>
+              </div>
             </div>
-          )}
+          </header>
 
-          <div className="header-user-badge">
-            <span style={{ fontWeight: 600 }}>{user.displayName}</span>
-          </div>
+          {/* APP MAIN CONTENT PORTAL */}
+          <main className="app-main">
+            {tableColumnLayouts.error && (
+              <div className="erp-column-layout-error" role="alert">
+                <span>{tableColumnLayouts.error}</span>
+                <button type="button" className="btn btn-outline btn-sm" onClick={tableColumnLayouts.retry}>
+                  Thử lại
+                </button>
+              </div>
+            )}
+            <Suspense
+              fallback={
+                <div className="card" role="status">
+                  Đang tải phân hệ...
+                </div>
+              }
+            >
+              {renderPageContent()}
+            </Suspense>
+          </main>
         </div>
-      </header>
-
-      {/* APP MAIN CONTENT PORTAL */}
-      <main className="app-main">
-        {tableColumnLayouts.error && <div className="erp-column-layout-error" role="alert"><span>{tableColumnLayouts.error}</span><button type="button" className="btn btn-outline btn-sm" onClick={tableColumnLayouts.retry}>Thử lại</button></div>}
-        <Suspense fallback={<div className="card" role="status">Đang tải phân hệ...</div>}>
-          {renderPageContent()}
-        </Suspense>
-      </main>
-    </div>
-    </PageContextProvider>
+      </PageContextProvider>
     </TableColumnLayoutContext.Provider>
   );
 }

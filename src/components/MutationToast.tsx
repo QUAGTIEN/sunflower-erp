@@ -13,7 +13,12 @@ export function MutationToast() {
     if (!toast) return;
     const dismissFromBlankSpace = (event: PointerEvent) => {
       if (!(event.target instanceof Element)) return;
-      if (event.target.closest('button, a, input, select, textarea, label, [role="button"], [role="menu"], [contenteditable="true"]')) return;
+      if (
+        event.target.closest(
+          'button, a, input, select, textarea, label, [role="button"], [role="menu"], [contenteditable="true"]'
+        )
+      )
+        return;
       dismissToast();
     };
     const dismissFromKeyboard = (event: KeyboardEvent) => {
@@ -29,11 +34,33 @@ export function MutationToast() {
 
   return createPortal(
     <div className="mutation-toast-region" role="status" aria-live="polite" aria-atomic="true">
-      {toast && <div key={toast.id} className={`mutation-toast mutation-toast--${toast.tone}`}>
-        <span className="mutation-toast__icon" aria-hidden="true">{toast.tone === 'info' ? <Info size={20} /> : toast.tone === 'error' ? <CircleAlert size={20} /> : <Check size={20} />}</span>
-        <div className="mutation-toast__content"><strong>{t(toast.text)}</strong><p>{t(toast.detail)}</p></div>
-        <button type="button" className="mutation-toast__close" onClick={dismissToast} aria-label={t('Đóng thông báo')} title={t('Đóng thông báo')}><X size={16} aria-hidden="true" /></button>
-      </div>}
-    </div>, document.body
+      {toast && (
+        <div key={toast.id} className={`mutation-toast mutation-toast--${toast.tone}`}>
+          <span className="mutation-toast__icon" aria-hidden="true">
+            {toast.tone === 'info' ? (
+              <Info size={20} />
+            ) : toast.tone === 'error' ? (
+              <CircleAlert size={20} />
+            ) : (
+              <Check size={20} />
+            )}
+          </span>
+          <div className="mutation-toast__content">
+            <strong>{t(toast.text)}</strong>
+            <p>{t(toast.detail)}</p>
+          </div>
+          <button
+            type="button"
+            className="mutation-toast__close"
+            onClick={dismissToast}
+            aria-label={t('Đóng thông báo')}
+            title={t('Đóng thông báo')}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
+    </div>,
+    document.body
   );
 }

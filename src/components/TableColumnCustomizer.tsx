@@ -47,8 +47,9 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
       const group = column.group || 'Thông tin trên bảng';
       groups.set(group, [...(groups.get(group) || []), column]);
     });
-    return Array.from(groups, ([label, items]) => ({ label, items }))
-      .sort((left, right) => Number(left.label === 'Điều khiển bảng') - Number(right.label === 'Điều khiển bảng'));
+    return Array.from(groups, ([label, items]) => ({ label, items })).sort(
+      (left, right) => Number(left.label === 'Điều khiển bảng') - Number(right.label === 'Điều khiển bảng')
+    );
   }, [visibleColumns]);
 
   useEffect(() => {
@@ -64,34 +65,58 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
 
   const toggleColumn = (column: TableColumnOption) => {
     if (column.required) return;
-    setDraftIds(current => current.includes(column.id)
-      ? current.filter(id => id !== column.id)
-      : [...current, column.id]);
+    setDraftIds(current =>
+      current.includes(column.id) ? current.filter(id => id !== column.id) : [...current, column.id]
+    );
   };
 
   const selectedColumns = columns.filter(column => selectedSet.has(column.id));
 
   return (
-    <div className={`table-column-customizer ${textOnly ? 'table-column-customizer--text' : ''}`} role="dialog" aria-modal="true" aria-labelledby="table-column-customizer-title">
-      <button type="button" className="table-column-customizer__backdrop" aria-label="Đóng tùy chỉnh cột" onClick={onClose} />
+    <div
+      className={`table-column-customizer ${textOnly ? 'table-column-customizer--text' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="table-column-customizer-title"
+    >
+      <button
+        type="button"
+        className="table-column-customizer__backdrop"
+        aria-label="Đóng tùy chỉnh cột"
+        onClick={onClose}
+      />
       <aside className="table-column-customizer__panel">
         <header>
           <div>
             <h2 id="table-column-customizer-title">Tùy chỉnh cột</h2>
             <p>Chọn cột cần hiển thị. Kéo tiêu đề trực tiếp trên bảng để đổi vị trí.</p>
           </div>
-          <button type="button" className="table-column-customizer__close" onClick={onClose} aria-label="Đóng">{textOnly ? 'Đóng' : <X size={18} />}</button>
+          <button type="button" className="table-column-customizer__close" onClick={onClose} aria-label="Đóng">
+            {textOnly ? 'Đóng' : <X size={18} />}
+          </button>
         </header>
 
         <div className="table-column-customizer__body">
           <section className="table-column-customizer__available">
             <label className="table-column-customizer__search">
               {!textOnly && <Search size={15} />}
-              <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm kiếm cột" autoFocus />
+              <input
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="Tìm kiếm cột"
+                autoFocus
+              />
             </label>
             <div className="table-column-customizer__selection-heading">
-              <h3>Chọn trường <span>({selectedColumns.length})</span></h3>
-              <button type="button" onClick={() => setDraftIds(columns.filter(column => column.required).map(column => column.id))}>Bỏ chọn cột tùy chọn</button>
+              <h3>
+                Chọn trường <span>({selectedColumns.length})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setDraftIds(columns.filter(column => column.required).map(column => column.id))}
+              >
+                Bỏ chọn cột tùy chọn
+              </button>
             </div>
             <div className="table-column-customizer__options">
               {groupedVisibleColumns.map(group => (
@@ -111,15 +136,23 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
                   ))}
                 </section>
               ))}
-              {visibleColumns.length === 0 && <p className="table-column-customizer__empty">Không tìm thấy cột phù hợp.</p>}
+              {visibleColumns.length === 0 && (
+                <p className="table-column-customizer__empty">Không tìm thấy cột phù hợp.</p>
+              )}
             </div>
           </section>
         </div>
 
         <footer>
-          <button type="button" className="table-column-customizer__default" onClick={() => setDraftIds(defaultIds)}>Mặc định</button>
-          <button type="button" className="btn btn-outline" onClick={onClose}>Hủy</button>
-          <button type="button" className="btn btn-primary" onClick={() => onSave(draftIds)}>Lưu</button>
+          <button type="button" className="table-column-customizer__default" onClick={() => setDraftIds(defaultIds)}>
+            Mặc định
+          </button>
+          <button type="button" className="btn btn-outline" onClick={onClose}>
+            Hủy
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => onSave(draftIds)}>
+            Lưu
+          </button>
         </footer>
       </aside>
     </div>
@@ -128,7 +161,7 @@ const TableColumnCustomizerDialog: React.FC<TableColumnCustomizerProps> = ({
 
 export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = props => {
   const { canEditColumns } = useTableColumnLayouts();
-  return props.open && canEditColumns
-    ? <TableColumnCustomizerDialog key={JSON.stringify(props.selectedIds)} {...props} />
-    : null;
+  return props.open && canEditColumns ? (
+    <TableColumnCustomizerDialog key={JSON.stringify(props.selectedIds)} {...props} />
+  ) : null;
 };

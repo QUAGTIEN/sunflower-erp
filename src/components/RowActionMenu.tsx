@@ -37,16 +37,17 @@ export function RowActionMenu({ actions, label = 'Mở danh sách thao tác' }: 
     if (!trigger) return;
 
     const rect = trigger.getBoundingClientRect();
-    const menuHeight = Math.min(menuRef.current?.offsetHeight ?? actions.length * 38 + 12, window.innerHeight - VIEWPORT_MARGIN * 2);
-    const width = Math.min(MENU_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2);
-    const left = Math.min(
-      window.innerWidth - width - VIEWPORT_MARGIN,
-      Math.max(VIEWPORT_MARGIN, rect.right - width)
+    const menuHeight = Math.min(
+      menuRef.current?.offsetHeight ?? actions.length * 38 + 12,
+      window.innerHeight - VIEWPORT_MARGIN * 2
     );
+    const width = Math.min(MENU_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2);
+    const left = Math.min(window.innerWidth - width - VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, rect.right - width));
     const belowTop = rect.bottom + 6;
-    const top = belowTop + menuHeight <= window.innerHeight - VIEWPORT_MARGIN
-      ? belowTop
-      : Math.max(VIEWPORT_MARGIN, rect.top - menuHeight - 6);
+    const top =
+      belowTop + menuHeight <= window.innerHeight - VIEWPORT_MARGIN
+        ? belowTop
+        : Math.max(VIEWPORT_MARGIN, rect.top - menuHeight - 6);
 
     setPosition({ top, left, width });
   }, [actions.length]);
@@ -95,34 +96,41 @@ export function RowActionMenu({ actions, label = 'Mở danh sách thao tác' }: 
       >
         <MoreHorizontal size={18} />
       </button>
-      {open && createPortal(
-        <div
-          ref={menuRef}
-          className="row-action-menu__popover"
-          role="menu"
-          style={{ top: position.top, left: position.left, width: position.width, maxHeight: 'calc(100vh - 16px)', overflowY: 'auto' }}
-          onClick={event => event.stopPropagation()}
-        >
-          {actions.map(action => (
-            <button
-              key={action.label}
-              type="button"
-              role="menuitem"
-              className={action.danger ? 'is-danger' : undefined}
-              disabled={action.disabled}
-              onClick={() => {
-                if (action.disabled) return;
-                closeMenu();
-                action.onSelect();
-              }}
-            >
-              {action.icon}
-              <span>{action.label}</span>
-            </button>
-          ))}
-        </div>,
-        document.body
-      )}
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="row-action-menu__popover"
+            role="menu"
+            style={{
+              top: position.top,
+              left: position.left,
+              width: position.width,
+              maxHeight: 'calc(100vh - 16px)',
+              overflowY: 'auto'
+            }}
+            onClick={event => event.stopPropagation()}
+          >
+            {actions.map(action => (
+              <button
+                key={action.label}
+                type="button"
+                role="menuitem"
+                className={action.danger ? 'is-danger' : undefined}
+                disabled={action.disabled}
+                onClick={() => {
+                  if (action.disabled) return;
+                  closeMenu();
+                  action.onSelect();
+                }}
+              >
+                {action.icon}
+                <span>{action.label}</span>
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
     </span>
   );
 }

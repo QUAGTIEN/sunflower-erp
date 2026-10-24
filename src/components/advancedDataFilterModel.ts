@@ -28,23 +28,37 @@ export const getAdvancedFilterKindForFieldType = (type: string): AdvancedFilterK
   return 'text';
 };
 
-export const toAdvancedFilterValues = (value: unknown): Array<string | number | boolean | null | undefined> => (
+export const toAdvancedFilterValues = (value: unknown): Array<string | number | boolean | null | undefined> =>
   Array.isArray(value)
-    ? value.map(item => (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean' ? item : String(item ?? '')))
-    : [typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null || value === undefined ? value : String(value)]
-);
+    ? value.map(item =>
+        typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean' ? item : String(item ?? '')
+      )
+    : [
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean' ||
+        value === null ||
+        value === undefined
+          ? value
+          : String(value)
+      ];
 
-export const hasAdvancedFilterValue = (value: AdvancedFilterValue | undefined) => Boolean(
-  value && Object.values(value).some(item => String(item || '').trim())
-);
+export const hasAdvancedFilterValue = (value: AdvancedFilterValue | undefined) =>
+  Boolean(value && Object.values(value).some(item => String(item || '').trim()));
 
-export const countAdvancedFilters = (filters: AdvancedFilterState): number => (
-  Object.values(filters).filter(hasAdvancedFilterValue).length
-);
+export const countAdvancedFilters = (filters: AdvancedFilterState): number =>
+  Object.values(filters).filter(hasAdvancedFilterValue).length;
 
-export const normalizeAdvancedFilterText = (value: unknown) => String(value ?? '').trim().toLocaleLowerCase('vi-VN');
+export const normalizeAdvancedFilterText = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .toLocaleLowerCase('vi-VN');
 
-export function matchesAdvancedFilters<T>(record: T, fields: AdvancedFilterField<T>[], filters: AdvancedFilterState): boolean {
+export function matchesAdvancedFilters<T>(
+  record: T,
+  fields: AdvancedFilterField<T>[],
+  filters: AdvancedFilterState
+): boolean {
   return fields.every(field => {
     const filter = filters[field.id];
     if (!hasAdvancedFilterValue(filter)) return true;
@@ -80,9 +94,14 @@ export function getAdvancedFilterSummaries<T>(fields: AdvancedFilterField<T>[], 
     const value = filters[field.id];
     if (!hasAdvancedFilterValue(value)) return [];
     let detail = value.query || '';
-    if (field.kind === 'select') detail = field.options?.find(option => option.value === value.selected)?.label || value.selected || '';
-    if (field.kind === 'number') detail = value.min && value.max ? `${value.min} – ${value.max}` : value.min ? `Từ ${value.min}` : `Đến ${value.max}`;
-    if (field.kind === 'date') detail = value.from && value.to ? `${value.from} – ${value.to}` : value.from ? `Từ ${value.from}` : `Đến ${value.to}`;
+    if (field.kind === 'select')
+      detail = field.options?.find(option => option.value === value.selected)?.label || value.selected || '';
+    if (field.kind === 'number')
+      detail =
+        value.min && value.max ? `${value.min} – ${value.max}` : value.min ? `Từ ${value.min}` : `Đến ${value.max}`;
+    if (field.kind === 'date')
+      detail =
+        value.from && value.to ? `${value.from} – ${value.to}` : value.from ? `Từ ${value.from}` : `Đến ${value.to}`;
     return [{ id: field.id, label: `${field.label}: ${detail}` }];
   });
 }

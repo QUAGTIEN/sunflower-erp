@@ -36,7 +36,7 @@ const postAdminRequest = async <T>(path: string, body: unknown): Promise<T> => {
 
   let payload: ApiErrorPayload & T;
   try {
-    payload = await response.json() as ApiErrorPayload & T;
+    payload = (await response.json()) as ApiErrorPayload & T;
   } catch {
     throw new Error('API quản trị không trả về dữ liệu JSON hợp lệ. Hãy kiểm tra cấu hình Vercel Functions.');
   }
@@ -48,13 +48,11 @@ const postAdminRequest = async <T>(path: string, body: unknown): Promise<T> => {
 
 export const adminUserService = {
   create(input: CreateManagedUserInput): Promise<UserProfile> {
-    return postAdminRequest<{ user: UserProfile }>('/api/users/create', input)
-      .then(result => result.user);
+    return postAdminRequest<{ user: UserProfile }>('/api/users/create', input).then(result => result.user);
   },
 
   update(input: UpdateManagedUserInput): Promise<UserProfile> {
-    return postAdminRequest<{ user: UserProfile }>('/api/users/update', input)
-      .then(result => result.user);
+    return postAdminRequest<{ user: UserProfile }>('/api/users/update', input).then(result => result.user);
   },
 
   setActive(uid: string, active: boolean): Promise<{ uid: string; active: boolean }> {

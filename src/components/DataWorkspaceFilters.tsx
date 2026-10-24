@@ -28,7 +28,14 @@ export const DataFilterButton: React.FC<{
     title={activeCount > 0 ? `Bộ lọc (${activeCount})` : 'Bộ lọc'}
     onClick={onClick}
   >
-    {textOnly ? `Bộ lọc${activeCount > 0 ? ` (${activeCount})` : ''}` : <><Filter size={15} />{activeCount > 0 && <strong>{activeCount}</strong>}</>}
+    {textOnly ? (
+      `Bộ lọc${activeCount > 0 ? ` (${activeCount})` : ''}`
+    ) : (
+      <>
+        <Filter size={15} />
+        {activeCount > 0 && <strong>{activeCount}</strong>}
+      </>
+    )}
   </button>
 );
 
@@ -39,14 +46,20 @@ export const DataFilterChipBar: React.FC<{
 }> = ({ chips, onClear, textOnly = false }) => {
   if (chips.length === 0) return null;
   return (
-    <div className={`data-filter-chips ${textOnly ? 'data-filter-chips--text' : ''}`} aria-label="Điều kiện lọc đang áp dụng">
+    <div
+      className={`data-filter-chips ${textOnly ? 'data-filter-chips--text' : ''}`}
+      aria-label="Điều kiện lọc đang áp dụng"
+    >
       <span>Đang lọc:</span>
       {chips.map(chip => (
         <button key={chip.id} type="button" onClick={chip.onRemove} title={`Bỏ lọc ${chip.label}`}>
-          {chip.label}{textOnly ? ' · Bỏ' : <X size={12} />}
+          {chip.label}
+          {textOnly ? ' · Bỏ' : <X size={12} />}
         </button>
       ))}
-      <button type="button" className="data-filter-chips__clear" onClick={onClear}>Xóa tất cả</button>
+      <button type="button" className="data-filter-chips__clear" onClick={onClear}>
+        Xóa tất cả
+      </button>
     </div>
   );
 };
@@ -82,7 +95,9 @@ export const DataFilterPanel: React.FC<{
             <h2>{title}</h2>
             {description && <p>{description}</p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="Đóng">{textOnly ? 'Đóng' : <X size={18} />}</button>
+          <button type="button" onClick={onClose} aria-label="Đóng">
+            {textOnly ? 'Đóng' : <X size={18} />}
+          </button>
         </header>
         {headerAction && <div className="data-filter-panel__admin-action">{headerAction}</div>}
         <div className="data-filter-panel__body">{children}</div>
@@ -109,7 +124,12 @@ export const DataFilterSection: React.FC<{
   const [expanded, setExpanded] = useState(defaultExpanded ?? selectedCount > 0);
   return (
     <section className={`data-filter-section ${expanded ? 'is-expanded' : 'is-collapsed'}`}>
-      <button type="button" className="data-filter-section__heading" aria-expanded={expanded} onClick={() => setExpanded(previous => !previous)}>
+      <button
+        type="button"
+        className="data-filter-section__heading"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(previous => !previous)}
+      >
         <span>
           <strong>{title}</strong>
           {selectedCount > 0 && <span className="data-filter-section__count">{selectedCount} đã chọn</span>}
@@ -137,7 +157,9 @@ export const DataFilterCheckboxGroup: React.FC<{
   const visibleOptions = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase('vi-VN');
     if (!normalizedQuery) return options;
-    return options.filter(option => `${option.label} ${option.description || ''}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery));
+    return options.filter(option =>
+      `${option.label} ${option.description || ''}`.toLocaleLowerCase('vi-VN').includes(normalizedQuery)
+    );
   }, [options, query]);
 
   return (
@@ -156,17 +178,28 @@ export const DataFilterCheckboxGroup: React.FC<{
               <input
                 type="checkbox"
                 checked={selected}
-                onChange={event => onChange(event.target.checked
-                  ? Array.from(new Set([...selectedValues, option.value]))
-                  : selectedValues.filter(value => value !== option.value))}
+                onChange={event =>
+                  onChange(
+                    event.target.checked
+                      ? Array.from(new Set([...selectedValues, option.value]))
+                      : selectedValues.filter(value => value !== option.value)
+                  )
+                }
               />
-              <span><strong>{option.label}</strong>{option.description && <small>{option.description}</small>}</span>
+              <span>
+                <strong>{option.label}</strong>
+                {option.description && <small>{option.description}</small>}
+              </span>
             </label>
           );
         })}
         {visibleOptions.length === 0 && <span className="data-filter-checklist__empty">{emptyText}</span>}
       </div>
-      {selectedValues.length > 0 && <button type="button" className="data-filter-checklist__clear" onClick={() => onChange([])}>Bỏ chọn nhóm này</button>}
+      {selectedValues.length > 0 && (
+        <button type="button" className="data-filter-checklist__clear" onClick={() => onChange([])}>
+          Bỏ chọn nhóm này
+        </button>
+      )}
     </div>
   );
 };

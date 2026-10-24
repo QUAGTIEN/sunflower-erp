@@ -70,9 +70,10 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   // Filter items
   const getFilteredSuggestions = () => {
     if (suggestionType === 'member') {
-      return (users || []).filter(u =>
-        u.displayName.toLowerCase().includes(suggestionQuery.toLowerCase()) ||
-        u.role.toLowerCase().includes(suggestionQuery.toLowerCase())
+      return (users || []).filter(
+        u =>
+          u.displayName.toLowerCase().includes(suggestionQuery.toLowerCase()) ||
+          u.role.toLowerCase().includes(suggestionQuery.toLowerCase())
       );
     } else {
       const matchedPos = (allPos || [])
@@ -91,18 +92,14 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
 
   const handleSelectSuggestion = (item: any) => {
     const beforeTrigger = messageText.substring(0, suggestionTriggerIndex);
-    const replacement = suggestionType === 'member'
-      ? `@${item.displayName} `
-      : `${item.code} `;
+    const replacement = suggestionType === 'member' ? `@${item.displayName} ` : `${item.code} `;
 
     setMessageText(beforeTrigger + replacement);
     setShowSuggestions(false);
   };
 
   // Filter messages for this specific target
-  const chatMessages = messages.filter(
-    msg => msg.type === type && msg.targetId === targetId
-  );
+  const chatMessages = messages.filter(msg => msg.type === type && msg.targetId === targetId);
 
   // Scroll to bottom when chat opens or new messages arrive
   const scrollToBottom = () => {
@@ -140,13 +137,15 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
       senderRole: currentUser.role,
       messageText: messageText.trim(),
       createdAt: new Date().toISOString(),
-      ...(replyingTo ? {
-        replyTo: {
-          id: replyingTo.id,
-          senderName: replyingTo.senderName,
-          text: replyingTo.messageText
-        }
-      } : {})
+      ...(replyingTo
+        ? {
+            replyTo: {
+              id: replyingTo.id,
+              senderName: replyingTo.senderName,
+              text: replyingTo.messageText
+            }
+          }
+        : {})
     };
 
     await dbService.addDocument('messages', newMessage);
@@ -181,12 +180,17 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
           {chatMessages.map(msg => {
             const isMe = msg.senderId === currentUser.uid;
             return (
-              <div
-                key={msg.id}
-                className={`chat-message-row ${isMe ? 'me' : 'other'}`}
-                style={{ maxWidth: '85%' }}
-              >
-                <div className="chat-message-meta" style={{ fontSize: '10px', display: 'flex', gap: '6px', justifyContent: isMe ? 'flex-end' : 'flex-start', alignItems: 'center' }}>
+              <div key={msg.id} className={`chat-message-row ${isMe ? 'me' : 'other'}`} style={{ maxWidth: '85%' }}>
+                <div
+                  className="chat-message-meta"
+                  style={{
+                    fontSize: '10px',
+                    display: 'flex',
+                    gap: '6px',
+                    justifyContent: isMe ? 'flex-end' : 'flex-start',
+                    alignItems: 'center'
+                  }}
+                >
                   <span style={{ fontWeight: 600 }}>{msg.senderName}</span>
                   <span>•</span>
                   <span>{formatTime(msg.createdAt)}</span>
@@ -195,7 +199,14 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                       <span>•</span>
                       <button
                         onClick={() => setReplyingTo(msg)}
-                        style={{ border: 'none', background: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
+                        style={{
+                          border: 'none',
+                          background: 'none',
+                          color: 'var(--color-primary)',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontSize: '10px'
+                        }}
                       >
                         {t('Trả lời')}
                       </button>
@@ -204,7 +215,14 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                           <span>•</span>
                           <button
                             onClick={() => handleRecallMessage(msg.id)}
-                            style={{ border: 'none', background: 'none', color: 'var(--color-danger)', cursor: 'pointer', padding: 0, fontSize: '10px' }}
+                            style={{
+                              border: 'none',
+                              background: 'none',
+                              color: 'var(--color-danger)',
+                              cursor: 'pointer',
+                              padding: 0,
+                              fontSize: '10px'
+                            }}
                           >
                             {t('Thu hồi')}
                           </button>
@@ -224,26 +242,26 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   }}
                 >
                   {msg.recalled ? (
-                    <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>
-                      {t('Tin nhắn đã bị thu hồi')}
-                    </span>
+                    <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>{t('Tin nhắn đã bị thu hồi')}</span>
                   ) : (
                     <>
                       {msg.replyTo && (
-                        <div style={{
-                          padding: '4px 8px',
-                          backgroundColor: isMe ? 'rgba(255, 255, 255, 0.15)' : '#f1f5f9',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          marginBottom: '6px',
-                          borderLeft: '3px solid var(--color-primary)',
-                          color: isMe ? '#e2e8f0' : 'var(--color-text-muted)',
-                          fontStyle: 'italic',
-                          maxWidth: '100%',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
+                        <div
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: isMe ? 'rgba(255, 255, 255, 0.15)' : '#f1f5f9',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            marginBottom: '6px',
+                            borderLeft: '3px solid var(--color-primary)',
+                            color: isMe ? '#e2e8f0' : 'var(--color-text-muted)',
+                            fontStyle: 'italic',
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
                           <strong>@{msg.replyTo.senderName}:</strong> "{msg.replyTo.text}"
                         </div>
                       )}
@@ -256,7 +274,15 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
           })}
           <div ref={messagesEndRef} />
           {chatMessages.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '12px' }}>
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '20px',
+                color: 'var(--color-text-muted)',
+                fontStyle: 'italic',
+                fontSize: '12px'
+              }}
+            >
               {t('Chưa có tin nhắn nào.')}
             </div>
           )}
@@ -269,11 +295,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                 {suggestionType === 'member' ? t('Gợi ý tag nhân viên') : t('Gợi ý mã liên kết')}
               </div>
               {filteredSuggestions.map((item: any) => (
-                <div
-                  key={item.id}
-                  className="chat-suggestion-item"
-                  onClick={() => handleSelectSuggestion(item)}
-                >
+                <div key={item.id} className="chat-suggestion-item" onClick={() => handleSelectSuggestion(item)}>
                   <span className="chat-suggestion-item-main">
                     {suggestionType === 'member' ? `@${item.displayName}` : item.code}
                   </span>
@@ -285,19 +307,24 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
             </div>
           )}
           {replyingTo && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '6px 12px',
-              backgroundColor: '#f1f5f9',
-              borderTop: '1px solid var(--color-border-light)',
-              fontSize: '11px',
-              color: 'var(--color-text-muted)',
-              borderRadius: '4px 4px 0 0'
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '6px 12px',
+                backgroundColor: '#f1f5f9',
+                borderTop: '1px solid var(--color-border-light)',
+                fontSize: '11px',
+                color: 'var(--color-text-muted)',
+                borderRadius: '4px 4px 0 0'
+              }}
+            >
               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
-                <strong>{t('Trả lời')} {replyingTo.senderName}:</strong> "{replyingTo.messageText}"
+                <strong>
+                  {t('Trả lời')} {replyingTo.senderName}:
+                </strong>{' '}
+                "{replyingTo.messageText}"
               </div>
               <button
                 type="button"

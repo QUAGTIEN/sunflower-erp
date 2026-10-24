@@ -1,9 +1,5 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  type User as FirebaseUser
-} from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, type User as FirebaseUser } from 'firebase/auth';
 import {
   getFirestore,
   initializeFirestore,
@@ -23,12 +19,13 @@ const firebaseConfig = {
 
 // Check if we should use Real Firebase
 export const isFirebaseConfigured = Boolean(
-  firebaseConfig.apiKey
-  && firebaseConfig.apiKey !== 'YOUR_API_KEY'
-  && firebaseConfig.projectId
-  && firebaseConfig.authDomain
+  firebaseConfig.apiKey &&
+  firebaseConfig.apiKey !== 'YOUR_API_KEY' &&
+  firebaseConfig.projectId &&
+  firebaseConfig.authDomain
 );
-export const firebaseAuthMode = import.meta.env.VITE_FIREBASE_AUTH_MODE === 'email-password' ? 'email-password' : 'local';
+export const firebaseAuthMode =
+  import.meta.env.VITE_FIREBASE_AUTH_MODE === 'email-password' ? 'email-password' : 'local';
 export const isFirebaseRuntimeEnabled = isFirebaseConfigured && firebaseAuthMode === 'email-password';
 
 let firebaseDatabase: ReturnType<typeof getFirestore> | null = null;
@@ -47,7 +44,7 @@ if (isFirebaseConfigured) {
     }
     firebaseAuth = getAuth(app);
   } catch (error) {
-    console.error("Failed to initialize Firebase", error);
+    console.error('Failed to initialize Firebase', error);
   }
 }
 
@@ -65,9 +62,8 @@ export const getFirebaseErrorCode = (error: unknown): string => {
 
 export const reportFirebaseFailure = (context: string, error: unknown, disableForSession = false) => {
   const code = getFirebaseErrorCode(error);
-  const key = code === 'auth/session-expired'
-    ? code
-    : disableForSession ? `firebase-disabled:${code}` : `${context}:${code}`;
+  const key =
+    code === 'auth/session-expired' ? code : disableForSession ? `firebase-disabled:${code}` : `${context}:${code}`;
 
   if (!reportedFirebaseFailures.has(key)) {
     reportedFirebaseFailures.add(key);
@@ -96,13 +92,16 @@ const ensureFirebaseReady = async (): Promise<boolean> => {
   if (firebaseReadyPromise) return firebaseReadyPromise;
 
   firebaseBackendState = 'connecting';
-  firebaseReadyPromise = firebaseAuth.authStateReady().then(() => {
-    const authenticated = Boolean(firebaseAuth?.currentUser);
-    firebaseBackendState = authenticated ? 'ready' : 'idle';
-    return authenticated;
-  }).finally(() => {
-    firebaseReadyPromise = null;
-  });
+  firebaseReadyPromise = firebaseAuth
+    .authStateReady()
+    .then(() => {
+      const authenticated = Boolean(firebaseAuth?.currentUser);
+      firebaseBackendState = authenticated ? 'ready' : 'idle';
+      return authenticated;
+    })
+    .finally(() => {
+      firebaseReadyPromise = null;
+    });
 
   return firebaseReadyPromise;
 };
@@ -111,10 +110,9 @@ export const getFirebaseDatabase = async (context: string) => {
   if (!isFirebaseRuntimeEnabled) return null;
   if ((await ensureFirebaseReady()) && firebaseDatabase) return firebaseDatabase;
 
-  const error = Object.assign(
-    new Error('Phiên đăng nhập Firebase đã hết hạn. Vui lòng đăng nhập lại.'),
-    { code: 'auth/session-expired' }
-  );
+  const error = Object.assign(new Error('Phiên đăng nhập Firebase đã hết hạn. Vui lòng đăng nhập lại.'), {
+    code: 'auth/session-expired'
+  });
   handleFirebaseSessionUnavailable?.();
   reportFirebaseFailure(context, error);
   throw error;
@@ -122,7 +120,9 @@ export const getFirebaseDatabase = async (context: string) => {
 
 export const authenticateFirebase = async (email: string, password: string): Promise<FirebaseUser> => {
   if (!isFirebaseRuntimeEnabled || !firebaseAuth) {
-    const configurationError = new Error('Firebase email/password authentication is not configured.') as Error & { code: string };
+    const configurationError = new Error('Firebase email/password authentication is not configured.') as Error & {
+      code: string;
+    };
     configurationError.code = 'auth/configuration-not-found';
     throw configurationError;
   }

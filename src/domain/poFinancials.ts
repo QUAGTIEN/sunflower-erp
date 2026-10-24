@@ -19,13 +19,10 @@ const toFiniteNumber = (value: unknown, fallback = 0): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const clamp = (value: number, min: number, max: number): number => (
-  Math.min(Math.max(value, min), max)
-);
+const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
-export const getPODiscountType = (item: Record<string, unknown>): PODiscountType => (
-  item.discountType === 'amount' ? 'amount' : 'percent'
-);
+export const getPODiscountType = (item: Record<string, unknown>): PODiscountType =>
+  item.discountType === 'amount' ? 'amount' : 'percent';
 
 export const calculatePOItemFinancials = (item: Record<string, unknown>): POItemFinancials => {
   const quantity = Math.max(0, toFiniteNumber(item.quantity));
@@ -33,15 +30,12 @@ export const calculatePOItemFinancials = (item: Record<string, unknown>): POItem
   const grossAmount = quantity * unitPrice;
   const discountType = getPODiscountType(item);
   const discountRate = clamp(toFiniteNumber(item.discountRate), 0, 100);
-  const requestedDiscountAmount = discountType === 'amount'
-    ? Math.max(0, toFiniteNumber(item.discountAmount))
-    : grossAmount * (discountRate / 100);
+  const requestedDiscountAmount =
+    discountType === 'amount' ? Math.max(0, toFiniteNumber(item.discountAmount)) : grossAmount * (discountRate / 100);
   const discountAmount = clamp(requestedDiscountAmount, 0, grossAmount);
   const amountBeforeVat = grossAmount - discountAmount;
   const vatRate = clamp(
-    item.vatRate === undefined || item.vatRate === null || item.vatRate === ''
-      ? 8
-      : toFiniteNumber(item.vatRate),
+    item.vatRate === undefined || item.vatRate === null || item.vatRate === '' ? 8 : toFiniteNumber(item.vatRate),
     0,
     100
   );
@@ -67,7 +61,9 @@ export const calculatePOItemFinancials = (item: Record<string, unknown>): POItem
   };
 };
 
-export const withCalculatedPOFinancials = <T extends Record<string, unknown>>(item: T): T & {
+export const withCalculatedPOFinancials = <T extends Record<string, unknown>>(
+  item: T
+): T & {
   discountType: PODiscountType;
   discountRate: number;
   discountAmount: number;
