@@ -203,3 +203,6 @@ export const EMPTY_CONTRACT_DRAFT: CustomerContractDraft = {
   value: 0,
   fileUrl: ''
 };
+
+/** Tabs of the customer detail workspace. */
+export type CustomerHistoryTab = 'overview' | 'po' | 'products' | 'notes' | 'files';
