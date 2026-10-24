@@ -17,6 +17,9 @@ import { CustomerOnboardingItems } from '@/features/crm/components/CustomerOnboa
 import { BusinessLocationFields } from '@/features/crm/components/BusinessLocationFields';
 import { CustomerNoteEditor } from '@/features/crm/components/CustomerNoteEditor';
 import { CustomerProductEditor } from '@/features/crm/components/CustomerProductEditor';
+import { EditRequestCompareDialog } from '@/features/crm/components/EditRequestCompareDialog';
+import { ImagePreviewDialog } from '@/components/ImagePreviewDialog';
+import { CustomerContractDialog } from '@/features/crm/components/CustomerContractDialog';
 import { updateCustomerProduct } from '@/features/crm/api/customerProductService';
 import {
   canManageCustomerProducts,
@@ -121,7 +124,9 @@ import {
   normalizeFilterValue,
   type CrmFilterOption,
   type CrmListFilter,
-  type CrmTimeFilter
+  type CrmTimeFilter,
+  EMPTY_CONTRACT_DRAFT,
+  type CustomerContractDraft
 } from '@/features/crm/model/customerWorkspace';
 import { copyTextToClipboard } from '@/shared/utils/clipboard';
 import {
@@ -247,7 +252,6 @@ export const Crm: React.FC<CrmProps> = ({
   const [windDirections, setWindDirections] = useState<any[]>([]);
   const [editRequests, setEditRequests] = useState<any[]>([]);
 
-  const [priceHistoryProduct, setPriceHistoryProduct] = useState<any | null>(null);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [selectedEditRequest, setSelectedEditRequest] = useState<any | null>(null);
 
@@ -642,19 +646,13 @@ export const Crm: React.FC<CrmProps> = ({
   const [specFields, setSpecFields] = useState<any[]>([]);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [tempLabelText, setTempLabelText] = useState('');
-  const [requoteNote, setRequoteNote] = useState('');
 
   // Re-quote price dialog state
-  const [showRequoteModal, setShowRequoteModal] = useState(false);
-  const [requotePrice, setRequotePrice] = useState(0);
 
   // Contract list modals & states
   const [showAddContractModal, setShowAddContractModal] = useState(false);
-  const [contractNo, setContractNo] = useState('');
-  const [contractSignDate, setContractSignDate] = useState('');
-  const [contractExpiryDate, setContractExpiryDate] = useState('');
-  const [contractValue, setContractValue] = useState(0);
-  const [contractFile, setContractFile] = useState('');
+  // Dates and value intentionally persist between openings; only number and file reset after saving.
+  const [contractDraft, setContractDraft] = useState<CustomerContractDraft>(EMPTY_CONTRACT_DRAFT);
 
   // Handle opening create modal
   const openAddModal = () => {
@@ -1808,88 +1806,21 @@ export const Crm: React.FC<CrmProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleRequoteSubmit = async (e: React.FormEvent) => {
-    return runMutationAction(
-      'CrmPage.tsx:handleRequoteSubmit',
-      async () => {
-        e.preventDefault();
-        if (!selectedCustomer || !selectedProduct) return;
-
-        const updatedProducts = (selectedCustomer.products || []).map((p: any) => {
-          if (p.id === selectedProduct.id) {
-            return {
-              ...p,
-              currentPrice: Number(requotePrice),
-              priceHistory: [
-                ...(p.priceHistory || []),
-                {
-                  date: new Date().toISOString().split('T')[0],
-                  price: Number(requotePrice),
-                  note: requoteNote,
-                  updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
-                }
-              ]
-            };
-          }
-          return p;
-        });
-
-        await requireConfirmedMutation(
-          dbService.updateDocument('customers', selectedCustomer.id, {
-            products: updatedProducts
-          })
-        );
-
-        setSelectedCustomer((prev: any) => ({
-          ...prev,
-          products: updatedProducts
-        }));
-
-        setShowRequoteModal(false);
-        setSelectedProduct(null);
-        onRefresh();
-
-        showSuccessToast('Đã lưu thành công');
-      },
-      e
-    );
-  };
-
-  // Contract Helpers
-  const handleContractFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 900_000) {
-      alert(
-        t(
-          'Tệp lớn hơn 900 KB. Vui lòng lưu hợp đồng trên Drive/OneDrive và thêm dưới dạng đường dẫn trong kho tài liệu.'
-        )
-      );
-      e.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = event => {
-      setContractFile(event.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleAddContractSubmit = async (e: React.FormEvent) => {
     return runMutationAction(
       'CrmPage.tsx:handleAddContractSubmit',
       async () => {
         e.preventDefault();
-        if (!selectedCustomer || !contractNo) return;
+        if (!selectedCustomer || !contractDraft.contractNo) return;
 
         const newContract = {
           id: `contr-${Math.random().toString(36).substr(2, 9)}`,
-          contractNo,
-          signDate: contractSignDate,
-          expiryDate: contractExpiryDate,
-          value: Number(contractValue),
-          fileUrl: contractFile,
-          status: new Date(contractExpiryDate).getTime() > Date.now() ? 'active' : 'expired',
+          contractNo: contractDraft.contractNo,
+          signDate: contractDraft.signDate,
+          expiryDate: contractDraft.expiryDate,
+          value: Number(contractDraft.value),
+          fileUrl: contractDraft.fileUrl,
+          status: new Date(contractDraft.expiryDate).getTime() > Date.now() ? 'active' : 'expired',
           createdAt: new Date().toISOString(),
           createdById: currentUser.uid,
           createdBy: currentUser.displayName
@@ -1909,8 +1840,7 @@ export const Crm: React.FC<CrmProps> = ({
         }));
 
         setShowAddContractModal(false);
-        setContractNo('');
-        setContractFile('');
+        setContractDraft(previous => ({ ...previous, contractNo: '', fileUrl: '' }));
         onRefresh();
 
         showSuccessToast('Đã thêm thành công');
@@ -5451,137 +5381,13 @@ export const Crm: React.FC<CrmProps> = ({
           </div>
         </div>
       )}
-      {/* REQUOTE PRODUCT PRICE MODAL */}
-      {showRequoteModal && selectedProduct && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700 }}>{t('BÁO GIÁ LẠI SẢN PHẨM')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowRequoteModal(false)}>
-                {t('Đóng')}
-              </button>
-            </div>
-            <form onSubmit={handleRequoteSubmit}>
-              <div className="modal-body">
-                <p style={{ fontSize: '13px', marginBottom: '10px' }}>
-                  {t('Cập nhật giá mới cho mã hàng')}: <strong>{selectedProduct.productCode}</strong> (
-                  {selectedProduct.productName})
-                </p>
-                <div className="form-group">
-                  <label>{t('Đơn Giá Mới (đ)')} *</label>
-                  <input
-                    type="number"
-                    value={requotePrice}
-                    onChange={e => setRequotePrice(Number(e.target.value))}
-                    required
-                    min="0"
-                  />
-                </div>
-                <div className="form-group" style={{ marginTop: '10px' }}>
-                  <label>{t('Ghi Chú Thay Đổi Giá')}</label>
-                  <input
-                    type="text"
-                    value={requoteNote}
-                    onChange={e => setRequoteNote(e.target.value)}
-                    placeholder="VD: Số lượng 10K pcs thì giá 522đ"
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowRequoteModal(false)}>
-                  {t('Hủy')}
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {t('Cập Nhật Giá')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ADD CONTRACT MODAL */}
       {showAddContractModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('THÊM HỢP ĐỒNG KHÁCH HÀNG MỚI')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowAddContractModal(false)}>
-                {t('Đóng')}
-              </button>
-            </div>
-            <form onSubmit={handleAddContractSubmit}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>{t('Số Hợp Đồng / Ký Hiệu')} *</label>
-                  <input
-                    type="text"
-                    value={contractNo}
-                    onChange={e => setContractNo(e.target.value)}
-                    required
-                    placeholder="VD: HĐ-2026-001/SF"
-                  />
-                </div>
-                <div
-                  className="form-grid"
-                  style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}
-                >
-                  <div className="form-group">
-                    <label>{t('Ngày Ký Kết')}</label>
-                    <input
-                      type="date"
-                      value={contractSignDate}
-                      onChange={e => setContractSignDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Hạn Hiệu Lực')}</label>
-                    <input
-                      type="date"
-                      value={contractExpiryDate}
-                      onChange={e => setContractExpiryDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                <div
-                  className="form-grid"
-                  style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}
-                >
-                  <div className="form-group">
-                    <label>{t('Giá Trị Hợp Đồng (đ)')}</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={contractValue}
-                      onChange={e => setContractValue(Number(e.target.value))}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Tải File Bản Cứng Hợp Đồng (.pdf, .jpg)')}</label>
-                    <input
-                      type="file"
-                      accept="application/pdf,image/*"
-                      onChange={handleContractFileChange}
-                      style={{ fontSize: '12px' }}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowAddContractModal(false)}>
-                  {t('Hủy')}
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {t('Lưu Hợp Đồng')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <CustomerContractDialog
+          draft={contractDraft}
+          onDraftChange={patch => setContractDraft(previous => ({ ...previous, ...patch }))}
+          onSubmit={handleAddContractSubmit}
+          onClose={() => setShowAddContractModal(false)}
+        />
       )}
 
       {/* EDIT PRODUCT MODAL */}
@@ -6087,177 +5893,20 @@ export const Crm: React.FC<CrmProps> = ({
         </div>
       )}
 
-      {/* PRICE HISTORY MODAL */}
-      {priceHistoryProduct && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '550px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700 }}>{t('LỊCH SỬ THAY ĐỔI ĐƠN GIÁ BÁN')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setPriceHistoryProduct(null)}>
-                {t('Đóng')}
-              </button>
-            </div>
-            <div className="modal-body">
-              <p style={{ fontSize: '13px', marginBottom: '12px' }}>
-                {t('Mã sản phẩm:')} <strong>{priceHistoryProduct.productCode}</strong> (
-                {priceHistoryProduct.productName})
-              </p>
-              <div className="table-container">
-                <table style={{ fontSize: '12.5px' }}>
-                  <thead>
-                    <tr>
-                      <th>{t('Ngày')}</th>
-                      <th>{t('Đơn Giá')}</th>
-                      <th>{t('Ghi Chú')}</th>
-                      <th>{t('Người Sửa')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(priceHistoryProduct.priceHistory || []).map((history: any, hidx: number) => (
-                      <tr key={hidx}>
-                        <td>{history.date}</td>
-                        <td style={{ fontWeight: 'bold' }}>{history.price?.toLocaleString()} đ</td>
-                        <td
-                          style={{ color: 'var(--color-primary-dark)', fontStyle: history.note ? 'normal' : 'italic' }}
-                        >
-                          {history.note || '-'}
-                        </td>
-                        <td>{history.updatedBy || t('Hệ thống')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* COMPARE EDIT REQUEST MODAL */}
       {showCompareModal && selectedEditRequest && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '800px', width: '100%' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('SO SÁNH THAY ĐỔI CHI TIẾT')}</span>
-              <button
-                className="btn btn-sm btn-outline"
-                onClick={() => {
-                  setShowCompareModal(false);
-                  setSelectedEditRequest(null);
-                }}
-              >
-                {t('Đóng')}
-              </button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div
-                  style={{
-                    padding: '12px',
-                    border: '1px solid #fed7d7',
-                    borderRadius: '4px',
-                    backgroundColor: '#fff5f5'
-                  }}
-                >
-                  <h4
-                    style={{
-                      color: '#c53030',
-                      borderBottom: '1px solid #feb2b2',
-                      paddingBottom: '6px',
-                      marginBottom: '10px'
-                    }}
-                  >
-                    {t('DỮ LIỆU CŨ')}
-                  </h4>
-                  <pre style={{ fontSize: '11px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(selectedEditRequest.originalData, null, 2)}
-                  </pre>
-                </div>
-                <div
-                  style={{
-                    padding: '12px',
-                    border: '1px solid #c6f6d5',
-                    borderRadius: '4px',
-                    backgroundColor: '#f0fff4'
-                  }}
-                >
-                  <h4
-                    style={{
-                      color: '#22543d',
-                      borderBottom: '1px solid #9ae6b4',
-                      paddingBottom: '6px',
-                      marginBottom: '10px'
-                    }}
-                  >
-                    {t('ĐỀ XUẤT MỚI')}
-                  </h4>
-                  <pre style={{ fontSize: '11px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(selectedEditRequest.updatedData, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => {
-                  setShowCompareModal(false);
-                  setSelectedEditRequest(null);
-                }}
-              >
-                {t('Hủy')}
-              </button>
-              <button type="button" className="btn btn-danger" onClick={() => handleRejectRequest(selectedEditRequest)}>
-                {t('Từ Chối')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-success"
-                onClick={() => handleApproveRequest(selectedEditRequest)}
-              >
-                {t('Duyệt & Áp Dụng')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditRequestCompareDialog
+          originalData={selectedEditRequest.originalData}
+          updatedData={selectedEditRequest.updatedData}
+          onClose={() => {
+            setShowCompareModal(false);
+            setSelectedEditRequest(null);
+          }}
+          onReject={() => handleRejectRequest(selectedEditRequest)}
+          onApprove={() => handleApproveRequest(selectedEditRequest)}
+        />
       )}
 
-      {/* Image Preview Zoom Modal */}
-      {previewImage && (
-        <div className="modal-overlay" onClick={() => setPreviewImage(null)} style={{ zIndex: 1200 }}>
-          <div
-            className="modal-content"
-            style={{ maxWidth: '90%', maxHeight: '90%', padding: '10px', position: 'relative' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="btn btn-sm btn-outline btn-symbol-sm"
-              style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}
-              onClick={() => setPreviewImage(null)}
-            >
-              <X size={20} />
-            </button>
-            <img
-              src={previewImage}
-              alt="Preview Zoom"
-              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', display: 'block', margin: '0 auto' }}
-            />
-            <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <a
-                href={previewImage}
-                download={`Preview_${Date.now()}.jpg`}
-                className="btn btn-primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
-              >
-                <Download size={14} />
-                <span>{t('Tải Ảnh Về')}</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
+      {previewImage && <ImagePreviewDialog src={previewImage} onClose={() => setPreviewImage(null)} />}
 
       {supportTarget && (
         <SupportRequestDialog

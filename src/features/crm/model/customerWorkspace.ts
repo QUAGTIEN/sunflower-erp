@@ -186,3 +186,20 @@ export const loadSpecsToFields = (
 
   return fields;
 };
+
+/** Form values for adding a contract to a customer. */
+export interface CustomerContractDraft {
+  contractNo: string;
+  signDate: string;
+  expiryDate: string;
+  value: number;
+  fileUrl: string;
+}
+
+export const EMPTY_CONTRACT_DRAFT: CustomerContractDraft = {
+  contractNo: '',
+  signDate: '',
+  expiryDate: '',
+  value: 0,
+  fileUrl: ''
+};
