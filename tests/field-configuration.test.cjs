@@ -2,32 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const root = path.resolve(__dirname, '..');
 
 // Compile the actual modules in memory; no browser, network or production database.
-function loader(stubs = {}) {
-  const cache = new Map();
-  function load(file) {
-    file = path.resolve(root, file);
-    if (cache.has(file)) return cache.get(file).exports;
-    const mod = { exports: {} }; cache.set(file, mod);
-    const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-    function resolve(name) {
-      if (Object.hasOwn(stubs, name)) return stubs[name];
-      if (!name.startsWith('.') && !name.startsWith('@/')) return require(name);
-      const base = name.startsWith('@/') ? path.join(root, 'src', name.slice(2)) : path.resolve(path.dirname(file), name);
-      const candidate = [base, base.replace(/\.js$/, '.ts'), `${base}.ts`, `${base}.tsx`].find(p => fs.existsSync(p));
-      if (!candidate) throw new Error(`Missing test module ${name}`);
-      return load(candidate);
-    }
-    new Function('require', 'module', 'exports', code)(resolve, mod, mod.exports);
-    return mod.exports;
-  }
-  return load;
-}
+const { createLoader: loader } = require('./helpers/loadTs.cjs');
 
 const model = loader()('src/features/crm/model/systemFieldConfig.ts');
 const custom = loader()('src/features/crm/model/entityFieldConfig.ts');

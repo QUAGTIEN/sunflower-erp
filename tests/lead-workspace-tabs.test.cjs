@@ -8,9 +8,12 @@ const source = readFileSync(
   'utf8'
 );
 
-test('lead list is prepared after the first frame and preserved between workspace tabs', () => {
+// Since 4b1f928 the list is no longer prewarmed after the first frame; it is built on demand
+// when the list tab opens and then stays mounted so switching tabs keeps its state.
+test('lead list is prepared when the list tab opens and preserved between workspace tabs', () => {
   assert.match(source, /const \[leadListPrepared, setLeadListPrepared\] = useState\(false\)/);
-  assert.match(source, /requestAnimationFrame\(\(\) => setLeadListPrepared\(true\)\)/);
+  assert.match(source, /const openLeadListTab = \(\) => \{[^}]*setLeadListPrepared\(true\);[^}]*setWorkspaceTab\('list'\);/);
+  assert.doesNotMatch(source, /requestAnimationFrame\(\(\) => setLeadListPrepared\(true\)\)/);
   assert.doesNotMatch(source, /requestIdleCallback\(prepare/);
   assert.match(source, /leadListPrepared \|\| workspaceTab === 'list'/);
   assert.match(source, /className="lead-data-workspace" hidden=\{workspaceTab !== 'list'\}/);

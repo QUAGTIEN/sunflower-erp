@@ -2,31 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
-function loader(stubs = {}) {
-  const cache = new Map();
-  function load(file) {
-    file = path.resolve(root, file);
-    if (cache.has(file)) return cache.get(file).exports;
-    const mod = { exports: {} }; cache.set(file, mod);
-    const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), { fileName: file, compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
-    const resolve = name => {
-      if (Object.hasOwn(stubs, name)) return stubs[name];
-      if (name.endsWith('.css')) return {};
-      if (name.endsWith('.woff2?url')) return '/test-font.woff2';
-      if (!name.startsWith('.') && !name.startsWith('@/')) return require(name);
-      const base = name.startsWith('@/') ? path.join(root, 'src', name.slice(2)) : path.resolve(path.dirname(file), name);
-      const candidate = [base.replace(/\.js$/, '.ts'), `${base}.ts`, `${base}.tsx`, base].find(file => fs.existsSync(file));
-      if (!candidate) throw new Error(`Missing ${name}`);
-      return load(candidate);
-    };
-    try { new Function('require', 'module', 'exports', code)(resolve, mod, mod.exports); }
-    catch (error) { error.message = `${file}: ${error.message}`; throw error; }
-    return mod.exports;
-  }
-  return load;
-}
+const { createLoader: loader } = require('./helpers/loadTs.cjs');
 const model = loader()('src/features/production/model/productionOrder.ts');
 const admin = { uid: 'boss', displayName: 'Admin', role: 'admin', active: true, allowedPages: [] };
 const sale = { uid: 'sale1', displayName: 'Sale 1', role: 'sale', active: true, allowedPages: ['sales'] };
