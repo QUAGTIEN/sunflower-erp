@@ -8,7 +8,7 @@ import {
   type LeadCandidateRecord
 } from '@/features/crm/model/leadCandidateModels';
 import { type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { type AuditEvent } from '@/services/auditService';
+import { type AuditEvent, type UserPresence } from '@/services/auditService';
 import { CUSTOMER_INSIGHT_GROUPS } from '@/features/crm/model/customerInsightCatalog';
 import { type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { getEntityCustomFieldSearchValues, type EntityFieldDefinition } from '@/features/crm/model/entityFieldConfig';
@@ -53,6 +53,33 @@ export interface SalesReportWindow {
   startAt: number;
   endAt: number;
   label: string;
+}
+
+/** One sales employee's presence and raw-data activity, shown in the admin monitor. */
+export interface EmployeeActivityCard {
+  sale: UserProfile;
+  presence: UserPresence | undefined;
+  presenceStatus: 'active' | 'idle' | 'offline';
+  minutesSinceSeen: number;
+  activities: AuditEvent[];
+  todayActivities: AuditEvent[];
+  currentCandidate: LeadCandidateRecord | null;
+  assignedCount: number;
+  touchedCount: number;
+  callCount: number;
+  scheduleCount: number;
+}
+
+/** Activity totals for one employee over the selected report window. */
+export interface SalesReportSummary {
+  events: AuditEvent[];
+  calls: AuditEvent[];
+  confirmedCalls: AuditEvent[];
+  processedCandidateIds: Set<string | undefined>;
+  convertedCandidateIds: Set<string | undefined>;
+  scheduled: AuditEvent[];
+  created: AuditEvent[];
+  activityByDate: { date: string; processed: number; calls: number; schedules: number; converted: number }[];
 }
 
 export const normalizeCandidateFieldName = (value: string) =>
