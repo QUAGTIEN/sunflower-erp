@@ -63,12 +63,13 @@ test('permanent deletion is limited to completed work and administrators', () =>
 });
 
 test('work assignment is available in every customer lifecycle module', () => {
-  for (const file of [
-    'src/features/crm/components/LeadCandidateWorkspace.tsx',
-    'src/features/crm/pages/LeadsPage.tsx',
-    'src/features/crm/pages/CrmPage.tsx'
+  // Each module is checked as a whole: the customer row menu lives in CustomerListTable, the dialog in CrmPage.
+  for (const files of [
+    ['src/features/crm/components/LeadCandidateWorkspace.tsx'],
+    ['src/features/crm/pages/LeadsPage.tsx'],
+    ['src/features/crm/pages/CrmPage.tsx', 'src/features/crm/components/CustomerListTable.tsx']
   ]) {
-    const source = read(file);
+    const source = files.map(read).join('\n');
     assert.match(source, /WorkAssignmentDialog/);
     assert.match(source, /Giao việc/);
     assert.match(source, /label: (?:t\()?['"]Giao việc['"]\)?.*icon: <ClipboardCheck/s);
