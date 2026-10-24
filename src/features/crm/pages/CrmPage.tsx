@@ -24,6 +24,7 @@ import { CustomerFileRepository } from '@/features/crm/components/CustomerFileRe
 import { CustomerOrderHistoryCard } from '@/features/crm/components/CustomerOrderHistoryCard';
 import { CustomerOverviewPreviews } from '@/features/crm/components/CustomerOverviewPreviews';
 import { CustomerProfileColumn } from '@/features/crm/components/CustomerProfileColumn';
+import { CustomerDetailHeader } from '@/features/crm/components/CustomerDetailHeader';
 import { EditRequestCompareDialog } from '@/features/crm/components/EditRequestCompareDialog';
 import { ImagePreviewDialog } from '@/components/ImagePreviewDialog';
 import { CustomerContractDialog } from '@/features/crm/components/CustomerContractDialog';
@@ -43,10 +44,7 @@ import {
   sanitizeCustomerNoteHtml
 } from '@/features/crm/model/customerNote';
 import { DataFilterButton, DataFilterChipBar } from '@/components/DataWorkspaceFilters';
-import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { PhoneCallCell } from '@/components/PhoneCallCell';
-import { customerCallHistoryKeys, customerCallSubjectKey } from '@/features/crm/model/callHistory';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
@@ -2988,65 +2986,19 @@ export const Crm: React.FC<CrmProps> = ({
                 Nợ sổ mới: <PartnerDebtValue row={finance.get('ar', selectedCustomer.id)} />
               </p>
             </div>
-            <div className="customer-detail-header">
-              <PageBackButton
-                onClick={() => {
-                  if (customerHistoryTab !== 'overview') {
-                    setCustomerHistoryTab('overview');
-                    return;
-                  }
-                  closeCustomerDetail();
-                }}
-              />
-              <div className="customer-detail-heading">
-                <div className="customer-detail-heading__title">
-                  <h1 title={selectedCustomer.companyName}>{selectedCustomer.companyName}</h1>
-                </div>
-              </div>
-              <div className="crm-detail-actions">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  aria-expanded={isCompanyInfoExpanded}
-                  aria-controls="customer-company-information"
-                  onClick={() => setIsCompanyInfoExpanded(value => !value)}
-                >
-                  {t('Thông tin doanh nghiệp')}
-                </button>
-                {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
-                  <>
-                    <PhoneCallCell
-                      toolbar
-                      phone={detailCallPhone || selectedCustomer.phone}
-                      companyName={selectedCustomer.companyName}
-                      subjectKey={customerCallSubjectKey(selectedCustomer)}
-                      historyKeys={customerCallHistoryKeys(selectedCustomer, leads)}
-                      auditModule="crm"
-                      targetType="customer"
-                      targetId={selectedCustomer.id}
-                      currentUser={currentUser}
-                      canRecord={
-                        currentUser.role === 'admin' ||
-                        (currentUser.role === 'sale' &&
-                          (!selectedCustomer.assignedSaleId || selectedCustomer.assignedSaleId === currentUser.uid))
-                      }
-                    />
-                    <button type="button" className="btn btn-primary" onClick={() => openEditModal(selectedCustomer)}>
-                      {t('Chỉnh sửa hồ sơ')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline btn-symbol-sm crm-detail-delete"
-                      onClick={() => handleDeleteCustomer(selectedCustomer.id)}
-                      title={t('Xóa khách hàng')}
-                      aria-label={t('Xóa khách hàng')}
-                    >
-                      <Trash2 size={18} aria-hidden="true" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
+            <CustomerDetailHeader
+              selectedCustomer={selectedCustomer}
+              currentUser={currentUser}
+              leads={leads}
+              callPhone={detailCallPhone}
+              activeTab={customerHistoryTab}
+              onTabChange={setCustomerHistoryTab}
+              isCompanyInfoExpanded={isCompanyInfoExpanded}
+              onCompanyInfoExpandedChange={setIsCompanyInfoExpanded}
+              onBack={closeCustomerDetail}
+              onEditCustomer={openEditModal}
+              onDeleteCustomer={handleDeleteCustomer}
+            />
 
             <CustomerProfileColumn
               selectedCustomer={selectedCustomer}
