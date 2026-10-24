@@ -60,7 +60,10 @@ function form(products = [], initial = {}) {
     '@/components/CustomerHistory.css': {}, './POFormCatalog.css': {},
     '@/shared/utils/dateFormatting': { formatDate: value => value, toDateInputValue: value => String(value || '').slice(0, 10) },
     '@/features/crm/model/customerProductCatalog': catalog,
-    './CustomerProductPicker': { CustomerProductPicker: 'CustomerProductPicker' }
+    './CustomerProductPicker': { CustomerProductPicker: 'CustomerProductPicker' },
+    // Dialogs split out of the form only render behind toggles these tests never open.
+    './poForm/POImagePreviewDialog': { POImagePreviewDialog: 'POImagePreviewDialog' },
+    './poForm/POFileRepositoryDialog': { POFileRepositoryDialog: 'POFileRepositoryDialog' }
   }, {
     window: { localStorage: { removeItem() {} } }, alert: message => alerts.push(message),
     crypto: { randomUUID: () => `item-${++nextId}` }

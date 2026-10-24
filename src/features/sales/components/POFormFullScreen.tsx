@@ -6,9 +6,7 @@ import {
   Search,
   Trash2,
   X,
-  Download,
   Folder,
-  FileText,
   Upload,
   CheckSquare,
   History,
@@ -36,6 +34,8 @@ import {
   type ProductAttachment
 } from '@/features/crm/model/customerProductCatalog';
 import { CustomerProductPicker } from './CustomerProductPicker';
+import { POFileRepositoryDialog } from './poForm/POFileRepositoryDialog';
+import { POImagePreviewDialog } from './poForm/POImagePreviewDialog';
 import './POFormCatalog.css';
 
 const PO_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -2475,211 +2475,20 @@ export default function POFormFullScreen({
 
         {/* CUSTOMER REPOSITORY FILE PICKER MODAL */}
         {showRepoModal && (
-          <div className="modal-overlay" style={{ zIndex: 1200 }}>
-            <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
-              <div className="modal-header">
-                <span
-                  style={{
-                    fontWeight: 700,
-                    fontSize: '16px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Folder size={18} />
-                  <span>
-                    {t('KHO LƯU TRỮ TỆP KHÁCH HÀNG')}: {currentCustomer?.companyName || ''}
-                  </span>
-                </span>
-                <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowRepoModal(false)}>
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="modal-body" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                {(() => {
-                  if (!currentCustomer || !currentCustomer.files || currentCustomer.files.length === 0) {
-                    return (
-                      <p className="text-center text-muted" style={{ padding: '20px' }}>
-                        {t('Kho lưu trữ của khách hàng này hiện tại chưa có tệp tin nào.')}
-                      </p>
-                    );
-                  }
-
-                  // Group files by folder
-                  const folderGroups = currentCustomer.files.reduce((acc: any, file: any) => {
-                    const folderName = file.folder || t('Chưa phân mục');
-                    if (!acc[folderName]) acc[folderName] = [];
-                    acc[folderName].push(file);
-                    return acc;
-                  }, {});
-
-                  return (
-                    <div>
-                      <p style={{ fontSize: '12.5px', marginBottom: '12px', color: 'var(--color-text-muted)' }}>
-                        {t('Chọn một tệp từ kho lưu trữ để đính kèm vào phần tương ứng:')}
-                      </p>
-
-                      {Object.entries(folderGroups).map(([folderName, folderFiles]: any) => (
-                        <div key={folderName} style={{ marginBottom: '16px' }}>
-                          <h5
-                            style={{
-                              borderBottom: '1px solid var(--color-border)',
-                              paddingBottom: '4px',
-                              marginBottom: '8px',
-                              color: 'var(--color-primary)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              fontSize: '13px'
-                            }}
-                          >
-                            <Folder size={14} />
-                            <span>{folderName}</span>
-                          </h5>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            {folderFiles.map((file: any, fIdx: number) => (
-                              <div
-                                key={fIdx}
-                                style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  padding: '6px 10px',
-                                  backgroundColor: 'var(--color-bg-light)',
-                                  border: '1px solid var(--color-border-light)',
-                                  borderRadius: '4px'
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontWeight: 500,
-                                    fontSize: '13px',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    maxWidth: '280px',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                  }}
-                                  title={file.name}
-                                >
-                                  <FileText size={14} />
-                                  <span>{file.name}</span>
-                                </span>
-                                <div>
-                                  <select
-                                    onChange={e => {
-                                      const target = e.target.value;
-                                      if (!target) return;
-
-                                      if (target === 'pdf') setPdfFile(file.base64);
-                                      if (target === 'excel') setExcelFile(file.base64);
-                                      if (target === 'ai') setAiFile(file.base64);
-                                      if (target === 'corel') setCorelFile(file.base64);
-                                      if (target === 'contract') setContractFile(file.base64);
-                                      if (target === 'quote') setQuoteFile(file.base64);
-
-                                      alert(t(`Đã đính kèm tệp "${file.name}" vào trường ${target.toUpperCase()}`));
-                                      e.target.value = ''; // reset
-                                    }}
-                                    style={{ padding: '2px 6px', fontSize: '11.5px', width: '150px' }}
-                                  >
-                                    <option value="">-- {t('Đính kèm vào')} --</option>
-                                    <option value="pdf">{t('PDF Đơn Hàng')}</option>
-                                    <option value="excel">{t('Bản Báo Giá Excel')}</option>
-                                    <option value="ai">{t('File Thiết kế AI')}</option>
-                                    <option value="corel">{t('File Thiết kế Corel')}</option>
-                                    <option value="contract">{t('File Hợp Đồng')}</option>
-                                    <option value="quote">{t('Bản Báo Giá PDF')}</option>
-                                  </select>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowRepoModal(false)}>
-                  {t('Hoàn thành')}
-                </button>
-              </div>
-            </div>
-          </div>
+          <POFileRepositoryDialog
+            currentCustomer={currentCustomer}
+            setShowRepoModal={setShowRepoModal}
+            setPdfFile={setPdfFile}
+            setExcelFile={setExcelFile}
+            setAiFile={setAiFile}
+            setCorelFile={setCorelFile}
+            setContractFile={setContractFile}
+            setQuoteFile={setQuoteFile}
+          />
         )}
 
         {/* IMAGE ZOOM LIGHTBOX */}
-        {previewImage && (
-          <div
-            className="modal-overlay"
-            onClick={() => setPreviewImage(null)}
-            style={{ zIndex: 1300, background: 'rgba(0,0,0,0.85)' }}
-          >
-            <div
-              className="modal-content"
-              style={{
-                maxWidth: '90%',
-                maxHeight: '90%',
-                padding: '12px',
-                position: 'relative',
-                background: 'transparent',
-                boxShadow: 'none'
-              }}
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                style={{
-                  position: 'absolute',
-                  top: '-15px',
-                  right: '-15px',
-                  backgroundColor: 'white',
-                  color: 'black',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '30px',
-                  height: '30px',
-                  fontSize: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.25)'
-                }}
-                onClick={() => setPreviewImage(null)}
-              >
-                ×
-              </button>
-              <img
-                src={previewImage}
-                alt="Layout Zoom"
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '80vh',
-                  objectFit: 'contain',
-                  borderRadius: '4px',
-                  border: '2px solid white'
-                }}
-              />
-              <div style={{ textAlign: 'center', marginTop: '14px' }}>
-                <a
-                  href={previewImage}
-                  download={`Layout_${Date.now()}.jpg`}
-                  className="btn btn-primary"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
-                >
-                  <Download size={14} />
-                  <span>{t('Tải Ảnh Về')}</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
+        {previewImage && <POImagePreviewDialog setPreviewImage={setPreviewImage} previewImage={previewImage} />}
       </div>
     </div>
   );
