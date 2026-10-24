@@ -334,7 +334,7 @@ export function CustomerProductEditor({
     <div className="customer-product-editor">
       <PageContextHeader section={t('Khách hàng')} current={t('Tạo mã sản phẩm')} />
       <header className="card customer-product-editor__header">
-        <PageBackButton iconOnly onClick={close} />
+        <PageBackButton onClick={close} />
         <div>
           <h1>{t('Tạo mã sản phẩm')}</h1>
           <span>

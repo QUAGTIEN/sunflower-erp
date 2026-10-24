@@ -1150,7 +1150,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     return (
       <SystemFieldSurface table="lead_candidates" className="lead-form-page lead-candidate-form-page">
         <header className="lead-candidate-profile-header crm-record-header">
-          <PageBackButton iconOnly title="Quay lại danh sách dữ liệu" onClick={() => setShowForm(false)} />
+          <PageBackButton title="Quay lại danh sách dữ liệu" onClick={() => setShowForm(false)} />
           <CrmRecordHeaderIdentity
             title={editingCandidate ? form.companyName || 'Chưa có tên doanh nghiệp' : 'Thông tin khách hàng mới'}
           />

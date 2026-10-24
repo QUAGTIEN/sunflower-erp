@@ -79,6 +79,7 @@ function form(products = [], initial = {}) {
     '@/domain/poFinancials': financials,
     '@/features/crm/model/crmModels': { createCustomerSnapshot: customer => ({ companyName: customer.companyName }) },
     '@/components/CustomerHistory.css': {},
+    '@/components/PageBackButton': { PageBackButton: () => null },
     './POFormCatalog.css': {},
     '@/shared/utils/dateFormatting': {
       formatDate: value => value,

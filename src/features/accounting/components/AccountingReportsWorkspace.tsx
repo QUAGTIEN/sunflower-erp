@@ -1,3 +1,5 @@
+import { Download, RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { StockThresholdDialog } from '@/features/inventory/components/StockThresholdDialog';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { WarehouseActor } from '@/features/inventory/model/warehouse';
@@ -396,23 +398,21 @@ export function AccountingReportsWorkspace({ actor }: { actor: WarehouseActor })
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <button
-          className="btn btn-outline"
+        <IconButton
+          label="Tải lại"
+          icon={<RefreshCw />}
           disabled={loading}
           onClick={() => {
             setLoading(true);
             setRefresh(v => v + 1);
           }}
-        >
-          Tải lại
-        </button>
-        <button
-          className="btn btn-outline"
+        />
+        <IconButton
+          label="Xuất CSV"
+          icon={<Download />}
           disabled={loading || !!error || !!reportError || !data || !rows.length}
           onClick={exportRows}
-        >
-          Xuất CSV
-        </button>
+        />
       </div>
       <div className="warehouse-toolbar">
         {financial && (

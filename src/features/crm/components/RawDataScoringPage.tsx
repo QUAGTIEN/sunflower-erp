@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
+import { PageBackButton } from '@/components/PageBackButton';
 import { CUSTOMER_INSIGHT_GROUPS, CUSTOMER_INSIGHT_ITEMS } from '../model/customerInsightCatalog';
 import {
   DEFAULT_LEAD_CANDIDATE_SCORING_RULES,
@@ -187,11 +188,11 @@ export function RawDataScoringPage({ currentUser, onBack }: Props) {
   return (
     <section className="raw-score-rules" aria-label="Cấu hình điểm khách hàng">
       <header className="raw-score-rules__header">
-        <h2>Thiết lập điểm tự động</h2>
+        <div className="app-heading-with-back">
+          <PageBackButton title="Quay lại Tổng quan" onClick={goBack} />
+          <h2>Thiết lập điểm tự động</h2>
+        </div>
         <div className="raw-score-rules__header-actions">
-          <button type="button" className="btn btn-outline" onClick={goBack}>
-            Quay lại
-          </button>
           <button
             type="button"
             className="btn btn-outline"

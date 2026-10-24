@@ -1,3 +1,5 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { useEffect, useState } from 'react';
 import { loadAccountingReports, type AccountingReportData } from '../api/accountingReportsService';
 import { buildDebtReport } from '../model/accountingReports';
@@ -42,15 +44,14 @@ export function AccountingOverview({ actor, onOpen }: { actor: WarehouseActor; o
     <section className="card" aria-label="Tổng hợp kế toán">
       <div className="card-header">
         <span className="card-title">Công nợ & cảnh báo</span>
-        <button
-          className="btn btn-outline"
+        <IconButton
+          label="Tải lại"
+          icon={<RefreshCw />}
           onClick={() => {
             setData(null);
             setRefresh(v => v + 1);
           }}
-        >
-          Tải lại
-        </button>
+        />
         <button className="btn btn-outline" onClick={onOpen}>
           Xem Kế toán
         </button>

@@ -1,3 +1,5 @@
+import { Settings2 } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -485,26 +487,20 @@ export const Purchase: React.FC<PurchaseProps> = ({
             />
           </div>
           <DataFilterButton
-            textOnly
             activeCount={purchaseActiveFilterCount}
             open={showPurchaseFilters}
             onClick={() => setShowPurchaseFilters(true)}
           />
           {canEditColumns && (
-            <button
-              type="button"
-              className="btn btn-outline"
+            <IconButton
+              label={t('Tùy chỉnh cột')}
+              icon={<Settings2 />}
               onClick={() => setShowPurchaseColumnCustomizer(true)}
-              title={t('Tùy chỉnh cột')}
-              aria-label={t('Tùy chỉnh cột')}
-            >
-              {t('Tùy chỉnh cột')}
-            </button>
+            />
           )}
         </div>
 
         <DataFilterChipBar
-          textOnly
           chips={[
             ...sourcingFilters.map(value => ({
               id: `sourcing:${value}`,
@@ -730,7 +726,6 @@ export const Purchase: React.FC<PurchaseProps> = ({
       </section>
 
       <TableColumnCustomizer
-        textOnly
         open={showPurchaseColumnCustomizer}
         columns={activeListView === 'requests' ? PURCHASE_REQUEST_COLUMNS : PURCHASE_ORDER_COLUMNS}
         selectedIds={activeListView === 'requests' ? requestVisibleColumns : orderVisibleColumns}
@@ -738,7 +733,6 @@ export const Purchase: React.FC<PurchaseProps> = ({
         onSave={activeListView === 'requests' ? saveRequestVisibleColumns : saveOrderVisibleColumns}
       />
       <DataFilterPanel
-        textOnly
         open={showPurchaseFilters}
         title={t('Lọc danh sách mua hàng')}
         description={t('Lọc theo phương án cung ứng và tháng phát sinh.')}

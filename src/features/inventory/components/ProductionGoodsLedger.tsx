@@ -1,3 +1,5 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { useEffect, useState } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { loadFinishedGoods } from '../api/finishedGoodsService';
@@ -47,16 +49,15 @@ export function ProductionGoodsLedger({
       <div className="lsx-heading">
         <h3>Nhập thành phẩm thực tế</h3>
         <div className="lsx-actions">
-          <button
-            className="btn btn-outline"
+          <IconButton
+            label="Tải lại"
+            icon={<RefreshCw />}
             disabled={loading}
             onClick={() => {
               setLoading(true);
               setRefresh(value => value + 1);
             }}
-          >
-            Tải lại
-          </button>
+          />
           {status === 'completed' && canPostGoods(currentUser) && (
             <button className="btn btn-outline" disabled={loading || !!error} onClick={() => setCreating(true)}>
               Nhập thành phẩm từ QC

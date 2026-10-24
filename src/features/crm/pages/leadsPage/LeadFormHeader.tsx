@@ -66,7 +66,7 @@ export const LeadFormHeader: React.FC<LeadFormHeaderProps> = ({
   const { t } = useLanguage();
   return (
     <header className={`lead-form-page__header${editingLead ? ' lead-record-header crm-record-header' : ''}`}>
-      <PageBackButton iconOnly title={t('Quay lại danh sách khách hàng tiềm năng')} onClick={closeLeadForm} />
+      <PageBackButton title={t('Quay lại danh sách khách hàng tiềm năng')} onClick={closeLeadForm} />
       {editingLead ? (
         <>
           <div className="lead-record-header__identity">

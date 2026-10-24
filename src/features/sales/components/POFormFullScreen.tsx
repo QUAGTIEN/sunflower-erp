@@ -11,6 +11,7 @@ import {
   type CustomerSnapshot
 } from '@/features/crm/model/crmModels';
 import '@/components/CustomerHistory.css';
+import { PageBackButton } from '@/components/PageBackButton';
 import { formatDate, toDateInputValue } from '@/shared/utils/dateFormatting';
 import {
   applyCustomerProductToOrderItem,
@@ -1560,7 +1561,8 @@ export default function POFormFullScreen({
       >
         {/* HEADER */}
         <div className="po-form-header">
-          <div className="po-form-heading">
+          <div className="po-form-heading app-heading-with-back">
+            <PageBackButton title={t('Quay lại')} onClick={handleClose} disabled={isSaving} />
             <div>
               <h2>
                 {isCustomerOnboarding
@@ -1583,9 +1585,6 @@ export default function POFormFullScreen({
             </div>
           </div>
           <div className="po-form-header-actions">
-            <button type="button" className="btn btn-outline" onClick={handleClose} disabled={isSaving}>
-              {t('Quay lại')}
-            </button>
             <button
               type="button"
               className="btn btn-primary"

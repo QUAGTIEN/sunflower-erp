@@ -1,3 +1,5 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { useEffect, useState } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { loadWarehouse } from '../api/warehouseService';
@@ -54,15 +56,14 @@ export function ProductionMaterialLedger({
       <div className="lsx-heading">
         <h3>Cấp / hoàn NVL thực tế</h3>
         <div className="lsx-actions">
-          <button
-            className="btn btn-outline"
+          <IconButton
+            label="Tải lại"
+            icon={<RefreshCw />}
             onClick={() => {
               setData(null);
               setRefresh(value => value + 1);
             }}
-          >
-            Tải lại
-          </button>
+          />
           {canPostWarehouse(currentUser) && (
             <>
               {['released', 'producing'].includes(status) && (

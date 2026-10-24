@@ -6,18 +6,8 @@ import {
   runMutationAction
 } from '@/shared/feedback/mutationFeedback';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  AlertCircle,
-  Building2,
-  CheckCircle2,
-  ClipboardList,
-  Plus,
-  Search,
-  Settings2,
-  UserRound,
-  UsersRound,
-  X
-} from 'lucide-react';
+import { AlertCircle, CheckCircle2, ClipboardList, KanbanSquare, List, Plus, Search, X } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataFilterButton, DataFilterPanel } from '@/components/DataWorkspaceFilters';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
@@ -79,13 +69,6 @@ interface ScheduleFormState {
 type RequiredTaskField = 'groupId' | 'title' | 'assigneeId' | 'dueAt' | 'description';
 
 const PAGE_SIZE = 10;
-const GROUP_ICONS = {
-  boss_to_staff: UsersRound,
-  staff_to_company: Building2,
-  staff_to_staff: UsersRound,
-  self: UserRound,
-  automatic: Settings2
-} as const;
 const ACTIVE_STATUSES: WorkScheduleStatus[] = [
   'not_started',
   'in_progress',
@@ -142,6 +125,10 @@ const moduleFromReference = (referenceType: WorkScheduleReferenceType): SourceMo
         : '';
 const isTaskOverdue = (item: WorkScheduleRecord, referenceTime: number) =>
   ACTIVE_STATUSES.includes(item.status) && new Date(item.endAt).getTime() < referenceTime;
+const isTaskDueToday = (item: WorkScheduleRecord, referenceTime: number) =>
+  ACTIVE_STATUSES.includes(item.status) &&
+  new Date(item.endAt).getTime() >= referenceTime &&
+  new Date(item.endAt).toDateString() === new Date(referenceTime).toDateString();
 const isInPeriod = (
   item: WorkScheduleRecord,
   period: PeriodFilter,
@@ -289,9 +276,12 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
       not_started: groupItems.filter(item => getWorkScheduleDisplayStatus(item.status) === 'not_started').length,
       cannot_process: groupItems.filter(item => getWorkScheduleDisplayStatus(item.status) === 'cannot_process').length,
       completed: groupItems.filter(item => getWorkScheduleDisplayStatus(item.status) === 'completed').length,
-      support: groupItems.filter(item => item.status === 'support_requested').length
+      support: groupItems.filter(item => item.status === 'support_requested').length,
+      overdue: groupItems.filter(item => isTaskOverdue(item, now)).length,
+      dueToday: groupItems.filter(item => isTaskDueToday(item, now)).length,
+      awaitingConfirmation: groupItems.filter(item => item.status === 'awaiting_confirmation').length
     }),
-    [groupItems]
+    [groupItems, now]
   );
   const activeFilterCount =
     (assigneeFilter !== 'all' ? 1 : 0) +
@@ -739,36 +729,24 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
 
       {activeTab === 'tasks' ? (
         <>
-          <nav className="work-schedule-group-cards" aria-label="Nhóm công việc">
-            {groups.map(group => {
-              const GroupIcon = GROUP_ICONS[group.id as keyof typeof GROUP_ICONS];
-              return (
-                <button
-                  key={group.id}
-                  type="button"
-                  aria-pressed={effectiveGroupId === group.id}
-                  className={`work-schedule-group-card work-schedule-group-card--${group.id} ${effectiveGroupId === group.id ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setSelectedGroupId(group.id);
-                    setPage(1);
-                  }}
-                >
-                  <span className="work-schedule-group-card__icon" aria-hidden="true">
-                    {GroupIcon && <GroupIcon size={18} />}
-                  </span>
-                  <span className="work-schedule-group-card__name" title={group.name}>
-                    {group.name}
-                  </span>
-                  <strong
-                    className="work-schedule-group-card__count"
-                    aria-label={`${groupCounts[group.id] || 0} công việc`}
-                  >
-                    {groupCounts[group.id] || 0}
-                  </strong>
-                </button>
-              );
-            })}
-          </nav>
+          <dl className="work-schedule-summary" aria-label={`Tình hình công việc: ${selectedGroup?.name || ''}`}>
+            <div className="work-schedule-summary__item is-danger">
+              <dt>Quá hạn</dt>
+              <dd>{metrics.overdue}</dd>
+            </div>
+            <div className="work-schedule-summary__item is-warning">
+              <dt>Đến hạn hôm nay</dt>
+              <dd>{metrics.dueToday}</dd>
+            </div>
+            <div className="work-schedule-summary__item">
+              <dt>Đang xử lí</dt>
+              <dd>{metrics.in_progress}</dd>
+            </div>
+            <div className="work-schedule-summary__item">
+              <dt>Chờ xác nhận</dt>
+              <dd>{metrics.awaitingConfirmation}</dd>
+            </div>
+          </dl>
           <section className="work-schedule-card work-schedule-group-content">
             <div className="work-schedule-toolbar">
               <label className="work-schedule-search">
@@ -780,6 +758,18 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
                   onChange={event => setFilterAndFirstPage(setSearchTerm, event.target.value)}
                 />
               </label>
+              <select
+                className="work-schedule-assignee-select work-schedule-group-select"
+                aria-label="Nhóm công việc"
+                value={effectiveGroupId}
+                onChange={event => setFilterAndFirstPage(setSelectedGroupId, event.target.value)}
+              >
+                {groups.map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} ({groupCounts[group.id] || 0})
+                  </option>
+                ))}
+              </select>
               {isAdmin && (
                 <select
                   className="work-schedule-assignee-select"
@@ -795,21 +785,6 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
                   ))}
                 </select>
               )}
-              <select
-                className="work-schedule-assignee-select"
-                aria-label="Trạng thái"
-                value={statusFilter}
-                onChange={event =>
-                  setFilterAndFirstPage(setStatusFilter, event.target.value as 'all' | WorkScheduleDisplayStatus)
-                }
-              >
-                <option value="all">Tất cả trạng thái</option>
-                {(Object.keys(WORK_SCHEDULE_DISPLAY_STATUS_LABELS) as WorkScheduleDisplayStatus[]).map(status => (
-                  <option key={status} value={status}>
-                    {WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}
-                  </option>
-                ))}
-              </select>
               <select
                 className="work-schedule-assignee-select"
                 aria-label="Thời gian"
@@ -852,22 +827,20 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
                 onClick={() => setShowFilters(true)}
               />
               <div className="work-schedule-view-switch" role="group" aria-label="Kiểu hiển thị">
-                <button
-                  type="button"
+                <IconButton
+                  label="Danh sách"
+                  icon={<List />}
+                  active={viewMode === 'list'}
                   aria-pressed={viewMode === 'list'}
-                  className={viewMode === 'list' ? 'is-active' : ''}
                   onClick={() => setViewMode('list')}
-                >
-                  Danh sách
-                </button>
-                <button
-                  type="button"
+                />
+                <IconButton
+                  label="Kanban"
+                  icon={<KanbanSquare />}
+                  active={viewMode === 'kanban'}
                   aria-pressed={viewMode === 'kanban'}
-                  className={viewMode === 'kanban' ? 'is-active' : ''}
                   onClick={() => setViewMode('kanban')}
-                >
-                  Kanban
-                </button>
+                />
               </div>
               <button
                 type="button"
@@ -899,7 +872,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
                 <button
                   key={status}
                   type="button"
-                  className={`work-schedule-status-filter work-schedule-status-filter--${status} ${statusFilter === status ? 'is-active' : ''}`}
+                  className={`work-schedule-status-filter ${statusFilter === status ? 'is-active' : ''}`}
                   onClick={() => setFilterAndFirstPage(setStatusFilter, statusFilter === status ? 'all' : status)}
                 >
                   <span>{WORK_SCHEDULE_DISPLAY_STATUS_LABELS[status]}</span>

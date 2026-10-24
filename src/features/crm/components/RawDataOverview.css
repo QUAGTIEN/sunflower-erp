@@ -9,7 +9,7 @@
 }
 .raw-overview__actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   min-height: 36px;
 }
 .raw-overview__notice {

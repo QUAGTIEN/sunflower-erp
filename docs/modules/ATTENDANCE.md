@@ -4,9 +4,10 @@
 
 - Phân hệ `attendance` độc lập, nằm ngay dưới Công việc trên sidebar. Không thay đổi chức năng Công việc, header, logo hoặc thứ tự các mục khác.
 - Ba tab: Chấm công, Duyệt chấm công, Thiết lập chấm công. Không có bộ đếm sau tên tab.
-- Chấm công chỉ dùng lịch tháng có kẻ ô, không có tab Lịch tháng/Bảng công phụ, bảng danh sách ngày, tổng kết hay ghi chú phía trên/dưới lịch. Giữ thanh chọn tháng và nhân viên (Admin), tải lại và hành động gửi duyệt khi phù hợp. Lịch bắt đầu từ thứ Hai, tự hiển thị 4–6 tuần; desktop ưu tiên lịch rộng, màn hình hẹp cuộn ngang.
+- Chấm công dùng lịch tháng có kẻ ô, không có tab Lịch tháng/Bảng công phụ hay bảng danh sách ngày. Thanh công cụ: nhân viên (Admin), nút icon tháng trước/sau quanh ô chọn tháng, nút "Tháng này", nút icon tải lại và "Gửi duyệt" khi phù hợp.
+- Phía trên lịch có **một dải tổng hợp tháng**: trạng thái tháng, ngày công (Full-time) hoặc giờ làm (Part-time), phút trễ, giờ OT (Full-time), số yêu cầu sửa/xóa chờ duyệt. Phía dưới lịch có chú thích màu. Quyết định UI ngày 25/10/2026, thay quy tắc cũ "không tổng kết trên/dưới lịch". Lịch bắt đầu từ thứ Hai, tự hiển thị 4–6 tuần; desktop ưu tiên lịch rộng, màn hình hẹp cuộn ngang.
 - Bấm ô trống để nhập mới. Bấm ngày đã chấm mở thông tin chỉ đọc và gửi yêu cầu sửa/xóa kèm lý do. Chờ quản lý duyệt thì mới thay đổi công. Modal hỗ trợ bàn phím, giữ focus và Escape; có cảnh báo bỏ dữ liệu chưa lưu. Toast phân biệt đã lưu công và đã gửi yêu cầu.
-- Full-time: Đi làm, phút trễ, giờ OT. Part-time: tổng giờ làm trong ngày, phút trễ; không có giờ vào/ra hoặc trường OT riêng. Các trạng thái hiển thị ngay trong ô ngày. Tổng số liệu vẫn tính từ công đã lưu và có trong bảng duyệt tháng, không hiện thành hàng tổng kết trên lịch.
+- Full-time: Đi làm, phút trễ, giờ OT. Part-time: tổng giờ làm trong ngày, phút trễ; không có giờ vào/ra hoặc trường OT riêng. Các trạng thái hiển thị ngay trong ô ngày bằng nhãn màu (Đi làm xanh lá, Trễ vàng, OT xanh dương, Chờ duyệt viền cam); hôm nay có số ngày tô tròn, Chủ nhật số màu đỏ. Tổng số liệu tính từ công đã lưu.
 - Duyệt chấm công: chọn Yêu cầu sửa/xóa hoặc Bảng công tháng, lọc tháng/tên/trạng thái và phân trang. Yêu cầu có công gốc, nội dung đề nghị, lý do, trạng thái; quản lý xem chi tiết rồi duyệt hoặc từ chối kèm lý do. Xem bảng công tháng đưa về lịch, không mở lại bảng danh sách ngày đã bỏ.
 - Thiết lập: chọn hình thức làm việc và Admin duyệt cho từng nhân viên đang hoạt động; có tìm kiếm, phân trang và lưu những dòng đã đổi.
 

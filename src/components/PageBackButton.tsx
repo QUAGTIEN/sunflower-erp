@@ -1,37 +1,31 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface PageBackButtonProps {
   onClick: () => void;
+  /** Mô tả đích quay lại, hiển thị ở tooltip và aria-label. */
   label?: string;
   title?: string;
   className?: string;
-  iconOnly?: boolean;
+  disabled?: boolean;
 }
 
-export const PageBackButton: React.FC<PageBackButtonProps> = ({
-  onClick,
-  label,
-  title,
-  className = '',
-  iconOnly = false
-}) => {
+/** Nút quay lại chuẩn: chỉ có icon, đặt đầu header, cùng một kiểu ở mọi phân hệ. */
+export const PageBackButton: React.FC<PageBackButtonProps> = ({ onClick, label, title, className = '', disabled }) => {
   const { t } = useLanguage();
-  const buttonLabel = label || t('Quay lại');
+  const buttonLabel = title || label || t('Quay lại');
 
   return (
     <button
       type="button"
-      className={`app-back-button${iconOnly ? ' app-back-button--icon-only' : ''} ${className}`.trim()}
+      className={`app-back-button ${className}`.trim()}
       onClick={onClick}
-      title={title || buttonLabel}
+      disabled={disabled}
+      title={buttonLabel}
       aria-label={buttonLabel}
     >
-      <span className="app-back-button__icon">
-        <ArrowLeft size={iconOnly ? 20 : 15} aria-hidden="true" />
-      </span>
-      {!iconOnly && <span>{buttonLabel}</span>}
+      <ArrowLeft size={16} aria-hidden="true" />
     </button>
   );
 };

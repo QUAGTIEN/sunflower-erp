@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
+import { PageBackButton } from '@/components/PageBackButton';
 import type { LeadCandidateRecord } from '../model/leadCandidateModels';
 import type { PhoneCallRecord } from '../model/callHistory';
 import {
@@ -337,9 +338,7 @@ export const RawDataOverview = memo(function RawDataOverview({
     <div className="raw-overview" hidden={hidden}>
       {mode === 'priority' && (
         <div className="raw-overview__actions">
-          <button type="button" className="btn btn-outline" onClick={onOverview}>
-            Quay lại Tổng quan
-          </button>
+          <PageBackButton title="Quay lại Tổng quan" onClick={onOverview} />
         </div>
       )}
       {callsError && (

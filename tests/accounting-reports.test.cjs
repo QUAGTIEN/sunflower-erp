@@ -575,7 +575,7 @@ test('actual report controls drill into partner, line and current goods; CSV exp
     };
     URL.revokeObjectURL = () => {};
     treeNodes(ui.render())
-      .find(n => n.type === 'button' && n.props.children === 'Xuất CSV')
+      .find(n => n.props?.label === 'Xuất CSV')
       .props.onClick();
     assert.equal((await blob.text()).split('\r\n').length, 32);
     assert.match(filename, /ar-2026-01-01-2026-01-31/);
@@ -586,7 +586,7 @@ test('actual report controls drill into partner, line and current goods; CSV exp
   }
   ui.state.set('age', 'Trên 90 ngày');
   tree = ui.render();
-  assert.equal(treeNodes(tree).find(n => n.type === 'button' && n.props.children === 'Xuất CSV').props.disabled, true);
+  assert.equal(treeNodes(tree).find(n => n.props?.label === 'Xuất CSV').props.disabled, true);
   ui.state.set('age', '');
   ui.state.set('view', 'aging');
   tree = ui.render();
@@ -594,7 +594,7 @@ test('actual report controls drill into partner, line and current goods; CSV exp
   ui.state.set('to', '2026-04-01');
   tree = ui.render();
   assert.ok(treeNodes(tree).some(n => n.props?.role === 'alert'));
-  assert.equal(treeNodes(tree).find(n => n.type === 'button' && n.props.children === 'Xuất CSV').props.disabled, true);
+  assert.equal(treeNodes(tree).find(n => n.props?.label === 'Xuất CSV').props.disabled, true);
 });
 test('actual threshold form freezes ambiguous payload and only reports confirmed success', async () => {
   const oldWindow = global.window;

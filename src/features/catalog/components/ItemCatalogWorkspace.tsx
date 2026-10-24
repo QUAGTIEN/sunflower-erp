@@ -1,3 +1,5 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { DataTablePagination } from '@/components/DataTablePagination';
@@ -530,9 +532,7 @@ export function ItemCatalogWorkspace({ currentUser }: { currentUser: UserProfile
       {!editor && !linkSource && view === 'items' && (
         <>
           <div className="erp-tab-actionbar">
-            <button className="btn btn-outline" disabled={loading || busy} onClick={() => void reload()}>
-              Tải lại
-            </button>
+            <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading || busy} onClick={() => void reload()} />
             <button className="btn btn-primary" disabled={!canWrite} onClick={() => openEditor()}>
               Tạo mã hàng
             </button>

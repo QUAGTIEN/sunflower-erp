@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { UserProfile } from '@/shared/types';
+import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
@@ -116,6 +118,9 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const ownCalendar = selectedUser === currentUser.uid;
   const canCreate = ownCalendar && !!employmentType && (!record || ['draft', 'returned'].includes(record.status));
   const totals = attendanceTotals(record?.days || {});
+  const pendingRequestCount = Object.values(record?.changeRequests || {}).filter(
+    item => item.status === 'pending'
+  ).length;
   const gridDays = monthCalendar(month);
   const matchesName = (name: string) => name.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi'));
   const approvals = useDataTablePagination(
@@ -316,14 +321,12 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
             </select>
           )}
           <div className="attendance-month-controls">
-            <button
-              type="button"
-              className="btn btn-outline"
+            <IconButton
+              label="Tháng trước"
+              icon={<ChevronLeft />}
               disabled={busy || loading || month === '2000-01'}
               onClick={() => shiftMonth(-1)}
-            >
-              Tháng trước
-            </button>
+            />
             <input
               aria-label="Tháng chấm công"
               type="month"
@@ -333,18 +336,22 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
               onChange={event => selectMonth(event.target.value)}
               disabled={busy || loading}
             />
+            <IconButton
+              label="Tháng sau"
+              icon={<ChevronRight />}
+              disabled={busy || loading || month === '2099-12'}
+              onClick={() => shiftMonth(1)}
+            />
             <button
               type="button"
               className="btn btn-outline"
-              disabled={busy || loading || month === '2099-12'}
-              onClick={() => shiftMonth(1)}
+              disabled={busy || loading || month === today.slice(0, 7)}
+              onClick={() => selectMonth(today.slice(0, 7))}
             >
-              Tháng sau
+              Tháng này
             </button>
           </div>
-          <button type="button" className="btn btn-outline" onClick={refresh} disabled={loading || busy}>
-            Tải lại
-          </button>
+          <IconButton label="Tải lại" icon={<RefreshCw />} onClick={refresh} disabled={loading || busy} />
           {tab === 'attendance' &&
             ownCalendar &&
             totals.days > 0 &&
@@ -365,46 +372,106 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
           Đang tải chấm công...
         </div>
       ) : !error && tab === 'attendance' ? (
-        <div className="attendance-calendar-scroll">
-          <div className="attendance-calendar" style={{ '--attendance-weeks': gridDays.length / 7 } as CSSProperties}>
-            {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'].map(label => (
-              <div key={label} className="attendance-weekday">
-                {label}
+        <>
+          <dl className="attendance-summary" aria-label={`Tổng hợp chấm công tháng ${month}`}>
+            <div>
+              <dt>Trạng thái tháng</dt>
+              <dd>
+                <span className={`attendance-status attendance-status--${record?.status || 'draft'}`}>
+                  {record ? ATTENDANCE_STATUS_LABELS[record.status] : 'Chưa ghi nhận'}
+                </span>
+              </dd>
+            </div>
+            {employmentType === 'part_time' ? (
+              <div>
+                <dt>Giờ làm</dt>
+                <dd>
+                  {number(totals.hours)} <small>giờ</small>
+                </dd>
               </div>
-            ))}
-            {gridDays.map((date, index) => {
-              const inMonth = date.startsWith(month),
-                day = inMonth ? record?.days[date] : undefined;
-              const pending = pendingDayChange(record, date);
-              const disabled =
-                !inMonth || date > today || busy || (!day && (!ownCalendar || (!!employmentType && !canCreate)));
-              return (
-                <button
-                  key={date}
-                  type="button"
-                  className={`attendance-calendar-day${!inMonth ? ' is-outside' : ''}${index % 7 >= 5 ? ' is-weekend' : ''}${date === today ? ' is-today' : ''}`}
-                  disabled={disabled}
-                  aria-label={`${dayLabel(date)}: ${day && employmentType ? formatAttendanceDay(day, employmentType) : 'Chưa ghi nhận'}${pending ? ' · Chờ duyệt yêu cầu' : ''}`}
-                  onClick={() => openDay(date)}
-                >
-                  <span className="attendance-date">{Number(date.slice(-2))}</span>
-                  {day && employmentType && (
-                    <span className="attendance-day-status">
-                      <span>{employmentType === 'full_time' ? 'Đi làm' : `${number(day.hours)}h`}</span>
-                      {day.lateMinutes > 0 && <span className="attendance-late">Trễ {day.lateMinutes}p</span>}
-                      {day.overtimeHours > 0 && <span className="attendance-ot">OT {number(day.overtimeHours)}h</span>}
-                    </span>
-                  )}
-                  {pending && (
-                    <span className="attendance-request-status">
-                      Chờ duyệt {pending.kind === 'delete' ? 'xóa' : 'sửa'}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            ) : (
+              <div>
+                <dt>Ngày công</dt>
+                <dd>
+                  {totals.days} <small>ngày</small>
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt>Đi trễ</dt>
+              <dd>
+                {totals.lateMinutes} <small>phút</small>
+              </dd>
+            </div>
+            {employmentType !== 'part_time' && (
+              <div>
+                <dt>Làm thêm (OT)</dt>
+                <dd>
+                  {number(totals.overtimeHours)} <small>giờ</small>
+                </dd>
+              </div>
+            )}
+            <div>
+              <dt>Yêu cầu chờ duyệt</dt>
+              <dd className={pendingRequestCount > 0 ? 'is-warning' : undefined}>{pendingRequestCount}</dd>
+            </div>
+          </dl>
+          <div className="attendance-calendar-scroll">
+            <div className="attendance-calendar" style={{ '--attendance-weeks': gridDays.length / 7 } as CSSProperties}>
+              {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'].map(label => (
+                <div key={label} className="attendance-weekday">
+                  {label}
+                </div>
+              ))}
+              {gridDays.map((date, index) => {
+                const inMonth = date.startsWith(month),
+                  day = inMonth ? record?.days[date] : undefined;
+                const pending = pendingDayChange(record, date);
+                const disabled =
+                  !inMonth || date > today || busy || (!day && (!ownCalendar || (!!employmentType && !canCreate)));
+                return (
+                  <button
+                    key={date}
+                    type="button"
+                    className={`attendance-calendar-day${!inMonth ? ' is-outside' : ''}${index % 7 >= 5 ? ' is-weekend' : ''}${index % 7 === 6 ? ' is-sunday' : ''}${date === today ? ' is-today' : ''}`}
+                    disabled={disabled}
+                    aria-label={`${dayLabel(date)}: ${day && employmentType ? formatAttendanceDay(day, employmentType) : 'Chưa ghi nhận'}${pending ? ' · Chờ duyệt yêu cầu' : ''}`}
+                    onClick={() => openDay(date)}
+                  >
+                    <span className="attendance-date">{Number(date.slice(-2))}</span>
+                    {day && employmentType && (
+                      <span className="attendance-day-status">
+                        <span className="attendance-chip attendance-chip--work">
+                          {employmentType === 'full_time' ? 'Đi làm' : `${number(day.hours)}h`}
+                        </span>
+                        {day.lateMinutes > 0 && (
+                          <span className="attendance-chip attendance-chip--late">Trễ {day.lateMinutes}p</span>
+                        )}
+                        {day.overtimeHours > 0 && (
+                          <span className="attendance-chip attendance-chip--ot">OT {number(day.overtimeHours)}h</span>
+                        )}
+                      </span>
+                    )}
+                    {pending && (
+                      <span className="attendance-chip attendance-chip--pending">
+                        Chờ duyệt {pending.kind === 'delete' ? 'xóa' : 'sửa'}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+          <div className="attendance-legend" aria-label="Chú thích">
+            <span className="attendance-legend__item attendance-legend__item--work">Đi làm</span>
+            <span className="attendance-legend__item attendance-legend__item--late">Đi trễ</span>
+            <span className="attendance-legend__item attendance-legend__item--ot">Làm thêm (OT)</span>
+            <span className="attendance-legend__item attendance-legend__item--pending">Chờ duyệt sửa / xóa</span>
+            <span className="attendance-legend__hint">
+              Bấm ô trống để chấm công, ô đã chấm để xem hoặc gửi yêu cầu sửa.
+            </span>
+          </div>
+        </>
       ) : !error && tab === 'approval' && admin ? (
         <div className="attendance-surface">
           <div className="attendance-toolbar">
@@ -597,9 +664,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
               placeholder="Tìm nhân viên..."
             />
             <div className="attendance-header-actions">
-              <button type="button" className="btn btn-outline" disabled={busy} onClick={() => safeSwitch(refresh)}>
-                Tải lại
-              </button>
+              <IconButton label="Tải lại" icon={<RefreshCw />} disabled={busy} onClick={() => safeSwitch(refresh)} />
               <button
                 type="button"
                 className="btn btn-primary"

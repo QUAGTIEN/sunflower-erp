@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { PageBackButton } from '@/components/PageBackButton';
 import { ProductionMaterialLedger } from '@/features/inventory/components/ProductionMaterialLedger';
 import { ProductionGoodsLedger } from '@/features/inventory/components/ProductionGoodsLedger';
 import { DataTablePagination } from '@/components/DataTablePagination';
@@ -806,28 +807,28 @@ export function ProductionOrderWorkspace({
       ) : selected ? (
         <>
           <header className="lsx-heading">
-            <div>
-              <h2>
-                {selected.lsxCode}{' '}
-                <span className={`lsx-status lsx-status--${selected.status}`}>
-                  {PRODUCTION_STATUSES[selected.status]}
-                </span>
-              </h2>
-              <span>
-                {selected.poCode} · {selected.customerName}
-              </span>
-            </div>
-            <div className="lsx-actions">
-              <button
-                className="btn btn-outline"
+            <div className="app-heading-with-back">
+              <PageBackButton
+                title="Quay lại danh sách LSX"
                 disabled={busy}
                 onClick={() => {
                   setSelectedId('');
                   setError('');
                 }}
-              >
-                Quay lại
-              </button>
+              />
+              <div>
+                <h2>
+                  {selected.lsxCode}{' '}
+                  <span className={`lsx-status lsx-status--${selected.status}`}>
+                    {PRODUCTION_STATUSES[selected.status]}
+                  </span>
+                </h2>
+                <span>
+                  {selected.poCode} · {selected.customerName}
+                </span>
+              </div>
+            </div>
+            <div className="lsx-actions">
               <button
                 className="btn btn-outline"
                 onClick={() => {

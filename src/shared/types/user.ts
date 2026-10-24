@@ -12,3 +12,12 @@ export interface UserProfile {
   updatedAt?: string;
   allowedPages?: string[];
 }
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  sale: 'Sale',
+  designer: 'Thiết kế',
+  purchaser: 'Mua hàng',
+  producer: 'Sản xuất',
+  accountant: 'Kế toán'
+};

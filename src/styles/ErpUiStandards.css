@@ -6,6 +6,7 @@
   --erp-page-gap: 12px;
   --erp-section-gap: 16px;
   --erp-control-height: 36px;
+  --erp-icon-button-size: 34px;
   --erp-table-header-bg: #e7ebf1;
   --erp-table-header-border: #c5cfdd;
   --erp-table-row-height: 40px;
@@ -1073,6 +1074,90 @@ input[type='checkbox']:disabled {
 .data-filter-button,
 .lead-candidate-column-button {
   border-radius: var(--erp-control-radius) !important;
+}
+
+/* Nút công cụ chỉ có icon: cùng kích thước, viền, trạng thái ở mọi phân hệ. */
+.erp-icon-button {
+  display: inline-flex;
+  width: var(--erp-icon-button-size);
+  height: var(--erp-icon-button-size);
+  min-height: var(--erp-icon-button-size);
+  flex: 0 0 var(--erp-icon-button-size);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--erp-control-radius);
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+}
+
+.erp-icon-button:hover:not(:disabled),
+.erp-icon-button.is-active {
+  border-color: #3157c8;
+  background: #f4f7ff;
+  color: #1e3a8a;
+}
+
+.erp-icon-button:focus-visible {
+  outline: 2px solid var(--erp-focus-ring);
+  outline-offset: 1px;
+}
+
+.erp-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.erp-icon-button svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.data-filter-button:not(.data-filter-button--text),
+.lead-candidate-column-button {
+  width: var(--erp-icon-button-size);
+  height: var(--erp-icon-button-size);
+  min-height: var(--erp-icon-button-size);
+  flex: 0 0 var(--erp-icon-button-size);
+}
+
+/* Nút quay lại luôn đứng trước tiêu đề trong cùng một hàng. */
+.app-heading-with-back {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-heading-with-back > :not(.app-back-button) {
+  min-width: 0;
+}
+
+/* Bảng chưa đủ dòng vẫn kẻ đường phân cách hàng tới cuối khung cuộn. */
+.app-main .erp-viewport-table-scroll {
+  background-color: #fff;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--erp-table-row-height) - 1px),
+    var(--erp-row-divider) calc(var(--erp-table-row-height) - 1px),
+    var(--erp-row-divider) var(--erp-table-row-height)
+  );
+  background-position: 0 40px;
+  background-repeat: repeat-x;
+  background-size: 100% calc(100% - 40px);
+  background-attachment: local;
+}
+
+.app-main .erp-viewport-table-scroll table tbody tr {
+  background-color: #fff;
+}
+
+.app-main .erp-viewport-table-scroll table tbody tr:last-child {
+  border-bottom: 1px solid var(--erp-row-divider);
 }
 
 .btn {

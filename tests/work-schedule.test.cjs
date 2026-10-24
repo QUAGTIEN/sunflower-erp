@@ -135,7 +135,8 @@ test('work page requires a group and uses the shared funnel filter panel', () =>
   assert.match(page, /DataFilterButton/);
   assert.match(page, /DataFilterPanel/);
   assert.match(page, /Nhóm công việc \*/);
-  assert.match(page, /work-schedule-group-cards/);
+  assert.match(page, /work-schedule-summary/);
+  assert.match(page, /aria-label="Nhóm công việc"/);
   assert.match(page, /Loại công việc \*/);
   assert.match(rules, /match \/work_schedule_groups\/\{documentId\}/);
   for (const file of [
@@ -151,7 +152,8 @@ test('work groups share one table workspace and status failure requires a note',
   const page = read('src/features/work-schedule/pages/WorkSchedulePage.tsx');
   const css = read('src/features/work-schedule/pages/WorkSchedule.css');
   const rules = read('firestore.rules');
-  assert.match(page, /work-schedule-group-cards/);
+  assert.match(page, /work-schedule-summary/);
+  assert.match(page, /aria-label="Nhóm công việc"/);
   assert.doesNotMatch(page, /<aside className="work-schedule-groups"/);
   assert.doesNotMatch(page, /work-schedule-group-header/);
   assert.match(page, /work-schedule-status-filters/);
@@ -189,9 +191,7 @@ test('work table stays compact with flat filters, colored statuses and an empty 
   assert.match(page, /work-schedule-filter-field/);
   assert.doesNotMatch(page, /<DataFilterSection/);
   assert.match(page, /work-schedule-empty__icon/);
-  assert.match(css, /\.work-schedule-status-filter--in_progress[^}]*background: #eaf2ff/);
-  assert.match(css, /\.work-schedule-status-filter--cannot_process[^}]*background: #fff0f0/);
-  assert.match(css, /\.work-schedule-status-filter--completed[^}]*background: #e9f8f1/);
+  assert.match(css, /\.work-schedule-status-filter\.is-active\s*\{[^}]*background: #fff/);
 });
 
 test('work and week tabs use the straight underline shared by ERP modules', () => {

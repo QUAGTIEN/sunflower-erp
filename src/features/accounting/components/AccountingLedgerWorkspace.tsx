@@ -1,3 +1,5 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { useEffect, useRef, useState } from 'react';
 import type { WarehouseActor } from '@/features/inventory/model/warehouse';
 import { warehouseDate, stockNumber } from '@/features/inventory/model/warehouse';
@@ -175,9 +177,7 @@ export function AccountingLedgerWorkspace({ actor, onRefresh }: { actor: Warehou
           value={search}
           onChange={event => setSearch(event.target.value)}
         />
-        <button className="btn btn-outline" disabled={loading} onClick={reload}>
-          Tải lại
-        </button>
+        <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
         {debtView && (
           <>
             <button

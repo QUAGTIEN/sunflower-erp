@@ -160,8 +160,12 @@ Trước khi sửa, đối chiếu với ít nhất một màn hình cùng loạ
 - Form: nhãn trên ô nhập, `*` cho trường bắt buộc, cảnh báo khi rời trang có dữ liệu chưa lưu,
   chặn rời khi đang lưu. Hành động nguy hiểm phải xác nhận (`DeleteConfirmationDialog`).
 - Đủ trạng thái: loading, empty, error, success, disabled, dữ liệu dài. Phản hồi qua `MutationToast`.
-- Icon: được dùng `lucide-react` (đã có sẵn) **đi kèm nhãn chữ**. Không dùng icon đơn lẻ thay cho chữ
-  ở nút hành động; không dùng emoji hay thư viện icon khác.
+- Icon: chỉ dùng `lucide-react` (đã có sẵn); không dùng emoji hay thư viện icon khác, không dùng icon trang trí thẻ/tiêu đề.
+  Nút công cụ (quay lại, tải lại, lọc, tùy chỉnh cột, xuất, in, chuyển kiểu xem, tháng trước/sau, đính kèm, thao tác
+  dòng) **chỉ có icon** qua `IconButton` / `PageBackButton` (có `aria-label` + tooltip). Hành động chính và hành động
+  nguy hiểm (Tạo, Lưu, Gửi duyệt, Xóa, Hủy...) **giữ nhãn chữ**. Nút quay lại luôn đứng đầu header, trước tiêu đề
+  (quyết định UI ngày 25/10/2026).
+- Bảng chưa đủ dòng vẫn kẻ đường phân cách hàng tới cuối khung (CSS chung trong `ErpUiStandards.css`).
 
 ### F. Kiểm tra trước khi bàn giao
 

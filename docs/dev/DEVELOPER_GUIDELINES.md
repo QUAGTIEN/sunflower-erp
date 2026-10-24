@@ -62,9 +62,12 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 
 ### 1.2. Biểu tượng (Icons)
 - Chỉ dùng **`lucide-react`** (đã có trong dự án). Không dùng emoji, ký tự biểu tượng hay thư viện icon khác.
-- Icon **luôn đi kèm nhãn chữ** rõ nghĩa ở nút hành động, menu và sidebar. Ví dụ: `[+] Thêm mới`, `Xóa`, `Tìm kiếm`.
-- Ngoại lệ được phép không có chữ: nút ba chấm của `RowActionMenu`, nút đóng modal và nút phân trang dùng chung.
-  Các nút này phải có `aria-label`/`title`.
+- **Nút công cụ chỉ có icon**, dùng `IconButton` (34 × 34px, viền 1px, tooltip và `aria-label` bắt buộc): tải lại,
+  bộ lọc, tùy chỉnh cột, xuất CSV, in, chuyển kiểu xem, tháng trước/sau, đính kèm, thao tác dòng, đóng, phân trang.
+- **Hành động chính và nguy hiểm giữ nhãn chữ** (icon đi kèm nếu cần): `[+] Tạo công việc`, `Lưu`, `Gửi duyệt`, `Xóa`.
+  Menu và sidebar luôn có chữ.
+- **Nút quay lại** dùng `PageBackButton` (chỉ icon), luôn đứng đầu header trước tiêu đề, bọc trong `.app-heading-with-back`.
+  Không đặt nút "Quay lại" dạng chữ ở thanh hành động; nút "Quay lại" ở chân form mang nghĩa bỏ nháp thì giữ chữ.
 - Cùng một hành động dùng cùng một icon trên mọi phân hệ. Kích thước icon thống nhất theo vị trí (sidebar, toolbar, menu).
 - Không dùng icon chỉ để trang trí tiêu đề, thẻ hoặc trạng thái.
 
@@ -131,6 +134,8 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 ### 1.10. Bảng dữ liệu
 - Hàng dữ liệu sử dụng nền trắng; không dùng nền xám trắng xen kẽ.
 - Chỉ sử dụng đường ngang mảnh để phân tách hàng; hạn chế đường dọc và khung bao nặng.
+- Bảng chưa đủ dòng vẫn kẻ đường phân cách hàng tới cuối khung cuộn (`.erp-viewport-table-scroll` trong
+  `ErpUiStandards.css`, theo `--erp-table-row-height`).
 - Chiều cao hàng tiêu chuẩn từ `44px` đến `48px`.
 - Hàng tiêu đề cột có thể sử dụng nền xám xanh rất nhạt để phân biệt với dữ liệu.
 - Mỗi ô dữ liệu ưu tiên hiển thị một dòng; nội dung dài dùng ellipsis và tooltip hoặc `title`.
@@ -159,7 +164,7 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 - Hành động nguy hiểm như xóa hoặc hủy dữ liệu phải dùng chữ rõ nghĩa, màu cảnh báo phù hợp và yêu cầu xác nhận.
 - Không sử dụng hai cách gọi khác nhau cho cùng một hành động, ví dụ không dùng lẫn `Thêm`, `Tạo mới` và `Bổ sung` nếu cùng một ý nghĩa.
 - Kích thước, padding và trạng thái hover, focus, disabled của nút phải đồng nhất giữa các trang.
-- Tuân thủ mục 1.2: nút và hành động có nhãn chữ rõ nghĩa; icon chỉ đi kèm, không thay thế chữ.
+- Tuân thủ mục 1.2: nút công cụ chỉ có icon (có tooltip); hành động chính và nguy hiểm luôn có nhãn chữ.
 
 ### 1.13. Phản hồi hệ thống
 - Mọi thao tác bất đồng bộ phải có phản hồi rõ ràng: đang xử lý, thành công hoặc thất bại.

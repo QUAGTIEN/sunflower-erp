@@ -665,7 +665,7 @@ const workspace = () => ({
   settings: [{ userId: worker.uid, employmentType: 'full_time', reviewerId: '', revision: 1 }],
   months: [monthRecord()]
 });
-test('UI keeps exactly three main tabs and only the month grid, without summary, annotations or daily-list navigation', () => {
+test('UI keeps exactly three main tabs, the month grid with one summary strip above it and no daily-list navigation', () => {
   const ui = screen(
     'src/features/attendance/pages/AttendancePage.tsx',
     'AttendancePage',
@@ -691,7 +691,7 @@ test('UI keeps exactly three main tabs and only the month grid, without summary,
   assert.equal(calendarDay('06/01/2026').props.disabled, true, 'new entries remain locked in a submitted month');
   assert.equal(nodes(tree).filter(node => node.type === 'nav').length, 1);
   assert.equal(nodes(tree).filter(node => node.type === 'table' || node.type === 'p').length, 0);
-  assert.ok(!nodes(tree).some(node => node.props?.className === 'attendance-summary'));
+  assert.equal(nodes(tree).filter(node => node.props?.className === 'attendance-summary').length, 1);
   ui.state.set('editingDate', '');
   ui.state.set('workspace', workspace());
   ui.state.set('month', '2099-12');
@@ -895,7 +895,7 @@ test('requesting from a day dialog uses request_change, keeps stored work intact
   assert.equal(writes[0].userId, worker.uid);
   assert.deepEqual(ui.state.get('workspace').months[0].days['2026-01-05'], fullDay);
   assert.deepEqual(toasts, ['Đã gửi yêu cầu chờ duyệt.']);
-  assert.ok(nodes(ui.render()).some(node => node.props?.className === 'attendance-request-status'));
+  assert.ok(nodes(ui.render()).some(node => node.props?.className === 'attendance-chip attendance-chip--pending'));
 });
 test('review UI shows proposed data, only mutates after manager submits, and requires rejection reason', async () => {
   const request = {

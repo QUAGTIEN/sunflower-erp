@@ -244,8 +244,8 @@ test('purchasing keeps request processing actions and columns while replacing ic
   tree = ui.render();
   assert.equal(ui.state.get('selectedRequestId'), 'r1');
   assert.ok(nodes(tree).some(node => node.type === 'button' && node.props.children === 'Đóng'));
-  assert.ok(nodes(tree).some(node => node.type?.name === 'DataFilterButton' && node.props.textOnly));
-  assert.ok(nodes(tree).some(node => node.type === 'button' && node.props.children === 'Tùy chỉnh cột'));
+  assert.ok(nodes(tree).some(node => node.type?.name === 'DataFilterButton' && !node.props.textOnly));
+  assert.ok(nodes(tree).some(node => node.type?.name === 'IconButton' && node.props.label === 'Tùy chỉnh cột'));
 });
 
 test('raw purchase receive opens the actual quantity voucher and does not run legacy stock or payable writes', async () => {

@@ -4,7 +4,7 @@
   --attendance-success: #087a55;
   --attendance-danger: #b42336;
   --attendance-warning: #925a08;
-  --attendance-day-height: clamp(100px, calc((100dvh - 220px) / var(--attendance-weeks, 5)), 180px);
+  --attendance-day-height: clamp(92px, calc((100dvh - 300px) / var(--attendance-weeks, 5)), 180px);
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -95,9 +95,7 @@
 .attendance-page .attendance-status--draft {
   color: var(--attendance-muted);
 }
-.attendance-page .attendance-status--pending,
-.attendance-late,
-.attendance-request-status {
+.attendance-page .attendance-status--pending {
   color: var(--attendance-warning);
 }
 .attendance-page .attendance-status--approved {
@@ -168,36 +166,9 @@
 .attendance-page .attendance-calendar-day:not(:disabled):hover {
   background: var(--erp-row-hover);
 }
-.attendance-page .attendance-calendar-day.is-today {
-  box-shadow: inset 0 0 0 1px var(--attendance-primary);
-}
 .attendance-page .attendance-calendar-day:focus-visible {
   outline: 2px solid var(--attendance-primary);
   outline-offset: -2px;
-}
-.attendance-date {
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-.attendance-day-status {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  color: var(--attendance-success);
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: normal;
-}
-.attendance-day-status > span {
-  white-space: nowrap;
-}
-.attendance-ot {
-  color: #1d4ed8;
-}
-.attendance-request-status {
-  margin-top: auto;
-  font-size: 11px;
 }
 .attendance-message {
   display: flex;
@@ -380,4 +351,160 @@
   .attendance-dialog footer > span {
     display: none;
   }
+}
+
+/* Dải tổng hợp tháng đặt ngay trên lịch. */
+.attendance-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: 0;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-surface-radius);
+  background: #fff;
+}
+.attendance-summary > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  border-right: 1px solid var(--erp-border-color);
+}
+.attendance-summary > div:last-child {
+  border-right: 0;
+}
+.attendance-summary dt {
+  overflow: hidden;
+  color: #475569;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attendance-summary dd {
+  margin: 0;
+  color: var(--color-text-main);
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+.attendance-summary dd small {
+  color: var(--attendance-muted);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.attendance-summary dd.is-warning {
+  color: var(--attendance-warning);
+}
+.attendance-summary .attendance-status {
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.attendance-month-controls input[type='month'] {
+  width: 150px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.attendance-date {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.attendance-page .attendance-calendar-day.is-sunday:not(.is-outside) .attendance-date {
+  color: var(--attendance-danger);
+}
+.attendance-page .attendance-calendar-day.is-today .attendance-date {
+  background: var(--attendance-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.attendance-day-status {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Nhãn trạng thái trong ô ngày: màu nền nhạt, chữ đậm cùng tông. */
+.attendance-chip {
+  display: inline-flex;
+  max-width: 100%;
+  height: 20px;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attendance-chip--work {
+  background: #dcfce7;
+  color: #166534;
+}
+.attendance-chip--late {
+  background: #fef3c7;
+  color: #92400e;
+}
+.attendance-chip--ot {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+.attendance-chip--pending {
+  margin-top: auto;
+  border: 1px solid #f59e0b;
+  background: #fff;
+  color: var(--attendance-warning);
+}
+
+.attendance-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  color: #475569;
+  font-size: 12px;
+}
+.attendance-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.attendance-legend__item::before {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  content: '';
+}
+.attendance-legend__item--work::before {
+  background: #dcfce7;
+}
+.attendance-legend__item--late::before {
+  background: #fef3c7;
+}
+.attendance-legend__item--ot::before {
+  background: #dbeafe;
+}
+.attendance-legend__item--pending::before {
+  box-shadow: inset 0 0 0 1px #f59e0b;
+}
+.attendance-legend__hint {
+  margin-left: auto;
 }

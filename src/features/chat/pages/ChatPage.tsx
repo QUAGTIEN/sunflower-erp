@@ -10,7 +10,10 @@ import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway
 import { auditService } from '@/services/auditService';
 import { useLanguage } from '@/context/LanguageContext';
 import { getPOQueueLabel } from '@/features/sales/model/poWorkflow';
-import { Download, FileText, Paperclip, Plus, X } from 'lucide-react';
+import { Download, FileText, Paperclip, Plus, Search, Send, Settings2, X } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
+import { USER_ROLE_LABELS } from '@/shared/types';
+import './Chat.css';
 import { formatTime } from '@/shared/utils/dateFormatting';
 import { productionQuantityLabel } from '@/features/production/model/productionOrder';
 import {
@@ -40,7 +43,13 @@ const createMessageId = () =>
 
 const isSafeAttachmentUrl = (url: string) => /^https:\/\//i.test(url) || /^data:/i.test(url);
 
-const CHAT_CHANNEL_COLORS = ['#1e40af', '#0f766e', '#7c3aed', '#b45309', '#be123c', '#0369a1', '#4338ca', '#166534'];
+const getInitials = (name: unknown) =>
+  String(name || '')
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map(part => part.charAt(0).toLocaleUpperCase('vi'))
+    .join('') || '?';
 
 interface ChatPageProps {
   currentUser: UserProfile;
@@ -66,6 +75,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const { t } = useLanguage();
   const [activeChannelId, setActiveChannelId] = useState<string>('all');
   const [messageText, setMessageText] = useState('');
+  const [channelSearch, setChannelSearch] = useState('');
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<PendingChatAttachment[]>([]);
   const [attachmentError, setAttachmentError] = useState('');
@@ -501,212 +511,166 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const activeChannel = availableChannels.find(ch => ch.id === activeChannelId) || availableChannels[0];
   const channelMessages = messages.filter(msg => msg.type === 'channel' && msg.targetId === activeChannelId);
 
+  const normalizedChannelSearch = channelSearch.trim().toLocaleLowerCase('vi');
+  const visibleChannels = normalizedChannelSearch
+    ? availableChannels.filter(ch =>
+        String(ch.name || '')
+          .toLocaleLowerCase('vi')
+          .includes(normalizedChannelSearch)
+      )
+    : availableChannels;
+  const canEditActiveChannel =
+    (currentUser.role === 'admin' || activeChannel?.createdBy === currentUser.uid) && activeChannel?.id !== 'all';
+  const activeChannelMemberCount = Array.isArray(activeChannel?.members) ? activeChannel.members.length : 0;
+
   return (
-    <div className="chat-page-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
-      <div className="chat-page-container">
-        {/* Sidebar Kênh */}
-        <div className="chat-channels-list">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                color: 'var(--color-text-muted)',
-                textTransform: 'uppercase',
-                margin: 0
-              }}
-            >
-              {t('Kênh thảo luận')}
-            </span>
-            <button
-              type="button"
-              className="btn btn-sm btn-outline btn-symbol"
-              style={{ width: '24px', height: '24px', minWidth: '24px', borderRadius: '4px' }}
+    <div className="chat-page-view">
+      <div className="chat-workspace">
+        <aside className="chat-sidebar" aria-label={t('Danh sách kênh')}>
+          <div className="chat-sidebar__toolbar">
+            <label className="chat-sidebar__search">
+              <Search size={14} aria-hidden="true" />
+              <input
+                type="search"
+                value={channelSearch}
+                onChange={event => setChannelSearch(event.target.value)}
+                placeholder={t('Tìm kênh')}
+                aria-label={t('Tìm kênh')}
+              />
+            </label>
+            <IconButton
+              label={t('Tạo kênh mới')}
+              icon={<Plus />}
               onClick={() => {
                 setNewChannelName('');
                 setNewChannelDesc('');
                 setNewChannelMembers([]);
                 setShowCreateModal(true);
               }}
-              title={t('Tạo kênh mới')}
-            >
-              <Plus size={12} />
-            </button>
+            />
           </div>
-          {availableChannels.map((ch, channelIndex) => {
-            const count = getUnreadCount(ch.id);
-            return (
-              <button
-                key={ch.id}
-                className={`chat-channel-btn ${activeChannelId === ch.id ? 'active' : ''}`}
-                style={
-                  {
-                    '--chat-channel-color': CHAT_CHANNEL_COLORS[channelIndex % CHAT_CHANNEL_COLORS.length]
-                  } as React.CSSProperties
-                }
-                onClick={() => {
-                  clearPendingAttachments();
-                  setReplyingTo(null);
-                  setActiveChannelId(ch.id);
-                }}
-              >
-                <span># {ch.name}</span>
-                {count > 0 && <span className="chat-channel-badge">{count}</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Khung Chat */}
-        <div className="chat-box-panel">
-          <div
-            className="chat-box-header"
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-          >
-            <div>
-              <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '15px' }}>
-                # {activeChannel?.name}
-              </span>
-              <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>{activeChannel?.desc}</p>
-            </div>
-            {(currentUser.role === 'admin' || activeChannel?.createdBy === currentUser.uid) &&
-              activeChannel?.id !== 'all' && (
+          <div className="chat-sidebar__heading">{t('Kênh thảo luận')}</div>
+          <nav className="chat-sidebar__channels">
+            {visibleChannels.map(ch => {
+              const count = getUnreadCount(ch.id);
+              const isActive = activeChannelId === ch.id;
+              return (
                 <button
+                  key={ch.id}
                   type="button"
-                  className="btn btn-sm btn-outline"
-                  style={{ fontSize: '12px', padding: '4px 10px' }}
+                  className={`chat-channel${isActive ? ' is-active' : ''}`}
+                  aria-current={isActive ? 'true' : undefined}
+                  title={ch.name}
                   onClick={() => {
-                    setEditChannelName(activeChannel.name);
-                    setEditChannelDesc(activeChannel.desc || '');
-                    setEditChannelMembers(activeChannel.members || []);
-                    setShowEditModal(true);
+                    clearPendingAttachments();
+                    setReplyingTo(null);
+                    setActiveChannelId(ch.id);
                   }}
                 >
-                  {t('Sửa kênh')}
+                  <span className="chat-channel__hash" aria-hidden="true">
+                    #
+                  </span>
+                  <span className="chat-channel__name">{ch.name}</span>
+                  {count > 0 && (
+                    <span className="chat-channel__badge" aria-label={`${count} ${t('tin chưa đọc')}`}>
+                      {count}
+                    </span>
+                  )}
                 </button>
-              )}
-          </div>
+              );
+            })}
+            {visibleChannels.length === 0 && <p className="chat-sidebar__empty">{t('Không tìm thấy kênh phù hợp.')}</p>}
+          </nav>
+        </aside>
 
-          <div className="chat-messages-area">
+        <section className="chat-panel" aria-label={activeChannel ? `# ${activeChannel.name}` : t('Kênh chat')}>
+          <header className="chat-panel__header">
+            <div className="chat-panel__title">
+              <h2 title={activeChannel?.name}># {activeChannel?.name}</h2>
+              <p title={activeChannel?.desc}>
+                {activeChannel?.desc}
+                {activeChannelMemberCount > 0 &&
+                  `${activeChannel?.desc ? ' · ' : ''}${activeChannelMemberCount} ${t('thành viên')}`}
+              </p>
+            </div>
+            {canEditActiveChannel && (
+              <IconButton
+                label={t('Sửa kênh')}
+                icon={<Settings2 />}
+                onClick={() => {
+                  setEditChannelName(activeChannel.name);
+                  setEditChannelDesc(activeChannel.desc || '');
+                  setEditChannelMembers(activeChannel.members || []);
+                  setShowEditModal(true);
+                }}
+              />
+            )}
+          </header>
+
+          <div className="chat-panel__messages">
             {channelMessages.map(msg => {
               const isMe = msg.senderId === currentUser.uid;
+              const roleLabel =
+                USER_ROLE_LABELS[msg.senderRole as keyof typeof USER_ROLE_LABELS] || String(msg.senderRole || '');
               return (
-                <div key={msg.id} className={`chat-message-row ${isMe ? 'me' : 'other'}`}>
-                  <div
-                    className="chat-message-meta"
-                    style={{
-                      display: 'flex',
-                      gap: '6px',
-                      justifyContent: isMe ? 'flex-end' : 'flex-start',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>{msg.senderName}</span>
-                    <span style={{ fontSize: '10px', opacity: 0.8 }}>
-                      ({String(msg.senderRole || '').toUpperCase()})
-                    </span>
-                    <span>•</span>
-                    <span>{formatTime(msg.createdAt)}</span>
-                    {!msg.recalled && (
-                      <>
-                        <span>•</span>
-                        <button
-                          onClick={() => setReplyingTo(msg)}
-                          style={{
-                            border: 'none',
-                            background: 'none',
-                            color: 'var(--color-primary)',
-                            cursor: 'pointer',
-                            padding: 0,
-                            fontSize: '10px'
-                          }}
-                        >
-                          {t('Trả lời')}
-                        </button>
-                        {(isMe || currentUser.role === 'admin') && (
-                          <>
-                            <span>•</span>
-                            <button
-                              onClick={() => void handleRecallMessage(msg)}
-                              style={{
-                                border: 'none',
-                                background: 'none',
-                                color: 'var(--color-danger)',
-                                cursor: 'pointer',
-                                padding: 0,
-                                fontSize: '10px'
-                              }}
-                            >
+                <article key={msg.id} className={`chat-post${msg.recalled ? ' is-recalled' : ''}`}>
+                  <span className="chat-post__avatar" aria-hidden="true">
+                    {getInitials(msg.senderName)}
+                  </span>
+                  <div className="chat-post__body">
+                    <div className="chat-post__meta">
+                      <strong>{msg.senderName}</strong>
+                      {roleLabel && <span>{t(roleLabel)}</span>}
+                      <time dateTime={msg.createdAt}>{formatTime(msg.createdAt)}</time>
+                      {!msg.recalled && (
+                        <span className="chat-post__actions">
+                          <button type="button" onClick={() => setReplyingTo(msg)}>
+                            {t('Trả lời')}
+                          </button>
+                          {(isMe || currentUser.role === 'admin') && (
+                            <button type="button" className="is-danger" onClick={() => void handleRecallMessage(msg)}>
                               {t('Thu hồi')}
                             </button>
-                          </>
-                        )}
-                        {currentUser.role === 'admin' && (
-                          <>
-                            <span>•</span>
+                          )}
+                          {currentUser.role === 'admin' && (
                             <button
+                              type="button"
+                              className="is-danger"
                               onClick={() => void handleDeleteMessage(msg)}
-                              style={{
-                                border: 'none',
-                                background: 'none',
-                                color: 'var(--color-danger)',
-                                cursor: 'pointer',
-                                padding: 0,
-                                fontSize: '10px'
-                              }}
                               title={t('Xóa vĩnh viễn tin nhắn')}
                             >
                               {t('Xóa')}
                             </button>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div className="chat-message-bubble">
+                          )}
+                        </span>
+                      )}
+                    </div>
                     {msg.recalled ? (
-                      <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>{t('Tin nhắn đã bị thu hồi')}</span>
+                      <p className="chat-post__recalled">{t('Tin nhắn đã bị thu hồi')}</p>
                     ) : (
-                      <>
+                      <div className="chat-post__content">
                         {msg.replyTo && (
-                          <div
-                            style={{
-                              padding: '4px 8px',
-                              backgroundColor: isMe ? 'rgba(255, 255, 255, 0.15)' : '#f1f5f9',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              marginBottom: '6px',
-                              borderLeft: '3px solid var(--color-primary)',
-                              color: isMe ? '#e2e8f0' : 'var(--color-text-muted)',
-                              fontStyle: 'italic',
-                              maxWidth: '100%',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            <strong>@{msg.replyTo.senderName}:</strong> "{msg.replyTo.text || t('Tệp đính kèm')}"
-                          </div>
+                          <blockquote className="chat-post__quote">
+                            <strong>@{msg.replyTo.senderName}:</strong> {msg.replyTo.text || t('Tệp đính kèm')}
+                          </blockquote>
                         )}
                         {msg.messageText ? renderMessageContent(msg.messageText) : null}
                         {renderMessageAttachments(msg.attachments || [])}
-                      </>
+                      </div>
                     )}
                   </div>
-                </div>
+                </article>
               );
             })}
             <div ref={messagesEndRef} />
             {channelMessages.length === 0 && (
-              <div
-                style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}
-              >
+              <p className="chat-panel__empty">
                 {t('Chưa có tin nhắn nào trong kênh này. Hãy bắt đầu cuộc hội thoại!')}
-              </div>
+              </p>
             )}
           </div>
 
-          <div style={{ position: 'relative' }}>
+          <div className="chat-composer">
             {showSuggestions && filteredSuggestions.length > 0 && (
               <div className="chat-suggestions-popup">
                 <div className="chat-suggestion-header">
@@ -725,40 +689,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               </div>
             )}
             {replyingTo && (
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '6px 12px',
-                  backgroundColor: '#f1f5f9',
-                  borderTop: '1px solid var(--color-border-light)',
-                  fontSize: '12px',
-                  color: 'var(--color-text-muted)',
-                  borderRadius: '4px 4px 0 0',
-                  margin: '0 10px -1px 10px'
-                }}
-              >
-                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
+              <div className="chat-composer__reply">
+                <span>
                   <strong>
                     {t('Trả lời')} {replyingTo.senderName}:
                   </strong>{' '}
-                  "{replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')}"
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setReplyingTo(null)}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    color: 'var(--color-text-muted)',
-                    cursor: 'pointer',
-                    fontWeight: 'bold',
-                    padding: '0 4px'
-                  }}
-                >
-                  ×
-                </button>
+                  {replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')}
+                </span>
+                <IconButton label={t('Bỏ trả lời')} icon={<X />} onClick={() => setReplyingTo(null)} />
               </div>
             )}
             {pendingAttachments.length > 0 && (
@@ -791,7 +729,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 {attachmentError}
               </div>
             )}
-            <form onSubmit={handleSendMessage} className="chat-input-bar">
+            <form onSubmit={handleSendMessage} className="chat-composer__form">
               <input
                 ref={attachmentInputRef}
                 type="file"
@@ -800,20 +738,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar"
                 onChange={handleAttachmentSelection}
               />
-              <button
-                type="button"
-                className="chat-attach-button"
+              <IconButton
+                label={t('Đính kèm ảnh hoặc tệp')}
+                icon={<Paperclip />}
                 onClick={() => attachmentInputRef.current?.click()}
                 disabled={isSendingMessage || pendingAttachments.length >= CHAT_ATTACHMENT_MAX_FILES}
-                title={t('Đính kèm ảnh hoặc tệp')}
-                aria-label={t('Đính kèm ảnh hoặc tệp')}
-              >
-                <Paperclip size={19} aria-hidden="true" />
-              </button>
+              />
               <input
                 type="text"
-                className="chat-input-field"
+                className="chat-composer__input"
                 placeholder={t('Nhập nội dung... (Gõ @ để tag nhân viên, # để gọi đơn hàng PO/LSX)')}
+                aria-label={t('Nội dung tin nhắn')}
                 value={messageText}
                 onChange={e => setMessageText(e.target.value)}
                 disabled={isSendingMessage}
@@ -821,14 +756,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               <button
                 type="submit"
                 className="btn btn-primary"
-                style={{ padding: '8px 20px', fontWeight: 600 }}
                 disabled={isSendingMessage || (!messageText.trim() && pendingAttachments.length === 0)}
               >
+                <Send size={14} aria-hidden="true" />
                 {isSendingMessage ? t('Đang gửi...') : t('Gửi')}
               </button>
             </form>
           </div>
-        </div>
+        </section>
       </div>
 
       {/* CREATE CHANNEL MODAL */}

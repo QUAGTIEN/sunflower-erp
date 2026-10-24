@@ -469,9 +469,10 @@ test('Sale cannot open production, even with an old explicit page grant; other p
   assert.equal(canAccessPage(sale, 'sales'), true);
   assert.equal(canAccessPage(producer, 'production'), true);
   assert.equal(canAccessPage({ ...admin, allowedPages: undefined }, 'production'), true);
-  const Component = loader({ '@/infrastructure/firebase/erpDataGateway': { dbService: {} } })(
-    'src/features/production/components/ProductionOrderWorkspace.tsx'
-  ).ProductionOrderWorkspace;
+  const Component = loader({
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
+    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+  })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const html = renderToStaticMarkup(
     React.createElement(Component, {
       pos: [po()],
@@ -634,9 +635,10 @@ test('machine list combines catalog, active LSX, operator and deadline while ret
   assert.deepEqual(writes[0][2].supportedMaterials, ['Giấy']);
 });
 test('workspace renders all accessible orders across POs without a browser or real database', () => {
-  const Component = loader({ '@/infrastructure/firebase/erpDataGateway': { dbService: {} } })(
-    'src/features/production/components/ProductionOrderWorkspace.tsx'
-  ).ProductionOrderWorkspace;
+  const Component = loader({
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
+    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+  })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const props = { pos: [po()], currentUser: producer, users: [producer], commands: [], onRefresh() {} };
   assert.match(renderToStaticMarkup(React.createElement(Component, props)), /Chưa có lệnh phù hợp/);
   const commands = [
@@ -650,9 +652,10 @@ test('workspace renders all accessible orders across POs without a browser or re
 });
 
 test('legacy-only lists count the displayed records and keep detail tables at content height', () => {
-  const Component = loader({ '@/infrastructure/firebase/erpDataGateway': { dbService: {} } })(
-    'src/features/production/components/ProductionOrderWorkspace.tsx'
-  ).ProductionOrderWorkspace;
+  const Component = loader({
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
+    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+  })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const props = { pos: [po()], currentUser: producer, users: [producer], onRefresh() {} };
   const legacy = { id: 'old', poId: 'po1', lsxCode: 'LSX-OLD', status: 'producing', productName: 'Tem cũ' };
   const html = renderToStaticMarkup(
@@ -1116,9 +1119,10 @@ test('read-only machine subscriptions do not initialize machine records for acco
 test('accountant UI exposes only own draft editing and keeps released/running operations hidden', async () => {
   const b = backend();
   await b.manage(draft(), accountant);
-  const Component = loader({ '@/infrastructure/firebase/erpDataGateway': { dbService: {} } })(
-    'src/features/production/components/ProductionOrderWorkspace.tsx'
-  ).ProductionOrderWorkspace;
+  const Component = loader({
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
+    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+  })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const html = order =>
     renderToStaticMarkup(
       React.createElement(Component, {

@@ -25,12 +25,13 @@ Thay đổi hình thức không được ngầm đổi logic nghiệp vụ, rout
 - ERP nội bộ: sáng, tin cậy, tiết chế, mật độ thông tin cao, tối ưu desktop. Chuẩn tham chiếu **MISA**.
 - Pattern mới chưa có mẫu trong dự án: **hỏi người dùng ảnh tham chiếu MISA** trước khi làm.
 - Đồng nhất giữa các phân hệ là bắt buộc; không tạo biến thể riêng cho một trang.
-- Icon `lucide-react` luôn kèm chữ (ngoại lệ: nút ba chấm, nút đóng, phân trang dùng chung).
+- Icon `lucide-react`: nút công cụ chỉ có icon qua `IconButton`/`PageBackButton` (có tooltip); hành động chính
+  và nguy hiểm giữ nhãn chữ. Không dùng icon trang trí.
 - Không Tailwind/Motion/shadcn/design system khác, không dark mode, không gradient/glow/card trang trí.
 
 ## Component dùng lại trước khi viết mới
 
-`DataTablePagination`, `RowActionMenu`, `TableColumnCustomizer`, `ReorderableTableColumns`, `ExpandableTableText`,
+`IconButton`, `DataTablePagination`, `RowActionMenu`, `TableColumnCustomizer`, `ReorderableTableColumns`, `ExpandableTableText`,
 `AdvancedDataFilters`, `DataWorkspaceFilters`, `MutationToast`, `DeleteConfirmationDialog`, `PageBackButton`,
 `PageContextHeader`, `SearchableProvinceSelect` (trong `src/components`). Hook bảng trong `src/hooks`.
 Cảnh báo rời trang: `src/shared/feedback/navigationGuard.ts`.

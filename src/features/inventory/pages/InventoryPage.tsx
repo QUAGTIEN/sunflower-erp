@@ -1,3 +1,5 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { stockAlert } from '@/features/accounting/model/operationalReports';
 import { useEffect, useRef, useState } from 'react';
 import type { UserProfile } from '@/shared/types';
@@ -215,9 +217,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                 <option value="exports">Phiếu xuất cũ</option>
               </select>
             )}
-            <button className="btn btn-outline" disabled={loading} onClick={reload}>
-              Tải lại
-            </button>
+            <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
             {canPostWarehouse(currentUser) && tab !== 'legacy' && (
               <button className="btn btn-primary" disabled={!canWrite} onClick={() => setCreating(true)}>
                 Lập phiếu kho

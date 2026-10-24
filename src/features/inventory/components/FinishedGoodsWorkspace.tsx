@@ -1,3 +1,5 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { stockAlert, type StockReportRow } from '@/features/accounting/model/operationalReports';
 import { StockThresholdDialog } from './StockThresholdDialog';
 import { useEffect, useRef, useState } from 'react';
@@ -163,9 +165,7 @@ export function FinishedGoodsWorkspace({
           value={search}
           onChange={event => setSearch(event.target.value)}
         />
-        <button className="btn btn-outline" disabled={loading} onClick={reload}>
-          Tải lại
-        </button>
+        <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
         {canPostGoods(currentUser) && (
           <button
             className="btn btn-primary"

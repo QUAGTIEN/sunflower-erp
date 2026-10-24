@@ -434,32 +434,6 @@
   line-height: 1.25;
 }
 
-.lead-form-page__header .app-back-button {
-  min-height: 34px;
-  padding: 4px 10px 4px 5px;
-  border-radius: 6px;
-}
-
-.lead-form-page__header .app-back-button__icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
-}
-
-.lead-form-page__header .app-back-button--icon-only {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-}
-
-.lead-form-page__header .app-back-button--icon-only .app-back-button__icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-}
-
 .lead-form-page__form {
   display: flex;
   flex: 1;
