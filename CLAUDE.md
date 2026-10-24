@@ -29,11 +29,12 @@ nghiệp vụ viết bằng tiếng Việt; định danh trong code (biến, col
 | Lint | `npm run lint` hoặc `npx eslint <file>` |
 | Định dạng | `npm run format -- <file>` / `npm run format:check -- <file>` (Prettier, cấu hình `.prettierrc.json`) |
 
-Baseline ngày 24/10/2026:
+Baseline ngày 25/10/2026:
 - Build đạt; có sẵn cảnh báo chunk > 500 KB.
 - Test 346/346 đạt.
-- Lint 305 lỗi nằm ở 18 file cũ, lớn nhất là `CrmPage`, `SalesPage`, `POFormFullScreen`.
-- Toàn bộ `.ts/.tsx` trong `src/`, `server/`, `api/` đã theo Prettier. CSS và `tests/` chưa định dạng.
+- Lint 187 lỗi: phần lớn `no-explicit-any` (174), còn 9 `set-state-in-effect` và 2 cảnh báo `exhaustive-deps`
+  chờ quyết định vì sửa sẽ đổi thời điểm chạy. Không commit nếu số lỗi tăng.
+- Toàn bộ code, CSS và `tests/` đã theo Prettier (trừ tài liệu `.md`, `vercel.json`, `scripts/clear-db.js`).
 
 Test mới nạp file TypeScript bằng `tests/helpers/loadTs.cjs` (`createLoader(stubs)`, `readSource`).
 Không chép lại loader vào từng file test.

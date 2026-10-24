@@ -85,7 +85,9 @@ và `poCompatibility.ts`.
   Firebase/Admin được stub bằng store trong bộ nhớ.
 - Nhiều test đọc mã nguồn dạng văn bản để kiểm tra hợp đồng tĩnh, kể cả `firestore.rules`. Đổi tên hàm hoặc
   class có thể làm test lỗi dù hành vi không đổi.
-- Màn lớn đã tách: JSX con nằm ở thư mục cùng tên (`components/leadCandidateWorkspace/`), logic ở `features/crm/hooks/`.
+- Màn lớn đã tách: JSX con nằm ở thư mục cùng tên (`components/leadCandidateWorkspace/`, `pages/leadsPage/`,
+  `sales/components/poForm/`), logic ở `features/crm/hooks/`. `POFormFullScreen` giữ state trong file vì test
+  `po-manual-entry` gán state theo thứ tự `useState`.
   Test tĩnh đọc cả màn bằng `readModuleSource(file, folder)` trong `tests/helpers/loadTs.cjs`.
-- File lớn cần đọc có mục tiêu: `CrmPage.tsx` (~3.3k dòng), `LeadCandidateWorkspace.tsx` (~1.7k), `LeadsPage.tsx`,
-  `POFormFullScreen.tsx`, `SalesPage.tsx`, `AppShell.tsx`. `src/data/vietnamAdministrativeUnits.ts` là dữ liệu tĩnh 13k dòng.
+- File lớn cần đọc có mục tiêu: `CrmPage.tsx` (~3.3k dòng), `LeadsPage.tsx` (~2.1k), `POFormFullScreen.tsx` (~1.9k),
+  `LeadCandidateWorkspace.tsx` (~1.7k), `SalesPage.tsx`, `AppShell.tsx`. `src/data/vietnamAdministrativeUnits.ts` là dữ liệu tĩnh 13k dòng.
