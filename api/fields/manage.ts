@@ -5,5 +5,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const caller = await requireAdmin(request);
     return jsonResponse(await manageFieldConfiguration(caller, await readJsonBody(request)));
-  } catch (error) { return apiErrorResponse(error); }
+  } catch (error) {
+    return apiErrorResponse(error);
+  }
 }

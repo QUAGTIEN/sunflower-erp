@@ -29,14 +29,14 @@ const normalizePrivateKey = (value: string): string => {
 export const getFirebaseAdminServices = () => {
   const projectId = requiredEnvironmentVariable('FIREBASE_PROJECT_ID');
   const clientEmail = requiredEnvironmentVariable('FIREBASE_CLIENT_EMAIL');
-  const privateKey = normalizePrivateKey(
-    requiredEnvironmentVariable('FIREBASE_PRIVATE_KEY')
-  );
+  const privateKey = normalizePrivateKey(requiredEnvironmentVariable('FIREBASE_PRIVATE_KEY'));
 
-  const app = getApps()[0] ?? initializeApp({
-    credential: cert({ projectId, clientEmail, privateKey }),
-    projectId
-  });
+  const app =
+    getApps()[0] ??
+    initializeApp({
+      credential: cert({ projectId, clientEmail, privateKey }),
+      projectId
+    });
 
   return {
     auth: getAuth(app),

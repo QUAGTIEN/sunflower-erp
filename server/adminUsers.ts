@@ -2,16 +2,9 @@ import type { DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import type { DocumentData, DocumentSnapshot } from 'firebase-admin/firestore';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
 
-export const USER_ROLES = [
-  'admin',
-  'sale',
-  'designer',
-  'purchaser',
-  'producer',
-  'accountant'
-] as const;
+export const USER_ROLES = ['admin', 'sale', 'designer', 'purchaser', 'producer', 'accountant'] as const;
 
-export type UserRole = typeof USER_ROLES[number];
+export type UserRole = (typeof USER_ROLES)[number];
 
 export const ERP_PAGE_IDS = [
   'dashboard',
@@ -63,13 +56,12 @@ export class AdminApiError extends Error {
   }
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => (
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const readJsonBody = async (request: Request): Promise<Record<string, unknown>> => {
   try {
-    const body = await request.json() as unknown;
+    const body = (await request.json()) as unknown;
     if (!isRecord(body)) {
       throw new AdminApiError(400, 'Dữ liệu gửi lên không hợp lệ.', 'request/invalid-body');
     }
@@ -80,12 +72,7 @@ export const readJsonBody = async (request: Request): Promise<Record<string, unk
   }
 };
 
-const requiredString = (
-  body: Record<string, unknown>,
-  field: string,
-  label: string,
-  minimumLength = 1
-): string => {
+const requiredString = (body: Record<string, unknown>, field: string, label: string, minimumLength = 1): string => {
   const value = body[field];
   if (typeof value !== 'string' || value.trim().length < minimumLength) {
     throw new AdminApiError(400, `${label} không hợp lệ.`, `validation/${field}`);
@@ -93,11 +80,7 @@ const requiredString = (
   return value.trim();
 };
 
-const requiredBoolean = (
-  body: Record<string, unknown>,
-  field: string,
-  label: string
-): boolean => {
+const requiredBoolean = (body: Record<string, unknown>, field: string, label: string): boolean => {
   const value = body[field];
   if (typeof value !== 'boolean') {
     throw new AdminApiError(400, `${label} không hợp lệ.`, `validation/${field}`);
@@ -170,52 +153,40 @@ const bearerTokenFromRequest = (request: Request): string => {
   return match[1];
 };
 
-const profileFromSnapshot = (
-  snapshot: DocumentSnapshot<DocumentData>
-): ErpUserProfile | null => {
+const profileFromSnapshot = (snapshot: DocumentSnapshot<DocumentData>): ErpUserProfile | null => {
   if (!snapshot.exists) return null;
   const data = snapshot.data();
   if (!data || typeof data.email !== 'string') return null;
   return data as ErpUserProfile;
 };
 
-const bootstrapAdminProfile = async (
-  decodedToken: DecodedIdToken,
-  authUser: UserRecord
-): Promise<ErpUserProfile> => {
+const bootstrapAdminProfile = async (decodedToken: DecodedIdToken, authUser: UserRecord): Promise<ErpUserProfile> => {
   const email = authUser.email?.toLowerCase();
   if (email !== BOOTSTRAP_ADMIN_EMAIL) {
     throw new AdminApiError(403, 'Tài khoản không có quyền quản trị.', 'auth/admin-required');
   }
 
   const { firestore } = getFirebaseAdminServices();
-  const legacyProfiles = await firestore
-    .collection('users')
-    .where('email', '==', email)
-    .limit(5)
-    .get();
-  const legacyAdmin = legacyProfiles.docs
-    .map(document => document.data())
-    .find(data => data.role === 'admin');
+  const legacyProfiles = await firestore.collection('users').where('email', '==', email).limit(5).get();
+  const legacyAdmin = legacyProfiles.docs.map(document => document.data()).find(data => data.role === 'admin');
 
   const now = new Date().toISOString();
   const profile: ErpUserProfile = {
     uid: decodedToken.uid,
     email,
-    displayName: typeof legacyAdmin?.displayName === 'string'
-      ? legacyAdmin.displayName
-      : authUser.displayName || 'Quản trị Sunflower',
+    displayName:
+      typeof legacyAdmin?.displayName === 'string'
+        ? legacyAdmin.displayName
+        : authUser.displayName || 'Quản trị Sunflower',
     role: 'admin',
     active: true,
     allowedPages: Array.isArray(legacyAdmin?.allowedPages)
-      ? legacyAdmin.allowedPages.filter((pageId): pageId is string => (
-        typeof pageId === 'string' && ERP_PAGE_ID_SET.has(pageId)
-      ))
+      ? legacyAdmin.allowedPages.filter(
+          (pageId): pageId is string => typeof pageId === 'string' && ERP_PAGE_ID_SET.has(pageId)
+        )
       : [...ERP_PAGE_IDS],
     createdAt: typeof legacyAdmin?.createdAt === 'string' ? legacyAdmin.createdAt : now,
-    createdBy: typeof legacyAdmin?.createdBy === 'string'
-      ? legacyAdmin.createdBy
-      : 'firebase-admin-bootstrap',
+    createdBy: typeof legacyAdmin?.createdBy === 'string' ? legacyAdmin.createdBy : 'firebase-admin-bootstrap',
     updatedAt: now,
     updatedBy: 'firebase-admin-bootstrap'
   };
@@ -253,8 +224,7 @@ export const requireAdmin = async (request: Request): Promise<AdminCaller> => {
   }
 
   const profileSnapshot = await firestore.collection('users').doc(decodedToken.uid).get();
-  const profile = profileFromSnapshot(profileSnapshot)
-    ?? await bootstrapAdminProfile(decodedToken, authUser);
+  const profile = profileFromSnapshot(profileSnapshot) ?? (await bootstrapAdminProfile(decodedToken, authUser));
 
   if (!profile.active || profile.role !== 'admin') {
     throw new AdminApiError(403, 'Tài khoản không có quyền quản trị.', 'auth/admin-required');
@@ -370,10 +340,12 @@ export const updateManagedUser = async (
     try {
       await profileReference.update(updatedFields);
     } catch (firestoreError) {
-      await auth.updateUser(input.uid, {
-        displayName: previousAuthUser.displayName ?? undefined,
-        disabled: previousAuthUser.disabled
-      }).catch(() => undefined);
+      await auth
+        .updateUser(input.uid, {
+          displayName: previousAuthUser.displayName ?? undefined,
+          disabled: previousAuthUser.disabled
+        })
+        .catch(() => undefined);
       throw firestoreError;
     }
 
@@ -478,21 +450,20 @@ export const deleteManagedUser = async (
   };
 };
 
-export const jsonResponse = (payload: unknown, status = 200): Response => Response.json(
-  payload,
-  {
+export const jsonResponse = (payload: unknown, status = 200): Response =>
+  Response.json(payload, {
     status,
     headers: {
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff'
     }
-  }
-);
+  });
 
 export const apiErrorResponse = (error: unknown): Response => {
-  const apiError = error instanceof AdminApiError
-    ? error
-    : new AdminApiError(500, 'Máy chủ không thể hoàn thành yêu cầu.', 'admin-api/internal');
+  const apiError =
+    error instanceof AdminApiError
+      ? error
+      : new AdminApiError(500, 'Máy chủ không thể hoàn thành yêu cầu.', 'admin-api/internal');
 
   if (apiError.status >= 500) {
     console.error('[Admin API]', error);
@@ -501,8 +472,7 @@ export const apiErrorResponse = (error: unknown): Response => {
   return jsonResponse({ error: apiError.message, code: apiError.code }, apiError.status);
 };
 
-export const rejectNonPostRequest = (request: Request): Response | null => (
+export const rejectNonPostRequest = (request: Request): Response | null =>
   request.method === 'POST'
     ? null
-    : jsonResponse({ error: 'Phương thức không được hỗ trợ.', code: 'request/method-not-allowed' }, 405)
-);
+    : jsonResponse({ error: 'Phương thức không được hỗ trợ.', code: 'request/method-not-allowed' }, 405);

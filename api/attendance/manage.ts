@@ -7,11 +7,14 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const actor = await requireActiveErpCaller(request);
     const body = await readJsonBody(request);
-    try { return jsonResponse(await manageAttendance(actor, body)); }
-    catch (error) {
+    try {
+      return jsonResponse(await manageAttendance(actor, body));
+    } catch (error) {
       if (error instanceof AdminApiError) throw error;
       if (error instanceof AttendanceValidationError) throw new AdminApiError(400, error.message);
       throw error;
     }
-  } catch (error) { return apiErrorResponse(error); }
+  } catch (error) {
+    return apiErrorResponse(error);
+  }
 }
