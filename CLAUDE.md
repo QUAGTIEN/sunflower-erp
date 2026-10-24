@@ -33,7 +33,7 @@ Baseline ngày 24/10/2026:
 - Build đạt; có sẵn cảnh báo chunk > 500 KB.
 - Test 346/346 đạt.
 - Lint 305 lỗi nằm ở 18 file cũ, lớn nhất là `CrmPage`, `SalesPage`, `POFormFullScreen`.
-- Prettier chưa áp dụng cho code cũ. Không chạy `prettier --write .` trên toàn repo; chỉ định dạng từng file theo mục D5.
+- Toàn bộ `.ts/.tsx` trong `src/`, `server/`, `api/` đã theo Prettier. CSS và `tests/` chưa định dạng.
 
 Test mới nạp file TypeScript bằng `tests/helpers/loadTs.cjs` (`createLoader(stubs)`, `readSource`).
 Không chép lại loader vào từng file test.
@@ -123,8 +123,9 @@ Hàng đợi PO (`src/features/sales/model/poWorkflow.ts`): `waiting_design` →
    - Kiểu dữ liệu rõ ràng; không thêm `any` mới.
    - Diff nhỏ, tập trung: một commit giải quyết một việc, người review đọc là hiểu.
 5. Không định dạng lại hay refactor code không liên quan trong cùng thay đổi nghiệp vụ.
-   Định dạng dùng **Prettier** (devDependency, đã được duyệt), áp dụng dần từng file. Mỗi đợt định dạng
-   là một commit riêng `style(...)`, không đổi hành vi; phải build và test lại trước khi commit.
+   File `.ts/.tsx` đã sửa phải qua `npm run format -- <file>` trước khi commit. Định dạng lại phần chưa
+   theo Prettier (CSS, tests) là commit `style(...)` riêng, không đổi hành vi; build và test lại trước khi commit.
+   Test đọc mã nguồn bằng regex phải chịu được khoảng trắng/xuống dòng (`\s*`, `\s+`).
 6. Không thêm, thay hoặc nâng cấp dependency khi chưa được người dùng đồng ý.
 7. Lint: code mới/được sửa phải sạch lỗi; file cũ không được tăng số lỗi so với baseline.
 
