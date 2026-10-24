@@ -19,7 +19,7 @@
 
 | Phân hệ (page id) | Mã nguồn chính | Dữ liệu / API |
 |---|---|---|
-| Dữ liệu thô (`customer_data`) | `features/crm/pages/CustomerDataPage.tsx`, `components/LeadCandidateWorkspace.tsx`, `RawDataOverview.tsx` | `lead_candidates`, `model/leadCandidateModels.ts`, `rawDataOverview.ts` |
+| Dữ liệu thô (`customer_data`) | `features/crm/pages/CustomerDataPage.tsx`, `components/LeadCandidateWorkspace.tsx` (+ `components/leadCandidateWorkspace/`, hooks `useLeadCandidateFilters`, `useCandidateBatchQueue`, `useCandidateSchedule`, `useCandidateFileDrafts`, `useEmployeeActivityMonitor`), `RawDataOverview.tsx` | `lead_candidates`, `model/leadCandidateModels.ts`, `rawDataOverview.ts` |
 | Tiềm năng (`leads`) | `features/crm/pages/LeadsPage.tsx`, `LeadOverviewDashboard.tsx` | `leads`, `model/crmModels.ts`, `taxCodeUniqueness.ts`, `leadProfileConfig.ts` |
 | Khách hàng (`crm`) | `features/crm/pages/CrmPage.tsx`, `CustomerProductEditor.tsx`, `CustomerOverview.tsx` | `customers`, `model/customerRepository.ts`, `customerProductCatalog.ts` |
 | Thương mại (`commercial_map`) | `features/commercial-map/pages/CommercialMapPage.tsx` | `public/map-data`, `src/data` |
@@ -85,5 +85,7 @@ và `poCompatibility.ts`.
   Firebase/Admin được stub bằng store trong bộ nhớ.
 - Nhiều test đọc mã nguồn dạng văn bản để kiểm tra hợp đồng tĩnh, kể cả `firestore.rules`. Đổi tên hàm hoặc
   class có thể làm test lỗi dù hành vi không đổi.
-- File lớn cần đọc có mục tiêu: `CrmPage.tsx` (~4.3k dòng), `LeadCandidateWorkspace.tsx`, `LeadsPage.tsx`,
+- Màn lớn đã tách: JSX con nằm ở thư mục cùng tên (`components/leadCandidateWorkspace/`), logic ở `features/crm/hooks/`.
+  Test tĩnh đọc cả màn bằng `readModuleSource(file, folder)` trong `tests/helpers/loadTs.cjs`.
+- File lớn cần đọc có mục tiêu: `CrmPage.tsx` (~3.3k dòng), `LeadCandidateWorkspace.tsx` (~1.7k), `LeadsPage.tsx`,
   `POFormFullScreen.tsx`, `SalesPage.tsx`, `AppShell.tsx`. `src/data/vietnamAdministrativeUnits.ts` là dữ liệu tĩnh 13k dòng.
