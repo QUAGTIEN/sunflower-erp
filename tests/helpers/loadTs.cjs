@@ -67,8 +67,8 @@ function readSource(file) {
 }
 
 /**
- * Reads a page or component together with the files split out of it into a sibling folder,
- * so static checks keep covering the whole module after refactors.
+ * Reads a page or component together with the files split out of it into a sibling folder
+ * and the feature hooks it imports, so static checks keep covering the whole module after refactors.
  */
 function readModuleSource(file, folder) {
   const parts = fs
@@ -76,7 +76,10 @@ function readModuleSource(file, folder) {
     .filter(name => /\.tsx?$/.test(name))
     .sort()
     .map(name => path.join(folder, name));
-  return [file, ...parts].map(readSource).join('\n');
+  const hooks = [...readSource(file).matchAll(/from '@\/(features\/[\w-]+\/hooks\/\w+)'/g)]
+    .map(match => `src/${match[1]}.ts`)
+    .filter(hook => fs.existsSync(path.resolve(root, hook)));
+  return [file, ...parts, ...hooks].map(readSource).join('\n');
 }
 
 module.exports = { root, createLoader, readSource, readModuleSource };
