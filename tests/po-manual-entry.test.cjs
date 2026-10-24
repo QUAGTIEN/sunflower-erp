@@ -49,7 +49,7 @@ function form(products = [], initial = {}) {
     useRef: value => ({ current: value })
   };
   const jsx = (type, props) => ({ type, props });
-  const Component = load(formPath, {
+  const imports = {
     react, 'react/jsx-runtime': { jsx, jsxs: jsx },
     'lucide-react': new Proxy({}, { get: (_target, name) => name }),
     '@/shared/feedback/deleteConfirmation': { confirmDelete: async () => true },
@@ -65,10 +65,14 @@ function form(products = [], initial = {}) {
     './poForm/POImagePreviewDialog': { POImagePreviewDialog: 'POImagePreviewDialog' },
     './poForm/POFileRepositoryDialog': { POFileRepositoryDialog: 'POFileRepositoryDialog' },
     './poForm/POLegacyProductSearchDialog': { POLegacyProductSearchDialog: 'POLegacyProductSearchDialog' }
-  }, {
+  };
+  const globals = {
     window: { localStorage: { removeItem() {} } }, alert: message => alerts.push(message),
     crypto: { randomUUID: () => `item-${++nextId}` }
-  }).default;
+  };
+  // The line grid is stateless, so it is loaded for real and expanded by nodes() like inline JSX.
+  imports['./poForm/POItemsGrid'] = load('src/features/sales/components/poForm/POItemsGrid.tsx', imports, globals);
+  const Component = load(formPath, imports, globals).default;
   const render = () => {
     cursor = 0;
     return Component({ isOpen: true, po: null, customers: [{ id: 'customer-a', companyName: 'Công ty A', products }],
@@ -81,6 +85,7 @@ function form(products = [], initial = {}) {
 function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes);
   if (!tree || typeof tree !== 'object') return [];
+  if (typeof tree.type === 'function') return [tree, ...nodes(tree.type(tree.props))];
   return [tree, ...nodes(tree.props?.children)];
 }
 function text(tree) {
