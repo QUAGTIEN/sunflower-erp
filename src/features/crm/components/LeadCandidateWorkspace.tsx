@@ -21,9 +21,6 @@ import {
   ListPlus,
   Paperclip,
   Pencil,
-  Plus,
-  Search,
-  Settings2,
   Trash2,
   UserRoundSearch,
   X
@@ -81,7 +78,7 @@ import {
   getEntityCustomFieldFilterTokens,
   type EntityCustomFieldValues
 } from '@/features/crm/model/entityFieldConfig';
-import { DataFilterButton, DataFilterChipBar } from '@/components/DataWorkspaceFilters';
+import { DataFilterChipBar } from '@/components/DataWorkspaceFilters';
 import {
   countAdvancedFilters,
   getAdvancedFilterKindForFieldType,
@@ -126,6 +123,7 @@ import {
   type EmployeeActivityCard,
   type SalesReportSummary
 } from './leadCandidateWorkspace/leadCandidateWorkspaceConfig';
+import { LeadCandidateCommandBar } from './leadCandidateWorkspace/LeadCandidateCommandBar';
 import { LeadCandidateBatchBar } from './leadCandidateWorkspace/LeadCandidateBatchBar';
 import { LeadCandidateFilterPanel } from './leadCandidateWorkspace/LeadCandidateFilterPanel';
 import { EmployeeActivityMonitor } from './leadCandidateWorkspace/EmployeeActivityMonitor';
@@ -2530,103 +2528,27 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           className="lead-candidate-workspace"
           hidden={adminRawView !== 'list'}
         >
-          <div className="lead-candidate-commandbar">
-            <nav
-              className="lead-candidate-queues content-tabs content-tabs--compact"
-              role="tablist"
-              aria-label="Không gian làm việc Sale"
-            >
-              <button type="button" role="tab" aria-selected={false} onClick={showRawOverview}>
-                Tổng quan
-              </button>
-              {(
-                [
-                  ...(currentUser.role === 'admin'
-                    ? []
-                    : [['tasks', 'Công việc cần xử lý'] as [CandidateWorkspaceView, string]]),
-                  ['all', 'Tất cả dữ liệu']
-                ] as Array<[CandidateWorkspaceView, string]>
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={workspaceView === value}
-                  className={workspaceView === value ? 'is-active' : ''}
-                  onClick={() => {
-                    setWorkspaceView(value);
-                    setSelectedQueueCandidateIds([]);
-                    setBatchQueueError('');
-                    setCurrentPage(1);
-                    setShowDataFilters(false);
-                    setShowColumnCustomizer(false);
-                    if (value === 'tasks') setCandidateSort('priority');
-                    if (value === 'tasks' && currentUser.role !== 'admin') setSaleFilters([]);
-                  }}
-                >
-                  {value === 'management' && <UserRoundSearch size={15} />}
-                  {value === 'tasks' && <CalendarClock size={15} />}
-                  {value === 'all' && currentUser.role !== 'admin' && <ListPlus size={15} />}
-                  <span>{label}</span>
-                </button>
-              ))}
-            </nav>
-
-            {workspaceView !== 'management' && (
-              <section className="lead-candidate-toolbar">
-                <label className="lead-candidate-search">
-                  <Search size={15} />
-                  <input
-                    value={searchTerm}
-                    onChange={event => {
-                      setSearchTerm(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Tìm doanh nghiệp, MST, điện thoại, người liên hệ..."
-                  />
-                </label>
-                <select
-                  value={candidateSort}
-                  onChange={event => {
-                    setCandidateSort(event.target.value as CandidateSort);
-                    setCurrentPage(1);
-                  }}
-                  aria-label="Sắp xếp dữ liệu"
-                >
-                  <option value="priority">Ưu tiên làm việc</option>
-                  <option value="updated_desc">Mới cập nhật</option>
-                  <option value="company_asc">Tên doanh nghiệp A–Z</option>
-                  <option value="next_contact_asc">Lịch gọi gần nhất</option>
-                </select>
-                <DataFilterButton
-                  activeCount={activeFilterCount}
-                  open={showDataFilters}
-                  onClick={() => setShowDataFilters(true)}
-                />
-                {canEditColumns && (
-                  <button
-                    type="button"
-                    className="lead-candidate-column-button"
-                    aria-label="Tùy chỉnh cột"
-                    title="Tùy chỉnh cột"
-                    onClick={() => setShowColumnCustomizer(true)}
-                  >
-                    <Settings2 size={16} />
-                  </button>
-                )}
-                {workspaceView === 'all' && (
-                  <button type="button" className="btn btn-primary lead-candidate-add-button" onClick={openCreateForm}>
-                    <Plus size={15} /> Thêm dữ liệu
-                  </button>
-                )}
-                {(activeFilterCount > 0 || searchTerm) && (
-                  <button type="button" className="lead-candidate-clear-filter" onClick={clearDataFilters}>
-                    <X size={13} /> Đặt lại
-                  </button>
-                )}
-              </section>
-            )}
-          </div>
+          <LeadCandidateCommandBar
+            showRawOverview={showRawOverview}
+            currentUser={currentUser}
+            workspaceView={workspaceView}
+            setWorkspaceView={setWorkspaceView}
+            setSelectedQueueCandidateIds={setSelectedQueueCandidateIds}
+            setBatchQueueError={setBatchQueueError}
+            setCurrentPage={setCurrentPage}
+            setShowDataFilters={setShowDataFilters}
+            setShowColumnCustomizer={setShowColumnCustomizer}
+            setCandidateSort={setCandidateSort}
+            setSaleFilters={setSaleFilters}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            candidateSort={candidateSort}
+            activeFilterCount={activeFilterCount}
+            showDataFilters={showDataFilters}
+            canEditColumns={canEditColumns}
+            openCreateForm={openCreateForm}
+            clearDataFilters={clearDataFilters}
+          />
 
           {workspaceView !== 'management' && (
             <DataFilterChipBar chips={candidateFilterChips} onClear={clearDataFilters} />
