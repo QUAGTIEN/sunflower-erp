@@ -5,27 +5,22 @@ import {
   showSuccessToast,
   runMutationAction
 } from '@/shared/feedback/mutationFeedback';
-import { ConfiguredSystemTable, SystemFieldSurface } from '@/components/ConfiguredSystemFields';
+import { SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Building2,
   CalendarClock,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
   ClipboardCheck,
   LifeBuoy,
   Paperclip,
-  Plus,
   Search,
-  Settings2,
   Tags,
   Trash2,
   Undo2,
-  UserCheck,
-  X
+  UserCheck
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import {
@@ -61,7 +56,6 @@ import {
 import {
   findLeadFilterOption,
   findLeadFilterOptionId,
-  findLeadFilterOptionPathInOptions,
   findLeadFilterParentOption,
   flattenLeadFilterOptions,
   getLeadFilterValues,
@@ -81,7 +75,7 @@ import { RowActionMenu } from '@/components/RowActionMenu';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
 import { WorkAssignmentDialog, type WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
 import { TableColumnCustomizer, type TableColumnOption } from '@/components/TableColumnCustomizer';
-import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+
 import { useReorderableTableColumns } from '@/hooks/useReorderableTableColumns';
 import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
 import { EntityCustomFieldsGrid, EntityCustomFieldsSection } from '@/components/EntityCustomFields';
@@ -95,13 +89,7 @@ import {
   getEntityCustomFieldFilterTokens,
   type EntityCustomFieldValues
 } from '@/features/crm/model/entityFieldConfig';
-import {
-  DataFilterButton,
-  DataFilterCheckboxGroup,
-  DataFilterChipBar,
-  DataFilterPanel,
-  DataFilterSection
-} from '@/components/DataWorkspaceFilters';
+import { DataFilterChipBar } from '@/components/DataWorkspaceFilters';
 import {
   countAdvancedFilters,
   getAdvancedFilterKindForFieldType,
@@ -122,9 +110,7 @@ import {
   CUSTOMER_INSIGHT_GROUPS,
   CUSTOMER_INSIGHT_ITEMS,
   CUSTOMER_INSIGHT_ITEM_BY_ID,
-  getCustomerInsightGroupsForModule,
-  matchesCustomerInsightValues,
-  replaceCustomerInsightGroupValues
+  matchesCustomerInsightValues
 } from '@/features/crm/model/customerInsightCatalog';
 import { PhoneCallCell } from '@/components/PhoneCallCell';
 import { leadCallHistoryKeys, leadCallSubjectKey } from '@/features/crm/model/callHistory';
@@ -148,6 +134,10 @@ import {
   isClassificationOwnedProfileField,
   createEmptyForm
 } from './leadsPage/leadsPageConfig';
+import { LeadListToolbar } from './leadsPage/LeadListToolbar';
+import { LeadFilterPanel } from './leadsPage/LeadFilterPanel';
+import { LeadListTable } from './leadsPage/LeadListTable';
+import { LeadScheduleDialog } from './leadsPage/LeadScheduleDialog';
 
 interface LeadsProps {
   customers: CustomerRecord[];
@@ -3211,43 +3201,18 @@ export const Leads: React.FC<LeadsProps> = ({
           </button>
         </div>
         {workspaceTab === 'list' && (
-          <section className="lead-page-navigation__tools lead-candidate-toolbar">
-            <div className="lead-search">
-              <Search size={16} />
-              <input
-                value={searchTerm}
-                onChange={event => {
-                  setSearchTerm(event.target.value);
-                  setLeadCurrentPage(1);
-                }}
-                placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')}
-              />
-            </div>
-            <DataFilterButton
-              activeCount={leadActiveFilterCount}
-              open={showLeadFilters}
-              onClick={() => setShowLeadFilters(true)}
-            />
-            {canEditColumns && (
-              <button
-                type="button"
-                className="lead-candidate-column-button"
-                aria-label={t('Tùy chỉnh cột')}
-                title={t('Tùy chỉnh cột')}
-                onClick={() => setShowColumnCustomizer(true)}
-              >
-                <Settings2 size={16} />
-              </button>
-            )}
-            {(searchTerm || leadActiveFilterCount > 0) && (
-              <button type="button" className="btn btn-outline lead-toolbar-reset" onClick={clearFilters}>
-                <X size={14} /> Đặt lại
-              </button>
-            )}
-            <button type="button" className="btn btn-primary" onClick={openCreateForm}>
-              <Plus size={16} /> {t('Thêm Lead')}
-            </button>
-          </section>
+          <LeadListToolbar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            setLeadCurrentPage={setLeadCurrentPage}
+            leadActiveFilterCount={leadActiveFilterCount}
+            showLeadFilters={showLeadFilters}
+            setShowLeadFilters={setShowLeadFilters}
+            canEditColumns={canEditColumns}
+            setShowColumnCustomizer={setShowColumnCustomizer}
+            clearFilters={clearFilters}
+            openCreateForm={openCreateForm}
+          />
         )}
       </div>
 
@@ -3267,465 +3232,53 @@ export const Leads: React.FC<LeadsProps> = ({
         <div className="lead-data-workspace" hidden={workspaceTab !== 'list'}>
           <DataFilterChipBar chips={leadFilterChips} onClear={clearFilters} />
 
-          <DataFilterPanel
-            open={showLeadFilters}
-            title="Lọc danh sách KH tiềm năng"
-            description="Chọn nhiều tiêu chí để thu hẹp danh sách khách hàng tiềm năng."
-            activeCount={leadQuickFilterCount}
-            onClose={() => setShowLeadFilters(false)}
-            onReset={clearFilters}
-          >
-            {visibleFilterDefinitions.map(field => {
-              const fieldOptions = quickFilterOptionsByField[field.id] || [];
-              const configuredField = getSystemFilterDefinition(systemFilterDefinitions, field.id);
-              const options =
-                field.id === LEAD_FILTER_IDS.industrialPark
-                  ? fieldOptions.flatMap(province =>
-                      flattenLeadFilterOptions([province])
-                        .filter(option => option.kind === 'region')
-                        .map(option => {
-                          const path = findLeadFilterOptionPathInOptions([province], option.id);
-                          return {
-                            value: option.id,
-                            label: option.label,
-                            description: path
-                              .slice(0, -1)
-                              .map(parent => parent.label)
-                              .join(' · ')
-                          };
-                        })
-                    )
-                  : fieldOptions.map(option => ({ value: option.id, label: option.label }));
-              return (
-                <DataFilterSection
-                  key={field.id}
-                  title={configuredField?.name || field.name}
-                  selectedCount={(dynamicFilters[field.id] || []).length}
-                  description={
-                    configuredField?.description ||
-                    (field.id === LEAD_FILTER_IDS.province
-                      ? 'Lọc riêng theo tỉnh/thành.'
-                      : field.id === LEAD_FILTER_IDS.industrialPark
-                        ? 'Lọc theo khu công nghiệp đã cấu hình cho từng tỉnh/thành.'
-                        : 'Có thể chọn đồng thời nhiều giá trị.')
-                  }
-                >
-                  <DataFilterCheckboxGroup
-                    options={options}
-                    selectedValues={dynamicFilters[field.id] || []}
-                    onChange={values =>
-                      setDynamicFilters(previous => ({
-                        ...previous,
-                        [field.id]: values
-                      }))
-                    }
-                    searchable={options.length > 8}
-                  />
-                </DataFilterSection>
-              );
-            })}
-            {getCustomerInsightGroupsForModule('leads').map(group => (
-              <DataFilterSection
-                key={`insight-${group.id}`}
-                title={group.label}
-                description="Lọc theo phân loại nghiệp vụ thuộc phân hệ Tiềm năng."
-                selectedCount={group.items.filter(item => insightFilters.includes(item.id)).length}
-              >
-                <DataFilterCheckboxGroup
-                  options={group.items.map(item => ({ value: item.id, label: item.label }))}
-                  selectedValues={insightFilters.filter(value => group.items.some(item => item.id === value))}
-                  onChange={values =>
-                    setInsightFilters(current =>
-                      replaceCustomerInsightGroupValues(
-                        current,
-                        group.items.map(item => item.id),
-                        values
-                      )
-                    )
-                  }
-                  searchable={group.items.length > 8}
-                />
-              </DataFilterSection>
-            ))}
-            {customFieldDefinitions
-              .filter(definition => definition.active)
-              .map(definition => (
-                <DataFilterSection
-                  key={definition.id}
-                  title={definition.name}
-                  description={definition.description || 'Lọc theo trường tùy chỉnh.'}
-                  selectedCount={(customFieldFilters[definition.id] || []).length}
-                >
-                  <DataFilterCheckboxGroup
-                    options={customFilterOptions[definition.id] || []}
-                    selectedValues={customFieldFilters[definition.id] || []}
-                    onChange={values => setCustomFieldFilters(previous => ({ ...previous, [definition.id]: values }))}
-                    searchable={(customFilterOptions[definition.id] || []).length > 8}
-                  />
-                </DataFilterSection>
-              ))}
-          </DataFilterPanel>
+          <LeadFilterPanel
+            customFieldDefinitions={customFieldDefinitions}
+            filters={{
+              showLeadFilters,
+              leadQuickFilterCount,
+              setShowLeadFilters,
+              clearFilters,
+              visibleFilterDefinitions,
+              quickFilterOptionsByField,
+              systemFilterDefinitions,
+              dynamicFilters,
+              setDynamicFilters,
+              insightFilters,
+              setInsightFilters,
+              customFieldFilters,
+              customFilterOptions,
+              setCustomFieldFilters
+            }}
+          />
 
-          <section className="lead-table-card">
-            <div className="lead-table-result">
-              Hiển thị <strong>{filteredLeads.length}</strong> / {accessibleLeads.length} Lead
-            </div>
-            <div className="table-container">
-              <ConfiguredSystemTable
-                table="leads"
-                className="lead-table lead-table--classified has-dynamic-columns"
-                style={{ minWidth: `${Math.max(1180, visibleLeadColumnCount * 150 + 130)}px` }}
-              >
-                <thead>
-                  <tr>
-                    <ReorderableTableCells
-                      order={orderedLeadColumnIds}
-                      getHeaderProps={getLeadHeaderProps}
-                      labels={leadColumnLabels}
-                    >
-                      <th key="index" className="erp-table-index-column">
-                        STT
-                      </th>
-                      <th key="company" data-system-field="companyName">
-                        {t('Doanh nghiệp')}
-                      </th>
-                      {visibleLeadColumnIds.has('taxCode') && (
-                        <th key="taxCode" data-system-field="taxCode">
-                          {t('Mã số thuế')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('website') && (
-                        <th key="website" data-system-field="website">
-                          Website
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('businessSector') && (
-                        <th key="businessSector" data-system-field="businessSector">
-                          {t('Lĩnh vực hoạt động')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('address') && (
-                        <th key="address" data-system-field="address">
-                          {t('Địa chỉ doanh nghiệp')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('companySize') && (
-                        <th key="companySize" data-system-field="companySize">
-                          {t('Quy mô')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('source') && (
-                        <th key="source" data-system-field="source">
-                          {t('Khu vực')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('sourceValue') && (
-                        <th key="sourceValue" data-system-field="sourceValue">
-                          {t('Nguồn tìm kiếm')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('province') && (
-                        <th key="province" data-system-field="province">
-                          {t('Tỉnh/thành')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('ward') && (
-                        <th key="ward" data-system-field="ward">
-                          {t('Phường/xã')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('industrialPark') && (
-                        <th key="industrialPark" data-system-field="industrialPark">
-                          {t('Khu công nghiệp')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('contact') && (
-                        <th key="contact" data-system-field="contact">
-                          {t('Liên hệ')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('contactPerson') && (
-                        <th key="contactPerson" data-system-field="contactPerson">
-                          {t('Người liên hệ')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('contactPosition') && (
-                        <th key="contactPosition" data-system-field="contactPosition">
-                          {t('Chức vụ')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('phone') && (
-                        <th key="phone" data-system-field="phone">
-                          {t('Điện thoại')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('email') && (
-                        <th key="email" data-system-field="email">
-                          Email
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('expectedProducts') && (
-                        <th key="expectedProducts" data-system-field="expectedProducts">
-                          {t('Sản phẩm / nhu cầu quan tâm')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('potentialValue') && (
-                        <th key="potentialValue" data-system-field="potentialValue">
-                          {t('Giá trị tiềm năng')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('stage') && (
-                        <th key="stage" data-system-field="stage">
-                          {t('Giai đoạn xử lý')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('note') && (
-                        <th key="note" data-system-field="note">
-                          {t('Ghi chú')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('assignedSale') && (
-                        <th key="assignedSale" data-system-field="assignedSaleId">
-                          {t('Sale phụ trách')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('discoveredBy') && (
-                        <th key="discoveredBy" data-system-field="discoveredById">
-                          {t('Sale tìm được Lead')}
-                        </th>
-                      )}
-                      {visibleLeadColumnIds.has('nextFollowUpAt') && (
-                        <th key="nextFollowUpAt" data-system-field="nextFollowUpAt">
-                          {t('Chăm sóc tiếp')}
-                        </th>
-                      )}
-                      {visibleLeadInsightItems.map(entry => (
-                        <th key={`insight:${entry.id}`}>{entry.label}</th>
-                      ))}
-                      {visibleLeadCustomFields.map(definition => (
-                        <th key={`custom:${definition.id}`}>{definition.name}</th>
-                      ))}
-                      <th key="actions">{t('Thao tác')}</th>
-                    </ReorderableTableCells>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedLeads.map((lead, leadIndex) => (
-                    <tr key={lead.id} onClick={() => openEditForm(lead)}>
-                      <ReorderableTableCells order={orderedLeadColumnIds}>
-                        <td key="index" className="erp-table-index-column">
-                          {(safeLeadCurrentPage - 1) * leadPageSize + leadIndex + 1}
-                        </td>
-                        <td key="company">
-                          <strong className="erp-company-name" title={lead.companyName}>
-                            {lead.companyName}
-                          </strong>
-                        </td>
-                        {visibleLeadColumnIds.has('taxCode') && <td key="taxCode">{renderLeadText(lead.taxCode)}</td>}
-                        {visibleLeadColumnIds.has('website') && <td key="website">{renderLeadText(lead.website)}</td>}
-                        {visibleLeadColumnIds.has('businessSector') && (
-                          <td key="businessSector">{renderLeadText(lead.businessSector)}</td>
-                        )}
-                        {visibleLeadColumnIds.has('address') && <td key="address">{renderLeadText(lead.address)}</td>}
-                        {visibleLeadColumnIds.has('companySize') && (
-                          <td key="companySize">{renderLeadText(COMPANY_SIZE_LABELS[lead.companySize])}</td>
-                        )}
-                        {visibleLeadColumnIds.has('source') && (
-                          <td key="source">
-                            {renderLeadText(
-                              [lead.province, lead.ward, lead.industrialPark].filter(Boolean).join(' · ')
-                            )}
-                          </td>
-                        )}
-                        {visibleLeadColumnIds.has('sourceValue') && (
-                          <td key="sourceValue">
-                            {renderLeadText(getClassificationLabel(lead, LEAD_FILTER_IDS.source, lead.source || ''))}
-                          </td>
-                        )}
-                        {visibleLeadColumnIds.has('province') && (
-                          <td key="province">
-                            {renderLeadText(
-                              getClassificationLabel(lead, LEAD_FILTER_IDS.province, lead.province || '')
-                            )}
-                          </td>
-                        )}
-                        {visibleLeadColumnIds.has('ward') && <td key="ward">{renderLeadText(lead.ward)}</td>}
-                        {visibleLeadColumnIds.has('industrialPark') && (
-                          <td key="industrialPark">
-                            {renderLeadText(
-                              getClassificationLabel(lead, LEAD_FILTER_IDS.industrialPark, lead.industrialPark || '')
-                            )}
-                          </td>
-                        )}
-                        {visibleLeadColumnIds.has('contact') && (
-                          <td key="contact">{renderLeadText(lead.contactPerson)}</td>
-                        )}
-                        {visibleLeadColumnIds.has('contactPerson') && (
-                          <td key="contactPerson">{renderLeadText(lead.contactPerson)}</td>
-                        )}
-                        {visibleLeadColumnIds.has('contactPosition') && (
-                          <td key="contactPosition">{renderLeadText(lead.contactPosition)}</td>
-                        )}
-                        {visibleLeadColumnIds.has('phone') && (
-                          <td key="phone">
-                            {lead.phone ? (
-                              <button
-                                type="button"
-                                className="lead-candidate-phone-link"
-                                onClick={event => {
-                                  event.stopPropagation();
-                                  openEditForm(lead, 'profile');
-                                }}
-                              >
-                                {lead.phone}
-                              </button>
-                            ) : (
-                              renderLeadText(lead.phone)
-                            )}
-                          </td>
-                        )}
-                        {visibleLeadColumnIds.has('email') && <td key="email">{renderLeadText(lead.email)}</td>}
-                        {visibleLeadColumnIds.has('expectedProducts') && (
-                          <td key="expectedProducts">{renderLeadText(lead.expectedProducts)}</td>
-                        )}
-                        {visibleLeadColumnIds.has('potentialValue') && (
-                          <td key="potentialValue">
-                            <strong>{lead.potentialValue.toLocaleString('vi-VN')} đ</strong>
-                          </td>
-                        )}
-                        {visibleLeadColumnIds.has('stage') && (
-                          <td key="stage">{renderLeadText(getStageLabel(lead.stage))}</td>
-                        )}
-                        {visibleLeadColumnIds.has('note') && <td key="note">{renderLeadText(lead.note)}</td>}
-                        {visibleLeadColumnIds.has('assignedSale') && (
-                          <td key="assignedSale">
-                            {users.find(user => user.uid === lead.assignedSaleId)?.displayName ||
-                              lead.assignedSaleName ||
-                              'Chưa phân công'}
-                          </td>
-                        )}
-                        {visibleLeadColumnIds.has('discoveredBy') && (
-                          <td key="discoveredBy">
-                            {renderLeadText(
-                              users.find(user => user.uid === lead.discoveredById)?.displayName || lead.discoveredByName
-                            )}
-                          </td>
-                        )}
-                        {visibleLeadColumnIds.has('nextFollowUpAt') && (
-                          <td key="nextFollowUpAt">{renderFollowUp(lead)}</td>
-                        )}
-                        {visibleLeadInsightItems.map(entry => (
-                          <td key={`insight:${entry.id}`}>
-                            <span
-                              className={`lead-candidate-insight-value ${(lead.customerInsightValues || []).includes(entry.id) ? 'is-selected' : ''}`}
-                            >
-                              {(lead.customerInsightValues || []).includes(entry.id) ? 'Đã chọn' : 'Chưa chọn'}
-                            </span>
-                          </td>
-                        ))}
-                        {visibleLeadCustomFields.map(definition => (
-                          <td key={`custom:${definition.id}`}>
-                            {formatEntityCustomFieldValue(definition, lead.customFieldValues?.[definition.id])}
-                          </td>
-                        ))}
-                        <td key="actions">
-                          <RowActionMenu
-                            label={`${t('Thao tác')} ${lead.companyName}`}
-                            actions={[
-                              {
-                                label: t('Hẹn lịch'),
-                                icon: <CalendarClock size={14} />,
-                                onSelect: () => openScheduleForm(lead)
-                              },
-                              ...(currentUser.role === 'admin'
-                                ? [
-                                    {
-                                      label: t('Giao việc'),
-                                      icon: <ClipboardCheck size={14} />,
-                                      onSelect: () =>
-                                        setAssignmentTarget({ id: lead.id, label: lead.companyName, module: 'leads' })
-                                    }
-                                  ]
-                                : []),
-                              ...(currentUser.role === 'sale'
-                                ? [
-                                    {
-                                      label: t('Yêu cầu hỗ trợ'),
-                                      icon: <LifeBuoy size={14} />,
-                                      onSelect: () =>
-                                        setSupportTarget({ id: lead.id, label: lead.companyName, module: 'leads' })
-                                    }
-                                  ]
-                                : []),
-                              {
-                                label: returningLeadId === lead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô'),
-                                icon: <Undo2 size={14} />,
-                                onSelect: () => void handleReturnLeadToRawData(lead),
-                                disabled:
-                                  returningLeadId === lead.id ||
-                                  lead.stage === 'converted' ||
-                                  Boolean(lead.convertedCustomerId) ||
-                                  (currentUser.role !== 'admin' && lead.assignedSaleId !== currentUser.uid)
-                              },
-                              {
-                                label: t('Xóa Lead'),
-                                icon: <Trash2 size={14} />,
-                                onSelect: () => void handleDeleteLead(lead),
-                                danger: true,
-                                disabled: currentUser.role !== 'admin' && lead.assignedSaleId !== currentUser.uid
-                              }
-                            ]}
-                          />
-                        </td>
-                      </ReorderableTableCells>
-                    </tr>
-                  ))}
-                </tbody>
-              </ConfiguredSystemTable>
-            </div>
-            {filteredLeads.length > 0 && (
-              <footer className="lead-candidate-pagination lead-table-pagination">
-                <span>
-                  Tổng số: <strong>{filteredLeads.length}</strong> bản ghi
-                </span>
-                <label>
-                  Hiển thị
-                  <select
-                    value={leadPageSize}
-                    onChange={event => {
-                      setLeadPageSize(Number(event.target.value));
-                      setLeadCurrentPage(1);
-                    }}
-                  >
-                    <option value={25}>25 dòng</option>
-                    <option value={50}>50 dòng</option>
-                    <option value={100}>100 dòng</option>
-                  </select>
-                </label>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setLeadCurrentPage(page => Math.max(1, page - 1))}
-                    disabled={safeLeadCurrentPage === 1}
-                    aria-label="Trang trước"
-                  >
-                    <ChevronLeft size={15} />
-                  </button>
-                  <strong>
-                    {safeLeadCurrentPage} / {leadTotalPages}
-                  </strong>
-                  <button
-                    type="button"
-                    onClick={() => setLeadCurrentPage(page => Math.min(leadTotalPages, page + 1))}
-                    disabled={safeLeadCurrentPage === leadTotalPages}
-                    aria-label="Trang sau"
-                  >
-                    <ChevronRight size={15} />
-                  </button>
-                </div>
-              </footer>
-            )}
-          </section>
+          <LeadListTable
+            filteredLeads={filteredLeads}
+            accessibleLeads={accessibleLeads}
+            displayedLeads={displayedLeads}
+            users={users}
+            currentUser={currentUser}
+            columns={{
+              visibleLeadColumnCount,
+              orderedLeadColumnIds,
+              getLeadHeaderProps,
+              leadColumnLabels,
+              visibleLeadColumnIds,
+              visibleLeadInsightItems,
+              visibleLeadCustomFields
+            }}
+            cells={{ renderLeadText, getClassificationLabel, renderFollowUp }}
+            actions={{
+              openEditForm,
+              openScheduleForm,
+              setAssignmentTarget,
+              setSupportTarget,
+              returningLeadId,
+              handleReturnLeadToRawData,
+              handleDeleteLead
+            }}
+            paging={{ safeLeadCurrentPage, leadPageSize, setLeadPageSize, setLeadCurrentPage, leadTotalPages }}
+          />
         </div>
       )}
 
@@ -3738,46 +3291,15 @@ export const Leads: React.FC<LeadsProps> = ({
       />
 
       {scheduleLead && (
-        <div className="modal-overlay">
-          <form className="modal-content lead-candidate-schedule-modal" onSubmit={handleSaveSchedule}>
-            <div className="modal-header">
-              <div>
-                <strong>{t('ĐẶT LỊCH CHĂM SÓC TIẾP THEO')}</strong>
-                <span>{scheduleLead.companyName}</span>
-              </div>
-              <button type="button" className="btn btn-sm btn-outline" onClick={closeScheduleForm}>
-                <X size={14} /> {t('Đóng')}
-              </button>
-            </div>
-            <div className="modal-body lead-candidate-schedule-form">
-              <label>
-                <span data-system-label="nextFollowUpAt">{t('Lịch chăm sóc tiếp theo *')}</span>
-                <input
-                  required
-                  autoFocus
-                  type="datetime-local"
-                  value={scheduleForm.nextFollowUpAt}
-                  onChange={event => setScheduleForm(previous => ({ ...previous, nextFollowUpAt: event.target.value }))}
-                />
-              </label>
-              <p>{t('Sau khi lưu, Lead sẽ được đưa lên đầu danh sách và Sale phụ trách sẽ nhận được thông báo.')}</p>
-              {scheduleError && (
-                <div className="lead-candidate-warning is-error">
-                  <AlertCircle size={14} />
-                  <span>{scheduleError}</span>
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-outline" onClick={closeScheduleForm}>
-                {t('Hủy')}
-              </button>
-              <button type="submit" className="btn btn-primary" disabled={savingSchedule}>
-                <CalendarClock size={14} /> {savingSchedule ? t('Đang lưu...') : t('Lưu lịch hẹn')}
-              </button>
-            </div>
-          </form>
-        </div>
+        <LeadScheduleDialog
+          handleSaveSchedule={handleSaveSchedule}
+          scheduleLead={scheduleLead}
+          closeScheduleForm={closeScheduleForm}
+          scheduleForm={scheduleForm}
+          setScheduleForm={setScheduleForm}
+          scheduleError={scheduleError}
+          savingSchedule={savingSchedule}
+        />
       )}
 
       {supportTarget && (
