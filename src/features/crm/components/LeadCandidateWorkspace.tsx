@@ -16,7 +16,6 @@ import {
   LEAD_CANDIDATE_SCHEMA_VERSION,
   type LeadCandidateContactLog,
   type LeadCandidateContactResult,
-  type LeadCandidateFileRecord,
   type LeadCandidatePotentialLevel,
   type LeadCandidateRecord,
   type LeadCandidateTaskSource,
@@ -81,6 +80,7 @@ import { LeadCandidateFilterPanel } from './leadCandidateWorkspace/LeadCandidate
 import { EmployeeActivityMonitor } from './leadCandidateWorkspace/EmployeeActivityMonitor';
 import { useLeadCandidateFilters } from '@/features/crm/hooks/useLeadCandidateFilters';
 import { useCandidateBatchQueue } from '@/features/crm/hooks/useCandidateBatchQueue';
+import { useCandidateFileDrafts } from '@/features/crm/hooks/useCandidateFileDrafts';
 import { useEmployeeActivityMonitor } from '@/features/crm/hooks/useEmployeeActivityMonitor';
 import { LeadCandidateScheduleDialog } from './leadCandidateWorkspace/LeadCandidateScheduleDialog';
 
@@ -135,9 +135,17 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
   const [createdCandidateSnapshot, setCreatedCandidateSnapshot] = useState<LeadCandidateRecord | null>(null);
   const [candidateDetailTab, setCandidateDetailTab] = useState<CandidateDetailTab>('classification');
   const [form, setForm] = useState<CandidateFormState>(() => createEmptyCandidateForm(currentUser, candidateOwners));
-  const [candidateFiles, setCandidateFiles] = useState<LeadCandidateFileRecord[]>([]);
-  const [candidateLinkName, setCandidateLinkName] = useState('');
-  const [candidateLinkUrl, setCandidateLinkUrl] = useState('');
+  const {
+    candidateFiles,
+    setCandidateFiles,
+    candidateLinkName,
+    setCandidateLinkName,
+    candidateLinkUrl,
+    setCandidateLinkUrl,
+    handleCandidateFilesChange,
+    handleCandidateFilesDrop,
+    handleAddCandidateLink
+  } = useCandidateFileDrafts({ currentUser });
   const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
   const [saveError, setSaveError] = useState('');
   const [scheduleCandidateId, setScheduleCandidateId] = useState('');
@@ -499,8 +507,20 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     toggleQueueCandidateSelection,
     toggleDisplayedQueueCandidates,
     addSelectedCandidatesToWorkQueue,
-    assignSelectedCandidatesToSale,
-  } = useCandidateBatchQueue({ workspaceView, displayedCandidates, canManageCandidate, accessibleCandidates, currentUser, buildCandidateLog, buildTaskAssignment, prependCandidateLog, saleUsers, createAdminAssignmentNotification, setWorkspaceView });
+    assignSelectedCandidatesToSale
+  } = useCandidateBatchQueue({
+    workspaceView,
+    displayedCandidates,
+    canManageCandidate,
+    accessibleCandidates,
+    currentUser,
+    buildCandidateLog,
+    buildTaskAssignment,
+    prependCandidateLog,
+    saleUsers,
+    createAdminAssignmentNotification,
+    setWorkspaceView
+  });
   const updateForm = <K extends keyof CandidateFormState>(field: K, value: CandidateFormState[K]) => {
     setSaveError('');
     setForm(previous => ({ ...previous, [field]: value }));
@@ -561,7 +581,7 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
       setCandidateLinkName('');
       setCandidateLinkUrl('');
     },
-    [currentUser]
+    [currentUser, setCandidateFiles, setCandidateLinkName, setCandidateLinkUrl]
   );
 
   const openRawCandidate = (id: string) => {
@@ -584,74 +604,6 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
     }, 0);
     return () => window.clearTimeout(timer);
   }, [candidates, initialCandidateId, onInitialCandidateOpened, openEditForm]);
-
-  const appendCandidateFiles = async (files: File[]) => {
-    const oversizedFile = files.find(file => file.size > 900_000);
-    if (oversizedFile) {
-      window.alert('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.');
-      return;
-    }
-    const nextFiles = await Promise.all(
-      files.map(
-        file =>
-          new Promise<LeadCandidateFileRecord>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () =>
-              resolve({
-                id: `candidate-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                name: file.name,
-                size: file.size,
-                folderId: 'other',
-                folder: 'Tài liệu khác',
-                url: '',
-                data: String(reader.result || ''),
-                createdAt: new Date().toISOString(),
-                createdById: currentUser.uid,
-                createdBy: currentUser.displayName
-              });
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          })
-      )
-    );
-    setCandidateFiles(previous => [...previous, ...nextFiles]);
-  };
-
-  const handleCandidateFilesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    await appendCandidateFiles(Array.from(event.target.files || []));
-    event.target.value = '';
-  };
-
-  const handleCandidateFilesDrop = async (event: React.DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    await appendCandidateFiles(Array.from(event.dataTransfer.files || []));
-  };
-
-  const handleAddCandidateLink = () => {
-    const name = candidateLinkName.trim();
-    const url = candidateLinkUrl.trim();
-    if (!name || !/^https?:\/\//i.test(url)) {
-      window.alert('Nhập tên tài liệu và đường dẫn chia sẻ bắt đầu bằng http:// hoặc https://.');
-      return;
-    }
-    setCandidateFiles(previous => [
-      ...previous,
-      {
-        id: `candidate-link-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name,
-        size: 0,
-        folderId: 'other',
-        folder: 'Tài liệu khác',
-        url,
-        data: '',
-        createdAt: new Date().toISOString(),
-        createdById: currentUser.uid,
-        createdBy: currentUser.displayName
-      }
-    ]);
-    setCandidateLinkName('');
-    setCandidateLinkUrl('');
-  };
 
   const saveClassification = async (candidate: LeadCandidateRecord, values: string[]) => {
     return runMutationAction(
