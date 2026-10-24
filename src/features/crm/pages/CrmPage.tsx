@@ -29,7 +29,6 @@ import { ImagePreviewDialog } from '@/components/ImagePreviewDialog';
 import { CustomerContractDialog } from '@/features/crm/components/CustomerContractDialog';
 import { updateCustomerProduct } from '@/features/crm/api/customerProductService';
 import {
-  canManageCustomerProducts,
   getCustomerProductCodes,
   getCustomerProductOrderHistory,
   getCustomerProductSize,
@@ -46,7 +45,6 @@ import {
 import { DataFilterButton, DataFilterChipBar } from '@/components/DataWorkspaceFilters';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { RowActionMenu } from '@/components/RowActionMenu';
 import { PhoneCallCell } from '@/components/PhoneCallCell';
 import { customerCallHistoryKeys, customerCallSubjectKey } from '@/features/crm/model/callHistory';
 import { SupportRequestDialog, type SupportRequestTarget } from '@/components/SupportRequestDialog';
@@ -61,7 +59,7 @@ import { useSystemFieldConfiguration } from '@/hooks/useSystemFieldConfiguration
 import { getMissingRequiredEntityFields, type EntityCustomFieldValues } from '@/features/crm/model/entityFieldConfig';
 import { createCustomerOnboardingItem } from '@/features/crm/model/customerOnboardingItem';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
-import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
+import { formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
 import {
   normalizePendingOrderItem,
   type CustomerPendingOrderItem,
@@ -110,7 +108,6 @@ import {
   Plus,
   Trash2,
   X,
-  FileText,
   AlertCircle,
   Copy,
   Building2,
