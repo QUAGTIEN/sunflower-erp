@@ -397,7 +397,7 @@ export const Leads: React.FC<LeadsProps> = ({
 
   useEffect(() => {
     setLeadCurrentPage(1);
-  }, [searchTerm, dynamicFilters, insightFilters, customFieldFilters, advancedFilters]);
+  }, [searchTerm, dynamicFilters, insightFilters, customFieldFilters, advancedFilters, setLeadCurrentPage]);
 
   const selectedLead = selectedLeadId ? leads.find(lead => lead.id === selectedLeadId) || null : null;
 
@@ -526,7 +526,7 @@ export const Leads: React.FC<LeadsProps> = ({
       enterLeadProfileHistory();
       setShowLeadForm(true);
     },
-    [customFieldDefinitions, enterLeadProfileHistory, filterDefinitions]
+    [customFieldDefinitions, enterLeadProfileHistory, filterDefinitions, setUploadingFiles]
   );
 
   const openLeadById = useCallback(
@@ -689,7 +689,8 @@ export const Leads: React.FC<LeadsProps> = ({
       customFieldDefinitions,
       enterLeadProfileHistory,
       filterDefinitions,
-      saleUsers
+      saleUsers,
+      setUploadingFiles
     ]
   );
 
