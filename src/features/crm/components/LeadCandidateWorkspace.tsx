@@ -126,6 +126,7 @@ import {
   type EmployeeActivityCard,
   type SalesReportSummary
 } from './leadCandidateWorkspace/leadCandidateWorkspaceConfig';
+import { LeadCandidateBatchBar } from './leadCandidateWorkspace/LeadCandidateBatchBar';
 import { LeadCandidateFilterPanel } from './leadCandidateWorkspace/LeadCandidateFilterPanel';
 import { EmployeeActivityMonitor } from './leadCandidateWorkspace/EmployeeActivityMonitor';
 import { LeadCandidateScheduleDialog } from './leadCandidateWorkspace/LeadCandidateScheduleDialog';
@@ -2686,65 +2687,19 @@ export const LeadCandidateWorkspace: React.FC<LeadCandidateWorkspaceProps> = ({
           )}
 
           {workspaceView === 'all' && selectedQueueCandidateIds.length > 0 && (
-            <section className="lead-candidate-batch-bar" aria-label="Chuyển dữ liệu sang công việc cần xử lý">
-              <div>
-                <ListPlus size={17} />
-                <strong>Đã chọn {selectedQueueCandidateIds.length} khách hàng</strong>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedQueueCandidateIds([]);
-                    setBatchQueueError('');
-                  }}
-                >
-                  Bỏ chọn
-                </button>
-              </div>
-              <div className="lead-candidate-batch-actions">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={addSelectedCandidatesToWorkQueue}
-                  disabled={savingBatchQueue}
-                >
-                  <ListPlus size={14} /> {savingBatchQueue ? 'Đang xử lý...' : 'Đưa vào Công việc cần xử lý'}
-                </button>
-                {currentUser.role === 'admin' && (
-                  <div className="lead-candidate-batch-assignment">
-                    <label>
-                      <span>Bàn giao cho Sale</span>
-                      <select
-                        value={batchAssigneeId}
-                        onChange={event => {
-                          setBatchAssigneeId(event.target.value);
-                          setBatchQueueError('');
-                        }}
-                      >
-                        <option value="">Chọn Sale nhận việc</option>
-                        {saleUsers.map(user => (
-                          <option key={user.uid} value={user.uid}>
-                            {user.displayName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      className="btn lead-candidate-assign-button"
-                      onClick={assignSelectedCandidatesToSale}
-                      disabled={savingBatchQueue || !batchAssigneeId}
-                    >
-                      <UserRoundSearch size={14} /> Bàn giao
-                    </button>
-                  </div>
-                )}
-              </div>
-              {batchQueueError && (
-                <p>
-                  <AlertCircle size={13} /> {batchQueueError}
-                </p>
-              )}
-            </section>
+            <LeadCandidateBatchBar
+              selectedQueueCandidateIds={selectedQueueCandidateIds}
+              setSelectedQueueCandidateIds={setSelectedQueueCandidateIds}
+              setBatchQueueError={setBatchQueueError}
+              addSelectedCandidatesToWorkQueue={addSelectedCandidatesToWorkQueue}
+              savingBatchQueue={savingBatchQueue}
+              currentUser={currentUser}
+              batchAssigneeId={batchAssigneeId}
+              setBatchAssigneeId={setBatchAssigneeId}
+              saleUsers={saleUsers}
+              assignSelectedCandidatesToSale={assignSelectedCandidatesToSale}
+              batchQueueError={batchQueueError}
+            />
           )}
 
           {actionError && (
