@@ -206,3 +206,12 @@ export const EMPTY_CONTRACT_DRAFT: CustomerContractDraft = {
 
 /** Tabs of the customer detail workspace. */
 export type CustomerHistoryTab = 'overview' | 'po' | 'products' | 'notes' | 'files';
+
+/** One file, contract or document shown in the repository preview of the overview tab. */
+export interface RepositoryPreviewItem {
+  id: string;
+  name: string;
+  folderId: string;
+  date: string;
+  source: string;
+}
