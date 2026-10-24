@@ -111,6 +111,7 @@ import { LeadListTable } from './leadsPage/LeadListTable';
 import { useLeadListFilters } from '@/features/crm/hooks/useLeadListFilters';
 import { useLeadTableColumns } from '@/features/crm/hooks/useLeadTableColumns';
 import { useLeadSchedule } from '@/features/crm/hooks/useLeadSchedule';
+import { useLeadFileDrafts } from '@/features/crm/hooks/useLeadFileDrafts';
 import { LeadScheduleDialog } from './leadsPage/LeadScheduleDialog';
 
 interface LeadsProps {
@@ -167,9 +168,16 @@ export const Leads: React.FC<LeadsProps> = ({
   const [formFilterValues, setFormFilterValues] = useState<Record<string, string[]>>({});
   const [formProfileValues, setFormProfileValues] = useState<Record<string, string[]>>({});
   const [customFieldValues, setCustomFieldValues] = useState<EntityCustomFieldValues>({});
-  const [uploadingFiles, setUploadingFiles] = useState<LeadFileRecord[]>([]);
-  const [attachmentLinkName, setAttachmentLinkName] = useState('');
-  const [attachmentLinkUrl, setAttachmentLinkUrl] = useState('');
+  const {
+    uploadingFiles,
+    setUploadingFiles,
+    attachmentLinkName,
+    setAttachmentLinkName,
+    attachmentLinkUrl,
+    setAttachmentLinkUrl,
+    handleLeadFilesChange,
+    handleAddAttachmentLink
+  } = useLeadFileDrafts({ currentUser });
   const [activeLeadFolderId, setActiveLeadFolderId] = useState('contracts');
   const [newLeadFolderName, setNewLeadFolderName] = useState('');
   const [renamingLeadFolderId, setRenamingLeadFolderId] = useState('');
@@ -705,66 +713,6 @@ export const Leads: React.FC<LeadsProps> = ({
     setEditingLeadId('');
     setConvertingCandidateId('');
     setLeadDetailTab('classification');
-  };
-
-  const handleLeadFilesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    const oversizedFile = files.find(file => file.size > 900_000);
-    if (oversizedFile) {
-      window.alert(t('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.'));
-      event.target.value = '';
-      return;
-    }
-    const nextFiles = await Promise.all(
-      files.map(
-        file =>
-          new Promise<LeadFileRecord>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () =>
-              resolve({
-                id: `lead-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                name: file.name,
-                size: file.size,
-                folderId: 'other',
-                folder: 'Tài liệu khác',
-                url: '',
-                data: String(reader.result || ''),
-                createdAt: new Date().toISOString(),
-                createdById: currentUser.uid,
-                createdBy: currentUser.displayName
-              });
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          })
-      )
-    );
-    setUploadingFiles(previous => [...previous, ...nextFiles]);
-    event.target.value = '';
-  };
-
-  const handleAddAttachmentLink = () => {
-    const name = attachmentLinkName.trim();
-    const url = attachmentLinkUrl.trim();
-    if (!name || !/^https?:\/\//i.test(url)) {
-      window.alert(t('Nhập tên tệp và đường dẫn chia sẻ bắt đầu bằng http:// hoặc https://.'));
-      return;
-    }
-    setUploadingFiles(previous => [
-      ...previous,
-      {
-        id: `lead-link-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        name,
-        folderId: 'other',
-        folder: 'Tài liệu khác',
-        url,
-        data: '',
-        createdAt: new Date().toISOString(),
-        createdById: currentUser.uid,
-        createdBy: currentUser.displayName
-      }
-    ]);
-    setAttachmentLinkName('');
-    setAttachmentLinkUrl('');
   };
 
   const handleLeadRepositoryFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
