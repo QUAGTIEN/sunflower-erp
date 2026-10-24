@@ -70,4 +70,4 @@ Lượt 7: chốt nguồn/ngày cắt và bảng đối soát, phê duyệt dữ
 
 `accounting-reports.test.cjs`: kỳ/biên ngày/đảo khác tháng/ứng trước/dòng tiền/tuổi nợ/CSV, quyền và phạm vi summary, hàng cơ sở/giao thẳng/nguồn cũ và mất dòng, thao tác lọc/drilldown/xuất toàn bộ kết quả, form retry ngưỡng. `accounting-ledger.test.cjs` đối chiếu báo cáo với writer thực sau nhiều nghiệp vụ. `warehouse.test.cjs` kiểm tra threshold thành phẩm không đổi tồn, quyền/revision/audit/idempotency.
 
-Không mở trình duyệt, không chạy emulator hoặc ghi Firebase thật. Kết quả build/lint/test cuối cùng ghi tại ACCOUNTING_IMPLEMENTATION_STATUS.md và bàn giao chat.
+Không mở trình duyệt, không chạy emulator hoặc ghi Firebase thật. Kết quả build/lint/test cuối cùng ghi tại ../archive/ACCOUNTING_HANDOVER_LOG.md và bàn giao chat.

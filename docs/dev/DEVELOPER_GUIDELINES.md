@@ -2,55 +2,53 @@
 
 Tệp này là nguồn quy tắc bắt buộc khi phân tích, thiết kế, chỉnh sửa hoặc thêm tính năng cho hệ thống ERP Sản xuất Tem Nhãn Sunflower.
 
-## 0. PHẠM VI, THỨ TỰ ƯU TIÊN VÀ TÍCH HỢP TASTE SKILL
+## 0. PHẠM VI, THỨ TỰ ƯU TIÊN VÀ CHUẨN THAM CHIẾU
 
 ### 0.1. Thứ tự ưu tiên
 
 Khi có hai chỉ dẫn khác nhau, áp dụng theo thứ tự sau:
 
 1. Yêu cầu rõ ràng của người dùng trong tác vụ hiện tại.
-2. Quy tắc trong `docs/DEVELOPER_GUIDELINES.md`.
+2. Quy tắc trong `CLAUDE.md` và tài liệu này.
 3. Design token, component dùng chung và hành vi đã thống nhất trong codebase.
-4. Skill dự án `sunflower-erp-ui`.
-5. Skill `design-taste-frontend`, chỉ với vai trò tham khảo chống giao diện AI đại trà.
+4. Skill dự án `sunflower-erp-ui` (`.claude/skills/sunflower-erp-ui`).
 
-Quy tắc ở mức thấp hơn không được tự động ghi đè quy tắc ở mức cao hơn. Không thay đổi kiến trúc, dependency, dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp ứng một gợi ý thẩm mỹ.
+Quy tắc ở mức thấp hơn không được tự động ghi đè quy tắc ở mức cao hơn. Không thay đổi kiến trúc, dependency,
+dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp ứng một gợi ý thẩm mỹ.
 
-### 0.2. Design Read và cấu hình mặc định của Sunflower ERP
+### 0.2. Định hướng sản phẩm và chuẩn tham chiếu
 
-Mặc định đọc sản phẩm như sau:
+> Hệ thống ERP nội bộ cho nhân viên văn phòng và các bộ phận vận hành, dùng ngôn ngữ thị giác sáng, tin cậy,
+> tiết chế, mật độ thông tin cao và ưu tiên tốc độ thao tác.
 
-> Hệ thống ERP nội bộ cho nhân viên văn phòng và các bộ phận vận hành, dùng ngôn ngữ thị giác sáng, tin cậy, tiết chế, mật độ thông tin cao và ưu tiên tốc độ thao tác.
+- **Chuẩn tham chiếu: MISA** và các phần mềm ERP hiện đại: gọn, chuyên nghiệp, bảng/form dày thông tin, thao tác nhanh.
+- Khi cần làm màn hình hoặc pattern mới chưa có mẫu tương tự trong dự án, **yêu cầu người dùng gửi ảnh tham chiếu MISA**
+  trước khi thiết kế. Không tự sáng tác phong cách mới.
+- Bố cục ổn định, dễ dự đoán, nhất quán giữa các phân hệ. Motion chỉ cho hover, focus, active và chuyển trạng thái ngắn.
 
-Ba tham số Taste Skill của dự án:
+### 0.3. Đồng nhất giữa các phân hệ
 
-- `DESIGN_VARIANCE: 3`: bố cục ổn định, dễ dự đoán và nhất quán giữa các phân hệ.
-- `MOTION_INTENSITY: 2`: chỉ dùng hover, focus, active và chuyển trạng thái ngắn có mục đích.
-- `VISUAL_DENSITY: 8`: ưu tiên bảng, form và dữ liệu nghiệp vụ trong không gian desktop.
+- Cùng loại thành phần (header trang, tab, toolbar, bộ lọc, bảng, form, modal, nút, trạng thái, toast, phân trang)
+  phải trông và hoạt động giống nhau ở mọi phân hệ.
+- Trước khi sửa, đối chiếu với ít nhất một màn hình cùng loại đã chuẩn. Không tạo biến thể riêng cho một trang.
 
-Các giá trị này thay thế baseline của Taste Skill khi làm màn hình ERP. Người dùng có thể yêu cầu điều chỉnh cho một màn hình cụ thể, nhưng các ràng buộc nghiệp vụ, khả năng sử dụng và tiếp cận vẫn phải được giữ.
+### 0.4. Không được có lỗi giao diện cơ bản
 
-### 0.3. Phần Taste Skill được phép áp dụng
+- **Không cắt xén chữ ngoài ý muốn.** Nhãn, nút, tiêu đề, tab và tiêu đề cột không bị cắt hay xuống dòng lệch.
+  Chỉ dữ liệu trong ô bảng được rút gọn, và phải có ellipsis + `title`/tooltip xem đầy đủ.
+- **Không đè lớp.** Dropdown, menu, tooltip, modal và toast đúng tầng `z-index` (token chung), không bị `overflow`
+  của khung cha cắt; menu gần mép màn hình tự đổi hướng.
+- **Không vỡ layout.** Không tràn ngang trang, không chồng phần tử, không nhảy bố cục khi đổi tab, tải dữ liệu
+  hoặc hiện lỗi. Thiết kế cho dữ liệu dài, dữ liệu rỗng, nhiều dòng và các độ rộng 1366px, 1920px, màn hình hẹp.
+- Người dùng tự kiểm thử trên trình duyệt. Người viết code phải phòng các lỗi trên ngay khi viết, bằng cách dùng
+  đúng class/token dùng chung. Khi bàn giao, liệt kê các điểm cần kiểm tra.
 
-- Audit giao diện và nhận diện design token hiện tại trước khi sửa.
-- Giữ nguyên kiến trúc thông tin, tên điều hướng, field, hành vi và quyền truy cập nếu người dùng không yêu cầu thay đổi.
-- Tránh các dấu hiệu giao diện AI đại trà: gradient tím xanh vô cớ, glow, glassmorphism, card lặp lại, bóng đổ nặng, nhãn trang trí và nội dung giả.
-- Khóa tính nhất quán của bảng màu, màu nhấn, hệ border-radius, typography và khoảng cách.
-- Chỉ dùng card khi card thể hiện một nhóm nghiệp vụ hoặc cấp độ thông tin thực sự.
-- Hoàn thiện đầy đủ trạng thái default, hover, focus, active, disabled, loading, empty, error, success và dữ liệu dài.
-- Kiểm tra nội dung hiển thị, độ tương phản, responsive, thao tác bàn phím và hiệu năng trước khi bàn giao.
-- Ưu tiên cải tiến có mục tiêu: typography, nhịp khoảng cách, độ rõ của phân cấp và phản hồi thao tác trước khi thay đổi bố cục lớn.
+### 0.5. Không áp dụng cho màn hình ERP
 
-### 0.4. Phần Taste Skill không áp dụng cho màn hình ERP
-
-- Không dùng các quy tắc dành cho hero, landing page, portfolio, logo wall, testimonial, marquee, bento marketing hoặc scroll storytelling.
-- Không tự động cài Tailwind, Motion, GSAP, Three.js, shadcn/ui, Fluent, Carbon hoặc design system khác. Dự án tiếp tục dùng React, Vite, TypeScript và CSS hiện có trừ khi người dùng phê duyệt thay đổi stack.
-- Không thêm Dark Mode, theme tự động theo hệ điều hành hoặc section đảo màu.
-- Không dùng icon, emoji hoặc SVG trang trí để thay nhãn chữ.
-- Không bắt buộc tạo ảnh bằng AI hoặc thêm ảnh trang trí vào màn hình nghiệp vụ.
-- Không dùng headline cỡ lớn, khoảng trắng kiểu landing page, bố cục bất đối xứng mạnh hoặc animation theo cuộn.
-- Không loại bỏ bảng dữ liệu, form dài hoặc danh sách nghiệp vụ chỉ vì Taste Skill ưu tiên nội dung marketing ngắn.
-- Không thay đổi font Inter hiện có chỉ vì Taste Skill khuyến nghị font khác.
+- Không dùng phong cách landing page/marketing: hero, bento, testimonial, headline cỡ lớn, khoảng trắng rộng,
+  animation theo cuộn, ảnh trang trí, gradient/glow/glassmorphism.
+- Không tự cài Tailwind, Motion, GSAP, shadcn/ui hay design system khác. Giữ React, Vite, TypeScript và CSS hiện có.
+- Không thêm Dark Mode. Không đổi font Inter.
 
 ---
 
@@ -63,13 +61,12 @@ Các giá trị này thay thế baseline của Taste Skill khi làm màn hình E
 - Sử dụng độ tương phản tốt để dễ đọc số liệu bảng biểu.
 
 ### 1.2. Biểu tượng (Icons)
-- **QUY TẮC CỐT LÕI**: **TUYỆT ĐỐI KHÔNG SỬ DỤNG ICON** (Không dùng FontAwesome, Lucide, Heroicons, Material Icons, hay bất kỳ ký tự biểu tượng nào).
-- **Giải pháp thay thế**: Sử dụng **VĂN BẢN (Text Labels)** rõ nghĩa.
-  - *Ví dụ*: Thay vì dùng nút icon `[+]`, hãy dùng nút chữ `Thêm mới`.
-  - Thay vì dùng nút icon thùng rác `[🗑️]`, hãy dùng chữ `Xóa`.
-  - Thay vì dùng icon kính lúp `[🔍]`, hãy dùng chữ `Tìm kiếm`.
-  - Thay vì icon cài đặt `[⚙️]`, hãy dùng chữ `Cấu hình`.
-- Thiết kế nút bấm và danh mục điều hướng bằng văn bản rõ ràng, sắp xếp khoa học để bù đắp cho việc thiếu biểu tượng trực quan.
+- Chỉ dùng **`lucide-react`** (đã có trong dự án). Không dùng emoji, ký tự biểu tượng hay thư viện icon khác.
+- Icon **luôn đi kèm nhãn chữ** rõ nghĩa ở nút hành động, menu và sidebar. Ví dụ: `[+] Thêm mới`, `Xóa`, `Tìm kiếm`.
+- Ngoại lệ được phép không có chữ: nút ba chấm của `RowActionMenu`, nút đóng modal và nút phân trang dùng chung.
+  Các nút này phải có `aria-label`/`title`.
+- Cùng một hành động dùng cùng một icon trên mọi phân hệ. Kích thước icon thống nhất theo vị trí (sidebar, toolbar, menu).
+- Không dùng icon chỉ để trang trí tiêu đề, thẻ hoặc trạng thái.
 
 ### 1.3. Phong cách (Aesthetic & Vibe)
 - **Lịch sự văn phòng, tiện nghi**: Bố cục bảng biểu (table), biểu mẫu (form), bảng thông tin (dashboard) gọn gàng, ngăn nắp.
@@ -139,7 +136,7 @@ Các giá trị này thay thế baseline của Taste Skill khi làm màn hình E
 - Mỗi ô dữ liệu ưu tiên hiển thị một dòng; nội dung dài dùng ellipsis và tooltip hoặc `title`.
 - Nội dung chữ căn trái, số liệu căn phải; trạng thái và thao tác có thể căn giữa nếu phù hợp.
 - Cột thao tác phải đặt cuối bảng và giữ vị trí nhất quán.
-- Không đặt nút lớn trong từng hàng; hành động phụ phải gom vào menu văn bản gọn, tuân thủ quy tắc không dùng icon.
+- Không đặt nút lớn trong từng hàng; hành động phụ gom vào `RowActionMenu` dùng chung (nút ba chấm, mục menu bằng chữ).
 - Bảng nhiều cột phải hỗ trợ cuộn ngang mà không làm vỡ bố cục trang.
 - Cột nhận diện chính và cột thao tác nên được giữ cố định khi điều đó giúp thao tác trên bảng rộng.
 - Thanh phân trang phải nằm cuối bảng, không che dữ liệu và dùng chung một mẫu trên mọi phân hệ.
@@ -162,7 +159,7 @@ Các giá trị này thay thế baseline của Taste Skill khi làm màn hình E
 - Hành động nguy hiểm như xóa hoặc hủy dữ liệu phải dùng chữ rõ nghĩa, màu cảnh báo phù hợp và yêu cầu xác nhận.
 - Không sử dụng hai cách gọi khác nhau cho cùng một hành động, ví dụ không dùng lẫn `Thêm`, `Tạo mới` và `Bổ sung` nếu cùng một ý nghĩa.
 - Kích thước, padding và trạng thái hover, focus, disabled của nút phải đồng nhất giữa các trang.
-- Tuân thủ quy tắc tại mục 1.2: nút và hành động phải dùng nhãn chữ rõ nghĩa, không thay thế bằng icon đơn lẻ.
+- Tuân thủ mục 1.2: nút và hành động có nhãn chữ rõ nghĩa; icon chỉ đi kèm, không thay thế chữ.
 
 ### 1.13. Phản hồi hệ thống
 - Mọi thao tác bất đồng bộ phải có phản hồi rõ ràng: đang xử lý, thành công hoặc thất bại.
@@ -267,11 +264,13 @@ Các giá trị này thay thế baseline của Taste Skill khi làm màn hình E
 ### 3.3. Kiểm tra trước khi hoàn thành
 
 - [ ] Đúng Light Theme, màu nhấn và hệ border-radius của dự án.
-- [ ] Không có icon, emoji trang trí, gradient/glow vô cớ hoặc card lặp lại không có ý nghĩa.
-- [ ] Typography, spacing, header, tab, bảng, form và nút khớp các màn hình cùng loại.
+- [ ] Icon đúng mục 1.2 (lucide kèm chữ); không emoji, gradient/glow vô cớ hoặc card lặp lại không có ý nghĩa.
+- [ ] Typography, spacing, header, tab, bảng, form và nút khớp các màn hình cùng loại (đồng nhất, chuẩn MISA).
+- [ ] Không cắt chữ ngoài ý muốn, không đè lớp, không vỡ layout với dữ liệu dài/rỗng và các độ rộng ở mục 0.4.
 - [ ] Có đủ trạng thái loading, empty, error, success, disabled và dữ liệu dài khi liên quan.
 - [ ] Label, CTA và tên trạng thái dùng từ nhất quán, không trùng ý hoặc mơ hồ.
 - [ ] Contrast đạt WCAG AA; focus nhìn thấy được; thao tác bàn phím và Escape hoạt động khi liên quan.
 - [ ] Desktop hoạt động hiệu quả; màn hình hẹp không tràn, chồng lấp hoặc che chức năng quan trọng.
 - [ ] Không phát sinh dependency, thay đổi dữ liệu hoặc thay đổi quyền ngoài phạm vi.
 - [ ] Chạy lint/build hoặc kiểm tra tương ứng với mức rủi ro của thay đổi.
+- [ ] Liệt kê các điểm người dùng cần kiểm tra trên trình duyệt khi bàn giao.

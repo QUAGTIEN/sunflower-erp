@@ -1,59 +1,50 @@
 # Sunflower ERP
 
-Hệ thống ERP nội bộ dành cho quy trình kinh doanh và sản xuất tem nhãn Sunflower. Ứng dụng sử dụng React, TypeScript, Vite và Firebase, đồng thời hỗ trợ local storage khi Firebase runtime không khả dụng.
+Hệ thống ERP nội bộ cho quy trình kinh doanh và sản xuất tem nhãn Sunflower: CRM → đơn hàng (PO) → thiết kế /
+mua hàng / kho / sản xuất → giao hàng → kế toán.
+
+Stack: React 19, TypeScript, Vite (SPA), Firebase Auth + Firestore, Vercel Functions (`api/` → `server/`).
 
 ## Chạy dự án
 
 ```bash
 npm install
-npm run dev
-```
-
-Các lệnh kiểm tra và chạy production:
-
-```bash
-npm run build
+npm run dev        # chỉ giao diện Vite; API /api/* cần chạy bằng `vercel dev`
+npm run build      # TypeScript client + server, rồi Vite build ra dist/
 npm run lint
-npm run preview
+node --test --test-concurrency=2 tests/*.test.cjs
 ```
 
-Sao chép `.env.example` thành `.env` và điền cấu hình Firebase trước khi dùng backend thật. Không commit file `.env` hoặc thông tin xác thực.
+Sao chép `.env.example` thành `.env` và điền cấu hình Firebase. Không commit `.env*` hoặc khóa Firebase Admin.
 
-## Cấu trúc chính
+## Cấu trúc
 
 ```text
 sunflower/
-├── .agents/skills/    # Skill dành cho agent và quy tắc UI
-├── .codex/            # Hook tự động hóa Codex
-├── docs/              # Kiến trúc và hướng dẫn phát triển
+├── CLAUDE.md          # Quy tắc làm việc (đọc trước khi sửa)
+├── .claude/skills/    # Skill UI sunflower-erp-ui
+├── docs/              # Tài liệu nghiệp vụ, kiến trúc, kế toán — mục lục: docs/README.md
+├── api/               # Vercel Functions (entry mỏng)
+├── server/            # Logic máy chủ, transaction ghi sổ
+├── src/
+│   ├── app/           # AppShell, providers, phân quyền màn hình
+│   ├── features/      # Các phân hệ nghiệp vụ
+│   ├── components/ hooks/ services/ domain/ context/   # Lớp dùng chung
+│   ├── shared/        # Kiểu và tiện ích thuần
+│   ├── infrastructure/ # Adapter Firebase, local storage
+│   ├── styles/        # Chuẩn CSS dùng chung
+│   └── data/          # Seed, dữ liệu địa giới
+├── tests/             # node:test
 ├── scripts/           # Script bảo trì chạy thủ công
-├── api/               # API entry points
-├── server/            # Server-side code
-├── public/            # Static assets
-└── src/
-    ├── app/           # Composition, providers và lifecycle
-    ├── features/      # Module nghiệp vụ ERP
-    ├── shared/        # Kiểu dữ liệu và utility dùng chung
-    ├── infrastructure/ # Firebase và local-storage adapters
-    └── data/          # Seed và dữ liệu tĩnh
+└── public/            # Static assets, dữ liệu bản đồ
 ```
-
-Xem [kiến trúc source](docs/ARCHITECTURE.md) và [quy tắc phát triển](docs/DEVELOPER_GUIDELINES.md) trước khi thay đổi cấu trúc hoặc giao diện.
-
-## Skill và agent guidance
-
-- `AGENTS.md`: quy tắc điều phối ở cấp dự án.
-- `.agents/skills/sunflower-erp-ui/SKILL.md`: hướng dẫn UI dành riêng cho ERP.
-- `.agents/skills/design-taste-frontend/SKILL.md`: tham chiếu anti-slop phụ trợ.
-- `skills-lock.json`: nguồn và phiên bản của skill được cài đặt.
-
-## Script bảo trì
-
-`npm run db:clear` xóa và tạo lại dữ liệu Firebase theo seed trong script. Đây là thao tác phá hủy dữ liệu; chỉ chạy khi đã xác nhận đúng project Firebase và có bản sao lưu cần thiết.
 
 ## Triển khai
 
-- Firebase: `firebase.json`, `firestore.rules`, `storage.rules`.
+- Firebase: `firebase.json`, `firestore.rules`, `firestore.indexes.json`, `storage.rules`.
 - Vercel: `vercel.json` và thư mục `api/`.
-- Production build: `npm run build` tạo thư mục `dist/`.
-- Cấu hình trường thông tin: xem [phạm vi, bảo vệ dữ liệu và thứ tự triển khai API/rules](docs/FIELD_CONFIGURATION.md). Kiểm thử bằng `npm run test:fields`.
+- Web, API và rules phải deploy cùng phiên bản. Push Git không phải là deploy.
+
+## Cảnh báo
+
+`npm run db:clear` xóa và tạo lại dữ liệu Firebase. Chỉ chạy khi đã xác nhận đúng project và có bản sao lưu.

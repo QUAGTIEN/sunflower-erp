@@ -32,7 +32,7 @@
 - `/api/production/manage` thêm `action: catalog` để đọc mã NVL đang dùng và liên kết dòng PO. Producer tra cứu qua API, không cấp quyền quản trị danh mục. Không cần mã yêu cầu cho thao tác chỉ đọc.
 - Tạo/sửa/phát hành đọc lại liên kết mã phía máy chủ. Ưu tiên liên kết PO đã xác nhận; chỉ kế thừa liên kết sản phẩm khách khi đúng ID, phiên bản và kỹ thuật/ĐVT. Snapshot lưu mã, tên, ĐVT cơ sở/gốc, hệ số và revision; không tin snapshot client. Vật tư chọn mã phải là NVL và có hệ số quy đổi được khai báo.
 - Dòng chưa liên kết giữ khả năng lưu/in theo luồng cũ; ghi rõ chưa liên kết, cần đối soát trước hạch toán kho ở lượt 3. Liên kết đã có nhưng stale/inactive bị chặn lưu/phát hành. Đổi danh mục khi chờ duyệt yêu cầu trả về lưu lại; không thay mã trên lệnh đã phát hành.
-- Không đổi số tồn, công nợ hoặc backfill lệnh cũ. Chi tiết hợp đồng và quyết định tại `ACCOUNTING_SPEC.md`, `ACCOUNTING_DECISIONS.md`.
+- Không đổi số tồn, công nợ hoặc backfill lệnh cũ. Chi tiết hợp đồng và quyết định tại `../accounting/ACCOUNTING_SPEC.md`, `../accounting/ACCOUNTING_DECISIONS.md`.
 
 ## Bổ sung lượt kế toán 3 — ngày 23/10/2026
 
@@ -42,7 +42,7 @@
 
 ## Chưa triển khai
 
-Đã bổ sung nhập thành phẩm/giao/trả ở lượt kế toán 4, xem `FINISHED_GOODS.md`. Chưa có giá thành/giá vốn, phân bổ tiêu hao, nhiều kho/lô/cuộn/vị trí hoặc chuyển đổi đầu kỳ thật. Các vùng cấp kho / đối soát trên bản in vẫn để ghi theo chứng từ riêng, không tự đổ dữ liệu hoặc chữ ký giả.
+Đã bổ sung nhập thành phẩm/giao/trả ở lượt kế toán 4, xem `../accounting/FINISHED_GOODS.md`. Chưa có giá thành/giá vốn, phân bổ tiêu hao, nhiều kho/lô/cuộn/vị trí hoặc chuyển đổi đầu kỳ thật. Các vùng cấp kho / đối soát trên bản in vẫn để ghi theo chứng từ riêng, không tự đổ dữ liệu hoặc chữ ký giả.
 
 Không có thao tác lưu / phát hành / in / nghiệm thu LSX nào tự trừ tồn kho. Chỉ phiếu thực tế qua API kho làm đổi số dư mới; không chạy song song đường ghi tồn cũ.
 
