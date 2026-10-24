@@ -83,7 +83,6 @@ import {
   type CustomerPendingOrderDraft,
   type CustomerProductRecord,
   type CustomerContactRecord,
-  type CustomerContactRole,
   type CustomerRepositoryFolder,
   type CustomerRank,
   type CustomerRecord,
@@ -112,6 +111,20 @@ import { useSystemFilterConfiguration } from '@/hooks/useSystemFilterConfigurati
 import '@/components/CustomerHistory.css';
 import './CustomerDetailWorkspace.css';
 import {
+  CONTACT_ROLE_LABELS,
+  DOCUMENT_REPOSITORY_FOLDER_IDS,
+  UNASSIGNED_FILTER_VALUE,
+  createCopyableProfile,
+  createNextCustomerCode,
+  getProductAssetSource,
+  loadSpecsToFields,
+  normalizeFilterValue,
+  type CrmFilterOption,
+  type CrmListFilter,
+  type CrmTimeFilter
+} from '@/features/crm/model/customerWorkspace';
+import { copyTextToClipboard } from '@/shared/utils/clipboard';
+import {
   Plus,
   Trash2,
   Pencil,
@@ -136,79 +149,6 @@ import {
   Settings2
 } from 'lucide-react';
 
-const CONTACT_ROLE_LABELS: Record<CustomerContactRole, string> = {
-  primary: 'Liên hệ chính',
-  procurement: 'Mua hàng',
-  warehouse: 'Kho / nhận hàng',
-  accounting: 'Kế toán',
-  other: 'Khác'
-};
-
-const DOCUMENT_REPOSITORY_FOLDER_IDS: Record<string, string> = {
-  contract: 'contracts',
-  acceptance: 'minutes',
-  qc: 'technical',
-  qa: 'technical',
-  artwork: 'technical',
-  other: 'other'
-};
-
-type CrmListFilter = 'overview' | 'all';
-type CrmTimeFilter = 'last_30_days' | 'last_90_days' | 'this_year' | 'no_orders';
-
-interface CrmFilterOption {
-  value: string;
-  label: string;
-}
-
-const UNASSIGNED_FILTER_VALUE = '__unassigned__';
-
-const normalizeFilterValue = (value: unknown) =>
-  String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .trim()
-    .toLocaleLowerCase('vi-VN');
-
-const getProductAssetSource = (asset: unknown): string => {
-  if (typeof asset === 'string') return asset;
-  if (!asset || typeof asset !== 'object') return '';
-  const record = asset as Record<string, unknown>;
-  return String(record.base64 || record.data || record.url || '');
-};
-
-const copyTextToClipboard = async (text: string) => {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.style.position = 'fixed';
-  textarea.style.opacity = '0';
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand('copy');
-  textarea.remove();
-};
-
-const createCopyableProfile = (title: string, rows: Array<[string, unknown]>) =>
-  [title, ...rows.map(([label, value]) => `${label}\t${String(value || '—')}`)].join('\n');
-
-const createNextCustomerCode = (customers: CustomerRecord[]) => {
-  const usedCodes = new Set(customers.map(customer => customer.customerCode).filter(Boolean));
-  let sequence = customers.length + 1;
-  let candidate = `KH-${String(sequence).padStart(4, '0')}`;
-  while (usedCodes.has(candidate)) {
-    sequence += 1;
-    candidate = `KH-${String(sequence).padStart(4, '0')}`;
-  }
-  return candidate;
-};
-
 interface CrmProps {
   customers: CustomerRecord[];
   leads: LeadRecord[];
@@ -225,131 +165,6 @@ interface CrmProps {
   initialCustomerId?: string;
   onInitialCustomerOpened?: () => void;
 }
-
-const loadSpecsToFields = (productType: string, specifications: any = {}) => {
-  const specs = specifications || {};
-  if (specs.fields && Array.isArray(specs.fields)) {
-    return specs.fields;
-  }
-
-  const fields = [];
-  if (productType === 'muc_in') {
-    fields.push({
-      id: 'ribbonType',
-      label: 'Loại mực',
-      value: specs.ribbonType || 'WAX PREMIUM',
-      type: 'select',
-      options: ['WAX PREMIUM', 'WAX RESIN', 'RESIN']
-    });
-    fields.push({
-      id: 'direction',
-      label: 'Chiều quấn',
-      value: specs.direction || 'Out side',
-      type: 'select',
-      options: ['Out side', 'In side']
-    });
-    fields.push({ id: 'size', label: 'Khổ mực', value: specs.size || '110mm x 300m', type: 'text' });
-    fields.push({ id: 'color', label: 'Màu mực', value: specs.color || 'Đen', type: 'text' });
-  } else if (productType === 'tem_trang_cuon' || productType === 'tem_mau_cuon') {
-    fields.push({ id: 'width', label: 'Rộng tem (mm)', value: specs.width || 80, type: 'number' });
-    fields.push({ id: 'height', label: 'Cao tem (mm)', value: specs.height || 55, type: 'number' });
-    fields.push({ id: 'gap', label: 'Bước răng/Gap', value: specs.gap || 3, type: 'number' });
-    fields.push({ id: 'qtyPerRoll', label: 'Số tem/cuộn', value: specs.qtyPerRoll || 1000, type: 'number' });
-    fields.push({
-      id: 'core',
-      label: 'Cỡ lõi cuộn',
-      value: specs.core || specs.windingCore || '76mm',
-      type: 'select',
-      options: ['76mm', '42mm', '29mm', '40mm', '25mm']
-    });
-    fields.push({
-      id: 'dieCut',
-      label: 'Kiểu bế góc',
-      value: specs.dieCut || 'Bo góc R2',
-      type: 'select',
-      options: ['Bo góc R2', 'Bo góc R3', 'Bo góc R5', 'Vuông góc']
-    });
-    fields.push({
-      id: 'perforated',
-      label: 'Răng cưa xé',
-      value: specs.perforated || 'Không răng cưa',
-      type: 'select',
-      options: ['Không răng cưa', 'Có răng cưa xé']
-    });
-    fields.push({
-      id: 'windDirection',
-      label: 'Hướng tem ra',
-      value: specs.windDirection || 'Ra đầu trước',
-      type: 'select',
-      options: [
-        'Ra đầu trước',
-        'Ra đầu sau',
-        'Chữ quay trái',
-        'Chữ quay phải',
-        'Head First',
-        'Tail First',
-        'Left First',
-        'Right First'
-      ]
-    });
-    fields.push({
-      id: 'windDirectionFiles',
-      label: 'Tải Lên Ảnh/File Hướng Tem Ra',
-      value: specs.windDirectionFiles || [],
-      type: 'file'
-    });
-
-    if (productType === 'tem_mau_cuon') {
-      fields.push({ id: 'colors', label: 'Số màu in / Diễn giải màu', value: specs.colors || '4 màu', type: 'text' });
-      fields.push({
-        id: 'processing',
-        label: 'Quy cách gia công',
-        value: specs.processing || [],
-        type: 'checkboxes',
-        options: ['Cán bóng', 'Cán mờ', 'Phủ UV', 'Ép kim', 'Bế demi', 'Bế đứt']
-      });
-    }
-  } else if (productType === 'tem_mau_to') {
-    fields.push({ id: 'width', label: 'Chiều Rộng (mm)', value: specs.width || 80, type: 'number' });
-    fields.push({ id: 'height', label: 'Chiều Cao/Dài (mm)', value: specs.height || 55, type: 'number' });
-    fields.push({
-      id: 'corner',
-      label: 'Góc tem tờ',
-      value: specs.corner || 'Bo góc R2',
-      type: 'select',
-      options: ['Bo góc R2', 'Bo góc R3', 'Bo góc R5', 'Vuông góc']
-    });
-    fields.push({
-      id: 'lamination',
-      label: 'Cán màng bảo vệ',
-      value: specs.lamination || 'Không cán',
-      type: 'select',
-      options: ['Không cán', 'Cán bóng', 'Cán mờ']
-    });
-    fields.push({
-      id: 'finished',
-      label: 'Thành phẩm sau in',
-      value: specs.finished || 'Bế demi',
-      type: 'select',
-      options: ['Bế demi', 'Bế đứt', 'Xén thành phẩm', 'Giao nguyên tờ']
-    });
-    fields.push({
-      id: 'sheetType',
-      label: 'Quy cách khổ tờ',
-      value: specs.sheetType || 'A4',
-      type: 'select',
-      options: ['A4', 'A3', '310 x 450', '330 x 480']
-    });
-  }
-
-  if (specs.custom && Array.isArray(specs.custom)) {
-    specs.custom.forEach((c: any, index: number) => {
-      fields.push({ id: `custom_${index}_${Date.now()}`, label: c.key, value: c.value, type: 'text' });
-    });
-  }
-
-  return fields;
-};
 
 export const Crm: React.FC<CrmProps> = ({
   customers,
