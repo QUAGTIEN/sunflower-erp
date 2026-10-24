@@ -65,7 +65,10 @@ export const POImagePreviewDialog: React.FC<POImagePreviewDialogProps> = ({ setP
         <div style={{ textAlign: 'center', marginTop: '14px' }}>
           <a
             href={previewImage}
-            download={`Layout_${Date.now()}.jpg`}
+            download
+            onClick={event => {
+              event.currentTarget.download = `Layout_${Date.now()}.jpg`;
+            }}
             className="btn btn-primary"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
           >

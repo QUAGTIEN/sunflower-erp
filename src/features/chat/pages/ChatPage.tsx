@@ -324,15 +324,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     return hasRoleAccess || hasMemberAccess || isCreator || isAdmin;
   });
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   // Mark active channel as read
   useEffect(() => {
     localStorage.setItem(`erp_last_read_ch_${currentUser.uid}_${activeChannelId}`, new Date().toISOString());
     scrollToBottom();
   }, [activeChannelId, currentUser.uid, messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

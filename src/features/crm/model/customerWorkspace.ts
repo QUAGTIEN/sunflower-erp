@@ -91,6 +91,9 @@ const CORNER_OPTIONS = ['Bo góc R2', 'Bo góc R3', 'Bo góc R5', 'Vuông góc']
  * Builds the editable spec fields for a product. Products saved with `fields` keep them as is;
  * older products only stored flat values per product type, so defaults are filled in here.
  */
+/** Id for a spec field the user adds by hand; unique per click. */
+export const createCustomSpecFieldId = () => `custom_${Date.now()}`;
+
 export const loadSpecsToFields = (
   productType: string,
   specifications: StoredProductSpecifications | null | undefined = {}

@@ -2553,7 +2553,14 @@ export const Sales: React.FC<SalesProps> = ({
               style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', display: 'block', margin: '0 auto' }}
             />
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
-              <a href={previewImage} download={`Preview_${Date.now()}.jpg`} className="btn btn-primary">
+              <a
+                href={previewImage}
+                download
+                onClick={event => {
+                  event.currentTarget.download = `Preview_${Date.now()}.jpg`;
+                }}
+                className="btn btn-primary"
+              >
                 {t('Tải Ảnh Về')}
               </a>
             </div>

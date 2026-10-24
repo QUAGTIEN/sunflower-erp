@@ -92,6 +92,7 @@ import {
   CONTACT_ROLE_LABELS,
   DOCUMENT_REPOSITORY_FOLDER_IDS,
   createCopyableProfile,
+  createCustomSpecFieldId,
   createNextCustomerCode,
   getProductAssetSource,
   loadSpecsToFields,
@@ -355,7 +356,7 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   const handleAddField = () => {
-    const newFieldId = `custom_${Date.now()}`;
+    const newFieldId = createCustomSpecFieldId();
     const newField = {
       id: newFieldId,
       label: t('Thông số mới'),
@@ -368,7 +369,7 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   const handleAddSelectField = () => {
-    const newFieldId = `custom_${Date.now()}`;
+    const newFieldId = createCustomSpecFieldId();
     const newField = {
       id: newFieldId,
       label: t('Thông số mới'),
