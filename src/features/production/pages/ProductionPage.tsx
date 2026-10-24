@@ -41,7 +41,15 @@ const getProductionQuantity = (command: any): number => {
   return Number.isFinite(quantity) ? quantity : 0;
 };
 
-export const Production: React.FC<ProductionProps> = ({ pos, productionCommands, currentUser, onRefresh, initialSelectedLsxId, messages, users }) => {
+export const Production: React.FC<ProductionProps> = ({
+  pos,
+  productionCommands,
+  currentUser,
+  onRefresh,
+  initialSelectedLsxId,
+  messages,
+  users
+}) => {
   const { t } = useLanguage();
   const [showEditLsxModal, setShowEditLsxModal] = useState(false);
   const [selectedLsx, setSelectedLsx] = useState<any | null>(null);
@@ -100,7 +108,9 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
     if (!machine) return true;
 
     if (machine.status === 'maintenance' || machine.status === 'fault' || machine.status === 'inactive') {
-      window.alert(`${machine.code} - ${machine.name} hiện ở trạng thái "${getMachineStatusLabel(machine.status)}" nên chưa thể nhận LSX.`);
+      window.alert(
+        `${machine.code} - ${machine.name} hiện ở trạng thái "${getMachineStatusLabel(machine.status)}" nên chưa thể nhận LSX.`
+      );
       return false;
     }
 
@@ -137,71 +147,85 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const handleEditLsxSubmit = async (e: React.FormEvent) => {
-    return runMutationAction("ProductionPage.tsx:handleEditLsxSubmit", async () => {
-      e.preventDefault();
-      if (!selectedLsx) return;
-      const linkedPo = pos.find(po => po.id === selectedLsx.poId);
-      if (!validateMachineAssignment(editMachineId, linkedPo, selectedLsx.id)) return;
+    return runMutationAction(
+      'ProductionPage.tsx:handleEditLsxSubmit',
+      async () => {
+        e.preventDefault();
+        if (!selectedLsx) return;
+        const linkedPo = pos.find(po => po.id === selectedLsx.poId);
+        if (!validateMachineAssignment(editMachineId, linkedPo, selectedLsx.id)) return;
 
-      await requireConfirmedMutation(dbService.updateDocument('production_commands', selectedLsx.id, {
-        machineId: editMachineId,
-        shift: editShift,
-        operatorName: editOperatorName,
-        qtyToProduce: Number(editQtyToProduce),
-        notes: editNotes,
-        productNameToBeCut: editProductNameToBeCut,
-        paperCore: editPaperCore,
-        paperMaterialCode: editPaperMaterialCode,
-        paperQuantity: Number(editPaperQuantity),
-        deliveryDeadline: editDeliveryDeadline ? new Date(editDeliveryDeadline).toISOString() : selectedLsx.deliveryDeadline,
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: new Date().toISOString()
-      }));
+        await requireConfirmedMutation(
+          dbService.updateDocument('production_commands', selectedLsx.id, {
+            machineId: editMachineId,
+            shift: editShift,
+            operatorName: editOperatorName,
+            qtyToProduce: Number(editQtyToProduce),
+            notes: editNotes,
+            productNameToBeCut: editProductNameToBeCut,
+            paperCore: editPaperCore,
+            paperMaterialCode: editPaperMaterialCode,
+            paperQuantity: Number(editPaperQuantity),
+            deliveryDeadline: editDeliveryDeadline
+              ? new Date(editDeliveryDeadline).toISOString()
+              : selectedLsx.deliveryDeadline,
+            updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+            updatedAt: new Date().toISOString()
+          })
+        );
 
-      setShowEditLsxModal(false);
-      setSelectedLsx(null);
-      onRefresh();
-
-      showSuccessToast("Đã lưu thành công");
-    }, e);
-  };
-
-  const handleDeleteLsx = async (lsxId: string) => {
-    return runMutationAction("ProductionPage.tsx:handleDeleteLsx", async () => {
-      const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (admin123 hoặc 123456):'));
-      if (password !== 'admin123' && password !== '123456') {
-        alert(t('Mật khẩu không chính xác! Không thể xóa.'));
-        return;
-      }
-      if ((await confirmDelete(t('Bạn có chắc chắn muốn xóa lệnh sản xuất này?')))) {
-        const lsx = productionCommands.find(l => l.id === lsxId);
-        await requireConfirmedMutation(dbService.updateDocument('production_commands', lsxId, { deleted: true }));
-
-        if (lsx) {
-          const po = pos.find(p => p.id === lsx.poId);
-          if (po) {
-            const updatedLogs = [
-              ...po.historyLogs,
-              {
-                status: 'waiting_production',
-                updatedBy: currentUser.displayName,
-                updatedAt: new Date().toISOString(),
-                note: `Đã hủy lệnh sản xuất ${lsx.lsxCode}. Trạng thái PO quay lại chờ sản xuất.`
-              }
-            ];
-            await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
-              ...getPOQueueUpdate('waiting_production', { productionProgress: 'pending' }),
-              historyLogs: updatedLogs
-            }));
-          }
-        }
-
+        setShowEditLsxModal(false);
         setSelectedLsx(null);
         onRefresh();
 
-        showSuccessToast("Đã xóa thành công");
-      }
-    }, lsxId);
+        showSuccessToast('Đã lưu thành công');
+      },
+      e
+    );
+  };
+
+  const handleDeleteLsx = async (lsxId: string) => {
+    return runMutationAction(
+      'ProductionPage.tsx:handleDeleteLsx',
+      async () => {
+        const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (admin123 hoặc 123456):'));
+        if (password !== 'admin123' && password !== '123456') {
+          alert(t('Mật khẩu không chính xác! Không thể xóa.'));
+          return;
+        }
+        if (await confirmDelete(t('Bạn có chắc chắn muốn xóa lệnh sản xuất này?'))) {
+          const lsx = productionCommands.find(l => l.id === lsxId);
+          await requireConfirmedMutation(dbService.updateDocument('production_commands', lsxId, { deleted: true }));
+
+          if (lsx) {
+            const po = pos.find(p => p.id === lsx.poId);
+            if (po) {
+              const updatedLogs = [
+                ...po.historyLogs,
+                {
+                  status: 'waiting_production',
+                  updatedBy: currentUser.displayName,
+                  updatedAt: new Date().toISOString(),
+                  note: `Đã hủy lệnh sản xuất ${lsx.lsxCode}. Trạng thái PO quay lại chờ sản xuất.`
+                }
+              ];
+              await requireConfirmedMutation(
+                dbService.updateDocument('pos', po.id, {
+                  ...getPOQueueUpdate('waiting_production', { productionProgress: 'pending' }),
+                  historyLogs: updatedLogs
+                })
+              );
+            }
+          }
+
+          setSelectedLsx(null);
+          onRefresh();
+
+          showSuccessToast('Đã xóa thành công');
+        }
+      },
+      lsxId
+    );
   };
 
   const activeCommands = sortNewestFirst(
@@ -215,42 +239,55 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const handleCompleteLsx = async (e: React.FormEvent) => {
-    return runMutationAction("ProductionPage.tsx:handleCompleteLsx", async () => {
-      e.preventDefault();
-      if (!selectedLsx) return;
+    return runMutationAction(
+      'ProductionPage.tsx:handleCompleteLsx',
+      async () => {
+        e.preventDefault();
+        if (!selectedLsx) return;
 
-      const now = new Date().toISOString();
+        const now = new Date().toISOString();
 
-      // Update LSX
-      await requireConfirmedMutation(dbService.updateDocument('production_commands', selectedLsx.id, {
-        status: 'completed',
-        scrapQty: Number(scrapQty),
-        notes: `${selectedLsx.notes || ''} | Ghi chú hoàn thành: ${completionNotes}`,
-        completedAt: now,
-        updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-        updatedAt: now
-      }));
+        // Update LSX
+        await requireConfirmedMutation(
+          dbService.updateDocument('production_commands', selectedLsx.id, {
+            status: 'completed',
+            scrapQty: Number(scrapQty),
+            notes: `${selectedLsx.notes || ''} | Ghi chú hoàn thành: ${completionNotes}`,
+            completedAt: now,
+            updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+            updatedAt: now
+          })
+        );
 
-      // Legacy commands have no reliable per-item allocation. Never infer that one
-      // completed command satisfies the entire PO or guess material consumption.
-      const po = pos.find(p => p.id === selectedLsx.poId);
-      if (po) {
-        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, {
-          productionProgress: 'needs_reconciliation',
-          historyLogs: [...(po.historyLogs || []), {
-            status: po.status, updatedBy: currentUser.displayName, updatedAt: now,
-            note: `Lệnh cũ ${selectedLsx.lsxCode} hoàn thành; cần đối soát sản lượng theo từng dòng PO và phiếu xuất kho riêng. Không tự chuyển hàng chờ giao hoặc trừ kho ước lượng.`
-          }]
-        }));
-      }
+        // Legacy commands have no reliable per-item allocation. Never infer that one
+        // completed command satisfies the entire PO or guess material consumption.
+        const po = pos.find(p => p.id === selectedLsx.poId);
+        if (po) {
+          await requireConfirmedMutation(
+            dbService.updateDocument('pos', po.id, {
+              productionProgress: 'needs_reconciliation',
+              historyLogs: [
+                ...(po.historyLogs || []),
+                {
+                  status: po.status,
+                  updatedBy: currentUser.displayName,
+                  updatedAt: now,
+                  note: `Lệnh cũ ${selectedLsx.lsxCode} hoàn thành; cần đối soát sản lượng theo từng dòng PO và phiếu xuất kho riêng. Không tự chuyển hàng chờ giao hoặc trừ kho ước lượng.`
+                }
+              ]
+            })
+          );
+        }
 
-      setSelectedLsx(null);
-      setScrapQty(0);
-      setCompletionNotes('');
-      onRefresh();
+        setSelectedLsx(null);
+        setScrapQty(0);
+        setCompletionNotes('');
+        onRefresh();
 
-      showSuccessToast("Đã lưu thành công");
-    }, e);
+        showSuccessToast('Đã lưu thành công');
+      },
+      e
+    );
   };
 
   const handleOpenTransfer = (lsx: any) => {
@@ -262,112 +299,130 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   };
 
   const handleTransferSubmit = async (e: React.FormEvent) => {
-    return runMutationAction("ProductionPage.tsx:handleTransferSubmit", async () => {
-      e.preventDefault();
-      if (!selectedLsx || !targetOperatorId) return;
+    return runMutationAction(
+      'ProductionPage.tsx:handleTransferSubmit',
+      async () => {
+        e.preventDefault();
+        if (!selectedLsx || !targetOperatorId) return;
 
-      const targetOp = users.find(u => u.uid === targetOperatorId);
-      if (!targetOp) return;
+        const targetOp = users.find(u => u.uid === targetOperatorId);
+        if (!targetOp) return;
 
-      await requireConfirmedMutation(dbService.updateDocument('production_commands', selectedLsx.id, {
-        status: 'transfer_pending',
-        proposedOperatorId: targetOperatorId,
-        proposedOperatorName: targetOp.displayName,
-        transferReason
-      }));
+        await requireConfirmedMutation(
+          dbService.updateDocument('production_commands', selectedLsx.id, {
+            status: 'transfer_pending',
+            proposedOperatorId: targetOperatorId,
+            proposedOperatorName: targetOp.displayName,
+            transferReason
+          })
+        );
 
-      // Write a timeline log for the PO
-      const po = pos.find(p => p.id === selectedLsx.poId);
-      if (po) {
-        const updatedLogs = [
-          ...po.historyLogs,
-          {
-            status: 'waiting_production',
-            updatedBy: currentUser.displayName,
-            updatedAt: new Date().toISOString(),
-            note: `Thợ máy đề xuất chuyển lệnh sản xuất ${selectedLsx.lsxCode} sang thợ ${targetOp.displayName}. Lý do: ${transferReason}`
-          }
-        ];
-        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
-      }
+        // Write a timeline log for the PO
+        const po = pos.find(p => p.id === selectedLsx.poId);
+        if (po) {
+          const updatedLogs = [
+            ...po.historyLogs,
+            {
+              status: 'waiting_production',
+              updatedBy: currentUser.displayName,
+              updatedAt: new Date().toISOString(),
+              note: `Thợ máy đề xuất chuyển lệnh sản xuất ${selectedLsx.lsxCode} sang thợ ${targetOp.displayName}. Lý do: ${transferReason}`
+            }
+          ];
+          await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
+        }
 
-      setShowTransferModal(false);
-      setSelectedLsx(null);
-      setTransferReason('');
-      setTargetOperatorId('');
-      onRefresh();
+        setShowTransferModal(false);
+        setSelectedLsx(null);
+        setTransferReason('');
+        setTargetOperatorId('');
+        onRefresh();
 
-      showSuccessToast("Đã lưu thành công");
-    }, e);
+        showSuccessToast('Đã lưu thành công');
+      },
+      e
+    );
   };
 
   const handleApproveTransfer = async (lsx: any) => {
-    return runMutationAction("ProductionPage.tsx:handleApproveTransfer", async () => {
-      if (!window.confirm(t('Bạn có chắc chắn muốn duyệt chuyển lệnh này sang thợ mới?'))) return;
+    return runMutationAction(
+      'ProductionPage.tsx:handleApproveTransfer',
+      async () => {
+        if (!window.confirm(t('Bạn có chắc chắn muốn duyệt chuyển lệnh này sang thợ mới?'))) return;
 
-      // Log to PO history
-      const po = pos.find(p => p.id === lsx.poId);
-      if (po) {
-        const updatedLogs = [
-          ...po.historyLogs,
-          {
-            status: 'waiting_production',
-            updatedBy: currentUser.displayName,
-            updatedAt: new Date().toISOString(),
-            note: `Duyệt chuyển lệnh sản xuất ${lsx.lsxCode} từ thợ ${lsx.operatorName} sang thợ ${lsx.proposedOperatorName}. Lý do: ${lsx.transferReason}`
-          }
-        ];
-        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
-      }
+        // Log to PO history
+        const po = pos.find(p => p.id === lsx.poId);
+        if (po) {
+          const updatedLogs = [
+            ...po.historyLogs,
+            {
+              status: 'waiting_production',
+              updatedBy: currentUser.displayName,
+              updatedAt: new Date().toISOString(),
+              note: `Duyệt chuyển lệnh sản xuất ${lsx.lsxCode} từ thợ ${lsx.operatorName} sang thợ ${lsx.proposedOperatorName}. Lý do: ${lsx.transferReason}`
+            }
+          ];
+          await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
+        }
 
-      // Update LSX
-      await requireConfirmedMutation(dbService.updateDocument('production_commands', lsx.id, {
-        operatorId: lsx.proposedOperatorId,
-        operatorName: lsx.proposedOperatorName,
-        status: 'producing',
-        proposedOperatorId: '',
-        proposedOperatorName: '',
-        transferReason: ''
-      }));
+        // Update LSX
+        await requireConfirmedMutation(
+          dbService.updateDocument('production_commands', lsx.id, {
+            operatorId: lsx.proposedOperatorId,
+            operatorName: lsx.proposedOperatorName,
+            status: 'producing',
+            proposedOperatorId: '',
+            proposedOperatorName: '',
+            transferReason: ''
+          })
+        );
 
-      setSelectedLsx(null);
-      onRefresh();
+        setSelectedLsx(null);
+        onRefresh();
 
-      showSuccessToast("Đã lưu thành công");
-    }, lsx);
+        showSuccessToast('Đã lưu thành công');
+      },
+      lsx
+    );
   };
 
   const handleRejectTransfer = async (lsx: any) => {
-    return runMutationAction("ProductionPage.tsx:handleRejectTransfer", async () => {
-      if (!window.confirm(t('Bạn có chắc chắn muốn từ chối yêu cầu chuyển lệnh?'))) return;
+    return runMutationAction(
+      'ProductionPage.tsx:handleRejectTransfer',
+      async () => {
+        if (!window.confirm(t('Bạn có chắc chắn muốn từ chối yêu cầu chuyển lệnh?'))) return;
 
-      // Log to PO history
-      const po = pos.find(p => p.id === lsx.poId);
-      if (po) {
-        const updatedLogs = [
-          ...po.historyLogs,
-          {
-            status: 'waiting_production',
-            updatedBy: currentUser.displayName,
-            updatedAt: new Date().toISOString(),
-            note: `Từ chối chuyển lệnh sản xuất ${lsx.lsxCode} của thợ ${lsx.operatorName}. Lệnh tiếp tục chạy.`
-          }
-        ];
-        await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
-      }
+        // Log to PO history
+        const po = pos.find(p => p.id === lsx.poId);
+        if (po) {
+          const updatedLogs = [
+            ...po.historyLogs,
+            {
+              status: 'waiting_production',
+              updatedBy: currentUser.displayName,
+              updatedAt: new Date().toISOString(),
+              note: `Từ chối chuyển lệnh sản xuất ${lsx.lsxCode} của thợ ${lsx.operatorName}. Lệnh tiếp tục chạy.`
+            }
+          ];
+          await requireConfirmedMutation(dbService.updateDocument('pos', po.id, { historyLogs: updatedLogs }));
+        }
 
-      await requireConfirmedMutation(dbService.updateDocument('production_commands', lsx.id, {
-        status: 'producing',
-        proposedOperatorId: '',
-        proposedOperatorName: '',
-        transferReason: ''
-      }));
+        await requireConfirmedMutation(
+          dbService.updateDocument('production_commands', lsx.id, {
+            status: 'producing',
+            proposedOperatorId: '',
+            proposedOperatorName: '',
+            transferReason: ''
+          })
+        );
 
-      setSelectedLsx(null);
-      onRefresh();
+        setSelectedLsx(null);
+        onRefresh();
 
-      showSuccessToast("Đã lưu thành công");
-    }, lsx);
+        showSuccessToast('Đã lưu thành công');
+      },
+      lsx
+    );
   };
 
   const getPOItemImage = (poId: string) => {
@@ -378,30 +433,70 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
   const isOperator = currentUser.role === 'producer';
   const canManage = canManageProduction(currentUser);
   const canCompleteLegacy = canManage && (currentUser.role === 'admin' || selectedLsx?.operatorId === currentUser.uid);
-  if (!hasProductionAccess(currentUser, 'production')) return <div role="alert">Bạn không có quyền truy cập Sản xuất.</div>;
+  if (!hasProductionAccess(currentUser, 'production'))
+    return <div role="alert">Bạn không có quyền truy cập Sản xuất.</div>;
 
   return (
-    <div className="production-view" data-erp-table-text="single-line" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Sản xuất')} current={productionTab === 'machines' ? 'Danh sách máy' : 'Lệnh sản xuất'} />
+    <div
+      className="production-view"
+      data-erp-table-text="single-line"
+      style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
+    >
+      <PageContextHeader
+        section={t('Sản xuất')}
+        current={productionTab === 'machines' ? 'Danh sách máy' : 'Lệnh sản xuất'}
+      />
 
       <div className="production-tabs content-tabs" role="tablist" aria-label="Quản lý sản xuất">
-        <button type="button" role="tab" aria-selected={productionTab === 'commands'}
-          className={productionTab === 'commands' ? 'is-active' : ''} onClick={() => setProductionTab('commands')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={productionTab === 'commands'}
+          className={productionTab === 'commands' ? 'is-active' : ''}
+          onClick={() => setProductionTab('commands')}
+        >
           Lệnh sản xuất
         </button>
-        <button type="button" role="tab" aria-selected={productionTab === 'machines'}
-          className={productionTab === 'machines' ? 'is-active' : ''} onClick={() => { if (confirmAppNavigation()) setProductionTab('machines'); }}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={productionTab === 'machines'}
+          className={productionTab === 'machines' ? 'is-active' : ''}
+          onClick={() => {
+            if (confirmAppNavigation()) setProductionTab('machines');
+          }}
+        >
           Danh sách máy
         </button>
       </div>
 
       {productionTab === 'commands' ? (
-        <ProductionOrderWorkspace key={initialSelectedLsxId || 'commands'} pos={pos} commands={productionCommands}
-          currentUser={currentUser} users={users} onRefresh={onRefresh}
-          initialSelectedId={productionCommands.find(command => command.id === initialSelectedLsxId || command.lsxCode === initialSelectedLsxId)?.id || initialSelectedLsxId}
-          onOpenLegacy={id => setSelectedLsx(productionCommands.find(command => command.id === id && command.productionOrderVersion !== 2 && !command.deleted) || null)} />
+        <ProductionOrderWorkspace
+          key={initialSelectedLsxId || 'commands'}
+          pos={pos}
+          commands={productionCommands}
+          currentUser={currentUser}
+          users={users}
+          onRefresh={onRefresh}
+          initialSelectedId={
+            productionCommands.find(
+              command => command.id === initialSelectedLsxId || command.lsxCode === initialSelectedLsxId
+            )?.id || initialSelectedLsxId
+          }
+          onOpenLegacy={id =>
+            setSelectedLsx(
+              productionCommands.find(
+                command => command.id === id && command.productionOrderVersion !== 2 && !command.deleted
+              ) || null
+            )
+          }
+        />
       ) : (
-        <MachineManagement machines={machineCatalog} productionCommands={productionCommands.filter(command => !command.deleted)} canManage={canManage} />
+        <MachineManagement
+          machines={machineCatalog}
+          productionCommands={productionCommands.filter(command => !command.deleted)}
+          canManage={canManage}
+        />
       )}
 
       {/* EDIT LSX DIALOG */}
@@ -410,7 +505,9 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
           <div className="modal-content" style={{ maxWidth: '650px' }}>
             <div className="modal-header">
               <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('Chỉnh Sửa Lệnh Sản Xuất')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowEditLsxModal(false)}>{t('Đóng')}</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setShowEditLsxModal(false)}>
+                {t('Đóng')}
+              </button>
             </div>
             <form onSubmit={handleEditLsxSubmit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -431,10 +528,16 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                       {editMachineId && !getMachineForAssignment(machineCatalog, editMachineId) && (
                         <option value={editMachineId}>{editMachineId} (dữ liệu máy cũ)</option>
                       )}
-                      {sortMachinesForAssignment(machineCatalog, activeCommands, getRequiredColorCount(pos.find(po => po.id === selectedLsx?.poId)))
+                      {sortMachinesForAssignment(
+                        machineCatalog,
+                        activeCommands,
+                        getRequiredColorCount(pos.find(po => po.id === selectedLsx?.poId))
+                      )
                         .filter(machine => machine.status !== 'inactive' || machine.name === editMachineId)
                         .map(machine => (
-                          <option key={machine.id} value={machine.name}>{getMachineOptionLabel(machine, selectedLsx?.id)}</option>
+                          <option key={machine.id} value={machine.name}>
+                            {getMachineOptionLabel(machine, selectedLsx?.id)}
+                          </option>
                         ))}
                     </select>
                   </div>
@@ -510,16 +613,16 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
 
                 <div className="form-group">
                   <label>{t('Ghi Chú Kỹ Thuật Máy / Bế / Cán màng')}</label>
-                  <textarea
-                    value={editNotes}
-                    onChange={e => setEditNotes(e.target.value)}
-                    rows={2}
-                  />
+                  <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} />
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowEditLsxModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Cập Nhật')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowEditLsxModal(false)}>
+                  {t('Hủy')}
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {t('Cập Nhật')}
+                </button>
               </div>
             </form>
           </div>
@@ -531,45 +634,102 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '650px' }}>
             <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHI TIẾT LỆNH SẢN XUẤT')}: {selectedLsx.lsxCode}</span>
+              <span style={{ fontWeight: 700, fontSize: '16px' }}>
+                {t('CHI TIẾT LỆNH SẢN XUẤT')}: {selectedLsx.lsxCode}
+              </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {selectedLsx.status !== 'completed' && !isOperator && canManage && (
                   <>
-                    <button className="btn btn-sm btn-outline" onClick={() => handleOpenEditLsx(selectedLsx)} title={t('Sửa')}>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      onClick={() => handleOpenEditLsx(selectedLsx)}
+                      title={t('Sửa')}
+                    >
                       {t('Sửa')}
                     </button>
-                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteLsx(selectedLsx.id)} title={t('Xóa')}>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleDeleteLsx(selectedLsx.id)}
+                      title={t('Xóa')}
+                    >
                       {t('Xóa')}
                     </button>
                   </>
                 )}
-                <button className="btn btn-sm btn-outline" onClick={() => setSelectedLsx(null)}>{t('Đóng')}</button>
+                <button className="btn btn-sm btn-outline" onClick={() => setSelectedLsx(null)}>
+                  {t('Đóng')}
+                </button>
               </div>
             </div>
             <div className="modal-body">
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-                  <div><span style={{ fontWeight: 600 }}>{t('Tên sản phẩm bế')}:</span> {selectedLsx.productNameToBeCut || selectedLsx.productName}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Mã PO Gốc')}:</span> {selectedLsx.poCode}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Máy Phân Công')}:</span> {selectedLsx.machineId}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Ca Kíp Máy')}:</span> {selectedLsx.shift}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Người Vận Hành')}:</span> {selectedLsx.operatorName}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Số Lượng Cần In')}:</span> {getProductionQuantity(selectedLsx).toLocaleString()} {t('tem')}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Loại lõi giấy')}:</span> {selectedLsx.paperCore || '76mm'}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Mã nguyên liệu giấy')}:</span> {selectedLsx.paperMaterialCode}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Số lượng giấy cấp')}:</span> {selectedLsx.paperQuantity}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Hạn giao hàng')}:</span> {formatDate(selectedLsx.deliveryDeadline, 'vi-VN', 'N/A')}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Ghi chú')}:</span> {selectedLsx.notes || t('Không có')}</div>
-                  <div><span style={{ fontWeight: 600 }}>{t('Ngày Lập Lệnh')}:</span> {formatDateTime(selectedLsx.startedAt)}</div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Tên sản phẩm bế')}:</span>{' '}
+                    {selectedLsx.productNameToBeCut || selectedLsx.productName}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Mã PO Gốc')}:</span> {selectedLsx.poCode}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Máy Phân Công')}:</span> {selectedLsx.machineId}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Ca Kíp Máy')}:</span> {selectedLsx.shift}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Người Vận Hành')}:</span> {selectedLsx.operatorName}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Số Lượng Cần In')}:</span>{' '}
+                    {getProductionQuantity(selectedLsx).toLocaleString()} {t('tem')}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Loại lõi giấy')}:</span> {selectedLsx.paperCore || '76mm'}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Mã nguyên liệu giấy')}:</span> {selectedLsx.paperMaterialCode}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Số lượng giấy cấp')}:</span> {selectedLsx.paperQuantity}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Hạn giao hàng')}:</span>{' '}
+                    {formatDate(selectedLsx.deliveryDeadline, 'vi-VN', 'N/A')}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Ghi chú')}:</span> {selectedLsx.notes || t('Không có')}
+                  </div>
+                  <div>
+                    <span style={{ fontWeight: 600 }}>{t('Ngày Lập Lệnh')}:</span>{' '}
+                    {formatDateTime(selectedLsx.startedAt)}
+                  </div>
                   {selectedLsx.completedAt && (
                     <div>
-                      <span style={{ fontWeight: 600 }}>{t('Ngày Hoàn Thành')}:</span> {formatDateTime(selectedLsx.completedAt)}
+                      <span style={{ fontWeight: 600 }}>{t('Ngày Hoàn Thành')}:</span>{' '}
+                      {formatDateTime(selectedLsx.completedAt)}
                     </div>
                   )}
                 </div>
 
-                <div style={{ textAlign: 'center', border: '1px solid var(--color-border-light)', padding: '6px', borderRadius: '4px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-                  <h4 style={{ textAlign: 'left', fontSize: '11px', marginBottom: '6px', fontWeight: 600, width: '100%' }}>{t('Mẫu màu in thiết kế')}:</h4>
+                <div
+                  style={{
+                    textAlign: 'center',
+                    border: '1px solid var(--color-border-light)',
+                    padding: '6px',
+                    borderRadius: '4px',
+                    backgroundColor: '#f8fafc',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                >
+                  <h4
+                    style={{ textAlign: 'left', fontSize: '11px', marginBottom: '6px', fontWeight: 600, width: '100%' }}
+                  >
+                    {t('Mẫu màu in thiết kế')}:
+                  </h4>
                   {getPOItemImage(selectedLsx.poId) ? (
                     <img
                       src={getPOItemImage(selectedLsx.poId)}
@@ -577,26 +737,59 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                       style={{ maxWidth: '100%', maxHeight: '160px', objectFit: 'contain', borderRadius: '4px' }}
                     />
                   ) : (
-                    <div style={{ padding: '40px 0', backgroundColor: '#f8fafc', color: 'var(--color-text-muted)', fontSize: '12px' }}>{t('Không có ảnh mẫu')}</div>
+                    <div
+                      style={{
+                        padding: '40px 0',
+                        backgroundColor: '#f8fafc',
+                        color: 'var(--color-text-muted)',
+                        fontSize: '12px'
+                      }}
+                    >
+                      {t('Không có ảnh mẫu')}
+                    </div>
                   )}
                 </div>
               </div>
 
               {selectedLsx.status === 'transfer_pending' && (
                 <div className="machine-alert">
-                  <div><strong>Chờ duyệt bàn giao cho {selectedLsx.proposedOperatorName}</strong><span>{selectedLsx.transferReason}</span></div>
-                  {currentUser.role === 'admin' && <div className="lsx-actions">
-                    <button className="btn btn-primary" onClick={() => handleApproveTransfer(selectedLsx)}>Duyệt bàn giao</button>
-                    <button className="btn btn-outline" onClick={() => handleRejectTransfer(selectedLsx)}>Từ chối</button>
-                  </div>}
+                  <div>
+                    <strong>Chờ duyệt bàn giao cho {selectedLsx.proposedOperatorName}</strong>
+                    <span>{selectedLsx.transferReason}</span>
+                  </div>
+                  {currentUser.role === 'admin' && (
+                    <div className="lsx-actions">
+                      <button className="btn btn-primary" onClick={() => handleApproveTransfer(selectedLsx)}>
+                        Duyệt bàn giao
+                      </button>
+                      <button className="btn btn-outline" onClick={() => handleRejectTransfer(selectedLsx)}>
+                        Từ chối
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               {selectedLsx.status === 'producing' && isOperator && canCompleteLegacy && (
-                <button className="btn btn-outline" onClick={() => handleOpenTransfer(selectedLsx)}>Đề nghị bàn giao</button>
+                <button className="btn btn-outline" onClick={() => handleOpenTransfer(selectedLsx)}>
+                  Đề nghị bàn giao
+                </button>
               )}
               {selectedLsx.status === 'producing' && canCompleteLegacy && (
-                <form onSubmit={handleCompleteLsx} style={{ border: '1px solid var(--color-border)', padding: '16px', borderRadius: '4px', marginTop: '16px', backgroundColor: '#f8fafc' }}>
-                  <h3 style={{ fontSize: '14px', marginBottom: '12px', color: 'var(--color-success)', fontWeight: 700 }}>{t('Báo cáo kết quả hoàn thành sản xuất')}:</h3>
+                <form
+                  onSubmit={handleCompleteLsx}
+                  style={{
+                    border: '1px solid var(--color-border)',
+                    padding: '16px',
+                    borderRadius: '4px',
+                    marginTop: '16px',
+                    backgroundColor: '#f8fafc'
+                  }}
+                >
+                  <h3
+                    style={{ fontSize: '14px', marginBottom: '12px', color: 'var(--color-success)', fontWeight: 700 }}
+                  >
+                    {t('Báo cáo kết quả hoàn thành sản xuất')}:
+                  </h3>
                   <div className="form-group">
                     <label>{t('Số Lượng Phế Phẩm / Hao Hụt Phát Sinh (Cái) *')}</label>
                     <input
@@ -606,7 +799,9 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                       onChange={e => setScrapQty(Number(e.target.value))}
                       required
                     />
-                    <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{t('* Lượng tem in hỏng trong quá trình setup dao bế và in ấn')}</span>
+                    <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
+                      {t('* Lượng tem in hỏng trong quá trình setup dao bế và in ấn')}
+                    </span>
                   </div>
 
                   <div className="form-group" style={{ marginTop: '10px' }}>
@@ -619,22 +814,41 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                     />
                   </div>
 
-                  <button type="submit" className="btn btn-success" style={{ width: '100%', marginTop: '12px', padding: '10px', fontWeight: 600 }}>
+                  <button
+                    type="submit"
+                    className="btn btn-success"
+                    style={{ width: '100%', marginTop: '12px', padding: '10px', fontWeight: 600 }}
+                  >
                     {t('Xác nhận hoàn thành (cần đối soát PO / kho)')}
                   </button>
                 </form>
               )}
 
               {/* Audit trail */}
-              <div style={{ marginTop: '20px', paddingTop: '12px', borderTop: '1px solid var(--color-border-light)', fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                <div>{t('Tạo bởi:')} {selectedLsx.createdBy || t('Không xác định')} {selectedLsx.createdAt && `(${formatDateTime(selectedLsx.createdAt, t('vi-VN'))})`}</div>
+              <div
+                style={{
+                  marginTop: '20px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid var(--color-border-light)',
+                  fontSize: '12px',
+                  color: 'var(--color-text-muted)'
+                }}
+              >
+                <div>
+                  {t('Tạo bởi:')} {selectedLsx.createdBy || t('Không xác định')}{' '}
+                  {selectedLsx.createdAt && `(${formatDateTime(selectedLsx.createdAt, t('vi-VN'))})`}
+                </div>
                 {selectedLsx.updatedBy && (
-                  <div>{t('Cập nhật bởi:')} {selectedLsx.updatedBy} ({formatDateTime(selectedLsx.updatedAt, t('vi-VN'))})</div>
+                  <div>
+                    {t('Cập nhật bởi:')} {selectedLsx.updatedBy} ({formatDateTime(selectedLsx.updatedAt, t('vi-VN'))})
+                  </div>
                 )}
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setSelectedLsx(null)}>{t('Đóng')}</button>
+              <button className="btn btn-outline" onClick={() => setSelectedLsx(null)}>
+                {t('Đóng')}
+              </button>
             </div>
           </div>
         </div>
@@ -652,22 +866,20 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
             <form onSubmit={handleTransferSubmit}>
               <div className="modal-body">
                 <p style={{ fontSize: '13px', marginBottom: '12px' }}>
-                  {t('Bàn giao lệnh')} <strong>{selectedLsx.lsxCode}</strong> ({selectedLsx.productNameToBeCut || selectedLsx.productName}) {t('cho thợ khác vận hành.')}
+                  {t('Bàn giao lệnh')} <strong>{selectedLsx.lsxCode}</strong> (
+                  {selectedLsx.productNameToBeCut || selectedLsx.productName}) {t('cho thợ khác vận hành.')}
                 </p>
                 <div className="form-group">
                   <label>{t('Thợ Tiếp Nhận Thay *')}</label>
-                  <select
-                    value={targetOperatorId}
-                    onChange={e => setTargetOperatorId(e.target.value)}
-                    required
-                  >
+                  <select value={targetOperatorId} onChange={e => setTargetOperatorId(e.target.value)} required>
                     <option value="">{t('Chọn thợ...')}</option>
                     {users
                       .filter(u => u.role === 'producer' && u.uid !== currentUser.uid)
                       .map(u => (
-                        <option key={u.uid} value={u.uid}>{u.displayName}</option>
-                      ))
-                    }
+                        <option key={u.uid} value={u.uid}>
+                          {u.displayName}
+                        </option>
+                      ))}
                   </select>
                 </div>
                 <div className="form-group" style={{ marginTop: '10px' }}>
@@ -677,13 +889,23 @@ export const Production: React.FC<ProductionProps> = ({ pos, productionCommands,
                     onChange={e => setTransferReason(e.target.value)}
                     required
                     placeholder={t('Nhập chi tiết sự cố máy móc hoặc lý do bàn giao...')}
-                    style={{ minHeight: '80px', width: '100%', padding: '8px', border: '1px solid var(--color-border)', borderRadius: '4px' }}
+                    style={{
+                      minHeight: '80px',
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '4px'
+                    }}
                   />
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setShowTransferModal(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn btn-primary">{t('Đề Xuất Chuyển')}</button>
+                <button type="button" className="btn btn-outline" onClick={() => setShowTransferModal(false)}>
+                  {t('Hủy')}
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {t('Đề Xuất Chuyển')}
+                </button>
               </div>
             </form>
           </div>

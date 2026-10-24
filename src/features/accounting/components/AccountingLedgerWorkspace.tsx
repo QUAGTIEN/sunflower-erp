@@ -5,73 +5,720 @@ import { RowActionMenu } from '@/components/RowActionMenu';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { loadAccountingLedger } from '../api/accountingLedgerService';
-import { canUseLedger, FINANCE_KINDS, formatMoney, lineDue, fundAvailable, type LedgerData, type LedgerEntry, type DebtSide } from '../model/accountingLedger';
+import {
+  canUseLedger,
+  FINANCE_KINDS,
+  formatMoney,
+  lineDue,
+  fundAvailable,
+  type LedgerData,
+  type LedgerEntry,
+  type DebtSide
+} from '../model/accountingLedger';
 import { LedgerDialog, type LedgerDialogOptions } from './LedgerDialog';
 import '@/features/inventory/components/Warehouse.css';
 import './Ledger.css';
 
-const empty: LedgerData = { revision: 0, documents: [], funds: [], entries: [], sourceStates: [], sources: [], partners: [], returns: [], periods: [], legacy: [], items: [], openingOrders: [] };
-const views = { ar: 'Công nợ khách hàng', ap: 'Công nợ nhà cung cấp', payments: 'Thu chi', advances: 'Ứng trước & phân bổ', history: 'Sổ chứng từ', settings: 'Đầu kỳ & kỳ kế toán', legacy: 'Dữ liệu cũ' };
+const empty: LedgerData = {
+  revision: 0,
+  documents: [],
+  funds: [],
+  entries: [],
+  sourceStates: [],
+  sources: [],
+  partners: [],
+  returns: [],
+  periods: [],
+  legacy: [],
+  items: [],
+  openingOrders: []
+};
+const views = {
+  ar: 'Công nợ khách hàng',
+  ap: 'Công nợ nhà cung cấp',
+  payments: 'Thu chi',
+  advances: 'Ứng trước & phân bổ',
+  history: 'Sổ chứng từ',
+  settings: 'Đầu kỳ & kỳ kế toán',
+  legacy: 'Dữ liệu cũ'
+};
 export function AccountingLedgerWorkspace({ actor, onRefresh }: { actor: WarehouseActor; onRefresh: () => void }) {
-  const [data, setData] = useState(empty), [loading, setLoading] = useState(true), [error, setError] = useState(''), [refresh, setRefresh] = useState(0);
-  const [view, setView] = useState<keyof typeof views>('ar'), [detailView, setDetailView] = useState('partners'), [search, setSearch] = useState('');
-  const [options, setOptions] = useState<LedgerDialogOptions | null>(null), [selected, setSelected] = useState<LedgerEntry | null>(null);
-  const allowed = canUseLedger(actor), side: DebtSide = view === 'ap' ? 'ap' : 'ar', writable = allowed && !loading && !error;
-  useEffect(() => { if (!allowed) return; let cancelled = false; void loadAccountingLedger().then(next => { if (!cancelled) { setData(next); setError(''); } }).catch(cause => { if (!cancelled) setError(cause instanceof Error ? cause.message : 'Không tải được sổ kế toán.'); }).finally(() => { if (!cancelled) setLoading(false); }); return () => { cancelled = true; }; }, [refresh, allowed]);
-  const reload = () => { setLoading(true); setRefresh(value => value + 1); };
-  const matches = (...values: unknown[]) => values.join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'));
+  const [data, setData] = useState(empty),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(''),
+    [refresh, setRefresh] = useState(0);
+  const [view, setView] = useState<keyof typeof views>('ar'),
+    [detailView, setDetailView] = useState('partners'),
+    [search, setSearch] = useState('');
+  const [options, setOptions] = useState<LedgerDialogOptions | null>(null),
+    [selected, setSelected] = useState<LedgerEntry | null>(null);
+  const allowed = canUseLedger(actor),
+    side: DebtSide = view === 'ap' ? 'ap' : 'ar',
+    writable = allowed && !loading && !error;
+  useEffect(() => {
+    if (!allowed) return;
+    let cancelled = false;
+    void loadAccountingLedger()
+      .then(next => {
+        if (!cancelled) {
+          setData(next);
+          setError('');
+        }
+      })
+      .catch(cause => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Không tải được sổ kế toán.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refresh, allowed]);
+  const reload = () => {
+    setLoading(true);
+    setRefresh(value => value + 1);
+  };
+  const matches = (...values: unknown[]) =>
+    values.join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'));
   const documents = data.documents.filter(d => !d.voided && d.side === side);
-  const partnerRows = data.partners.filter(p => p.side === side).map(partner => {
-    const docs = documents.filter(d => d.partnerId === partner.id), lines = docs.flatMap(d => d.lines);
-    return { partner, opening: docs.filter(d => d.kind === 'opening').flatMap(d => d.lines).reduce((sum, l) => sum + l.gross, 0), movement: docs.filter(d => d.kind === 'charge').flatMap(d => d.lines).reduce((sum, l) => sum + l.gross, 0) + lines.reduce((sum, l) => sum + l.adjustment, 0), settled: lines.reduce((sum, l) => sum + l.settled, 0), remaining: lines.reduce((sum, l) => sum + lineDue(l), 0), advance: data.funds.filter(f => f.side === side && f.partnerId === partner.id).reduce((sum, f) => sum + fundAvailable(f), 0) };
-  }).filter(row => matches(row.partner.name));
-  const debtRows = documents.flatMap(document => document.lines.map(line => ({ document, line }))).filter(row => matches(row.document.reference, row.document.partnerName, row.line.code, row.line.name, row.line.poId, row.line.purchaseId));
-  const funds = data.funds.filter(f => !f.voided && (view !== 'advances' || fundAvailable(f) > 0) && matches(f.reference, f.partnerName));
-  const entries = [...data.entries].filter(e => matches(e.code, e.reference, e.partnerName, e.note)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const partnerRows = data.partners
+    .filter(p => p.side === side)
+    .map(partner => {
+      const docs = documents.filter(d => d.partnerId === partner.id),
+        lines = docs.flatMap(d => d.lines);
+      return {
+        partner,
+        opening: docs
+          .filter(d => d.kind === 'opening')
+          .flatMap(d => d.lines)
+          .reduce((sum, l) => sum + l.gross, 0),
+        movement:
+          docs
+            .filter(d => d.kind === 'charge')
+            .flatMap(d => d.lines)
+            .reduce((sum, l) => sum + l.gross, 0) + lines.reduce((sum, l) => sum + l.adjustment, 0),
+        settled: lines.reduce((sum, l) => sum + l.settled, 0),
+        remaining: lines.reduce((sum, l) => sum + lineDue(l), 0),
+        advance: data.funds
+          .filter(f => f.side === side && f.partnerId === partner.id)
+          .reduce((sum, f) => sum + fundAvailable(f), 0)
+      };
+    })
+    .filter(row => matches(row.partner.name));
+  const debtRows = documents
+    .flatMap(document => document.lines.map(line => ({ document, line })))
+    .filter(row =>
+      matches(
+        row.document.reference,
+        row.document.partnerName,
+        row.line.code,
+        row.line.name,
+        row.line.poId,
+        row.line.purchaseId
+      )
+    );
+  const funds = data.funds.filter(
+    f => !f.voided && (view !== 'advances' || fundAvailable(f) > 0) && matches(f.reference, f.partnerName)
+  );
+  const entries = [...data.entries]
+    .filter(e => matches(e.code, e.reference, e.partnerName, e.note))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const legacy = data.legacy.filter(row => matches(row.invoiceCode, row.companyName, row.customerName, row.poCode));
-  const partnersPages = useDataTablePagination(partnerRows), debtsPages = useDataTablePagination(debtRows), fundsPages = useDataTablePagination(funds), entriesPages = useDataTablePagination(entries), legacyPages = useDataTablePagination(legacy);
+  const partnersPages = useDataTablePagination(partnerRows),
+    debtsPages = useDataTablePagination(debtRows),
+    fundsPages = useDataTablePagination(funds),
+    entriesPages = useDataTablePagination(entries),
+    legacyPages = useDataTablePagination(legacy);
   const debtView = view === 'ar' || view === 'ap';
-  const pagination = debtView ? detailView === 'partners' ? partnersPages : debtsPages : ['payments', 'advances'].includes(view) ? fundsPages : view === 'legacy' ? legacyPages : entriesPages;
+  const pagination = debtView
+    ? detailView === 'partners'
+      ? partnersPages
+      : debtsPages
+    : ['payments', 'advances'].includes(view)
+      ? fundsPages
+      : view === 'legacy'
+        ? legacyPages
+        : entriesPages;
   if (!allowed) return <p role="alert">Chỉ Admin và Kế toán có quyền Kế toán được sử dụng sổ công nợ và tiền.</p>;
-  return <section className="ledger-workspace" aria-label="Công nợ và thu chi">
-    <div className="warehouse-toolbar"><select aria-label="Nội dung kế toán" value={view} onChange={event => { setView(event.target.value as typeof view); setSearch(''); }}>{Object.entries(views).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
-      {debtView && <select aria-label="Chi tiết công nợ" value={detailView} onChange={event => setDetailView(event.target.value)}><option value="partners">Tổng hợp đối tác</option><option value="lines">Chi tiết đơn / mã hàng</option></select>}
-      <input type="search" aria-label="Tìm công nợ" placeholder="Đối tác, chứng từ, đơn, mã hàng…" value={search} onChange={event => setSearch(event.target.value)} /><button className="btn btn-outline" disabled={loading} onClick={reload}>Tải lại</button>
-      {debtView && <><button className="btn btn-outline" disabled={!writable} onClick={() => setOptions({ kind: 'adjustment', side })}>Điều chỉnh nợ</button><button className="btn btn-primary" disabled={!writable} onClick={() => setOptions({ kind: 'charge', side })}>Ghi nhận công nợ</button></>}
-      {['payments', 'advances'].includes(view) && <button className="btn btn-primary" disabled={!writable} onClick={() => setOptions({ kind: 'payment' })}>Lập phiếu thu / chi</button>}
-    </div>
-    {loading && <p role="status">Đang tải…</p>}{error && <p className="warehouse-error" role="alert">{error}</p>}
-    {!loading && !error && <>
-      {debtView && <p className="warehouse-note">Sổ mới · VND · Dư đầu kỳ chỉ gồm chứng từ đã đối chiếu. Ứng trước hiển thị riêng, chưa tự bù trừ. Dữ liệu cũ chưa chuyển đổi.</p>}
-      {view === 'settings' ? <>
-        <div className="warehouse-toolbar"><button className="btn btn-primary" disabled={!writable} onClick={() => setOptions({ kind: 'opening' })}>Lập dư đầu kỳ</button><button className="btn btn-outline" disabled={!writable} onClick={() => setOptions({ kind: 'opening_advance' })}>Ứng trước đầu kỳ</button>{actor.role === 'admin' && <button className="btn btn-outline" onClick={() => setOptions({ kind: 'period' })}>Khóa / mở kỳ</button>}</div>
-        <p className="warehouse-note">Chỉ nhập số dư đã đối chiếu theo chứng từ. Không tự chuyển số đã trả hoặc hóa đơn cũ thành lịch sử tiền. Ứng trước đầu kỳ không tạo dòng tiền mới.</p>
-        <div className="table-container"><table><thead><tr><th>Kỳ</th><th>Trạng thái</th></tr></thead><tbody>{data.periods.map(p => <tr key={p.id}><td>{p.id}</td><td>{p.locked ? 'Đã khóa' : 'Đang mở'}</td></tr>)}{!data.periods.length && <tr><td colSpan={2}>{warehouseDate().slice(0, 7)} · Chưa khóa kỳ.</td></tr>}</tbody></table></div>
-      </> : <div className="warehouse-list-frame"><div className="table-container erp-primary-data-table"><table className="ledger-list" data-resize-key={`accounting-ledger-${view}-${detailView}`}><thead><tr>
-        {debtView ? detailView === 'partners' ? <><th>Đối tác</th><th>Dư đầu kỳ đã nhập</th><th>Phát sinh ròng</th><th>Đã phân bổ</th><th>Còn nợ</th><th>Ứng trước chưa dùng</th><th>Thao tác</th></> : <><th>Chứng từ / đối tác</th><th>Đơn / mã hàng</th><th>SL / ĐVT</th><th>Trước thuế</th><th>Thuế</th><th>Điều chỉnh</th><th>Đã phân bổ</th><th>Còn nợ</th><th>Hạn nợ</th><th>Thao tác</th></> : ['payments', 'advances'].includes(view) ? <><th>Tham chiếu</th><th>Đối tác</th><th>Loại / phương thức</th><th>Số tiền</th><th>Đã phân bổ</th><th>Đã hoàn</th><th>Chưa phân bổ</th><th>Ngày ghi</th><th>Thao tác</th></> : view === 'legacy' ? <><th>Hóa đơn cũ</th><th>Đối tác</th><th>Đơn</th><th>Loại</th><th>Giá trị cũ</th><th>Đã trả cũ</th><th>Thao tác</th></> : <><th>Phiếu</th><th>Đối tác</th><th>Nghiệp vụ</th><th>Tham chiếu</th><th>Số tiền</th><th>Dòng tiền</th><th>Ngày</th><th>Trạng thái</th><th>Thao tác</th></>}
-      </tr></thead><tbody>
-        {debtView && detailView === 'partners' && partnersPages.rows.map(row => <tr key={row.partner.id}><td title={row.partner.name}>{row.partner.name}</td>{[row.opening, row.movement, row.settled, row.remaining, row.advance].map((n, i) => <td className="ledger-number" key={i}>{formatMoney(n)}</td>)}<td><RowActionMenu label={`Thao tác ${row.partner.name}`} actions={[{ label: 'Ghi nhận công nợ', onSelect: () => setOptions({ kind: 'charge', side, partnerId: row.partner.id }) }, { label: 'Thu / chi tiền', onSelect: () => setOptions({ kind: 'payment', side, partnerId: row.partner.id }) }, { label: 'Điều chỉnh', onSelect: () => setOptions({ kind: 'adjustment', side, partnerId: row.partner.id }) }]} /></td></tr>)}
-        {debtView && detailView !== 'partners' && debtsPages.rows.map(({ document, line }) => <tr key={`${document.id}-${line.id}`}><td title={`${document.reference} · ${document.partnerName}`}>{document.reference} · {document.partnerName}</td><td title={`${line.orderCode} · ${line.code} ${line.name}`}>{line.orderCode || 'Chưa xác định đơn'} · {line.code} {line.name}</td><td>{line.quantity ? `${stockNumber(line.quantity)} ${line.unit}` : 'Dư đầu kỳ'}</td>{[line.net, line.tax, line.adjustment, line.settled, lineDue(line)].map((n, i) => <td className="ledger-number" key={i}>{formatMoney(n)}</td>)}<td>{document.dueDate}</td><td><RowActionMenu label={`Thao tác ${document.reference}`} actions={[{ label: 'Chi tiết chứng từ', onSelect: () => setSelected(data.entries.find(e => e.id === document.id) || null) }, { label: 'Điều chỉnh nợ', onSelect: () => setOptions({ kind: 'adjustment', side, partnerId: document.partnerId }) }]} /></td></tr>)}
-        {['payments', 'advances'].includes(view) && fundsPages.rows.map(fund => <tr key={fund.id}><td>{fund.reference}</td><td title={fund.partnerName}>{fund.partnerName}</td><td>{fund.side === 'ar' ? 'Khách trả' : 'Trả NCC'} · {fund.method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'}</td>{[fund.amount, fund.used, fund.refunded, fundAvailable(fund)].map((n, i) => <td className="ledger-number" key={i}>{formatMoney(n)}</td>)}<td>{fund.postingDate}</td><td><RowActionMenu label={`Thao tác ${fund.reference}`} actions={[{ label: 'Chi tiết', onSelect: () => setSelected(data.entries.find(e => e.id === fund.id) || null) }, { label: 'Phân bổ vào đơn / mã', disabled: fundAvailable(fund) <= 0, onSelect: () => setOptions({ kind: 'allocation', side: fund.side, partnerId: fund.partnerId, fundId: fund.id }) }, { label: 'Hoàn tiền chưa dùng', disabled: fundAvailable(fund) <= 0, onSelect: () => setOptions({ kind: 'refund', side: fund.side, partnerId: fund.partnerId, fundId: fund.id }) }]} /></td></tr>)}
-        {view === 'history' && entriesPages.rows.map(entry => <tr key={entry.id}><td>{entry.code}</td><td title={entry.partnerName}>{entry.partnerName}</td><td>{FINANCE_KINDS[entry.kind]}</td><td>{entry.reference}</td><td className="ledger-number">{formatMoney(entry.amount)}</td><td className="ledger-number">{formatMoney(entry.cashDelta)}</td><td>{entry.postingDate}</td><td>{entry.reversedBy ? 'Đã đảo' : entry.kind === 'reversal' ? 'Phiếu đảo' : 'Đã ghi'}</td><td><RowActionMenu label={`Thao tác ${entry.code}`} actions={[{ label: 'Chi tiết', onSelect: () => setSelected(entry) }, ...(actor.role === 'admin' && entry.kind !== 'reversal' && !entry.reversedBy ? [{ label: 'Đảo phiếu', danger: true, onSelect: () => setOptions({ kind: entry.kind as LedgerDialogOptions['kind'], entry }) }] : [])]} /></td></tr>)}
-        {view === 'legacy' && legacyPages.rows.map(row => <tr key={String(row.id)}><td>{String(row.invoiceCode || '')}</td><td>{String(row.companyName || row.customerName || '')}</td><td>{String(row.poCode || '')}</td><td>{row.type === 'receivable' ? 'Phải thu' : 'Phải trả'}</td><td className="ledger-number">{formatMoney(Number(row.amount || 0))}</td><td className="ledger-number">{formatMoney(Number(row.paidAmount || 0))}</td><td>{row.deleted ? 'Đã xóa theo luồng cũ · chỉ đọc' : 'Chỉ đọc'}</td></tr>)}
-        {!pagination.paginationProps.totalItems && <tr><td colSpan={10}>Chưa có dữ liệu phù hợp.</td></tr>}
-      </tbody></table></div><DataTablePagination {...pagination.paginationProps} /></div>}
-    </>}
-    {options && <LedgerDialog actor={actor} options={options} onClose={() => setOptions(null)} onSaved={() => { setOptions(null); reload(); onRefresh(); }} />}
-    {selected && <LedgerDetails entry={selected} data={data} onOpenEntry={setSelected} onClose={() => setSelected(null)} />}
-  </section>;
+  return (
+    <section className="ledger-workspace" aria-label="Công nợ và thu chi">
+      <div className="warehouse-toolbar">
+        <select
+          aria-label="Nội dung kế toán"
+          value={view}
+          onChange={event => {
+            setView(event.target.value as typeof view);
+            setSearch('');
+          }}
+        >
+          {Object.entries(views).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+        {debtView && (
+          <select
+            aria-label="Chi tiết công nợ"
+            value={detailView}
+            onChange={event => setDetailView(event.target.value)}
+          >
+            <option value="partners">Tổng hợp đối tác</option>
+            <option value="lines">Chi tiết đơn / mã hàng</option>
+          </select>
+        )}
+        <input
+          type="search"
+          aria-label="Tìm công nợ"
+          placeholder="Đối tác, chứng từ, đơn, mã hàng…"
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+        />
+        <button className="btn btn-outline" disabled={loading} onClick={reload}>
+          Tải lại
+        </button>
+        {debtView && (
+          <>
+            <button
+              className="btn btn-outline"
+              disabled={!writable}
+              onClick={() => setOptions({ kind: 'adjustment', side })}
+            >
+              Điều chỉnh nợ
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={!writable}
+              onClick={() => setOptions({ kind: 'charge', side })}
+            >
+              Ghi nhận công nợ
+            </button>
+          </>
+        )}
+        {['payments', 'advances'].includes(view) && (
+          <button className="btn btn-primary" disabled={!writable} onClick={() => setOptions({ kind: 'payment' })}>
+            Lập phiếu thu / chi
+          </button>
+        )}
+      </div>
+      {loading && <p role="status">Đang tải…</p>}
+      {error && (
+        <p className="warehouse-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!loading && !error && (
+        <>
+          {debtView && (
+            <p className="warehouse-note">
+              Sổ mới · VND · Dư đầu kỳ chỉ gồm chứng từ đã đối chiếu. Ứng trước hiển thị riêng, chưa tự bù trừ. Dữ liệu
+              cũ chưa chuyển đổi.
+            </p>
+          )}
+          {view === 'settings' ? (
+            <>
+              <div className="warehouse-toolbar">
+                <button
+                  className="btn btn-primary"
+                  disabled={!writable}
+                  onClick={() => setOptions({ kind: 'opening' })}
+                >
+                  Lập dư đầu kỳ
+                </button>
+                <button
+                  className="btn btn-outline"
+                  disabled={!writable}
+                  onClick={() => setOptions({ kind: 'opening_advance' })}
+                >
+                  Ứng trước đầu kỳ
+                </button>
+                {actor.role === 'admin' && (
+                  <button className="btn btn-outline" onClick={() => setOptions({ kind: 'period' })}>
+                    Khóa / mở kỳ
+                  </button>
+                )}
+              </div>
+              <p className="warehouse-note">
+                Chỉ nhập số dư đã đối chiếu theo chứng từ. Không tự chuyển số đã trả hoặc hóa đơn cũ thành lịch sử tiền.
+                Ứng trước đầu kỳ không tạo dòng tiền mới.
+              </p>
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Kỳ</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.periods.map(p => (
+                      <tr key={p.id}>
+                        <td>{p.id}</td>
+                        <td>{p.locked ? 'Đã khóa' : 'Đang mở'}</td>
+                      </tr>
+                    ))}
+                    {!data.periods.length && (
+                      <tr>
+                        <td colSpan={2}>{warehouseDate().slice(0, 7)} · Chưa khóa kỳ.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="warehouse-list-frame">
+              <div className="table-container erp-primary-data-table">
+                <table className="ledger-list" data-resize-key={`accounting-ledger-${view}-${detailView}`}>
+                  <thead>
+                    <tr>
+                      {debtView ? (
+                        detailView === 'partners' ? (
+                          <>
+                            <th>Đối tác</th>
+                            <th>Dư đầu kỳ đã nhập</th>
+                            <th>Phát sinh ròng</th>
+                            <th>Đã phân bổ</th>
+                            <th>Còn nợ</th>
+                            <th>Ứng trước chưa dùng</th>
+                            <th>Thao tác</th>
+                          </>
+                        ) : (
+                          <>
+                            <th>Chứng từ / đối tác</th>
+                            <th>Đơn / mã hàng</th>
+                            <th>SL / ĐVT</th>
+                            <th>Trước thuế</th>
+                            <th>Thuế</th>
+                            <th>Điều chỉnh</th>
+                            <th>Đã phân bổ</th>
+                            <th>Còn nợ</th>
+                            <th>Hạn nợ</th>
+                            <th>Thao tác</th>
+                          </>
+                        )
+                      ) : ['payments', 'advances'].includes(view) ? (
+                        <>
+                          <th>Tham chiếu</th>
+                          <th>Đối tác</th>
+                          <th>Loại / phương thức</th>
+                          <th>Số tiền</th>
+                          <th>Đã phân bổ</th>
+                          <th>Đã hoàn</th>
+                          <th>Chưa phân bổ</th>
+                          <th>Ngày ghi</th>
+                          <th>Thao tác</th>
+                        </>
+                      ) : view === 'legacy' ? (
+                        <>
+                          <th>Hóa đơn cũ</th>
+                          <th>Đối tác</th>
+                          <th>Đơn</th>
+                          <th>Loại</th>
+                          <th>Giá trị cũ</th>
+                          <th>Đã trả cũ</th>
+                          <th>Thao tác</th>
+                        </>
+                      ) : (
+                        <>
+                          <th>Phiếu</th>
+                          <th>Đối tác</th>
+                          <th>Nghiệp vụ</th>
+                          <th>Tham chiếu</th>
+                          <th>Số tiền</th>
+                          <th>Dòng tiền</th>
+                          <th>Ngày</th>
+                          <th>Trạng thái</th>
+                          <th>Thao tác</th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {debtView &&
+                      detailView === 'partners' &&
+                      partnersPages.rows.map(row => (
+                        <tr key={row.partner.id}>
+                          <td title={row.partner.name}>{row.partner.name}</td>
+                          {[row.opening, row.movement, row.settled, row.remaining, row.advance].map((n, i) => (
+                            <td className="ledger-number" key={i}>
+                              {formatMoney(n)}
+                            </td>
+                          ))}
+                          <td>
+                            <RowActionMenu
+                              label={`Thao tác ${row.partner.name}`}
+                              actions={[
+                                {
+                                  label: 'Ghi nhận công nợ',
+                                  onSelect: () => setOptions({ kind: 'charge', side, partnerId: row.partner.id })
+                                },
+                                {
+                                  label: 'Thu / chi tiền',
+                                  onSelect: () => setOptions({ kind: 'payment', side, partnerId: row.partner.id })
+                                },
+                                {
+                                  label: 'Điều chỉnh',
+                                  onSelect: () => setOptions({ kind: 'adjustment', side, partnerId: row.partner.id })
+                                }
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    {debtView &&
+                      detailView !== 'partners' &&
+                      debtsPages.rows.map(({ document, line }) => (
+                        <tr key={`${document.id}-${line.id}`}>
+                          <td title={`${document.reference} · ${document.partnerName}`}>
+                            {document.reference} · {document.partnerName}
+                          </td>
+                          <td title={`${line.orderCode} · ${line.code} ${line.name}`}>
+                            {line.orderCode || 'Chưa xác định đơn'} · {line.code} {line.name}
+                          </td>
+                          <td>{line.quantity ? `${stockNumber(line.quantity)} ${line.unit}` : 'Dư đầu kỳ'}</td>
+                          {[line.net, line.tax, line.adjustment, line.settled, lineDue(line)].map((n, i) => (
+                            <td className="ledger-number" key={i}>
+                              {formatMoney(n)}
+                            </td>
+                          ))}
+                          <td>{document.dueDate}</td>
+                          <td>
+                            <RowActionMenu
+                              label={`Thao tác ${document.reference}`}
+                              actions={[
+                                {
+                                  label: 'Chi tiết chứng từ',
+                                  onSelect: () => setSelected(data.entries.find(e => e.id === document.id) || null)
+                                },
+                                {
+                                  label: 'Điều chỉnh nợ',
+                                  onSelect: () =>
+                                    setOptions({ kind: 'adjustment', side, partnerId: document.partnerId })
+                                }
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    {['payments', 'advances'].includes(view) &&
+                      fundsPages.rows.map(fund => (
+                        <tr key={fund.id}>
+                          <td>{fund.reference}</td>
+                          <td title={fund.partnerName}>{fund.partnerName}</td>
+                          <td>
+                            {fund.side === 'ar' ? 'Khách trả' : 'Trả NCC'} ·{' '}
+                            {fund.method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'}
+                          </td>
+                          {[fund.amount, fund.used, fund.refunded, fundAvailable(fund)].map((n, i) => (
+                            <td className="ledger-number" key={i}>
+                              {formatMoney(n)}
+                            </td>
+                          ))}
+                          <td>{fund.postingDate}</td>
+                          <td>
+                            <RowActionMenu
+                              label={`Thao tác ${fund.reference}`}
+                              actions={[
+                                {
+                                  label: 'Chi tiết',
+                                  onSelect: () => setSelected(data.entries.find(e => e.id === fund.id) || null)
+                                },
+                                {
+                                  label: 'Phân bổ vào đơn / mã',
+                                  disabled: fundAvailable(fund) <= 0,
+                                  onSelect: () =>
+                                    setOptions({
+                                      kind: 'allocation',
+                                      side: fund.side,
+                                      partnerId: fund.partnerId,
+                                      fundId: fund.id
+                                    })
+                                },
+                                {
+                                  label: 'Hoàn tiền chưa dùng',
+                                  disabled: fundAvailable(fund) <= 0,
+                                  onSelect: () =>
+                                    setOptions({
+                                      kind: 'refund',
+                                      side: fund.side,
+                                      partnerId: fund.partnerId,
+                                      fundId: fund.id
+                                    })
+                                }
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    {view === 'history' &&
+                      entriesPages.rows.map(entry => (
+                        <tr key={entry.id}>
+                          <td>{entry.code}</td>
+                          <td title={entry.partnerName}>{entry.partnerName}</td>
+                          <td>{FINANCE_KINDS[entry.kind]}</td>
+                          <td>{entry.reference}</td>
+                          <td className="ledger-number">{formatMoney(entry.amount)}</td>
+                          <td className="ledger-number">{formatMoney(entry.cashDelta)}</td>
+                          <td>{entry.postingDate}</td>
+                          <td>{entry.reversedBy ? 'Đã đảo' : entry.kind === 'reversal' ? 'Phiếu đảo' : 'Đã ghi'}</td>
+                          <td>
+                            <RowActionMenu
+                              label={`Thao tác ${entry.code}`}
+                              actions={[
+                                { label: 'Chi tiết', onSelect: () => setSelected(entry) },
+                                ...(actor.role === 'admin' && entry.kind !== 'reversal' && !entry.reversedBy
+                                  ? [
+                                      {
+                                        label: 'Đảo phiếu',
+                                        danger: true,
+                                        onSelect: () =>
+                                          setOptions({ kind: entry.kind as LedgerDialogOptions['kind'], entry })
+                                      }
+                                    ]
+                                  : [])
+                              ]}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    {view === 'legacy' &&
+                      legacyPages.rows.map(row => (
+                        <tr key={String(row.id)}>
+                          <td>{String(row.invoiceCode || '')}</td>
+                          <td>{String(row.companyName || row.customerName || '')}</td>
+                          <td>{String(row.poCode || '')}</td>
+                          <td>{row.type === 'receivable' ? 'Phải thu' : 'Phải trả'}</td>
+                          <td className="ledger-number">{formatMoney(Number(row.amount || 0))}</td>
+                          <td className="ledger-number">{formatMoney(Number(row.paidAmount || 0))}</td>
+                          <td>{row.deleted ? 'Đã xóa theo luồng cũ · chỉ đọc' : 'Chỉ đọc'}</td>
+                        </tr>
+                      ))}
+                    {!pagination.paginationProps.totalItems && (
+                      <tr>
+                        <td colSpan={10}>Chưa có dữ liệu phù hợp.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <DataTablePagination {...pagination.paginationProps} />
+            </div>
+          )}
+        </>
+      )}
+      {options && (
+        <LedgerDialog
+          actor={actor}
+          options={options}
+          onClose={() => setOptions(null)}
+          onSaved={() => {
+            setOptions(null);
+            reload();
+            onRefresh();
+          }}
+        />
+      )}
+      {selected && (
+        <LedgerDetails entry={selected} data={data} onOpenEntry={setSelected} onClose={() => setSelected(null)} />
+      )}
+    </section>
+  );
 }
-export function LedgerDetails({ entry, data, onClose, onOpenEntry }: { entry: LedgerEntry; data: Pick<LedgerData, 'documents' | 'entries' | 'returns'>; onClose: () => void; onOpenEntry?: (entry:LedgerEntry)=>void }) {
-  const dialog = useRef<HTMLDialogElement>(null), document = data.documents.find(d => d.id === entry.documentId);
-  useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close(); }, []);
+export function LedgerDetails({
+  entry,
+  data,
+  onClose,
+  onOpenEntry
+}: {
+  entry: LedgerEntry;
+  data: Pick<LedgerData, 'documents' | 'entries' | 'returns'>;
+  onClose: () => void;
+  onOpenEntry?: (entry: LedgerEntry) => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null),
+    document = data.documents.find(d => d.id === entry.documentId);
+  useEffect(() => {
+    const element = dialog.current;
+    element?.showModal();
+    return () => element?.close();
+  }, []);
   const related = data.entries.find(e => e.id === (entry.reversalOf || entry.reversedBy));
-  return <dialog ref={dialog} className="warehouse-dialog ledger-dialog" aria-labelledby="ledger-detail-title" onCancel={event => { event.preventDefault(); onClose(); }}><header><h2 id="ledger-detail-title">{entry.code} · {FINANCE_KINDS[entry.kind]}</h2><button className="btn btn-outline" onClick={onClose}>Đóng</button></header><p>{entry.partnerName} · {entry.reference} · {entry.postingDate} · {entry.actorName}</p><p>{entry.note}</p><p>Số tiền: {formatMoney(entry.amount)} · Dòng tiền: {formatMoney(entry.cashDelta)}</p>{related && <p>Phiếu liên quan: {related.code}</p>}
-    <p className="warehouse-note">Chi tiết chứng từ hiện tại; báo cáo theo kỳ giữ số liệu theo ngày ghi sổ.</p>
-    {document && <p>Hạn thanh toán: {document.dueDate}{document.openingAsOf ? ` · Đối chiếu đầu kỳ: ${document.openingAsOf}` : ''}</p>}
-    {document && <div className="warehouse-grid-scroll"><table><thead><tr><th>Đơn / nguồn</th><th>Mã / tên</th><th>SL / ĐVT</th><th>Đơn giá</th><th>Chiết khấu</th><th>Thuế (%)</th><th>Gốc</th><th>Điều chỉnh</th><th>Đã phân bổ</th><th>Còn nợ</th></tr></thead><tbody>{document.lines.map(l => <tr key={l.id}><td title={`${l.orderCode} · ${l.sourceCode}`}>{l.orderCode} · {l.sourceCode}</td><td title={`${l.code} ${l.name}`}>{l.code} {l.name}</td><td>{stockNumber(l.quantity)} {l.unit}</td><td>{l.unitPrice.toLocaleString('vi-VN', { maximumFractionDigits: 6 })}</td>{[l.discount, l.taxRate, l.gross, l.adjustment, l.settled, document.voided ? 0 : lineDue(l)].map((n, i) => <td className="ledger-number" key={i}>{i === 1 ? n : formatMoney(n)}</td>)}</tr>)}</tbody></table></div>}
-    {!!entry.allocations.length && <div className="warehouse-grid-scroll"><table><thead><tr><th>Chứng từ</th><th>Mã hàng</th><th>Phân bổ</th></tr></thead><tbody>{entry.allocations.map(a => { const doc = data.documents.find(d => d.id === a.documentId), line = doc?.lines.find(l => l.id === a.lineId); return <tr key={`${a.documentId}-${a.lineId}`}><td>{doc?.reference}</td><td>{line?.code || line?.name}</td><td className="ledger-number">{formatMoney(a.amount)}</td></tr>; })}</tbody></table></div>}
-    {!!entry.adjustments.length && <div className="warehouse-grid-scroll"><table><thead><tr><th>Chứng từ / mã</th><th>Số tiền điều chỉnh</th><th>Phiếu trả</th><th>SL trả</th></tr></thead><tbody>{entry.adjustments.map(a => { const doc = data.documents.find(d => d.id === a.documentId), line = doc?.lines.find(l => l.id === a.lineId); return <tr key={`${a.documentId}-${a.lineId}`}><td>{doc?.reference} · {line?.code || line?.name}</td><td className="ledger-number">{formatMoney(a.amount)}</td><td>{data.returns.find(r => r.id === a.returnVoucherId)?.code || a.returnVoucherId || 'Chứng từ riêng'}</td><td>{a.quantity ? `${stockNumber(a.quantity)} ${line?.unit}` : '—'}</td></tr>; })}</tbody></table></div>}
-    {document && <div className="warehouse-grid-scroll"><table><thead><tr><th>Phiếu liên quan</th><th>Ngày ghi</th><th>Nghiệp vụ</th><th>Số tiền</th><th>Trạng thái hiện tại</th></tr></thead><tbody>{data.entries.filter(e=>e.documentId===document.id || e.allocations.some(a=>a.documentId===document.id) || e.adjustments.some(a=>a.documentId===document.id)).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)).map(e=><tr key={e.id}><td><button className="btn btn-outline" onClick={()=>onOpenEntry?.(e)}>{e.code}</button></td><td>{e.postingDate}</td><td>{FINANCE_KINDS[e.kind]}</td><td>{formatMoney(e.amount)}</td><td>{e.reversedBy ? 'Đã đảo' : e.kind==='reversal' ? 'Phiếu đảo' : 'Đã ghi'}</td></tr>)}</tbody></table></div>}
-  </dialog>;
+  return (
+    <dialog
+      ref={dialog}
+      className="warehouse-dialog ledger-dialog"
+      aria-labelledby="ledger-detail-title"
+      onCancel={event => {
+        event.preventDefault();
+        onClose();
+      }}
+    >
+      <header>
+        <h2 id="ledger-detail-title">
+          {entry.code} · {FINANCE_KINDS[entry.kind]}
+        </h2>
+        <button className="btn btn-outline" onClick={onClose}>
+          Đóng
+        </button>
+      </header>
+      <p>
+        {entry.partnerName} · {entry.reference} · {entry.postingDate} · {entry.actorName}
+      </p>
+      <p>{entry.note}</p>
+      <p>
+        Số tiền: {formatMoney(entry.amount)} · Dòng tiền: {formatMoney(entry.cashDelta)}
+      </p>
+      {related && <p>Phiếu liên quan: {related.code}</p>}
+      <p className="warehouse-note">Chi tiết chứng từ hiện tại; báo cáo theo kỳ giữ số liệu theo ngày ghi sổ.</p>
+      {document && (
+        <p>
+          Hạn thanh toán: {document.dueDate}
+          {document.openingAsOf ? ` · Đối chiếu đầu kỳ: ${document.openingAsOf}` : ''}
+        </p>
+      )}
+      {document && (
+        <div className="warehouse-grid-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Đơn / nguồn</th>
+                <th>Mã / tên</th>
+                <th>SL / ĐVT</th>
+                <th>Đơn giá</th>
+                <th>Chiết khấu</th>
+                <th>Thuế (%)</th>
+                <th>Gốc</th>
+                <th>Điều chỉnh</th>
+                <th>Đã phân bổ</th>
+                <th>Còn nợ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {document.lines.map(l => (
+                <tr key={l.id}>
+                  <td title={`${l.orderCode} · ${l.sourceCode}`}>
+                    {l.orderCode} · {l.sourceCode}
+                  </td>
+                  <td title={`${l.code} ${l.name}`}>
+                    {l.code} {l.name}
+                  </td>
+                  <td>
+                    {stockNumber(l.quantity)} {l.unit}
+                  </td>
+                  <td>{l.unitPrice.toLocaleString('vi-VN', { maximumFractionDigits: 6 })}</td>
+                  {[l.discount, l.taxRate, l.gross, l.adjustment, l.settled, document.voided ? 0 : lineDue(l)].map(
+                    (n, i) => (
+                      <td className="ledger-number" key={i}>
+                        {i === 1 ? n : formatMoney(n)}
+                      </td>
+                    )
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!!entry.allocations.length && (
+        <div className="warehouse-grid-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Chứng từ</th>
+                <th>Mã hàng</th>
+                <th>Phân bổ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entry.allocations.map(a => {
+                const doc = data.documents.find(d => d.id === a.documentId),
+                  line = doc?.lines.find(l => l.id === a.lineId);
+                return (
+                  <tr key={`${a.documentId}-${a.lineId}`}>
+                    <td>{doc?.reference}</td>
+                    <td>{line?.code || line?.name}</td>
+                    <td className="ledger-number">{formatMoney(a.amount)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!!entry.adjustments.length && (
+        <div className="warehouse-grid-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Chứng từ / mã</th>
+                <th>Số tiền điều chỉnh</th>
+                <th>Phiếu trả</th>
+                <th>SL trả</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entry.adjustments.map(a => {
+                const doc = data.documents.find(d => d.id === a.documentId),
+                  line = doc?.lines.find(l => l.id === a.lineId);
+                return (
+                  <tr key={`${a.documentId}-${a.lineId}`}>
+                    <td>
+                      {doc?.reference} · {line?.code || line?.name}
+                    </td>
+                    <td className="ledger-number">{formatMoney(a.amount)}</td>
+                    <td>
+                      {data.returns.find(r => r.id === a.returnVoucherId)?.code ||
+                        a.returnVoucherId ||
+                        'Chứng từ riêng'}
+                    </td>
+                    <td>{a.quantity ? `${stockNumber(a.quantity)} ${line?.unit}` : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {document && (
+        <div className="warehouse-grid-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Phiếu liên quan</th>
+                <th>Ngày ghi</th>
+                <th>Nghiệp vụ</th>
+                <th>Số tiền</th>
+                <th>Trạng thái hiện tại</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.entries
+                .filter(
+                  e =>
+                    e.documentId === document.id ||
+                    e.allocations.some(a => a.documentId === document.id) ||
+                    e.adjustments.some(a => a.documentId === document.id)
+                )
+                .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+                .map(e => (
+                  <tr key={e.id}>
+                    <td>
+                      <button className="btn btn-outline" onClick={() => onOpenEntry?.(e)}>
+                        {e.code}
+                      </button>
+                    </td>
+                    <td>{e.postingDate}</td>
+                    <td>{FINANCE_KINDS[e.kind]}</td>
+                    <td>{formatMoney(e.amount)}</td>
+                    <td>{e.reversedBy ? 'Đã đảo' : e.kind === 'reversal' ? 'Phiếu đảo' : 'Đã ghi'}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </dialog>
+  );
 }

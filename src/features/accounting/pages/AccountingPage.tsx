@@ -16,15 +16,25 @@ import { AccountingLedgerWorkspace } from '../components/AccountingLedgerWorkspa
 import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import './Accounting.css';
 
-interface AccountingProps { pos: any[]; currentUser: UserProfile; onRefresh: () => void; users: UserProfile[] }
+interface AccountingProps {
+  pos: any[];
+  currentUser: UserProfile;
+  onRefresh: () => void;
+  users: UserProfile[];
+}
 export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefresh }) => {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'invoices' | 'costing' | 'catalog' | 'reports'>('invoices');
-  const changeTab = (tab: typeof activeTab) => { if (confirmAppNavigation()) setActiveTab(tab); };
+  const changeTab = (tab: typeof activeTab) => {
+    if (confirmAppNavigation()) setActiveTab(tab);
+  };
   const [customCostModalPo, setCustomCostModalPo] = useState<any | null>(null);
-  const [tempTransportCost, setTempTransportCost] = useState(0), [tempLaborCost, setTempLaborCost] = useState(0), [tempOtherCost, setTempOtherCost] = useState(0);
+  const [tempTransportCost, setTempTransportCost] = useState(0),
+    [tempLaborCost, setTempLaborCost] = useState(0),
+    [tempOtherCost, setTempOtherCost] = useState(0);
   const costingPagination = useDataTablePagination(pos);
-  if (!canUseLedger(currentUser)) return <p role="alert">Chỉ Admin và Kế toán có quyền Kế toán được sử dụng sổ tiền.</p>;
+  if (!canUseLedger(currentUser))
+    return <p role="alert">Chỉ Admin và Kế toán có quyền Kế toán được sử dụng sổ tiền.</p>;
   // Costing calculations for PO
   const calculateCosting = (po: any) => {
     const revenue = po.netAmount || po.totalAmount || 0;
@@ -32,7 +42,8 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
     const sizeStr = po.items?.[0]?.size || '100x100mm';
 
     // Calculate square meters
-    let w = 100, h = 100;
+    let w = 100,
+      h = 100;
     const parts = sizeStr.toLowerCase().replace('mm', '').split('x');
     if (parts.length === 2) {
       w = parseInt(parts[0]) || 100;
@@ -74,19 +85,25 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
   };
 
   const handleSaveCustomCost = async () => {
-    return runMutationAction("AccountingPage.tsx:handleSaveCustomCost", async () => {
-      if (customCostModalPo) {
-        await requireConfirmedMutation(dbService.updateDocument('pos', customCostModalPo.id, {
-          transportCost: Number(tempTransportCost),
-          laborCost: Number(tempLaborCost),
-          otherCost: Number(tempOtherCost)
-        }));
-        setCustomCostModalPo(null);
-        onRefresh();
+    return runMutationAction(
+      'AccountingPage.tsx:handleSaveCustomCost',
+      async () => {
+        if (customCostModalPo) {
+          await requireConfirmedMutation(
+            dbService.updateDocument('pos', customCostModalPo.id, {
+              transportCost: Number(tempTransportCost),
+              laborCost: Number(tempLaborCost),
+              otherCost: Number(tempOtherCost)
+            })
+          );
+          setCustomCostModalPo(null);
+          onRefresh();
 
-        showSuccessToast("Đã lưu thành công");
-      }
-    }, undefined);
+          showSuccessToast('Đã lưu thành công');
+        }
+      },
+      undefined
+    );
   };
 
   const printWorkOrder = (po: any) => {
@@ -168,17 +185,67 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
     printWindow.print();
   };
 
-  return <div className="accounting-view" data-erp-table-text="single-line" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-    <PageContextHeader section="Kế toán" current={activeTab === 'reports' ? 'Báo cáo & cảnh báo' : activeTab === 'catalog' ? 'Danh mục hàng' : activeTab === 'costing' ? 'Báo cáo lãi gộp đơn hàng' : 'Công nợ & thu chi'} />
-    <nav className="content-tabs" role="tablist" aria-label="Kế toán">
-      <button type="button" role="tab" aria-selected={activeTab === 'invoices'} className={activeTab === 'invoices' ? 'active' : ''} onClick={() => changeTab('invoices')}>Công nợ & thu chi</button>
-      <button type="button" role="tab" aria-selected={activeTab === 'costing'} className={activeTab === 'costing' ? 'active' : ''} onClick={() => changeTab('costing')}>{t('Báo Cáo Lãi Gộp Đơn Hàng')}</button>
-      {canManageItemCatalog(currentUser) && <button type="button" role="tab" aria-selected={activeTab === 'catalog'} className={activeTab === 'catalog' ? 'active' : ''} onClick={() => changeTab('catalog')}>Danh mục hàng</button>}
-      <button type="button" role="tab" aria-selected={activeTab === 'reports'} className={activeTab === 'reports' ? 'active' : ''} onClick={() => changeTab('reports')}>Báo cáo & cảnh báo</button>
-    </nav>
-    {activeTab === 'invoices' && <AccountingLedgerWorkspace actor={currentUser} onRefresh={onRefresh} />}
-    {activeTab === 'reports' && <AccountingReportsWorkspace actor={currentUser} />}
-    {activeTab === 'catalog' && <ItemCatalogWorkspace currentUser={currentUser} />}
+  return (
+    <div
+      className="accounting-view"
+      data-erp-table-text="single-line"
+      style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+    >
+      <PageContextHeader
+        section="Kế toán"
+        current={
+          activeTab === 'reports'
+            ? 'Báo cáo & cảnh báo'
+            : activeTab === 'catalog'
+              ? 'Danh mục hàng'
+              : activeTab === 'costing'
+                ? 'Báo cáo lãi gộp đơn hàng'
+                : 'Công nợ & thu chi'
+        }
+      />
+      <nav className="content-tabs" role="tablist" aria-label="Kế toán">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'invoices'}
+          className={activeTab === 'invoices' ? 'active' : ''}
+          onClick={() => changeTab('invoices')}
+        >
+          Công nợ & thu chi
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'costing'}
+          className={activeTab === 'costing' ? 'active' : ''}
+          onClick={() => changeTab('costing')}
+        >
+          {t('Báo Cáo Lãi Gộp Đơn Hàng')}
+        </button>
+        {canManageItemCatalog(currentUser) && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'catalog'}
+            className={activeTab === 'catalog' ? 'active' : ''}
+            onClick={() => changeTab('catalog')}
+          >
+            Danh mục hàng
+          </button>
+        )}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'reports'}
+          className={activeTab === 'reports' ? 'active' : ''}
+          onClick={() => changeTab('reports')}
+        >
+          Báo cáo & cảnh báo
+        </button>
+      </nav>
+      {activeTab === 'invoices' && <AccountingLedgerWorkspace actor={currentUser} onRefresh={onRefresh} />}
+      {activeTab === 'reports' && <AccountingReportsWorkspace actor={currentUser} />}
+      {activeTab === 'catalog' && <ItemCatalogWorkspace currentUser={currentUser} />}
       {activeTab === 'costing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="card">
@@ -206,7 +273,12 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                   {costingPagination.rows.map(po => {
                     const c = calculateCosting(po);
                     const queueStatus = getPOQueueStatus(po);
-                    const isEstimated = !['waiting_invoice', 'waiting_receivable', 'waiting_discount', 'completed'].includes(queueStatus);
+                    const isEstimated = ![
+                      'waiting_invoice',
+                      'waiting_receivable',
+                      'waiting_discount',
+                      'completed'
+                    ].includes(queueStatus);
 
                     return (
                       <tr key={po.id}>
@@ -218,22 +290,33 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                         <td>{c.transportCost?.toLocaleString()} đ</td>
                         <td>{c.otherCost?.toLocaleString()} đ</td>
                         <td style={{ fontWeight: 600 }}>{c.totalCost?.toLocaleString()} đ</td>
-                        <td style={{ color: 'var(--color-success)', fontWeight: 700 }}>{c.grossProfit?.toLocaleString()} đ</td>
+                        <td style={{ color: 'var(--color-success)', fontWeight: 700 }}>
+                          {c.grossProfit?.toLocaleString()} đ
+                        </td>
                         <td>
-                          <span style={{ color: c.marginPercent > 30 ? 'var(--color-success)' : 'var(--color-warning)' }}>
+                          <span
+                            style={{ color: c.marginPercent > 30 ? 'var(--color-success)' : 'var(--color-warning)' }}
+                          >
                             {c.marginPercent.toFixed(1)}%{isEstimated ? ` (${t('Dự kiến')})` : ''}
                           </span>
                         </td>
                         <td>
-                          <RowActionMenu label={`Thao tác ${po.poCode}`} actions={[
-                            { label: t('Sửa Chi Phí'), onSelect: () => handleOpenCostModal(po) },
-                            { label: t('In Phiếu'), onSelect: () => printWorkOrder(po) }
-                          ]} />
+                          <RowActionMenu
+                            label={`Thao tác ${po.poCode}`}
+                            actions={[
+                              { label: t('Sửa Chi Phí'), onSelect: () => handleOpenCostModal(po) },
+                              { label: t('In Phiếu'), onSelect: () => printWorkOrder(po) }
+                            ]}
+                          />
                         </td>
                       </tr>
                     );
                   })}
-                  {!pos.length && <tr><td colSpan={11}>{t('Chưa có đơn hàng phù hợp.')}</td></tr>}
+                  {!pos.length && (
+                    <tr>
+                      <td colSpan={11}>{t('Chưa có đơn hàng phù hợp.')}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -248,10 +331,14 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
           <div className="modal-content" style={{ maxWidth: '450px' }}>
             <div className="modal-header">
               <span style={{ fontWeight: 700 }}>CẬP NHẬT CHI PHÍ SẢN XUẤT ĐƠN HÀNG</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setCustomCostModalPo(null)}>{t('Đóng')}</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setCustomCostModalPo(null)}>
+                {t('Đóng')}
+              </button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <p style={{ fontSize: '13px' }}>Điều chỉnh các cấu thành chi phí thực tế cho PO: <strong>{customCostModalPo.poCode}</strong></p>
+              <p style={{ fontSize: '13px' }}>
+                Điều chỉnh các cấu thành chi phí thực tế cho PO: <strong>{customCostModalPo.poCode}</strong>
+              </p>
               <div className="form-group">
                 <label>Chi phí vận chuyển thực tế (đ) *</label>
                 <input
@@ -281,11 +368,16 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
               </div>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-outline" onClick={() => setCustomCostModalPo(null)}>{t('Hủy')}</button>
-              <button type="button" className="btn btn-primary" onClick={handleSaveCustomCost}>{t('Cập Nhật')}</button>
+              <button type="button" className="btn btn-outline" onClick={() => setCustomCostModalPo(null)}>
+                {t('Hủy')}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={handleSaveCustomCost}>
+                {t('Cập Nhật')}
+              </button>
             </div>
           </div>
         </div>
       )}
-  </div>;
+    </div>
+  );
 };

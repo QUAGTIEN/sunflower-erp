@@ -1,13 +1,19 @@
 import { PRODUCTION_STATUSES, type ProductionOrder } from './productionOrder';
 import { whiteLabelPrintHtml } from './whiteLabelPrint';
-const escape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!));
-const quantity = (value: number | undefined) => value === undefined ? '—' : value.toLocaleString('vi-VN');
+const escape = (value: unknown) =>
+  String(value ?? '').replace(
+    /[&<>"']/g,
+    character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]!
+  );
+const quantity = (value: number | undefined) => (value === undefined ? '—' : value.toLocaleString('vi-VN'));
 export function productionPrintHtml(order: ProductionOrder) {
   if (order.printTemplate?.id === 'white_label' && order.printTemplate.version === 1) return whiteLabelPrintHtml(order);
-  const rows = order.lines.map((line, index) => {
-    const spec = line.specifications;
-    return `<tr><td>${index + 1}</td><td>${escape(line.productCode || 'Nhập tay')}<br>${escape(line.productName)}</td><td>${escape(line.specification)}<br>${escape(line.material)}</td><td>${quantity(line.quantity)} ${escape(line.unit)}</td><td>${escape(spec.dieCut || spec.corner || '—')}</td><td>${escape(spec.perforated || '—')}</td><td>${escape(spec.core || '—')}<br>${escape(spec.coreType || '—')}</td><td>${escape(spec.paperCode || '—')}<br>${escape(spec.paperType || '—')}</td><td>${quantity(line.goodQuantity)}</td><td>${quantity(line.rejectQuantity)}</td><td>${line.image ? `<img alt="Mẫu sản phẩm" src="${escape(line.image)}">` : 'Chưa có ảnh'}</td></tr>`;
-  }).join('');
+  const rows = order.lines
+    .map((line, index) => {
+      const spec = line.specifications;
+      return `<tr><td>${index + 1}</td><td>${escape(line.productCode || 'Nhập tay')}<br>${escape(line.productName)}</td><td>${escape(line.specification)}<br>${escape(line.material)}</td><td>${quantity(line.quantity)} ${escape(line.unit)}</td><td>${escape(spec.dieCut || spec.corner || '—')}</td><td>${escape(spec.perforated || '—')}</td><td>${escape(spec.core || '—')}<br>${escape(spec.coreType || '—')}</td><td>${escape(spec.paperCode || '—')}<br>${escape(spec.paperType || '—')}</td><td>${quantity(line.goodQuantity)}</td><td>${quantity(line.rejectQuantity)}</td><td>${line.image ? `<img alt="Mẫu sản phẩm" src="${escape(line.image)}">` : 'Chưa có ảnh'}</td></tr>`;
+    })
+    .join('');
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${escape(order.lsxCode)}</title><style>
     @page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font:11px Arial,sans-serif;color:#18332e;margin:0}h1{font-size:21px;text-align:center;margin:4px 0 12px}h2{font-size:13px;margin:0 0 8px;color:#145c49}header{text-align:center;font-weight:bold;color:#145c49}table{width:100%;border-collapse:collapse;margin:10px 0;table-layout:fixed}th,td{border:1px solid #94b7a8;padding:7px;vertical-align:top;word-break:break-word}th{background:#e6f2ec;color:#145c49}thead{display:table-header-group}tr{break-inside:avoid}img{max-width:100%;max-height:60px;object-fit:contain}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border:1px solid #94b7a8;padding:10px}.meta p{margin:3px 0}.bottom{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:10px}.box{padding:10px;border:1px solid #94b7a8;min-height:100px;break-inside:avoid}.muted{color:#53675f}.signature{display:flex;justify-content:space-around;margin-top:14px;min-height:80px;text-align:center}.note{white-space:pre-wrap;overflow-wrap:anywhere}.draft{color:#a54b12;text-align:center;font-weight:bold;padding:6px}footer{margin-top:10px;font-size:10px;color:#53675f}@media print{th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
     <header>CÔNG TY TNHH SẢN XUẤT VÀ CÔNG NGHỆ SUNFLOWER</header><h1>PHIẾU LỆNH SẢN XUẤT</h1>

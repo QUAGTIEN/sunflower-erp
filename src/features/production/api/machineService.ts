@@ -109,16 +109,15 @@ const normalizeMachine = (machine: Partial<ProductionMachine>): ProductionMachin
     ? machine.supportedMaterials.map(String).filter(Boolean)
     : [],
   status: ['available', 'maintenance', 'fault', 'inactive'].includes(String(machine.status))
-    ? machine.status as MachineStatus
+    ? (machine.status as MachineStatus)
     : 'available',
   notes: String(machine.notes || ''),
   createdAt: machine.createdAt,
   updatedAt: machine.updatedAt
 });
 
-export const sortMachines = (machines: ProductionMachine[]): ProductionMachine[] => (
-  [...machines].sort((a, b) => a.code.localeCompare(b.code, 'vi', { numeric: true }))
-);
+export const sortMachines = (machines: ProductionMachine[]): ProductionMachine[] =>
+  [...machines].sort((a, b) => a.code.localeCompare(b.code, 'vi', { numeric: true }));
 
 export const ensureDefaultMachines = async (): Promise<void> => {
   const existingMachines = await dbService.getCollection('machines');
@@ -127,7 +126,10 @@ export const ensureDefaultMachines = async (): Promise<void> => {
   await Promise.all(DEFAULT_MACHINES.map(machine => dbService.addDocument('machines', machine)));
 };
 
-export const subscribeMachines = (callback: (machines: ProductionMachine[]) => void, seedDefaults = true): (() => void) => {
+export const subscribeMachines = (
+  callback: (machines: ProductionMachine[]) => void,
+  seedDefaults = true
+): (() => void) => {
   const unsubscribe = dbService.subscribeCollection('machines', data => {
     callback(sortMachines(data.map(normalizeMachine).filter(machine => machine.name)));
   });
@@ -137,10 +139,11 @@ export const subscribeMachines = (callback: (machines: ProductionMachine[]) => v
 };
 
 export const machineMatchesAssignment = (machine: ProductionMachine, assignment: unknown): boolean => {
-  const value = String(assignment || '').trim().toLocaleLowerCase('vi');
+  const value = String(assignment || '')
+    .trim()
+    .toLocaleLowerCase('vi');
   if (!value) return false;
-  return [machine.id, machine.code, machine.name]
-    .some(candidate => candidate.trim().toLocaleLowerCase('vi') === value);
+  return [machine.id, machine.code, machine.name].some(candidate => candidate.trim().toLocaleLowerCase('vi') === value);
 };
 
 export const getMachineForAssignment = (
@@ -148,19 +151,21 @@ export const getMachineForAssignment = (
   assignment: unknown
 ): ProductionMachine | undefined => machines.find(machine => machineMatchesAssignment(machine, assignment));
 
-export const isActiveProductionCommand = (command: ProductionCommandLike): boolean => (
-  !command?.deleted && (command?.status === 'released' || command?.status === 'producing' || command?.status === 'transfer_pending')
-);
+export const isActiveProductionCommand = (command: ProductionCommandLike): boolean =>
+  !command?.deleted &&
+  (command?.status === 'released' || command?.status === 'producing' || command?.status === 'transfer_pending');
 
 export const getMachineCommands = (
   machine: ProductionMachine,
   commands: ProductionCommandLike[],
   excludeCommandId?: string
-): ProductionCommandLike[] => commands.filter(command => (
-  command?.id !== excludeCommandId &&
-  isActiveProductionCommand(command) &&
-  machineMatchesAssignment(machine, command?.machineId)
-));
+): ProductionCommandLike[] =>
+  commands.filter(
+    command =>
+      command?.id !== excludeCommandId &&
+      isActiveProductionCommand(command) &&
+      machineMatchesAssignment(machine, command?.machineId)
+  );
 
 export const getMachineRuntimeStatus = (
   machine: ProductionMachine,
@@ -168,7 +173,11 @@ export const getMachineRuntimeStatus = (
   excludeCommandId?: string
 ): MachineRuntimeStatus => {
   if (machine.status !== 'available') return machine.status;
-  return getMachineCommands(machine, commands, excludeCommandId).some(command => command.status === 'producing' || command.status === 'transfer_pending') ? 'running' : 'available';
+  return getMachineCommands(machine, commands, excludeCommandId).some(
+    command => command.status === 'producing' || command.status === 'transfer_pending'
+  )
+    ? 'running'
+    : 'available';
 };
 
 export const getRequiredColorCount = (po?: PurchaseOrderLike | null): number => {
@@ -177,13 +186,9 @@ export const getRequiredColorCount = (po?: PurchaseOrderLike | null): number => 
   const directValue = Number(specifications.colorCount ?? item.colorCount);
   if (Number.isFinite(directValue) && directValue > 0) return directValue;
 
-  const text = [
-    specifications.colors,
-    specifications.color,
-    item.colors,
-    item.productName,
-    item.description
-  ].filter(Boolean).join(' ');
+  const text = [specifications.colors, specifications.color, item.colors, item.productName, item.description]
+    .filter(Boolean)
+    .join(' ');
   const match = text.match(/(\d+)\s*(?:màu|color)/i);
   return match ? Number(match[1]) : 0;
 };
@@ -206,7 +211,8 @@ export const sortMachinesForAssignment = (
     const bCompatible = requiredColorCount === 0 || b.colorCount >= requiredColorCount;
     if (aCompatible !== bCompatible) return aCompatible ? -1 : 1;
 
-    const statusDifference = statusWeight[getMachineRuntimeStatus(a, commands)] - statusWeight[getMachineRuntimeStatus(b, commands)];
+    const statusDifference =
+      statusWeight[getMachineRuntimeStatus(a, commands)] - statusWeight[getMachineRuntimeStatus(b, commands)];
     if (statusDifference !== 0) return statusDifference;
 
     const aExcess = requiredColorCount > 0 ? Math.max(0, a.colorCount - requiredColorCount) : 0;
@@ -216,10 +222,11 @@ export const sortMachinesForAssignment = (
   });
 };
 
-export const getMachineStatusLabel = (status: MachineRuntimeStatus): string => ({
-  available: 'Sẵn sàng',
-  running: 'Đang chạy',
-  maintenance: 'Bảo trì',
-  fault: 'Đang lỗi',
-  inactive: 'Ngừng sử dụng'
-}[status]);
+export const getMachineStatusLabel = (status: MachineRuntimeStatus): string =>
+  ({
+    available: 'Sẵn sàng',
+    running: 'Đang chạy',
+    maintenance: 'Bảo trì',
+    fault: 'Đang lỗi',
+    inactive: 'Ngừng sử dụng'
+  })[status];
