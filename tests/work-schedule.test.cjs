@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
+const { readModuleSource } = require('./helpers/loadTs.cjs');
 
 const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relativePath), 'utf8');
 const loadScheduleModel = () => {
@@ -64,12 +65,14 @@ test('permanent deletion is limited to completed work and administrators', () =>
 
 test('work assignment is available in every customer lifecycle module', () => {
   // Each module is checked as a whole: the customer row menu lives in CustomerListTable, the dialog in CrmPage.
-  for (const files of [
-    ['src/features/crm/components/LeadCandidateWorkspace.tsx'],
-    ['src/features/crm/pages/LeadsPage.tsx'],
-    ['src/features/crm/pages/CrmPage.tsx', 'src/features/crm/components/CustomerListTable.tsx']
+  for (const source of [
+    readModuleSource(
+      'src/features/crm/components/LeadCandidateWorkspace.tsx',
+      'src/features/crm/components/leadCandidateWorkspace'
+    ),
+    read('src/features/crm/pages/LeadsPage.tsx'),
+    ['src/features/crm/pages/CrmPage.tsx', 'src/features/crm/components/CustomerListTable.tsx'].map(read).join('\n')
   ]) {
-    const source = files.map(read).join('\n');
     assert.match(source, /WorkAssignmentDialog/);
     assert.match(source, /Giao việc/);
     assert.match(source, /label: (?:t\()?['"]Giao việc['"]\)?.*icon: <ClipboardCheck/s);

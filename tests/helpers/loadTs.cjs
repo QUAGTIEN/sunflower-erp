@@ -66,4 +66,17 @@ function readSource(file) {
   return fs.readFileSync(path.resolve(root, file), 'utf8');
 }
 
-module.exports = { root, createLoader, readSource };
+/**
+ * Reads a page or component together with the files split out of it into a sibling folder,
+ * so static checks keep covering the whole module after refactors.
+ */
+function readModuleSource(file, folder) {
+  const parts = fs
+    .readdirSync(path.resolve(root, folder))
+    .filter(name => /\.tsx?$/.test(name))
+    .sort()
+    .map(name => path.join(folder, name));
+  return [file, ...parts].map(readSource).join('\n');
+}
+
+module.exports = { root, createLoader, readSource, readModuleSource };

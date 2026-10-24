@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const { readModuleSource } = require('./helpers/loadTs.cjs');
 
 const source = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'features', 'crm', 'model', 'customerInsightCatalog.ts'),
@@ -83,10 +84,7 @@ test('dashboard renders the focused overview and limits classification records t
 });
 
 test('raw data and leads share the 61-item classification page and list controls', () => {
-  const workspaceSource = fs.readFileSync(
-    path.join(__dirname, '..', 'src', 'features', 'crm', 'components', 'LeadCandidateWorkspace.tsx'),
-    'utf8'
-  );
+  const workspaceSource = readModuleSource('src/features/crm/components/LeadCandidateWorkspace.tsx', 'src/features/crm/components/leadCandidateWorkspace');
   const classificationSource = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'features', 'crm', 'components', 'CustomerInsightClassification.tsx'),
     'utf8'

@@ -1,4 +1,5 @@
 const test = require('node:test');
+const { readModuleSource } = require('./helpers/loadTs.cjs');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -8,7 +9,7 @@ const read = relativePath => fs.readFileSync(path.join(__dirname, '..', relative
 test('sales management is a standalone admin module', () => {
   const appShell = read('src/app/AppShell.tsx');
   const accessControl = read('src/app/navigation/accessControl.ts');
-  const rawWorkspace = read('src/features/crm/components/LeadCandidateWorkspace.tsx');
+  const rawWorkspace = readModuleSource('src/features/crm/components/LeadCandidateWorkspace.tsx', 'src/features/crm/components/leadCandidateWorkspace');
   assert.match(appShell, /case 'sales_management'/);
   assert.match(appShell, /<SalesManagementPage/);
   assert.match(appShell, /sidebar-item-label">Quản lý Sale/);

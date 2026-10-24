@@ -2,10 +2,10 @@ const assert = require('node:assert/strict');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const test = require('node:test');
-const { createLoader } = require('./helpers/loadTs.cjs');
+const { createLoader, readModuleSource } = require('./helpers/loadTs.cjs');
 
 const overviewSource = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'components', 'RawDataOverview.tsx'), 'utf8');
-const workspaceSource = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'components', 'LeadCandidateWorkspace.tsx'), 'utf8');
+const workspaceSource = readModuleSource('src/features/crm/components/LeadCandidateWorkspace.tsx', 'src/features/crm/components/leadCandidateWorkspace');
 const workspaceStyles = readFileSync(join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'Leads.css'), 'utf8');
 const model = createLoader()('src/features/crm/model/rawDataOverview.ts');
 
