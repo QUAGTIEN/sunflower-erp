@@ -70,7 +70,7 @@ test('work assignment is available in every customer lifecycle module', () => {
       'src/features/crm/components/LeadCandidateWorkspace.tsx',
       'src/features/crm/components/leadCandidateWorkspace'
     ),
-    read('src/features/crm/pages/LeadsPage.tsx'),
+    readModuleSource('src/features/crm/pages/LeadsPage.tsx', 'src/features/crm/pages/leadsPage'),
     ['src/features/crm/pages/CrmPage.tsx', 'src/features/crm/components/CustomerListTable.tsx'].map(read).join('\n')
   ]) {
     assert.match(source, /WorkAssignmentDialog/);

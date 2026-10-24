@@ -3,10 +3,9 @@ const { join } = require('node:path');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const source = readFileSync(
-  join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'LeadsPage.tsx'),
-  'utf8'
-);
+const { readModuleSource } = require('./helpers/loadTs.cjs');
+
+const source = readModuleSource('src/features/crm/pages/LeadsPage.tsx', 'src/features/crm/pages/leadsPage');
 
 // Since 4b1f928 the list is no longer prewarmed after the first frame; it is built on demand
 // when the list tab opens and then stays mounted so switching tabs keeps its state.

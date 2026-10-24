@@ -117,10 +117,7 @@ test('raw data and leads share the 61-item classification page and list controls
   assert.match(customerDataCss, /\.customer-classification__groups\s*\{[^}]*grid-template-columns:\s*repeat\(4,/s);
   assert.match(customerDataCss, /@media \(max-width: 1500px\)[\s\S]*\.customer-classification__groups\s*\{[^}]*repeat\(2,/);
 
-  const leadsSource = fs.readFileSync(
-    path.join(__dirname, '..', 'src', 'features', 'crm', 'pages', 'LeadsPage.tsx'),
-    'utf8'
-  );
+  const leadsSource = readModuleSource('src/features/crm/pages/LeadsPage.tsx', 'src/features/crm/pages/leadsPage');
   assert.match(leadsSource, /CUSTOMER_INSIGHT_GROUPS\.flatMap/);
   assert.match(leadsSource, /visibleLeadInsightItems\.map/);
   assert.doesNotMatch(leadsSource, /classificationLeadId/);
