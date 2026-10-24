@@ -1,0 +1,6 @@
+dist
+node_modules
+public/map-data
+src/data/vietnamAdministrativeUnits.ts
+package-lock.json
+docs/archive
