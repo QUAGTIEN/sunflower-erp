@@ -63,7 +63,8 @@ function form(products = [], initial = {}) {
     './CustomerProductPicker': { CustomerProductPicker: 'CustomerProductPicker' },
     // Dialogs split out of the form only render behind toggles these tests never open.
     './poForm/POImagePreviewDialog': { POImagePreviewDialog: 'POImagePreviewDialog' },
-    './poForm/POFileRepositoryDialog': { POFileRepositoryDialog: 'POFileRepositoryDialog' }
+    './poForm/POFileRepositoryDialog': { POFileRepositoryDialog: 'POFileRepositoryDialog' },
+    './poForm/POLegacyProductSearchDialog': { POLegacyProductSearchDialog: 'POLegacyProductSearchDialog' }
   }, {
     window: { localStorage: { removeItem() {} } }, alert: message => alerts.push(message),
     crypto: { randomUUID: () => `item-${++nextId}` }
