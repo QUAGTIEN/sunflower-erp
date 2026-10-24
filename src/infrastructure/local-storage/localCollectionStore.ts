@@ -1,3 +1,4 @@
+import type { ErpDocument } from '@/shared/types';
 import { normalizeCustomerRecords, normalizeLeadRecords } from '@/features/crm/model/crmModels';
 import { normalizeLeadCandidateRecords } from '@/features/crm/model/leadCandidateModels';
 import { normalizeNotificationRecords } from '@/domain/notificationModels';
@@ -36,7 +37,7 @@ export const initializeLocalStorage = () => {
 
   const customers = localStorage.getItem('erp_customers') ? JSON.parse(localStorage.getItem('erp_customers')!) : [];
   DEFAULT_CUSTOMERS.forEach(defCust => {
-    if (!customers.some((c: any) => c.id === defCust.id)) {
+    if (!customers.some((c: ErpDocument) => c.id === defCust.id)) {
       customers.push(defCust);
     }
   });
@@ -52,7 +53,7 @@ export const initializeLocalStorage = () => {
 
   const suppliers = localStorage.getItem('erp_suppliers') ? JSON.parse(localStorage.getItem('erp_suppliers')!) : [];
   DEFAULT_SUPPLIERS.forEach(defSup => {
-    if (!suppliers.some((s: any) => s.id === defSup.id)) {
+    if (!suppliers.some((s: ErpDocument) => s.id === defSup.id)) {
       suppliers.push(defSup);
     }
   });
@@ -65,7 +66,7 @@ export const initializeLocalStorage = () => {
 
   const pos = localStorage.getItem('erp_pos') ? JSON.parse(localStorage.getItem('erp_pos')!) : [];
   DEFAULT_POS.forEach(defPo => {
-    if (!pos.some((p: any) => p.id === defPo.id)) {
+    if (!pos.some((p: ErpDocument) => p.id === defPo.id)) {
       pos.push(defPo);
     }
   });
@@ -75,7 +76,7 @@ export const initializeLocalStorage = () => {
     ? JSON.parse(localStorage.getItem('erp_purchase_orders')!)
     : [];
   DEFAULT_PURCHASE_ORDERS.forEach(defPur => {
-    if (!purchaseOrders.some((p: any) => p.id === defPur.id)) {
+    if (!purchaseOrders.some((p: ErpDocument) => p.id === defPur.id)) {
       purchaseOrders.push(defPur);
     }
   });
@@ -100,7 +101,7 @@ export const initializeLocalStorage = () => {
   }
 };
 
-type CollectionCallback = (data: any[]) => void;
+type CollectionCallback = (data: ErpDocument[]) => void;
 
 const subscribers: Record<string, CollectionCallback[]> = {};
 
@@ -140,7 +141,7 @@ export const normalizeCollectionUpdate = <T extends Record<string, unknown>>(col
   };
 };
 
-export const readLocalCollection = (colName: string): any[] => {
+export const readLocalCollection = (colName: string): ErpDocument[] => {
   try {
     const data = localStorage.getItem(`erp_${colName}`);
     const parsed = data ? JSON.parse(data) : [];
@@ -151,7 +152,7 @@ export const readLocalCollection = (colName: string): any[] => {
   }
 };
 
-export const readRawLocalCollection = (colName: string): any[] => {
+export const readRawLocalCollection = (colName: string): ErpDocument[] => {
   try {
     const data = localStorage.getItem(`erp_${colName}`);
     const parsed = data ? JSON.parse(data) : [];
@@ -167,15 +168,15 @@ const triggerSubscribers = (colName: string) => {
   subscribers[colName]?.forEach(callback => callback(data));
 };
 
-export const writeLocalCollection = (colName: string, data: any[], notify = true) => {
+export const writeLocalCollection = (colName: string, data: ErpDocument[], notify = true) => {
   const normalizedData = normalizeCollectionRecords(colName, data);
   localStorage.setItem(`erp_${colName}`, JSON.stringify(normalizedData));
   if (notify) triggerSubscribers(colName);
 };
 
-export const upsertLocalDocument = (colName: string, documentData: any) => {
+export const upsertLocalDocument = (colName: string, documentData: ErpDocument) => {
   const list = readLocalCollection(colName);
-  const index = list.findIndex((item: any) => item.id === documentData.id);
+  const index = list.findIndex((item: ErpDocument) => item.id === documentData.id);
 
   if (index === -1) {
     list.unshift(documentData);
@@ -186,9 +187,9 @@ export const upsertLocalDocument = (colName: string, documentData: any) => {
   writeLocalCollection(colName, list);
 };
 
-export const updateLocalDocument = (colName: string, docId: string, updatedFields: any): boolean => {
+export const updateLocalDocument = (colName: string, docId: string, updatedFields: ErpDocument): boolean => {
   const list = readLocalCollection(colName);
-  const index = list.findIndex((item: any) => item.id === docId);
+  const index = list.findIndex((item: ErpDocument) => item.id === docId);
   if (index === -1) return false;
 
   list[index] = { ...list[index], ...updatedFields };
@@ -198,7 +199,7 @@ export const updateLocalDocument = (colName: string, docId: string, updatedField
 
 export const deleteLocalDocument = (colName: string, docId: string): boolean => {
   const list = readLocalCollection(colName);
-  const filtered = list.filter((item: any) => item.id !== docId);
+  const filtered = list.filter((item: ErpDocument) => item.id !== docId);
   if (filtered.length === list.length) return false;
 
   writeLocalCollection(colName, filtered);

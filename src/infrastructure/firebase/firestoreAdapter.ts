@@ -14,6 +14,7 @@ import {
   where,
   type QueryConstraint
 } from 'firebase/firestore';
+import type { ErpDocument } from '@/shared/types';
 import { firebaseAuth, getFirebaseDatabase, isFirebaseRuntimeEnabled, reportFirebaseFailure } from './client';
 import {
   deleteLocalDocument,
@@ -45,7 +46,7 @@ interface CollectionSubscriptionOptions {
 
 interface CachedSubscriptionSnapshot {
   userId: string;
-  data: any[];
+  data: ErpDocument[];
 }
 
 const subscriptionSnapshotCache = new Map<string, CachedSubscriptionSnapshot>();
@@ -75,7 +76,7 @@ export const isDocumentAlreadyExistsError = (error: unknown): boolean =>
 // DB SERVICE WRAPPER (Firestore or Mock DB)
 // ----------------------------------------------------
 export const dbService = {
-  async getRawCollection(colName: string): Promise<any[]> {
+  async getRawCollection(colName: string): Promise<ErpDocument[]> {
     const database = await getFirebaseDatabase(`reading raw collection ${colName}`);
     if (database) {
       try {
@@ -89,7 +90,7 @@ export const dbService = {
     return readRawLocalCollection(colName);
   },
 
-  async getCollection(colName: string): Promise<any[]> {
+  async getCollection(colName: string): Promise<ErpDocument[]> {
     const database = await getFirebaseDatabase(`reading collection ${colName}`);
     if (database) {
       try {
@@ -104,7 +105,7 @@ export const dbService = {
     return readLocalCollection(colName);
   },
 
-  async getDocument(colName: string, docId: string): Promise<any | null> {
+  async getDocument(colName: string, docId: string): Promise<ErpDocument | null> {
     const database = await getFirebaseDatabase(`reading document ${colName}/${docId}`);
     if (database) {
       try {
@@ -117,7 +118,7 @@ export const dbService = {
       }
     }
     const list = readLocalCollection(colName);
-    return list.find((item: any) => item.id === docId) || null;
+    return list.find(item => item.id === docId) || null;
   },
 
   async getCollectionByField(
@@ -125,12 +126,12 @@ export const dbService = {
     fieldName: string,
     fieldValue: unknown,
     options: { orderByField?: string; direction?: 'asc' | 'desc'; maxResults?: number } = {}
-  ): Promise<any[]> {
+  ): Promise<ErpDocument[]> {
     const database = await getFirebaseDatabase(`querying collection ${colName}`);
     const maxResults = options.maxResults || 250;
     if (database) {
       try {
-        const constraints: any[] = [where(fieldName, '==', fieldValue)];
+        const constraints: QueryConstraint[] = [where(fieldName, '==', fieldValue)];
         if (options.orderByField) {
           constraints.push(orderBy(options.orderByField, options.direction || 'desc'));
         }
@@ -146,11 +147,11 @@ export const dbService = {
       }
     }
 
-    const records = readLocalCollection(colName).filter((item: any) => item?.[fieldName] === fieldValue);
+    const records = readLocalCollection(colName).filter(item => item?.[fieldName] === fieldValue);
     if (options.orderByField) {
       const direction = options.direction === 'asc' ? 1 : -1;
       records.sort(
-        (left: any, right: any) =>
+        (left, right) =>
           String(left?.[options.orderByField!] || '').localeCompare(String(right?.[options.orderByField!] || '')) *
           direction
       );
@@ -158,7 +159,7 @@ export const dbService = {
     return records.slice(0, maxResults);
   },
 
-  async addDocument(colName: string, docData: any): Promise<any> {
+  async addDocument(colName: string, docData: ErpDocument): Promise<ErpDocument> {
     const docId = docData.id || `${colName.substring(0, 3)}-${Math.random().toString(36).substr(2, 9)}`;
     const finalDoc = normalizeCollectionRecords(colName, [
       {
@@ -183,7 +184,7 @@ export const dbService = {
     return finalDoc;
   },
 
-  async addDocumentIfAbsent(colName: string, docId: string, docData: any): Promise<any> {
+  async addDocumentIfAbsent(colName: string, docId: string, docData: ErpDocument): Promise<ErpDocument> {
     const finalDoc = normalizeCollectionRecords(colName, [
       {
         ...docData,
@@ -222,7 +223,7 @@ export const dbService = {
     return finalDoc;
   },
 
-  async updateDocument(colName: string, docId: string, updatedFields: any): Promise<boolean> {
+  async updateDocument(colName: string, docId: string, updatedFields: ErpDocument): Promise<boolean> {
     const finalUpdatedFields = normalizeCollectionUpdate(colName, {
       ...updatedFields,
       updatedAt: new Date().toISOString()
@@ -273,7 +274,7 @@ export const dbService = {
 
   subscribeCollection(
     colName: string,
-    callback: (data: any[]) => void,
+    callback: (data: ErpDocument[]) => void,
     options?: CollectionSubscriptionOptions
   ): () => void {
     if (isFirebaseRuntimeEnabled) {
