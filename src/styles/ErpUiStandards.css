@@ -842,10 +842,6 @@ input[type='checkbox']:disabled {
   transition: background-color 120ms ease;
 }
 
-.app-main table tbody tr:last-child {
-  border-bottom: 0;
-}
-
 .app-main table th {
   background: var(--erp-table-header-bg) !important;
   color: #172554 !important;
@@ -1136,27 +1132,8 @@ input[type='checkbox']:disabled {
   min-width: 0;
 }
 
-/* Bảng chưa đủ dòng vẫn kẻ đường phân cách hàng tới cuối khung cuộn. */
-.app-main .erp-viewport-table-scroll {
-  background-color: #fff;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent calc(var(--erp-table-row-height) - 1px),
-    var(--erp-row-divider) calc(var(--erp-table-row-height) - 1px),
-    var(--erp-row-divider) var(--erp-table-row-height)
-  );
-  background-position: 0 40px;
-  background-repeat: repeat-x;
-  background-size: 100% calc(100% - 40px);
-  background-attachment: local;
-}
-
-.app-main .erp-viewport-table-scroll table tbody tr {
-  background-color: #fff;
-}
-
-.app-main .erp-viewport-table-scroll table tbody tr:last-child {
+/* Hàng cuối luôn có đường dưới để khép bảng; vùng trống phía dưới để trơn, không kẻ sẵn. */
+.app-main table tbody tr:last-child {
   border-bottom: 1px solid var(--erp-row-divider);
 }
 

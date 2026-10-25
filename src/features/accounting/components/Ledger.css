@@ -52,11 +52,3 @@
 .ledger-workspace .warehouse-toolbar input[type='number'] {
   width: 100px;
 }
-
-.partner-debt-summary {
-  grid-column: 1 / -1;
-  min-width: 0;
-}
-.partner-debt-summary p {
-  margin: 4px 0;
-}

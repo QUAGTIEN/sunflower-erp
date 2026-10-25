@@ -167,7 +167,8 @@ Trước khi sửa, đối chiếu với ít nhất một màn hình cùng loạ
   dòng) **chỉ có icon** qua `IconButton` / `PageBackButton` (có `aria-label` + tooltip). Hành động chính và hành động
   nguy hiểm (Tạo, Lưu, Gửi duyệt, Xóa, Hủy...) **giữ nhãn chữ**. Nút quay lại luôn đứng đầu header, trước tiêu đề
   (quyết định UI ngày 25/10/2026).
-- Bảng chưa đủ dòng vẫn kẻ đường phân cách hàng tới cuối khung (CSS chung trong `ErpUiStandards.css`).
+- Bảng: hàng cuối luôn có đường kẻ dưới; vùng trống phía dưới để trơn, không kẻ sẵn đường (CSS chung trong
+  `ErpUiStandards.css`).
 
 ### F. Kiểm tra trước khi bàn giao
 

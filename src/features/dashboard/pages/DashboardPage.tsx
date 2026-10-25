@@ -1,4 +1,3 @@
-import { AccountingOverview } from '@/features/accounting/components/AccountingOverview';
 import { stockAlert } from '@/features/accounting/model/operationalReports';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import {
@@ -1234,8 +1233,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // STANDARD DASHBOARD VIEW
   return (
     <div className="dashboard-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <AccountingOverview actor={user} onOpen={() => onNavigate('accounting')} />
-
       <PageContextHeader section={t('Tổng quan')}>
         {/* TIME RANGE & DATE FILTERS */}
         <div className="dashboard-overview-toolbar">

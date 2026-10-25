@@ -17,18 +17,3 @@ export function PartnerDebtValue({ row }: { row?: PartnerDebt }) {
     </span>
   );
 }
-export function PartnerDebtNotice({ loaded, error, reload }: { loaded: boolean; error: string; reload: () => void }) {
-  return (
-    <div className="warehouse-toolbar">
-      <span role={error ? 'alert' : 'status'}>
-        {error ||
-          (loaded
-            ? 'Công nợ theo sổ mới · Nợ cũ chưa đối soát và ứng trước hiển thị riêng.'
-            : 'Đang tải công nợ theo sổ mới…')}
-      </span>
-      <button className="btn btn-outline" onClick={reload}>
-        Tải lại công nợ
-      </button>
-    </div>
-  );
-}

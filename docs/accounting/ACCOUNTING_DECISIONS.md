@@ -90,4 +90,6 @@ Người dùng đồng ý code/push phạm vi lượt 6. Sau khi push `22de146`,
 | D10c-6 | Báo cáo tiền theo ngày ghi sổ, đảo tác động ngày đảo; ứng trước và tiền vào/ra tách phân bổ. Hàng/kho ở báo cáo này là số hiện tại, không bị lọc theo kỳ tiền |
 | D10d-6 | Không cộng hóa đơn cũ chưa chuyển đổi với nợ mới/đầu kỳ; giữ riêng cho lượt 7 đối soát. Không tự ghi lùi theo openingAsOf |
 
+| D10e-UI | 25/10/2026 — người dùng chọn bỏ hẳn khối công nợ ngoài Kế toán: không còn bảng "Công nợ & cảnh báo" ở Dashboard, dòng "Công nợ theo sổ mới / Tải lại công nợ" và số nợ đầu trang chi tiết ở Khách hàng và Nhà cung cấp. Giữ cột "Công nợ" trong bảng khách/NCC theo phạm vi D10b-6; xem đầy đủ tại Kế toán |
+
 Ngưỡng thành phẩm/hàng mua dùng cùng nhóm ghi kho lượt 3 và quy tắc `< ngưỡng`; null khác 0. Không thay hạn nợ, điều khoản thương mại, dung sai giao, khóa kỳ hoặc quyền đảo đã chốt. D09 ngày cắt/đầu kỳ thật vẫn chưa chốt.

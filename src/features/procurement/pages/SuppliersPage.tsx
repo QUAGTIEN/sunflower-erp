@@ -1,5 +1,5 @@
 import { usePartnerDebt } from '@/features/accounting/components/usePartnerDebt';
-import { PartnerDebtValue, PartnerDebtNotice } from '@/features/accounting/components/PartnerDebtSummary';
+import { PartnerDebtValue } from '@/features/accounting/components/PartnerDebtSummary';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -453,10 +453,6 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     const supplierDebt = getSupplierDebt(selectedSupplier.id);
     return (
       <div className="suppliers-page">
-        <PartnerDebtNotice loaded={finance.loaded} error={finance.error} reload={finance.reload} />
-        <p>
-          <PartnerDebtValue row={finance.get('ap', selectedSupplier.id)} />
-        </p>
         <div className="supplier-detail-header">
           <PageBackButton onClick={() => setSelectedSupplierId('')} />
           <div>
@@ -882,7 +878,6 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
         }}
       />
 
-      <PartnerDebtNotice loaded={finance.loaded} error={finance.error} reload={finance.reload} />
       <section className="purchase-panel supplier-list-panel">
         <div className="table-container erp-primary-data-table">
           <table className="supplier-table" data-resize-key="suppliers">

@@ -1,5 +1,4 @@
 import { usePartnerDebt } from '@/features/accounting/components/usePartnerDebt';
-import { PartnerDebtNotice, PartnerDebtValue } from '@/features/accounting/components/PartnerDebtSummary';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import {
   requireConfirmedMutation,
@@ -2919,7 +2918,6 @@ export const Crm: React.FC<CrmProps> = ({
             </div>
           </div>
 
-          <PartnerDebtNotice loaded={finance.loaded} error={finance.error} reload={finance.reload} />
           {filterType === 'overview' ? (
             <CustomerOverview
               debtByCustomerId={new Map(finance.rows.filter(r => r.side === 'ar').map(r => [r.partnerId, r.debt]))}
@@ -2981,12 +2979,6 @@ export const Crm: React.FC<CrmProps> = ({
           <div
             className={`customer-details-grid customer-detail-workspace customer-detail-workspace--${customerHistoryTab}`}
           >
-            <div className="partner-debt-summary">
-              <PartnerDebtNotice loaded={finance.loaded} error={finance.error} reload={finance.reload} />
-              <p>
-                Nợ sổ mới: <PartnerDebtValue row={finance.get('ar', selectedCustomer.id)} />
-              </p>
-            </div>
             <CustomerDetailHeader
               selectedCustomer={selectedCustomer}
               currentUser={currentUser}

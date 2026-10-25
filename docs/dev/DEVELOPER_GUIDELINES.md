@@ -134,8 +134,8 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 ### 1.10. Bảng dữ liệu
 - Hàng dữ liệu sử dụng nền trắng; không dùng nền xám trắng xen kẽ.
 - Chỉ sử dụng đường ngang mảnh để phân tách hàng; hạn chế đường dọc và khung bao nặng.
-- Bảng chưa đủ dòng vẫn kẻ đường phân cách hàng tới cuối khung cuộn (`.erp-viewport-table-scroll` trong
-  `ErpUiStandards.css`, theo `--erp-table-row-height`).
+- Hàng cuối của bảng luôn có đường kẻ dưới để khép bảng; vùng trống phía dưới để trơn, không kẻ sẵn đường
+  (`ErpUiStandards.css`).
 - Chiều cao hàng tiêu chuẩn từ `44px` đến `48px`.
 - Hàng tiêu đề cột có thể sử dụng nền xám xanh rất nhạt để phân biệt với dữ liệu.
 - Mỗi ô dữ liệu ưu tiên hiển thị một dòng; nội dung dài dùng ellipsis và tooltip hoặc `title`.
