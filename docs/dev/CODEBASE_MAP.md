@@ -36,7 +36,7 @@
 | Công việc (`work_schedule`) | `features/work-schedule/` | `work_schedule_items` |
 | Chấm công (`attendance`) | `features/attendance/` | `/api/attendance/manage`, `attendance_months`, `attendance_settings` |
 | Chat (`chat`) | `features/chat/pages/ChatPage.tsx`, `src/components/FloatingChat.tsx` | `messages`, `channels` |
-| Tài khoản, Cấu hình, Thùng rác | `features/administration/pages/` | `/api/users/*`, `/api/fields/manage` |
+| Tài khoản, Cấu hình, Thùng rác | `features/administration/pages/` | `/api/users/manage`, `/api/fields/manage` |
 
 ## API → server
 
@@ -50,7 +50,7 @@
 | `/api/accounting/reports` | `server/accountingReports.ts` | Báo cáo, chỉ đọc |
 | `/api/attendance/manage` | `server/attendance.ts` | Chấm công |
 | `/api/fields/manage` | `server/fieldConfiguration.ts` | Cấu hình trường, chỉ Admin |
-| `/api/users/*` | `server/adminUsers.ts` | Tài khoản Firebase Auth, chỉ Admin (`requireAdmin`) |
+| `/api/users/manage` | `server/adminUsers.ts` | Tài khoản Firebase Auth, chỉ Admin (`requireAdmin`) |
 
 Dùng chung: `server/erpCaller.ts` (xác thực), `server/firebaseAdmin.ts` (khởi tạo Admin SDK),
 `server/financeSourceGuard.ts` (chặn đảo kho khi đã vào sổ tiền), `AdminApiError`/`jsonResponse` trong `adminUsers.ts`.

@@ -15,6 +15,8 @@ nghiệp vụ viết bằng tiếng Việt; định danh trong code (biến, col
   (ảnh nén Base64 lưu trong Firestore; file lớn dùng link ngoài).
 - **API:** Vercel Functions `api/**/*.ts` → logic tại `server/*.ts` (Firebase Admin SDK).
   `server/` được phép import **model thuần** từ `src/features/*/model` để dùng chung quy tắc.
+  Mỗi file trong `api/` là một function; gói Vercel Hobby chỉ cho **tối đa 12** (vượt là deploy lỗi). Thêm thao tác
+  mới vào endpoint `manage` có sẵn qua trường `action`, không tạo file mới (test `deployment-limits` kiểm tra).
 - Quyền dữ liệu thật nằm ở `firestore.rules` / `storage.rules`. Quyền màn hình ở
   `src/app/navigation/accessControl.ts`. Ẩn nút trên UI **không** phải là bảo mật.
 
@@ -31,7 +33,7 @@ nghiệp vụ viết bằng tiếng Việt; định danh trong code (biến, col
 
 Baseline ngày 25/10/2026:
 - Build đạt; có sẵn cảnh báo chunk > 500 KB.
-- Test 346/346 đạt.
+- Test 348/348 đạt.
 - Lint 187 lỗi: phần lớn `no-explicit-any` (174), còn 9 `set-state-in-effect` và 2 cảnh báo `exhaustive-deps`
   chờ quyết định vì sửa sẽ đổi thời điểm chạy. Không commit nếu số lỗi tăng.
 - Toàn bộ code, CSS và `tests/` đã theo Prettier (trừ tài liệu `.md`, `vercel.json`, `scripts/clear-db.js`).

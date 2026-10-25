@@ -46,20 +46,26 @@ const postAdminRequest = async <T>(path: string, body: unknown): Promise<T> => {
   return payload;
 };
 
+const USERS_API = '/api/users/manage';
+
 export const adminUserService = {
   create(input: CreateManagedUserInput): Promise<UserProfile> {
-    return postAdminRequest<{ user: UserProfile }>('/api/users/create', input).then(result => result.user);
+    return postAdminRequest<{ user: UserProfile }>(USERS_API, { action: 'create', ...input }).then(
+      result => result.user
+    );
   },
 
   update(input: UpdateManagedUserInput): Promise<UserProfile> {
-    return postAdminRequest<{ user: UserProfile }>('/api/users/update', input).then(result => result.user);
+    return postAdminRequest<{ user: UserProfile }>(USERS_API, { action: 'update', ...input }).then(
+      result => result.user
+    );
   },
 
   setActive(uid: string, active: boolean): Promise<{ uid: string; active: boolean }> {
-    return postAdminRequest('/api/users/set-active', { uid, active });
+    return postAdminRequest(USERS_API, { action: 'set_active', uid, active });
   },
 
   delete(uid: string): Promise<{ uid: string }> {
-    return postAdminRequest('/api/users/delete', { uid });
+    return postAdminRequest(USERS_API, { action: 'delete', uid });
   }
 };
