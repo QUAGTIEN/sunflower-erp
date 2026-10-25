@@ -98,6 +98,9 @@ import { useLeadTableColumns } from '@/features/crm/hooks/useLeadTableColumns';
 import { useLeadSchedule } from '@/features/crm/hooks/useLeadSchedule';
 import { useLeadFileDrafts } from '@/features/crm/hooks/useLeadFileDrafts';
 import { LeadScheduleDialog } from './leadsPage/LeadScheduleDialog';
+// Styles for the raw-data and lead workspaces; the CRM chunk loads them for every CRM page.
+import './Leads.css';
+import '@/components/CustomerHistory.css';
 
 interface LeadsProps {
   customers: CustomerRecord[];
