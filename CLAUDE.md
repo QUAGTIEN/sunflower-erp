@@ -32,8 +32,8 @@ nghiệp vụ viết bằng tiếng Việt; định danh trong code (biến, col
 | Định dạng | `npm run format -- <file>` / `npm run format:check -- <file>` (Prettier, cấu hình `.prettierrc.json`) |
 
 Baseline ngày 25/10/2026:
-- Build đạt; có sẵn cảnh báo chunk > 500 KB.
-- Test 348/348 đạt.
+- Build đạt; vendor tách riêng (React, Firebase, icon), không còn cảnh báo chunk > 500 KB.
+- Test 352/352 đạt.
 - Lint 187 lỗi: phần lớn `no-explicit-any` (174), còn 9 `set-state-in-effect` và 2 cảnh báo `exhaustive-deps`
   chờ quyết định vì sửa sẽ đổi thời điểm chạy. Không commit nếu số lỗi tăng.
 - Toàn bộ code, CSS và `tests/` đã theo Prettier (trừ tài liệu `.md`, `vercel.json`, `scripts/clear-db.js`).
@@ -162,6 +162,9 @@ Trước khi sửa, đối chiếu với ít nhất một màn hình cùng loạ
 - Form: nhãn trên ô nhập, `*` cho trường bắt buộc, cảnh báo khi rời trang có dữ liệu chưa lưu,
   chặn rời khi đang lưu. Hành động nguy hiểm phải xác nhận (`DeleteConfirmationDialog`).
 - Đủ trạng thái: loading, empty, error, success, disabled, dữ liệu dài. Phản hồi qua `MutationToast`.
+  Trạng thái chờ chỉ dùng `src/components/LoadingStates.tsx` (khung xương khi chưa có dữ liệu, "Đang cập nhật" khi đã có).
+- Phân hệ được **giữ sống** khi chuyển trang (ẩn, không gỡ): trạng thái trong trang được giữ nguyên. Effect hoặc listener
+  toàn cục chỉ dành cho trang đang hiện phải kiểm tra `useIsPageActive()`.
 - Icon: chỉ dùng `lucide-react` (đã có sẵn); không dùng emoji hay thư viện icon khác, không dùng icon trang trí thẻ/tiêu đề.
   Nút công cụ (quay lại, tải lại, lọc, tùy chỉnh cột, xuất, in, chuyển kiểu xem, tháng trước/sau, đính kèm, thao tác
   dòng) **chỉ có icon** qua `IconButton` / `PageBackButton` (có `aria-label` + tooltip). Hành động chính và hành động

@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/LoadingStates';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { loadAccountingLedger } from '../api/accountingLedgerService';
 import {
@@ -260,7 +261,7 @@ export function LedgerDialog({
             {loadError || mutation.error}
           </p>
         )}
-        {loading && <p role="status">Đang tải…</p>}
+        <LoadingStatus loading={loading} hasData={!!data} label="Đang tải sổ công nợ" rows={3} />
         <fieldset disabled={!data || loading || locked || !allowed}>
           {original ? (
             <p>

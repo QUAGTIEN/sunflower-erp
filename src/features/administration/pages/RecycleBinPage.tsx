@@ -1,3 +1,4 @@
+import { TableSkeleton } from '@/components/LoadingStates';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import {
   requireConfirmedMutation,
@@ -297,9 +298,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
       </div>
 
       {loading ? (
-        <div className="card text-center" style={{ padding: '30px' }}>
-          <div>{t('Đang tải dữ liệu Kho Rác...')}</div>
-        </div>
+        <TableSkeleton label={t('Đang tải dữ liệu Kho Rác...')} rows={6} />
       ) : filtered.length === 0 ? (
         <div
           className="card text-center text-muted"

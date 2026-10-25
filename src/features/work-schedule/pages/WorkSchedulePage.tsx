@@ -1,3 +1,4 @@
+import { TableSkeleton } from '@/components/LoadingStates';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import {
   requireConfirmedMutation,
@@ -989,7 +990,7 @@ export const WorkSchedule: React.FC<WorkScheduleProps> = ({
                       })}
                   </tbody>
                 </table>
-                {isLoading && <div className="work-schedule-empty">Đang tải công việc...</div>}
+                {isLoading && <TableSkeleton label="Đang tải công việc" columns={8} rows={6} />}
                 {!isLoading && pageItems.length === 0 && (
                   <div className="work-schedule-empty">
                     <span className="work-schedule-empty__icon" aria-hidden="true">

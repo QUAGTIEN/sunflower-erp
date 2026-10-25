@@ -1,3 +1,4 @@
+import { TableSkeleton } from '@/components/LoadingStates';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { registerNavigationGuard } from '@/shared/feedback/navigationGuard';
 import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
@@ -237,7 +238,7 @@ export function WarehouseVoucherDialog({
             {error}
           </p>
         )}
-        {!data && !error && <p role="status">Đang tải kho…</p>}
+        {!data && !error && <TableSkeleton label="Đang tải kho" rows={3} />}
         <fieldset disabled={!data || busy || uncertain || !permitted}>
           <div className="warehouse-fields">
             {!reversal && (

@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/LoadingStates';
 import { RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -384,7 +385,7 @@ export function ItemCatalogWorkspace({ currentUser }: { currentUser: UserProfile
         </div>
       )}
       {notice && <p role="status">{notice}</p>}
-      {loading && <p role="status">Đang tải danh mục…</p>}
+      <LoadingStatus loading={loading} hasData={data.items.length > 0} label="Đang tải danh mục" />
 
       {editor && (
         <form className="card catalog-form" onSubmit={save} data-erp-table-layout="content">

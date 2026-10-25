@@ -1,3 +1,4 @@
+import { TableSkeleton } from '@/components/LoadingStates';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { registerNavigationGuard } from '@/shared/feedback/navigationGuard';
@@ -359,7 +360,7 @@ export function GoodsVoucherDialog({
             {loadError || mutation.error || imageError}
           </p>
         )}
-        {!data && !loadError && <p role="status">Đang tải…</p>}
+        {!data && !loadError && <TableSkeleton label="Đang tải dữ liệu phiếu" rows={3} />}
         <fieldset disabled={!data || locked || !permitted}>
           {!original && (
             <div className="warehouse-fields">

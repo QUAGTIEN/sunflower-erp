@@ -19,7 +19,7 @@ Trình duyệt (React SPA, Vite)
 
 | Lớp | Vai trò |
 |---|---|
-| `src/app` | AppShell (đăng nhập, sidebar, `activePage` + `switch`, subscriptions dùng chung), providers, phân quyền màn hình |
+| `src/app` | AppShell (đăng nhập, sidebar, `activePage` + `switch`, giữ sống tối đa 5 trang qua `KeepAlivePage`, subscriptions dùng chung theo `COLLECTION_PAGES`), providers, phân quyền màn hình |
 | `src/features/<x>` | Phân hệ nghiệp vụ: `pages/`, `components/`, `model/` (kiểu + quy tắc thuần), `api/` (gọi dữ liệu/API), `index.ts` |
 | `src/components`, `src/hooks` | Component/hook UI dùng chung (bảng, bộ lọc, phân trang, toast, menu dòng, cấu hình trường) |
 | `src/services` | Audit, thông báo, cấu hình trường, bố cục cột, quản trị user phía client |

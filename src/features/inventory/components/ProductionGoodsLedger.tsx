@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/LoadingStates';
 import { RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { useEffect, useState } from 'react';
@@ -70,7 +71,7 @@ export function ProductionGoodsLedger({
           {error}
         </p>
       )}
-      {loading && <p role="status">Đang tải…</p>}
+      <LoadingStatus loading={loading} hasData={vouchers.length > 0} label="Đang tải phiếu thành phẩm" rows={3} />
       <div className="table-container">
         <table>
           <thead>

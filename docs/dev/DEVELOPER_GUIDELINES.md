@@ -169,6 +169,11 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 ### 1.13. Phản hồi hệ thống
 - Mọi thao tác bất đồng bộ phải có phản hồi rõ ràng: đang xử lý, thành công hoặc thất bại.
 - Phải có giao diện thống nhất cho các trường hợp: đang tải, không có dữ liệu, không có quyền, mất kết nối và lỗi hệ thống.
+- Trạng thái chờ dùng `src/components/LoadingStates.tsx`, không viết dòng chữ "Đang tải…" riêng:
+  - chưa có dữ liệu: `TableSkeleton` / `StatSkeleton` (khung xương đúng chiều cao hàng, không làm nhảy bố cục);
+  - đã có dữ liệu và đang tải lại: giữ nguyên nội dung, `RefreshingIndicator` ("Đang cập nhật");
+  - `LoadingStatus loading hasData` chọn đúng một trong hai; chuyển phân hệ dùng `PageProgressBar`.
+  - Không dùng spinner giữa trang; hiệu ứng nhẹ và tắt khi người dùng bật giảm chuyển động.
 - Không hiển thị trực tiếp stack trace, mã lỗi Firestore hoặc nội dung lỗi kỹ thuật cho người dùng cuối.
 - Thông báo thành công phải ngắn gọn, cho biết hành động nào vừa hoàn tất.
 - Thông báo lỗi phải giải thích được vấn đề và hướng xử lý tiếp theo nếu có.

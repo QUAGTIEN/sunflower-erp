@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/LoadingStates';
 import { RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { stockAlert, type StockReportRow } from '@/features/accounting/model/operationalReports';
@@ -201,7 +202,7 @@ export function FinishedGoodsWorkspace({
         Kho thành phẩm chung · Chưa nạp tồn đầu kỳ cũ. Hàng NCC giao thẳng không cộng/trừ kho công ty.
         {tripId ? ' Đang lọc theo chuyến đã chọn.' : ''}
       </p>
-      {loading && <p role="status">Đang tải…</p>}
+      <LoadingStatus loading={loading} hasData={data !== empty} label="Đang tải sổ thành phẩm" />
       {error && (
         <p role="alert" className="warehouse-error">
           {error}

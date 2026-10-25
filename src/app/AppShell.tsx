@@ -1,4 +1,7 @@
-import React, { lazy, Suspense, useCallback, useState, useEffect, useRef } from 'react';
+import React, { lazy, useCallback, useState, useEffect, useLayoutEffect, useRef, useTransition } from 'react';
+import { KeepAlivePage } from './KeepAlivePage';
+import { rememberPage, SUBSCRIPTION_LINGER_MS } from './navigation/pageKeepAlive';
+import { PageLoadingFallback, PageProgressBar } from '@/components/LoadingStates';
 import {
   authService,
   dbService,
@@ -143,12 +146,56 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   users: { section: 'Tài khoản', current: 'Danh sách người dùng' }
 };
 
+/** Business collections and the pages that read them; a collection stays live while one of its pages is open. */
+const COLLECTION_PAGES: Record<string, string[]> = {
+  customers: ['dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'],
+  leads: ['dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'],
+  lead_candidates: ['dashboard'],
+  pos: [
+    'dashboard',
+    'crm',
+    'commercial_map',
+    'sales',
+    'design',
+    'design_library',
+    'purchase',
+    'production',
+    'delivery',
+    'accounting',
+    'chat'
+  ],
+  purchase_orders: ['dashboard', 'purchase', 'suppliers'],
+  procurement_requests: ['dashboard', 'purchase'],
+  production_commands: ['dashboard', 'production', 'chat'],
+  deliveries: ['commercial_map'],
+  invoices: ['dashboard', 'crm'],
+  inventory: ['dashboard'],
+  design_requests: ['dashboard', 'design']
+};
+
+const isPageWaitingForData = (pageId: string, pendingCollections: ReadonlySet<string>) =>
+  [...pendingCollections].some(collectionName => COLLECTION_PAGES[collectionName]?.includes(pageId));
+
 function AppShell() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activePage, setActivePageState] = useState<string>('dashboard');
-  const setActivePage = useCallback((page: string) => {
-    if (confirmAppNavigation()) setActivePageState(page);
+  // The sidebar highlight follows the click at once; the page itself renders in a transition.
+  const [highlightedPage, setHighlightedPage] = useState<string>('dashboard');
+  const [mountedPages, setMountedPages] = useState<string[]>(['dashboard']);
+  const [isPageTransitionPending, startPageTransition] = useTransition();
+  const showPage = useCallback((page: string) => {
+    setHighlightedPage(page);
+    startPageTransition(() => {
+      setActivePageState(page);
+      setMountedPages(previous => rememberPage(previous, page));
+    });
   }, []);
+  const setActivePage = useCallback(
+    (page: string) => {
+      if (confirmAppNavigation()) showPage(page);
+    },
+    [showPage]
+  );
   const [reportedPageContext, setReportedPageContext] = useState<(AppPageContext & { pageId: string }) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -211,10 +258,16 @@ function AppShell() {
   const provinceSynchronizationStartedRef = useRef(false);
   const businessSubscriptionsRef = useRef<Map<string, () => void>>(new Map());
   const businessSubscriptionUserIdRef = useRef('');
+  const businessSubscriptionTimersRef = useRef<Map<string, number>>(new Map());
+  const [pendingCollections, setPendingCollections] = useState<ReadonlySet<string>>(() => new Set());
   const activePageRef = useRef(activePage);
+  const pageScrollPositionsRef = useRef<Map<string, number>>(new Map());
 
-  useEffect(() => {
+  // Each kept-alive page restores its own scroll position inside the shared .app-main container.
+  useLayoutEffect(() => {
     activePageRef.current = activePage;
+    const root = document.querySelector<HTMLElement>('.app-main');
+    if (root) root.scrollTop = pageScrollPositionsRef.current.get(activePage) ?? 0;
   }, [activePage]);
 
   const preloadPageModule = useCallback((pageId: string) => {
@@ -449,8 +502,11 @@ function AppShell() {
   // Business collections are live only while the current page needs them.
   useEffect(() => {
     const stopAllBusinessSubscriptions = () => {
+      businessSubscriptionTimersRef.current.forEach(timer => window.clearTimeout(timer));
+      businessSubscriptionTimersRef.current.clear();
       businessSubscriptionsRef.current.forEach(unsubscribe => unsubscribe());
       businessSubscriptionsRef.current.clear();
+      setPendingCollections(previous => (previous.size ? new Set() : previous));
     };
     if (!user) {
       stopAllBusinessSubscriptions();
@@ -462,36 +518,79 @@ function AppShell() {
       businessSubscriptionUserIdRef.current = user.uid;
     }
 
-    const pageNeeds = (...pages: string[]) => pages.includes(activePage);
+    const pageNeeds = (...pages: string[]) => pages.some(page => mountedPages.includes(page));
+    let trackedCollectionName = '';
+    const markCollectionReady = (collectionName: string) =>
+      setPendingCollections(previous => {
+        if (!previous.has(collectionName)) return previous;
+        const next = new Set(previous);
+        next.delete(collectionName);
+        return next;
+      });
+    // Marks a collection ready on its first snapshot (or error) so pages can show a skeleton until then.
+    const subscribeTracked = (...[name, callback, options]: Parameters<typeof dbService.subscribeCollection>) => {
+      const collectionName = trackedCollectionName;
+      return dbService.subscribeCollection(
+        name,
+        data => {
+          markCollectionReady(collectionName);
+          callback(data);
+        },
+        options?.onError
+          ? {
+              ...options,
+              onError: error => {
+                markCollectionReady(collectionName);
+                options.onError?.(error);
+              }
+            }
+          : options
+      );
+    };
     const syncSubscription = (collectionName: string, needed: boolean, subscribe: () => () => void) => {
-      const existing = businessSubscriptionsRef.current.get(collectionName);
-      if (needed && !existing) {
-        businessSubscriptionsRef.current.set(collectionName, subscribe());
-      } else if (!needed && existing) {
-        existing();
-        businessSubscriptionsRef.current.delete(collectionName);
+      const subscriptions = businessSubscriptionsRef.current;
+      const timers = businessSubscriptionTimersRef.current;
+      const pendingStop = timers.get(collectionName);
+      if (needed) {
+        if (pendingStop !== undefined) {
+          window.clearTimeout(pendingStop);
+          timers.delete(collectionName);
+        }
+        if (!subscriptions.has(collectionName)) {
+          trackedCollectionName = collectionName;
+          setPendingCollections(previous => new Set(previous).add(collectionName));
+          subscriptions.set(collectionName, subscribe());
+        }
+        return;
       }
+      if (!subscriptions.has(collectionName) || pendingStop !== undefined) return;
+      // Keep the live connection briefly so returning to a module does not reload its data.
+      timers.set(
+        collectionName,
+        window.setTimeout(() => {
+          timers.delete(collectionName);
+          subscriptions.get(collectionName)?.();
+          subscriptions.delete(collectionName);
+        }, SUBSCRIPTION_LINGER_MS)
+      );
     };
 
-    syncSubscription(
-      'customers',
-      pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'),
-      () =>
-        dbService.subscribeCollection(
-          'customers',
-          data => {
-            setCustomers(data as CustomerRecord[]);
-          },
-          user.role === 'sale'
-            ? {
-                fieldName: 'assignedSaleId',
-                fieldValue: user.uid
-              }
-            : undefined
-        )
+    syncSubscription('customers', pageNeeds(...COLLECTION_PAGES.customers), () =>
+      subscribeTracked(
+        'customers',
+        data => {
+          setCustomers(data as CustomerRecord[]);
+        },
+        user.role === 'sale'
+          ? {
+              fieldName: 'assignedSaleId',
+              fieldValue: user.uid
+            }
+          : undefined
+      )
     );
-    syncSubscription('leads', pageNeeds('dashboard', 'crm', 'leads', 'customer_data', 'commercial_map', 'sales'), () =>
-      dbService.subscribeCollection(
+    syncSubscription('leads', pageNeeds(...COLLECTION_PAGES.leads), () =>
+      subscribeTracked(
         'leads',
         data => {
           setLeads(sortNewestFirst(normalizeLeadRecords(data), lead => [lead.createdAt, lead.updatedAt]));
@@ -504,8 +603,8 @@ function AppShell() {
           : undefined
       )
     );
-    syncSubscription('lead_candidates', pageNeeds('dashboard'), () =>
-      dbService.subscribeCollection(
+    syncSubscription('lead_candidates', pageNeeds(...COLLECTION_PAGES.lead_candidates), () =>
+      subscribeTracked(
         'lead_candidates',
         data => {
           setLeadCandidates(
@@ -520,58 +619,43 @@ function AppShell() {
           : undefined
       )
     );
-    syncSubscription(
-      'pos',
-      pageNeeds(
-        'dashboard',
-        'crm',
-        'commercial_map',
-        'sales',
-        'design',
-        'design_library',
-        'purchase',
-        'production',
-        'delivery',
-        'accounting',
-        'chat'
-      ),
-      () =>
-        dbService.subscribeCollection('pos', data => {
-          setPOs(sortNewestFirst(normalizePORecords(data), po => [po.createdAt, po.orderDate]));
-        })
+    syncSubscription('pos', pageNeeds(...COLLECTION_PAGES.pos), () =>
+      subscribeTracked('pos', data => {
+        setPOs(sortNewestFirst(normalizePORecords(data), po => [po.createdAt, po.orderDate]));
+      })
     );
-    syncSubscription('purchase_orders', pageNeeds('dashboard', 'purchase', 'suppliers'), () =>
-      dbService.subscribeCollection('purchase_orders', data => {
+    syncSubscription('purchase_orders', pageNeeds(...COLLECTION_PAGES.purchase_orders), () =>
+      subscribeTracked('purchase_orders', data => {
         setPurchaseOrders(sortNewestFirst(data, purchaseOrder => [purchaseOrder.createdAt]));
       })
     );
-    syncSubscription('procurement_requests', pageNeeds('dashboard', 'purchase'), () =>
-      dbService.subscribeCollection('procurement_requests', data => {
+    syncSubscription('procurement_requests', pageNeeds(...COLLECTION_PAGES.procurement_requests), () =>
+      subscribeTracked('procurement_requests', data => {
         setProcurementRequests(
           sortNewestFirst(data as ProcurementRequestRecord[], request => [request.createdAt, request.updatedAt])
         );
       })
     );
-    syncSubscription('production_commands', pageNeeds('dashboard', 'production', 'chat'), () =>
-      dbService.subscribeCollection('production_commands', data => {
+    syncSubscription('production_commands', pageNeeds(...COLLECTION_PAGES.production_commands), () =>
+      subscribeTracked('production_commands', data => {
         setProductionCommands(sortNewestFirst(data, command => [command.createdAt, command.startedAt]));
       })
     );
-    syncSubscription('deliveries', pageNeeds('commercial_map'), () =>
-      dbService.subscribeCollection('deliveries', data => {
+    syncSubscription('deliveries', pageNeeds(...COLLECTION_PAGES.deliveries), () =>
+      subscribeTracked('deliveries', data => {
         setDeliveries(sortNewestFirst(data, delivery => [delivery.createdAt]));
       })
     );
-    syncSubscription('invoices', pageNeeds('dashboard', 'crm'), () =>
-      dbService.subscribeCollection('invoices', data => {
+    syncSubscription('invoices', pageNeeds(...COLLECTION_PAGES.invoices), () =>
+      subscribeTracked('invoices', data => {
         setInvoices(sortNewestFirst(data, invoice => [invoice.createdAt]));
       })
     );
     syncSubscription(
       'inventory',
-      pageNeeds('dashboard') && !!user && canReadWarehouse(user) && isFirebaseRuntimeEnabled,
+      pageNeeds(...COLLECTION_PAGES.inventory) && !!user && canReadWarehouse(user) && isFirebaseRuntimeEnabled,
       () =>
-        dbService.subscribeCollection(
+        subscribeTracked(
           'warehouse_balances',
           rows =>
             setInventory(
@@ -587,15 +671,17 @@ function AppShell() {
           { onError: () => setInventory([]) }
         )
     );
-    syncSubscription('design_requests', pageNeeds('dashboard', 'design'), () =>
-      dbService.subscribeCollection('design_requests', data => {
+    syncSubscription('design_requests', pageNeeds(...COLLECTION_PAGES.design_requests), () =>
+      subscribeTracked('design_requests', data => {
         setDesignRequests(sortNewestFirst(data as DesignRequest[], request => [request.createdAt]));
       })
     );
-  }, [activePage, user]);
+  }, [mountedPages, user]);
 
   useEffect(
     () => () => {
+      businessSubscriptionTimersRef.current.forEach(timer => window.clearTimeout(timer));
+      businessSubscriptionTimersRef.current.clear();
       businessSubscriptionsRef.current.forEach(unsubscribe => unsubscribe());
       businessSubscriptionsRef.current.clear();
     },
@@ -657,6 +743,9 @@ function AppShell() {
     }
     await authService.logout();
     setActivePageState('dashboard');
+    setHighlightedPage('dashboard');
+    setMountedPages(['dashboard']);
+    pageScrollPositionsRef.current.clear();
   };
 
   // Demo Switch Role Utility (Changes role on-the-fly for testing/reviewing)
@@ -736,11 +825,15 @@ function AppShell() {
     // Triggers local list updates (Mock DB callbacks already trigger, this forces refresh where needed)
   };
 
+  // First visit to a data page shows a skeleton until its collections deliver a snapshot (cache or server).
+  const renderPageWhenReady = (pageId: string) =>
+    isPageWaitingForData(pageId, pendingCollections) ? <PageLoadingFallback /> : renderPageContent(pageId);
+
   // View routing rendering selector
-  const renderPageContent = () => {
+  const renderPageContent = (pageId: string) => {
     if (!user) return null;
 
-    switch (activePage) {
+    switch (pageId) {
       case 'crm':
         if (!isPageAllowed('crm')) {
           setTimeout(() => setActivePage('dashboard'), 0);
@@ -1218,7 +1311,7 @@ function AppShell() {
               {isPageAllowed('dashboard') && (
                 <button
                   data-page-id="dashboard"
-                  className={`sidebar-item ${activePage === 'dashboard' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'dashboard' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('dashboard');
                     setIsSidebarOpen(false);
@@ -1235,7 +1328,7 @@ function AppShell() {
               {isPageAllowed('chat') && (
                 <button
                   data-page-id="chat"
-                  className={`sidebar-item ${activePage === 'chat' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'chat' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('chat');
                     setIsSidebarOpen(false);
@@ -1253,7 +1346,7 @@ function AppShell() {
               {isPageAllowed('work_schedule') && (
                 <button
                   data-page-id="work_schedule"
-                  className={`sidebar-item ${activePage === 'work_schedule' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'work_schedule' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('work_schedule');
                     setIsSidebarOpen(false);
@@ -1270,7 +1363,7 @@ function AppShell() {
               {isPageAllowed('attendance') && (
                 <button
                   data-page-id="attendance"
-                  className={`sidebar-item ${activePage === 'attendance' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'attendance' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('attendance');
                     setIsSidebarOpen(false);
@@ -1287,7 +1380,7 @@ function AppShell() {
               {isPageAllowed('sales_management') && (
                 <button
                   data-page-id="sales_management"
-                  className={`sidebar-item ${activePage === 'sales_management' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'sales_management' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('sales_management');
                     setIsSidebarOpen(false);
@@ -1304,7 +1397,7 @@ function AppShell() {
               {isPageAllowed('commercial_map') && (
                 <button
                   data-page-id="commercial_map"
-                  className={`sidebar-item ${activePage === 'commercial_map' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'commercial_map' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('commercial_map');
                     setIsSidebarOpen(false);
@@ -1321,7 +1414,7 @@ function AppShell() {
               {isPageAllowed('customer_data') && (
                 <button
                   data-page-id="customer_data"
-                  className={`sidebar-item ${activePage === 'customer_data' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'customer_data' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('customer_data');
                     setIsSidebarOpen(false);
@@ -1338,7 +1431,7 @@ function AppShell() {
               {isPageAllowed('leads') && (
                 <button
                   data-page-id="leads"
-                  className={`sidebar-item ${activePage === 'leads' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'leads' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('leads');
                     setIsSidebarOpen(false);
@@ -1355,7 +1448,7 @@ function AppShell() {
               {isPageAllowed('crm') && (
                 <button
                   data-page-id="crm"
-                  className={`sidebar-item ${activePage === 'crm' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'crm' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('crm');
                     setIsSidebarOpen(false);
@@ -1372,7 +1465,7 @@ function AppShell() {
               {isPageAllowed('sales') && (
                 <button
                   data-page-id="sales"
-                  className={`sidebar-item ${activePage === 'sales' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'sales' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('sales');
                     setIsSidebarOpen(false);
@@ -1389,7 +1482,7 @@ function AppShell() {
               {isPageAllowed('production') && (
                 <button
                   data-page-id="production"
-                  className={`sidebar-item ${activePage === 'production' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'production' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('production');
                     setIsSidebarOpen(false);
@@ -1407,7 +1500,7 @@ function AppShell() {
                 <>
                   <button
                     data-page-id="design"
-                    className={`sidebar-item ${activePage === 'design' ? 'active' : ''}`}
+                    className={`sidebar-item ${highlightedPage === 'design' ? 'active' : ''}`}
                     onClick={() => {
                       setActivePage('design');
                       setIsSidebarOpen(false);
@@ -1421,7 +1514,7 @@ function AppShell() {
                   </button>
                   <button
                     data-page-id="design_library"
-                    className={`sidebar-item ${activePage === 'design_library' ? 'active' : ''}`}
+                    className={`sidebar-item ${highlightedPage === 'design_library' ? 'active' : ''}`}
                     onClick={() => {
                       setActivePage('design_library');
                       setIsSidebarOpen(false);
@@ -1439,7 +1532,7 @@ function AppShell() {
               {isPageAllowed('purchase') && (
                 <button
                   data-page-id="purchase"
-                  className={`sidebar-item ${activePage === 'purchase' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'purchase' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('purchase');
                     setIsSidebarOpen(false);
@@ -1456,7 +1549,7 @@ function AppShell() {
               {isPageAllowed('suppliers') && (
                 <button
                   data-page-id="suppliers"
-                  className={`sidebar-item ${activePage === 'suppliers' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'suppliers' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('suppliers');
                     setIsSidebarOpen(false);
@@ -1473,7 +1566,7 @@ function AppShell() {
               {isPageAllowed('inventory') && (
                 <button
                   data-page-id="inventory"
-                  className={`sidebar-item ${activePage === 'inventory' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'inventory' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('inventory');
                     setIsSidebarOpen(false);
@@ -1490,7 +1583,7 @@ function AppShell() {
               {isPageAllowed('delivery') && (
                 <button
                   data-page-id="delivery"
-                  className={`sidebar-item ${activePage === 'delivery' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'delivery' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('delivery');
                     setIsSidebarOpen(false);
@@ -1507,7 +1600,7 @@ function AppShell() {
               {isPageAllowed('accounting') && (
                 <button
                   data-page-id="accounting"
-                  className={`sidebar-item ${activePage === 'accounting' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'accounting' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('accounting');
                     setIsSidebarOpen(false);
@@ -1524,7 +1617,7 @@ function AppShell() {
               {isPageAllowed('recycle_bin') && (
                 <button
                   data-page-id="recycle_bin"
-                  className={`sidebar-item ${activePage === 'recycle_bin' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'recycle_bin' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('recycle_bin');
                     setIsSidebarOpen(false);
@@ -1541,7 +1634,7 @@ function AppShell() {
               {isPageAllowed('users') && (
                 <button
                   data-page-id="users"
-                  className={`sidebar-item ${activePage === 'users' ? 'active' : ''}`}
+                  className={`sidebar-item ${highlightedPage === 'users' ? 'active' : ''}`}
                   onClick={() => {
                     setActivePage('users');
                     setIsSidebarOpen(false);
@@ -1777,7 +1870,12 @@ function AppShell() {
           </header>
 
           {/* APP MAIN CONTENT PORTAL */}
-          <main className="app-main">
+          <main
+            className="app-main"
+            aria-busy={isPageTransitionPending}
+            onScroll={event => pageScrollPositionsRef.current.set(activePageRef.current, event.currentTarget.scrollTop)}
+          >
+            <PageProgressBar active={isPageTransitionPending} />
             {tableColumnLayouts.error && (
               <div className="erp-column-layout-error" role="alert">
                 <span>{tableColumnLayouts.error}</span>
@@ -1786,15 +1884,15 @@ function AppShell() {
                 </button>
               </div>
             )}
-            <Suspense
-              fallback={
-                <div className="card" role="status">
-                  Đang tải phân hệ...
-                </div>
-              }
-            >
-              {renderPageContent()}
-            </Suspense>
+            {user &&
+              mountedPages.map(pageId => (
+                <KeepAlivePage
+                  key={pageId}
+                  pageId={pageId}
+                  active={pageId === activePage}
+                  render={renderPageWhenReady}
+                />
+              ))}
           </main>
         </div>
       </PageContextProvider>

@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/LoadingStates';
 import { RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { useEffect, useRef, useState } from 'react';
@@ -202,7 +203,7 @@ export function AccountingLedgerWorkspace({ actor, onRefresh }: { actor: Warehou
           </button>
         )}
       </div>
-      {loading && <p role="status">Đang tải…</p>}
+      <LoadingStatus loading={loading} hasData={data !== empty} label="Đang tải sổ công nợ" />
       {error && (
         <p className="warehouse-error" role="alert">
           {error}

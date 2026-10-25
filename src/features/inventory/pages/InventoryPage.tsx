@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/LoadingStates';
 import { RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { stockAlert } from '@/features/accounting/model/operationalReports';
@@ -229,7 +230,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
               {error}
             </p>
           )}
-          {loading && <p role="status">Đang tải sổ kho…</p>}
+          <LoadingStatus loading={loading} hasData={data !== empty} label="Đang tải sổ kho" />
           {tab === 'legacy' ? (
             <p className="warehouse-note">Dữ liệu cũ chỉ để đối soát, chưa chuyển thành tồn đầu kỳ của sổ mới.</p>
           ) : (

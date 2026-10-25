@@ -1,3 +1,4 @@
+import { TableSkeleton } from '@/components/LoadingStates';
 import { RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { useEffect, useState } from 'react';
@@ -85,7 +86,7 @@ export function ProductionMaterialLedger({
           {error}
         </p>
       )}
-      {!data && !error && <p role="status">Đang tải phiếu kho…</p>}
+      {!data && !error && <TableSkeleton label="Đang tải phiếu kho" rows={3} />}
       <div className="table-container">
         <table>
           <thead>

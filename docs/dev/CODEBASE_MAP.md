@@ -7,10 +7,16 @@
 - `src/main.tsx`: CSS/font, reset dữ liệu local cũ, render `AppProviders` → `AppShell`.
 - `src/app/AppShell.tsx`:
   - đăng nhập và sidebar;
-  - `activePage` + `switch` để render trang (lazy import từ `index.ts` của feature);
-  - subscriptions realtime dùng chung (`customers`, `leads`, `lead_candidates`, `pos`, `purchase_orders`,
-    `procurement_requests`, `production_commands`, `deliveries`, `invoices`, `warehouse_balances`,
-    `design_requests`, `users`, `messages`, `channels`, `notifications`);
+  - `activePage` + `switch` (`renderPageContent(pageId)`) để render trang (lazy import từ `index.ts` của feature);
+  - **giữ trang sống:** `mountedPages` giữ tối đa 5 phân hệ gần nhất (`app/navigation/pageKeepAlive.ts`), mỗi trang
+    bọc trong `app/KeepAlivePage.tsx` (ẩn bằng `hidden`, không vẽ lại khi ẩn). Trang ẩn vẫn chạy effect của mình:
+    effect toàn cục chỉ dành cho trang đang hiện phải đọc `useIsPageActive()` (`context/PageActiveContext.ts`).
+    Chuyển trang chạy trong `useTransition`; sidebar đổi ngay, thanh tiến trình chạy ở đầu `.app-main`;
+    vị trí cuộn được nhớ theo từng trang. Đăng xuất gỡ toàn bộ trang đã giữ;
+  - subscriptions realtime dùng chung khai báo trong `COLLECTION_PAGES` (collection → các trang cần). Còn trang
+    đang giữ cần thì giữ kết nối; hết trang cần thì đóng sau 2 phút (`SUBSCRIPTION_LINGER_MS`). Lần đầu vào trang,
+    khi collection chưa có snapshot đầu tiên, trang hiện `PageLoadingFallback` thay vì bảng trống. Collection
+    session: `users`, `messages`, `channels`, `notifications`;
   - truyền dữ liệu và callback xuống các trang.
 - `src/app/navigation/accessControl.ts`: `getDefaultPagesForRole`, `canAccessPage` (gồm quyền kế thừa).
 - `src/app/config/appConfig.ts`: nhãn trang cho audit, module thông báo, logo.

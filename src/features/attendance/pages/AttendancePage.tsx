@@ -3,6 +3,7 @@ import type { UserProfile } from '@/shared/types';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { TableSkeleton } from '@/components/LoadingStates';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
@@ -368,9 +369,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
         </div>
       )}
       {loading ? (
-        <div className="attendance-message" role="status">
-          Đang tải chấm công...
-        </div>
+        <TableSkeleton label="Đang tải chấm công" columns={7} rows={5} />
       ) : !error && tab === 'attendance' ? (
         <>
           <dl className="attendance-summary" aria-label={`Tổng hợp chấm công tháng ${month}`}>

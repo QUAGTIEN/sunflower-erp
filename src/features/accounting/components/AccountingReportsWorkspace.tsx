@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/LoadingStates';
 import { Download, RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { StockThresholdDialog } from '@/features/inventory/components/StockThresholdDialog';
@@ -508,7 +509,7 @@ export function AccountingReportsWorkspace({ actor }: { actor: WarehouseActor })
           </>
         )}
       </div>
-      {loading && <p role="status">Đang tải báo cáo…</p>}
+      <LoadingStatus loading={loading} hasData={!!data} label="Đang tải báo cáo" />
       {(error || reportError) && (
         <p className="warehouse-error" role="alert">
           {error || reportError}
