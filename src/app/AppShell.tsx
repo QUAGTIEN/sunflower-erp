@@ -60,7 +60,8 @@ import {
   Bell,
   CheckCheck,
   MapPinned,
-  CalendarDays
+  ListTodo,
+  CalendarCheck
 } from 'lucide-react';
 
 const loadSalesManagementModule = () => import('@/features/sales-management');
@@ -1354,7 +1355,7 @@ function AppShell() {
                   title={t('Công việc')}
                 >
                   <div className="sidebar-item-content">
-                    <CalendarDays size={16} />
+                    <ListTodo size={16} />
                     <span className="sidebar-item-label">Công việc</span>
                   </div>
                 </button>
@@ -1371,7 +1372,7 @@ function AppShell() {
                   title="Chấm công"
                 >
                   <div className="sidebar-item-content">
-                    <CalendarDays size={16} />
+                    <CalendarCheck size={16} />
                     <span className="sidebar-item-label">Chấm công</span>
                   </div>
                 </button>

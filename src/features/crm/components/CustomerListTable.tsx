@@ -1,5 +1,15 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, ClipboardCheck, ClipboardPlus, Eye, LifeBuoy, Pencil, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardCheck,
+  ClipboardPlus,
+  Eye,
+  LifeBuoy,
+  PackagePlus,
+  Pencil,
+  Trash2
+} from 'lucide-react';
 import { ConfiguredSystemTable } from '@/components/ConfiguredSystemFields';
 import { PhoneCallCell } from '@/components/PhoneCallCell';
 import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
@@ -431,6 +441,7 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                               ? [
                                   {
                                     label: t('Tạo mã sản phẩm'),
+                                    icon: <PackagePlus size={14} />,
                                     onSelect: () => {
                                       openCustomerDetail(customer);
                                       setShowProductEditor(true);
