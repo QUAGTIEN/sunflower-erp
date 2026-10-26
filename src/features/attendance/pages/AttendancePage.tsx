@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { UserProfile } from '@/shared/types';
-import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { RefreshingIndicator, TableSkeleton } from '@/components/LoadingStates';
@@ -43,6 +43,8 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 const number = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 2 });
 const dayLabel = (date: string) => date.split('-').reverse().join('/');
+// A fixed numeric label avoids the browser's localized month text ("Tháng Mười 2026") being clipped.
+const monthLabel = (month: string) => `Tháng ${Number(month.slice(5))}/${month.slice(0, 4)}`;
 const roleLabels: Record<string, string> = {
   admin: 'Admin',
   sale: 'Sale',
@@ -65,6 +67,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const [loadedMonth, setLoadedMonth] = useState('');
   // Months already viewed show at once while the server copy refreshes in the background.
   const monthCache = useRef(new Map<string, AttendanceWorkspace>());
+  const monthPicker = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -166,6 +169,15 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
       setLoading(true);
       setError('');
     });
+  };
+  const openMonthPicker = () => {
+    const picker = monthPicker.current;
+    if (!picker) return;
+    try {
+      picker.showPicker();
+    } catch {
+      picker.focus();
+    }
   };
   const shiftMonth = (offset: number) => {
     const [year, m] = month.split('-').map(Number);
@@ -336,37 +348,58 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
           )}
           <div className="attendance-month-controls">
             <RefreshingIndicator active={loading && loadedMonth === month} />
-            <IconButton
-              label="Tháng trước"
-              icon={<ChevronLeft />}
-              disabled={busy || loading || month === '2000-01'}
-              onClick={() => shiftMonth(-1)}
-            />
-            <input
-              aria-label="Tháng chấm công"
-              type="month"
-              min="2000-01"
-              max="2099-12"
-              value={month}
-              onChange={event => selectMonth(event.target.value)}
-              disabled={busy || loading}
-            />
-            <IconButton
-              label="Tháng sau"
-              icon={<ChevronRight />}
-              disabled={busy || loading || month === '2099-12'}
-              onClick={() => shiftMonth(1)}
-            />
+            <div className="attendance-month-nav" role="group" aria-label="Chọn tháng">
+              <button
+                type="button"
+                aria-label="Tháng trước"
+                title="Tháng trước"
+                disabled={busy || month === '2000-01'}
+                onClick={() => shiftMonth(-1)}
+              >
+                <ChevronLeft />
+              </button>
+              <button
+                type="button"
+                className="attendance-month-label"
+                title="Chọn tháng"
+                disabled={busy}
+                onClick={openMonthPicker}
+              >
+                <CalendarDays />
+                <span>{monthLabel(month)}</span>
+              </button>
+              <input
+                ref={monthPicker}
+                className="attendance-month-picker"
+                aria-label="Tháng chấm công"
+                type="month"
+                min="2000-01"
+                max="2099-12"
+                tabIndex={-1}
+                value={month}
+                onChange={event => selectMonth(event.target.value)}
+                disabled={busy}
+              />
+              <button
+                type="button"
+                aria-label="Tháng sau"
+                title="Tháng sau"
+                disabled={busy || month === '2099-12'}
+                onClick={() => shiftMonth(1)}
+              >
+                <ChevronRight />
+              </button>
+            </div>
             <button
               type="button"
               className="btn btn-outline"
-              disabled={busy || loading || month === today.slice(0, 7)}
+              disabled={busy || month === today.slice(0, 7)}
               onClick={() => selectMonth(today.slice(0, 7))}
             >
               Tháng này
             </button>
+            <IconButton label="Tải lại" icon={<RefreshCw />} onClick={refresh} disabled={loading || busy} />
           </div>
-          <IconButton label="Tải lại" icon={<RefreshCw />} onClick={refresh} disabled={loading || busy} />
           {tab === 'attendance' &&
             ownCalendar &&
             totals.days > 0 &&

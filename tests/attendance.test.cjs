@@ -1063,3 +1063,16 @@ test('loading attendance only reads inside a read-only transaction', () => {
   const source = fs.readFileSync(path.join(root, 'server/attendance.ts'), 'utf8');
   assert.match(source, /\{\s*readOnly:\s*true\s*\}/);
 });
+test('month navigator shows a fixed numeric label and stays usable while a month refreshes', () => {
+  const ui = screen(
+    'src/features/attendance/pages/AttendancePage.tsx',
+    'AttendancePage',
+    { currentUser: worker },
+    { loading: true, month: '2026-10', loadedMonth: '2026-10', workspace: workspace() }
+  );
+  const tree = ui.render();
+  const label = nodes(tree).find(node => node.props?.className === 'attendance-month-label');
+  assert.equal(label.props.children[1].props.children, 'Tháng 10/2026');
+  const previous = nodes(tree).find(node => node.type === 'button' && node.props['aria-label'] === 'Tháng trước');
+  assert.equal(previous.props.disabled, false);
+});

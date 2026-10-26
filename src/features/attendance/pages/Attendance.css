@@ -51,6 +51,67 @@
   margin-left: auto;
   gap: 8px;
 }
+.attendance-toolbar .btn {
+  min-height: var(--erp-control-height);
+}
+.attendance-month-nav {
+  position: relative;
+  display: inline-flex;
+  height: var(--erp-control-height);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  background: #fff;
+}
+.attendance-month-nav > button {
+  display: inline-flex;
+  min-width: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 8px;
+  border: 0;
+  color: #334155;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.attendance-month-nav > button + button,
+.attendance-month-nav > input + button {
+  border-left: 1px solid var(--erp-border-color);
+}
+.attendance-month-nav > button:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+.attendance-month-nav > button:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+.attendance-month-nav svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.attendance-month-nav > .attendance-month-label {
+  min-width: 148px;
+  padding: 0 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+/* Kept rendered (not display:none) so showPicker() can anchor the native picker under the label. */
+.attendance-month-nav > .attendance-month-picker {
+  position: absolute;
+  bottom: 0;
+  left: 34px;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
 .attendance-page label,
 .attendance-dialog label {
   display: flex;
@@ -64,9 +125,6 @@
 .attendance-page label > input {
   width: 220px;
   max-width: 100%;
-}
-.attendance-page input[type='month'] {
-  width: 166px;
 }
 .attendance-page input,
 .attendance-page select,
@@ -405,12 +463,6 @@
   background: #f1f5f9;
   font-size: 12.5px;
   font-weight: 500;
-}
-
-.attendance-month-controls input[type='month'] {
-  width: 150px;
-  text-align: center;
-  font-weight: 600;
 }
 
 .attendance-date {
