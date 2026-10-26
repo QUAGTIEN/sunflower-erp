@@ -35,6 +35,9 @@ import {
   type ProductionPrintTemplate
 } from '../model/productionOrder';
 import { productionPrintHtml } from '../model/productionPrint';
+import { LsxItemsTable, type LinePrintDetails } from './productionOrderEditor/LsxItemsTable';
+import { fillRemainingQuantities } from './productionOrderEditor/lineQuantities';
+import { LsxMaterialsTable } from './productionOrderEditor/LsxMaterialsTable';
 import './ProductionOrders.css';
 
 interface Props {
@@ -60,7 +63,7 @@ interface Draft {
   priority: string;
   notes: string;
   printTemplate: ProductionPrintTemplate;
-  printDetails: Record<string, { materialWidth: string; priority: string }>;
+  printDetails: Record<string, LinePrintDetails>;
 }
 const emptyDraft = (): Draft => ({
   id: crypto.randomUUID(),
@@ -210,24 +213,37 @@ export function ProductionOrderWorkspace({
     }
   }
   const updateDraft = (patch: Partial<Draft>) => setDraft(current => (current ? { ...current, ...patch } : current));
+  // A new order starts with every production line at its remaining quantity; the user lowers it to split.
+  const prefilledQuantities = (po: ProductionPO, requiredItemIds: string[]) => {
+    try {
+      const poAllocations = allocatedQuantities(
+        commands.filter(command => command.poId === po.id),
+        draft?.id
+      );
+      return fillRemainingQuantities(po, requiredItemIds, poAllocations);
+    } catch {
+      return {};
+    }
+  };
   const choosePO = (poId: string) => {
     setCatalog({ materials: [], lines: {} });
     setCatalogError('');
     setCatalogLoading(!!poId);
     const po = visiblePOs.find(po => po.id === poId);
+    const requiredItemIds = po?.productionPlanRequiredItemIds?.length
+      ? po.productionPlanRequiredItemIds
+      : (po?.items || [])
+          .filter(
+            item =>
+              !['mua_nvl', 'mua_hang', 'dich_vu'].includes(String(item.workType)) &&
+              !['giay', 'may_in', 'may_quet', 'muc_in'].includes(String(item.productType))
+          )
+          .map(item => itemIdentity(item, (po?.items || []).indexOf(item)));
     updateDraft({
       poId,
-      quantities: {},
+      quantities: po ? prefilledQuantities(po, requiredItemIds) : {},
       printDetails: {},
-      requiredItemIds: po?.productionPlanRequiredItemIds?.length
-        ? po.productionPlanRequiredItemIds
-        : (po?.items || [])
-            .filter(
-              item =>
-                !['mua_nvl', 'mua_hang', 'dich_vu'].includes(String(item.workType)) &&
-                !['giay', 'may_in', 'may_quet', 'muc_in'].includes(String(item.productType))
-            )
-            .map(item => itemIdentity(item, (po?.items || []).indexOf(item))),
+      requiredItemIds,
       deliveryDeadline: String(po?.expectedDeliveryDate || '').slice(0, 10)
     });
   };
@@ -348,14 +364,6 @@ export function ProductionOrderWorkspace({
     setQc({});
     setQcNote('');
   };
-  const materialField = (index: number, key: keyof PlannedMaterial, value: string) =>
-    updateDraft({
-      materials: draft!.materials.map((material, position) =>
-        position === index
-          ? { ...material, [key]: ['quantity', 'allowancePercent'].includes(key) ? Number(value) : value }
-          : material
-      )
-    });
 
   if (!hasProductionAccess(currentUser, 'production'))
     return <div role="alert">Bạn không có quyền truy cập Sản xuất.</div>;
@@ -499,298 +507,27 @@ export function ProductionOrderWorkspace({
                 </label>
               </div>
             </section>
-            <section className="lsx-section">
-              <h3>Mặt hàng cần sản xuất</h3>
-              <p className="lsx-hint">
-                Xác định cột “Cần SX” cho toàn PO trước lệnh đầu tiên; bỏ hàng mua bán lại / dịch vụ. Nhập số lượng vào
-                các dòng muốn đưa vào lệnh này. Các dòng còn lại có thể lập lệnh sau.
-              </p>
-              {allocationError && <p className="lsx-error">{allocationError}</p>}
-              <div className="table-container">
-                <table className="lsx-lines">
-                  <thead>
-                    <tr>
-                      <th>Cần SX</th>
-                      <th>Mã / tên sản phẩm</th>
-                      <th>Quy cách / chất liệu</th>
-                      <th>ĐVT</th>
-                      <th>SL PO</th>
-                      <th>Đã phân bổ</th>
-                      <th>SL lệnh này</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(editingPO?.items || []).map((item, index) => {
-                      const id = itemIdentity(item, index);
-                      const allocated = allocations.get(id) || 0;
-                      const remaining = Math.max(0, Number(item.quantity) - allocated);
-                      return (
-                        <tr key={id}>
-                          <td>
-                            <input
-                              aria-label={`Cần sản xuất ${item.productName}`}
-                              type="checkbox"
-                              checked={draft.requiredItemIds.includes(id)}
-                              disabled={!!editingPO?.productionPlanRequiredItemIds?.length}
-                              onChange={event =>
-                                updateDraft({
-                                  requiredItemIds: event.target.checked
-                                    ? [...draft.requiredItemIds, id]
-                                    : draft.requiredItemIds.filter(key => key !== id),
-                                  quantities: { ...draft.quantities, [id]: '' }
-                                })
-                              }
-                            />
-                          </td>
-                          <td title={`${item.productCode || 'Nhập tay'} — ${item.productName}`}>
-                            <strong>{String(item.productCode || 'Nhập tay')}</strong> {String(item.productName || '')}
-                          </td>
-                          <td title={String(item.size || item.material || '')}>
-                            {String(item.size || item.material || '—')}
-                          </td>
-                          <td>{String(item.unit || '—')}</td>
-                          <td>{number(item.quantity)}</td>
-                          <td>{number(allocated)}</td>
-                          <td>
-                            <input
-                              aria-label={`Số lượng ${item.productName}`}
-                              type="number"
-                              min="0"
-                              step="any"
-                              max={remaining}
-                              disabled={!draft.requiredItemIds.includes(id) || !!allocationError}
-                              placeholder={`Còn ${number(remaining)}`}
-                              value={draft.quantities[id] || ''}
-                              onChange={event =>
-                                updateDraft({ quantities: { ...draft.quantities, [id]: event.target.value } })
-                              }
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {!editingPO && (
-                      <tr>
-                        <td colSpan={7}>Chọn PO để hiển thị danh mục mặt hàng.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-            {editingPO && (
-              <section className="lsx-section">
-                <h3>Mã nội bộ và thông tin bổ sung trên phiếu</h3>
-                {catalogLoading && (
-                  <p role="status" className="lsx-hint">
-                    Đang tải mã nội bộ và danh mục NVL…
-                  </p>
-                )}
-                {catalogError && (
-                  <div role="alert" className="lsx-hint">
-                    {catalogError} Không tự ghép mã theo tên; thông tin được máy chủ kiểm tra lại khi lưu.{' '}
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      disabled={catalogLoading}
-                      onClick={() => {
-                        setCatalogLoading(true);
-                        setCatalogReload(value => value + 1);
-                      }}
-                    >
-                      Tải lại danh mục
-                    </button>
-                  </div>
-                )}
-                <div className="table-container">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Dòng PO</th>
-                        <th>Mã nội bộ đã liên kết</th>
-                        <th>Khổ NVL (mm)</th>
-                        <th>Ưu tiên dòng</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(editingPO.items || [])
-                        .filter((item, index) => draft.requiredItemIds.includes(itemIdentity(item, index)))
-                        .map(item => {
-                          const index = editingPO.items!.indexOf(item),
-                            id = itemIdentity(item, index),
-                            mapped = catalog.lines[id];
-                          const details = draft.printDetails[id] || { materialWidth: '', priority: '' };
-                          return (
-                            <tr key={id}>
-                              <td>
-                                {String(item.productCode || 'Nhập tay')} — {String(item.productName || '')}
-                              </td>
-                              <td title={mapped?.error}>
-                                {mapped?.error || mapped?.catalog?.code || 'Chưa có liên kết đã xác nhận'}
-                              </td>
-                              <td>
-                                <input
-                                  aria-label={`Khổ NVL ${item.productName}`}
-                                  type="number"
-                                  min="0.001"
-                                  step="any"
-                                  value={details.materialWidth}
-                                  onChange={event =>
-                                    updateDraft({
-                                      printDetails: {
-                                        ...draft.printDetails,
-                                        [id]: { ...details, materialWidth: event.target.value }
-                                      }
-                                    })
-                                  }
-                                />
-                              </td>
-                              <td>
-                                <select
-                                  aria-label={`Ưu tiên ${item.productName}`}
-                                  value={details.priority}
-                                  onChange={event =>
-                                    updateDraft({
-                                      printDetails: {
-                                        ...draft.printDetails,
-                                        [id]: { ...details, priority: event.target.value }
-                                      }
-                                    })
-                                  }
-                                >
-                                  <option value="">Theo ưu tiên lệnh</option>
-                                  <option value="urgent">Gấp</option>
-                                  <option value="high">Hơi gấp</option>
-                                  <option value="normal">Bình thường</option>
-                                </select>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="lsx-hint">
-                  Không sửa thông số PO đã chốt. Khổ NVL là khổ vật liệu đầu vào, không lấy từ chiều rộng con tem. Mã
-                  chưa liên kết vẫn được lưu theo luồng cũ và cần đối soát trước khi hạch toán kho.
-                </p>
-              </section>
-            )}
-            <section className="lsx-section">
-              <div className="lsx-heading">
-                <h3>Vật tư dự kiến sử dụng</h3>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() =>
-                    updateDraft({
-                      materials: [
-                        ...draft.materials,
-                        {
-                          id: crypto.randomUUID(),
-                          code: '',
-                          name: '',
-                          width: '',
-                          unit: '',
-                          quantity: 0,
-                          allowancePercent: 0
-                        }
-                      ]
-                    })
-                  }
-                >
-                  Thêm vật tư
-                </button>
-              </div>
-              {draft.materials.map((material, index) => (
-                <label key={material.id}>
-                  Chọn mã NVL cho dòng {index + 1}
-                  <select
-                    value={material.catalogItemId || ''}
-                    onChange={event => {
-                      const item = catalog.materials.find(item => item.id === event.target.value);
-                      updateDraft({
-                        materials: draft.materials.map((row, position) =>
-                          position !== index
-                            ? row
-                            : {
-                                ...row,
-                                catalogItemId: item?.id || '',
-                                code: item?.code || row.code,
-                                name: item?.name || row.name,
-                                unit: item?.baseUnit || row.unit
-                              }
-                        )
-                      });
-                    }}
-                  >
-                    <option value="">Nhập tay theo luồng cũ (chưa liên kết)</option>
-                    {material.catalogItemId && !catalog.materials.some(item => item.id === material.catalogItemId) && (
-                      <option value={material.catalogItemId}>{material.code} — cần tải/đối chiếu danh mục</option>
-                    )}
-                    {catalog.materials.map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.code} — {item.name} ({item.baseUnit})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ))}
-              <div className="table-container">
-                <table className="lsx-materials">
-                  <thead>
-                    <tr>
-                      <th>Mã NVL</th>
-                      <th>Tên vật tư</th>
-                      <th>Khổ (mm)</th>
-                      <th>ĐVT</th>
-                      <th>Số lượng</th>
-                      <th>Hao hụt (%)</th>
-                      <th>Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {draft.materials.map((material, index) => (
-                      <tr key={material.id}>
-                        {(['code', 'name', 'width', 'unit', 'quantity', 'allowancePercent'] as const).map(key => (
-                          <td key={key}>
-                            <input
-                              aria-label={`${key} vật tư ${index + 1}`}
-                              required={key !== 'width'}
-                              readOnly={!!material.catalogItemId && ['code', 'name'].includes(key)}
-                              type={['quantity', 'allowancePercent'].includes(key) ? 'number' : 'text'}
-                              min={key === 'quantity' ? '0.000001' : 0}
-                              max={key === 'allowancePercent' ? 100 : undefined}
-                              step="any"
-                              value={material[key]}
-                              onChange={event => materialField(index, key, event.target.value)}
-                            />
-                          </td>
-                        ))}
-                        <td>
-                          <button
-                            className="btn btn-outline"
-                            type="button"
-                            onClick={() =>
-                              updateDraft({ materials: draft.materials.filter((_, position) => position !== index) })
-                            }
-                          >
-                            Bỏ dòng
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {!draft.materials.length && (
-                      <tr>
-                        <td colSpan={7}>
-                          Chưa khai báo vật tư. Có thể bổ sung khi lưu nháp; bắt buộc trước khi phát hành.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+            <LsxItemsTable
+              po={editingPO}
+              allocations={allocations}
+              allocationError={allocationError}
+              requiredItemIds={draft.requiredItemIds}
+              quantities={draft.quantities}
+              printDetails={draft.printDetails}
+              catalogLines={catalog.lines}
+              catalogLoading={catalogLoading}
+              catalogError={catalogError}
+              onReloadCatalog={() => {
+                setCatalogLoading(true);
+                setCatalogReload(value => value + 1);
+              }}
+              onChange={updateDraft}
+            />
+            <LsxMaterialsTable
+              materials={draft.materials}
+              catalogMaterials={catalog.materials}
+              onChange={materials => updateDraft({ materials })}
+            />
             <section className="lsx-section">
               <label>
                 Ghi chú kỹ thuật / yêu cầu sản xuất

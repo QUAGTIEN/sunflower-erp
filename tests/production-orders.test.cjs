@@ -748,9 +748,13 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
     .find(node => node.type === 'select' && node.props.value === '' && node.props.required)
     .props.onChange({ target: { value: 'po1' } });
   tree = render();
-  nodes(tree)
-    .find(node => node.props?.['aria-label'] === 'Số lượng Tem cuộn')
-    .props.onChange({ target: { value: '40' } });
+  const itemTable = nodes(tree).find(node => node.type?.name === 'LsxItemsTable');
+  assert.deepEqual(
+    itemTable.props.quantities,
+    { roll: '100', manual: '50' },
+    'a new order starts at the remaining quantities'
+  );
+  itemTable.props.onChange({ quantities: { roll: '40' } });
   for (let index = 0; index < 2; index++) {
     tree = render();
     nodes(tree)
@@ -1159,4 +1163,68 @@ test('LSX editor puts the back button first, drops the subtitle and the detail v
   const shell = readSource('src/app/AppShell.tsx');
   assert.match(shell, /<ListTodo size=\{16\} \/>\s*<span className="sidebar-item-label">Công việc/);
   assert.match(shell, /<CalendarCheck size=\{16\} \/>\s*<span className="sidebar-item-label">Chấm công/);
+});
+
+test('LSX item table fills remaining quantities, flags overruns and broken specs, and keeps non-production rows apart', () => {
+  const { fillRemainingQuantities } = loader()(
+    'src/features/production/components/productionOrderEditor/lineQuantities.ts'
+  );
+  assert.deepEqual(fillRemainingQuantities(po(), ['roll', 'manual'], new Map([['roll', 40]])), {
+    roll: '60',
+    manual: '50'
+  });
+  assert.deepEqual(fillRemainingQuantities(po(), ['roll'], new Map([['roll', 100]])), {});
+
+  const order = po();
+  order.items[1].size = 'undefinedxundefinedmm';
+  order.items.push({ itemId: 'ship', productName: 'Phí vận chuyển', quantity: 1, unit: 'lần' });
+  const changes = [];
+  const props = {
+    po: order,
+    allocations: new Map([['roll', 40]]),
+    allocationError: '',
+    requiredItemIds: ['roll', 'manual'],
+    quantities: { roll: '120' },
+    printDetails: {},
+    catalogLines: {},
+    catalogLoading: false,
+    catalogError: '',
+    onReloadCatalog() {},
+    onChange: patch => changes.push(patch)
+  };
+  const render = interactive(
+    'src/features/production/components/productionOrderEditor/LsxItemsTable.tsx',
+    'LsxItemsTable',
+    props
+  );
+  let tree = render();
+  const byLabel = label => nodes(tree).find(node => node.props?.['aria-label'] === label);
+  assert.equal(byLabel('Số lượng Tem cuộn').props.className, 'lsx-number is-invalid');
+  assert.equal(byLabel('Số lượng Phí vận chuyển'), undefined);
+  assert.ok(nodes(tree).some(node => node.type === 'span' && node.props.children === 'Không SX'));
+
+  byLabel('Cần sản xuất Tem nhập tay').props.onChange({ target: { checked: false } });
+  assert.deepEqual(changes.pop(), { requiredItemIds: ['roll'], quantities: { roll: '120' } });
+  byLabel('Cần sản xuất Phí vận chuyển').props.onChange({ target: { checked: true } });
+  assert.deepEqual(changes.pop().quantities, { roll: '120', ship: '1' });
+  nodes(tree)
+    .find(node => node.type === 'button' && node.props.children === 'Điền toàn bộ SL còn lại')
+    .props.onClick();
+  assert.deepEqual(changes.pop(), { quantities: { roll: '60', manual: '50' } });
+
+  nodes(tree)
+    .filter(node => node.type?.name === 'IconButton')[1]
+    .props.onClick();
+  tree = render();
+  assert.ok(nodes(tree).some(node => node.props?.children === 'Chưa có quy cách đúng trên PO'));
+  assert.ok(nodes(tree).some(node => node.props?.children === 'Chưa liên kết'));
+});
+
+test('LSX editor uses the merged item table and the inline material table', () => {
+  const { readSource } = require('./helpers/loadTs.cjs');
+  const workspace = readSource('src/features/production/components/ProductionOrderWorkspace.tsx');
+  assert.match(workspace, /<LsxItemsTable/);
+  assert.match(workspace, /<LsxMaterialsTable/);
+  assert.doesNotMatch(workspace, /Mã nội bộ và thông tin bổ sung trên phiếu/);
+  assert.match(workspace, /quantities:\s*po\s*\?\s*prefilledQuantities\(po, requiredItemIds\)/);
 });

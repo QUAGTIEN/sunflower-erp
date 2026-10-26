@@ -124,18 +124,6 @@
 .lsx-list th:last-child {
   width: 240px;
 }
-.lsx-workspace .lsx-lines th:nth-child(1) {
-  width: 80px;
-}
-.lsx-workspace .lsx-lines th:nth-child(2) {
-  width: 26%;
-}
-.lsx-workspace .lsx-lines th:nth-child(4) {
-  width: 65px;
-}
-.lsx-workspace .lsx-lines th:nth-child(7) {
-  width: 160px;
-}
 .lsx-status {
   font-size: 12px;
   font-weight: 600;
@@ -259,5 +247,127 @@
   }
   .lsx-workspace {
     padding: 12px;
+  }
+}
+.lsx-section-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.lsx-section-header h3 {
+  font-size: 15px;
+}
+.lsx-section-summary {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 12px;
+}
+.lsx-workspace table:is(.lsx-items, .lsx-materials) {
+  min-width: 720px;
+  table-layout: fixed;
+}
+.lsx-items td,
+.lsx-materials td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lsx-items th:nth-child(1) {
+  width: 64px;
+}
+.lsx-items th:nth-child(3) {
+  width: 72px;
+}
+.lsx-items th:nth-child(4),
+.lsx-items th:nth-child(5) {
+  width: 96px;
+}
+.lsx-items th:nth-child(6) {
+  width: 140px;
+}
+.lsx-items th:nth-child(7),
+.lsx-materials th:nth-child(7) {
+  width: 52px;
+}
+.lsx-materials th:nth-child(1) {
+  width: 240px;
+}
+.lsx-materials th:nth-child(3) {
+  width: 96px;
+}
+.lsx-materials th:nth-child(4) {
+  width: 80px;
+}
+.lsx-materials th:nth-child(5) {
+  width: 112px;
+}
+.lsx-materials th:nth-child(6) {
+  width: 104px;
+}
+.lsx-workspace .lsx-number,
+.lsx-workspace input.lsx-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.lsx-workspace input.is-invalid {
+  border-color: #dc2626;
+}
+.lsx-items tr.is-muted td {
+  color: #94a3b8;
+}
+.lsx-muted-note {
+  font-size: 12px;
+}
+.lsx-line-details td {
+  background: #f8fafc;
+  white-space: normal;
+}
+.lsx-line-details-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.lsx-line-details-grid > div {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+  color: #334155;
+  font-size: 13px;
+}
+.lsx-line-details-grid strong {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lsx-text-danger {
+  color: #b42336;
+}
+.lsx-tag {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.lsx-tag--warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+.lsx-manual-material {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 6px;
+}
+.lsx-add-row td {
+  border-bottom: 0;
+}
+@media (max-width: 900px) {
+  .lsx-line-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
