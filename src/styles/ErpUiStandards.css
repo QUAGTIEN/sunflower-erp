@@ -1571,3 +1571,8 @@ input[type='checkbox']:disabled {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* The global reset (* { margin: 0 }) removes the auto margin browsers use to centre modal dialogs. */
+dialog:modal {
+  margin: auto;
+}
