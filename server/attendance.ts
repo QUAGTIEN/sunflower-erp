@@ -40,43 +40,47 @@ export async function manageAttendance(actor: AttendanceActor, body: Record<stri
   if (action === 'load') {
     assertAttendanceMonth(body.month);
     const month = body.month;
-    return firestore.runTransaction(async tx => {
-      if (admin) {
-        const [users, settings, months] = await Promise.all([
-          tx.get(firestore.collection('users')),
-          tx.get(firestore.collection('attendance_settings')),
-          tx.get(firestore.collection('attendance_months').where('month', '==', month))
-        ]);
-        const employees = users.docs.map(doc => employee(doc.id, doc.data()));
-        // Account deletion must not make an already recorded employee disappear from history.
-        for (const doc of months.docs) {
-          const data = doc.data();
-          if (!employees.some(person => person.uid === data.userId))
-            employees.push({
-              uid: String(data.userId),
-              displayName: String(data.employeeName),
-              role: '',
-              active: false
-            });
+    return firestore.runTransaction(
+      async tx => {
+        if (admin) {
+          const [users, settings, months] = await Promise.all([
+            tx.get(firestore.collection('users')),
+            tx.get(firestore.collection('attendance_settings')),
+            tx.get(firestore.collection('attendance_months').where('month', '==', month))
+          ]);
+          const employees = users.docs.map(doc => employee(doc.id, doc.data()));
+          // Account deletion must not make an already recorded employee disappear from history.
+          for (const doc of months.docs) {
+            const data = doc.data();
+            if (!employees.some(person => person.uid === data.userId))
+              employees.push({
+                uid: String(data.userId),
+                displayName: String(data.employeeName),
+                role: '',
+                active: false
+              });
+          }
+          return {
+            success: true,
+            employees,
+            settings: settings.docs.map(doc => ({ ...doc.data(), userId: doc.id })),
+            months: months.docs.map(doc => ({ ...doc.data(), id: doc.id }))
+          };
         }
+        const [setting, record] = await Promise.all([
+          tx.get(firestore.collection('attendance_settings').doc(actor.uid)),
+          tx.get(firestore.collection('attendance_months').doc(`${actor.uid}_${month}`))
+        ]);
         return {
           success: true,
-          employees,
-          settings: settings.docs.map(doc => ({ ...doc.data(), userId: doc.id })),
-          months: months.docs.map(doc => ({ ...doc.data(), id: doc.id }))
+          employees: [employee(actor.uid, { ...actor })],
+          settings: setting.exists ? [{ ...setting.data(), userId: actor.uid }] : [],
+          months: record.exists ? [{ ...record.data(), id: record.id }] : []
         };
-      }
-      const [setting, record] = await Promise.all([
-        tx.get(firestore.collection('attendance_settings').doc(actor.uid)),
-        tx.get(firestore.collection('attendance_months').doc(`${actor.uid}_${month}`))
-      ]);
-      return {
-        success: true,
-        employees: [employee(actor.uid, { ...actor })],
-        settings: setting.exists ? [{ ...setting.data(), userId: actor.uid }] : [],
-        months: record.exists ? [{ ...record.data(), id: record.id }] : []
-      };
-    });
+        // Loading only reads, so a read-only transaction keeps the consistent snapshot without write locks.
+      },
+      { readOnly: true }
+    );
   }
   if (action === 'settings') {
     if (!admin) fail(403, 'Chỉ Admin được thiết lập chấm công.');

@@ -3,7 +3,7 @@ import type { UserProfile } from '@/shared/types';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { TableSkeleton } from '@/components/LoadingStates';
+import { RefreshingIndicator, TableSkeleton } from '@/components/LoadingStates';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
@@ -62,6 +62,9 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const [selectedUser, setSelectedUser] = useState(currentUser.uid);
   const [workspace, setWorkspace] = useState<AttendanceWorkspace>({ employees: [], settings: [], months: [] });
   const [loading, setLoading] = useState(true);
+  const [loadedMonth, setLoadedMonth] = useState('');
+  // Months already viewed show at once while the server copy refreshes in the background.
+  const monthCache = useRef(new Map<string, AttendanceWorkspace>());
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -78,8 +81,10 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
     let valid = true;
     loadAttendance(month)
       .then(data => {
+        monthCache.current.set(month, data);
         if (valid) {
           setWorkspace(data);
+          setLoadedMonth(month);
           setError('');
           setSelectedUser(previous =>
             data.employees.some(person => person.uid === previous) ? previous : currentUser.uid
@@ -96,6 +101,9 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
       valid = false;
     };
   }, [month, reload, currentUser.uid]);
+  useEffect(() => {
+    if (loadedMonth) monthCache.current.set(loadedMonth, workspace);
+  }, [loadedMonth, workspace]);
   useEffect(() => {
     if (!busy && !dirtySettings && !editingDate && !returning && !reviewingChange) return;
     const release = registerNavigationGuard(() =>
@@ -149,6 +157,11 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const selectMonth = (value: string) => {
     if (!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(value) || value === month) return;
     safeSwitch(() => {
+      const cached = monthCache.current.get(value);
+      if (cached) {
+        setWorkspace(cached);
+        setLoadedMonth(value);
+      }
       setMonth(value);
       setLoading(true);
       setError('');
@@ -322,6 +335,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
             </select>
           )}
           <div className="attendance-month-controls">
+            <RefreshingIndicator active={loading && loadedMonth === month} />
             <IconButton
               label="Tháng trước"
               icon={<ChevronLeft />}
@@ -368,7 +382,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
             )}
         </div>
       )}
-      {loading ? (
+      {loading && loadedMonth !== month ? (
         <TableSkeleton label="Đang tải chấm công" columns={7} rows={5} />
       ) : !error && tab === 'attendance' ? (
         <>
@@ -427,7 +441,11 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
                   day = inMonth ? record?.days[date] : undefined;
                 const pending = pendingDayChange(record, date);
                 const disabled =
-                  !inMonth || date > today || busy || (!day && (!ownCalendar || (!!employmentType && !canCreate)));
+                  !inMonth ||
+                  date > today ||
+                  busy ||
+                  loading ||
+                  (!day && (!ownCalendar || (!!employmentType && !canCreate)));
                 return (
                   <button
                     key={date}

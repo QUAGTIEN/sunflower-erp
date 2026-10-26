@@ -1039,3 +1039,27 @@ test('new attendance collections deny direct Firestore reads and writes; sidebar
   assert.ok(shell.includes('data-page-id="attendance"'));
   assert.ok(shell.includes('data-page-id="work_schedule"'));
 });
+test('months already viewed show at once while the server copy refreshes, and edits wait for it', () => {
+  const ui = screen(
+    'src/features/attendance/pages/AttendancePage.tsx',
+    'AttendancePage',
+    { currentUser: worker },
+    { loading: true, month: '2026-01', loadedMonth: '', workspace: workspace() }
+  );
+  const named = (tree, name) => nodes(tree).filter(node => node.type?.name === name);
+  let tree = ui.render();
+  assert.equal(named(tree, 'TableSkeleton').length, 1, 'a month never loaded shows the skeleton');
+  ui.state.set('loadedMonth', '2026-01');
+  tree = ui.render();
+  assert.equal(named(tree, 'TableSkeleton').length, 0, 'a cached month stays visible during refresh');
+  assert.equal(named(tree, 'RefreshingIndicator')[0].props.active, true);
+  const day = nodes(tree).find(node => node.type === 'button' && node.props['aria-label']?.startsWith('05/01/2026'));
+  assert.equal(day.props.disabled, true, 'days cannot be edited until the fresh copy arrives');
+  const source = fs.readFileSync(path.join(root, 'src/features/attendance/pages/AttendancePage.tsx'), 'utf8');
+  assert.match(source, /monthCache\.current\.get\(value\)/);
+  assert.match(source, /monthCache\.current\.set\(month, data\)/);
+});
+test('loading attendance only reads inside a read-only transaction', () => {
+  const source = fs.readFileSync(path.join(root, 'server/attendance.ts'), 'utf8');
+  assert.match(source, /\{\s*readOnly:\s*true\s*\}/);
+});
