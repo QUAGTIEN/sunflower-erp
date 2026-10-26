@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
+import { FileDown } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { PageBackButton } from '@/components/PageBackButton';
 import { ProductionMaterialLedger } from '@/features/inventory/components/ProductionMaterialLedger';
@@ -126,6 +128,8 @@ export function ProductionOrderWorkspace({
   const [catalogReload, setCatalogReload] = useState(0);
   const printFrame = useRef<HTMLIFrameElement>(null);
   const printDialog = useRef<HTMLDialogElement>(null);
+  // Export opens the browser print dialog as soon as the sheet is ready, where the user picks "Save as PDF".
+  const exportPdfOnReady = useRef(false);
   const request = useRef({ payload: '', id: '' });
   const pending = useRef(false);
   useEffect(() => {
@@ -372,14 +376,9 @@ export function ProductionOrderWorkspace({
       {draft ? (
         <form onSubmit={saveDraft} className="lsx-editor">
           <header className="lsx-heading">
-            <div>
-              <h2>{draft.revision ? 'Chỉnh sửa LSX nháp' : 'Lập lệnh sản xuất'}</h2>
-              <span>Một PO có thể chia thành nhiều lệnh; vật tư bên dưới là số lượng dự kiến.</span>
-            </div>
-            <div className="lsx-actions">
-              <button
-                type="button"
-                className="btn btn-outline"
+            <div className="app-heading-with-back">
+              <PageBackButton
+                title="Quay lại danh sách LSX"
                 disabled={busy}
                 onClick={() => {
                   if (window.confirm('LSX chưa lưu. Bạn có muốn bỏ thay đổi?')) {
@@ -387,9 +386,10 @@ export function ProductionOrderWorkspace({
                     setError('');
                   }
                 }}
-              >
-                Quay lại
-              </button>
+              />
+              <h2>{draft.revision ? 'Chỉnh sửa LSX nháp' : 'Lập lệnh sản xuất'}</h2>
+            </div>
+            <div className="lsx-actions">
               <button className="btn btn-primary" disabled={busy || !editingPO || !!allocationError}>
                 {busy ? 'Đang lưu…' : 'Lưu nháp'}
               </button>
@@ -829,9 +829,19 @@ export function ProductionOrderWorkspace({
               </div>
             </div>
             <div className="lsx-actions">
+              <IconButton
+                label="Xuất PDF"
+                icon={<FileDown />}
+                onClick={() => {
+                  exportPdfOnReady.current = true;
+                  setPrintReady(false);
+                  setPrintOrder(selected);
+                }}
+              />
               <button
                 className="btn btn-outline"
                 onClick={() => {
+                  exportPdfOnReady.current = false;
                   setPrintReady(false);
                   setPrintOrder(selected);
                 }}
@@ -1283,8 +1293,16 @@ export function ProductionOrderWorkspace({
             srcDoc={productionPrintHtml(printOrder)}
             onLoad={event => {
               const fonts = event.currentTarget.contentDocument?.fonts;
-              if (fonts) void fonts.ready.then(() => setPrintReady(true));
-              else setPrintReady(true);
+              const frame = event.currentTarget;
+              const markReady = () => {
+                setPrintReady(true);
+                if (!exportPdfOnReady.current) return;
+                exportPdfOnReady.current = false;
+                frame.contentWindow?.focus();
+                frame.contentWindow?.print();
+              };
+              if (fonts) void fonts.ready.then(markReady);
+              else markReady();
             }}
           />
         </dialog>

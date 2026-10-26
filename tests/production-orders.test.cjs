@@ -1145,3 +1145,18 @@ test('accountant UI exposes only own draft editing and keeps released/running op
   }
   assert.match(html({ ...b.order(), status: 'released' }), /In phiếu/);
 });
+
+test('LSX editor puts the back button first, drops the subtitle and the detail view exports a PDF', () => {
+  const { readSource } = require('./helpers/loadTs.cjs');
+  const workspace = readSource('src/features/production/components/ProductionOrderWorkspace.tsx');
+  assert.doesNotMatch(workspace, /Một PO có thể chia thành nhiều lệnh/);
+  assert.match(workspace, /<PageBackButton[\s\S]{0,400}?<h2>\{draft\.revision/);
+  assert.match(workspace, /<IconButton\s+label="Xuất PDF"/);
+  assert.match(
+    workspace,
+    /exportPdfOnReady\.current = false;\s*frame\.contentWindow\?\.focus\(\);\s*frame\.contentWindow\?\.print\(\);/
+  );
+  const shell = readSource('src/app/AppShell.tsx');
+  assert.match(shell, /<ListTodo size=\{16\} \/>\s*<span className="sidebar-item-label">Công việc/);
+  assert.match(shell, /<CalendarCheck size=\{16\} \/>\s*<span className="sidebar-item-label">Chấm công/);
+});
