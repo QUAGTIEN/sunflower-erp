@@ -668,13 +668,15 @@ body {
 
 /* Main Area */
 .app-main {
+  --app-main-gap: 24px;
   grid-area: main;
   min-height: 0;
-  padding: 24px;
+  /* The page tabs sit right under the header; the sides keep the wider frame. */
+  padding: 16px 24px 24px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--app-main-gap);
 }
 
 /* Page Components */
@@ -2026,8 +2028,8 @@ tr:hover td {
   }
 
   .app-main {
+    --app-main-gap: 16px;
     padding: 12px;
-    gap: 16px;
   }
 
   .card {

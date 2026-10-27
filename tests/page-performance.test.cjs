@@ -41,3 +41,16 @@ test('shell keeps pages and data alive and only the visible page sets the breadc
   assert.match(header, /if \(isPageActive\) setPageContext/);
   for (const chunk of ['vendor-react', 'vendor-firebase', 'vendor-icons']) assert.match(vite, new RegExp(chunk));
 });
+
+test('the page progress bar takes no space, so page tabs sit right under the header', () => {
+  const loading = readSource('src/components/LoadingStates.css');
+  const index = readSource('src/index.css');
+  assert.match(
+    loading,
+    /\.erp-page-progress \{[^}]*height: 0;[^}]*margin: 0 0 calc\(-1 \* var\(--app-main-gap, 0px\)\);/
+  );
+  assert.match(
+    index,
+    /\.app-main \{[^}]*--app-main-gap: 24px;[^}]*padding: 16px 24px 24px;[^}]*gap: var\(--app-main-gap\);/
+  );
+});
