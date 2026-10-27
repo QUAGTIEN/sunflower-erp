@@ -6,13 +6,14 @@ export interface ProductionDraftCatalog {
   materials: CatalogItem[];
   lines: Record<string, { catalog?: ProductionCatalogSnapshot; error?: string }>;
 }
-export async function loadProductionDraftCatalog(poId: string): Promise<ProductionDraftCatalog> {
+/** Internal codes for the lines of these POs, keyed by `poId::itemId`, and the NVL catalog. */
+export async function loadProductionDraftCatalog(poIds: string[]): Promise<ProductionDraftCatalog> {
   if (!isFirebaseRuntimeEnabled) throw new Error('Tra cứu mã nội bộ cần kết nối Firebase và API máy chủ.');
   const token = await authService.getIdToken();
   const response = await fetch('/api/production/manage', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'catalog', poId })
+    body: JSON.stringify({ action: 'catalog', poIds })
   });
   const result = await response.json().catch(() => null);
   if (!response.ok || !result?.success)

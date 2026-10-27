@@ -63,8 +63,14 @@ export const PRODUCTION_PRINT_TEMPLATES = {
 } as const;
 export interface ProductionPrintTemplate {
   id: keyof typeof PRODUCTION_PRINT_TEMPLATES;
-  version: 1;
+  version: 1 | 2;
 }
+/** Print layouts are versioned so a reprint of an older order keeps the layout it was issued with. */
+export const PRODUCTION_PRINT_VERSIONS: Record<ProductionPrintTemplate['id'], number[]> = {
+  standard: [1],
+  white_label: [1, 2]
+};
+export const DEFAULT_PRINT_TEMPLATE: ProductionPrintTemplate = { id: 'white_label', version: 2 };
 export interface PlannedMaterial {
   id: string;
   code: string;
@@ -211,22 +217,22 @@ export const canEditProductionDraft = (
 ) =>
   order.status === 'draft' &&
   (canManageProduction(actor) || (canDraftProduction(actor) && order.createdById === actor.uid));
+/** PO statuses that still accept new or changed production orders. */
+export const PLANNABLE_PO_STATUSES = [
+  'waiting_design',
+  'receive_po',
+  'bom_extracted',
+  'design_sent',
+  'layout_pending',
+  'waiting_production',
+  'production_pending',
+  'producing',
+  'supplier_confirmed'
+];
 export function assertPOAccess(actor: ProductionActor, po: ProductionPO) {
   if (!canDraftProduction(actor)) fail('Bạn không có quyền lập lệnh sản xuất.');
   if (po.deleted || !Array.isArray(po.items) || !po.items.length) fail('PO không tồn tại hoặc chưa có mặt hàng.');
-  if (
-    ![
-      'waiting_design',
-      'receive_po',
-      'bom_extracted',
-      'design_sent',
-      'layout_pending',
-      'waiting_production',
-      'production_pending',
-      'producing',
-      'supplier_confirmed'
-    ].includes(String(po.status))
-  )
+  if (!PLANNABLE_PO_STATUSES.includes(String(po.status)))
     fail('PO đã chuyển giai đoạn, không thể lập / phát hành thêm LSX.');
 }
 export function allocatedQuantities(commands: CommandRecord[], excludedId = '') {
@@ -337,12 +343,18 @@ export function validateProductionOrderDraft(
   if (deadline && (!/^\d{4}-\d{2}-\d{2}$/.test(deadline) || new Date(deadline).toISOString().slice(0, 10) !== deadline))
     fail('Ngày cần không hợp lệ.');
   const template = raw.printTemplate as Partial<ProductionPrintTemplate> | undefined;
-  if (template && (!Object.hasOwn(PRODUCTION_PRINT_TEMPLATES, String(template.id)) || template.version !== 1))
+  if (
+    template &&
+    (!Object.hasOwn(PRODUCTION_PRINT_VERSIONS, String(template.id)) ||
+      !PRODUCTION_PRINT_VERSIONS[template.id as ProductionPrintTemplate['id']].includes(Number(template.version)))
+  )
     fail('Mẫu in hoặc phiên bản mẫu chưa được hỗ trợ.');
   return {
     lines,
     materials,
-    printTemplate: { id: template?.id || 'standard', version: 1 } as ProductionPrintTemplate,
+    printTemplate: (template?.id
+      ? { id: template.id, version: template.version }
+      : { id: 'standard', version: 1 }) as ProductionPrintTemplate,
     machineId: text(raw.machineId, 160),
     operatorId: text(raw.operatorId, 160),
     shift: text(raw.shift, 100),

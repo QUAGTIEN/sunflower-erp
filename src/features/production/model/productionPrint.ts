@@ -1,5 +1,6 @@
 import { PRODUCTION_STATUSES, type ProductionOrder } from './productionOrder';
 import { whiteLabelPrintHtml } from './whiteLabelPrint';
+import { companyOrderSheetHtml } from './companyOrderSheet';
 const escape = (value: unknown) =>
   String(value ?? '').replace(
     /[&<>"']/g,
@@ -7,11 +8,13 @@ const escape = (value: unknown) =>
   );
 const quantity = (value: number | undefined) => (value === undefined ? '—' : value.toLocaleString('vi-VN'));
 export function productionPrintHtml(order: ProductionOrder) {
+  if (order.printTemplate?.id === 'white_label' && order.printTemplate.version === 2)
+    return companyOrderSheetHtml(order);
   if (order.printTemplate?.id === 'white_label' && order.printTemplate.version === 1) return whiteLabelPrintHtml(order);
   const rows = order.lines
     .map((line, index) => {
       const spec = line.specifications;
-      return `<tr><td>${index + 1}</td><td>${escape(line.productCode || 'Nhập tay')}<br>${escape(line.productName)}</td><td>${escape(line.specification)}<br>${escape(line.material)}</td><td>${quantity(line.quantity)} ${escape(line.unit)}</td><td>${escape(spec.dieCut || spec.corner || '—')}</td><td>${escape(spec.perforated || '—')}</td><td>${escape(spec.core || '—')}<br>${escape(spec.coreType || '—')}</td><td>${escape(spec.paperCode || '—')}<br>${escape(spec.paperType || '—')}</td><td>${quantity(line.goodQuantity)}</td><td>${quantity(line.rejectQuantity)}</td><td>${line.image ? `<img alt="Mẫu sản phẩm" src="${escape(line.image)}">` : 'Chưa có ảnh'}</td></tr>`;
+      return `<tr><td>${index + 1}</td><td>${escape(line.productCode || 'Nhập tay')}<br>${escape(line.productName)}${line.poCode ? `<br>PO ${escape(line.poCode)}` : ''}</td><td>${escape(line.specification)}<br>${escape(line.material)}</td><td>${quantity(line.quantity)} ${escape(line.unit)}</td><td>${escape(spec.dieCut || spec.corner || '—')}</td><td>${escape(spec.perforated || '—')}</td><td>${escape(spec.core || '—')}<br>${escape(spec.coreType || '—')}</td><td>${escape(spec.paperCode || '—')}<br>${escape(spec.paperType || '—')}</td><td>${quantity(line.goodQuantity)}</td><td>${quantity(line.rejectQuantity)}</td><td>${line.image ? `<img alt="Mẫu sản phẩm" src="${escape(line.image)}">` : 'Chưa có ảnh'}</td></tr>`;
     })
     .join('');
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${escape(order.lsxCode)}</title><style>

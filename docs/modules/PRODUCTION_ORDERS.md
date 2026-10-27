@@ -9,7 +9,15 @@
 - Bỏ bước chốt cột “Cần SX” trước lệnh đầu: dòng nào đưa vào lệnh là dòng cần sản xuất. Dòng mua bán lại / dịch vụ
   (`workType` mua_nvl/mua_hang/dich_vu, loại giấy/máy in/máy quét/mực in) không bao giờ là dòng sản xuất
   (`productionItemIds`). PO đã chốt danh sách theo luồng cũ giữ danh sách đó.
-- Phiếu in đổi thành nút **Xuất lệnh sản xuất**, mẫu theo phiếu tem trắng của công ty, có cột PO trên từng dòng.
+- Phiếu in đổi thành nút **Xuất lệnh sản xuất** (mở phiếu và hộp thoại in, chọn "Lưu thành PDF"). Mẫu mặc định
+  cho lệnh mới là **Tem trắng v2** (`white_label` phiên bản 2, `companyOrderSheet.ts`) theo phiếu công ty gửi ngày
+  27/10/2026: đầu phiếu STT LSX / mã KH / khách / PO / ngày cần / người xuống đơn, ô tình trạng Gấp – Hơi gấp – Bình
+  thường – Rất gấp, ghi chú chung; bảng có cột PO, số lượng, mét/roll, pcs/roll, góc, răng cưa, lõi, mã NVL + số
+  lượng lĩnh; ba ô ký NVL thừa/thiếu, người chạy máy, kho cấp + nhận NVL. Lệnh đã lưu với mẫu v1 hoặc phiếu chung vẫn
+  xuất đúng mẫu cũ.
+- Giao diện lập lệnh: khung **Chọn mặt hàng** (lọc khách / PO / mã sản phẩm, tick dòng rồi "Thêm vào lệnh"; khi lệnh
+  đã có dòng thì chỉ thêm được PO của cùng khách) và bảng **Mặt hàng trong lệnh** (cột PO, còn lại, số lượng tự điền
+  phần còn lại, dòng mở rộng cho mã nội bộ / khổ NVL / ưu tiên, nút bỏ dòng).
 
 Dữ liệu: mỗi dòng LSX lưu `poId`, `poCode`, `lineId` (`poId__itemId`); lệnh lưu `poIds`, `poCodes`, `poCode` (nối các
 mã) và `poId` là PO đầu tiên để màn hình cũ vẫn đọc được. Lệnh trước đây (một PO, dòng không có `poId`) đọc như cũ.

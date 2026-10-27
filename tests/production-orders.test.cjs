@@ -755,16 +755,21 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
   assert.equal(tree.props['data-erp-table-layout'], 'content');
   assert.ok(!nodes(tree).some(node => node.props?.className === 'lsx-list-frame'));
   nodes(tree)
-    .find(node => node.type === 'select' && node.props.value === '' && node.props.required)
-    .props.onChange({ target: { value: 'po1' } });
+    .find(node => node.type?.name === 'LsxLinePicker')
+    .props.onAdd([
+      { poId: 'po1', itemId: 'roll', quantity: '100', printDetails: { materialWidth: '', priority: '' } },
+      { poId: 'po1', itemId: 'manual', quantity: '50', printDetails: { materialWidth: '', priority: '' } }
+    ]);
   tree = render();
   const itemTable = nodes(tree).find(node => node.type?.name === 'LsxItemsTable');
   assert.deepEqual(
-    itemTable.props.quantities,
-    { roll: '100', manual: '50' },
-    'a new order starts at the remaining quantities'
+    itemTable.props.lines.map(line => [line.poId, line.itemId, line.quantity]),
+    [
+      ['po1', 'roll', '100'],
+      ['po1', 'manual', '50']
+    ]
   );
-  itemTable.props.onChange({ quantities: { roll: '40' } });
+  itemTable.props.onChange([{ ...itemTable.props.lines[0], quantity: '40' }]);
   for (let index = 0; index < 2; index++) {
     tree = render();
     nodes(tree)
@@ -775,8 +780,10 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
   assert.equal(calls.length, 2);
   assert.equal(calls[0].id, calls[1].id);
   assert.equal(calls[0].requestId, calls[1].requestId);
-  assert.deepEqual(calls[1].lines, [{ itemId: 'roll', quantity: 40 }]);
-  assert.equal(calls[1].poId, 'po1');
+  assert.deepEqual(calls[1].lines, [
+    { poId: 'po1', itemId: 'roll', quantity: 40, printDetails: { materialWidth: '', priority: '' } }
+  ]);
+  assert.equal(calls[1].poId, undefined, 'each line names its own PO');
 });
 test('rules and module integration keep LSX exclusively in production', () => {
   const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
@@ -1046,7 +1053,8 @@ test('print template and per-line details are versioned and cannot change after 
   await assert.rejects(b.action('save', 'command1', draftFields({ printTemplate: { id: 'standard', version: 1 } })));
   for (const printTemplate of [
     { id: 'injected-html', version: 1 },
-    { id: 'white_label', version: 2 }
+    { id: 'white_label', version: 3 },
+    { id: 'standard', version: 2 }
   ])
     await assert.rejects(backend().manage(draft({ printTemplate })), /Mẫu in/);
   await assert.rejects(
@@ -1157,7 +1165,7 @@ test('accountant UI exposes only own draft editing and keeps released/running op
       /Hủy lệnh|Trả về nháp|Duyệt &amp; phát hành|Bắt đầu sản xuất|Xác nhận nghiệm thu/
     );
   }
-  assert.match(html({ ...b.order(), status: 'released' }), /In phiếu/);
+  assert.match(html({ ...b.order(), status: 'released' }), /Xuất lệnh sản xuất/);
 });
 
 test('LSX editor puts the back button first, drops the subtitle and the detail view exports a PDF', () => {
@@ -1165,78 +1173,21 @@ test('LSX editor puts the back button first, drops the subtitle and the detail v
   const workspace = readSource('src/features/production/components/ProductionOrderWorkspace.tsx');
   assert.doesNotMatch(workspace, /Một PO có thể chia thành nhiều lệnh/);
   assert.match(workspace, /<PageBackButton[\s\S]{0,400}?<h2>\{draft\.revision/);
-  assert.match(workspace, /<IconButton\s+label="Xuất PDF"/);
-  assert.match(
-    workspace,
-    /exportPdfOnReady\.current = false;\s*frame\.contentWindow\?\.focus\(\);\s*frame\.contentWindow\?\.print\(\);/
-  );
+  assert.match(workspace, />\s*Xuất lệnh sản xuất\s*</);
+  assert.doesNotMatch(workspace, /In phiếu|label="Xuất PDF"/);
+  assert.match(workspace, /setPrintReady\(true\);[\s\S]{0,400}frame\.contentWindow\?\.print\(\);/);
   const shell = readSource('src/app/AppShell.tsx');
   assert.match(shell, /<ListTodo size=\{16\} \/>\s*<span className="sidebar-item-label">Công việc/);
   assert.match(shell, /<CalendarCheck size=\{16\} \/>\s*<span className="sidebar-item-label">Chấm công/);
 });
 
-test('LSX item table fills remaining quantities, flags overruns and broken specs, and keeps non-production rows apart', () => {
-  const { fillRemainingQuantities } = loader()(
-    'src/features/production/components/productionOrderEditor/lineQuantities.ts'
-  );
-  assert.deepEqual(fillRemainingQuantities(po(), ['roll', 'manual'], new Map([['roll', 40]])), {
-    roll: '60',
-    manual: '50'
-  });
-  assert.deepEqual(fillRemainingQuantities(po(), ['roll'], new Map([['roll', 100]])), {});
-
-  const order = po();
-  order.items[1].size = 'undefinedxundefinedmm';
-  order.items.push({ itemId: 'ship', productName: 'Phí vận chuyển', quantity: 1, unit: 'lần' });
-  const changes = [];
-  const props = {
-    po: order,
-    allocations: new Map([['roll', 40]]),
-    allocationError: '',
-    requiredItemIds: ['roll', 'manual'],
-    quantities: { roll: '120' },
-    printDetails: {},
-    catalogLines: {},
-    catalogLoading: false,
-    catalogError: '',
-    onReloadCatalog() {},
-    onChange: patch => changes.push(patch)
-  };
-  const render = interactive(
-    'src/features/production/components/productionOrderEditor/LsxItemsTable.tsx',
-    'LsxItemsTable',
-    props
-  );
-  let tree = render();
-  const byLabel = label => nodes(tree).find(node => node.props?.['aria-label'] === label);
-  assert.equal(byLabel('Số lượng Tem cuộn').props.className, 'lsx-number is-invalid');
-  assert.equal(byLabel('Số lượng Phí vận chuyển'), undefined);
-  assert.ok(nodes(tree).some(node => node.type === 'span' && node.props.children === 'Không SX'));
-
-  byLabel('Cần sản xuất Tem nhập tay').props.onChange({ target: { checked: false } });
-  assert.deepEqual(changes.pop(), { requiredItemIds: ['roll'], quantities: { roll: '120' } });
-  byLabel('Cần sản xuất Phí vận chuyển').props.onChange({ target: { checked: true } });
-  assert.deepEqual(changes.pop().quantities, { roll: '120', ship: '1' });
-  nodes(tree)
-    .find(node => node.type === 'button' && node.props.children === 'Điền toàn bộ SL còn lại')
-    .props.onClick();
-  assert.deepEqual(changes.pop(), { quantities: { roll: '60', manual: '50' } });
-
-  nodes(tree)
-    .filter(node => node.type?.name === 'IconButton')[1]
-    .props.onClick();
-  tree = render();
-  assert.ok(nodes(tree).some(node => node.props?.children === 'Chưa có quy cách đúng trên PO'));
-  assert.ok(nodes(tree).some(node => node.props?.children === 'Chưa liên kết'));
-});
-
 test('LSX editor uses the merged item table and the inline material table', () => {
   const { readSource } = require('./helpers/loadTs.cjs');
   const workspace = readSource('src/features/production/components/ProductionOrderWorkspace.tsx');
+  assert.match(workspace, /<LsxLinePicker/);
   assert.match(workspace, /<LsxItemsTable/);
   assert.match(workspace, /<LsxMaterialsTable/);
-  assert.doesNotMatch(workspace, /Mã nội bộ và thông tin bổ sung trên phiếu/);
-  assert.match(workspace, /quantities:\s*po\s*\?\s*prefilledQuantities\(po, requiredItemIds\)/);
+  assert.doesNotMatch(workspace, /Đơn hàng PO \*|Mã nội bộ và thông tin bổ sung trên phiếu/);
 });
 
 test('one order can draw lines from several POs of one customer; allocation stays per PO line', async () => {
@@ -1306,4 +1257,145 @@ test('QC on a multi-PO order ships each PO only when its own lines are fully pro
   assert.equal(b.store.get('pos/po1').status, 'waiting_delivery');
   assert.equal(b.store.get('pos/po2').status, 'waiting_production');
   assert.equal(b.store.get('pos/po2').productionProgress, 'partial');
+});
+
+test('the line picker lists open production lines per PO and never mixes customers in one order', () => {
+  const { plannableLines } = loader()('src/features/production/components/productionOrderEditor/draftLines.ts');
+  const po2 = { ...po(), id: 'po2', poCode: 'PO-02', customerId: 'customer2', customerName: 'Công ty B' };
+  const shipped = { ...po(), id: 'po3', poCode: 'PO-03', status: 'completed' };
+  const resale = {
+    ...po(),
+    id: 'po4',
+    poCode: 'PO-04',
+    items: [{ itemId: 'ink', productName: 'Mực', quantity: 5, unit: 'hộp', productType: 'muc_in' }]
+  };
+  const legacy = { id: 'old', poId: 'po2', status: 'producing', qtyToProduce: 10 };
+  const used = {
+    id: 'used',
+    poId: 'po1',
+    productionOrderVersion: 2,
+    status: 'draft',
+    lines: [{ itemId: 'roll', quantity: 100 }]
+  };
+  const result = plannableLines([po(), po2, shipped, resale], [used, legacy], 'draft1');
+  assert.deepEqual(
+    result.lines.map(line => [line.key, line.remaining]),
+    [['po1::manual', 50]],
+    'roll is fully planned, shipped and resale-only POs never appear'
+  );
+  assert.deepEqual(result.blockedPoCodes, ['PO-02']);
+
+  const added = [];
+  const Picker = loader()('src/features/production/components/productionOrderEditor/LsxLinePicker.tsx').LsxLinePicker;
+  const render = interactive(
+    'src/features/production/components/productionOrderEditor/LsxLinePicker.tsx',
+    'LsxLinePicker',
+    {
+      pos: [po(), { ...po2 }],
+      commands: [],
+      draftId: 'draft1',
+      draftLines: [],
+      lockedCustomerId: '',
+      lockedPoId: '',
+      onAdd: lines => added.push(...lines)
+    }
+  );
+  assert.ok(Picker);
+  let tree = render();
+  const boxes = () => nodes(tree).filter(node => node.type === 'input' && node.props.type === 'checkbox');
+  const addButton = () =>
+    nodes(tree).find(node => node.type === 'button' && String(node.props.children).startsWith('Thêm'));
+  boxes()
+    .find(node => node.props['aria-label'] === 'Chọn Tem cuộn của PO-01')
+    .props.onChange({ target: { checked: true } });
+  boxes()
+    .find(node => node.props['aria-label'] === 'Chọn Tem cuộn của PO-02')
+    .props.onChange({ target: { checked: true } });
+  tree = render();
+  assert.equal(addButton().props.disabled, true, 'two customers cannot share one order');
+  assert.ok(nodes(tree).some(node => node.props?.children === 'Một lệnh chỉ gồm các PO của cùng một khách hàng.'));
+  boxes()
+    .find(node => node.props['aria-label'] === 'Chọn Tem cuộn của PO-02')
+    .props.onChange({ target: { checked: false } });
+  tree = render();
+  addButton().props.onClick();
+  assert.deepEqual(added, [
+    { poId: 'po1', itemId: 'roll', quantity: '100', printDetails: { materialWidth: '', priority: '' } }
+  ]);
+});
+
+test('the company white-label sheet v2 lists the PO of each line and keeps hand-filled areas blank', () => {
+  const { productionPrintHtml } = loader()('src/features/production/model/productionPrint.ts');
+  const order = {
+    id: 'command9',
+    lsxCode: 'LSX-20261027-0001',
+    productionOrderVersion: 2,
+    revision: 1,
+    status: 'released',
+    poId: 'po1',
+    poIds: ['po1', 'po2'],
+    poCode: 'PO-01, PO-02',
+    poCodes: ['PO-01', 'PO-02'],
+    customerName: 'Công ty A <script>',
+    customerCode: 'DS THÁI NGUYÊN',
+    priority: 'urgent',
+    deliveryDeadline: '2026-10-30',
+    createdAt: '2026-10-27T03:00:00Z',
+    createdBy: 'Kế toán',
+    operatorName: 'Thợ máy',
+    machineName: 'Máy 01',
+    shift: 'Ca sáng',
+    notes: 'KHÁCH KHÓ TÍNH, QA kỹ tem',
+    printTemplate: { id: 'white_label', version: 2 },
+    materials: [],
+    lines: [
+      {
+        itemId: 'roll',
+        poId: 'po2',
+        poCode: 'PO-02',
+        lineId: 'po2__roll',
+        productCode: 'TM01',
+        productName: 'Tem cuộn',
+        unit: 'cuộn',
+        quantity: 20,
+        specification: '',
+        material: '',
+        image: '',
+        specifications: {
+          width: 90,
+          height: 120,
+          metersPerRoll: 123,
+          qtyPerRoll: 1000,
+          dieCut: 'R1.5',
+          perforated: 'Có răng cưa xé',
+          coreType: 'Lõi nhựa',
+          core: '76mm',
+          paperCode: 'KP0738'
+        },
+        printDetails: { materialWidth: '96', priority: '' }
+      }
+    ]
+  };
+  const html = productionPrintHtml(order);
+  for (const text of [
+    'PHIẾU LỆNH SẢN XUẤT TEM TRẮNG',
+    'PO-02',
+    'PO-01, PO-02',
+    'R90 × D120 mm',
+    '123 m',
+    'R1.5',
+    'Lõi nhựa 76mm',
+    'KP0738',
+    'Khổ 96 mm',
+    'RẤT GẤP',
+    'NVL THỪA / THIẾU',
+    'XÁC NHẬN KHO CẤP + NHẬN NVL',
+    'KHÁCH KHÓ TÍNH'
+  ])
+    assert.ok(html.includes(text), text);
+  assert.match(html, /<i class="on"><\/i>Gấp/);
+  assert.ok(!html.includes('<script>'), 'values are escaped');
+  assert.ok(
+    !productionPrintHtml({ ...order, printTemplate: { id: 'white_label', version: 1 } }).includes('Mẫu tem trắng v2')
+  );
 });

@@ -1,42 +1,39 @@
 import { Fragment, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import type { ProductionDraftCatalog } from '../../api/productionOrderService';
-import { itemIdentity, type ProductionPO } from '../../model/productionOrder';
-import { fillRemainingQuantities, remainingQuantity } from './lineQuantities';
+import { itemIdentity, type CommandRecord, type ProductionPO } from '../../model/productionOrder';
+import {
+  EMPTY_PRINT_DETAILS,
+  draftLineKey,
+  poAllocations,
+  remainingQuantity,
+  type DraftLine,
+  type LinePrintDetails
+} from './draftLines';
 
-export interface LinePrintDetails {
-  materialWidth: string;
-  priority: string;
-}
-export interface LsxItemsSelection {
-  requiredItemIds: string[];
-  quantities: Record<string, string>;
-  printDetails: Record<string, LinePrintDetails>;
-}
-interface Props extends LsxItemsSelection {
-  po?: ProductionPO;
-  allocations: Map<string, number>;
-  allocationError: string;
+interface Props {
+  lines: DraftLine[];
+  pos: ProductionPO[];
+  commands: CommandRecord[];
+  draftId: string;
   catalogLines: ProductionDraftCatalog['lines'];
   catalogLoading: boolean;
   catalogError: string;
   onReloadCatalog: () => void;
-  onChange: (patch: Partial<LsxItemsSelection>) => void;
+  onChange: (lines: DraftLine[]) => void;
 }
 
-const EMPTY_DETAILS: LinePrintDetails = { materialWidth: '', priority: '' };
 const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
 // Specifications saved by an old product-code bug read "undefinedxundefinedmm"; flag them instead of showing them.
 const isBrokenSpecification = (value: string) => !value.trim() || /undefined|null|NaN/.test(value);
 
+/** Lines of the order being drafted, each tied to its own PO line. */
 export function LsxItemsTable({
-  po,
-  allocations,
-  allocationError,
-  requiredItemIds,
-  quantities,
-  printDetails,
+  lines,
+  pos,
+  commands,
+  draftId,
   catalogLines,
   catalogLoading,
   catalogError,
@@ -44,47 +41,21 @@ export function LsxItemsTable({
   onChange
 }: Props) {
   const [expanded, setExpanded] = useState<string[]>([]);
-  const items = po?.items || [];
-  // The production plan is fixed for the whole PO by its first order; later orders only pick quantities.
-  const planLocked = !!po?.productionPlanRequiredItemIds?.length;
-  const includedCount = Object.values(quantities).filter(value => value !== '' && Number(value) !== 0).length;
-
-  const toggleRequired = (id: string, remaining: number, checked: boolean) => {
-    const nextQuantities = { ...quantities };
-    if (checked && remaining > 0) nextQuantities[id] = String(remaining);
-    else delete nextQuantities[id];
-    onChange({
-      requiredItemIds: checked ? [...requiredItemIds, id] : requiredItemIds.filter(key => key !== id),
-      quantities: nextQuantities
-    });
-  };
-  const updateDetails = (id: string, patch: Partial<LinePrintDetails>) =>
-    onChange({ printDetails: { ...printDetails, [id]: { ...(printDetails[id] || EMPTY_DETAILS), ...patch } } });
-  const toggleExpanded = (id: string) =>
-    setExpanded(current => (current.includes(id) ? current.filter(key => key !== id) : [...current, id]));
+  const update = (key: string, patch: Partial<DraftLine>) =>
+    onChange(lines.map(line => (draftLineKey(line) === key ? { ...line, ...patch } : line)));
+  const updateDetails = (line: DraftLine, patch: Partial<LinePrintDetails>) =>
+    update(draftLineKey(line), { printDetails: { ...(line.printDetails || EMPTY_PRINT_DETAILS), ...patch } });
+  const toggleExpanded = (key: string) =>
+    setExpanded(current => (current.includes(key) ? current.filter(value => value !== key) : [...current, key]));
 
   return (
     <section className="lsx-section">
       <div className="lsx-section-header">
-        <h3>Mặt hàng sản xuất</h3>
-        {po && (
-          <>
-            <span className="lsx-section-summary">Đưa vào lệnh: {includedCount} dòng</span>
-            <button
-              type="button"
-              className="btn btn-outline"
-              disabled={!!allocationError}
-              onClick={() => onChange({ quantities: fillRemainingQuantities(po, requiredItemIds, allocations) })}
-            >
-              Điền toàn bộ SL còn lại
-            </button>
-          </>
-        )}
+        <h3>Mặt hàng trong lệnh</h3>
+        <span className="lsx-section-summary">
+          {lines.length ? `${lines.length} dòng · số lượng tự điền phần còn lại, giảm bớt nếu chia nhiều lệnh` : ''}
+        </span>
       </div>
-      <p className="lsx-hint">
-        “Cần SX” được chốt cho cả PO từ lệnh đầu tiên. Số lượng tự điền phần còn lại; giảm bớt nếu chia nhiều lệnh.
-      </p>
-      {allocationError && <p className="lsx-error">{allocationError}</p>}
       {catalogLoading && (
         <p role="status" className="lsx-hint">
           Đang tải mã nội bộ và danh mục NVL…
@@ -102,79 +73,73 @@ export function LsxItemsTable({
         <table className="lsx-items">
           <thead>
             <tr>
-              <th>Cần SX</th>
               <th>Mã / tên sản phẩm</th>
+              <th>PO</th>
               <th>ĐVT</th>
-              <th className="lsx-number">SL PO</th>
               <th className="lsx-number">Còn lại</th>
               <th className="lsx-number">SL lệnh này</th>
               <th aria-label="Chi tiết dòng" />
+              <th aria-label="Bỏ dòng" />
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => {
-              const id = itemIdentity(item, index);
-              const remaining = remainingQuantity(item, allocations.get(id) || 0);
-              const required = requiredItemIds.includes(id);
-              const quantity = quantities[id] || '';
-              const overRemaining = quantity !== '' && Number(quantity) > remaining;
-              const isExpanded = required && expanded.includes(id);
-              const name = `${item.productCode || 'Nhập tay'} — ${item.productName || ''}`;
-              const specification = [item.size, item.material].filter(Boolean).map(String).join(' · ');
-              const mapped = catalogLines[id];
-              const details = printDetails[id] || EMPTY_DETAILS;
+            {lines.map(line => {
+              const key = draftLineKey(line);
+              const po = pos.find(candidate => candidate.id === line.poId);
+              const index = (po?.items || []).findIndex(
+                (item, position) => itemIdentity(item, position) === line.itemId
+              );
+              const item = po?.items?.[index];
+              const allocated = poAllocations(commands, line.poId, draftId)?.get(key) || 0;
+              const remaining = item ? remainingQuantity(item, allocated) : 0;
+              const overRemaining = line.quantity !== '' && Number(line.quantity) > remaining;
+              const isExpanded = expanded.includes(key);
+              const name = `${item?.productCode || 'Nhập tay'} — ${item?.productName || line.itemId}`;
+              const specification = [item?.size, item?.material].filter(Boolean).map(String).join(' · ');
+              const mapped = catalogLines[key];
               return (
-                <Fragment key={id}>
-                  <tr className={required ? undefined : 'is-muted'}>
+                <Fragment key={key}>
+                  <tr>
+                    <td title={name}>
+                      <strong>{String(item?.productCode || 'Nhập tay')}</strong> {String(item?.productName || '')}
+                    </td>
+                    <td title={String(po?.poCode || line.poId)}>{String(po?.poCode || line.poId)}</td>
+                    <td>{String(item?.unit || '—')}</td>
+                    <td className="lsx-number">{number(remaining)}</td>
                     <td>
                       <input
-                        aria-label={`Cần sản xuất ${item.productName}`}
-                        type="checkbox"
-                        checked={required}
-                        disabled={planLocked}
-                        onChange={event => toggleRequired(id, remaining, event.target.checked)}
+                        aria-label={`Số lượng ${item?.productName || line.itemId} của ${po?.poCode || line.poId}`}
+                        aria-invalid={overRemaining || undefined}
+                        title={overRemaining ? `Vượt số lượng còn lại (${number(remaining)})` : undefined}
+                        className={overRemaining ? 'lsx-number is-invalid' : 'lsx-number'}
+                        type="number"
+                        min="0"
+                        step="any"
+                        max={remaining}
+                        required
+                        value={line.quantity}
+                        onChange={event => update(key, { quantity: event.target.value })}
                       />
                     </td>
-                    <td title={name}>
-                      <strong>{String(item.productCode || 'Nhập tay')}</strong> {String(item.productName || '')}
-                    </td>
-                    <td>{String(item.unit || '—')}</td>
-                    <td className="lsx-number">{number(item.quantity)}</td>
-                    <td className="lsx-number">{required ? number(remaining) : '—'}</td>
                     <td>
-                      {required ? (
-                        <input
-                          aria-label={`Số lượng ${item.productName}`}
-                          aria-invalid={overRemaining || undefined}
-                          title={overRemaining ? `Vượt số lượng còn lại (${number(remaining)})` : undefined}
-                          className={overRemaining ? 'lsx-number is-invalid' : 'lsx-number'}
-                          type="number"
-                          min="0"
-                          step="any"
-                          max={remaining}
-                          disabled={!!allocationError}
-                          value={quantity}
-                          onChange={event => onChange({ quantities: { ...quantities, [id]: event.target.value } })}
-                        />
-                      ) : (
-                        <span className="lsx-muted-note">Không SX</span>
-                      )}
+                      <IconButton
+                        label={isExpanded ? 'Thu gọn chi tiết dòng' : 'Mã nội bộ, khổ NVL, ưu tiên dòng'}
+                        icon={isExpanded ? <ChevronUp /> : <ChevronDown />}
+                        active={isExpanded}
+                        onClick={() => toggleExpanded(key)}
+                      />
                     </td>
                     <td>
-                      {required && (
-                        <IconButton
-                          label={isExpanded ? 'Thu gọn chi tiết dòng' : 'Mã nội bộ, khổ NVL, ưu tiên dòng'}
-                          icon={isExpanded ? <ChevronUp /> : <ChevronDown />}
-                          active={isExpanded}
-                          onClick={() => toggleExpanded(id)}
-                        />
-                      )}
+                      <IconButton
+                        label="Bỏ dòng khỏi lệnh"
+                        icon={<X />}
+                        onClick={() => onChange(lines.filter(candidate => draftLineKey(candidate) !== key))}
+                      />
                     </td>
                   </tr>
                   {isExpanded && (
                     <tr className="lsx-line-details">
-                      <td />
-                      <td colSpan={6}>
+                      <td colSpan={7}>
                         <div className="lsx-line-details-grid">
                           <div>
                             <span>Quy cách / chất liệu</span>
@@ -194,23 +159,23 @@ export function LsxItemsTable({
                               </span>
                             )}
                           </div>
-                          <label>
+                          <label title="Khổ vật liệu đầu vào, không phải chiều rộng con tem">
                             Khổ NVL (mm)
                             <input
-                              aria-label={`Khổ NVL ${item.productName}`}
+                              aria-label={`Khổ NVL ${item?.productName || line.itemId}`}
                               type="number"
                               min="0.001"
                               step="any"
-                              value={details.materialWidth}
-                              onChange={event => updateDetails(id, { materialWidth: event.target.value })}
+                              value={line.printDetails.materialWidth}
+                              onChange={event => updateDetails(line, { materialWidth: event.target.value })}
                             />
                           </label>
                           <label>
                             Ưu tiên dòng
                             <select
-                              aria-label={`Ưu tiên ${item.productName}`}
-                              value={details.priority}
-                              onChange={event => updateDetails(id, { priority: event.target.value })}
+                              aria-label={`Ưu tiên ${item?.productName || line.itemId}`}
+                              value={line.printDetails.priority}
+                              onChange={event => updateDetails(line, { priority: event.target.value })}
                             >
                               <option value="">Theo ưu tiên lệnh</option>
                               <option value="urgent">Gấp</option>
@@ -225,9 +190,9 @@ export function LsxItemsTable({
                 </Fragment>
               );
             })}
-            {!po && (
+            {!lines.length && (
               <tr>
-                <td colSpan={7}>Chọn PO để hiển thị danh mục mặt hàng.</td>
+                <td colSpan={7}>Chưa có mặt hàng. Chọn dòng ở bảng phía trên rồi bấm “Thêm vào lệnh”.</td>
               </tr>
             )}
           </tbody>

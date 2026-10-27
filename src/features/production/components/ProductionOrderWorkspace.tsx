@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { FileDown } from 'lucide-react';
-import { IconButton } from '@/components/IconButton';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { PageBackButton } from '@/components/PageBackButton';
 import { ProductionMaterialLedger } from '@/features/inventory/components/ProductionMaterialLedger';
@@ -20,13 +18,15 @@ import {
   type ProductionDraftCatalog
 } from '../api/productionOrderService';
 import {
-  allocatedQuantities,
   canManageProduction,
   canDraftProduction,
   canEditProductionDraft,
+  DEFAULT_PRINT_TEMPLATE,
   hasProductionAccess,
-  itemIdentity,
+  lineKey,
+  linePoId,
   PRODUCTION_PRINT_TEMPLATES,
+  PRODUCTION_PRINT_VERSIONS,
   PRODUCTION_STATUSES,
   type CommandRecord,
   type PlannedMaterial,
@@ -35,8 +35,9 @@ import {
   type ProductionPrintTemplate
 } from '../model/productionOrder';
 import { productionPrintHtml } from '../model/productionPrint';
-import { LsxItemsTable, type LinePrintDetails } from './productionOrderEditor/LsxItemsTable';
-import { fillRemainingQuantities } from './productionOrderEditor/lineQuantities';
+import { LsxItemsTable } from './productionOrderEditor/LsxItemsTable';
+import { LsxLinePicker } from './productionOrderEditor/LsxLinePicker';
+import { EMPTY_PRINT_DETAILS, type DraftLine } from './productionOrderEditor/draftLines';
 import { LsxMaterialsTable } from './productionOrderEditor/LsxMaterialsTable';
 import './ProductionOrders.css';
 
@@ -51,10 +52,8 @@ interface Props {
 }
 interface Draft {
   id: string;
-  poId: string;
   revision?: number;
-  quantities: Record<string, string>;
-  requiredItemIds: string[];
+  lines: DraftLine[];
   materials: PlannedMaterial[];
   machineId: string;
   operatorId: string;
@@ -63,13 +62,10 @@ interface Draft {
   priority: string;
   notes: string;
   printTemplate: ProductionPrintTemplate;
-  printDetails: Record<string, LinePrintDetails>;
 }
 const emptyDraft = (): Draft => ({
   id: crypto.randomUUID(),
-  poId: '',
-  quantities: {},
-  requiredItemIds: [],
+  lines: [],
   materials: [],
   machineId: '',
   operatorId: '',
@@ -77,8 +73,12 @@ const emptyDraft = (): Draft => ({
   deliveryDeadline: '',
   priority: 'normal',
   notes: '',
-  printTemplate: { id: 'standard', version: 1 },
-  printDetails: {}
+  printTemplate: DEFAULT_PRINT_TEMPLATE
+});
+/** The template chosen in the editor; picking a template uses its latest layout version. */
+const latestTemplate = (id: ProductionPrintTemplate['id']): ProductionPrintTemplate => ({
+  id,
+  version: Math.max(...PRODUCTION_PRINT_VERSIONS[id]) as ProductionPrintTemplate['version']
 });
 const actionNames: Record<string, string> = {
   create: 'Đã tạo LSX thành công',
@@ -131,8 +131,6 @@ export function ProductionOrderWorkspace({
   const [catalogReload, setCatalogReload] = useState(0);
   const printFrame = useRef<HTMLIFrameElement>(null);
   const printDialog = useRef<HTMLDialogElement>(null);
-  // Export opens the browser print dialog as soon as the sheet is ready, where the user picks "Save as PDF".
-  const exportPdfOnReady = useRef(false);
   const request = useRef({ payload: '', id: '' });
   const pending = useRef(false);
   useEffect(() => {
@@ -142,10 +140,11 @@ export function ProductionOrderWorkspace({
   useEffect(() => {
     if (printOrder && printDialog.current && !printDialog.current.open) printDialog.current.showModal();
   }, [printOrder]);
+  const draftPoIds = [...new Set((draft?.lines || []).map(line => line.poId))].sort().join(',');
   useEffect(() => {
-    if (!draft?.poId) return;
+    if (!draftPoIds) return;
     let cancelled = false;
-    void loadProductionDraftCatalog(draft.poId)
+    void loadProductionDraftCatalog(draftPoIds.split(','))
       .then(data => {
         if (!cancelled) {
           setCatalog(data);
@@ -164,7 +163,7 @@ export function ProductionOrderWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [draft?.poId, catalogReload]);
+  }, [draftPoIds, catalogReload]);
   useEffect(() => {
     if (!draft && !busy) return;
     const unregister = registerNavigationGuard(
@@ -199,52 +198,20 @@ export function ProductionOrderWorkspace({
   const selected = commands.find(
     command => command.productionOrderVersion === 2 && command.id === selectedId && !command.deleted
   ) as ProductionOrder | undefined;
-  const editingPO = visiblePOs.find(po => po.id === draft?.poId);
-  let allocationError = '';
-  let allocations = new Map<string, number>();
-  if (editingPO) {
-    try {
-      allocations = allocatedQuantities(
-        commands.filter(command => command.poId === editingPO.id),
-        draft?.id
-      );
-    } catch (error) {
-      allocationError = error instanceof Error ? error.message : 'Không thể tính số lượng còn lại.';
-    }
-  }
+  const draftCustomerId = String(visiblePOs.find(po => po.id === draft?.lines[0]?.poId)?.customerId || '');
+  const draftCustomerName = String(visiblePOs.find(po => po.id === draft?.lines[0]?.poId)?.customerName || '');
   const updateDraft = (patch: Partial<Draft>) => setDraft(current => (current ? { ...current, ...patch } : current));
-  // A new order starts with every production line at its remaining quantity; the user lowers it to split.
-  const prefilledQuantities = (po: ProductionPO, requiredItemIds: string[]) => {
-    try {
-      const poAllocations = allocatedQuantities(
-        commands.filter(command => command.poId === po.id),
-        draft?.id
-      );
-      return fillRemainingQuantities(po, requiredItemIds, poAllocations);
-    } catch {
-      return {};
-    }
-  };
-  const choosePO = (poId: string) => {
-    setCatalog({ materials: [], lines: {} });
-    setCatalogError('');
-    setCatalogLoading(!!poId);
-    const po = visiblePOs.find(po => po.id === poId);
-    const requiredItemIds = po?.productionPlanRequiredItemIds?.length
-      ? po.productionPlanRequiredItemIds
-      : (po?.items || [])
-          .filter(
-            item =>
-              !['mua_nvl', 'mua_hang', 'dich_vu'].includes(String(item.workType)) &&
-              !['giay', 'may_in', 'may_quet', 'muc_in'].includes(String(item.productType))
-          )
-          .map(item => itemIdentity(item, (po?.items || []).indexOf(item)));
+  const addLines = (lines: DraftLine[]) => {
+    if (!draft) return;
+    setCatalogLoading(true);
+    // The order is needed by the earliest requested date among its POs unless the user already set one.
+    const deadlines = lines
+      .map(line => String(visiblePOs.find(po => po.id === line.poId)?.expectedDeliveryDate || '').slice(0, 10))
+      .filter(Boolean)
+      .sort();
     updateDraft({
-      poId,
-      quantities: po ? prefilledQuantities(po, requiredItemIds) : {},
-      printDetails: {},
-      requiredItemIds,
-      deliveryDeadline: String(po?.expectedDeliveryDate || '').slice(0, 10)
+      lines: [...draft.lines, ...lines],
+      deliveryDeadline: draft.deliveryDeadline || deadlines[0] || ''
     });
   };
   const edit = (order: ProductionOrder) => {
@@ -256,10 +223,12 @@ export function ProductionOrderWorkspace({
     setDraft({
       id: order.id,
       revision: order.revision,
-      poId: order.poId,
-      quantities: Object.fromEntries(order.lines.map(line => [line.itemId, String(line.quantity)])),
-      requiredItemIds:
-        pos.find(po => po.id === order.poId)?.productionPlanRequiredItemIds || order.lines.map(line => line.itemId),
+      lines: order.lines.map(line => ({
+        poId: linePoId(line, order),
+        itemId: line.itemId,
+        quantity: String(line.quantity),
+        printDetails: line.printDetails || EMPTY_PRINT_DETAILS
+      })),
       materials: structuredClone(order.materials),
       machineId: order.machineId,
       operatorId: order.operatorId,
@@ -267,10 +236,7 @@ export function ProductionOrderWorkspace({
       deliveryDeadline: order.deliveryDeadline,
       priority: order.priority,
       notes: order.notes,
-      printTemplate: order.printTemplate || { id: 'standard', version: 1 },
-      printDetails: Object.fromEntries(
-        order.lines.map(line => [line.itemId, line.printDetails || { materialWidth: '', priority: '' }])
-      )
+      printTemplate: order.printTemplate || { id: 'standard', version: 1 }
     });
   };
   const mutate = async (body: Record<string, unknown>, after?: () => void) => {
@@ -297,21 +263,18 @@ export function ProductionOrderWorkspace({
   };
   const saveDraft = (event: FormEvent) => {
     event.preventDefault();
-    if (!draft || !editingPO || allocationError) return;
+    if (!draft || !draft.lines.length) return;
     void mutate(
       {
         action: draft.revision ? 'save' : 'create',
         id: draft.id,
-        poId: draft.poId,
         expectedRevision: draft.revision,
-        requiredItemIds: draft.requiredItemIds,
-        lines: Object.entries(draft.quantities)
-          .filter(([, quantity]) => quantity !== '' && Number(quantity) !== 0)
-          .map(([itemId, quantity]) => ({
-            itemId,
-            quantity: Number(quantity),
-            ...(draft.printDetails[itemId] ? { printDetails: draft.printDetails[itemId] } : {})
-          })),
+        lines: draft.lines.map(line => ({
+          poId: line.poId,
+          itemId: line.itemId,
+          quantity: Number(line.quantity),
+          printDetails: line.printDetails
+        })),
         materials: draft.materials,
         machineId: draft.machineId,
         operatorId: draft.operatorId,
@@ -340,14 +303,13 @@ export function ProductionOrderWorkspace({
     void mutate({
       action,
       id: selected.id,
-      poId: selected.poId,
       expectedRevision: selected.revision,
       ...(action === 'complete'
         ? {
             results: selected.lines.map(line => ({
-              itemId: line.itemId,
-              goodQuantity: Number(qc[line.itemId]?.goodQuantity || 0),
-              rejectQuantity: Number(qc[line.itemId]?.rejectQuantity || 0)
+              lineId: lineKey(line),
+              goodQuantity: Number(qc[lineKey(line)]?.goodQuantity || 0),
+              rejectQuantity: Number(qc[lineKey(line)]?.rejectQuantity || 0)
             })),
             qcNote
           }
@@ -398,7 +360,7 @@ export function ProductionOrderWorkspace({
               <h2>{draft.revision ? 'Chỉnh sửa LSX nháp' : 'Lập lệnh sản xuất'}</h2>
             </div>
             <div className="lsx-actions">
-              <button className="btn btn-primary" disabled={busy || !editingPO || !!allocationError}>
+              <button className="btn btn-primary" disabled={busy || !draft.lines.length}>
                 {busy ? 'Đang lưu…' : 'Lưu nháp'}
               </button>
             </div>
@@ -408,34 +370,13 @@ export function ProductionOrderWorkspace({
               <h3>Thông tin lệnh</h3>
               <div className="lsx-fields">
                 <label className="lsx-wide">
-                  Đơn hàng PO *
-                  <select
-                    required
-                    value={draft.poId}
-                    disabled={!!draft.revision}
-                    onChange={event => choosePO(event.target.value)}
-                  >
-                    <option value="">Chọn PO</option>
-                    {visiblePOs
-                      .filter(po =>
-                        [
-                          'waiting_design',
-                          'receive_po',
-                          'bom_extracted',
-                          'design_sent',
-                          'layout_pending',
-                          'waiting_production',
-                          'production_pending',
-                          'producing',
-                          'supplier_confirmed'
-                        ].includes(String(po.status))
-                      )
-                      .map(po => (
-                        <option key={po.id} value={po.id}>
-                          {po.poCode} — {po.customerName}
-                        </option>
-                      ))}
-                  </select>
+                  Khách hàng
+                  <input
+                    readOnly
+                    value={draftCustomerName}
+                    placeholder="Theo các dòng PO được thêm vào lệnh"
+                    title={draftCustomerName}
+                  />
                 </label>
                 <label>
                   Ngày cần *
@@ -494,7 +435,7 @@ export function ProductionOrderWorkspace({
                     value={draft.printTemplate.id}
                     onChange={event =>
                       updateDraft({
-                        printTemplate: { id: event.target.value as ProductionPrintTemplate['id'], version: 1 }
+                        printTemplate: latestTemplate(event.target.value as ProductionPrintTemplate['id'])
                       })
                     }
                   >
@@ -507,13 +448,20 @@ export function ProductionOrderWorkspace({
                 </label>
               </div>
             </section>
+            <LsxLinePicker
+              pos={visiblePOs}
+              commands={commands}
+              draftId={draft.id}
+              draftLines={draft.lines}
+              lockedCustomerId={draft.lines.length ? draftCustomerId : ''}
+              lockedPoId={draft.lines.length && !draftCustomerId ? draft.lines[0].poId : ''}
+              onAdd={addLines}
+            />
             <LsxItemsTable
-              po={editingPO}
-              allocations={allocations}
-              allocationError={allocationError}
-              requiredItemIds={draft.requiredItemIds}
-              quantities={draft.quantities}
-              printDetails={draft.printDetails}
+              lines={draft.lines}
+              pos={visiblePOs}
+              commands={commands}
+              draftId={draft.id}
               catalogLines={catalog.lines}
               catalogLoading={catalogLoading}
               catalogError={catalogError}
@@ -521,7 +469,7 @@ export function ProductionOrderWorkspace({
                 setCatalogLoading(true);
                 setCatalogReload(value => value + 1);
               }}
-              onChange={updateDraft}
+              onChange={lines => updateDraft({ lines })}
             />
             <LsxMaterialsTable
               materials={draft.materials}
@@ -566,24 +514,14 @@ export function ProductionOrderWorkspace({
               </div>
             </div>
             <div className="lsx-actions">
-              <IconButton
-                label="Xuất PDF"
-                icon={<FileDown />}
-                onClick={() => {
-                  exportPdfOnReady.current = true;
-                  setPrintReady(false);
-                  setPrintOrder(selected);
-                }}
-              />
               <button
                 className="btn btn-outline"
                 onClick={() => {
-                  exportPdfOnReady.current = false;
                   setPrintReady(false);
                   setPrintOrder(selected);
                 }}
               >
-                In phiếu
+                Xuất lệnh sản xuất
               </button>
               {canEditProductionDraft(currentUser, selected) && (
                 <>
@@ -663,6 +601,7 @@ export function ProductionOrderWorkspace({
                 <thead>
                   <tr>
                     <th>Mã / tên sản phẩm</th>
+                    <th>PO</th>
                     <th>Quy cách / vật liệu</th>
                     <th>SL lệnh / ĐVT</th>
                     <th>Góc / răng cưa</th>
@@ -672,10 +611,11 @@ export function ProductionOrderWorkspace({
                 </thead>
                 <tbody>
                   {selected.lines.map(line => (
-                    <tr key={line.itemId}>
+                    <tr key={lineKey(line)}>
                       <td title={`${line.productCode} — ${line.productName}`}>
                         {line.productCode || 'Nhập tay'} — {line.productName}
                       </td>
+                      <td>{line.poCode || selected.poCode}</td>
                       <td title={`${line.specification} · ${line.material}`}>
                         {line.specification} · {line.material}
                       </td>
@@ -704,7 +644,7 @@ export function ProductionOrderWorkspace({
               <summary>Xem toàn bộ thông số kỹ thuật và ảnh</summary>
               <div className="lsx-specifications">
                 {selected.lines.map(line => (
-                  <article key={line.itemId}>
+                  <article key={lineKey(line)}>
                     <h3>
                       {line.productCode || 'Nhập tay'} — {line.productName}
                     </h3>
@@ -796,7 +736,7 @@ export function ProductionOrderWorkspace({
                     </thead>
                     <tbody>
                       {selected.lines.map(line => (
-                        <tr key={line.itemId}>
+                        <tr key={lineKey(line)}>
                           <td>
                             {line.productCode} — {line.productName}
                           </td>
@@ -811,13 +751,13 @@ export function ProductionOrderWorkspace({
                               min="0"
                               step="any"
                               max={line.quantity}
-                              value={qc[line.itemId]?.goodQuantity ?? ''}
+                              value={qc[lineKey(line)]?.goodQuantity ?? ''}
                               onChange={event =>
                                 setQc({
                                   ...qc,
-                                  [line.itemId]: {
+                                  [lineKey(line)]: {
                                     goodQuantity: event.target.value,
-                                    rejectQuantity: qc[line.itemId]?.rejectQuantity || '0'
+                                    rejectQuantity: qc[lineKey(line)]?.rejectQuantity || '0'
                                   }
                                 })
                               }
@@ -831,12 +771,12 @@ export function ProductionOrderWorkspace({
                               min="0"
                               step="any"
                               max={line.quantity}
-                              value={qc[line.itemId]?.rejectQuantity ?? '0'}
+                              value={qc[lineKey(line)]?.rejectQuantity ?? '0'}
                               onChange={event =>
                                 setQc({
                                   ...qc,
-                                  [line.itemId]: {
-                                    goodQuantity: qc[line.itemId]?.goodQuantity || '0',
+                                  [lineKey(line)]: {
+                                    goodQuantity: qc[lineKey(line)]?.goodQuantity || '0',
                                     rejectQuantity: event.target.value
                                   }
                                 })
@@ -1033,8 +973,7 @@ export function ProductionOrderWorkspace({
               const frame = event.currentTarget;
               const markReady = () => {
                 setPrintReady(true);
-                if (!exportPdfOnReady.current) return;
-                exportPdfOnReady.current = false;
+                // Export opens the browser print dialog once the sheet is ready, where the user picks "Save as PDF".
                 frame.contentWindow?.focus();
                 frame.contentWindow?.print();
               };
