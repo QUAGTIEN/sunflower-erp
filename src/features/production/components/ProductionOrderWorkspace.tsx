@@ -133,7 +133,9 @@ export function ProductionOrderWorkspace({
   const [machines, setMachines] = useState<ProductionMachine[]>([]);
   const [printOrder, setPrintOrder] = useState<ProductionOrder | null>(null);
   const [printReady, setPrintReady] = useState(false);
-  const [qc, setQc] = useState<Record<string, { goodQuantity: string; rejectQuantity: string }>>({});
+  const [qc, setQc] = useState<
+    Record<string, { goodQuantity: string; rejectQuantity: string; surplusQuantity: string }>
+  >({});
   const [qcNote, setQcNote] = useState('');
   const [catalog, setCatalog] = useState<ProductionDraftCatalog>({ materials: [], lines: {} });
   const [catalogError, setCatalogError] = useState('');
@@ -339,7 +341,8 @@ export function ProductionOrderWorkspace({
             results: selected.lines.map(line => ({
               lineId: lineKey(line),
               goodQuantity: Number(qc[lineKey(line)]?.goodQuantity || 0),
-              rejectQuantity: Number(qc[lineKey(line)]?.rejectQuantity || 0)
+              rejectQuantity: Number(qc[lineKey(line)]?.rejectQuantity || 0),
+              surplusQuantity: Number(qc[lineKey(line)]?.surplusQuantity || 0)
             })),
             qcNote
           }
@@ -501,6 +504,7 @@ export function ProductionOrderWorkspace({
               commands={commands}
               draftId={draft.id}
               catalogLines={catalog.lines}
+              stockBalances={catalog.stockBalances}
               catalogLoading={catalogLoading}
               catalogError={catalogError}
               pickHint={draft.customerKey ? '' : 'Chọn khách hàng trước để lấy hàng từ PO.'}
@@ -697,7 +701,7 @@ export function ProductionOrderWorkspace({
                         <td>{line.catalog?.code || 'Chưa liên kết'}</td>
                         <td className="lsx-number">
                           {selected.status === 'completed'
-                            ? `${number(line.goodQuantity)} / ${number(line.rejectQuantity)}`
+                            ? `${number(line.goodQuantity)} / ${number(line.rejectQuantity)}${Number(line.surplusQuantity) > 0 ? ` · Dư ${number(line.surplusQuantity)}` : ''}${line.quantity - (line.goodQuantity ?? 0) > 0 ? ` · Thiếu ${number(line.quantity - (line.goodQuantity ?? 0))} ${line.unit}` : ''}`
                             : '—'}
                         </td>
                       </tr>
@@ -794,6 +798,7 @@ export function ProductionOrderWorkspace({
                         <th>SL lệnh / ĐVT</th>
                         <th>SL đạt QC</th>
                         <th>SL hỏng</th>
+                        <th>SL dư</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -819,7 +824,8 @@ export function ProductionOrderWorkspace({
                                   ...qc,
                                   [lineKey(line)]: {
                                     goodQuantity: event.target.value,
-                                    rejectQuantity: qc[lineKey(line)]?.rejectQuantity || '0'
+                                    rejectQuantity: qc[lineKey(line)]?.rejectQuantity || '0',
+                                    surplusQuantity: qc[lineKey(line)]?.surplusQuantity || '0'
                                   }
                                 })
                               }
@@ -839,7 +845,27 @@ export function ProductionOrderWorkspace({
                                   ...qc,
                                   [lineKey(line)]: {
                                     goodQuantity: qc[lineKey(line)]?.goodQuantity || '0',
-                                    rejectQuantity: event.target.value
+                                    rejectQuantity: event.target.value,
+                                    surplusQuantity: qc[lineKey(line)]?.surplusQuantity || '0'
+                                  }
+                                })
+                              }
+                            />
+                          </td>
+                          <td>
+                            <input
+                              aria-label={`SL dư ${line.productName}`}
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={qc[lineKey(line)]?.surplusQuantity ?? '0'}
+                              onChange={event =>
+                                setQc({
+                                  ...qc,
+                                  [lineKey(line)]: {
+                                    goodQuantity: qc[lineKey(line)]?.goodQuantity || '0',
+                                    rejectQuantity: qc[lineKey(line)]?.rejectQuantity || '0',
+                                    surplusQuantity: event.target.value
                                   }
                                 })
                               }

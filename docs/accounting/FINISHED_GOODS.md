@@ -75,3 +75,9 @@ Lượt 5 tiếp theo: chốt mốc tăng nợ mua/bán từ chứng từ có th
 ## Điểm nối lượt 5
 
 Đã có mã nguồn sổ tiền tại ACCOUNTING_LEDGER.md: Kế toán xác nhận POD/nhập mua thực tế để tăng nợ, không tự tăng từ phiếu hàng. Hàng NCC giao thẳng có thể là nguồn AR và AP với cap riêng. Hàng trả có điều chỉnh tiền được xác nhận, không tự giảm nợ/hoàn tiền. API hàng chặn đảo nguồn khi còn phụ thuộc tiền; cần đảo chứng từ tiền trước. Triển khai web/API kho/API kế toán/rules cùng phiên bản; chưa xác nhận deploy hoặc chuyển dữ liệu thật.
+
+## Nghiệp vụ thành phẩm làm dư (28/10/2026 — D-KHO1, D-KHO3, D-KHO5)
+
+- **Ghi nhận SL dư khi nghiệm thu QC (`surplusQuantity`):** Trong `completeOrder` (`server/productionOrders.ts`), ngoài `goodQuantity` và `rejectQuantity` (tổng không vượt `line.quantity`), cho phép nhập `surplusQuantity >= 0` lưu riêng trên từng dòng LSX. `surplusQuantity` không cộng vào `allocatedQuantities` hay `completedProduction` của PO và không làm PO chuyển trạng thái đủ hàng sớm.
+- **Phiếu nhập thành phẩm dư từ SX (`production_surplus_receipt`):** Thêm loại phiếu `production_surplus_receipt` trong `/api/warehouse/finished` (`server/finishedGoods.ts`). Giới hạn nhập tối đa theo `line.surplusQuantity * factor` (theo dõi qua `surplusReceived` trong `goods_source_state`), cộng vào tồn vật lý `warehouse_balances/fg_<catalogItemId>`, lưu `customerId`/`customerName` và mã LSX trên phiếu để hiển thị tại mục **Nguồn tồn** trong Thẻ kho. Hỗ trợ Admin đảo phiếu như các phiếu thành phẩm khác.
+- **Cảnh báo tồn khi lập LSX (`D-KHO3`):** Action `catalog` của `/api/production/orders` trả kèm `stockBalances` từ `warehouse_balances/fg_<catalogItemId>`; bảng mặt hàng LSX hiển thị nhãn `"Kho đang có N <ĐVT> dư"` khi mã thành phẩm đã liên kết có số dư dương.

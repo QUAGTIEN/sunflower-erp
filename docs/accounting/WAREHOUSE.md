@@ -75,3 +75,12 @@ Sổ thành phẩm/giao/trả đã có mã nguồn, xem FINISHED_GOODS.md. Colle
 ## Điểm nối tiền ở lượt 5
 
 Nhận hàng vẫn chỉ ghi lượng. Kế toán xác nhận chứng từ riêng để tăng nợ; xem ACCOUNTING_LEDGER.md. API kho NVL và thành phẩm đọc phụ thuộc finance_source_state trước đảo: phiếu đã dùng ghi nợ/điều chỉnh tiền phải đảo chứng từ tiền liên quan trước. Chưa triển khai dữ liệu thật; cần deploy API kho và kế toán cùng rules/web.
+
+## Quyết định mở rộng Kho vật tư & tồn dư (28/10/2026)
+
+- **D-KHO1 (28/10/2026) — Thành phẩm làm dư:** Phần thành phẩm sản xuất dư (`surplusQuantity` tại nghiệm thu QC) được nhập vào tồn kho thành phẩm chung theo mã nội bộ (`fg_<catalogItemId>`) qua phiếu `production_surplus_receipt`, không cộng vào tiến độ giao/sản xuất của PO gốc. Trên Thẻ kho hiển thị rõ **Nguồn tồn** (từ LSX nào, khách nào) và **Khách đang dùng**.
+- **D-KHO2 (28/10/2026) — NVL dư sau SX:** Thuộc kho NVL chung (`raw_main`), ghi rõ nguồn từ LSX/khách nào trên phiếu `production_return` và hiển thị tại mục **Nguồn tồn** trên Thẻ kho.
+- **D-KHO3 (28/10/2026) — Cảnh báo tồn dư khi lập LSX:** Khi lập LSX cho mã sản phẩm đang có tồn thành phẩm (`warehouse_balances/fg_<catalogItemId>` > 0), form hiển thị cảnh báo `"Kho đang có N <ĐVT> dư"` để người lập lệnh biết và quyết định điều chỉnh, chưa tự trừ số lượng cần sản xuất.
+- **D-KHO4 (28/10/2026) — Quản lý cuộn lẻ:** Hỗ trợ ghi nhận tùy chọn `rollCode` (mã cuộn) và `remainingMeters` (số mét còn lại) trên dòng phiếu hoàn NVL (`production_return`) và hiển thị trực tiếp trong mục **Nguồn tồn** của Thẻ kho.
+- **D-KHO5 (28/10/2026) — Theo dõi hàng giao:** Bỏ khỏi Kho vật tư, dùng thống nhất tại `Giao hàng → Hàng giao & thành phẩm`.
+- **Tra cứu khách hàng dùng vật tư (`itemUsers`):** Máy chủ tổng hợp danh sách khách hàng đang dùng từng mã vật tư/thành phẩm từ (1) thực tế LSX và phiếu kho, (2) khai báo sản phẩm khách hàng (`customers[].products` và `catalog_links`), trả về trong `action: 'load'` của `/api/warehouse/manage`. Hiển thị cột **Khách đang dùng** trên bảng Tồn kho, cho phép tìm kiếm theo tên khách và xem chi tiết trong Thẻ kho.

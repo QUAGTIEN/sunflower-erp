@@ -23,6 +23,7 @@ import {
   warehouseDate,
   WAREHOUSE_KINDS,
   type WarehouseBalance,
+  type WarehouseCustomerUsage,
   type WarehouseData,
   type WarehouseKind,
   type WarehouseVoucher
@@ -39,7 +40,8 @@ const empty: WarehouseData = {
   sources: [],
   progress: [],
   legacyInventory: [],
-  legacyExports: []
+  legacyExports: [],
+  itemUsers: {}
 };
 const emptyGoods: GoodsData = {
   items: [],
@@ -67,6 +69,7 @@ export interface UnifiedStockRow extends WarehouseBalance {
   catalogItemId: string;
   warehouseId: 'raw_main' | 'finished_main';
   itemKind: CatalogKind;
+  users: WarehouseCustomerUsage[];
 }
 type UnifiedVoucher = (WarehouseVoucher | GoodsVoucher) & { warehouseId: 'raw_main' | 'finished_main' };
 
@@ -146,7 +149,8 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
       quantity: found?.quantity || 0,
       minQuantity: found?.minQuantity ?? null,
       revision: found?.revision || 0,
-      updatedAt: found?.updatedAt || ''
+      updatedAt: found?.updatedAt || '',
+      users: data.itemUsers?.[item.id] || []
     };
   });
   const fgBalances: UnifiedStockRow[] = goodsData.items.map(item => {
@@ -162,7 +166,8 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
       quantity: found?.quantity || 0,
       minQuantity: found?.minQuantity ?? null,
       revision: found?.revision || 0,
-      updatedAt: found?.updatedAt || ''
+      updatedAt: found?.updatedAt || '',
+      users: data.itemUsers?.[item.id] || []
     };
   });
   const balances: UnifiedStockRow[] = [...rawBalances, ...fgBalances].sort((a, b) =>
@@ -175,7 +180,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   const balancePages = useDataTablePagination(
     balances.filter(
       row =>
-        matches(row.code, row.name) &&
+        matches(row.code, row.name, row.users.map(u => u.customerName).join(' ')) &&
         (!itemKindFilter || row.itemKind === itemKindFilter) &&
         (!alertFilter || stockAlert(row.quantity, row.minQuantity) === alertFilter)
     )
@@ -404,6 +409,16 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                       role="menuitem"
                       onClick={() => {
                         setVoucherMenuOpen(false);
+                        setGoodsOptions({ kind: 'production_surplus_receipt' });
+                      }}
+                    >
+                      Nhập thành phẩm dư từ SX
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setVoucherMenuOpen(false);
                         setGoodsOptions({ kind: 'purchase_receipt' });
                       }}
                     >
@@ -444,6 +459,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                           <th>Mã</th>
                           <th>Tên vật tư</th>
                           <th>Loại</th>
+                          <th>Khách đang dùng</th>
                           <th>ĐVT cơ sở</th>
                           <th>Tồn</th>
                           <th>Ngưỡng</th>
@@ -496,47 +512,51 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                     {!loading &&
                       !error &&
                       tab === 'inventory' &&
-                      balancePages.rows.map(row => (
-                        <tr
-                          key={`${row.warehouseId}-${row.id}`}
-                          className={`warehouse-row-clickable ${
-                            activeStock?.id === row.id && activeStock?.warehouseId === row.warehouseId
-                              ? 'warehouse-row-active'
-                              : ''
-                          }`}
-                          onClick={event => {
-                            if ((event.target as HTMLElement).closest('button, [role="menu"]')) return;
-                            setStock(row);
-                          }}
-                        >
-                          <td>{row.code}</td>
-                          <td title={row.name}>{row.name}</td>
-                          <td>{itemKindLabels[row.itemKind]}</td>
-                          <td>{row.unit}</td>
-                          <td className="warehouse-number">{stockNumber(row.quantity)}</td>
-                          <td className="warehouse-number">
-                            {row.minQuantity === null ? 'Chưa thiết lập' : stockNumber(row.minQuantity)}
-                          </td>
-                          <td
-                            className={
-                              ['Tồn âm', 'Cần nhập hàng'].includes(stockAlert(row.quantity, row.minQuantity))
-                                ? 'warehouse-danger'
+                      balancePages.rows.map(row => {
+                        const customerLabel = row.users.map(u => u.customerName).join(', ');
+                        return (
+                          <tr
+                            key={`${row.warehouseId}-${row.id}`}
+                            className={`warehouse-row-clickable ${
+                              activeStock?.id === row.id && activeStock?.warehouseId === row.warehouseId
+                                ? 'warehouse-row-active'
                                 : ''
-                            }
+                            }`}
+                            onClick={event => {
+                              if ((event.target as HTMLElement).closest('button, [role="menu"]')) return;
+                              setStock(row);
+                            }}
                           >
-                            {stockAlert(row.quantity, row.minQuantity)}
-                          </td>
-                          <td>
-                            <RowActionMenu
-                              label={`Thao tác ${row.code}`}
-                              actions={[
-                                { label: 'Xem thẻ kho', onSelect: () => setStock(row) },
-                                ...(canWrite ? [{ label: 'Thiết lập ngưỡng', onSelect: () => setStock(row) }] : [])
-                              ]}
-                            />
-                          </td>
-                        </tr>
-                      ))}
+                            <td>{row.code}</td>
+                            <td title={row.name}>{row.name}</td>
+                            <td>{itemKindLabels[row.itemKind]}</td>
+                            <td title={customerLabel}>{customerLabel || '—'}</td>
+                            <td>{row.unit}</td>
+                            <td className="warehouse-number">{stockNumber(row.quantity)}</td>
+                            <td className="warehouse-number">
+                              {row.minQuantity === null ? 'Chưa thiết lập' : stockNumber(row.minQuantity)}
+                            </td>
+                            <td
+                              className={
+                                ['Tồn âm', 'Cần nhập hàng'].includes(stockAlert(row.quantity, row.minQuantity))
+                                  ? 'warehouse-danger'
+                                  : ''
+                              }
+                            >
+                              {stockAlert(row.quantity, row.minQuantity)}
+                            </td>
+                            <td>
+                              <RowActionMenu
+                                label={`Thao tác ${row.code}`}
+                                actions={[
+                                  { label: 'Xem thẻ kho', onSelect: () => setStock(row) },
+                                  ...(canWrite ? [{ label: 'Thiết lập ngưỡng', onSelect: () => setStock(row) }] : [])
+                                ]}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
                     {!loading &&
                       !error &&
                       tab === 'vouchers' &&
@@ -625,7 +645,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                       ))}
                     {!loading && !error && pagination.paginationProps.totalItems === 0 && (
                       <tr>
-                        <td colSpan={8}>{search ? 'Không có kết quả phù hợp.' : 'Chưa có dữ liệu.'}</td>
+                        <td colSpan={9}>{search ? 'Không có kết quả phù hợp.' : 'Chưa có dữ liệu.'}</td>
                       </tr>
                     )}
                   </tbody>
@@ -790,6 +810,26 @@ function StockDetails({
       window.removeEventListener('beforeunload', beforeUnload);
     };
   }, [dirty, busy]);
+  const surplusSources = vouchers
+    .filter(
+      voucher =>
+        !voucher.reversedBy && (voucher.kind === 'production_return' || voucher.kind === 'production_surplus_receipt')
+    )
+    .flatMap(voucher =>
+      voucher.lines
+        .filter(line => line.catalogItemId === stock.catalogItemId)
+        .map(line => ({
+          id: `${voucher.id}-${line.sourceLine}`,
+          voucherCode: voucher.code,
+          sourceCode: voucher.sourceCode,
+          customerName: voucher.customerName || 'Kho chung',
+          rollCode: 'rollCode' in line ? line.rollCode : undefined,
+          remainingMeters: 'remainingMeters' in line ? line.remainingMeters : undefined,
+          delta: line.delta,
+          baseUnit: line.baseUnit,
+          postingDate: voucher.postingDate
+        }))
+    );
   return (
     <aside className="warehouse-stock-card" aria-labelledby="warehouse-stock-title">
       <form
@@ -862,6 +902,73 @@ function StockDetails({
             </button>
           </div>
         )}
+        <div className="warehouse-stock-card-section">
+          <h3>Khách đang dùng</h3>
+          <div className="warehouse-grid-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Khách hàng</th>
+                  <th>Nguồn ghi nhận</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stock.users.map(usage => (
+                  <tr key={`${usage.customerId}-${usage.customerName}`}>
+                    <td title={usage.customerName}>{usage.customerName}</td>
+                    <td title={usage.sources.join(', ')}>{usage.sources.join(', ')}</td>
+                  </tr>
+                ))}
+                {!stock.users.length && (
+                  <tr>
+                    <td colSpan={2}>Chưa có khách hàng dùng mã vật tư này.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="warehouse-stock-card-section">
+          <h3>Nguồn tồn (hoàn NVL / TP dư)</h3>
+          <div className="warehouse-grid-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>LSX</th>
+                  <th>Khách hàng</th>
+                  <th>Cuộn / số mét</th>
+                  <th>Số lượng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {surplusSources.map(entry => (
+                  <tr key={entry.id}>
+                    <td title={`${entry.sourceCode} (${entry.voucherCode})`}>{entry.sourceCode}</td>
+                    <td title={entry.customerName}>{entry.customerName}</td>
+                    <td>
+                      {entry.rollCode || entry.remainingMeters !== undefined
+                        ? [
+                            entry.rollCode ? `Cuộn ${entry.rollCode}` : '',
+                            entry.remainingMeters !== undefined ? `Còn ${stockNumber(entry.remainingMeters)} m` : ''
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')
+                        : '—'}
+                    </td>
+                    <td className="warehouse-number">
+                      {stockNumber(entry.delta)} {entry.baseUnit}
+                    </td>
+                  </tr>
+                ))}
+                {!surplusSources.length && (
+                  <tr>
+                    <td colSpan={4}>Chưa có phiếu hoàn NVL hoặc nhập TP dư.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
         <div className="warehouse-stock-card-section">
           <h3>Lịch sử nhập xuất</h3>
           <div className="warehouse-grid-scroll">

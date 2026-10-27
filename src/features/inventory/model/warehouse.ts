@@ -53,6 +53,13 @@ export interface WarehouseLine {
   baseQuantity: number;
   delta: number;
   catalogRevision: number;
+  rollCode?: string;
+  remainingMeters?: number;
+}
+export interface WarehouseCustomerUsage {
+  customerId: string;
+  customerName: string;
+  sources: string[];
 }
 export interface WarehouseVoucher {
   id: string;
@@ -62,6 +69,8 @@ export interface WarehouseVoucher {
   sourceId: string;
   sourceCode: string;
   sourceType: 'purchase' | 'production';
+  customerId?: string;
+  customerName?: string;
   lines: WarehouseLine[];
   postedAt: string;
   postingDate: string;
@@ -78,6 +87,8 @@ export interface WarehouseSource {
   type: 'purchase' | 'production';
   status: string;
   legacyReceived: boolean;
+  customerId?: string;
+  customerName?: string;
   lines: { id: string; name: string; unit: string; quantity: number; catalogItemId: string; factor?: number }[];
 }
 export interface WarehouseProgress {
@@ -95,6 +106,7 @@ export interface WarehouseData {
   progress: WarehouseProgress[];
   legacyInventory: Record<string, unknown>[];
   legacyExports: Record<string, unknown>[];
+  itemUsers?: Record<string, WarehouseCustomerUsage[]>;
 }
 export function warehouseDate(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {

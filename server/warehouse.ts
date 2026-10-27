@@ -2,7 +2,13 @@ import { assertPhysicalSourceUnbilled } from './financeSourceGuard.js';
 import { createHash } from 'node:crypto';
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
-import { conversionFactor, normalizeUnit, type CatalogItem } from '../src/features/catalog/model/itemCatalog.js';
+import {
+  catalogSources,
+  conversionFactor,
+  normalizeCatalogCode,
+  normalizeUnit,
+  type CatalogItem
+} from '../src/features/catalog/model/itemCatalog.js';
 import {
   canPostWarehouse,
   canReadWarehouse,
@@ -12,6 +18,7 @@ import {
   WarehouseValidationError,
   type WarehouseActor,
   type WarehouseBalance,
+  type WarehouseCustomerUsage,
   type WarehouseKind,
   type WarehouseLine,
   type WarehouseProgress,
@@ -69,6 +76,8 @@ function sourceView(type: 'purchase' | 'production', sourceId: string, data: Dat
     type,
     status: String(data.status),
     legacyReceived: type === 'purchase' && data.status === 'received' && !managed,
+    ...(type === 'production' && data.customerId ? { customerId: String(data.customerId) } : {}),
+    ...(type === 'production' && data.customerName ? { customerName: String(data.customerName) } : {}),
     lines: sourceRows(type, data).map((row, index) => ({
       id: sourceLine(type, row, index),
       name: [
@@ -84,6 +93,105 @@ function sourceView(type: 'purchase' | 'production', sourceId: string, data: Dat
       factor: type === 'production' ? Number((row.catalog as Data | undefined)?.factor || 0) : 0
     }))
   };
+}
+
+function buildItemUsers(
+  catalogItems: (Data & { id: string })[],
+  vouchers: (Data & { id: string })[],
+  commands: (Data & { id: string })[],
+  customers: (Data & { id: string })[],
+  links: (Data & { id: string })[]
+): Record<string, WarehouseCustomerUsage[]> {
+  const usageMap = new Map<string, Map<string, { customerId: string; customerName: string; sources: Set<string> }>>();
+  const addUsage = (catalogItemId: string, customerId: string, customerName: string, sourceLabel: string) => {
+    const cleanId = catalogItemId.trim();
+    const cleanName = customerName.trim();
+    const custKey = customerId.trim() || cleanName;
+    if (!cleanId || !custKey || !cleanName) return;
+    let byCustomer = usageMap.get(cleanId);
+    if (!byCustomer) {
+      byCustomer = new Map();
+      usageMap.set(cleanId, byCustomer);
+    }
+    let entry = byCustomer.get(custKey);
+    if (!entry) {
+      entry = { customerId: customerId.trim(), customerName: cleanName, sources: new Set() };
+      byCustomer.set(custKey, entry);
+    }
+    if (sourceLabel) entry.sources.add(sourceLabel);
+  };
+  const commandMap = new Map(commands.map(cmd => [cmd.id, cmd]));
+  const codeToCatalogId = new Map<string, string>();
+  for (const item of catalogItems) {
+    if (typeof item.code === 'string' && item.code.trim()) {
+      codeToCatalogId.set(normalizeCatalogCode(item.code), item.id);
+    }
+  }
+  for (const cmd of commands) {
+    if (cmd.deleted || cmd.status === 'cancelled') continue;
+    const customerId = String(cmd.customerId || '');
+    const customerName = String(cmd.customerName || '');
+    const lsxCode = String(cmd.lsxCode || cmd.id);
+    if (!customerName) continue;
+    for (const mat of Array.isArray(cmd.materials) ? (cmd.materials as Data[]) : []) {
+      const catId = String(mat.catalogItemId || (mat.catalog as Data | undefined)?.id || '');
+      if (catId) addUsage(catId, customerId, customerName, `LSX ${lsxCode}`);
+    }
+    for (const line of Array.isArray(cmd.lines) ? (cmd.lines as Data[]) : []) {
+      const catId = String((line.catalog as Data | undefined)?.id || '');
+      if (catId) addUsage(catId, customerId, customerName, `LSX ${lsxCode}`);
+    }
+  }
+  for (const voucher of vouchers) {
+    if (voucher.reversedBy || voucher.kind === 'reversal') continue;
+    const cmd = voucher.sourceType === 'production' ? commandMap.get(String(voucher.sourceId || '')) : undefined;
+    const customerId = String(voucher.customerId || cmd?.customerId || '');
+    const customerName = String(voucher.customerName || cmd?.customerName || '');
+    if (!customerName) continue;
+    const label = String(voucher.sourceCode || voucher.code || '');
+    for (const line of Array.isArray(voucher.lines) ? (voucher.lines as Data[]) : []) {
+      const catId = String(line.catalogItemId || '');
+      if (catId) addUsage(catId, customerId, customerName, label);
+    }
+  }
+  const activeCustomers = customers.filter(c => !c.deleted);
+  const customerMap = new Map(activeCustomers.map(c => [c.id, c]));
+  const customerProductSources = catalogSources('customer_product', activeCustomers);
+  for (const link of links) {
+    const source = link.source as Data | undefined;
+    if (source?.type !== 'customer_product') continue;
+    const matched = customerProductSources.find(s => s.key === link.sourceKey);
+    const cust = customerMap.get(String(source.documentId || ''));
+    if (!matched || !cust) continue;
+    const customerName = String(cust.companyName || cust.customerName || cust.name || '');
+    addUsage(String(link.catalogItemId || ''), cust.id, customerName, `SP ${matched.code || matched.name}`);
+  }
+  for (const cust of activeCustomers) {
+    const customerName = String(cust.companyName || cust.customerName || cust.name || '');
+    if (!customerName || !Array.isArray(cust.products)) continue;
+    for (const prod of cust.products as Data[]) {
+      if (!prod || prod.deleted) continue;
+      const specs = prod.specifications && typeof prod.specifications === 'object' ? (prod.specifications as Data) : {};
+      const candidates = [prod.productCode, prod.material, specs.paperCode].filter(
+        v => typeof v === 'string' && v.trim()
+      ) as string[];
+      for (const code of candidates) {
+        const catId = codeToCatalogId.get(normalizeCatalogCode(code));
+        if (catId)
+          addUsage(catId, cust.id, customerName, `Khai báo SP ${prod.productCode || prod.productName || code}`);
+      }
+    }
+  }
+  return Object.fromEntries(
+    [...usageMap.entries()].map(([catId, byCust]) => [
+      catId,
+      [...byCust.values()].map(entry => ({
+        customerId: entry.customerId,
+        customerName: entry.customerName,
+        sources: [...entry.sources]
+      }))
+    ])
+  );
 }
 
 /** A single quantity writer for new NVL stock. Legacy balances are never inferred as opening stock. */
@@ -102,7 +210,9 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
         'purchase_orders',
         'production_commands',
         'inventory',
-        'warehouse_exports'
+        'warehouse_exports',
+        'customers',
+        'catalog_links'
       ];
       const result = await Promise.all(names.map(name => tx.get(firestore.collection(name))));
       const rows = (index: number): (Data & { id: string })[] =>
@@ -128,6 +238,7 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
           )
           .map(row => sourceView('production', row.id, row, true))
       ];
+      const itemUsers = buildItemUsers(rows(0), rows(2), rows(5), rows(8), rows(9));
       return {
         success: true,
         items: rows(0).filter(row => row.kind === 'raw_material'),
@@ -136,7 +247,8 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
         progress,
         sources,
         legacyInventory: rows(6),
-        legacyExports: rows(7)
+        legacyExports: rows(7),
+        itemUsers
       };
     });
   if (!canPostWarehouse(actor))
@@ -270,7 +382,13 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
       input.some(line => !line || typeof line !== 'object')
     )
       fail(400, 'Phiếu cần 1–50 dòng hợp lệ.');
-    const inputs = input as { sourceLine: string; catalogItemId: string; quantity: number }[];
+    const inputs = input as {
+      sourceLine: string;
+      catalogItemId: string;
+      quantity: number;
+      rollCode?: unknown;
+      remainingMeters?: unknown;
+    }[];
     if (new Set(inputs.map(line => line.sourceLine)).size !== inputs.length)
       fail(400, 'Dòng nguồn bị trùng trong phiếu.');
     const items = new Map<string, CatalogItem>();
@@ -316,6 +434,11 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
       const quantity = warehouseQuantity(inputLine.quantity),
         baseQuantity = warehouseQuantity(roundStock(quantity * factor));
       const sign = kind === 'production_issue' ? -1 : 1;
+      const rollCode = inputLine.rollCode !== undefined ? text(inputLine.rollCode, 100) : '';
+      const remainingMeters =
+        inputLine.remainingMeters !== undefined && inputLine.remainingMeters !== ''
+          ? warehouseQuantity(Number(inputLine.remainingMeters))
+          : undefined;
       return {
         sourceLine: inputLine.sourceLine,
         catalogItemId: item.id,
@@ -327,7 +450,9 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
         baseUnit: item.baseUnit,
         baseQuantity,
         delta: sign * baseQuantity,
-        catalogRevision: frozen?.id ? Number(frozen.revision) : item.revision
+        catalogRevision: frozen?.id ? Number(frozen.revision) : item.revision,
+        ...(rollCode ? { rollCode } : {}),
+        ...(remainingMeters !== undefined ? { remainingMeters } : {})
       };
     });
     for (const line of lines) {
@@ -406,6 +531,12 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
       sourceId,
       sourceCode: original?.sourceCode || String(source.purCode || source.lsxCode || sourceId),
       sourceType,
+      ...(sourceType === 'production' && (original?.customerId || source.customerId)
+        ? { customerId: String(original?.customerId || source.customerId) }
+        : {}),
+      ...(sourceType === 'production' && (original?.customerName || source.customerName)
+        ? { customerName: String(original?.customerName || source.customerName) }
+        : {}),
       lines,
       postedAt: now,
       postingDate: today,

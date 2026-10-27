@@ -19,7 +19,13 @@ import { useGoodsMutation } from './useGoodsMutation';
 import { GoodsSignaturePad } from './GoodsSignaturePad';
 import './Warehouse.css';
 
-type Entry = { catalogItemId: string; poItemId: string; quantity: string };
+type Entry = {
+  catalogItemId: string;
+  poItemId: string;
+  quantity: string;
+  rollCode?: string;
+  remainingMeters?: string;
+};
 export interface GoodsDialogOptions {
   kind: Exclude<GoodsKind, 'reversal'>;
   sourceId?: string;
@@ -161,11 +167,15 @@ export function GoodsVoucherDialog({
       window.removeEventListener('beforeunload', beforeUnload);
     };
   }, [dirty, locked, imageBusy, mutation.pending]);
-  const receipt = kind === 'production_receipt' || kind === 'purchase_receipt',
+  const surplusReceipt = kind === 'production_surplus_receipt';
+  const receipt = kind === 'production_receipt' || surplusReceipt || kind === 'purchase_receipt',
     direct = kind === 'supplier_dispatch';
   const sources =
     data?.sources.filter(
-      source => !source.blocked && source.type === (kind === 'production_receipt' ? 'production' : 'purchase')
+      source =>
+        !source.blocked &&
+        source.type === (kind === 'production_receipt' || surplusReceipt ? 'production' : 'purchase') &&
+        (!surplusReceipt || source.lines.some(line => Number(line.surplusQuantity) > 0))
     ) || [];
   const source = sources.find(source => source.id === sourceId);
   const dispatches =
@@ -187,20 +197,24 @@ export function GoodsVoucherDialog({
       ? (source?.lines || []).map(row => {
           const stored = state?.lines[row.id],
             current = entries[row.id];
+          const sourceQuantity = surplusReceipt ? Number(row.surplusQuantity || 0) : row.quantity;
           return {
             ...row,
+            quantity: sourceQuantity,
             catalogItemId: stored?.catalogItemId || row.catalogItemId || current?.catalogItemId || '',
             poItemId: stored?.poItemId || current?.poItemId || row.poItemId || '',
             fixed: !!stored || !!row.catalogItemId,
             remainingBase: stored
-              ? kind === 'production_receipt'
-                ? row.quantity * stored.factor - stored.received
-                : row.quantity * stored.factor -
-                  stored.received -
-                  stored.directSent +
-                  stored.directFailed -
-                  stored.failedIntoCompany +
-                  (stored.directCustomerReturned || 0)
+              ? surplusReceipt
+                ? sourceQuantity * stored.factor - (stored.surplusReceived || 0)
+                : kind === 'production_receipt'
+                  ? sourceQuantity * stored.factor - stored.received
+                  : sourceQuantity * stored.factor -
+                    stored.received -
+                    stored.directSent +
+                    stored.directFailed -
+                    stored.failedIntoCompany +
+                    (stored.directCustomerReturned || 0)
               : undefined
           };
         })
@@ -254,6 +268,8 @@ export function GoodsVoucherDialog({
             catalogItemId: row.catalogItemId,
             poItemId: row.poItemId,
             quantity,
+            rollCode: entry?.rollCode?.trim() || '',
+            remainingMeters: entry?.remainingMeters ? Number(entry.remainingMeters) : undefined,
             factor,
             item,
             remainingBase: row.remainingBase
@@ -313,11 +329,15 @@ export function GoodsVoucherDialog({
       ...(original
         ? { voucherId: original.id }
         : {
-            lines: selected.map(({ sourceLine, catalogItemId, poItemId, quantity }) => ({
+            lines: selected.map(({ sourceLine, catalogItemId, poItemId, quantity, rollCode, remainingMeters }) => ({
               sourceLine,
               catalogItemId,
               poItemId,
-              quantity
+              quantity,
+              ...(rollCode ? { rollCode } : {}),
+              ...(remainingMeters !== undefined && Number.isFinite(remainingMeters) && remainingMeters > 0
+                ? { remainingMeters }
+                : {})
             })),
             confirmMapping: confirmed
           }),

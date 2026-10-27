@@ -754,3 +754,49 @@ test('actual stock preview rounds by base precision and does not falsely warn on
     false
   );
 });
+
+test('production_return records optional rollCode and remainingMeters and load computes itemUsers', async () => {
+  const b = backend({
+    'production_commands/lsx1': {
+      ...command,
+      customerId: 'cus1',
+      customerName: 'Công ty Ánh Dương'
+    },
+    'customers/cus1': {
+      id: 'cus1',
+      name: 'Công ty Ánh Dương',
+      products: [
+        {
+          id: 'prod1',
+          code: 'SP-01',
+          name: 'Tem nhãn Ánh Dương',
+          specifications: { paperCode: 'NVL-01' }
+        }
+      ]
+    }
+  });
+  await b.manage(b.request('purchase_receipt', 50));
+  await b.manage(b.request('production_issue', 30));
+  const returned = await b.manage(
+    b.request('production_return', 12.5, {
+      lines: [
+        {
+          sourceLine: 'm1',
+          catalogItemId: 'paper',
+          quantity: 12.5,
+          rollCode: 'CUON-A12',
+          remainingMeters: 12.5
+        }
+      ]
+    })
+  );
+  const voucher = b.store.get(`warehouse_vouchers/${returned.id}`);
+  assert.equal(voucher.customerName, 'Công ty Ánh Dương');
+  assert.equal(voucher.lines[0].rollCode, 'CUON-A12');
+  assert.equal(voucher.lines[0].remainingMeters, 12.5);
+  const loaded = await b.manage({ action: 'load' });
+  assert.ok(Array.isArray(loaded.itemUsers.paper));
+  assert.equal(loaded.itemUsers.paper[0].customerName, 'Công ty Ánh Dương');
+  assert.ok(loaded.itemUsers.paper[0].sources.some(source => source.includes('LSX-1')));
+  assert.ok(loaded.itemUsers.paper[0].sources.some(source => source.includes('Khai báo SP')));
+});

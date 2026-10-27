@@ -972,3 +972,51 @@ test('a multi-PO order is received per PO: sources split by PO and each receipt 
   assert.equal(b.store.get('goods_order_state/po1'), undefined, 'receiving for PO 2 never touches PO 1');
   await assert.rejects(receipt('po2', 'po2__p1', 1), /Vượt sản lượng/);
 });
+
+test('surplusQuantity on QC completion does not alter PO completion and can be received via production_surplus_receipt and reversed', async () => {
+  const b = backend();
+  b.store.get('pos/po1').status = 'waiting_production';
+  const cmd = b.store.get('production_commands/lsx1');
+  cmd.status = 'producing';
+  cmd.revision = 1;
+  cmd.history = [];
+  await b.manageProduction({
+    action: 'complete',
+    id: 'lsx1',
+    poId: 'po1',
+    requestId: 'qc_surplus_complete_1',
+    expectedRevision: 1,
+    results: [{ itemId: 'p1', goodQuantity: 80, rejectQuantity: 0, surplusQuantity: 3 }],
+    qcNote: 'Làm dư 3 cái'
+  });
+  const updatedCmd = b.store.get('production_commands/lsx1');
+  assert.equal(updatedCmd.lines[0].goodQuantity, 80);
+  assert.equal(updatedCmd.lines[0].surplusQuantity, 3);
+  assert.equal(b.store.get('pos/po1').status, 'waiting_production', 'surplus does not complete short PO');
+  assert.equal(b.store.get('pos/po1').productionProgress, 'partial');
+
+  const loaded = await b.manage({ action: 'load' });
+  const source = loaded.sources.find(entry => entry.documentId === 'lsx1');
+  assert.equal(source.lines[0].surplusQuantity, 3);
+
+  await assert.rejects(
+    b.post('production_surplus_receipt', 4, {
+      sourceId: 'lsx1',
+      lines: [{ sourceLine: 'p1', poItemId: 'p1', catalogItemId: catalogId, quantity: 4 }]
+    }),
+    /Vượt SL dư/
+  );
+
+  const surplusPost = await b.post('production_surplus_receipt', 3, {
+    sourceId: 'lsx1',
+    lines: [{ sourceLine: 'p1', poItemId: 'p1', catalogItemId: catalogId, quantity: 3 }]
+  });
+  const surplusVoucher = b.store.get(`warehouse_vouchers/${surplusPost.id}`);
+  assert.equal(surplusVoucher.kind, 'production_surplus_receipt');
+  assert.equal(b.balance(), 3);
+  assert.equal(b.store.get('goods_source_state/production_lsx1').lines.p1.surplusReceived, 3);
+
+  await b.reverse(surplusPost.id);
+  assert.equal(b.balance(), 0);
+  assert.equal(b.store.get('goods_source_state/production_lsx1').lines.p1.surplusReceived, 0);
+});

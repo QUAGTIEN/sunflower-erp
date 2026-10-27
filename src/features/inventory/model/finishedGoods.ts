@@ -4,6 +4,7 @@ import { canPostWarehouse, canReadWarehouse, roundStock } from './warehouse.js';
 
 export const GOODS_KINDS = {
   production_receipt: 'Nhập thành phẩm từ QC',
+  production_surplus_receipt: 'Nhập thành phẩm dư từ SX',
   purchase_receipt: 'Nhập hàng mua / gia công',
   dispatch: 'Xuất kho giao khách',
   supplier_dispatch: 'NCC giao thẳng khách',
@@ -35,6 +36,8 @@ export interface GoodsVoucher {
   sourceType: 'production' | 'purchase' | 'po' | 'dispatch';
   poId: string;
   poCode: string;
+  customerId?: string;
+  customerName?: string;
   tripId: string;
   dispatchId: string;
   purchaseId: string;
@@ -79,6 +82,7 @@ export interface GoodsSourceLine {
   poItemId: string;
   factor: number;
   received: number;
+  surplusReceived?: number;
   directSent: number;
   directDelivered: number;
   directFailed: number;
@@ -119,8 +123,18 @@ export interface GoodsSource {
   code: string;
   type: 'production' | 'purchase';
   poId: string;
+  customerId?: string;
+  customerName?: string;
   blocked: string;
-  lines: { id: string; poItemId: string; name: string; unit: string; quantity: number; catalogItemId: string }[];
+  lines: {
+    id: string;
+    poItemId: string;
+    name: string;
+    unit: string;
+    quantity: number;
+    surplusQuantity?: number;
+    catalogItemId: string;
+  }[];
 }
 export interface GoodsTrip {
   id: string;

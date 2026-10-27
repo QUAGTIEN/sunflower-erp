@@ -71,6 +71,9 @@ export const sourceStamp = (source: Data, type: 'production' | 'purchase') =>
       unit: row.unit,
       quantity: row.quantity,
       goodQuantity: row.goodQuantity ?? null,
+      ...(type === 'production' && Number(row.surplusQuantity) > 0
+        ? { surplusQuantity: Number(row.surplusQuantity) }
+        : {}),
       catalog: type === 'production' ? row.catalog || null : null,
       size: row.size || ''
     }))
@@ -98,6 +101,8 @@ function productionReceiptSources(source: Data & { id: string }) {
         : source.lsxCode || source.id,
     type: 'production',
     poId,
+    customerId: String(source.customerId || ''),
+    customerName: String(source.customerName || ''),
     blocked: '',
     lines: lines
       .filter(row => String(row.poId || source.poId) === poId)
@@ -107,6 +112,7 @@ function productionReceiptSources(source: Data & { id: string }) {
         name: row.productName || '',
         unit: row.unit || '',
         quantity: Number(row.goodQuantity || 0),
+        ...(Number(row.surplusQuantity) > 0 ? { surplusQuantity: Number(row.surplusQuantity) } : {}),
         catalogItemId: (row.catalog as Data | undefined)?.id || ''
       }))
   }));
@@ -330,7 +336,8 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
     if (original) await assertPhysicalSourceUnbilled(tx, firestore, id(body.voucherId));
     const kind = (original?.kind || (action === 'close_short' ? 'close_short' : body.kind)) as GoodsKind;
     if (!Object.hasOwn(GOODS_KINDS, kind) || kind === 'reversal') fail(400, 'Loại phiếu không hợp lệ.');
-    const receipt = kind === 'production_receipt' || kind === 'purchase_receipt';
+    const surplusReceipt = kind === 'production_surplus_receipt';
+    const receipt = kind === 'production_receipt' || surplusReceipt || kind === 'purchase_receipt';
     const newDispatch = kind === 'dispatch' || kind === 'supplier_dispatch';
     const direct = kind === 'supplier_dispatch';
     const dispatchId =
@@ -347,7 +354,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
     )
       fail(409, 'Phiếu xuất gốc không hợp lệ hoặc đã đảo.');
     const sourceType =
-      kind === 'production_receipt'
+      kind === 'production_receipt' || surplusReceipt
         ? 'production'
         : kind === 'purchase_receipt' || direct
           ? 'purchase'
@@ -587,6 +594,11 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
           failedIntoCompany: 0,
           directCustomerReturned: 0
         };
+      const rollCode = entry.rollCode !== undefined ? text(entry.rollCode, 100) : '';
+      const remainingMeters =
+        entry.remainingMeters !== undefined && entry.remainingMeters !== ''
+          ? warehouseQuantity(Number(entry.remainingMeters))
+          : undefined;
       lines.push({
         sourceLine,
         poItemId,
@@ -601,7 +613,9 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
         baseQuantity,
         baseUnit: item!.baseUnit,
         delta,
-        catalogRevision: Number(frozen?.revision || item!.revision)
+        catalogRevision: Number(frozen?.revision || item!.revision),
+        ...(rollCode ? { rollCode } : {}),
+        ...(remainingMeters !== undefined ? { remainingMeters } : {})
       });
     }
     if (kind === 'close_short' && !reversing) {
@@ -647,7 +661,8 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
           : line.sourceLine;
         const state = sourceState.lines[sourceKey];
         if (!state) fail(409, 'Thiếu trạng thái nguồn. Cần đối soát.');
-        if (receipt) state!.received = roundStock(state!.received + amount);
+        if (surplusReceipt) state!.surplusReceived = roundStock((state!.surplusReceived || 0) + amount);
+        else if (receipt) state!.received = roundStock(state!.received + amount);
         if (direct) state!.directSent = roundStock(state!.directSent + amount);
         if (dispatch?.kind === 'supplier_dispatch') {
           if (kind === 'delivery') state!.directDelivered = roundStock(state!.directDelivered + amount);
@@ -663,27 +678,38 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
           sourceType === 'production'
             ? sourceRows.find(row => (row.lineId || row.itemId) === sourceKey)
             : sourceRows[Number(sourceKey.replace(/^line-/, ''))];
-        const cap = warehouseQuantity(
-          Number(sourceType === 'production' ? sourceRow?.goodQuantity : sourceRow?.quantity)
-        );
-        if (
-          Object.entries(state!).some(
-            ([key, value]) =>
-              [
-                'received',
-                'directSent',
-                'directDelivered',
-                'directFailed',
-                'failedIntoCompany',
-                'directCustomerReturned'
-              ].includes(key) && Number(value) < 0
-          ) ||
-          state!.directDelivered + state!.directFailed > state!.directSent ||
-          state!.failedIntoCompany > state!.directFailed ||
-          (state!.directCustomerReturned || 0) > state!.directDelivered ||
-          sourceUsed(state!) > roundStock(cap * state!.factor)
-        )
-          fail(409, 'Vượt sản lượng QC/lượng đặt còn lại hoặc cần đảo phiếu sau trước.');
+        if (surplusReceipt) {
+          const surplusCap = Number(sourceRow?.surplusQuantity || 0);
+          if (!(surplusCap > 0)) fail(409, 'Dòng LSX không có SL dư được nghiệm thu.');
+          const validSurplusCap = warehouseQuantity(surplusCap);
+          if (
+            (state!.surplusReceived || 0) < 0 ||
+            (state!.surplusReceived || 0) > roundStock(validSurplusCap * state!.factor)
+          )
+            fail(409, 'Vượt SL dư đã nghiệm thu hoặc cần đảo phiếu sau trước.');
+        } else {
+          const cap = warehouseQuantity(
+            Number(sourceType === 'production' ? sourceRow?.goodQuantity : sourceRow?.quantity)
+          );
+          if (
+            Object.entries(state!).some(
+              ([key, value]) =>
+                [
+                  'received',
+                  'directSent',
+                  'directDelivered',
+                  'directFailed',
+                  'failedIntoCompany',
+                  'directCustomerReturned'
+                ].includes(key) && Number(value) < 0
+            ) ||
+            state!.directDelivered + state!.directFailed > state!.directSent ||
+            state!.failedIntoCompany > state!.directFailed ||
+            (state!.directCustomerReturned || 0) > state!.directDelivered ||
+            sourceUsed(state!) > roundStock(cap * state!.factor)
+          )
+            fail(409, 'Vượt sản lượng QC/lượng đặt còn lại hoặc cần đảo phiếu sau trước.');
+        }
       }
     }
     let proof: GoodsVoucher['proof'];
@@ -754,6 +780,10 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
         original?.sourceCode || String(source?.lsxCode || source?.purCode || dispatch?.code || po.poCode || poId),
       poId,
       poCode: String(po.poCode || poId),
+      ...(po.customerId || source?.customerId ? { customerId: String(po.customerId || source?.customerId) } : {}),
+      ...(po.customerName || source?.customerName
+        ? { customerName: String(po.customerName || source?.customerName) }
+        : {}),
       tripId,
       dispatchId,
       purchaseId,

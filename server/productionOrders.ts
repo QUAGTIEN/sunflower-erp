@@ -320,17 +320,26 @@ function completeOrder(next: ProductionOrder, body: Record<string, unknown>, act
   next.lines = next.lines.map(line => {
     const result = results.find(result => matches(result, line));
     const goodQuantity = Number(result?.goodQuantity),
-      rejectQuantity = Number(result?.rejectQuantity);
+      rejectQuantity = Number(result?.rejectQuantity),
+      surplusQuantity = result?.surplusQuantity === undefined ? 0 : Number(result.surplusQuantity);
     if (
       !result ||
       !Number.isFinite(goodQuantity) ||
       !Number.isFinite(rejectQuantity) ||
+      !Number.isFinite(surplusQuantity) ||
       goodQuantity < 0 ||
       rejectQuantity < 0 ||
+      surplusQuantity < 0 ||
+      surplusQuantity > 1e9 ||
       goodQuantity + rejectQuantity > line.quantity + 1e-8
     )
-      throw new AdminApiError(400, 'Số lượng đạt + hỏng không được vượt số lượng lệnh.');
-    return { ...line, goodQuantity, rejectQuantity };
+      throw new AdminApiError(400, 'Số lượng đạt + hỏng không được vượt số lượng lệnh và SL dư phải >= 0.');
+    return {
+      ...line,
+      goodQuantity,
+      rejectQuantity,
+      ...(surplusQuantity > 0 ? { surplusQuantity } : {})
+    };
   });
   if (!String(body.qcNote || '').trim()) throw new AdminApiError(400, 'Nhập ghi chú nghiệm thu QC.');
   next.status = 'completed';
@@ -394,15 +403,28 @@ async function loadCatalog(firestore: Firestore, actor: ProductionActor, body: R
     const pos = await readPOs(transaction, firestore, poIds);
     for (const po of pos) assertPOAccess(actor, po);
     const options = await Promise.all(pos.map(po => productionCatalogReader(transaction, firestore, po).options()));
+    const mappedLines = Object.fromEntries(
+      options.flatMap((option, index) =>
+        Object.entries(option.lines).map(([itemId, value]) => [`${pos[index].id}::${itemId}`, value])
+      )
+    );
+    const catalogIds = unique(
+      Object.values(mappedLines)
+        .map(entry => entry.catalog?.id || '')
+        .filter(Boolean)
+    );
+    const balanceSnapshots = await Promise.all(
+      catalogIds.map(id => transaction.get(firestore.collection('warehouse_balances').doc(`fg_${id}`)))
+    );
+    const stockBalances = Object.fromEntries(
+      catalogIds.map((id, index) => [id, Number(balanceSnapshots[index].data()?.quantity || 0)])
+    );
     return {
       success: true,
       materials: options[0].materials,
       // Keyed by PO and line so two POs with the same item ID never overwrite each other.
-      lines: Object.fromEntries(
-        options.flatMap((option, index) =>
-          Object.entries(option.lines).map(([itemId, value]) => [`${pos[index].id}::${itemId}`, value])
-        )
-      )
+      lines: mappedLines,
+      stockBalances
     };
   });
 }

@@ -17,6 +17,7 @@ interface Props {
   commands: CommandRecord[];
   draftId: string;
   catalogLines: ProductionDraftCatalog['lines'];
+  stockBalances?: Record<string, number>;
   catalogLoading: boolean;
   catalogError: string;
   /** Empty while no customer is chosen; the picker only lists that customer's POs. */
@@ -37,6 +38,7 @@ export function LsxItemsTable({
   commands,
   draftId,
   catalogLines,
+  stockBalances,
   catalogLoading,
   catalogError,
   pickHint,
@@ -101,12 +103,20 @@ export function LsxItemsTable({
               const productName = String(item?.productName || line.itemId);
               const specification = [item?.size, item?.material].filter(Boolean).map(String).join(' · ');
               const mapped = catalogLines[key];
+              const availableStock = mapped?.catalog?.id ? Number(stockBalances?.[mapped.catalog.id] || 0) : 0;
               return (
                 <Fragment key={key}>
                   <tr>
                     <td className="lsx-number">{position + 1}</td>
                     <td title={String(item?.productCode || '')}>{String(item?.productCode || 'Nhập tay')}</td>
-                    <td title={productName}>{productName}</td>
+                    <td title={productName}>
+                      {productName}
+                      {availableStock > 0 && mapped?.catalog && (
+                        <span className="lsx-tag lsx-tag--warning" style={{ marginLeft: 6 }}>
+                          Kho đang có {number(availableStock)} {mapped.catalog.baseUnit} dư
+                        </span>
+                      )}
+                    </td>
                     <td title={String(po?.poCode || line.poId)}>{String(po?.poCode || line.poId)}</td>
                     <td>{String(item?.unit || '—')}</td>
                     <td className="lsx-number">{number(remaining)}</td>

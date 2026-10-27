@@ -25,7 +25,7 @@ const previewQuantity = (value: number) => {
     return NaN;
   }
 };
-type Entry = { catalogItemId: string; quantity: string };
+type Entry = { catalogItemId: string; quantity: string; rollCode?: string; remainingMeters?: string };
 export function WarehouseVoucherDialog({
   currentUser,
   initialSourceId = '',
@@ -132,7 +132,17 @@ export function WarehouseVoucherDialog({
         } catch {
           /* Inline conversion error below; server validates again. */
         }
-        return { sourceLine: line.id, catalogItemId, quantity: Number(entries[line.id].quantity), factor, line, item };
+        const entry = entries[line.id];
+        return {
+          sourceLine: line.id,
+          catalogItemId,
+          quantity: Number(entry.quantity),
+          rollCode: entry.rollCode?.trim() || '',
+          remainingMeters: entry.remainingMeters ? Number(entry.remainingMeters) : undefined,
+          factor,
+          line,
+          item
+        };
       }) || [];
   const projected = new Map<string, number>();
   for (const line of reversal?.lines ||
@@ -186,10 +196,14 @@ export function WarehouseVoucherDialog({
             : {
                 kind,
                 sourceId,
-                lines: selected.map(({ sourceLine, catalogItemId, quantity }) => ({
+                lines: selected.map(({ sourceLine, catalogItemId, quantity, rollCode, remainingMeters }) => ({
                   sourceLine,
                   catalogItemId,
-                  quantity
+                  quantity,
+                  ...(rollCode ? { rollCode } : {}),
+                  ...(remainingMeters !== undefined && Number.isFinite(remainingMeters) && remainingMeters > 0
+                    ? { remainingMeters }
+                    : {})
                 })),
                 confirmMapping
               }),
@@ -314,6 +328,12 @@ export function WarehouseVoucherDialog({
                     <th>Dự kiến / đặt</th>
                     <th>Đã nhận / cấp ròng</th>
                     <th>SL phiếu này</th>
+                    {kind === 'production_return' && (
+                      <>
+                        <th>Mã cuộn</th>
+                        <th>Số mét còn lại</th>
+                      </>
+                    )}
                     <th>Quy đổi cơ sở</th>
                   </tr>
                 </thead>
@@ -378,11 +398,55 @@ export function WarehouseVoucherDialog({
                             onChange={event =>
                               setEntries({
                                 ...entries,
-                                [line.id]: { catalogItemId: catalogId, quantity: event.target.value }
+                                [line.id]: { ...entry, catalogItemId: catalogId, quantity: event.target.value }
                               })
                             }
                           />
                         </td>
+                        {kind === 'production_return' && (
+                          <>
+                            <td>
+                              <input
+                                aria-label={`Mã cuộn ${line.name}`}
+                                maxLength={100}
+                                placeholder="VD: CUON-01"
+                                value={entry?.rollCode || ''}
+                                onChange={event =>
+                                  setEntries({
+                                    ...entries,
+                                    [line.id]: {
+                                      ...entry,
+                                      catalogItemId: catalogId,
+                                      quantity: entry?.quantity || '',
+                                      rollCode: event.target.value
+                                    }
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <input
+                                aria-label={`Số mét còn lại ${line.name}`}
+                                type="number"
+                                min="0"
+                                step="0.000001"
+                                placeholder="Số mét"
+                                value={entry?.remainingMeters || ''}
+                                onChange={event =>
+                                  setEntries({
+                                    ...entries,
+                                    [line.id]: {
+                                      ...entry,
+                                      catalogItemId: catalogId,
+                                      quantity: entry?.quantity || '',
+                                      remainingMeters: event.target.value
+                                    }
+                                  })
+                                }
+                              />
+                            </td>
+                          </>
+                        )}
                         <td>
                           {item
                             ? factor
@@ -395,7 +459,9 @@ export function WarehouseVoucherDialog({
                   })}
                   {!source && (
                     <tr>
-                      <td colSpan={7}>Chọn chứng từ nguồn để nhập số lượng thực tế.</td>
+                      <td colSpan={kind === 'production_return' ? 9 : 7}>
+                        Chọn chứng từ nguồn để nhập số lượng thực tế.
+                      </td>
                     </tr>
                   )}
                 </tbody>

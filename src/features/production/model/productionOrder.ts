@@ -43,6 +43,7 @@ export interface ProductionLine {
   image: string;
   goodQuantity?: number;
   rejectQuantity?: number;
+  surplusQuantity?: number;
   catalog?: ProductionCatalogSnapshot;
   printDetails?: { materialWidth: string; priority: string };
 }

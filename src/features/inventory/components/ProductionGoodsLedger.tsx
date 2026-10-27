@@ -7,6 +7,7 @@ import { loadFinishedGoods } from '../api/finishedGoodsService';
 import { canPostGoods, canReadGoods, GOODS_KINDS, type GoodsVoucher } from '../model/finishedGoods';
 import { stockNumber } from '../model/warehouse';
 import { GoodsVoucherDialog } from './GoodsVoucherDialog';
+
 export function ProductionGoodsLedger({
   orderId,
   status,
@@ -22,7 +23,7 @@ export function ProductionGoodsLedger({
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true),
     [refresh, setRefresh] = useState(0),
-    [creating, setCreating] = useState(false);
+    [creating, setCreating] = useState<'production_receipt' | 'production_surplus_receipt' | null>(null);
   const permitted = canReadGoods(currentUser);
   useEffect(() => {
     if (!permitted) return;
@@ -60,9 +61,22 @@ export function ProductionGoodsLedger({
             }}
           />
           {status === 'completed' && canPostGoods(currentUser) && (
-            <button className="btn btn-outline" disabled={loading || !!error} onClick={() => setCreating(true)}>
-              Nhập thành phẩm từ QC
-            </button>
+            <>
+              <button
+                className="btn btn-outline"
+                disabled={loading || !!error}
+                onClick={() => setCreating('production_receipt')}
+              >
+                Nhập thành phẩm từ QC
+              </button>
+              <button
+                className="btn btn-outline"
+                disabled={loading || !!error}
+                onClick={() => setCreating('production_surplus_receipt')}
+              >
+                Nhập thành phẩm dư từ SX
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -113,10 +127,10 @@ export function ProductionGoodsLedger({
       {creating && (
         <GoodsVoucherDialog
           currentUser={currentUser}
-          options={{ kind: 'production_receipt', sourceId: orderId }}
-          onClose={() => setCreating(false)}
+          options={{ kind: creating, sourceId: orderId }}
+          onClose={() => setCreating(null)}
           onSaved={() => {
-            setCreating(false);
+            setCreating(null);
             setLoading(true);
             setRefresh(value => value + 1);
             onRefresh();
