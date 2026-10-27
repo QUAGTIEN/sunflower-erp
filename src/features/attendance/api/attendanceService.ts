@@ -1,5 +1,5 @@
 import { authService, isFirebaseRuntimeEnabled } from '@/infrastructure/firebase/erpDataGateway';
-import type { AttendanceMonth, AttendanceWorkspace } from '../model/attendance';
+import type { AttendanceWorkspace } from '../model/timesheet';
 
 async function request(body: Record<string, unknown>) {
   if (!isFirebaseRuntimeEnabled)
@@ -26,6 +26,5 @@ async function request(body: Record<string, unknown>) {
   return data;
 }
 export const loadAttendance = (month: string): Promise<AttendanceWorkspace> => request({ action: 'load', month });
-export const saveAttendanceSettings = (changes: Record<string, unknown>[]) => request({ action: 'settings', changes });
-export const mutateAttendance = async (body: Record<string, unknown>): Promise<AttendanceMonth> =>
-  (await request(body)).record;
+/** Every write carries the caller's requestId so a retried request is answered without writing twice. */
+export const mutateAttendance = (body: Record<string, unknown>): Promise<Record<string, unknown>> => request(body);

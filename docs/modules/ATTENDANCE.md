@@ -20,6 +20,18 @@ Thay toàn bộ luồng cũ "nhân viên tự chấm, gửi duyệt tháng, yêu
 8. Dữ liệu chấm công cũ không chuyển sang. Bản mới dùng collection mới và không đọc `attendance_months`,
    `attendance_settings` nữa; hai collection này vẫn bị rules chặn, người dùng tự xóa trên Firebase Console khi muốn.
 
+## Giao diện
+
+- **Chấm công** (chỉ Admin/Kế toán): dải tổng hợp của ngày đang chọn (nhân viên, đi làm, nửa buổi, nghỉ có/không
+  phép, chưa chấm); lịch tháng, mỗi ô ghi số người đi làm, tên người đi trễ/nửa buổi/nghỉ (tối đa 3, còn lại "+N
+  khác") và số người chưa chấm; khung bên phải liệt kê mọi nhân viên của ngày đang chọn. Bấm tên để mở hộp thoại
+  chấm công. "Chấm cả ngày đi làm" chấm Full-time chưa chấm; icon lịch mở hộp thoại ngày nghỉ; "Thiết lập NV" chọn
+  Full-time/Part-time.
+- **Bảng công** (mọi vai trò): mỗi dòng một nhân viên, mỗi cột một ngày (X đi làm, T trễ, ½ nửa buổi, P nghỉ có phép,
+  V nghỉ không phép, số giờ với Part-time), cột ngày nghỉ tô xám; cuối dòng là Công, Trễ (phút), Phép, Vắng, OT và
+  Làm ngày nghỉ. Rê chuột vào ô để xem chi tiết và ghi chú. Nhân viên chỉ thấy dòng của mình.
+- Tháng đã xem được giữ trong bộ nhớ và hiện ngay khi quay lại, dữ liệu mới tải ngầm.
+
 ## Ngày lễ mặc định
 
 `src/features/attendance/model/vietnamHolidays.ts` tính theo Bộ luật Lao động 2019, điều 112:
