@@ -114,6 +114,8 @@ export interface GoodsPO {
 }
 export interface GoodsSource {
   id: string;
+  /** Order or purchase the voucher posts against; differs from `id` when a multi-PO order is split per PO. */
+  documentId?: string;
   code: string;
   type: 'production' | 'purchase';
   poId: string;

@@ -4,7 +4,7 @@ Mốc đầu lượt: `54b09f8`, main/origin. Đây là sổ **số lượng**, 
 
 ## Luồng sử dụng
 
-1. **Nhập từ QC:** Sản xuất → chi tiết LSX v2 hoàn thành → Nhập thành phẩm từ QC. Chọn lượng đạt thực nhập, có thể nhập nhiều lần; tổng không vượt `goodQuantity`. QC hoặc in LSX không tự cộng kho. Dòng có snapshot giữ đúng mã/quy đổi; dòng chưa liên kết phải chọn mã thành phẩm và xác nhận, không sửa snapshot lịch sử.
+1. **Nhập từ QC:** Sản xuất → chi tiết LSX v2 hoàn thành → Nhập thành phẩm từ QC. Chọn lượng đạt thực nhập, có thể nhập nhiều lần; tổng không vượt `goodQuantity`. QC hoặc in LSX không tự cộng kho. LSX gồm nhiều PO (D-LSX1) hiện thành một nguồn cho mỗi PO; phiếu nhập ghi `poId` của PO đó và chỉ nhận dòng của PO đó. Dòng có snapshot giữ đúng mã/quy đổi; dòng chưa liên kết phải chọn mã thành phẩm và xác nhận, không sửa snapshot lịch sử.
 2. **Hàng mua/gia công về công ty:** Mua hàng → đơn mua → Nhập kho hàng mua/gia công. Nhận từng dòng/từng phần; ánh xạ dòng PO thiếu định danh phải được chọn rõ. Có dòng PO hợp lệ trên nguồn thì không được đổi sang dòng khác. Mã nội bộ, ĐVT, quy đổi kiểm tra lại ở máy chủ.
 3. **Xuất kho giao:** Lập chuyến chứa PO; Vật liệu → Thành phẩm hoặc Giao hàng → Hàng giao & thành phẩm → Xuất giao. Phiếu xuất làm giảm tồn công ty và tăng hàng đang giao; không tăng lượng khách đã nhận. Chặn âm kho thành phẩm, không có lựa chọn vượt âm. Chỉ xuất trước khi chuyến xuất phát.
 4. **Xuất phát/POD:** Duyệt → bốc hàng → xuất phát; mỗi PO trong chuyến phải có hàng đang giao. Xác nhận theo phiếu xuất gốc, từng dòng/từng phần, người nhận và mã/link POD hoặc ảnh/chữ ký. Có khung ký trực tuyến, ảnh nén JPEG tối đa 800px/250KB; không dùng Storage. POD không trừ kho lần hai.

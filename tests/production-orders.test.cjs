@@ -104,7 +104,9 @@ function backend(extra = {}) {
                   !ref.field ||
                   (ref.operator === 'in'
                     ? ref.value.includes(doc.data()[ref.field])
-                    : doc.data()[ref.field] === ref.value)
+                    : ref.operator === 'array-contains'
+                      ? (doc.data()[ref.field] || []).includes(ref.value)
+                      : doc.data()[ref.field] === ref.value)
               )
             };
           },
@@ -171,7 +173,15 @@ test('scope excludes resale/service lines, rejects duplicate/foreign IDs and inv
     [{ itemId: 'roll', quantity: NaN }]
   ])
     assert.throws(() => model.validateProductionDraft(po(), [], draft({ lines })));
-  assert.throws(() => model.validateProductionDraft(po(), [], draft({ requiredItemIds: ['manual'] })), /Dòng sản phẩm/);
+  const resale = {
+    ...po(),
+    items: [...po().items, { itemId: 'ink', productName: 'Mực in', quantity: 5, unit: 'hộp', productType: 'muc_in' }]
+  };
+  assert.throws(
+    () => model.validateProductionDraft(resale, [], draft({ lines: [{ itemId: 'ink', quantity: 1 }] })),
+    /Dòng sản phẩm/,
+    'resale and service lines are never production lines'
+  );
 });
 test('legacy commands require explicit reconciliation, not a guessed first-item allocation', () => {
   assert.throws(() => model.allocatedQuantities([{ id: 'old', status: 'completed', qtyToProduce: 100 }]), /đối soát/);
@@ -892,9 +902,9 @@ test('production resolves confirmed PO mappings on the server and ignores forged
   assert.equal(line.productCode, 'TM01');
   assert.equal(b.store.get('pos/po1').items[0].catalog, undefined);
   const options = await b.manage({ action: 'catalog', poId: 'po1' }, accountant);
-  assert.equal(options.lines.roll.catalog.code, 'FG01');
+  assert.equal(options.lines['po1::roll'].catalog.code, 'FG01');
   assert.equal(options.materials.length, 0);
-  assert.equal(options.lines.manual.catalog, undefined);
+  assert.equal(options.lines['po1::manual'].catalog, undefined);
 });
 test('stale/inactive mappings block storage; changed catalog requires a refreshed draft before release', async () => {
   const fixture = catalogFixture();
@@ -929,7 +939,7 @@ test('stale/inactive mappings block storage; changed catalog requires a refreshe
   await assert.rejects(stale.manage(draft()), /đối chiếu/);
   const before = stale.store.size;
   const result = await stale.manage({ action: 'catalog', poId: 'po1' }, accountant);
-  assert.match(result.lines.roll.error, /đối chiếu/);
+  assert.match(result.lines['po1::roll'].error, /đối chiếu/);
   assert.equal(stale.store.size, before);
 });
 test('customer-product mapping is inherited only for the exact identified PO version and technical snapshot', async () => {
@@ -1227,4 +1237,73 @@ test('LSX editor uses the merged item table and the inline material table', () =
   assert.match(workspace, /<LsxMaterialsTable/);
   assert.doesNotMatch(workspace, /Mã nội bộ và thông tin bổ sung trên phiếu/);
   assert.match(workspace, /quantities:\s*po\s*\?\s*prefilledQuantities\(po, requiredItemIds\)/);
+});
+
+test('one order can draw lines from several POs of one customer; allocation stays per PO line', async () => {
+  const b = backend({
+    'pos/po2': { ...po(), id: 'po2', poCode: 'PO-02' },
+    'pos/po3': { ...po(), id: 'po3', poCode: 'PO-03', customerId: 'customer2' }
+  });
+  await b.manage(
+    draft({
+      poId: undefined,
+      lines: [
+        { poId: 'po1', itemId: 'roll', quantity: 100 },
+        { poId: 'po2', itemId: 'roll', quantity: 40 }
+      ]
+    })
+  );
+  const order = b.order();
+  assert.deepEqual(order.poIds, ['po1', 'po2']);
+  assert.equal(order.poId, 'po1');
+  assert.equal(order.poCode, 'PO-01, PO-02');
+  assert.deepEqual(
+    order.lines.map(line => [line.lineId, line.poCode]),
+    [
+      ['po1__roll', 'PO-01'],
+      ['po2__roll', 'PO-02']
+    ]
+  );
+  assert.equal(b.store.get('pos/po2').productionPlanLocked, true);
+  const extra = (id, lines) => b.manage(draft({ id, requestId: `request-${id}`, poId: undefined, lines }));
+  await assert.rejects(extra('command2', [{ poId: 'po1', itemId: 'roll', quantity: 1 }]), /vượt phần còn lại/);
+  await extra('command2', [{ poId: 'po2', itemId: 'roll', quantity: 60 }]);
+  await assert.rejects(
+    extra('command3', [
+      { poId: 'po1', itemId: 'manual', quantity: 1 },
+      { poId: 'po3', itemId: 'manual', quantity: 1 }
+    ]),
+    /cùng một khách hàng/
+  );
+  await assert.rejects(extra('command3', [{ poId: 'po9', itemId: 'manual', quantity: 1 }]), /Không tìm thấy PO/);
+});
+
+test('QC on a multi-PO order ships each PO only when its own lines are fully produced', async () => {
+  const b = backend({ 'pos/po2': { ...po(), id: 'po2', poCode: 'PO-02' } });
+  await b.manage(
+    draft({
+      poId: undefined,
+      lines: [
+        { poId: 'po1', itemId: 'roll', quantity: 100 },
+        { poId: 'po1', itemId: 'manual', quantity: 50 },
+        { poId: 'po2', itemId: 'roll', quantity: 30 }
+      ]
+    })
+  );
+  await b.action('submit');
+  await b.action('release');
+  await b.action('start');
+  const byItem = b.order().lines.map(line => ({ itemId: line.itemId, goodQuantity: line.quantity, rejectQuantity: 0 }));
+  await assert.rejects(
+    b.action('complete', 'command1', { results: byItem, qcNote: 'QC' }),
+    /trùng dòng/,
+    'two POs share item "roll", so results need the line key'
+  );
+  await b.action('complete', 'command1', {
+    results: b.order().lines.map(line => ({ lineId: line.lineId, goodQuantity: line.quantity, rejectQuantity: 0 })),
+    qcNote: 'QC đạt'
+  });
+  assert.equal(b.store.get('pos/po1').status, 'waiting_delivery');
+  assert.equal(b.store.get('pos/po2').status, 'waiting_production');
+  assert.equal(b.store.get('pos/po2').productionProgress, 'partial');
 });

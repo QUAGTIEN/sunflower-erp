@@ -180,7 +180,7 @@ export function GoodsVoucherDialog({
   const selectedPoId = original?.poId || dispatch?.poId || source?.poId || poId;
   const po = data?.orders.find(order => order.id === selectedPoId),
     orderState = data?.orderStates.find(state => state.id === selectedPoId);
-  const state = data?.sourceStates.find(state => state.id === `${source?.type}_${sourceId}`),
+  const state = data?.sourceStates.find(state => state.id === `${source?.type}_${source?.documentId || sourceId}`),
     dispatchState = data?.dispatchStates.find(state => state.id === dispatchId);
   const formRows =
     receipt || direct
@@ -306,7 +306,7 @@ export function GoodsVoucherDialog({
     void mutation.execute({
       action: original ? 'reverse' : kind === 'close_short' ? 'close_short' : 'post',
       kind,
-      sourceId,
+      sourceId: source?.documentId || sourceId,
       poId: selectedPoId,
       tripId,
       dispatchId,

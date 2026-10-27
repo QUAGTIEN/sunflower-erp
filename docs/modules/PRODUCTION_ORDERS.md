@@ -1,9 +1,28 @@
 # Lệnh sản xuất — bước triển khai đầu
 
+## Quyết định D-LSX1 (chốt 27/10/2026): một lệnh gồm nhiều PO của cùng khách
+
+- Lập lệnh chọn được **khách hàng, PO và mã sản phẩm độc lập**; một LSX có thể lấy dòng từ nhiều PO, nhưng
+  **chỉ của một khách** (máy chủ chặn khác khách hoặc PO thiếu khách khi gộp).
+- Mỗi PO có bao nhiêu mã thì giữ bấy nhiêu dòng; cùng mã ở hai PO là hai dòng riêng, không gộp số lượng.
+- Không lập lệnh cho hàng không thuộc PO (sản xuất tồn kho) trong đợt này.
+- Bỏ bước chốt cột “Cần SX” trước lệnh đầu: dòng nào đưa vào lệnh là dòng cần sản xuất. Dòng mua bán lại / dịch vụ
+  (`workType` mua_nvl/mua_hang/dich_vu, loại giấy/máy in/máy quét/mực in) không bao giờ là dòng sản xuất
+  (`productionItemIds`). PO đã chốt danh sách theo luồng cũ giữ danh sách đó.
+- Phiếu in đổi thành nút **Xuất lệnh sản xuất**, mẫu theo phiếu tem trắng của công ty, có cột PO trên từng dòng.
+
+Dữ liệu: mỗi dòng LSX lưu `poId`, `poCode`, `lineId` (`poId__itemId`); lệnh lưu `poIds`, `poCodes`, `poCode` (nối các
+mã) và `poId` là PO đầu tiên để màn hình cũ vẫn đọc được. Lệnh trước đây (một PO, dòng không có `poId`) đọc như cũ.
+Phân bổ số lượng tính theo cặp PO + dòng; máy chủ đọc lệnh theo `poId` và `poIds` (array-contains) rồi gộp.
+QC gửi kết quả theo `lineId` (kết quả chỉ có `itemId` vẫn nhận khi không trùng). Mỗi PO tự chuyển chờ giao khi các
+dòng sản xuất của chính PO đó đủ sản lượng đạt. `action: catalog` nhận `poIds` và trả liên kết mã theo khóa
+`poId::itemId`. Nhập thành phẩm từ lệnh nhiều PO tách thành từng nguồn `<lệnh>--<PO>`; mỗi phiếu nhập thuộc một PO
+(xem `../accounting/FINISHED_GOODS.md`).
+
 ## Đã triển khai
 
 - Menu **Sản xuất** nằm ngay dưới **Đơn hàng**, có hai tab **Lệnh sản xuất** và **Danh sách máy**. Đơn hàng không còn tab LSX. Toàn bộ lệnh mới / cũ dùng chung `production_commands`; có thể tìm kiếm, lọc loại lệnh và tạo lệnh mới tại Sản xuất.
-- Chọn một PO, xác định các dòng cần sản xuất (không tự coi hàng mua lại / dịch vụ là hàng sản xuất), chia từng dòng thành nhiều LSX. Dòng nhập tay dùng `itemId`, không phụ thuộc mã sản phẩm.
+- Chọn dòng từ một hoặc nhiều PO của cùng khách (xem D-LSX1), chia từng dòng thành nhiều LSX. Dòng nhập tay dùng `itemId`, không phụ thuộc mã sản phẩm.
 - Nháp → Chờ duyệt → Duyệt & phát hành → Bắt đầu sản xuất → Nghiệm thu QC. Có trả về nháp và hủy lệnh chưa chạy; không xóa cứng lệnh mới.
 - Lưu thông số từ PO, nhân sự, máy, ca, ngày cần, ưu tiên, ghi chú và vật tư dự kiến. Sau phát hành, thông số và dòng hàng được khóa; danh mục sản phẩm thay đổi không sửa phiếu đã phát hành.
 - QC ghi nhận sản lượng đạt / hỏng theo từng mặt hàng và ĐVT. Thiếu sản lượng có thể lập lệnh bổ sung. PO chỉ chuyển từ chờ sản xuất sang chờ giao khi đủ sản lượng đạt của toàn bộ các dòng cần SX.

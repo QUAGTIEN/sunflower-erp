@@ -117,7 +117,11 @@ function backend(extra = {}) {
             const docs = [...store.keys()]
               .filter(key => key.startsWith(`${ref.name}/`))
               .map(key => snapshot({ path: key, id: key.split('/')[1] }));
-            return { docs: docs.filter(doc => !ref.field || doc.data()[ref.field] === ref.value) };
+            const matches = doc =>
+              ref.operator === 'array-contains'
+                ? (doc.data()[ref.field] || []).includes(ref.value)
+                : doc.data()[ref.field] === ref.value;
+            return { docs: docs.filter(doc => !ref.field || matches(doc)) };
           },
           set: (ref, data) => writes.push({ ref, data: structuredClone(data), replace: true }),
           update: (ref, data) => writes.push({ ref, data: structuredClone(data) })
@@ -907,4 +911,64 @@ test('partial shipping preserves production access; later QC completion preserve
   assert.equal(b.store.get('pos/po1').status, 'waiting_delivery');
   assert.equal(b.store.get('pos/po1').deliveryProgress, 'partial');
   assert.equal(b.store.get('pos/po1').items[0].qtyDelivered, 20);
+});
+
+test('a multi-PO order is received per PO: sources split by PO and each receipt lands on its own PO', async () => {
+  const multi = {
+    id: 'lsx9',
+    lsxCode: 'LSX-9',
+    productionOrderVersion: 2,
+    poId: 'po1',
+    poIds: ['po1', 'po2'],
+    status: 'completed',
+    lines: [
+      {
+        itemId: 'p1',
+        poId: 'po1',
+        poCode: 'PO-1',
+        lineId: 'po1__p1',
+        productName: 'Tem khách',
+        quantity: 20,
+        goodQuantity: 20,
+        unit: 'cái',
+        catalog
+      },
+      {
+        itemId: 'p1',
+        poId: 'po2',
+        poCode: 'PO-2',
+        lineId: 'po2__p1',
+        productName: 'Tem khách',
+        quantity: 10,
+        goodQuantity: 10,
+        unit: 'cái',
+        catalog
+      }
+    ]
+  };
+  const b = backend({ 'pos/po2': { ...po, id: 'po2', poCode: 'PO-2' }, 'production_commands/lsx9': multi });
+  const loaded = await b.manage({ action: 'load' });
+  const sources = loaded.sources.filter(source => source.documentId === 'lsx9');
+  assert.deepEqual(
+    sources.map(source => [source.id, source.poId, source.lines.map(line => line.id)]),
+    [
+      ['lsx9--po1', 'po1', ['po1__p1']],
+      ['lsx9--po2', 'po2', ['po2__p1']]
+    ]
+  );
+  const receipt = (poId, sourceLine, quantity) =>
+    b.manage(
+      b.request('production_receipt', quantity, {
+        sourceId: 'lsx9',
+        poId,
+        expectedOrderRevision: b.store.get(`goods_order_state/${poId}`)?.revision || 0,
+        lines: [{ sourceLine, poItemId: 'p1', catalogItemId: catalogId, quantity }]
+      })
+    );
+  await assert.rejects(receipt('po3', 'po1__p1', 1), /Chọn PO thuộc lệnh/);
+  await assert.rejects(receipt('po2', 'po1__p1', 1), /không tồn tại/);
+  await receipt('po2', 'po2__p1', 10);
+  assert.equal(b.store.get('goods_source_state/production_lsx9').lines.po2__p1.received, 10);
+  assert.equal(b.store.get('goods_order_state/po1'), undefined, 'receiving for PO 2 never touches PO 1');
+  await assert.rejects(receipt('po2', 'po2__p1', 1), /Vượt sản lượng/);
 });

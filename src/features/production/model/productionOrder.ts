@@ -26,6 +26,11 @@ export interface ProductionPO extends Record<string, unknown> {
 }
 export interface ProductionLine {
   itemId: string;
+  /** PO of this line. Orders made before multi-PO orders leave it empty and use the order's `poId`. */
+  poId?: string;
+  poCode?: string;
+  /** Unique key of the line inside the order: `poId__itemId`; older lines are keyed by `itemId` alone. */
+  lineId?: string;
   productCode: string;
   productName: string;
   productType: string;
@@ -76,8 +81,11 @@ export interface ProductionOrder extends Record<string, unknown> {
   productionOrderVersion: 2;
   revision: number;
   lsxCode: string;
+  /** First PO of the order, kept for older readers; `poIds` lists every PO the lines come from. */
   poId: string;
   poCode: string;
+  poIds?: string[];
+  poCodes?: string[];
   customerName: string;
   customerId: string;
   status: ProductionStatus;
@@ -107,6 +115,30 @@ export interface ProductionOrder extends Record<string, unknown> {
 export type CommandRecord = Partial<ProductionOrder> & { deleted?: boolean; [key: string]: unknown };
 export const itemIdentity = (item: Record<string, unknown>, index: number) =>
   String(item.itemId || `legacy-line-${index + 1}`);
+const NON_PRODUCTION_WORK_TYPES = ['mua_nvl', 'mua_hang', 'dich_vu'];
+const NON_PRODUCTION_PRODUCT_TYPES = ['giay', 'may_in', 'may_quet', 'muc_in'];
+/**
+ * PO lines that need production: everything except resale, purchase and service lines. A PO whose plan was
+ * locked under the old per-PO flow keeps that list.
+ */
+export function productionItemIds(po: ProductionPO): string[] {
+  if (po.productionPlanRequiredItemIds?.length) return po.productionPlanRequiredItemIds;
+  return (po.items || [])
+    .map((item, index) => ({ item, id: itemIdentity(item, index) }))
+    .filter(
+      ({ item }) =>
+        !NON_PRODUCTION_WORK_TYPES.includes(String(item.workType)) &&
+        !NON_PRODUCTION_PRODUCT_TYPES.includes(String(item.productType))
+    )
+    .map(({ id }) => id);
+}
+export const linePoId = (line: Pick<ProductionLine, 'poId'>, command: Pick<CommandRecord, 'poId'>) =>
+  String(line.poId || command.poId || '');
+export const lineKey = (line: Pick<ProductionLine, 'lineId' | 'itemId'>) => line.lineId || line.itemId;
+export const allocationKey = (poId: string, itemId: string) => `${poId}::${itemId}`;
+/** Every PO an order draws lines from; older orders only carry `poId`. */
+export const commandPoIds = (command: CommandRecord): string[] =>
+  Array.isArray(command.poIds) && command.poIds.length ? command.poIds : command.poId ? [command.poId] : [];
 const fail = (message: string): never => {
   throw new Error(message);
 };
@@ -207,45 +239,52 @@ export function allocatedQuantities(commands: CommandRecord[], excludedId = '') 
       );
     for (const line of command.lines || []) {
       const qty = command.status === 'completed' ? (line.goodQuantity ?? 0) : line.quantity;
-      allocations.set(line.itemId, (allocations.get(line.itemId) || 0) + qty);
+      const key = allocationKey(linePoId(line, command), line.itemId);
+      allocations.set(key, (allocations.get(key) || 0) + qty);
     }
   }
   return allocations;
 }
-export function validateProductionDraft(
-  po: ProductionPO,
+/** Validate one order whose lines may come from several POs of the same customer. */
+export function validateProductionOrderDraft(
+  pos: ProductionPO[],
   commands: CommandRecord[],
   raw: Record<string, unknown>,
   excludedId = ''
 ) {
-  const items = po.items || [];
-  const ids = items.map(itemIdentity);
-  if (new Set(ids).size !== ids.length) fail('PO có mã dòng bị trùng. Cần sửa dữ liệu PO trước.');
-  const required = po.productionPlanRequiredItemIds?.length
-    ? po.productionPlanRequiredItemIds
-    : Array.isArray(raw.requiredItemIds)
-      ? raw.requiredItemIds.map(String)
-      : [];
-  if (!required.length || new Set(required).size !== required.length || required.some(id => !ids.includes(id)))
-    fail('Hãy xác định các dòng cần sản xuất; bỏ chọn hàng mua bán lại / dịch vụ.');
+  if (!pos.length) fail('Chọn ít nhất một PO để lập lệnh.');
+  const customers = new Set(pos.map(po => String(po.customerId || '')));
+  if (pos.length > 1 && (customers.size > 1 || customers.has('')))
+    fail('Một lệnh sản xuất chỉ gồm các PO của cùng một khách hàng.');
+  for (const po of pos) {
+    const ids = (po.items || []).map(itemIdentity);
+    if (new Set(ids).size !== ids.length)
+      fail(`PO ${po.poCode || po.id} có mã dòng bị trùng. Cần sửa dữ liệu PO trước.`);
+  }
   const allocations = allocatedQuantities(commands, excludedId);
   if (!Array.isArray(raw.lines) || !raw.lines.length || raw.lines.length > 200)
     fail('Chọn ít nhất một mặt hàng để lập lệnh (tối đa 200 dòng).');
+  const defaultPoId = pos.length === 1 ? pos[0].id : '';
   const seen = new Set<string>();
   const lines = (raw.lines as unknown[]).map((entry: unknown): ProductionLine => {
     const line = entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : {};
+    const poId = text(line.poId, 160) || defaultPoId;
+    const po = pos.find(candidate => candidate.id === poId);
+    const items = po?.items || [];
     const id = text(line.itemId, 160),
-      index = ids.indexOf(id),
-      quantity = numeric(line.quantity);
-    if (index < 0 || !required.includes(id) || seen.has(id)) fail('Dòng sản phẩm không hợp lệ hoặc bị trùng.');
-    seen.add(id);
+      index = items.map(itemIdentity).indexOf(id),
+      quantity = numeric(line.quantity),
+      key = allocationKey(poId, id);
+    if (!po || index < 0 || !productionItemIds(po).includes(id) || seen.has(key))
+      fail('Dòng sản phẩm không hợp lệ hoặc bị trùng.');
+    seen.add(key);
     const ordered = numeric(items[index].quantity);
     if (
       !Number.isFinite(quantity) ||
       quantity <= 0 ||
       !Number.isFinite(ordered) ||
       ordered <= 0 ||
-      quantity + (allocations.get(id) || 0) > ordered + 1e-8
+      quantity + (allocations.get(key) || 0) > ordered + 1e-8
     )
       fail(`Số lượng ${text(items[index].productName)} vượt phần còn lại hoặc không hợp lệ.`);
     const snapshot = lineSnapshot(items[index], index, quantity);
@@ -259,7 +298,13 @@ export function validateProductionDraft(
       fail('Khổ NVL của dòng tem phải là số dương (mm).');
     if (details.priority && !['normal', 'high', 'urgent'].includes(String(details.priority)))
       fail('Ưu tiên của dòng hàng không hợp lệ.');
-    return { ...snapshot, printDetails: { materialWidth, priority: text(details.priority, 20) } };
+    return {
+      ...snapshot,
+      poId,
+      poCode: String(po!.poCode || poId),
+      lineId: `${poId}__${id}`,
+      printDetails: { materialWidth, priority: text(details.priority, 20) }
+    };
   });
   if (Array.isArray(raw.materials) && raw.materials.length > 100) fail('Tối đa 100 dòng vật tư dự kiến.');
   const materials: PlannedMaterial[] = (Array.isArray(raw.materials) ? raw.materials : []).map(
@@ -298,7 +343,6 @@ export function validateProductionDraft(
     lines,
     materials,
     printTemplate: { id: template?.id || 'standard', version: 1 } as ProductionPrintTemplate,
-    requiredItemIds: required,
     machineId: text(raw.machineId, 160),
     operatorId: text(raw.operatorId, 160),
     shift: text(raw.shift, 100),
@@ -307,6 +351,13 @@ export function validateProductionDraft(
     notes: text(raw.notes, 3000)
   };
 }
+/** Single-PO form of `validateProductionOrderDraft`; lines without `poId` belong to this PO. */
+export const validateProductionDraft = (
+  po: ProductionPO,
+  commands: CommandRecord[],
+  raw: Record<string, unknown>,
+  excludedId = ''
+) => validateProductionOrderDraft([po], commands, raw, excludedId);
 export function assertTransition(actor: ProductionActor, order: ProductionOrder, action: string) {
   const manager = canManageProduction(actor);
   if (!canDraftProduction(actor)) fail('Bạn không có quyền lập lệnh sản xuất.');
@@ -331,7 +382,7 @@ export function assertTransition(actor: ProductionActor, order: ProductionOrder,
   if (!permitted) fail('Không có quyền hoặc lệnh đã đổi trạng thái. Hãy tải lại danh sách.');
 }
 export function completedProduction(po: ProductionPO, commands: CommandRecord[]) {
-  const required = po.productionPlanRequiredItemIds || [];
+  const required = productionItemIds(po);
   if (
     !required.length ||
     commands.some(command => !command.deleted && command.status !== 'cancelled' && command.productionOrderVersion !== 2)
@@ -342,7 +393,7 @@ export function completedProduction(po: ProductionPO, commands: CommandRecord[])
     const item = (po.items || []).find((item, index) => itemIdentity(item, index) === id);
     const quantity = numeric(item?.quantity);
     const actual = completed
-      .flatMap(command => command.lines || [])
+      .flatMap(command => (command.lines || []).filter(line => linePoId(line, command) === po.id))
       .filter(line => line.itemId === id)
       .reduce((sum, line) => sum + (line.goodQuantity || 0), 0);
     return Number.isFinite(quantity) && quantity > 0 && actual + 1e-8 >= quantity;

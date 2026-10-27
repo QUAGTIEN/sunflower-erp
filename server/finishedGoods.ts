@@ -64,7 +64,8 @@ export const sourceStamp = (source: Data, type: 'production' | 'purchase') =>
     poId: source.poId || source.linkedPoId || '',
     supplierId: source.supplierId || '',
     lines: rows(source[type === 'production' ? 'lines' : 'items']).map((row, index) => ({
-      id: type === 'production' ? row.itemId : `line-${index}`,
+      id: type === 'production' ? row.lineId || row.itemId : `line-${index}`,
+      ...(type === 'production' && row.poId ? { linePoId: row.poId } : {}),
       poItemId: row.poItemId || '',
       name: row.productName || '',
       unit: row.unit,
@@ -80,6 +81,36 @@ const sourceUsed = (line: GoodsSourceState['lines'][string]) =>
   );
 const sourceReceived = (line: GoodsSourceState['lines'][string]) =>
   roundStock(line.received + line.directDelivered + line.failedIntoCompany - (line.directCustomerReturned || 0));
+
+/**
+ * Receipt sources of a completed order. A multi-PO order is split per PO (`<orderId>--<poId>`) because a
+ * receipt voucher always belongs to one PO; `documentId` keeps the order the voucher is posted against.
+ */
+function productionReceiptSources(source: Data & { id: string }) {
+  const lines = rows(source.lines);
+  const poIds = [...new Set(lines.map(row => String(row.poId || source.poId)))];
+  return poIds.map(poId => ({
+    id: poIds.length > 1 ? `${source.id}--${poId}` : source.id,
+    documentId: source.id,
+    code:
+      poIds.length > 1
+        ? `${source.lsxCode || source.id} · ${lines.find(row => row.poId === poId)?.poCode || poId}`
+        : source.lsxCode || source.id,
+    type: 'production',
+    poId,
+    blocked: '',
+    lines: lines
+      .filter(row => String(row.poId || source.poId) === poId)
+      .map(row => ({
+        id: String(row.lineId || row.itemId),
+        poItemId: row.itemId,
+        name: row.productName || '',
+        unit: row.unit || '',
+        quantity: Number(row.goodQuantity || 0),
+        catalogItemId: (row.catalog as Data | undefined)?.id || ''
+      }))
+  }));
+}
 
 /** Quantity-only finished goods and delivery events. All writes are deferred until every read/validation finishes. */
 export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
@@ -135,21 +166,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
         sources: [
           ...list(7)
             .filter(row => row.productionOrderVersion === 2 && row.status === 'completed' && !row.deleted)
-            .map(source => ({
-              id: source.id,
-              code: source.lsxCode || source.id,
-              type: 'production',
-              poId: source.poId,
-              blocked: '',
-              lines: rows(source.lines).map(row => ({
-                id: row.itemId,
-                poItemId: row.itemId,
-                name: row.productName || '',
-                unit: row.unit || '',
-                quantity: Number(row.goodQuantity || 0),
-                catalogItemId: (row.catalog as Data | undefined)?.id || ''
-              }))
-            })),
+            .flatMap(productionReceiptSources),
           ...list(8)
             .filter(
               row =>
@@ -347,10 +364,20 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
           ? await read('purchase_orders', sourceId)
           : undefined;
     if (['production', 'purchase'].includes(sourceType) && !source) fail(404, 'Không tìm thấy chứng từ nguồn.');
+    const productionPoIds =
+      sourceType === 'production' && source
+        ? [...new Set(rows(source.lines).map(row => String(row.poId || source.poId)))]
+        : [];
     const poId =
       original?.poId ||
       dispatch?.poId ||
-      (source ? String(sourceType === 'production' ? source.poId : source.linkedPoId || '') : id(body.poId));
+      (sourceType === 'production' && productionPoIds.length > 1
+        ? productionPoIds.includes(id(body.poId))
+          ? String(body.poId)
+          : fail(400, 'Chọn PO thuộc lệnh sản xuất này.')
+        : source
+          ? String(sourceType === 'production' ? source.poId : source.linkedPoId || '')
+          : id(body.poId));
     id(poId);
     const po: Data = (await read('pos', poId)) || fail(404, 'Không tìm thấy PO nguồn.');
     if (po.deleted && !reversing) fail(400, 'PO đã xóa.');
@@ -448,7 +475,9 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
       if (sourceType === 'purchase' && !/^line-(0|[1-9]\d*)$/.test(sourceLine)) fail(400, 'ID dòng mua không hợp lệ.');
       const row =
         sourceType === 'production'
-          ? sourceRows.find(row => row.itemId === sourceLine)
+          ? sourceRows.find(
+              row => (row.lineId || row.itemId) === sourceLine && String(row.poId || sourceData!.poId) === poId
+            )
           : sourceType === 'purchase'
             ? sourceRows[Number(sourceLine.replace(/^line-/, ''))]
             : undefined;
@@ -466,7 +495,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
         frozenLine?.poItemId ||
         storedSource?.poItemId ||
         (sourceType === 'production'
-          ? sourceLine
+          ? String(row?.itemId || sourceLine)
           : sourceType === 'purchase'
             ? identities.includes(sourcePoItemId)
               ? sourcePoItemId
@@ -632,7 +661,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
         }
         const sourceRow =
           sourceType === 'production'
-            ? sourceRows.find(row => row.itemId === sourceKey)
+            ? sourceRows.find(row => (row.lineId || row.itemId) === sourceKey)
             : sourceRows[Number(sourceKey.replace(/^line-/, ''))];
         const cap = warehouseQuantity(
           Number(sourceType === 'production' ? sourceRow?.goodQuantity : sourceRow?.quantity)
