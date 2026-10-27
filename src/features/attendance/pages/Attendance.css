@@ -95,9 +95,9 @@
   pointer-events: none;
 }
 
-.attendance-page input,
+.attendance-page input:not([type='radio']):not([type='checkbox']),
 .attendance-page select,
-.attendance-dialog input,
+.attendance-dialog input:not([type='radio']):not([type='checkbox']),
 .attendance-dialog select,
 .attendance-dialog textarea {
   min-width: 0;
@@ -651,6 +651,9 @@
 .attendance-dialog .attendance-status-options label {
   flex-direction: row;
   align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  white-space: nowrap;
   min-height: var(--erp-control-height);
   box-sizing: border-box;
   padding: 0 10px;
@@ -665,8 +668,11 @@
   font-weight: 500;
 }
 .attendance-dialog .attendance-status-options input {
-  min-height: 0;
+  width: 16px;
+  height: 16px;
+  flex: none;
   margin: 0;
+  accent-color: var(--attendance-primary, #1e3a8a);
 }
 .attendance-day-fields {
   display: grid;
