@@ -136,7 +136,7 @@ export function AttendanceEntryDialog({
           {options.map(option => (
             <label key={option} className={status === option ? 'is-selected' : undefined}>
               <input
-                type="radio"
+                type="checkbox"
                 name="attendance-status"
                 value={option}
                 checked={status === option}

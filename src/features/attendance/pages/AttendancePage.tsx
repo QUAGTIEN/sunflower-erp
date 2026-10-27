@@ -49,6 +49,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [selectedDate, setSelectedDate] = useState(today);
   const [editing, setEditing] = useState<{ userId: string; date: string } | null>(null);
   const [dayOffDate, setDayOffDate] = useState('');
@@ -94,6 +95,8 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const canRecord = recorder && workspace.canRecord;
   const visibleTab: Tab = canRecord ? tab : 'timesheet';
   const showSkeleton = loading && loadedMonth !== month;
+  const employees = attendanceEmployees(workspace);
+  const activeEmployeeId = employees.some(person => person.uid === selectedEmployeeId) ? selectedEmployeeId : '';
 
   const refresh = () => {
     setLoading(true);
@@ -194,7 +197,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
         </div>
       )}
       <div className="attendance-toolbar">
-        {canRecord && (
+        {canRecord && (visibleTab === 'record' || !activeEmployeeId) && (
           <input
             type="search"
             aria-label="Tìm nhân viên"
@@ -202,6 +205,21 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
             value={search}
             onChange={event => setSearch(event.target.value)}
           />
+        )}
+        {canRecord && visibleTab === 'timesheet' && (
+          <select
+            aria-label="Chọn nhân viên xem bảng công"
+            value={activeEmployeeId}
+            disabled={busy}
+            onChange={event => setSelectedEmployeeId(event.target.value)}
+          >
+            <option value="">Tất cả nhân viên ({employees.length})</option>
+            {employees.map(person => (
+              <option key={person.uid} value={person.uid}>
+                {person.displayName}
+              </option>
+            ))}
+          </select>
         )}
         <AttendanceMonthNav
           month={month}
@@ -233,7 +251,13 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
           onEditDayOff={setDayOffDate}
         />
       ) : (
-        <AttendanceTimesheetTable workspace={workspace} month={month} search={search} />
+        <AttendanceTimesheetTable
+          workspace={workspace}
+          month={month}
+          search={search}
+          selectedEmployeeId={activeEmployeeId}
+          onSelectEmployee={canRecord ? setSelectedEmployeeId : undefined}
+        />
       )}
       {editing && editingEmployee && (
         <AttendanceEntryDialog

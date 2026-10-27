@@ -26,7 +26,7 @@ interface Props {
 }
 
 const WEEKDAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
-const NAMES_PER_CELL = 3;
+const NAMES_PER_CELL = 10;
 const weekdayOf = (date: string) => WEEKDAYS[(new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7];
 const shortDate = (date: string) => `${date.slice(8)}/${date.slice(5, 7)}`;
 const matches = (row: RosterRow, search: string) =>
@@ -143,8 +143,17 @@ export function AttendanceRecorderBoard({
                   </div>
                   {inMonth && (
                     <div className="attendance-day-status">
-                      {counts.present > 0 && (
-                        <span className="attendance-chip attendance-chip--work">{counts.present} đi làm</span>
+                      {(counts.present > 0 || showUnrecorded) && (
+                        <div className="attendance-day-badges">
+                          {counts.present > 0 && (
+                            <span className="attendance-chip attendance-chip--work">Đi làm {counts.present}</span>
+                          )}
+                          {showUnrecorded && (
+                            <span className="attendance-chip attendance-chip--unrecorded">
+                              {counts.unrecorded} chưa chấm
+                            </span>
+                          )}
+                        </div>
                       )}
                       {notable.slice(0, NAMES_PER_CELL).map(row => (
                         <button
@@ -155,17 +164,14 @@ export function AttendanceRecorderBoard({
                           disabled={busy}
                           onClick={event => openEntry(event, row.employee.uid, date)}
                         >
-                          {row.employee.displayName} · {chipLabel(row.entry!)}
+                          <span className="attendance-chip__name">{row.employee.displayName}</span>
+                          <span className="attendance-chip__sep"> · </span>
+                          <span className="attendance-chip__status">{chipLabel(row.entry!)}</span>
                         </button>
                       ))}
                       {notable.length > NAMES_PER_CELL && (
                         <span className="attendance-chip attendance-chip--more">
                           +{notable.length - NAMES_PER_CELL} khác
-                        </span>
-                      )}
-                      {showUnrecorded && (
-                        <span className="attendance-chip attendance-chip--unrecorded">
-                          {counts.unrecorded} chưa chấm
                         </span>
                       )}
                     </div>

@@ -30,6 +30,10 @@
   width: 240px;
   max-width: 100%;
 }
+.attendance-toolbar > select {
+  min-width: 220px;
+  max-width: 100%;
+}
 .attendance-month-controls {
   margin-left: auto;
 }
@@ -217,7 +221,7 @@
 .attendance-calendar {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  min-width: 720px;
+  min-width: 760px;
   border-top: 1px solid var(--erp-border-color);
   border-left: 1px solid var(--erp-border-color);
   background: #fff;
@@ -236,13 +240,13 @@
 }
 .attendance-calendar-day {
   display: flex;
-  height: var(--attendance-day-height);
+  min-height: var(--attendance-day-height);
+  height: auto;
   min-width: 0;
   box-sizing: border-box;
   flex-direction: column;
   gap: 6px;
   padding: 6px 8px;
-  overflow: hidden;
   border-right: 1px solid var(--erp-border-color);
   border-bottom: 1px solid var(--erp-border-color);
   background: #fff;
@@ -312,36 +316,67 @@
 }
 .attendance-day-status {
   display: flex;
+  width: 100%;
   min-width: 0;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
+  align-items: stretch;
+  gap: 4px;
+}
+.attendance-day-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
 }
 
-/* Nhãn trạng thái: nền nhạt, chữ đậm cùng tông. */
+/* Nhãn trạng thái: nền nhạt, chữ đậm cùng tông, căn vừa khít trong ô lịch. */
 .attendance-page .attendance-chip {
   display: inline-flex;
   max-width: 100%;
-  height: 20px;
-  min-height: 0;
+  min-height: 22px;
+  height: auto;
   box-sizing: border-box;
   flex: none;
   align-items: center;
-  padding: 0 6px;
+  padding: 2px 6px;
   overflow: hidden;
   border: 0;
   border-radius: 4px;
   font: inherit;
   font-size: 11.5px;
   font-weight: 500;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.attendance-page .attendance-day-status > button.attendance-chip {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
 }
 .attendance-page button.attendance-chip {
   cursor: pointer;
 }
 .attendance-page button.attendance-chip:hover:not(:disabled) {
   filter: brightness(0.96);
+}
+.attendance-chip__name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attendance-chip__sep {
+  display: none;
+}
+.attendance-chip__status {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
 }
 .attendance-chip--work {
   background: #dcfce7;
@@ -486,12 +521,52 @@
   background: var(--attendance-off);
 }
 
-/* Bảng công: mỗi dòng một nhân viên, mỗi cột một ngày, cột tổng ở cuối. */
+/* Bảng công: mỗi dòng một nhân viên hoặc chi tiết của một nhân viên. */
 .attendance-timesheet {
   display: flex;
   min-width: 0;
   flex-direction: column;
+  gap: 12px;
+}
+.attendance-employee-sheet {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+.attendance-employee-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
+}
+.attendance-employee-sheet__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.attendance-employee-sheet__title h3 {
+  margin: 0;
+  color: #172554;
+  font-size: 15px;
+  font-weight: 600;
+}
+.attendance-page .attendance-employee-link {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--attendance-primary, #1e3a8a);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.attendance-page .attendance-employee-link:hover {
+  text-decoration: underline;
 }
 .attendance-table-scroll {
   max-width: 100%;
@@ -576,6 +651,35 @@
 }
 .attendance-timesheet-table td:not(.attendance-number):not(.attendance-timesheet-name) {
   font-weight: 600;
+}
+.attendance-employee-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.attendance-employee-detail-table :is(th, td) {
+  height: 36px;
+  box-sizing: border-box;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--erp-border-color);
+  text-align: left;
+  white-space: nowrap;
+}
+.attendance-employee-detail-table th {
+  background: #f8fafc;
+  color: #172554;
+  font-weight: 600;
+}
+.attendance-employee-detail-table :is(th, td).attendance-number {
+  text-align: right;
+}
+.attendance-employee-detail-table tr.is-off td {
+  background: var(--attendance-off);
+}
+.attendance-employee-detail-table td:last-child {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .attendance-page .erp-data-table-pagination {
   flex-wrap: wrap;
@@ -668,11 +772,40 @@
   font-weight: 500;
 }
 .attendance-dialog .attendance-status-options input {
-  width: 16px;
-  height: 16px;
-  flex: none;
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  flex: 0 0 16px !important;
   margin: 0;
-  accent-color: var(--attendance-primary, #1e3a8a);
+  padding: 0 !important;
+  border: 1.5px solid #94a3b8 !important;
+  border-radius: 3px !important;
+  background: #fff !important;
+  outline: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+.attendance-dialog .attendance-status-options input:checked {
+  border-color: var(--attendance-primary, #1e3a8a) !important;
+  background: var(--attendance-primary, #1e3a8a) !important;
+}
+.attendance-dialog .attendance-status-options input:checked::before {
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: translateY(-1px) rotate(-45deg);
+  content: '';
+}
+.attendance-dialog .attendance-status-options input:focus,
+.attendance-dialog .attendance-status-options input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 .attendance-day-fields {
   display: grid;
@@ -723,7 +856,7 @@
   color: var(--attendance-muted, #64748b);
   font-size: 12.5px;
 }
-.attendance-dialog :is(input, select, textarea, button):focus-visible {
+.attendance-dialog :is(input:not([type='checkbox']):not([type='radio']), select, textarea, button):focus-visible {
   outline: 2px solid #6687c7;
   outline-offset: 2px;
 }
@@ -743,6 +876,7 @@
 }
 @media (max-width: 600px) {
   .attendance-toolbar > input[type='search'],
+  .attendance-toolbar > select,
   .attendance-month-controls {
     width: 100%;
   }

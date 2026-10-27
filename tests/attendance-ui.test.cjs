@@ -216,12 +216,18 @@ test('the board names notable staff in day cells, opens an entry from the day li
   );
 });
 
-test('the timesheet shows one row per employee with symbols, day-off columns and monthly totals', () => {
+test('the timesheet shows one row per employee or a selected employee detail view with monthly totals', () => {
   const Table = loader({
     '@/components/DataTablePagination': { DataTablePagination: () => null },
     '@/hooks/useDataTablePagination': { useDataTablePagination: items => ({ rows: items, paginationProps: {} }) }
   })('src/features/attendance/components/AttendanceTimesheetTable.tsx').AttendanceTimesheetTable;
-  const tree = Table({ workspace: workspace(), month: '2026-10', search: 'nhân viên' });
+  const selected = [];
+  const tree = Table({
+    workspace: workspace(),
+    month: '2026-10',
+    search: 'nhân viên',
+    onSelectEmployee: uid => selected.push(uid)
+  });
   const rows = nodes(tree).filter(node => node.type === 'tr' && node.key);
   assert.equal(rows.length, 1);
   const cells = rows[0].props.children
@@ -236,6 +242,28 @@ test('the timesheet shows one row per employee with symbols, day-off columns and
     cells.slice(-6).map(cell => cell.text),
     ['2,5', '15', '0,5', '0', '2', '1']
   );
+  nodes(tree)
+    .find(node => node.type === 'button' && String(node.props.className).includes('attendance-employee-link'))
+    .props.onClick();
+  assert.deepEqual(selected, ['worker']);
+
+  const singleTree = Table({
+    workspace: workspace(),
+    month: '2026-10',
+    search: '',
+    selectedEmployeeId: 'worker',
+    onSelectEmployee: uid => selected.push(uid)
+  });
+  assert.ok(
+    nodes(singleTree).some(node => node.type === 'h3' && text(node).includes('Bảng công cá nhân: Nhân viên A'))
+  );
+  assert.ok(
+    nodes(singleTree).some(node => node.type === 'table' && node.props.className === 'attendance-employee-detail-table')
+  );
+  nodes(singleTree)
+    .find(node => node.type === 'button' && node.props.children === 'Xem tất cả nhân viên')
+    .props.onClick();
+  assert.deepEqual(selected, ['worker', '']);
 });
 
 test('the entry dialog offers only work on a day off, hides OT for part-time and saves validated input', async () => {
@@ -255,7 +283,9 @@ test('the entry dialog offers only work on a day off, hides OT for part-time and
   let tree = ui.render();
   const options = () =>
     nodes(tree)
-      .filter(node => node.type === 'input' && node.props.type === 'radio')
+      .filter(
+        node => node.type === 'input' && node.props.type === 'checkbox' && node.props.name === 'attendance-status'
+      )
       .map(node => node.props.value);
   assert.deepEqual(options(), ['present', 'half']);
   ui.state.set('overtime', '1.5');
