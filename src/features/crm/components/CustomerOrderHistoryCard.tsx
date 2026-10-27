@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, ImageOff } from 'lucide-react';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { useLanguage } from '@/context/LanguageContext';
 import {
@@ -131,107 +131,104 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
         </div>
       ) : (
         <div className="table-container customer-order-history-table">
-          <table className="customer-sample-history-table customer-product-history-table">
+          <table className="customer-product-catalog-table">
             <thead>
               <tr>
-                <th>{t('Sản phẩm / mã hàng')}</th>
+                <th>{t('Ảnh')}</th>
+                <th>{t('Mã hàng')}</th>
+                <th>{t('Tên sản phẩm')}</th>
                 <th>{t('Loại sản phẩm')}</th>
-                <th>{t('Quy cách & NVL')}</th>
-                <th>{t('Lịch sử đặt')}</th>
-                <th>{t('Hình ảnh / tệp')}</th>
-                <th>{t('Thao tác')}</th>
+                <th>{t('Chất liệu / NVL')}</th>
+                <th>{t('Quy cách')}</th>
+                <th className="customer-product-number">{t('Số đơn')}</th>
+                <th className="customer-product-number">{t('SL đã đặt')}</th>
+                <th>{t('PO gần nhất')}</th>
+                <th>{t('Tệp')}</th>
+                <th aria-label={t('Thao tác')} />
               </tr>
             </thead>
             <tbody>
-              {selectedCustomerProducts.map(product => (
-                <tr key={product.key}>
-                  <td>
-                    <div className="customer-sample-identity">
+              {selectedCustomerProducts.map(product => {
+                const files: unknown[] =
+                  product.record && Array.isArray(product.record.files) ? product.record.files : [];
+                const productType = product.record
+                  ? productClassifications.find(type => type.id === product.record?.productType)?.name ||
+                    CUSTOMER_PRODUCT_TYPES.find(type => type.id === product.record?.productType)?.name ||
+                    product.record.productType ||
+                    '—'
+                  : '—';
+                const canEdit = product.record && (currentUser.role === 'admin' || currentUser.role === 'sale');
+                const actions = [
+                  ...(product.previewImage
+                    ? [{ label: t('Xem ảnh'), onSelect: () => setPreviewImage(product.previewImage) }]
+                    : []),
+                  ...files.map((file, index) => {
+                    const asset = typeof file === 'object' && file ? (file as Record<string, unknown>) : {};
+                    return {
+                      label: `${t('Mở tệp')}: ${String(asset.name || asset.fileName || `${t('Tệp')} ${index + 1}`)}`,
+                      onSelect: () => openCustomerProductAsset(getProductAssetSource(file))
+                    };
+                  }),
+                  ...(canEdit ? [{ label: t('Chỉnh sửa'), onSelect: () => handleOpenEditProduct(product.record) }] : [])
+                ];
+                return (
+                  <tr key={product.key}>
+                    <td>
                       {product.previewImage ? (
-                        <img src={product.previewImage} alt={product.productName} />
+                        <button
+                          type="button"
+                          className="customer-product-thumb"
+                          title={t('Xem ảnh')}
+                          onClick={() => setPreviewImage(product.previewImage)}
+                        >
+                          <img src={product.previewImage} alt={product.productName} />
+                        </button>
                       ) : (
-                        <span>{t('Chưa có ảnh')}</span>
+                        <span className="customer-product-thumb is-empty" title={t('Chưa có ảnh')}>
+                          <ImageOff size={14} aria-label={t('Chưa có ảnh')} />
+                        </span>
                       )}
-                      <div>
-                        <strong title={product.productName}>{product.productName}</strong>
-                        <small>{product.productCode || t('Chưa có mã hàng')}</small>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    {product.record
-                      ? productClassifications.find(type => type.id === product.record?.productType)?.name ||
-                        CUSTOMER_PRODUCT_TYPES.find(type => type.id === product.record?.productType)?.name ||
-                        product.record.productType ||
+                    </td>
+                    <td title={product.productCode}>{product.productCode || '—'}</td>
+                    <td title={product.productName}>
+                      <strong>{product.productName}</strong>
+                    </td>
+                    <td title={productType}>{productType}</td>
+                    <td title={product.material}>{product.material || '—'}</td>
+                    <td title={product.specification}>{product.specification || '—'}</td>
+                    <td className="customer-product-number">{product.orderCount || '—'}</td>
+                    <td className="customer-product-number">
+                      {product.orderCount > 0
+                        ? `${product.totalQuantity.toLocaleString('vi-VN')} ${product.unit || ''}`.trim()
+                        : '—'}
+                    </td>
+                    <td>
+                      {product.lastPoCode ? (
+                        <button
+                          type="button"
+                          className="customer-po-link"
+                          title={product.lastPoCode}
+                          onClick={() => product.lastPoId && onOpenPO?.(product.lastPoId)}
+                          disabled={!product.lastPoId || !onOpenPO}
+                        >
+                          {product.lastPoCode}
+                        </button>
+                      ) : (
                         '—'
-                      : '—'}
-                  </td>
-                  <td>
-                    <div className="customer-sample-spec">
-                      <strong title={product.material}>{product.material || t('Chưa có NVL')}</strong>
-                      <span title={product.specification}>{product.specification || t('Chưa có quy cách')}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="customer-sample-spec">
-                      <strong>
-                        {product.orderCount > 0
-                          ? `${product.orderCount} ${t('đơn')} · ${product.totalQuantity.toLocaleString('vi-VN')} ${product.unit}`
-                          : t('Chưa phát sinh PO')}
-                      </strong>
-                      <button
-                        type="button"
-                        className="customer-po-link"
-                        onClick={() => product.lastPoId && onOpenPO?.(product.lastPoId)}
-                        disabled={!product.lastPoId || !onOpenPO}
-                      >
-                        {product.lastPoCode || t('Chưa có mã PO')}
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    {product.record && Array.isArray(product.record.files) && product.record.files.length > 0 ? (
-                      <RowActionMenu
-                        label={t('Tệp sản phẩm')}
-                        actions={product.record.files.map((file: unknown, index: number) => {
-                          const asset = typeof file === 'object' && file ? (file as Record<string, unknown>) : {};
-                          const url = getProductAssetSource(file);
-                          return {
-                            label: String(asset.name || asset.fileName || `Tệp ${index + 1}`),
-                            onSelect: () => openCustomerProductAsset(url)
-                          };
-                        })}
-                      />
-                    ) : product.previewImage ? (
-                      <button
-                        type="button"
-                        className="customer-product-asset-button"
-                        onClick={() => setPreviewImage(product.previewImage)}
-                      >
-                        {t('Xem ảnh')} · {product.assetCount} {t('tệp')}
-                      </button>
-                    ) : (
-                      <span className="crm-text-muted">{t('Chưa có tệp')}</span>
-                    )}
-                  </td>
-                  <td>
-                    {product.record && (currentUser.role === 'admin' || currentUser.role === 'sale') ? (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline"
-                        onClick={() => handleOpenEditProduct(product.record)}
-                      >
-                        {t('Chỉnh sửa')}
-                      </button>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      )}
+                    </td>
+                    <td>{product.assetCount ? `${product.assetCount} ${t('tệp')}` : '—'}</td>
+                    <td>
+                      {actions.length > 0 && (
+                        <RowActionMenu label={`${t('Thao tác')} ${product.productName}`} actions={actions} />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {selectedCustomerProducts.length === 0 && (
                 <tr>
-                  <td colSpan={6}>{t('Chưa có mã sản phẩm.')}</td>
+                  <td colSpan={11}>{t('Chưa có mã sản phẩm.')}</td>
                 </tr>
               )}
             </tbody>

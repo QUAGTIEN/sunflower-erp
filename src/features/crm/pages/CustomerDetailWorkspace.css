@@ -264,9 +264,6 @@
 .customer-detail-workspace .customer-order-history-table table {
   min-width: 640px;
 }
-.customer-detail-workspace .customer-product-history-table {
-  min-width: 1000px !important;
-}
 .customer-detail-workspace :is(button, a):focus-visible {
   outline: 2px solid var(--erp-table-link);
   outline-offset: 2px;
