@@ -40,7 +40,7 @@
 | Kế toán (`accounting`) | `features/accounting/pages/AccountingPage.tsx`, `AccountingLedgerWorkspace.tsx`, `LedgerDialog.tsx`, `AccountingReportsWorkspace.tsx` | `/api/accounting/manage`, `/api/accounting/reports` |
 | Tổng quan (`dashboard`) | `features/dashboard/pages/DashboardPage.tsx` | props từ AppShell, `src/components/VisualCharts.tsx` |
 | Công việc (`work_schedule`) | `features/work-schedule/` | `work_schedule_items` |
-| Chấm công (`attendance`) | `features/attendance/` | `/api/attendance/manage`, `attendance_months`, `attendance_settings` |
+| Chấm công (`attendance`) | `features/attendance/` | `/api/attendance/manage`, `attendance_sheets`, `attendance_profiles`, `attendance_calendars` |
 | Chat (`chat`) | `features/chat/pages/ChatPage.tsx`, `src/components/FloatingChat.tsx` | `messages`, `channels` |
 | Tài khoản, Cấu hình, Thùng rác | `features/administration/pages/` | `/api/users/manage`, `/api/fields/manage` |
 
@@ -54,7 +54,7 @@
 | `/api/warehouse/finished` | `server/finishedGoods.ts` | Thành phẩm `finished_main`, giao/POD/trả |
 | `/api/accounting/manage` | `server/accountingLedger.ts` | Công nợ, thu chi, kỳ |
 | `/api/accounting/reports` | `server/accountingReports.ts` | Báo cáo, chỉ đọc |
-| `/api/attendance/manage` | `server/attendance.ts` | Chấm công |
+| `/api/attendance/manage` | `server/attendance.ts` | Chấm công (chỉ Admin/Kế toán ghi) |
 | `/api/fields/manage` | `server/fieldConfiguration.ts` | Cấu hình trường, chỉ Admin |
 | `/api/users/manage` | `server/adminUsers.ts` | Tài khoản Firebase Auth, chỉ Admin (`requireAdmin`) |
 

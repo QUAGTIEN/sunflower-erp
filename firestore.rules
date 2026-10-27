@@ -622,8 +622,21 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // Attendance is private and transactionally managed by the authenticated API.
-    // Neither staff nor Admin may bypass the API's month locks and validation.
+    // Attendance is private and transactionally managed by the authenticated API: only Admin and
+    // Kế toán record it there, and staff read only their own timesheet. No client access at all.
+    match /attendance_sheets/{documentId} {
+      allow read, write: if false;
+    }
+    match /attendance_profiles/{documentId} {
+      allow read, write: if false;
+    }
+    match /attendance_calendars/{documentId} {
+      allow read, write: if false;
+    }
+    match /attendance_requests/{documentId} {
+      allow read, write: if false;
+    }
+    // Retired collections of the self-service flow stay closed until they are removed.
     match /attendance_months/{documentId} {
       allow read, write: if false;
     }

@@ -58,7 +58,7 @@ Ba nguyên tắc dữ liệu xuyên suốt:
 | **Sản xuất** | Nhận lệnh sản xuất, quản lý lịch máy và tiến độ | Tổng quan, Chat, Công việc, Sản xuất |
 | **Kế toán** | Công nợ, thu chi, báo cáo, ghi sổ kho, lập nháp LSX | Tổng quan, Chat, Công việc, Kế toán, Sản xuất, Vật liệu |
 
-Mọi vai trò đều có Chấm công. Kế toán có trang Kế toán được kế thừa quyền vào Vật liệu và Sản xuất mà không cần
+Mọi vai trò đều xem được bảng công của mình; chỉ Admin và Kế toán chấm công. Kế toán có trang Kế toán được kế thừa quyền vào Vật liệu và Sản xuất mà không cần
 sửa hồ sơ tài khoản. Sale luôn bị chặn khỏi Sản xuất. Quyền chi tiết: `src/app/navigation/accessControl.ts`.
 
 Admin có thể thay đổi danh sách trang được phép truy cập của từng tài khoản. Một tài khoản bị vô hiệu hóa không thể tiếp tục sử dụng luồng công việc.
@@ -111,8 +111,9 @@ Các nhóm luồng công việc mặc định:
 - Việc tự tạo cho chính mình.
 - Việc tự động phát sinh từ hệ thống.
 
-**Chấm công** là phân hệ riêng ngay dưới Công việc. Nhân viên chấm công theo lịch tháng (Full-time/Part-time),
-sửa/xóa ngày đã chấm qua yêu cầu được Admin duyệt và gửi duyệt cả tháng. Chi tiết: `docs/modules/ATTENDANCE.md`.
+**Chấm công** là phân hệ riêng ngay dưới Công việc. Admin/Kế toán chấm cho mọi nhân viên trên lịch tháng (đi làm,
+nửa buổi, nghỉ có/không phép, trễ, OT); ngày lễ và Chủ nhật tự tính. Nhân viên chỉ xem bảng công của mình.
+Chi tiết: `docs/modules/ATTENDANCE.md`.
 
 ### 4.4. Quản lý Sale
 

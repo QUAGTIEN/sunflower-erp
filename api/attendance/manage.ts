@@ -1,7 +1,7 @@
 import { AdminApiError, apiErrorResponse, jsonResponse, readJsonBody } from '../../server/adminUsers.js';
 import { requireActiveErpCaller } from '../../server/erpCaller.js';
 import { manageAttendance } from '../../server/attendance.js';
-import { AttendanceValidationError } from '../../src/features/attendance/model/attendance.js';
+import { AttendanceValidationError } from '../../src/features/attendance/model/timesheet.js';
 
 export async function POST(request: Request): Promise<Response> {
   try {
