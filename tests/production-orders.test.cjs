@@ -671,10 +671,10 @@ test('legacy-only lists count the displayed records and keep detail tables at co
   const html = renderToStaticMarkup(
     React.createElement(Component, { ...props, commands: [legacy, { ...legacy, id: 'deleted', deleted: true }] })
   );
-  assert.match(html, /1 lệnh \(1 lệnh cũ\)/);
+  assert.match(html, /Lệnh cũ \(1\)/);
   assert.match(html, /Tổng số: <strong>1<\/strong>/);
   assert.match(html, /Lệnh cũ · Đang sản xuất/);
-  assert.match(html, /title="Lệnh cũ"/);
+  assert.doesNotMatch(html, /Thao tác LSX-OLD/, 'old orders without a legacy opener have no row actions');
   const order = {
     ...legacy,
     id: 'new',
@@ -755,8 +755,16 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
   assert.equal(tree.props['data-erp-table-layout'], 'content');
   assert.ok(!nodes(tree).some(node => node.props?.className === 'lsx-list-frame'));
   nodes(tree)
-    .find(node => node.type?.name === 'LsxLinePicker')
-    .props.onAdd([
+    .find(node => node.type === 'select' && node.props.value === '' && node.props.required)
+    .props.onChange({ target: { value: 'customer1' } });
+  tree = render();
+  nodes(tree)
+    .find(node => node.type?.name === 'LsxItemsTable')
+    .props.onPick();
+  tree = render();
+  nodes(tree)
+    .find(node => node.type?.name === 'LsxPoPickerDialog')
+    .props.onConfirm([
       { poId: 'po1', itemId: 'roll', quantity: '100', printDetails: { materialWidth: '', priority: '' } },
       { poId: 'po1', itemId: 'manual', quantity: '50', printDetails: { materialWidth: '', priority: '' } }
     ]);
@@ -1184,7 +1192,7 @@ test('LSX editor puts the back button first, drops the subtitle and the detail v
 test('LSX editor uses the merged item table and the inline material table', () => {
   const { readSource } = require('./helpers/loadTs.cjs');
   const workspace = readSource('src/features/production/components/ProductionOrderWorkspace.tsx');
-  assert.match(workspace, /<LsxLinePicker/);
+  assert.match(workspace, /<LsxPoPickerDialog/);
   assert.match(workspace, /<LsxItemsTable/);
   assert.match(workspace, /<LsxMaterialsTable/);
   assert.doesNotMatch(workspace, /Đơn hàng PO \*|Mã nội bộ và thông tin bổ sung trên phiếu/);
@@ -1259,7 +1267,7 @@ test('QC on a multi-PO order ships each PO only when its own lines are fully pro
   assert.equal(b.store.get('pos/po2').productionProgress, 'partial');
 });
 
-test('the line picker lists open production lines per PO and never mixes customers in one order', () => {
+test('the PO picker lists open production lines of one customer grouped by PO; ticking a PO takes all its lines', () => {
   const { plannableLines } = loader()('src/features/production/components/productionOrderEditor/draftLines.ts');
   const po2 = { ...po(), id: 'po2', poCode: 'PO-02', customerId: 'customer2', customerName: 'Công ty B' };
   const shipped = { ...po(), id: 'po3', poCode: 'PO-03', status: 'completed' };
@@ -1285,43 +1293,54 @@ test('the line picker lists open production lines per PO and never mixes custome
   );
   assert.deepEqual(result.blockedPoCodes, ['PO-02']);
 
-  const added = [];
-  const Picker = loader()('src/features/production/components/productionOrderEditor/LsxLinePicker.tsx').LsxLinePicker;
+  const text = node =>
+    typeof node === 'string' || typeof node === 'number'
+      ? String(node)
+      : Array.isArray(node)
+        ? node.map(text).join('')
+        : node?.props
+          ? text(node.props.children)
+          : '';
+  const confirmed = [];
+  const po5 = { ...po(), id: 'po5', poCode: 'PO-05' };
   const render = interactive(
-    'src/features/production/components/productionOrderEditor/LsxLinePicker.tsx',
-    'LsxLinePicker',
+    'src/features/production/components/productionOrderEditor/LsxPoPickerDialog.tsx',
+    'LsxPoPickerDialog',
     {
-      pos: [po(), { ...po2 }],
+      customerKey: 'customer1',
+      customerName: 'Công ty A',
+      pos: [po(), po2, po5],
       commands: [],
       draftId: 'draft1',
-      draftLines: [],
-      lockedCustomerId: '',
-      lockedPoId: '',
-      onAdd: lines => added.push(...lines)
+      draftLines: [{ poId: 'po5', itemId: 'manual', quantity: '50', printDetails: {} }],
+      onClose() {},
+      onConfirm: lines => confirmed.push(...lines)
     }
   );
-  assert.ok(Picker);
   let tree = render();
-  const boxes = () => nodes(tree).filter(node => node.type === 'input' && node.props.type === 'checkbox');
-  const addButton = () =>
-    nodes(tree).find(node => node.type === 'button' && String(node.props.children).startsWith('Thêm'));
-  boxes()
-    .find(node => node.props['aria-label'] === 'Chọn Tem cuộn của PO-01')
-    .props.onChange({ target: { checked: true } });
-  boxes()
-    .find(node => node.props['aria-label'] === 'Chọn Tem cuộn của PO-02')
-    .props.onChange({ target: { checked: true } });
+  const groups = () =>
+    nodes(tree)
+      .filter(node => node.type === 'tr' && node.props.className === 'lsx-picker-group')
+      .map(node => text(node));
+  assert.deepEqual(groups(), ['PO-01 · 2 dòng còn lại', 'PO-05 · 1 dòng còn lại']);
+  assert.ok(!groups().some(group => group.includes('PO-02')), 'another customer’s PO is never offered');
+  const box = label => nodes(tree).find(node => node.type === 'input' && node.props['aria-label'] === label);
+  const agree = () => nodes(tree).find(node => node.type === 'button' && node.props.children === 'Đồng ý');
+  assert.equal(agree().props.disabled, true);
+  box('Chọn cả PO-01').props.onChange({ target: { checked: true } });
+  box('Chọn Tem cuộn của PO-05').props.onChange({ target: { checked: true } });
   tree = render();
-  assert.equal(addButton().props.disabled, true, 'two customers cannot share one order');
-  assert.ok(nodes(tree).some(node => node.props?.children === 'Một lệnh chỉ gồm các PO của cùng một khách hàng.'));
-  boxes()
-    .find(node => node.props['aria-label'] === 'Chọn Tem cuộn của PO-02')
-    .props.onChange({ target: { checked: false } });
-  tree = render();
-  addButton().props.onClick();
-  assert.deepEqual(added, [
-    { poId: 'po1', itemId: 'roll', quantity: '100', printDetails: { materialWidth: '', priority: '' } }
-  ]);
+  assert.equal(box('Chọn cả PO-01').props.checked, true);
+  assert.ok(nodes(tree).some(node => node.props?.children === 'Đã chọn 3 dòng từ 2 PO'));
+  agree().props.onClick();
+  assert.deepEqual(
+    confirmed.map(line => [line.poId, line.itemId, line.quantity]),
+    [
+      ['po1', 'roll', '100'],
+      ['po1', 'manual', '50'],
+      ['po5', 'roll', '100']
+    ]
+  );
 });
 
 test('the company white-label sheet v2 lists the PO of each line and keeps hand-filled areas blank', () => {

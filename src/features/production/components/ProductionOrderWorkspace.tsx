@@ -36,8 +36,14 @@ import {
 } from '../model/productionOrder';
 import { productionPrintHtml } from '../model/productionPrint';
 import { LsxItemsTable } from './productionOrderEditor/LsxItemsTable';
-import { LsxLinePicker } from './productionOrderEditor/LsxLinePicker';
-import { EMPTY_PRINT_DETAILS, type DraftLine } from './productionOrderEditor/draftLines';
+import { LsxPoPickerDialog } from './productionOrderEditor/LsxPoPickerDialog';
+import {
+  EMPTY_PRINT_DETAILS,
+  customerKeyOf,
+  customerLabelOf,
+  plannableLines,
+  type DraftLine
+} from './productionOrderEditor/draftLines';
 import { LsxMaterialsTable } from './productionOrderEditor/LsxMaterialsTable';
 import './ProductionOrders.css';
 
@@ -53,6 +59,8 @@ interface Props {
 interface Draft {
   id: string;
   revision?: number;
+  /** Chosen first; every line comes from this customer's POs (see `customerKeyOf`). */
+  customerKey: string;
   lines: DraftLine[];
   materials: PlannedMaterial[];
   machineId: string;
@@ -65,6 +73,7 @@ interface Draft {
 }
 const emptyDraft = (): Draft => ({
   id: crypto.randomUUID(),
+  customerKey: '',
   lines: [],
   materials: [],
   machineId: '',
@@ -102,6 +111,7 @@ const historyNames: Record<string, string> = {
   qc: 'Nghiệm thu QC'
 };
 const LIST_STATUSES: Record<string, string> = { ...PRODUCTION_STATUSES, transfer_pending: 'Chờ duyệt bàn giao' };
+const PRIORITY_LABELS: Record<string, string> = { urgent: 'Gấp', high: 'Hơi gấp', normal: 'Bình thường' };
 const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
 
 export function ProductionOrderWorkspace({
@@ -129,6 +139,7 @@ export function ProductionOrderWorkspace({
   const [catalogError, setCatalogError] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogReload, setCatalogReload] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const printFrame = useRef<HTMLIFrameElement>(null);
   const printDialog = useRef<HTMLDialogElement>(null);
   const request = useRef({ payload: '', id: '' });
@@ -198,9 +209,26 @@ export function ProductionOrderWorkspace({
   const selected = commands.find(
     command => command.productionOrderVersion === 2 && command.id === selectedId && !command.deleted
   ) as ProductionOrder | undefined;
-  const draftCustomerId = String(visiblePOs.find(po => po.id === draft?.lines[0]?.poId)?.customerId || '');
-  const draftCustomerName = String(visiblePOs.find(po => po.id === draft?.lines[0]?.poId)?.customerName || '');
+  const selectedPoCodes = selected ? (selected.poCodes?.length ? selected.poCodes.join(', ') : selected.poCode) : '';
+  // Customers with PO lines still to plan, plus the customer of the order being edited.
+  const customerOptions: [string, string][] = draft
+    ? [
+        ...new Map<string, string>([
+          ...plannableLines(visiblePOs, commands, draft.id).lines.map(
+            line => [customerKeyOf(line.po), customerLabelOf(line.po)] as [string, string]
+          ),
+          ...visiblePOs
+            .filter(po => draft.lines.some(line => line.poId === po.id))
+            .map(po => [customerKeyOf(po), customerLabelOf(po)] as [string, string])
+        ]).entries()
+      ].sort((a, b) => a[1].localeCompare(b[1], 'vi'))
+    : [];
   const updateDraft = (patch: Partial<Draft>) => setDraft(current => (current ? { ...current, ...patch } : current));
+  const chooseCustomer = (customerKey: string) => {
+    if (!draft || customerKey === draft.customerKey) return;
+    if (draft.lines.length && !window.confirm('Đổi khách hàng sẽ bỏ các mặt hàng đã chọn. Tiếp tục?')) return;
+    updateDraft({ customerKey, lines: [] });
+  };
   const addLines = (lines: DraftLine[]) => {
     if (!draft) return;
     setCatalogLoading(true);
@@ -220,9 +248,11 @@ export function ProductionOrderWorkspace({
     setCatalog({ materials: [], lines: {} });
     setCatalogError('');
     setCatalogLoading(true);
+    const firstPO = pos.find(po => po.id === linePoId(order.lines[0] || {}, order));
     setDraft({
       id: order.id,
       revision: order.revision,
+      customerKey: firstPO ? customerKeyOf(firstPO) : '',
       lines: order.lines.map(line => ({
         poId: linePoId(line, order),
         itemId: line.itemId,
@@ -367,16 +397,23 @@ export function ProductionOrderWorkspace({
           </header>
           <fieldset disabled={busy}>
             <section className="lsx-section">
-              <h3>Thông tin lệnh</h3>
+              <h3>Thông tin chung</h3>
               <div className="lsx-fields">
-                <label className="lsx-wide">
-                  Khách hàng
-                  <input
-                    readOnly
-                    value={draftCustomerName}
-                    placeholder="Theo các dòng PO được thêm vào lệnh"
-                    title={draftCustomerName}
-                  />
+                <label>
+                  Khách hàng *
+                  <select
+                    required
+                    value={draft.customerKey}
+                    onChange={event => chooseCustomer(event.target.value)}
+                    title={customerOptions.find(([key]) => key === draft.customerKey)?.[1]}
+                  >
+                    <option value="">Chọn khách hàng</option>
+                    {customerOptions.map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label>
                   Ngày cần *
@@ -392,6 +429,23 @@ export function ProductionOrderWorkspace({
                     <option value="normal">Bình thường</option>
                     <option value="high">Hơi gấp</option>
                     <option value="urgent">Gấp</option>
+                  </select>
+                </label>
+                <label>
+                  Mẫu phiếu
+                  <select
+                    value={draft.printTemplate.id}
+                    onChange={event =>
+                      updateDraft({
+                        printTemplate: latestTemplate(event.target.value as ProductionPrintTemplate['id'])
+                      })
+                    }
+                  >
+                    {Object.entries(PRODUCTION_PRINT_TEMPLATES).map(([id, label]) => (
+                      <option key={id} value={id}>
+                        {label}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label>
@@ -420,43 +474,27 @@ export function ProductionOrderWorkspace({
                       ))}
                   </select>
                 </label>
-                <label className="lsx-wide">
+                <label>
                   Ca / tổ sản xuất
                   <input
                     value={draft.shift}
                     maxLength={100}
                     onChange={event => updateDraft({ shift: event.target.value })}
-                    placeholder="Ví dụ: Ca sáng / Tổ in 01"
+                    placeholder="Ca sáng / Tổ in 01"
                   />
                 </label>
-                <label className="lsx-wide">
-                  Mẫu in
-                  <select
-                    value={draft.printTemplate.id}
-                    onChange={event =>
-                      updateDraft({
-                        printTemplate: latestTemplate(event.target.value as ProductionPrintTemplate['id'])
-                      })
-                    }
-                  >
-                    {Object.entries(PRODUCTION_PRINT_TEMPLATES).map(([id, label]) => (
-                      <option key={id} value={id}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                <label>
+                  Ghi chú chung
+                  <input
+                    value={draft.notes}
+                    maxLength={3000}
+                    title={draft.notes}
+                    onChange={event => updateDraft({ notes: event.target.value })}
+                    placeholder="Yêu cầu kỹ thuật, lưu ý QA…"
+                  />
                 </label>
               </div>
             </section>
-            <LsxLinePicker
-              pos={visiblePOs}
-              commands={commands}
-              draftId={draft.id}
-              draftLines={draft.lines}
-              lockedCustomerId={draft.lines.length ? draftCustomerId : ''}
-              lockedPoId={draft.lines.length && !draftCustomerId ? draft.lines[0].poId : ''}
-              onAdd={addLines}
-            />
             <LsxItemsTable
               lines={draft.lines}
               pos={visiblePOs}
@@ -465,6 +503,8 @@ export function ProductionOrderWorkspace({
               catalogLines={catalog.lines}
               catalogLoading={catalogLoading}
               catalogError={catalogError}
+              pickHint={draft.customerKey ? '' : 'Chọn khách hàng trước để lấy hàng từ PO.'}
+              onPick={() => setPickerOpen(true)}
               onReloadCatalog={() => {
                 setCatalogLoading(true);
                 setCatalogReload(value => value + 1);
@@ -476,18 +516,22 @@ export function ProductionOrderWorkspace({
               catalogMaterials={catalog.materials}
               onChange={materials => updateDraft({ materials })}
             />
-            <section className="lsx-section">
-              <label>
-                Ghi chú kỹ thuật / yêu cầu sản xuất
-                <textarea
-                  rows={2}
-                  maxLength={3000}
-                  value={draft.notes}
-                  onChange={event => updateDraft({ notes: event.target.value })}
-                />
-              </label>
-            </section>
           </fieldset>
+          {pickerOpen && (
+            <LsxPoPickerDialog
+              customerKey={draft.customerKey}
+              customerName={customerOptions.find(([key]) => key === draft.customerKey)?.[1] || ''}
+              pos={visiblePOs}
+              commands={commands}
+              draftId={draft.id}
+              draftLines={draft.lines}
+              onClose={() => setPickerOpen(false)}
+              onConfirm={lines => {
+                addLines(lines);
+                setPickerOpen(false);
+              }}
+            />
+          )}
         </form>
       ) : selected ? (
         <>
@@ -509,7 +553,7 @@ export function ProductionOrderWorkspace({
                   </span>
                 </h2>
                 <span>
-                  {selected.poCode} · {selected.customerName}
+                  {selected.customerName} · {selectedPoCodes}
                 </span>
               </div>
             </div>
@@ -555,88 +599,110 @@ export function ProductionOrderWorkspace({
               )}
             </div>
           </header>
-          <p className="lsx-hint">
-            Mẫu in: {PRODUCTION_PRINT_TEMPLATES[selected.printTemplate?.id || 'standard']} · phiên bản mẫu{' '}
-            {selected.printTemplate?.version || 1}. Mã nội bộ:{' '}
-            {selected.lines
-              .map(line => line.catalog?.code || `${line.productCode || line.productName}: chưa liên kết`)
-              .join('; ')}
-          </p>
-          <section className="lsx-section">
-            <div className="lsx-meta">
-              <span>
-                Ngày cần: <strong>{formatDate(selected.deliveryDeadline)}</strong>
-              </span>
-              <span>
-                Máy:{' '}
-                <strong>
-                  {selected.machineName ||
-                    machines.find(machine => machine.id === selected.machineId)?.name ||
-                    'Chưa chọn'}
-                </strong>
-              </span>
-              <span>
-                Người chạy:{' '}
-                <strong>
-                  {selected.operatorName ||
-                    users.find(user => user.uid === selected.operatorId)?.displayName ||
-                    'Chưa chọn'}
-                </strong>
-              </span>
-              <span>
-                Ca: <strong>{selected.shift || '—'}</strong>
-              </span>
-              <span>
-                Người lập: <strong>{selected.createdBy}</strong>
-              </span>
-              <span>
-                Ưu tiên: <strong>{{ urgent: 'Gấp', high: 'Hơi gấp', normal: 'Bình thường' }[selected.priority]}</strong>
-              </span>
+          <dl className="lsx-summary" aria-label="Thông tin chung">
+            <div>
+              <dt>Khách hàng</dt>
+              <dd title={selected.customerName}>{selected.customerName || '—'}</dd>
             </div>
-          </section>
+            <div>
+              <dt>PO</dt>
+              <dd title={selectedPoCodes}>{selectedPoCodes}</dd>
+            </div>
+            <div>
+              <dt>Ngày cần</dt>
+              <dd>{formatDate(selected.deliveryDeadline)}</dd>
+            </div>
+            <div>
+              <dt>Ưu tiên</dt>
+              <dd>{PRIORITY_LABELS[selected.priority] || '—'}</dd>
+            </div>
+            <div>
+              <dt>Máy</dt>
+              <dd>
+                {selected.machineName ||
+                  machines.find(machine => machine.id === selected.machineId)?.name ||
+                  'Chưa chọn'}
+              </dd>
+            </div>
+            <div>
+              <dt>Người chạy máy</dt>
+              <dd>
+                {selected.operatorName ||
+                  users.find(user => user.uid === selected.operatorId)?.displayName ||
+                  'Chưa chọn'}
+              </dd>
+            </div>
+            <div>
+              <dt>Ca / tổ</dt>
+              <dd>{selected.shift || '—'}</dd>
+            </div>
+            <div>
+              <dt>Người lập</dt>
+              <dd>{selected.createdBy}</dd>
+            </div>
+            <div className="lsx-summary-wide">
+              <dt>Ghi chú chung</dt>
+              <dd title={selected.notes}>{selected.notes || '—'}</dd>
+            </div>
+            <div>
+              <dt>Mẫu phiếu</dt>
+              <dd>
+                {PRODUCTION_PRINT_TEMPLATES[selected.printTemplate?.id || 'standard']} v
+                {selected.printTemplate?.version || 1}
+              </dd>
+            </div>
+          </dl>
           <section className="lsx-section">
-            <h3>Thông tin sản xuất đã chốt theo PO</h3>
+            <h3>Mặt hàng</h3>
             <div className="table-container">
               <table className="lsx-detail-lines">
                 <thead>
                   <tr>
-                    <th>Mã / tên sản phẩm</th>
+                    <th className="lsx-number">#</th>
+                    <th>Mã SP</th>
+                    <th>Tên sản phẩm</th>
                     <th>PO</th>
-                    <th>Quy cách / vật liệu</th>
-                    <th>SL lệnh / ĐVT</th>
+                    <th>Quy cách</th>
+                    <th className="lsx-number">SL lệnh</th>
+                    <th>ĐVT</th>
                     <th>Góc / răng cưa</th>
-                    <th>Lõi / NVL</th>
-                    <th>Đạt QC / hỏng</th>
+                    <th>Lõi</th>
+                    <th>Mã NVL</th>
+                    <th>Mã nội bộ</th>
+                    <th className="lsx-number">Đạt / hỏng</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selected.lines.map(line => (
-                    <tr key={lineKey(line)}>
-                      <td title={`${line.productCode} — ${line.productName}`}>
-                        {line.productCode || 'Nhập tay'} — {line.productName}
-                      </td>
-                      <td>{line.poCode || selected.poCode}</td>
-                      <td title={`${line.specification} · ${line.material}`}>
-                        {line.specification} · {line.material}
-                      </td>
-                      <td>
-                        {number(line.quantity)} {line.unit}
-                      </td>
-                      <td title={String(line.specifications.perforated || '')}>
-                        {String(line.specifications.dieCut || line.specifications.corner || '—')} /{' '}
-                        {String(line.specifications.perforated || '—')}
-                      </td>
-                      <td title={String(line.specifications.paperCode || '')}>
-                        {String(line.specifications.core || '—')} / {String(line.specifications.coreType || '—')} /{' '}
-                        {String(line.specifications.paperCode || '—')}
-                      </td>
-                      <td>
-                        {selected.status === 'completed'
-                          ? `${number(line.goodQuantity)} / ${number(line.rejectQuantity)}`
-                          : 'Chưa nghiệm thu'}
-                      </td>
-                    </tr>
-                  ))}
+                  {selected.lines.map((line, position) => {
+                    const spec = line.specifications;
+                    const corner = [spec.dieCut || spec.corner, spec.perforated]
+                      .filter(Boolean)
+                      .map(String)
+                      .join(' / ');
+                    const core = [spec.coreType, spec.core].filter(Boolean).map(String).join(' ');
+                    return (
+                      <tr key={lineKey(line)}>
+                        <td className="lsx-number">{position + 1}</td>
+                        <td title={line.productCode}>{line.productCode || 'Nhập tay'}</td>
+                        <td title={line.productName}>{line.productName}</td>
+                        <td>{line.poCode || selected.poCode}</td>
+                        <td title={`${line.specification} · ${line.material}`}>
+                          {[line.specification, line.material].filter(Boolean).join(' · ') || '—'}
+                        </td>
+                        <td className="lsx-number">{number(line.quantity)}</td>
+                        <td>{line.unit}</td>
+                        <td title={corner}>{corner || '—'}</td>
+                        <td>{core || '—'}</td>
+                        <td title={String(spec.paperCode || '')}>{String(spec.paperCode || '—')}</td>
+                        <td>{line.catalog?.code || 'Chưa liên kết'}</td>
+                        <td className="lsx-number">
+                          {selected.status === 'completed'
+                            ? `${number(line.goodQuantity)} / ${number(line.rejectQuantity)}`
+                            : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -665,14 +731,15 @@ export function ProductionOrderWorkspace({
           <section className="lsx-section">
             <h3>Vật tư dự kiến</h3>
             <div className="table-container">
-              <table>
+              <table className="lsx-detail-materials">
                 <thead>
                   <tr>
                     <th>Mã NVL</th>
                     <th>Tên NVL</th>
-                    <th>Khổ (mm)</th>
-                    <th>SL / ĐVT</th>
-                    <th>Hao hụt (%)</th>
+                    <th className="lsx-number">Khổ (mm)</th>
+                    <th className="lsx-number">Số lượng</th>
+                    <th>ĐVT</th>
+                    <th className="lsx-number">Hao hụt (%)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -680,25 +747,20 @@ export function ProductionOrderWorkspace({
                     <tr key={material.id}>
                       <td>{material.code}</td>
                       <td title={material.name}>{material.name}</td>
-                      <td>{material.width || '—'}</td>
-                      <td>
-                        {number(material.quantity)} {material.unit}
-                      </td>
-                      <td>{number(material.allowancePercent)}</td>
+                      <td className="lsx-number">{material.width || '—'}</td>
+                      <td className="lsx-number">{number(material.quantity)}</td>
+                      <td>{material.unit}</td>
+                      <td className="lsx-number">{number(material.allowancePercent)}</td>
                     </tr>
                   ))}
                   {!selected.materials.length && (
                     <tr>
-                      <td colSpan={5}>Chưa khai báo vật tư dự kiến.</td>
+                      <td colSpan={6}>Chưa khai báo vật tư dự kiến.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-            <p className="lsx-hint">
-              Lưu, phát hành, in và nghiệm thu lệnh không tự trừ tồn kho. Cấp/hoàn thực tế theo phiếu kho riêng.
-            </p>
-            <p className="lsx-note">{selected.notes || 'Không có ghi chú.'}</p>
           </section>
           <ProductionMaterialLedger
             key={selected.id}
@@ -823,13 +885,27 @@ export function ProductionOrderWorkspace({
         </>
       ) : (
         <>
-          <header className="lsx-heading">
-            <div>
-              <h2>Lệnh sản xuất</h2>
-              <span>
-                {accessibleCommands.length} lệnh{legacyCount > 0 ? ` (${legacyCount} lệnh cũ)` : ''}
-              </span>
-            </div>
+          <div className="lsx-list-toolbar">
+            <input
+              type="search"
+              aria-label="Tìm lệnh sản xuất"
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Tìm số LSX, khách hàng, PO, sản phẩm…"
+            />
+            <select aria-label="Trạng thái" value={status} onChange={event => setStatus(event.target.value)}>
+              <option value="">Tất cả trạng thái</option>
+              {Object.entries(LIST_STATUSES).map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select aria-label="Loại lệnh" value={orderType} onChange={event => setOrderType(event.target.value)}>
+              <option value="all">Tất cả lệnh</option>
+              <option value="managed">Lệnh mới</option>
+              <option value="legacy">Lệnh cũ{legacyCount ? ` (${legacyCount})` : ''}</option>
+            </select>
             {canCreate && (
               <button
                 className="btn btn-primary"
@@ -841,91 +917,61 @@ export function ProductionOrderWorkspace({
                 Lập lệnh sản xuất
               </button>
             )}
-          </header>
-          <div className="lsx-toolbar">
-            <label>
-              Tìm kiếm
-              <input
-                type="search"
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                placeholder="Mã LSX, PO, khách hàng, sản phẩm…"
-              />
-            </label>
-            <label>
-              Trạng thái
-              <select value={status} onChange={event => setStatus(event.target.value)}>
-                <option value="">Tất cả trạng thái</option>
-                {Object.entries(LIST_STATUSES).map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Loại lệnh
-              <select value={orderType} onChange={event => setOrderType(event.target.value)}>
-                <option value="all">Tất cả lệnh</option>
-                <option value="managed">Lệnh mới</option>
-                <option value="legacy">Lệnh cũ</option>
-              </select>
-            </label>
           </div>
           <div className="lsx-list-frame">
             <div className="table-container erp-primary-data-table">
               <table className="lsx-list" data-resize-key="production-orders">
                 <thead>
                   <tr>
-                    <th>Mã LSX</th>
-                    <th>PO / khách hàng</th>
-                    <th>Mặt hàng</th>
-                    <th>Máy / nhân sự</th>
+                    <th>Số LSX</th>
+                    <th>Khách hàng</th>
+                    <th>PO</th>
+                    <th className="lsx-number">Số dòng</th>
                     <th>Ngày cần</th>
                     <th>Trạng thái</th>
-                    <th>Thao tác</th>
+                    <th aria-label="Thao tác" />
                   </tr>
                 </thead>
                 <tbody>
-                  {pagination.rows.map(command => (
-                    <tr key={String(command.id)}>
-                      <td>{String(command.lsxCode || '')}</td>
-                      <td title={`${command.poCode} — ${command.customerName || ''}`}>
-                        {String(command.poCode)} — {String(command.customerName || '')}
-                      </td>
-                      <td title={(command.lines || []).map(line => line.productName).join(', ')}>
-                        {command.productionOrderVersion === 2
-                          ? `${command.lines?.length || 0} mặt hàng`
-                          : String(command.productName || 'Lệnh cũ')}
-                      </td>
-                      <td title={`${command.machineName || command.machineId || ''} / ${command.operatorName || ''}`}>
-                        {String(command.machineName || command.machineId || 'Chưa phân công')} /{' '}
-                        {String(command.operatorName || '')}
-                      </td>
-                      <td>{formatDate(command.deliveryDeadline)}</td>
-                      <td>
-                        <span className={`lsx-status lsx-status--${command.status}`}>
-                          {command.productionOrderVersion !== 2 && LIST_STATUSES[String(command.status)]
-                            ? 'Lệnh cũ · '
-                            : ''}
-                          {LIST_STATUSES[String(command.status)] || 'Lệnh cũ'}
-                        </span>
-                      </td>
-                      <td title={command.productionOrderVersion !== 2 && !onOpenLegacy ? 'Lệnh cũ' : undefined}>
-                        {command.productionOrderVersion === 2 || onOpenLegacy ? (
-                          <RowActionMenu
-                            label={`Thao tác ${command.lsxCode || 'lệnh sản xuất'}`}
-                            actions={[{ label: 'Chi tiết', onSelect: () => open(command) }]}
-                          />
-                        ) : (
-                          'Lệnh cũ'
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {pagination.rows.map(command => {
+                    const openable = command.productionOrderVersion === 2 || !!onOpenLegacy;
+                    const poCodes = command.poCodes?.length ? command.poCodes.join(', ') : String(command.poCode || '');
+                    return (
+                      <tr
+                        key={String(command.id)}
+                        className={openable ? 'lsx-list-row' : undefined}
+                        onClick={openable ? () => open(command) : undefined}
+                      >
+                        <td>{String(command.lsxCode || '')}</td>
+                        <td title={String(command.customerName || '')}>{String(command.customerName || '—')}</td>
+                        <td title={poCodes}>{poCodes || '—'}</td>
+                        <td
+                          className="lsx-number"
+                          title={(command.lines || []).map(line => line.productName).join(', ') || undefined}
+                        >
+                          {command.productionOrderVersion === 2 ? command.lines?.length || 0 : '—'}
+                        </td>
+                        <td>{formatDate(command.deliveryDeadline)}</td>
+                        <td>
+                          <span className={`lsx-status lsx-status--${command.status}`}>
+                            {command.productionOrderVersion !== 2 ? 'Lệnh cũ · ' : ''}
+                            {LIST_STATUSES[String(command.status)] || 'Chưa rõ'}
+                          </span>
+                        </td>
+                        <td onClick={event => event.stopPropagation()}>
+                          {openable && (
+                            <RowActionMenu
+                              label={`Thao tác ${command.lsxCode || 'lệnh sản xuất'}`}
+                              actions={[{ label: 'Chi tiết', onSelect: () => open(command) }]}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {!visible.length && (
                     <tr>
-                      <td colSpan={7}>Chưa có lệnh phù hợp. Chọn “Lập lệnh sản xuất” để phân bổ mặt hàng từ PO.</td>
+                      <td colSpan={7}>Chưa có lệnh phù hợp. Bấm “Lập lệnh sản xuất” để lấy hàng từ PO của khách.</td>
                     </tr>
                   )}
                 </tbody>

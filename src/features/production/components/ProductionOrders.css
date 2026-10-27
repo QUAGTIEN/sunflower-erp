@@ -33,23 +33,37 @@
   gap: 8px;
   flex-wrap: wrap;
 }
-.lsx-toolbar {
-  display: grid;
-  grid-template-columns: minmax(240px, 1fr) repeat(2, minmax(140px, 180px));
-  gap: 12px;
-  padding: 12px;
-  background: #f8fafc;
-  border: 1px solid var(--erp-border-color, #d8e1ee);
-  border-radius: 6px;
+/* Danh sách: tìm kiếm và bộ lọc bên trái, nút lập lệnh bên phải. */
+.lsx-list-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.lsx-workspace :is(.lsx-toolbar, .lsx-editor, .lsx-section) label {
+.lsx-list-toolbar > input[type='search'] {
+  width: 320px;
+  max-width: 100%;
+}
+.lsx-list-toolbar > select {
+  width: 180px;
+}
+.lsx-list-toolbar > .btn-primary {
+  margin-left: auto;
+}
+.lsx-list-row {
+  cursor: pointer;
+}
+.lsx-workspace :is(.lsx-editor, .lsx-section) label {
   display: grid;
   gap: 6px;
   color: #334155;
   font-size: 13px;
   min-width: 0;
 }
-.lsx-workspace :is(.lsx-toolbar, .lsx-editor, .lsx-section) :is(input:not([type='checkbox']), select, textarea) {
+.lsx-workspace
+  :is(.lsx-list-toolbar, .lsx-editor, .lsx-section, .lsx-picker-dialog)
+  :is(input:not([type='checkbox']), select, textarea) {
   width: 100%;
   min-width: 0;
   border: 1px solid #cbd5e1;
@@ -105,9 +119,6 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
-.lsx-wide {
-  grid-column: span 2;
-}
 .lsx-workspace .table-container {
   min-width: 0;
   overflow: auto;
@@ -150,13 +161,36 @@
   color: #991b1b;
   font-size: 13px;
 }
-.lsx-meta {
+/* Chi tiết lệnh: thông tin chung dạng lưới 4 cột, nhãn trên giá trị. */
+.lsx-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  font-size: 13px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--erp-border-color, #d8e1ee);
+  border-radius: var(--erp-surface-radius, 6px);
 }
-.lsx-note,
+.lsx-summary > div {
+  min-width: 0;
+  padding: 8px 12px;
+  border-right: 1px solid #eef2f7;
+  border-bottom: 1px solid #eef2f7;
+}
+.lsx-summary > .lsx-summary-wide {
+  grid-column: span 3;
+}
+.lsx-summary dt {
+  color: #64748b;
+  font-size: 12px;
+}
+.lsx-summary dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: #172554;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .lsx-history {
   margin: 0;
   color: #334155;
@@ -226,24 +260,20 @@
 }
 @media (max-width: 900px) {
   .lsx-fields,
-  .lsx-meta {
+  .lsx-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .lsx-toolbar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .lsx-toolbar > label:first-child {
+  .lsx-summary > .lsx-summary-wide {
     grid-column: 1 / -1;
   }
 }
 @media (max-width: 600px) {
-  .lsx-toolbar,
   .lsx-fields,
-  .lsx-meta {
+  .lsx-summary {
     grid-template-columns: minmax(0, 1fr);
   }
-  .lsx-wide {
-    grid-column: auto;
+  .lsx-list-toolbar > :is(input, select) {
+    width: 100%;
   }
   .lsx-workspace {
     padding: 12px;
@@ -266,43 +296,83 @@
   color: #64748b;
   font-size: 12px;
 }
-.lsx-workspace table:is(.lsx-items, .lsx-materials, .lsx-candidates) {
+.lsx-workspace table:is(.lsx-items, .lsx-materials, .lsx-detail-lines, .lsx-detail-materials) {
   min-width: 720px;
   table-layout: fixed;
 }
+.lsx-workspace table.lsx-detail-lines {
+  min-width: 1080px;
+}
 .lsx-items td,
 .lsx-materials td,
-.lsx-candidates td {
+.lsx-detail-lines td,
+.lsx-detail-materials td {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.lsx-items th:nth-child(2) {
-  width: 132px;
+.lsx-items th:nth-child(1) {
+  width: 44px;
 }
-.lsx-items th:nth-child(3) {
-  width: 72px;
+.lsx-items th:nth-child(2) {
+  width: 112px;
 }
 .lsx-items th:nth-child(4) {
-  width: 96px;
+  width: 120px;
 }
 .lsx-items th:nth-child(5) {
+  width: 72px;
+}
+.lsx-items th:nth-child(6) {
+  width: 96px;
+}
+.lsx-items th:nth-child(7) {
   width: 140px;
 }
-.lsx-items th:nth-child(6),
-.lsx-items th:nth-child(7),
+.lsx-items th:nth-child(8),
 .lsx-materials th:nth-child(7) {
   width: 52px;
 }
-/* Chọn mặt hàng: bộ lọc khách / PO / mã sản phẩm độc lập, bảng dòng PO còn cần lập lệnh. */
+/* Hộp thoại "Chọn hàng từ PO": dòng PO của một khách, gom nhóm theo PO. */
+.lsx-picker-dialog {
+  display: flex;
+  width: min(880px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--erp-border-color, #d8e1ee);
+  border-radius: 6px;
+  background: #fff;
+  color: #172554;
+  box-shadow: 0 16px 40px rgb(15 23 42 / 18%);
+}
+.lsx-picker-dialog:not([open]) {
+  display: none;
+}
+.lsx-picker-dialog::backdrop {
+  background: rgb(15 23 42 / 35%);
+}
 .lsx-picker-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(200px, 1.2fr) minmax(200px, 1.4fr) auto;
-  align-items: center;
+  grid-template-columns: 200px minmax(0, 1fr);
   gap: 8px;
 }
 .lsx-picker-table {
-  max-height: 320px;
+  min-height: 0;
+  max-height: 52dvh;
+  overflow: auto;
+  border: 1px solid var(--erp-border-color, #d8e1ee);
+}
+.lsx-picker-dialog table.lsx-candidates {
+  min-width: 640px;
+  table-layout: fixed;
+}
+.lsx-candidates td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lsx-candidates th:nth-child(1) {
   width: 44px;
@@ -311,26 +381,29 @@
   width: 112px;
 }
 .lsx-candidates th:nth-child(4) {
-  width: 180px;
+  width: 72px;
 }
 .lsx-candidates th:nth-child(5),
 .lsx-candidates th:nth-child(6) {
-  width: 116px;
-}
-.lsx-candidates th:nth-child(7) {
-  width: 72px;
-}
-.lsx-candidates th:nth-child(8),
-.lsx-candidates th:nth-child(9) {
   width: 96px;
+}
+.lsx-picker-group td {
+  background: #f1f5f9;
+  color: #172554;
+  font-weight: 600;
 }
 .lsx-candidates tr.is-selected td {
   background: #f4f7ff;
 }
-@media (max-width: 1100px) {
-  .lsx-picker-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.lsx-picker-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lsx-picker-footer > span {
+  flex: 1;
+  color: #64748b;
+  font-size: 12.5px;
 }
 .lsx-materials th:nth-child(1) {
   width: 240px;
@@ -409,4 +482,44 @@
   .lsx-line-details-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+.lsx-detail-lines th:nth-child(1) {
+  width: 44px;
+}
+.lsx-detail-lines th:nth-child(2) {
+  width: 100px;
+}
+.lsx-detail-lines th:nth-child(4) {
+  width: 100px;
+}
+.lsx-detail-lines th:nth-child(5) {
+  width: 150px;
+}
+.lsx-detail-lines th:nth-child(6) {
+  width: 88px;
+}
+.lsx-detail-lines th:nth-child(7) {
+  width: 64px;
+}
+.lsx-detail-lines th:nth-child(8) {
+  width: 130px;
+}
+.lsx-detail-lines th:nth-child(9),
+.lsx-detail-lines th:nth-child(10),
+.lsx-detail-lines th:nth-child(11) {
+  width: 96px;
+}
+.lsx-detail-lines th:nth-child(12) {
+  width: 96px;
+}
+.lsx-detail-materials th:nth-child(1) {
+  width: 140px;
+}
+.lsx-detail-materials th:nth-child(3),
+.lsx-detail-materials th:nth-child(4),
+.lsx-detail-materials th:nth-child(6) {
+  width: 104px;
+}
+.lsx-detail-materials th:nth-child(5) {
+  width: 72px;
 }

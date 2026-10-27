@@ -15,9 +15,17 @@
   thường – Rất gấp, ghi chú chung; bảng có cột PO, số lượng, mét/roll, pcs/roll, góc, răng cưa, lõi, mã NVL + số
   lượng lĩnh; ba ô ký NVL thừa/thiếu, người chạy máy, kho cấp + nhận NVL. Lệnh đã lưu với mẫu v1 hoặc phiếu chung vẫn
   xuất đúng mẫu cũ.
-- Giao diện lập lệnh: khung **Chọn mặt hàng** (lọc khách / PO / mã sản phẩm, tick dòng rồi "Thêm vào lệnh"; khi lệnh
-  đã có dòng thì chỉ thêm được PO của cùng khách) và bảng **Mặt hàng trong lệnh** (cột PO, còn lại, số lượng tự điền
-  phần còn lại, dòng mở rộng cho mã nội bộ / khổ NVL / ưu tiên, nút bỏ dòng).
+- Giao diện theo kiểu chứng từ MISA (duyệt 27/10/2026):
+  - **Danh sách:** tìm kiếm, lọc trạng thái / loại lệnh, nút "Lập lệnh sản xuất"; cột Số LSX, Khách hàng, PO, Số
+    dòng, Ngày cần, Trạng thái; bấm dòng để mở chi tiết.
+  - **Lập lệnh:** thông tin chung lưới 4 cột (Khách hàng * đầu tiên, ngày cần, ưu tiên, mẫu phiếu, máy, người chạy
+    máy, ca, ghi chú chung); lưới **Mặt hàng** (#, mã, tên, PO, ĐVT, còn lại, SL lệnh, menu ⋮ cho mã nội bộ / khổ
+    NVL / ưu tiên dòng và bỏ dòng). Nút **Chọn hàng từ PO…** mở hộp thoại các PO còn hàng của khách, gom nhóm theo
+    PO: tick cả PO hoặc từng dòng, "Đồng ý" thêm dòng với số lượng còn lại. Đổi khách khi đã có dòng phải xác nhận
+    và xóa lưới.
+  - **Chi tiết lệnh:** một trang, không chia tab: thông tin chung dạng lưới, bảng mặt hàng (PO, quy cách, góc / răng
+    cưa, lõi, mã NVL, mã nội bộ, đạt / hỏng), vật tư dự kiến, sổ cấp NVL, thành phẩm, QC khi đang sản xuất và lịch
+    sử thao tác thu gọn.
 
 Dữ liệu: mỗi dòng LSX lưu `poId`, `poCode`, `lineId` (`poId__itemId`); lệnh lưu `poIds`, `poCodes`, `poCode` (nối các
 mã) và `poId` là PO đầu tiên để màn hình cũ vẫn đọc được. Lệnh trước đây (một PO, dòng không có `poId`) đọc như cũ.

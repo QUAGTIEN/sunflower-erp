@@ -1,6 +1,5 @@
 import { Fragment, useState } from 'react';
-import { ChevronDown, ChevronUp, X } from 'lucide-react';
-import { IconButton } from '@/components/IconButton';
+import { RowActionMenu } from '@/components/RowActionMenu';
 import type { ProductionDraftCatalog } from '../../api/productionOrderService';
 import { itemIdentity, type CommandRecord, type ProductionPO } from '../../model/productionOrder';
 import {
@@ -20,6 +19,9 @@ interface Props {
   catalogLines: ProductionDraftCatalog['lines'];
   catalogLoading: boolean;
   catalogError: string;
+  /** Empty while no customer is chosen; the picker only lists that customer's POs. */
+  pickHint: string;
+  onPick: () => void;
   onReloadCatalog: () => void;
   onChange: (lines: DraftLine[]) => void;
 }
@@ -28,7 +30,7 @@ const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
 // Specifications saved by an old product-code bug read "undefinedxundefinedmm"; flag them instead of showing them.
 const isBrokenSpecification = (value: string) => !value.trim() || /undefined|null|NaN/.test(value);
 
-/** Lines of the order being drafted, each tied to its own PO line. */
+/** Lines of the order being drafted, entered like a document grid; each line keeps its own PO. */
 export function LsxItemsTable({
   lines,
   pos,
@@ -37,6 +39,8 @@ export function LsxItemsTable({
   catalogLines,
   catalogLoading,
   catalogError,
+  pickHint,
+  onPick,
   onReloadCatalog,
   onChange
 }: Props) {
@@ -51,10 +55,11 @@ export function LsxItemsTable({
   return (
     <section className="lsx-section">
       <div className="lsx-section-header">
-        <h3>Mặt hàng trong lệnh</h3>
-        <span className="lsx-section-summary">
-          {lines.length ? `${lines.length} dòng · số lượng tự điền phần còn lại, giảm bớt nếu chia nhiều lệnh` : ''}
-        </span>
+        <h3>Mặt hàng</h3>
+        <span className="lsx-section-summary">{pickHint}</span>
+        <button type="button" className="btn btn-primary" disabled={!!pickHint} onClick={onPick}>
+          Chọn hàng từ PO…
+        </button>
       </div>
       {catalogLoading && (
         <p role="status" className="lsx-hint">
@@ -73,42 +78,41 @@ export function LsxItemsTable({
         <table className="lsx-items">
           <thead>
             <tr>
-              <th>Mã / tên sản phẩm</th>
+              <th className="lsx-number">#</th>
+              <th>Mã SP</th>
+              <th>Tên sản phẩm</th>
               <th>PO</th>
               <th>ĐVT</th>
               <th className="lsx-number">Còn lại</th>
-              <th className="lsx-number">SL lệnh này</th>
-              <th aria-label="Chi tiết dòng" />
-              <th aria-label="Bỏ dòng" />
+              <th className="lsx-number">SL lệnh *</th>
+              <th aria-label="Thao tác" />
             </tr>
           </thead>
           <tbody>
-            {lines.map(line => {
+            {lines.map((line, position) => {
               const key = draftLineKey(line);
               const po = pos.find(candidate => candidate.id === line.poId);
-              const index = (po?.items || []).findIndex(
-                (item, position) => itemIdentity(item, position) === line.itemId
-              );
+              const index = (po?.items || []).findIndex((item, row) => itemIdentity(item, row) === line.itemId);
               const item = po?.items?.[index];
               const allocated = poAllocations(commands, line.poId, draftId)?.get(key) || 0;
               const remaining = item ? remainingQuantity(item, allocated) : 0;
               const overRemaining = line.quantity !== '' && Number(line.quantity) > remaining;
               const isExpanded = expanded.includes(key);
-              const name = `${item?.productCode || 'Nhập tay'} — ${item?.productName || line.itemId}`;
+              const productName = String(item?.productName || line.itemId);
               const specification = [item?.size, item?.material].filter(Boolean).map(String).join(' · ');
               const mapped = catalogLines[key];
               return (
                 <Fragment key={key}>
                   <tr>
-                    <td title={name}>
-                      <strong>{String(item?.productCode || 'Nhập tay')}</strong> {String(item?.productName || '')}
-                    </td>
+                    <td className="lsx-number">{position + 1}</td>
+                    <td title={String(item?.productCode || '')}>{String(item?.productCode || 'Nhập tay')}</td>
+                    <td title={productName}>{productName}</td>
                     <td title={String(po?.poCode || line.poId)}>{String(po?.poCode || line.poId)}</td>
                     <td>{String(item?.unit || '—')}</td>
                     <td className="lsx-number">{number(remaining)}</td>
                     <td>
                       <input
-                        aria-label={`Số lượng ${item?.productName || line.itemId} của ${po?.poCode || line.poId}`}
+                        aria-label={`Số lượng ${productName} của ${po?.poCode || line.poId}`}
                         aria-invalid={overRemaining || undefined}
                         title={overRemaining ? `Vượt số lượng còn lại (${number(remaining)})` : undefined}
                         className={overRemaining ? 'lsx-number is-invalid' : 'lsx-number'}
@@ -122,23 +126,24 @@ export function LsxItemsTable({
                       />
                     </td>
                     <td>
-                      <IconButton
-                        label={isExpanded ? 'Thu gọn chi tiết dòng' : 'Mã nội bộ, khổ NVL, ưu tiên dòng'}
-                        icon={isExpanded ? <ChevronUp /> : <ChevronDown />}
-                        active={isExpanded}
-                        onClick={() => toggleExpanded(key)}
-                      />
-                    </td>
-                    <td>
-                      <IconButton
-                        label="Bỏ dòng khỏi lệnh"
-                        icon={<X />}
-                        onClick={() => onChange(lines.filter(candidate => draftLineKey(candidate) !== key))}
+                      <RowActionMenu
+                        label={`Thao tác ${productName}`}
+                        actions={[
+                          {
+                            label: isExpanded ? 'Ẩn mã nội bộ, khổ NVL, ưu tiên' : 'Mã nội bộ, khổ NVL, ưu tiên',
+                            onSelect: () => toggleExpanded(key)
+                          },
+                          {
+                            label: 'Bỏ dòng khỏi lệnh',
+                            onSelect: () => onChange(lines.filter(candidate => draftLineKey(candidate) !== key))
+                          }
+                        ]}
                       />
                     </td>
                   </tr>
                   {isExpanded && (
                     <tr className="lsx-line-details">
+                      <td />
                       <td colSpan={7}>
                         <div className="lsx-line-details-grid">
                           <div>
@@ -162,7 +167,7 @@ export function LsxItemsTable({
                           <label title="Khổ vật liệu đầu vào, không phải chiều rộng con tem">
                             Khổ NVL (mm)
                             <input
-                              aria-label={`Khổ NVL ${item?.productName || line.itemId}`}
+                              aria-label={`Khổ NVL ${productName}`}
                               type="number"
                               min="0.001"
                               step="any"
@@ -173,7 +178,7 @@ export function LsxItemsTable({
                           <label>
                             Ưu tiên dòng
                             <select
-                              aria-label={`Ưu tiên ${item?.productName || line.itemId}`}
+                              aria-label={`Ưu tiên ${productName}`}
                               value={line.printDetails.priority}
                               onChange={event => updateDetails(line, { priority: event.target.value })}
                             >
@@ -192,7 +197,7 @@ export function LsxItemsTable({
             })}
             {!lines.length && (
               <tr>
-                <td colSpan={7}>Chưa có mặt hàng. Chọn dòng ở bảng phía trên rồi bấm “Thêm vào lệnh”.</td>
+                <td colSpan={8}>Chưa có mặt hàng. Bấm “Chọn hàng từ PO…” để lấy dòng từ các PO của khách hàng.</td>
               </tr>
             )}
           </tbody>

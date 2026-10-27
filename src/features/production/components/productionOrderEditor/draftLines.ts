@@ -71,3 +71,10 @@ export function plannableLines(pos: ProductionPO[], commands: CommandRecord[], e
   }
   return { lines, blockedPoCodes };
 }
+
+/** Key of the customer an order belongs to; a PO without a customer stands alone, as no shared customer is proven. */
+export const customerKeyOf = (po: ProductionPO) => (po.customerId ? String(po.customerId) : `po:${po.id}`);
+export const customerLabelOf = (po: ProductionPO) =>
+  po.customerId
+    ? String(po.customerName || po.customerId)
+    : `${String(po.customerName || 'Chưa có khách')} (${String(po.poCode || po.id)})`;
