@@ -23,40 +23,40 @@
 
 ## Phân hệ
 
-| Phân hệ (page id) | Mã nguồn chính | Dữ liệu / API |
-|---|---|---|
-| Dữ liệu thô (`customer_data`) | `features/crm/pages/CustomerDataPage.tsx`, `components/LeadCandidateWorkspace.tsx` (+ `components/leadCandidateWorkspace/`, hooks `useLeadCandidateFilters`, `useCandidateBatchQueue`, `useCandidateSchedule`, `useCandidateFileDrafts`, `useEmployeeActivityMonitor`), `RawDataOverview.tsx` | `lead_candidates`, `model/leadCandidateModels.ts`, `rawDataOverview.ts` |
-| Tiềm năng (`leads`) | `features/crm/pages/LeadsPage.tsx`, `LeadOverviewDashboard.tsx` | `leads`, `model/crmModels.ts`, `taxCodeUniqueness.ts`, `leadProfileConfig.ts` |
-| Khách hàng (`crm`) | `features/crm/pages/CrmPage.tsx`, `CustomerProductEditor.tsx`, `CustomerOverview.tsx` | `customers`, `model/customerRepository.ts`, `customerProductCatalog.ts` |
-| Thương mại (`commercial_map`) | `features/commercial-map/pages/CommercialMapPage.tsx` | `public/map-data`, `src/data` |
-| Đơn hàng (`sales`) | `features/sales/pages/SalesPage.tsx`, `components/POFormFullScreen.tsx` | `pos`, `model/poWorkflow.ts`, `api/poWorkflowService.ts`, `src/domain/poFinancials.ts`, `poCompatibility.ts` |
-| Quản lý Sale (`sales_management`) | `features/sales-management/` | `audit_events`, `user_presence`, hồ sơ CRM |
-| Thiết kế, Kho mẫu (`design`, `design_library`) | `features/design/pages/` | `design_requests`, `api/designRequestService.ts` |
-| Mua hàng, NCC (`purchase`, `suppliers`) | `features/procurement/pages/` | `procurement_requests`, `purchase_orders`, `suppliers`, `api/procurementService.ts` |
-| Vật liệu (`inventory`) | `features/inventory/pages/InventoryPage.tsx`, `components/WarehouseVoucherDialog.tsx`, `FinishedGoodsWorkspace.tsx`, `GoodsVoucherDialog.tsx` | `/api/warehouse/manage`, `/api/warehouse/finished` |
-| Danh mục hàng | `features/catalog/components/ItemCatalogWorkspace.tsx` (dùng trong Vật liệu và Kế toán) | `/api/catalog/manage` |
-| Sản xuất (`production`) | `features/production/pages/ProductionPage.tsx`, `components/ProductionOrderWorkspace.tsx`, `MachineManagement.tsx` | `/api/production/manage`, `machines`, `model/productionPrint.ts`, `whiteLabelPrint.ts` |
-| Giao hàng (`delivery`) | `features/delivery/pages/DeliveryPage.tsx` | `deliveries`, `delivery_vehicles`, POD qua `/api/warehouse/finished` |
-| Kế toán (`accounting`) | `features/accounting/pages/AccountingPage.tsx`, `AccountingLedgerWorkspace.tsx`, `LedgerDialog.tsx`, `AccountingReportsWorkspace.tsx` | `/api/accounting/manage`, `/api/accounting/reports` |
-| Tổng quan (`dashboard`) | `features/dashboard/pages/DashboardPage.tsx` | props từ AppShell, `src/components/VisualCharts.tsx` |
-| Công việc (`work_schedule`) | `features/work-schedule/` | `work_schedule_items` |
-| Chấm công (`attendance`) | `features/attendance/` | `/api/attendance/manage`, `attendance_sheets`, `attendance_profiles`, `attendance_calendars` |
-| Chat (`chat`) | `features/chat/pages/ChatPage.tsx`, `src/components/FloatingChat.tsx` | `messages`, `channels` |
-| Tài khoản, Cấu hình, Thùng rác | `features/administration/pages/` | `/api/users/manage`, `/api/fields/manage` |
+| Phân hệ (page id)                              | Mã nguồn chính                                                                                                                                                                                                                                                                                | Dữ liệu / API                                                                                                |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Dữ liệu thô (`customer_data`)                  | `features/crm/pages/CustomerDataPage.tsx`, `components/LeadCandidateWorkspace.tsx` (+ `components/leadCandidateWorkspace/`, hooks `useLeadCandidateFilters`, `useCandidateBatchQueue`, `useCandidateSchedule`, `useCandidateFileDrafts`, `useEmployeeActivityMonitor`), `RawDataOverview.tsx` | `lead_candidates`, `model/leadCandidateModels.ts`, `rawDataOverview.ts`                                      |
+| Tiềm năng (`leads`)                            | `features/crm/pages/LeadsPage.tsx`, `LeadOverviewDashboard.tsx`                                                                                                                                                                                                                               | `leads`, `model/crmModels.ts`, `taxCodeUniqueness.ts`, `leadProfileConfig.ts`                                |
+| Khách hàng (`crm`)                             | `features/crm/pages/CrmPage.tsx`, `CustomerProductEditor.tsx`, `CustomerOverview.tsx`                                                                                                                                                                                                         | `customers`, `model/customerRepository.ts`, `customerProductCatalog.ts`                                      |
+| Thương mại (`commercial_map`)                  | `features/commercial-map/pages/CommercialMapPage.tsx`                                                                                                                                                                                                                                         | `public/map-data`, `src/data`                                                                                |
+| Đơn hàng (`sales`)                             | `features/sales/pages/SalesPage.tsx`, `components/POFormFullScreen.tsx`                                                                                                                                                                                                                       | `pos`, `model/poWorkflow.ts`, `api/poWorkflowService.ts`, `src/domain/poFinancials.ts`, `poCompatibility.ts` |
+| Quản lý Sale (`sales_management`)              | `features/sales-management/`                                                                                                                                                                                                                                                                  | `audit_events`, `user_presence`, hồ sơ CRM                                                                   |
+| Thiết kế, Kho mẫu (`design`, `design_library`) | `features/design/pages/`                                                                                                                                                                                                                                                                      | `design_requests`, `api/designRequestService.ts`                                                             |
+| Mua hàng, NCC (`purchase`, `suppliers`)        | `features/procurement/pages/`                                                                                                                                                                                                                                                                 | `procurement_requests`, `purchase_orders`, `suppliers`, `api/procurementService.ts`                          |
+| Kho vật tư (`inventory`)                       | `features/inventory/pages/InventoryPage.tsx`, `components/WarehouseVoucherDialog.tsx`, `FinishedGoodsWorkspace.tsx`, `GoodsVoucherDialog.tsx`                                                                                                                                                 | `/api/warehouse/manage`, `/api/warehouse/finished`                                                           |
+| Danh mục vật tư                                | `features/catalog/components/ItemCatalogWorkspace.tsx` (dùng trong Kho vật tư và Kế toán)                                                                                                                                                                                                     | `/api/catalog/manage`                                                                                        |
+| Sản xuất (`production`)                        | `features/production/pages/ProductionPage.tsx`, `components/ProductionOrderWorkspace.tsx`, `MachineManagement.tsx`                                                                                                                                                                            | `/api/production/manage`, `machines`, `model/productionPrint.ts`, `whiteLabelPrint.ts`                       |
+| Giao hàng (`delivery`)                         | `features/delivery/pages/DeliveryPage.tsx`                                                                                                                                                                                                                                                    | `deliveries`, `delivery_vehicles`, POD qua `/api/warehouse/finished`                                         |
+| Kế toán (`accounting`)                         | `features/accounting/pages/AccountingPage.tsx`, `AccountingLedgerWorkspace.tsx`, `LedgerDialog.tsx`, `AccountingReportsWorkspace.tsx`                                                                                                                                                         | `/api/accounting/manage`, `/api/accounting/reports`                                                          |
+| Tổng quan (`dashboard`)                        | `features/dashboard/pages/DashboardPage.tsx`                                                                                                                                                                                                                                                  | props từ AppShell, `src/components/VisualCharts.tsx`                                                         |
+| Công việc (`work_schedule`)                    | `features/work-schedule/`                                                                                                                                                                                                                                                                     | `work_schedule_items`                                                                                        |
+| Chấm công (`attendance`)                       | `features/attendance/`                                                                                                                                                                                                                                                                        | `/api/attendance/manage`, `attendance_sheets`, `attendance_profiles`, `attendance_calendars`                 |
+| Chat (`chat`)                                  | `features/chat/pages/ChatPage.tsx`, `src/components/FloatingChat.tsx`                                                                                                                                                                                                                         | `messages`, `channels`                                                                                       |
+| Tài khoản, Cấu hình, Thùng rác                 | `features/administration/pages/`                                                                                                                                                                                                                                                              | `/api/users/manage`, `/api/fields/manage`                                                                    |
 
 ## API → server
 
-| Endpoint | Server | Ghi chú |
-|---|---|---|
-| `/api/catalog/manage` | `server/itemCatalog.ts` | Danh mục, CSV, liên kết nguồn cũ |
-| `/api/production/manage` | `server/productionOrders.ts`, `productionCatalog.ts` | LSX (`requireProductionCaller`) |
-| `/api/warehouse/manage` | `server/warehouse.ts` | Sổ NVL `raw_main` |
-| `/api/warehouse/finished` | `server/finishedGoods.ts` | Thành phẩm `finished_main`, giao/POD/trả |
-| `/api/accounting/manage` | `server/accountingLedger.ts` | Công nợ, thu chi, kỳ |
-| `/api/accounting/reports` | `server/accountingReports.ts` | Báo cáo, chỉ đọc |
-| `/api/attendance/manage` | `server/attendance.ts` | Chấm công (chỉ Admin/Kế toán ghi) |
-| `/api/fields/manage` | `server/fieldConfiguration.ts` | Cấu hình trường, chỉ Admin |
-| `/api/users/manage` | `server/adminUsers.ts` | Tài khoản Firebase Auth, chỉ Admin (`requireAdmin`) |
+| Endpoint                  | Server                                               | Ghi chú                                             |
+| ------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| `/api/catalog/manage`     | `server/itemCatalog.ts`                              | Danh mục, CSV, liên kết nguồn cũ                    |
+| `/api/production/manage`  | `server/productionOrders.ts`, `productionCatalog.ts` | LSX (`requireProductionCaller`)                     |
+| `/api/warehouse/manage`   | `server/warehouse.ts`                                | Sổ NVL `raw_main`                                   |
+| `/api/warehouse/finished` | `server/finishedGoods.ts`                            | Thành phẩm `finished_main`, giao/POD/trả            |
+| `/api/accounting/manage`  | `server/accountingLedger.ts`                         | Công nợ, thu chi, kỳ                                |
+| `/api/accounting/reports` | `server/accountingReports.ts`                        | Báo cáo, chỉ đọc                                    |
+| `/api/attendance/manage`  | `server/attendance.ts`                               | Chấm công (chỉ Admin/Kế toán ghi)                   |
+| `/api/fields/manage`      | `server/fieldConfiguration.ts`                       | Cấu hình trường, chỉ Admin                          |
+| `/api/users/manage`       | `server/adminUsers.ts`                               | Tài khoản Firebase Auth, chỉ Admin (`requireAdmin`) |
 
 Dùng chung: `server/erpCaller.ts` (xác thực), `server/firebaseAdmin.ts` (khởi tạo Admin SDK),
 `server/financeSourceGuard.ts` (chặn đảo kho khi đã vào sổ tiền), `AdminApiError`/`jsonResponse` trong `adminUsers.ts`.
@@ -70,7 +70,7 @@ Dùng chung: `server/erpCaller.ts` (xác thực), `server/firebaseAdmin.ts` (kh�
   (`sunflower:*columns:`); bố cục dùng chung lưu `table_column_layouts`.
 - Bộ lọc: `AdvancedDataFilters.tsx`, `advancedDataFilterModel.ts`, `DataWorkspaceFilters.tsx`.
 - Phản hồi: `MutationToast.tsx` + `src/shared/feedback/mutationFeedback.ts`, `DeleteConfirmationDialog.tsx`
-  + `deleteConfirmation.ts`, `navigationGuard.ts` (cảnh báo rời trang khi chưa lưu).
+  - `deleteConfirmation.ts`, `navigationGuard.ts` (cảnh báo rời trang khi chưa lưu).
 - Cấu hình trường: `features/administration/components/*FieldConfiguration.tsx`, `src/components/ConfiguredSystemFields.tsx`,
   `EntityCustomFields.tsx`, `InlineEntityFieldManager.tsx`, `src/hooks/useSystemFieldConfiguration.ts`,
   `useEntityFieldDefinitions.ts`; metadata `entity_system_field_overrides`, `entity_field_definitions`.

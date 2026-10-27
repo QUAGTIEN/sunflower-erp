@@ -79,7 +79,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     { id: 'design', label: t('Quản Lý Thiết Kế') },
     { id: 'purchase', label: t('Mua Hàng NCC') },
     { id: 'suppliers', label: t('Danh Sách Nhà Cung Cấp') },
-    { id: 'inventory', label: t('Quản Lý Kho') },
+    { id: 'inventory', label: t('Kho vật tư') },
     { id: 'production', label: t('Lệnh Sản Xuất') },
     { id: 'delivery', label: t('Phiếu Giao Hàng') },
     { id: 'accounting', label: t('Quản Lý Kế Toán') },
@@ -567,7 +567,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                   </label>
                   {role === 'accountant' && allowedPages.includes('accounting') && (
                     <p>
-                      Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL/thành phẩm tại Vật liệu;
+                      Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL/thành phẩm tại Kho vật tư;
                       chỉ Admin được đảo phiếu kho. Không được phát hành, chạy máy hoặc QC.
                     </p>
                   )}
@@ -719,7 +719,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                   </label>
                   {role === 'accountant' && allowedPages.includes('accounting') && (
                     <p>
-                      Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL/thành phẩm tại Vật liệu;
+                      Kế toán có quyền Kế toán được lập nháp/gửi duyệt LSX và ghi sổ kho NVL/thành phẩm tại Kho vật tư;
                       chỉ Admin được đảo phiếu kho. Không được phát hành, chạy máy hoặc QC.
                     </p>
                   )}

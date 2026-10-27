@@ -139,7 +139,7 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   design_library: { section: 'Kho mẫu', current: 'Danh sách mẫu thiết kế' },
   purchase: { section: 'Mua hàng', current: 'Yêu cầu từ Sale PO' },
   suppliers: { section: 'Nhà cung cấp', current: 'Danh sách nhà cung cấp' },
-  inventory: { section: 'Vật liệu', current: 'Tồn kho hiện tại' },
+  inventory: { section: 'Kho vật tư', current: 'Tồn kho' },
   production: { section: 'Sản xuất', current: 'Danh sách LSX' },
   delivery: { section: 'Giao hàng', current: 'Bảng điều phối' },
   accounting: { section: 'Kế toán', current: 'Công nợ phải thu & phải trả' },
@@ -1572,11 +1572,11 @@ function AppShell() {
                     setActivePage('inventory');
                     setIsSidebarOpen(false);
                   }}
-                  title={t('Kho Nguyên Vật Tư')}
+                  title={t('Kho vật tư')}
                 >
                   <div className="sidebar-item-content">
                     <Archive size={16} />
-                    <span className="sidebar-item-label">Vật liệu</span>
+                    <span className="sidebar-item-label">Kho vật tư</span>
                   </div>
                 </button>
               )}

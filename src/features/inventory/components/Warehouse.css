@@ -30,6 +30,107 @@
   min-width: 0;
   background: white;
 }
+.warehouse-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+.warehouse-split-layout.has-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+}
+@media (max-width: 1180px) {
+  .warehouse-split-layout.has-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.warehouse-stock-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  background: white;
+}
+.warehouse-stock-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.warehouse-stock-card header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+.warehouse-stock-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 12.5px;
+  color: #334155;
+}
+.warehouse-stock-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--erp-row-divider);
+}
+.warehouse-stock-card-section h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+}
+.warehouse-stock-card .warehouse-grid-scroll table {
+  min-width: 460px;
+}
+.warehouse-list tbody tr.warehouse-row-clickable {
+  cursor: pointer;
+}
+.warehouse-list tbody tr.warehouse-row-active {
+  background: #f1f5f9;
+}
+.warehouse-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.warehouse-action-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  background: white;
+  box-shadow: 0 4px 12px rgb(15 23 42 / 12%);
+}
+.warehouse-action-menu button {
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #1e293b;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.warehouse-action-menu button:hover {
+  background: #f1f5f9;
+}
 .warehouse-list {
   min-width: 1080px;
 }

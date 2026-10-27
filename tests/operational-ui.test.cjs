@@ -190,7 +190,7 @@ test('inventory uses canonical ledger balances, text warnings and threshold acti
   assert.equal(menu(tree)[0].type.name, 'RowActionMenu');
   assert.deepEqual(
     menu(tree)[0].props.actions.map(action => action.label),
-    ['Chi tiết / ngưỡng tồn']
+    ['Xem thẻ kho', 'Thiết lập ngưỡng']
   );
   menu(tree)[0].props.actions[0].onSelect();
   tree = ui.render();
@@ -198,7 +198,7 @@ test('inventory uses canonical ledger balances, text warnings and threshold acti
   assert.ok(nodes(tree).some(node => node.type?.name === 'StockDetails'));
   assert.ok(!nodes(tree).some(node => node.type === 'button' && node.props.children === 'Thêm vật tư'));
   nodes(tree)
-    .find(node => node.props?.role === 'tab' && node.props.children === 'Dữ liệu cũ')
+    .find(node => node.props?.role === 'tab' && node.props.children === 'Báo cáo')
     .props.onClick();
   tree = ui.render();
   assert.equal(menu(tree).length, 0);

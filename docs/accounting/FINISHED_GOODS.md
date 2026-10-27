@@ -17,7 +17,7 @@ Mốc đầu lượt: `54b09f8`, main/origin. Đây là sổ **số lượng**, 
 
 ## Màn hình
 
-- Vật liệu thêm tab **Thành phẩm**, tách khỏi tồn/phiếu/báo cáo NVL. Bộ chọn nội dung: tồn thành phẩm/hàng mua, phiếu hàng hóa, theo dõi hàng giao, tiến độ từng mã/PO và nhập xuất tồn theo ngày.
+- Kho vật tư gộp chung Tồn kho (NVL + thành phẩm + hàng mua), Phiếu kho và Báo cáo nhập xuất tồn; theo dõi hàng giao và tiến độ từng mã/PO nằm ở `Giao hàng → Hàng giao & thành phẩm`.
 - Giao hàng thêm **Hàng giao & thành phẩm**, có lọc theo chuyến; thao tác POD cũ mở phiếu mới, không còn cộng `qtyDelivered` trực tiếp. Chuyến mới không ghi lượng kế hoạch thành lượng đã giao. Kế hoạch đã tham gia sổ được khóa sửa/xóa trực tiếp.
 - Tiến độ theo từng dòng PO và ĐVT; không cộng lẫn cuộn/cái/mét thành một tổng. Đã nhận ròng, đang giao, cần xuất thêm và đóng thiếu là các số độc lập.
 - Kết quả điểm giao phân biệt đã giao, đã hoàn, giao/hoàn một phần. Lịch sử phiếu là nguồn chi tiết; ảnh/POD gần nhất trên chuyến chỉ phục vụ tra nhanh. Đảo POD gần nhất xóa bản sao tra nhanh, giữ bằng chứng trong phiếu gốc.
@@ -25,14 +25,14 @@ Mốc đầu lượt: `54b09f8`, main/origin. Đây là sổ **số lượng**, 
 
 ## Sổ và tính toán
 
-| Nơi lưu | Nội dung |
-|---|---|
-| `warehouse_balances/fg_<catalogItemId>` | `warehouseId: finished_main`, số dư ĐVT cơ sở, revision |
-| `warehouse_vouchers/<requestId>` | Phiếu TP theo ngày Việt Nam, nguồn/PO/chuyến/phiếu xuất gốc, snapshot dòng, delta vật lý, POD, lý do, liên kết đảo |
-| `goods_order_state/<poId>` | Fingerprint PO, revision, ánh xạ theo ID dòng, lượng đặt/xuất/nhận/hoàn/trả/đóng thiếu ở ĐVT cơ sở |
-| `goods_source_state/<production hoặc purchase>_<id>` | Fingerprint nguồn, ánh xạ từng dòng, phần nhập và phần NCC giao thẳng/nhận/hoàn, revision |
-| `goods_dispatch_state/<dispatchId>` | Lượng xuất/nhận/hoàn/trả theo dòng của từng phiếu xuất gốc |
-| `goods_requests`, `goods_counters`, `audit_events` | Chống trùng theo người/nội dung, số phiếu ngày, lịch sử thao tác |
+| Nơi lưu                                              | Nội dung                                                                                                           |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `warehouse_balances/fg_<catalogItemId>`              | `warehouseId: finished_main`, số dư ĐVT cơ sở, revision                                                            |
+| `warehouse_vouchers/<requestId>`                     | Phiếu TP theo ngày Việt Nam, nguồn/PO/chuyến/phiếu xuất gốc, snapshot dòng, delta vật lý, POD, lý do, liên kết đảo |
+| `goods_order_state/<poId>`                           | Fingerprint PO, revision, ánh xạ theo ID dòng, lượng đặt/xuất/nhận/hoàn/trả/đóng thiếu ở ĐVT cơ sở                 |
+| `goods_source_state/<production hoặc purchase>_<id>` | Fingerprint nguồn, ánh xạ từng dòng, phần nhập và phần NCC giao thẳng/nhận/hoàn, revision                          |
+| `goods_dispatch_state/<dispatchId>`                  | Lượng xuất/nhận/hoàn/trả theo dòng của từng phiếu xuất gốc                                                         |
+| `goods_requests`, `goods_counters`, `audit_events`   | Chống trùng theo người/nội dung, số phiếu ngày, lịch sử thao tác                                                   |
 
 Sổ NVL cùng collection vẫn dùng `raw_main`; API/bảng/dashboard NVL lọc riêng, không trộn thành phẩm vào số NVL.
 
@@ -71,7 +71,6 @@ Rules chặn client ghi sổ/metadata; khóa nguồn mua đã phát hành và PO
 Cần triển khai web, `/api/warehouse/finished`, API kho/LSX và `firestore.rules` cùng phiên bản. Chưa deploy hoặc kiểm thử trình duyệt/Firebase thật trong lượt này; push Git không xác nhận triển khai. Chưa nhập đầu kỳ thật.
 
 Lượt 5 tiếp theo: chốt mốc tăng nợ mua/bán từ chứng từ có thật, kỳ/thuế/làm tròn, quyền ghi/đảo/khóa kỳ, phân bổ thu chi/ứng trước và tác động tiền của hàng trả. Dùng ID phiếu/nguồn để nối, không suy lịch sử thanh toán từ lượng giao hoặc số đã trả hiện tại.
-
 
 ## Điểm nối lượt 5
 

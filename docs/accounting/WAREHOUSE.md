@@ -13,7 +13,7 @@ Mốc đầu lượt: `2235742`, main, origin GitHub đã kiểm tra. Đây là 
 ## Luồng sử dụng
 
 1. Chuẩn bị mã NVL trong Danh mục hàng và ĐVT/quy đổi có xác nhận theo từng mã. Không tự suy cuộn/mét/m².
-2. Mua hàng phát hành đơn mua như hiện tại. Với NVL, thao tác **Nhập kho NVL** mở cùng form **Lập phiếu kho** tại Vật liệu. Nhập thực nhận từng dòng, có thể nhận nhiều lần; không vượt phần đặt còn lại.
+2. Mua hàng phát hành đơn mua như hiện tại. Với NVL, thao tác **Nhập kho NVL** mở cùng form **Lập phiếu kho** tại Kho vật tư. Nhập thực nhận từng dòng, có thể nhận nhiều lần; không vượt phần đặt còn lại.
 3. Lần nhận đầu chọn mã nội bộ và xác nhận ánh xạ từng dòng. Ánh xạ/quy đổi được giữ cho những lần sau. Không tìm vật tư bằng tên. Chứng từ nguồn thay đổi sau ghi kho bị chặn để đối soát.
 4. LSX mới phiên bản 2 đã phát hành/đang chạy có thể cấp nhiều lần và cấp bổ sung; không giới hạn cấp bằng dự kiến vì đây là số thực tế. Phiếu chỉ ghi các dòng có số lượng nhập. Mã đã chốt trên LSX không được đổi.
 5. Hoàn NVL nhiều lần theo cùng LSX, tổng hoàn không vượt lượng cấp ròng còn lại. Lệnh hoàn thành vẫn được hoàn NVL, không cấp thêm. Lệnh cũ phiên bản 1 cần đối soát riêng, không đoán vật tư theo sản phẩm.
@@ -25,7 +25,7 @@ Mốc đầu lượt: `2235742`, main, origin GitHub đã kiểm tra. Đây là 
 
 ## Giao diện
 
-- Vật liệu: **Tồn kho NVL / Phiếu kho / Nhập xuất tồn / Danh mục hàng / Dữ liệu cũ**. Bảng một dòng, tìm/lọc, phân trang và RowActionMenu chung. Không số đếm sau tên tab.
+- Kho vật tư (`inventory`): **Tồn kho / Phiếu kho / Báo cáo / Danh mục vật tư**. Bảng một dòng, tìm/lọc, phân trang và RowActionMenu chung. Không số đếm sau tên tab. Bấm dòng tồn kho mở khung Thẻ kho bên phải.
 - Theo dõi số dư và lịch sử từng mã, thiết lập ngưỡng tối thiểu theo ĐVT cơ sở. Dưới ngưỡng hiển thị Cần nhập hàng; tồn âm có chữ cảnh báo. Chưa cấu hình thì không tự điền ngưỡng giả.
 - Báo cáo khoảng ngày: đầu kỳ là tổng phiếu trước ngày bắt đầu; nhập/xuất là tổng delta dương/âm trong kỳ; cuối = đầu + nhập − xuất. Tính cả phiếu gốc và phiếu đảo, không loại phiếu gốc đã đảo.
 - Chi tiết LSX có lịch sử cấp/hoàn thực tế và thao tác đúng quyền; producer chỉ xem. Ngưỡng và cảnh báo bảng kho là phạm vi lượt 3; chưa có hệ thống nhắc hạn/tổng hợp lượt 6.
@@ -34,14 +34,14 @@ Mốc đầu lượt: `2235742`, main, origin GitHub đã kiểm tra. Đây là 
 
 ## Dữ liệu và bảo toàn lịch sử
 
-| Collection | Vai trò |
-|---|---|
-| `warehouse_balances` | Mỗi mã NVL một số dư ĐVT cơ sở, revision, ngưỡng tối thiểu |
-| `warehouse_vouchers` | Phiếu bất biến và các dòng snapshot số lượng gốc/cơ sở/hệ số, nguồn, người/ngày ghi, lý do, liên kết đảo |
-| `warehouse_source_state` | Ánh xạ theo dòng nguồn, fingerprint, lượng đã nhận hoặc cấp ròng (ĐVT cơ sở), revision |
-| `warehouse_requests` | Biên nhận requestId + dấu nội dung/người thực hiện chống trùng |
-| `warehouse_counters` | Số phiếu theo ngày Việt Nam, `KHO-YYYYMMDD-xxxx` |
-| `audit_events` | Dòng phiếu, lý do, dấu nguồn, người/thời gian; ngưỡng có trước/sau |
+| Collection               | Vai trò                                                                                                  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `warehouse_balances`     | Mỗi mã NVL một số dư ĐVT cơ sở, revision, ngưỡng tối thiểu                                               |
+| `warehouse_vouchers`     | Phiếu bất biến và các dòng snapshot số lượng gốc/cơ sở/hệ số, nguồn, người/ngày ghi, lý do, liên kết đảo |
+| `warehouse_source_state` | Ánh xạ theo dòng nguồn, fingerprint, lượng đã nhận hoặc cấp ròng (ĐVT cơ sở), revision                   |
+| `warehouse_requests`     | Biên nhận requestId + dấu nội dung/người thực hiện chống trùng                                           |
+| `warehouse_counters`     | Số phiếu theo ngày Việt Nam, `KHO-YYYYMMDD-xxxx`                                                         |
+| `audit_events`           | Dòng phiếu, lý do, dấu nguồn, người/thời gian; ngưỡng có trước/sau                                       |
 
 `purchase_orders` có `warehouseReceiptRevision`, `warehouseReceivedComplete`, status nhận một phần/đủ, actualReceiveDate. `procurement_requests` nhận revision/status tương ứng khi còn liên kết đúng đơn mua.
 
@@ -68,11 +68,9 @@ Chưa deploy Vercel/Firebase, chưa kết nối dữ liệu thật, chưa nhập
 - Kiểm tra rules là hợp đồng tĩnh; chưa chạy Firestore emulator. Giao dịch test mô phỏng có retry/version, không thay thế nghiệm thu Firebase và trình duyệt thật.
 - Lượt 4 nối sổ thành phẩm/giao/trả theo quyết định D08; giữ một nguồn ghi và không dùng lại các handler tồn cũ. Lượt 5 nối công nợ từ chứng từ mua có thật, không tự dựng lại nợ cho các phiếu kho lịch sử. Lượt 7 chốt chuyển đổi trước khi nhập đầu kỳ thật.
 
-
 ## Bổ sung lượt 4
 
 Sổ thành phẩm/giao/trả đã có mã nguồn, xem FINISHED_GOODS.md. Collection số dư/phiếu dùng chung nhưng lọc kho rõ ràng: NVL raw_main, thành phẩm finished_main với ID số dư fg_<catalogItemId>. API load NVL và Dashboard chỉ đọc phần NVL; báo cáo thành phẩm không trộn hàng NCC giao thẳng/POD vào delta vật lý. Nhận mua mọi nhóm đã chuyển sang phiếu số lượng, không tự tạo payable; thay cho đoạn nhận mua khác còn luồng hiện tại ở bàn giao lượt 3 phía trên. Tiền nối lượt 5. Cần triển khai web/API/rules cùng phiên bản; chưa có đầu kỳ thật hoặc deploy trong lượt này.
-
 
 ## Điểm nối tiền ở lượt 5
 

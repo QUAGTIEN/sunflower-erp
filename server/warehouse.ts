@@ -140,7 +140,7 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
       };
     });
   if (!canPostWarehouse(actor))
-    fail(403, 'Chỉ Admin, Mua hàng có quyền Vật liệu hoặc Kế toán có quyền Kế toán được ghi sổ.');
+    fail(403, 'Chỉ Admin, Mua hàng có quyền Kho vật tư hoặc Kế toán có quyền Kế toán được ghi sổ.');
   if (!['post', 'reverse', 'threshold'].includes(action)) fail(400, 'Thao tác kho không hợp lệ.');
   if (action === 'reverse' && actor.role !== 'admin') fail(403, 'Chỉ Admin được đảo phiếu kho.');
   const now = new Date().toISOString(),

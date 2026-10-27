@@ -49,14 +49,14 @@ Ba nguyên tắc dữ liệu xuyên suốt:
 
 ## 3. Nhóm người dùng và quyền mặc định
 
-| Vai trò | Trách nhiệm chính | Phân hệ mặc định |
-|---|---|---|
-| **Admin / Giám đốc** | Theo dõi toàn hệ thống, quản lý Sale, tài khoản, cấu hình và dữ liệu | Toàn bộ các phân hệ |
-| **Sale** | Tìm dữ liệu, chăm sóc tiềm năng, quản lý khách hàng và tạo PO | Tổng quan, Chat, Công việc, Thương mại, Dữ liệu thô, Tiềm năng, Khách hàng, Tạo đơn hàng |
-| **Thiết kế** | Tiếp nhận yêu cầu, thực hiện thiết kế và theo dõi khách duyệt | Tổng quan, Chat, Công việc, Thiết kế |
-| **Mua hàng** | Xử lý yêu cầu mua, chọn nhà cung cấp và quản lý vật tư | Tổng quan, Chat, Công việc, Mua hàng, Nhà cung cấp, Vật liệu |
-| **Sản xuất** | Nhận lệnh sản xuất, quản lý lịch máy và tiến độ | Tổng quan, Chat, Công việc, Sản xuất |
-| **Kế toán** | Công nợ, thu chi, báo cáo, ghi sổ kho, lập nháp LSX | Tổng quan, Chat, Công việc, Kế toán, Sản xuất, Vật liệu |
+| Vai trò              | Trách nhiệm chính                                                    | Phân hệ mặc định                                                                         |
+| -------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Admin / Giám đốc** | Theo dõi toàn hệ thống, quản lý Sale, tài khoản, cấu hình và dữ liệu | Toàn bộ các phân hệ                                                                      |
+| **Sale**             | Tìm dữ liệu, chăm sóc tiềm năng, quản lý khách hàng và tạo PO        | Tổng quan, Chat, Công việc, Thương mại, Dữ liệu thô, Tiềm năng, Khách hàng, Tạo đơn hàng |
+| **Thiết kế**         | Tiếp nhận yêu cầu, thực hiện thiết kế và theo dõi khách duyệt        | Tổng quan, Chat, Công việc, Thiết kế                                                     |
+| **Mua hàng**         | Xử lý yêu cầu mua, chọn nhà cung cấp và quản lý vật tư               | Tổng quan, Chat, Công việc, Mua hàng, Nhà cung cấp, Vật liệu                             |
+| **Sản xuất**         | Nhận lệnh sản xuất, quản lý lịch máy và tiến độ                      | Tổng quan, Chat, Công việc, Sản xuất                                                     |
+| **Kế toán**          | Công nợ, thu chi, báo cáo, ghi sổ kho, lập nháp LSX                  | Tổng quan, Chat, Công việc, Kế toán, Sản xuất, Vật liệu                                  |
 
 Mọi vai trò đều xem được bảng công của mình; chỉ Admin và Kế toán chấm công. Kế toán có trang Kế toán được kế thừa quyền vào Vật liệu và Sản xuất mà không cần
 sửa hồ sơ tài khoản. Sale luôn bị chặn khỏi Sản xuất. Quyền chi tiết: `src/app/navigation/accessControl.ts`.
@@ -254,7 +254,7 @@ Phân hệ có hai danh sách: **Yêu cầu từ Sale PO** và **Đơn mua đã 
 - Quản lý nhiều đầu mối liên hệ, tài liệu, hợp đồng và nhật ký hoạt động.
 - Xem lịch sử cung ứng để hỗ trợ lựa chọn nhà cung cấp.
 
-### 4.14. Vật liệu / Kho nguyên vật tư
+### 4.14. Kho vật tư (`inventory`)
 
 Kho được ghi theo **sổ số lượng**: mọi biến động đi qua phiếu kho ghi sổ trên máy chủ. Phiếu đã ghi
 không sửa/xóa, chỉ đảo.
@@ -323,16 +323,16 @@ Chi tiết: `docs/accounting/`.
 
 Dashboard và các phân hệ kinh doanh dùng một danh mục chung gồm **8 nhóm và 61 mục hiện có**. Mỗi mục có một phân hệ sở hữu rõ ràng; khi bấm từ Dashboard, hệ thống mở danh sách tại đúng phân hệ đó.
 
-| Nhóm | Số mục | Phân hệ lưu chính | Nội dung tiêu biểu |
-|---|---:|---|---|
-| Tiến độ mẫu / đơn hàng / PO | 8 | Tiềm năng | Hẹn lên PO, duyệt mẫu, test mẫu, gửi mẫu, cung cấp thông tin sản phẩm |
-| Giá / điều kiện thương mại | 5 | Tiềm năng | Giá target, hứa giá target, giá thấp/cao, khảo giá |
-| Liên hệ / tương tác | 14 | Dữ liệu thô và Tiềm năng | Chưa có thông tin, contact mua hàng, Gmail/Zalo, hẹn gặp, làm việc từ xa, Sale đã báo giá |
-| Quy mô / mức sử dụng | 6 | Tiềm năng | Dùng ít đến trên 100 triệu |
-| Quan hệ NCC / cạnh tranh | 6 | Tiềm năng | Bị chỉ định, không đổi NCC, đã dùng sản phẩm, Sale khác chăm sóc |
-| Yêu cầu / điều kiện đặc biệt | 7 | Tiềm năng | Chứng chỉ, tiến độ, chất lượng, khoảng cách, audit nhà xưởng |
-| Sản phẩm / nhu cầu | 4 | Tiềm năng | Máy móc, tem nhãn, mực in, file thiết kế |
-| Ngành nghề khách hàng | 11 | Dữ liệu thô | May mặc, điện tử, F&B, bao bì, y tế, logistics, dược/mỹ phẩm, nông nghiệp, gia dụng/kim khí, ô tô/xe máy, hóa chất/sơn |
+| Nhóm                         | Số mục | Phân hệ lưu chính        | Nội dung tiêu biểu                                                                                                     |
+| ---------------------------- | -----: | ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Tiến độ mẫu / đơn hàng / PO  |      8 | Tiềm năng                | Hẹn lên PO, duyệt mẫu, test mẫu, gửi mẫu, cung cấp thông tin sản phẩm                                                  |
+| Giá / điều kiện thương mại   |      5 | Tiềm năng                | Giá target, hứa giá target, giá thấp/cao, khảo giá                                                                     |
+| Liên hệ / tương tác          |     14 | Dữ liệu thô và Tiềm năng | Chưa có thông tin, contact mua hàng, Gmail/Zalo, hẹn gặp, làm việc từ xa, Sale đã báo giá                              |
+| Quy mô / mức sử dụng         |      6 | Tiềm năng                | Dùng ít đến trên 100 triệu                                                                                             |
+| Quan hệ NCC / cạnh tranh     |      6 | Tiềm năng                | Bị chỉ định, không đổi NCC, đã dùng sản phẩm, Sale khác chăm sóc                                                       |
+| Yêu cầu / điều kiện đặc biệt |      7 | Tiềm năng                | Chứng chỉ, tiến độ, chất lượng, khoảng cách, audit nhà xưởng                                                           |
+| Sản phẩm / nhu cầu           |      4 | Tiềm năng                | Máy móc, tem nhãn, mực in, file thiết kế                                                                               |
+| Ngành nghề khách hàng        |     11 | Dữ liệu thô              | May mặc, điện tử, F&B, bao bì, y tế, logistics, dược/mỹ phẩm, nông nghiệp, gia dụng/kim khí, ô tô/xe máy, hóa chất/sơn |
 
 Danh mục này giúp lãnh đạo trả lời câu hỏi “nhóm khách nào đang ở đâu” mà không trộn dữ liệu giữa các giai đoạn.
 
@@ -424,18 +424,18 @@ Mỗi phân hệ thường tách thành `pages`, `components`, `model` và `api`
 
 ## 9. Thuật ngữ chính
 
-| Thuật ngữ | Ý nghĩa |
-|---|---|
-| **Dữ liệu thô** | Thông tin doanh nghiệp mới thu thập, chưa đủ xác nhận là cơ hội |
-| **Tiềm năng / Lead** | Doanh nghiệp đã có tín hiệu và đang được Sale chăm sóc |
-| **Khách hàng** | Hồ sơ chính thức đủ điều kiện giao dịch và tạo đơn |
-| **PO** | Đơn hàng Sale, là trục liên kết các bộ phận phía sau |
-| **LSX** | Lệnh sản xuất |
-| **NCC** | Nhà cung cấp |
-| **POD** | Bằng chứng giao hàng/đối soát giao nhận |
-| **Hàng đợi PO** | Trạng thái cho biết PO đang chờ bộ phận hoặc bước nào |
-| **Phân loại khách hàng** | Danh mục 8 nhóm dùng để phân tích và điều hướng hồ sơ |
-| **Audit** | Nhật ký hành động của người dùng trên dữ liệu nghiệp vụ |
+| Thuật ngữ                | Ý nghĩa                                                         |
+| ------------------------ | --------------------------------------------------------------- |
+| **Dữ liệu thô**          | Thông tin doanh nghiệp mới thu thập, chưa đủ xác nhận là cơ hội |
+| **Tiềm năng / Lead**     | Doanh nghiệp đã có tín hiệu và đang được Sale chăm sóc          |
+| **Khách hàng**           | Hồ sơ chính thức đủ điều kiện giao dịch và tạo đơn              |
+| **PO**                   | Đơn hàng Sale, là trục liên kết các bộ phận phía sau            |
+| **LSX**                  | Lệnh sản xuất                                                   |
+| **NCC**                  | Nhà cung cấp                                                    |
+| **POD**                  | Bằng chứng giao hàng/đối soát giao nhận                         |
+| **Hàng đợi PO**          | Trạng thái cho biết PO đang chờ bộ phận hoặc bước nào           |
+| **Phân loại khách hàng** | Danh mục 8 nhóm dùng để phân tích và điều hướng hồ sơ           |
+| **Audit**                | Nhật ký hành động của người dùng trên dữ liệu nghiệp vụ         |
 
 ## 10. Phạm vi của tài liệu
 
