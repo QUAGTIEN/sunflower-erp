@@ -1,4 +1,4 @@
-import { defaultHolidays } from './vietnamHolidays';
+import { defaultHolidays } from './vietnamHolidays.js';
 
 export type EmploymentType = 'full_time' | 'part_time';
 export type DayStatus = 'present' | 'half' | 'paid_leave' | 'unpaid_leave';
