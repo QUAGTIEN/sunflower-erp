@@ -72,7 +72,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
   const { firestore } = getFirebaseAdminServices();
   const action = String(body.action);
   if (action === 'catalog') return loadCatalog(firestore, actor, body);
-  if (!canManageProduction(actor) && !['create', 'save', 'submit'].includes(action))
+  if (!canManageProduction(actor) && !['create', 'save', 'submit', 'request_materials'].includes(action))
     throw new AdminApiError(403, 'Kế toán chỉ được lập, sửa nháp và gửi duyệt LSX của mình.');
   const id = identifier(body.id);
   const drafting = action === 'create' || action === 'save';
@@ -91,7 +91,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     const pos = await readPOs(transaction, firestore, touchedPoIds);
     const commands = await readCommands(transaction, firestore, touchedPoIds);
     const previous = commands.find(command => command.id === id) as ProductionOrder | undefined;
-    if (previous && !canManageProduction(actor) && previous.createdById !== actor.uid)
+    if (previous && !canManageProduction(actor) && action !== 'request_materials' && previous.createdById !== actor.uid)
       throw new AdminApiError(403, 'Bạn chỉ được sửa/gửi duyệt LSX do mình lập.');
     const requestId = identifier(body.requestId);
     const linePOs = pos.filter(po => linePoIds.includes(po.id));
@@ -106,7 +106,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     if (action !== 'create' && previous!.revision !== body.expectedRevision)
       throw new AdminApiError(409, 'LSX vừa được cập nhật. Đóng và mở lại để lấy dữ liệu mới.');
     // Read access is checked even when cancelling after the PO has advanced.
-    const advancedAllowed = ['cancel', 'complete', 'start', 'return'].includes(action);
+    const advancedAllowed = ['cancel', 'complete', 'start', 'return', 'request_materials'].includes(action);
     for (const po of linePOs) assertPOAccess(actor, advancedAllowed ? { ...po, status: 'waiting_production' } : po);
     if (action !== 'create') assertTransition(actor, previous!, action);
     const counterRef = firestore.collection('production_counters').doc(businessDate);
@@ -255,6 +255,12 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
         next.status = 'cancelled';
       }
       if (action === 'complete') completeOrder(next, body, actor, now);
+      if (action === 'request_materials') {
+        if (!next.lines.some(line => line.quantity - (line.goodQuantity ?? 0) > 1e-8))
+          throw new AdminApiError(400, 'LSX đã đủ sản lượng, không có phần thiếu để mua thêm NVL.');
+        if (!next.materials.length)
+          throw new AdminApiError(400, 'LSX chưa khai báo vật tư dự kiến để đề nghị mua thêm.');
+      }
     }
     // Legacy dashboards, machine schedules and chat use this display-only alias.
     next.productName = next.lines.map(line => line.productName).join(', ');
@@ -269,6 +275,51 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
       throw new AdminApiError(400, 'LSX quá lớn. Giảm số mặt hàng hoặc ảnh đính kèm.');
     const after = [...commands.filter(command => command.id !== id), next];
     if (action === 'create') transaction.set(counterRef, { sequence });
+    if (action === 'request_materials') {
+      next.materials.forEach((material, index) => {
+        const reqDocId = `pr_${requestId}_${index + 1}`;
+        transaction.set(firestore.collection('procurement_requests').doc(reqDocId), {
+          id: reqDocId,
+          requestCode: `PR-${next.lsxCode}-${String(index + 1).padStart(2, '0')}`,
+          poId: next.poId,
+          poCode: next.poCode,
+          poItemId: material.id,
+          poItemIndex: index,
+          lsxId: next.id,
+          lsxCode: next.lsxCode,
+          customerId: next.customerId,
+          customerName: next.customerName,
+          saleId: '',
+          productCode: material.code,
+          productName: material.name,
+          material: material.name,
+          size: material.width ? `Khổ ${material.width} mm` : '',
+          specifications: {
+            width: material.width || '',
+            allowancePercent: material.allowancePercent || 0,
+            catalogItemId: material.catalogItemId || ''
+          },
+          quantity: material.quantity,
+          unit: material.unit,
+          requiredDate: next.deliveryDeadline || businessDate,
+          sourcingType: 'raw_material',
+          status: 'new',
+          assignedPurchaserId: '',
+          assignedPurchaserName: '',
+          selectedSupplierId: '',
+          selectedSupplierName: '',
+          selectedUnitPrice: 0,
+          purchaseOrderId: '',
+          purchaseOrderCode: '',
+          createdAt: now,
+          createdById: actor.uid,
+          createdByName: actor.displayName,
+          updatedAt: now,
+          updatedBy: actor.displayName,
+          deleted: false
+        });
+      });
+    }
     transaction.set(commandRef, next);
     for (const po of pos) updatePO(transaction, firestore, po, after, next, action, actor, now);
     transaction.set(eventRef, {

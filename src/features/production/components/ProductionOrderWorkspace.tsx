@@ -97,7 +97,8 @@ const actionNames: Record<string, string> = {
   release: 'Đã phát hành LSX',
   start: 'Đã bắt đầu sản xuất',
   complete: 'Đã nghiệm thu LSX',
-  cancel: 'Đã hủy LSX'
+  cancel: 'Đã hủy LSX',
+  request_materials: 'Đã tạo đề nghị mua thêm NVL'
 };
 const historyNames: Record<string, string> = {
   create: 'Lập lệnh',
@@ -108,7 +109,8 @@ const historyNames: Record<string, string> = {
   start: 'Bắt đầu chạy máy',
   complete: 'Hoàn thành',
   cancel: 'Hủy lệnh',
-  qc: 'Nghiệm thu QC'
+  qc: 'Nghiệm thu QC',
+  request_materials: 'Đề nghị mua thêm NVL'
 };
 const LIST_STATUSES: Record<string, string> = { ...PRODUCTION_STATUSES, transfer_pending: 'Chờ duyệt bàn giao' };
 const PRIORITY_LABELS: Record<string, string> = { urgent: 'Gấp', high: 'Hơi gấp', normal: 'Bình thường' };
@@ -269,6 +271,34 @@ export function ProductionOrderWorkspace({
       priority: order.priority,
       notes: order.notes,
       printTemplate: order.printTemplate || { id: 'standard', version: 1 }
+    });
+  };
+  const supplement = (order: ProductionOrder) => {
+    const shortLines = order.lines.filter(line => line.quantity - (line.goodQuantity ?? 0) > 1e-8);
+    if (!shortLines.length) return;
+    setError('');
+    setSelectedId('');
+    setCatalog({ materials: [], lines: {} });
+    setCatalogError('');
+    setCatalogLoading(true);
+    const firstPO = pos.find(po => po.id === linePoId(shortLines[0] || order.lines[0] || {}, order));
+    setDraft({
+      id: crypto.randomUUID(),
+      customerKey: firstPO ? customerKeyOf(firstPO) : '',
+      lines: shortLines.map(line => ({
+        poId: linePoId(line, order),
+        itemId: line.itemId,
+        quantity: String(Math.round((line.quantity - (line.goodQuantity ?? 0)) * 1_000_000) / 1_000_000),
+        printDetails: line.printDetails || EMPTY_PRINT_DETAILS
+      })),
+      materials: structuredClone(order.materials),
+      machineId: order.machineId,
+      operatorId: order.operatorId,
+      shift: order.shift,
+      deliveryDeadline: order.deliveryDeadline,
+      priority: order.priority,
+      notes: `Bổ sung phần thiếu của ${order.lsxCode}`,
+      printTemplate: order.printTemplate || DEFAULT_PRINT_TEMPLATE
     });
   };
   const mutate = async (body: Record<string, unknown>, after?: () => void) => {
@@ -601,6 +631,29 @@ export function ProductionOrderWorkspace({
                   Hủy lệnh
                 </button>
               )}
+              {selected.status === 'completed' &&
+                canCreate &&
+                selected.lines.some(line => line.quantity - (line.goodQuantity ?? 0) > 1e-8) && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      disabled={busy || !selected.materials.length}
+                      title={!selected.materials.length ? 'LSX chưa khai báo vật tư dự kiến' : undefined}
+                      onClick={() => void transition('request_materials')}
+                    >
+                      Đề nghị mua thêm NVL
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={busy}
+                      onClick={() => supplement(selected)}
+                    >
+                      Lập lệnh bổ sung
+                    </button>
+                  </>
+                )}
             </div>
           </header>
           <dl className="lsx-summary" aria-label="Thông tin chung">

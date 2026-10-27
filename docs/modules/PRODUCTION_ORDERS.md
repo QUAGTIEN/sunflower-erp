@@ -99,7 +99,14 @@ Lượt 3 thay rules và thêm `/api/warehouse/manage`; cần web/API/rules cùn
 - Chưa kiểm thử trình duyệt, máy in thực hoặc triển khai quy tắc trên Firebase trong lượt này.
 - Lượt 2 bổ sung test quyền Kế toán/nháp của người khác, liên kết PO/sản phẩm khách, mã stale/inactive, snapshot sau phát hành, quy đổi NVL, mẫu có phiên bản, dữ liệu dài và bản in nhiều trang. Kiểm tra HTML sinh ra không thay thế nghiệm thu bố cục trên trình duyệt/máy in thật.
 
-
 ## Bổ sung lượt kế toán 4 — ngày 23/10/2026
 
 Chi tiết LSX v2 hiển thị lịch sử phiếu thành phẩm, mở nhập thực tế khi lệnh hoàn thành và người dùng có quyền kho. Nhập từng phần, tổng không vượt lượng đạt QC, đóng băng mã/quy đổi và kiểm tra nguồn trên máy chủ. Producer chỉ xem; QC/in/lưu không tự tăng tồn. Phiếu mới qua /api/warehouse/finished, tách số dư NVL và giữ lệnh cũ; cần deploy web/API/rules cùng phiên bản. Chưa có đầu kỳ thật, công nợ mới hoặc nghiệm thu Firebase/trình duyệt thật. Xem FINISHED_GOODS.md.
+
+## Bổ sung xử lý thiếu/dư sản lượng — ngày 28/10/2026
+
+- **Nghiệm thu SL dư (`surplusQuantity`):** Khi nghiệm thu QC, ngoài SL đạt và SL hỏng, hỗ trợ nhập **SL dư** (`surplusQuantity >= 0`). SL dư được lưu riêng trên dòng LSX, không tính vào phân bổ/hoàn thành PO và được nhập kho qua phiếu `production_surplus_receipt`.
+- **Cảnh báo tồn dư khi lập LSX:** Bảng mặt hàng trong form lập LSX hiển thị nhãn `"Kho đang có N <ĐVT> dư"` nếu mã thành phẩm đã liên kết đang có tồn kho dương.
+- **Thao tác nhanh khi thiếu hàng trên LSX hoàn thành:** Khi LSX đã hoàn thành (`completed`) mà có dòng thiếu sản lượng (`goodQuantity < quantity`), bảng mặt hàng hiển thị rõ `"Thiếu N <ĐVT>"` và thanh thao tác hiển thị 2 nút nhanh:
+  1. **Lập lệnh bổ sung:** Mở form lập LSX nháp điền sẵn khách hàng, các dòng PO còn thiếu với số lượng bằng đúng phần thiếu, vật tư dự kiến và ghi chú tham chiếu LSX gốc.
+  2. **Đề nghị mua thêm NVL (`action: 'request_materials'`):** Tạo yêu cầu mua hàng (`procurement_requests`, `sourcingType: 'raw_material'`, trạng thái `new`) từ danh sách vật tư dự kiến của LSX trong giao dịch máy chủ; không tự tạo đơn mua (`purchase_orders`) hay công nợ.

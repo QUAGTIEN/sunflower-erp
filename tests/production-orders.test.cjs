@@ -1418,3 +1418,47 @@ test('the company white-label sheet v2 lists the PO of each line and keeps hand-
     !productionPrintHtml({ ...order, printTemplate: { id: 'white_label', version: 1 } }).includes('Mẫu tem trắng v2')
   );
 });
+
+test('completed LSX with shortfall shows shortfall actions and request_materials creates procurement_requests without payables', async () => {
+  const b = backend();
+  await b.manage(draft());
+  await b.action('submit');
+  await b.action('release');
+  await b.action('start');
+  await b.action('complete', 'command1', {
+    results: [
+      { itemId: 'roll', goodQuantity: 70, rejectQuantity: 10 },
+      { itemId: 'manual', goodQuantity: 50, rejectQuantity: 0 }
+    ],
+    qcNote: 'Thiếu 30 cuộn'
+  });
+  await b.action('request_materials', 'command1');
+  const prDocs = [...b.store.keys()]
+    .filter(key => key.startsWith('procurement_requests/'))
+    .map(key => b.store.get(key));
+  assert.equal(prDocs.length, 1);
+  assert.equal(prDocs[0].sourcingType, 'raw_material');
+  assert.equal(prDocs[0].status, 'new');
+  assert.equal(prDocs[0].lsxId, 'command1');
+  assert.equal(prDocs[0].purchaseOrderId, '');
+  assert.equal([...b.store.keys()].filter(key => key.startsWith('purchase_orders/')).length, 0);
+  assert.equal([...b.store.keys()].filter(key => key.startsWith('invoices/')).length, 0);
+
+  const Component = loader({
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
+    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+  })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
+  const html = renderToStaticMarkup(
+    React.createElement(Component, {
+      pos: [po()],
+      commands: [b.order()],
+      currentUser: admin,
+      users: [producer],
+      onRefresh() {},
+      initialSelectedId: 'command1'
+    })
+  );
+  assert.match(html, /Thiếu 30 cuộn/);
+  assert.match(html, /Lập lệnh bổ sung/);
+  assert.match(html, /Đề nghị mua thêm NVL/);
+});

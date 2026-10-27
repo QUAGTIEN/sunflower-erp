@@ -391,7 +391,9 @@ export function assertTransition(actor: ProductionActor, order: ProductionOrder,
                 ? order.status === 'producing' && manager
                 : action === 'cancel'
                   ? ['draft', 'pending_approval', 'released'].includes(order.status) && manager
-                  : false;
+                  : action === 'request_materials'
+                    ? order.status === 'completed' && canDraftProduction(actor)
+                    : false;
   if (!permitted) fail('Không có quyền hoặc lệnh đã đổi trạng thái. Hãy tải lại danh sách.');
 }
 export function completedProduction(po: ProductionPO, commands: CommandRecord[]) {
