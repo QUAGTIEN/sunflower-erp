@@ -612,6 +612,9 @@
   padding: 0 8px;
   text-align: right;
 }
+.attendance-timesheet-table :is(th, td).attendance-number:last-child {
+  width: 84px;
+}
 .attendance-timesheet-table .attendance-timesheet-name {
   position: sticky;
   left: 0;
@@ -654,11 +657,12 @@
 }
 .attendance-employee-detail-table {
   width: 100%;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 .attendance-employee-detail-table :is(th, td) {
-  height: 36px;
+  height: 38px;
   box-sizing: border-box;
   padding: 6px 12px;
   border-bottom: 1px solid var(--erp-border-color);
@@ -666,18 +670,46 @@
   white-space: nowrap;
 }
 .attendance-employee-detail-table th {
-  background: #f8fafc;
+  background: var(--erp-table-header-bg);
   color: #172554;
   font-weight: 600;
+  text-align: left !important;
 }
-.attendance-employee-detail-table :is(th, td).attendance-number {
+.attendance-employee-detail-table th:nth-child(1) {
+  width: 115px;
+}
+.attendance-employee-detail-table th:nth-child(2) {
+  width: 150px;
+}
+.attendance-employee-detail-table th:nth-child(3) {
+  width: 165px;
+}
+.attendance-employee-detail-table th:nth-child(4) {
+  width: 95px;
+}
+.attendance-employee-detail-table th:nth-child(5) {
+  width: 130px;
+}
+.attendance-employee-detail-table th:nth-child(6) {
+  width: 150px;
+}
+.attendance-employee-detail-table th:nth-child(7) {
+  width: auto;
+}
+.attendance-employee-detail-table td.attendance-number {
   text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.app-main .attendance-employee-detail-table tbody td > span.attendance-chip,
+.app-main .attendance-employee-detail-table tbody td > span.attendance-hint {
+  display: inline-flex !important;
+  width: auto !important;
+  max-width: 100%;
 }
 .attendance-employee-detail-table tr.is-off td {
   background: var(--attendance-off);
 }
 .attendance-employee-detail-table td:last-child {
-  max-width: 320px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

@@ -113,100 +113,111 @@ export function AttendanceTimesheetTable({
           </dl>
         </div>
       )}
-      <div className="attendance-table-scroll">
-        <table className="attendance-timesheet-table">
-          <thead>
-            <tr>
-              <th className="attendance-timesheet-name">Nhân viên</th>
-              {days.map(date => (
-                <th
-                  key={date}
-                  className={dayInfo.get(date)!.off ? 'is-off' : undefined}
-                  title={dayInfo.get(date)!.name || undefined}
-                >
-                  <span>{Number(date.slice(8))}</span>
-                  <small>{weekdayLetter(date)}</small>
-                </th>
-              ))}
-              <th className="attendance-number" title="Ngày công (Part-time: số buổi)">
-                Công
-              </th>
-              <th className="attendance-number" title="Tổng phút đi trễ">
-                Trễ
-              </th>
-              <th className="attendance-number" title="Ngày nghỉ có phép">
-                Phép
-              </th>
-              <th className="attendance-number" title="Ngày nghỉ không phép">
-                Vắng
-              </th>
-              <th className="attendance-number" title="Giờ làm thêm">
-                OT
-              </th>
-              <th className="attendance-number" title="Số ngày đi làm vào Chủ nhật / ngày lễ">
-                Ngày nghỉ
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(person => {
-              const sheetDays = workspace.sheets.find(sheet => sheet.userId === person.uid)?.days || {};
-              const totals = timesheetTotals(sheetDays, workspace.calendar);
-              const partTime = employmentTypeFor(workspace, person.uid) === 'part_time';
-              return (
-                <tr key={person.uid}>
-                  <td className="attendance-timesheet-name" title={person.displayName}>
-                    {!focusedEmployee && workspace.canRecord && onSelectEmployee ? (
-                      <button
-                        type="button"
-                        className="attendance-employee-link"
-                        title={`Xem bảng công của ${person.displayName}`}
-                        onClick={() => onSelectEmployee(person.uid)}
-                      >
-                        {person.displayName}
-                      </button>
-                    ) : (
-                      person.displayName
-                    )}
-                    {partTime && <small> · Part-time</small>}
-                  </td>
-                  {days.map(date => {
-                    const entry = sheetDays[date];
-                    const info = dayInfo.get(date)!;
-                    return (
-                      <td
-                        key={date}
-                        className={[info.off && 'is-off', entry && `is-${entryTone(entry)}`].filter(Boolean).join(' ')}
-                        title={entry ? entryDescription(entry) : info.off ? info.name : 'Chưa chấm'}
-                      >
-                        {entry ? entrySymbol(entry) : ''}
-                      </td>
-                    );
-                  })}
-                  <td className="attendance-number">
-                    {formatDays(totals.workDays)}
-                    {partTime && totals.workHours > 0 && <small> ({formatHours(totals.workHours)}h)</small>}
-                  </td>
-                  <td className="attendance-number">{totals.lateMinutes}</td>
-                  <td className="attendance-number">{formatDays(totals.paidLeave)}</td>
-                  <td className="attendance-number">{formatDays(totals.unpaidLeave)}</td>
-                  <td className="attendance-number">{formatHours(totals.overtimeHours)}</td>
-                  <td className="attendance-number">{totals.offDayWork}</td>
+      {!focusedEmployee && (
+        <>
+          <div className="attendance-table-scroll">
+            <table className="attendance-timesheet-table">
+              <thead>
+                <tr>
+                  <th className="attendance-timesheet-name">Nhân viên</th>
+                  {days.map(date => (
+                    <th
+                      key={date}
+                      className={dayInfo.get(date)!.off ? 'is-off' : undefined}
+                      title={dayInfo.get(date)!.name || undefined}
+                    >
+                      <span>{Number(date.slice(8))}</span>
+                      <small>{weekdayLetter(date)}</small>
+                    </th>
+                  ))}
+                  <th className="attendance-number" title="Ngày công (Part-time: số buổi)">
+                    Công
+                  </th>
+                  <th className="attendance-number" title="Tổng phút đi trễ">
+                    Trễ
+                  </th>
+                  <th className="attendance-number" title="Ngày nghỉ có phép">
+                    Phép
+                  </th>
+                  <th className="attendance-number" title="Ngày nghỉ không phép">
+                    Vắng
+                  </th>
+                  <th className="attendance-number" title="Giờ làm thêm">
+                    OT
+                  </th>
+                  <th className="attendance-number" title="Số ngày đi làm vào Chủ nhật / ngày lễ">
+                    Ngày nghỉ
+                  </th>
                 </tr>
-              );
-            })}
-            {!rows.length && (
-              <tr>
-                <td colSpan={days.length + 7}>Không có nhân viên phù hợp.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {!focusedEmployee && <DataTablePagination {...paginationProps} />}
+              </thead>
+              <tbody>
+                {rows.map(person => {
+                  const sheetDays = workspace.sheets.find(sheet => sheet.userId === person.uid)?.days || {};
+                  const totals = timesheetTotals(sheetDays, workspace.calendar);
+                  const partTime = employmentTypeFor(workspace, person.uid) === 'part_time';
+                  return (
+                    <tr key={person.uid}>
+                      <td className="attendance-timesheet-name" title={person.displayName}>
+                        {workspace.canRecord && onSelectEmployee ? (
+                          <button
+                            type="button"
+                            className="attendance-employee-link"
+                            title={`Xem bảng công của ${person.displayName}`}
+                            onClick={() => onSelectEmployee(person.uid)}
+                          >
+                            {person.displayName}
+                          </button>
+                        ) : (
+                          person.displayName
+                        )}
+                        {partTime && <small> · Part-time</small>}
+                      </td>
+                      {days.map(date => {
+                        const entry = sheetDays[date];
+                        const info = dayInfo.get(date)!;
+                        return (
+                          <td
+                            key={date}
+                            className={[info.off && 'is-off', entry && `is-${entryTone(entry)}`]
+                              .filter(Boolean)
+                              .join(' ')}
+                            title={entry ? entryDescription(entry) : info.off ? info.name : 'Chưa chấm'}
+                          >
+                            {entry ? entrySymbol(entry) : ''}
+                          </td>
+                        );
+                      })}
+                      <td className="attendance-number">
+                        {formatDays(totals.workDays)}
+                        {partTime && totals.workHours > 0 && <small> ({formatHours(totals.workHours)}h)</small>}
+                      </td>
+                      <td className="attendance-number">{totals.lateMinutes}</td>
+                      <td className="attendance-number">{formatDays(totals.paidLeave)}</td>
+                      <td className="attendance-number">{formatDays(totals.unpaidLeave)}</td>
+                      <td className="attendance-number">{formatHours(totals.overtimeHours)}</td>
+                      <td className="attendance-number">{totals.offDayWork}</td>
+                    </tr>
+                  );
+                })}
+                {!rows.length && (
+                  <tr>
+                    <td colSpan={days.length + 7}>Không có nhân viên phù hợp.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <DataTablePagination {...paginationProps} />
+          <p className="attendance-legend">
+            X đi làm · T đi trễ · ½ nửa buổi · P nghỉ có phép · V nghỉ không phép · số giờ với Part-time · ô trống là
+            chưa chấm. Cột tô xám là ngày nghỉ.
+          </p>
+        </>
+      )}
       {focusedEmployee && (
-        <div className="attendance-table-scroll">
+        <div className="table-container erp-primary-data-table">
           <table
+            data-resize-key="attendance-employee-detail-v2"
             className="attendance-employee-detail-table"
             aria-label={`Chi tiết ngày công của ${focusedEmployee.displayName}`}
           >
@@ -215,8 +226,9 @@ export function AttendanceTimesheetTable({
                 <th>Ngày</th>
                 <th>Thứ</th>
                 <th>Trạng thái</th>
-                <th className="attendance-number">Đi trễ (phút)</th>
-                <th className="attendance-number">Làm thêm OT (giờ)</th>
+                <th>Công</th>
+                <th>Đi trễ (phút)</th>
+                <th>Làm thêm OT (giờ)</th>
                 <th>Ghi chú</th>
               </tr>
             </thead>
@@ -224,9 +236,20 @@ export function AttendanceTimesheetTable({
               {days.map(date => {
                 const entry = focusedDays[date];
                 const info = dayInfo.get(date)!;
+                const workUnits = !entry
+                  ? '—'
+                  : focusedType === 'part_time'
+                    ? entry.status === 'present' && entry.hours > 0
+                      ? `${formatHours(entry.hours)} giờ`
+                      : '0'
+                    : entry.status === 'present'
+                      ? '1'
+                      : entry.status === 'half'
+                        ? '0,5'
+                        : '0';
                 return (
                   <tr key={`detail-${date}`} className={info.off ? 'is-off' : undefined}>
-                    <td>{shortDate(date)}</td>
+                    <td>{`${shortDate(date)}/${month.slice(0, 4)}`}</td>
                     <td>
                       {weekdayName(date)}
                       {info.off && info.name !== 'Chủ nhật' && <small> · {info.name}</small>}
@@ -240,6 +263,7 @@ export function AttendanceTimesheetTable({
                         <span className="attendance-hint">{info.off ? info.name : 'Chưa chấm'}</span>
                       )}
                     </td>
+                    <td className="attendance-number">{workUnits}</td>
                     <td className="attendance-number">{entry?.lateMinutes || '—'}</td>
                     <td className="attendance-number">
                       {entry?.overtimeHours ? formatHours(entry.overtimeHours) : '—'}
@@ -252,10 +276,6 @@ export function AttendanceTimesheetTable({
           </table>
         </div>
       )}
-      <p className="attendance-legend">
-        X đi làm · T đi trễ · ½ nửa buổi · P nghỉ có phép · V nghỉ không phép · số giờ với Part-time · ô trống là chưa
-        chấm. Cột tô xám là ngày nghỉ.
-      </p>
     </div>
   );
 }
