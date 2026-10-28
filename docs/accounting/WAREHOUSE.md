@@ -25,7 +25,7 @@ Mốc đầu lượt: `2235742`, main, origin GitHub đã kiểm tra. Đây là 
 
 ## Giao diện
 
-- Kho vật tư (`inventory`): **Tồn kho / Phiếu kho / Báo cáo / Danh mục vật tư**. Bảng một dòng, tìm/lọc, phân trang và RowActionMenu chung. Không số đếm sau tên tab. Bấm dòng tồn kho mở khung Thẻ kho bên phải.
+- Kho vật tư (`inventory`): **Danh mục vật tư / Phiếu kho** (trong Phiếu kho có chế độ xem **Danh sách phiếu / Nhập xuất tồn / Dữ liệu cũ**). Bảng một dòng, tìm/lọc, phân trang và RowActionMenu chung. Không số đếm sau tên tab. Bấm dòng vật tư mở khung Thẻ vật tư bên phải.
 - Theo dõi số dư và lịch sử từng mã, thiết lập ngưỡng tối thiểu theo ĐVT cơ sở. Dưới ngưỡng hiển thị Cần nhập hàng; tồn âm có chữ cảnh báo. Chưa cấu hình thì không tự điền ngưỡng giả.
 - Báo cáo khoảng ngày: đầu kỳ là tổng phiếu trước ngày bắt đầu; nhập/xuất là tổng delta dương/âm trong kỳ; cuối = đầu + nhập − xuất. Tính cả phiếu gốc và phiếu đảo, không loại phiếu gốc đã đảo.
 - Chi tiết LSX có lịch sử cấp/hoàn thực tế và thao tác đúng quyền; producer chỉ xem. Ngưỡng và cảnh báo bảng kho là phạm vi lượt 3; chưa có hệ thống nhắc hạn/tổng hợp lượt 6.

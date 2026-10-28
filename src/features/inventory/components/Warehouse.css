@@ -6,9 +6,95 @@
 }
 .warehouse-toolbar {
   display: flex;
-  align-items: end;
+  align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+.warehouse-toolbar-end {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.warehouse-subtabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  background: #f8fafc;
+  align-self: flex-start;
+}
+.warehouse-subtabs button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: calc(var(--erp-control-radius) - 2px);
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.warehouse-subtabs button.active {
+  background: #1e3a8a;
+  color: white;
+}
+.warehouse-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.warehouse-pill--ok {
+  background: #dcfce7;
+  color: #166534;
+}
+.warehouse-pill--warn {
+  background: #ffedd5;
+  color: #9a3412;
+}
+.warehouse-pill--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.warehouse-pill--info {
+  background: #e0f2fe;
+  color: #075985;
+}
+.warehouse-pill--purple {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+.warehouse-pill--neutral {
+  background: #f1f5f9;
+  color: #475569;
+}
+.warehouse-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 12.5px;
+}
+.warehouse-kv-grid div {
+  min-width: 0;
+}
+.warehouse-kv-grid dt {
+  color: #64748b;
+  font-size: 11.5px;
+}
+.warehouse-kv-grid dd {
+  margin: 2px 0 0;
+  color: #0f172a;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .warehouse-toolbar > input[type='search'] {
   flex: 1 1 240px;
