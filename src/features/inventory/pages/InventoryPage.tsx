@@ -8,27 +8,25 @@ import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
-import { isFirebaseRuntimeEnabled } from '@/infrastructure/firebase/erpDataGateway';
 import {
-  loadItemCatalog,
-  loadLegacyCatalogSources,
-  mutateItemCatalog
-} from '@/features/catalog/api/itemCatalogService';
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '@/components/DataWorkspaceFilters';
+import { isFirebaseRuntimeEnabled } from '@/infrastructure/firebase/erpDataGateway';
+import { loadItemCatalog, mutateItemCatalog } from '@/features/catalog/api/itemCatalogService';
 import {
   CATALOG_KINDS,
   canManageItemCatalog,
   catalogCsvTemplate,
-  conversionFactor,
   parseCatalogCsv,
   previewCatalogImport,
-  resolveCatalogSource,
   validateCatalogInput,
   type CatalogInput,
   type CatalogItem,
-  type CatalogKind,
-  type CatalogLink,
-  type CatalogSource,
-  type CatalogSourceRef
+  type CatalogKind
 } from '@/features/catalog/model/itemCatalog';
 import { confirmAppNavigation, registerNavigationGuard } from '@/shared/feedback/navigationGuard';
 import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
@@ -61,8 +59,7 @@ const empty: WarehouseData = {
   sources: [],
   progress: [],
   legacyInventory: [],
-  legacyExports: [],
-  itemUsers: {}
+  legacyExports: []
 };
 const emptyGoods: GoodsData = {
   items: [],
@@ -81,14 +78,37 @@ const tabNames = {
 };
 const voucherViewNames = {
   list: 'Danh sách phiếu',
-  report: 'Nhập xuất tồn',
-  legacy: 'Dữ liệu cũ'
+  report: 'Nhập xuất tồn'
 };
 const itemKindLabels: Record<CatalogKind, string> = {
   raw_material: 'NVL',
   finished_good: 'Thành phẩm',
   resale: 'Hàng mua'
 };
+const alertFilterOptions = [
+  { value: 'Cần nhập hàng', label: 'Dưới ngưỡng (Cần nhập hàng)' },
+  { value: 'Tồn âm', label: 'Tồn âm' },
+  { value: 'surplus', label: 'Có tồn dư' },
+  { value: 'Chưa thiết lập ngưỡng', label: 'Chưa thiết lập ngưỡng' },
+  { value: 'Trong ngưỡng', label: 'Bình thường (Trong ngưỡng)' },
+  { value: 'inactive', label: 'Ngừng sử dụng' }
+];
+const warehouseScopeOptions = [
+  { value: 'raw_main', label: 'Kho NVL' },
+  { value: 'finished_main', label: 'Kho Thành phẩm' }
+];
+const voucherKindOptions = [
+  ...Object.entries(WAREHOUSE_KINDS).map(([value, label]) => ({
+    value: `raw:${value}`,
+    label: `Kho NVL · ${label}`
+  })),
+  ...Object.entries(GOODS_KINDS)
+    .filter(([key]) => key !== 'reversal')
+    .map(([value, label]) => ({
+      value: `fg:${value}`,
+      label: `Kho TP · ${label}`
+    }))
+];
 export interface UnifiedStockRow extends WarehouseBalance {
   catalogItemId: string;
   warehouseId: 'raw_main' | 'finished_main';
@@ -98,7 +118,6 @@ export interface UnifiedStockRow extends WarehouseBalance {
   notes: string;
   active: boolean;
   catalogRevision: number;
-  linksCount: number;
   users: WarehouseCustomerUsage[];
 }
 type UnifiedVoucher = (WarehouseVoucher | GoodsVoucher) & { warehouseId: 'raw_main' | 'finished_main' };
@@ -120,10 +139,7 @@ const shortKindLabel = (voucher: UnifiedVoucher): { label: string; tone: string 
 export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile; onRefresh: () => void }) {
   const [data, setData] = useState(empty);
   const [goodsData, setGoodsData] = useState(emptyGoods);
-  const [catalogMeta, setCatalogMeta] = useState<{ items: CatalogItem[]; links: CatalogLink[] }>({
-    items: [],
-    links: []
-  });
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -131,14 +147,14 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   const [tab, setTab] = useState<keyof typeof tabNames>('catalog');
   const [voucherView, setVoucherView] = useState<keyof typeof voucherViewNames>('list');
   const [search, setSearch] = useState('');
-  const [itemKindFilter, setItemKindFilter] = useState('');
-  const [alertFilter, setAlertFilter] = useState('');
-  const [warehouseFilter, setWarehouseFilter] = useState('');
-  const [kind, setKind] = useState('');
+  const [itemKindFilters, setItemKindFilters] = useState<string[]>([]);
+  const [alertFilters, setAlertFilters] = useState<string[]>([]);
+  const [warehouseFilters, setWarehouseFilters] = useState<string[]>([]);
+  const [kindFilters, setKindFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
   const [from, setFrom] = useState(`${warehouseDate().slice(0, 7)}-01`);
   const [to, setTo] = useState(warehouseDate());
   const [reportScope, setReportScope] = useState<'raw_main' | 'finished_main'>('raw_main');
-  const [legacyScope, setLegacyScope] = useState<'legacy_inventory' | 'legacy_exports'>('legacy_inventory');
   const [creating, setCreating] = useState(false);
   const [creatingKind, setCreatingKind] = useState<Exclude<WarehouseKind, 'reversal'>>('purchase_receipt');
   const [goodsOptions, setGoodsOptions] = useState<GoodsDialogOptions | null>(null);
@@ -149,7 +165,6 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   const [editingCatalogItem, setEditingCatalogItem] = useState<CatalogItem | null>(null);
   const [creatingCatalogItem, setCreatingCatalogItem] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
-  const [legacyLinkModalOpen, setLegacyLinkModalOpen] = useState(false);
   const permitted = canReadWarehouse(currentUser);
   const canManageCatalog = canManageItemCatalog(currentUser);
   const canWrite = canPostWarehouse(currentUser) && loaded && !loading;
@@ -167,7 +182,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         if (!cancelled) {
           setData(nextRaw);
           setGoodsData(nextGoods);
-          if (nextCatalog) setCatalogMeta({ items: nextCatalog.items, links: nextCatalog.links });
+          if (nextCatalog) setCatalogItems(nextCatalog.items);
           setLoaded(true);
           setError('');
         }
@@ -195,7 +210,6 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
     setCreatingCatalogItem(false);
     setEditingCatalogItem(null);
     setCsvModalOpen(false);
-    setLegacyLinkModalOpen(false);
     reload();
     onRefresh();
   };
@@ -217,7 +231,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   }
 
   const catalogById = new Map<string, CatalogItem>();
-  for (const item of [...data.items, ...goodsData.items, ...catalogMeta.items]) {
+  for (const item of [...data.items, ...goodsData.items, ...catalogItems]) {
     catalogById.set(item.id, item);
   }
 
@@ -249,7 +263,6 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         notes: item.notes || '',
         active: item.active !== false,
         catalogRevision: item.revision || 1,
-        linksCount: catalogMeta.links.filter(link => link.catalogItemId === item.id).length,
         users: data.itemUsers?.[item.id] || []
       };
     })
@@ -261,27 +274,28 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   const balancePages = useDataTablePagination(
     balances.filter(row => {
       const alertStatus = stockAlert(row.quantity, row.minQuantity);
+      const matchesKind = itemKindFilters.length === 0 || itemKindFilters.includes(row.itemKind);
       const matchesAlert =
-        !alertFilter ||
-        (alertFilter === 'surplus'
-          ? row.surplusQuantity > 0
-          : alertFilter === 'inactive'
-            ? !row.active
-            : alertStatus === alertFilter);
-      return (
-        matches(row.code, row.name, row.users.map(u => u.customerName).join(' ')) &&
-        (!itemKindFilter || row.itemKind === itemKindFilter) &&
-        matchesAlert
-      );
+        alertFilters.length === 0 ||
+        alertFilters.some(filter =>
+          filter === 'surplus' ? row.surplusQuantity > 0 : filter === 'inactive' ? !row.active : alertStatus === filter
+        );
+      return matches(row.code, row.name, row.users.map(u => u.customerName).join(' ')) && matchesKind && matchesAlert;
     })
   );
 
   const voucherPages = useDataTablePagination(
     allVouchers
-      .filter(
-        row =>
-          (!warehouseFilter || row.warehouseId === warehouseFilter) &&
-          (!kind || row.kind === kind) &&
+      .filter(row => {
+        const prefix = row.warehouseId === 'raw_main' ? 'raw' : 'fg';
+        const matchesWarehouse = warehouseFilters.length === 0 || warehouseFilters.includes(row.warehouseId);
+        const matchesKind =
+          kindFilters.length === 0 ||
+          kindFilters.includes(`${prefix}:${row.kind}`) ||
+          (row.kind === 'reversal' && kindFilters.includes('raw:reversal'));
+        return (
+          matchesWarehouse &&
+          matchesKind &&
           (!from || row.postingDate >= from) &&
           (!to || row.postingDate <= to) &&
           matches(
@@ -291,7 +305,8 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
             row.actorName,
             row.lines.map(line => line.code).join(' ')
           )
-      )
+        );
+      })
       .sort((a, b) => b.postedAt.localeCompare(a.postedAt))
   );
 
@@ -304,24 +319,15 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
       ? warehouseSummary(reportVouchers, from, to).filter(row => matches(row.code, row.name))
       : []
   );
-  const legacyPages = useDataTablePagination(
-    (legacyScope === 'legacy_inventory' ? data.legacyInventory : data.legacyExports).filter(row =>
-      matches(row.materialName, row.exportCode, row.receiverName)
-    )
-  );
 
-  const pagination =
-    tab === 'catalog'
-      ? balancePages
-      : voucherView === 'list'
-        ? voucherPages
-        : voucherView === 'report'
-          ? reportPages
-          : legacyPages;
+  const pagination = tab === 'catalog' ? balancePages : voucherView === 'list' ? voucherPages : reportPages;
 
   const activeStock = stock
     ? balances.find(row => row.id === stock.id && row.warehouseId === stock.warehouseId) || stock
     : null;
+
+  const catalogActiveFilterCount = itemKindFilters.length + alertFilters.length;
+  const voucherActiveFilterCount = warehouseFilters.length + kindFilters.length;
 
   const toggleCatalogActive = async (row: UnifiedStockRow) => {
     const targetItem = catalogById.get(row.id);
@@ -376,6 +382,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                 setTab(key as typeof tab);
                 setSearch('');
                 setVoucherMenuOpen(false);
+                setShowFilters(false);
               }
             }}
           >
@@ -396,6 +403,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
               onClick={() => {
                 setVoucherView(key as typeof voucherView);
                 setSearch('');
+                setShowFilters(false);
               }}
             >
               {label}
@@ -420,40 +428,14 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         />
         {tab === 'catalog' && (
           <>
-            <select
-              aria-label="Loại vật tư"
-              value={itemKindFilter}
-              onChange={event => setItemKindFilter(event.target.value)}
-            >
-              <option value="">Tất cả loại (NVL, Thành phẩm, Hàng mua)</option>
-              <option value="raw_material">NVL</option>
-              <option value="finished_good">Thành phẩm</option>
-              <option value="resale">Hàng mua</option>
-            </select>
-            <select
-              aria-label="Cảnh báo tồn"
-              value={alertFilter}
-              onChange={event => setAlertFilter(event.target.value)}
-            >
-              <option value="">Tất cả cảnh báo (dưới ngưỡng, tồn âm, có tồn dư…)</option>
-              <option value="Cần nhập hàng">Dưới ngưỡng (Cần nhập hàng)</option>
-              <option value="Tồn âm">Tồn âm</option>
-              <option value="surplus">Có tồn dư</option>
-              <option value="Chưa thiết lập ngưỡng">Chưa thiết lập ngưỡng</option>
-              <option value="Trong ngưỡng">Bình thường (Trong ngưỡng)</option>
-              <option value="inactive">Ngừng sử dụng</option>
-            </select>
+            <DataFilterButton
+              activeCount={catalogActiveFilterCount}
+              open={showFilters}
+              onClick={() => setShowFilters(true)}
+            />
             <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
             {canManageCatalog && (
               <div className="warehouse-toolbar-end">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  disabled={!canWriteCatalog}
-                  onClick={() => setLegacyLinkModalOpen(true)}
-                >
-                  Liên kết dữ liệu cũ
-                </button>
                 <button
                   type="button"
                   className="btn btn-outline"
@@ -479,30 +461,11 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         )}
         {tab === 'vouchers' && voucherView === 'list' && (
           <>
-            <select aria-label="Loại phiếu" value={kind} onChange={event => setKind(event.target.value)}>
-              <option value="">Tất cả loại phiếu (Nhập mua, Cấp LSX, Hoàn LSX…)</option>
-              <optgroup label="Kho NVL">
-                {Object.entries(WAREHOUSE_KINDS).map(([key, label]) => (
-                  <option key={`raw-${key}`} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Kho Thành phẩm">
-                {Object.entries(GOODS_KINDS)
-                  .filter(([key]) => key !== 'reversal')
-                  .map(([key, label]) => (
-                    <option key={`fg-${key}`} value={key}>
-                      {label}
-                    </option>
-                  ))}
-              </optgroup>
-            </select>
-            <select aria-label="Kho" value={warehouseFilter} onChange={event => setWarehouseFilter(event.target.value)}>
-              <option value="">Tất cả kho (NVL, TP)</option>
-              <option value="raw_main">Kho NVL</option>
-              <option value="finished_main">Kho Thành phẩm</option>
-            </select>
+            <DataFilterButton
+              activeCount={voucherActiveFilterCount}
+              open={showFilters}
+              onClick={() => setShowFilters(true)}
+            />
             <label>
               Từ ngày
               <input type="date" value={from} onChange={event => setFrom(event.target.value)} />
@@ -533,20 +496,10 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
             </label>
           </>
         )}
-        {tab === 'vouchers' && voucherView === 'legacy' && (
-          <select
-            aria-label="Loại dữ liệu cũ"
-            value={legacyScope}
-            onChange={event => setLegacyScope(event.target.value as typeof legacyScope)}
-          >
-            <option value="legacy_inventory">Dữ liệu cũ — Tồn kho cũ</option>
-            <option value="legacy_exports">Dữ liệu cũ — Phiếu xuất cũ</option>
-          </select>
-        )}
         {tab === 'vouchers' && (
           <>
             <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
-            {canPostWarehouse(currentUser) && voucherView !== 'legacy' && (
+            {canPostWarehouse(currentUser) && (
               <div className="warehouse-menu-wrap warehouse-toolbar-end">
                 <button
                   type="button"
@@ -629,20 +582,54 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         )}
       </div>
 
+      {tab === 'catalog' && (
+        <DataFilterChipBar
+          chips={[
+            ...itemKindFilters.map(value => ({
+              id: `kind:${value}`,
+              label: itemKindLabels[value as CatalogKind] || value,
+              onRemove: () => setItemKindFilters(current => current.filter(item => item !== value))
+            })),
+            ...alertFilters.map(value => ({
+              id: `alert:${value}`,
+              label: alertFilterOptions.find(opt => opt.value === value)?.label || value,
+              onRemove: () => setAlertFilters(current => current.filter(item => item !== value))
+            }))
+          ]}
+          onClear={() => {
+            setItemKindFilters([]);
+            setAlertFilters([]);
+          }}
+        />
+      )}
+
+      {tab === 'vouchers' && voucherView === 'list' && (
+        <DataFilterChipBar
+          chips={[
+            ...warehouseFilters.map(value => ({
+              id: `wh:${value}`,
+              label: warehouseScopeOptions.find(opt => opt.value === value)?.label || value,
+              onRemove: () => setWarehouseFilters(current => current.filter(item => item !== value))
+            })),
+            ...kindFilters.map(value => ({
+              id: `vkind:${value}`,
+              label: voucherKindOptions.find(opt => opt.value === value)?.label || value,
+              onRemove: () => setKindFilters(current => current.filter(item => item !== value))
+            }))
+          ]}
+          onClear={() => {
+            setWarehouseFilters([]);
+            setKindFilters([]);
+          }}
+        />
+      )}
+
       {error && (
         <p className="warehouse-error" role="alert">
           {error}
         </p>
       )}
       <LoadingStatus loading={loading} hasData={data !== empty} label="Đang tải sổ kho" />
-      {tab === 'vouchers' && voucherView === 'legacy' ? (
-        <p className="warehouse-note">Dữ liệu cũ chỉ để đối soát, chưa chuyển thành tồn đầu kỳ của sổ mới.</p>
-      ) : (
-        <p className="warehouse-note">
-          Kho vật tư · Nhìn toàn bộ vật tư, tồn dư và khách hàng đang dùng trên một bảng; chứng từ nhập xuất và báo cáo
-          tại tab Phiếu kho.
-        </p>
-      )}
       {tab === 'vouchers' && voucherView === 'report' && (!from || !to || from > to) && (
         <p role="alert" className="warehouse-error">
           Chọn khoảng ngày hợp lệ.
@@ -652,7 +639,16 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
       <div className={`warehouse-split-layout ${tab === 'catalog' && activeStock ? 'has-panel' : ''}`}>
         <div className="warehouse-list-frame">
           <div className="table-container erp-primary-data-table">
-            <table data-resize-key={`warehouse-${tab}-${voucherView}-${reportScope}`} className="warehouse-list">
+            <table
+              data-resize-key={`warehouse-v2-${tab}-${voucherView}-${reportScope}`}
+              className={`warehouse-list ${
+                tab === 'catalog'
+                  ? 'warehouse-list--catalog'
+                  : voucherView === 'list'
+                    ? 'warehouse-list--vouchers'
+                    : 'warehouse-list--report'
+              }`}
+            >
               <thead>
                 <tr>
                   {tab === 'catalog' ? (
@@ -661,9 +657,9 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                       <th>Tên vật tư</th>
                       <th>Loại</th>
                       <th>ĐVT</th>
-                      <th className="warehouse-number">Tồn</th>
-                      <th className="warehouse-number">Tồn dư</th>
-                      <th className="warehouse-number">Ngưỡng</th>
+                      <th>Tồn</th>
+                      <th>Tồn dư</th>
+                      <th>Ngưỡng</th>
                       <th>Trạng thái</th>
                       <th>Khách đang dùng</th>
                       <th>Thao tác</th>
@@ -676,38 +672,20 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                       <th>Kho</th>
                       <th>Nguồn (LSX / PO / đơn mua)</th>
                       <th>Khách</th>
-                      <th className="warehouse-number">Số dòng</th>
+                      <th>Số dòng</th>
                       <th>Người lập</th>
                       <th>Trạng thái</th>
                       <th>Thao tác</th>
                     </>
-                  ) : voucherView === 'report' ? (
+                  ) : (
                     <>
                       <th>Mã vật tư</th>
                       <th>Tên vật tư</th>
                       <th>ĐVT</th>
-                      <th className="warehouse-number">Đầu kỳ</th>
-                      <th className="warehouse-number">Nhập</th>
-                      <th className="warehouse-number">Xuất</th>
-                      <th className="warehouse-number">Cuối kỳ</th>
-                    </>
-                  ) : legacyScope === 'legacy_inventory' ? (
-                    <>
-                      <th>Tên vật tư cũ</th>
-                      <th>ĐVT cũ</th>
-                      <th>Tồn cũ</th>
-                      <th>Giữ chỗ cũ</th>
-                      <th>Ngưỡng cũ</th>
-                      <th>Trạng thái cũ</th>
-                    </>
-                  ) : (
-                    <>
-                      <th>Mã phiếu cũ</th>
-                      <th>Ngày xuất</th>
-                      <th>Người nhận</th>
-                      <th>Lý do</th>
-                      <th>Số dòng</th>
-                      <th>Chi tiết</th>
+                      <th>Đầu kỳ</th>
+                      <th>Nhập</th>
+                      <th>Xuất</th>
+                      <th>Cuối kỳ</th>
                     </>
                   )}
                 </tr>
@@ -846,36 +824,11 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                       ))}
                     </tr>
                   ))}
-                {!loading &&
-                  !error &&
-                  tab === 'vouchers' &&
-                  voucherView === 'legacy' &&
-                  legacyPages.rows.map(row => (
-                    <tr key={String(row.id)}>
-                      {legacyScope === 'legacy_inventory' ? (
-                        <>
-                          <td title={String(row.materialName || '')}>{String(row.materialName || '')}</td>
-                          <td>{String(row.unit || '')}</td>
-                          <td>{String(row.qtyInStock ?? '')}</td>
-                          <td>{String(row.qtyReserved ?? '')}</td>
-                          <td>{String(row.minQtyAlert ?? '')}</td>
-                          <td>{row.deleted ? 'Đã xóa cũ' : 'Dữ liệu cũ'}</td>
-                        </>
-                      ) : (
-                        <>
-                          <td>{String(row.exportCode || row.id)}</td>
-                          <td>{formatDateTime(String(row.createdAt || row.exportDate || ''))}</td>
-                          <td>{String(row.receiverName || '')}</td>
-                          <td title={String(row.reason || '')}>{String(row.reason || '')}</td>
-                          <td>{Array.isArray(row.items) ? row.items.length : 0}</td>
-                          <td title={JSON.stringify(row.items || [])}>{JSON.stringify(row.items || [])}</td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
                 {!loading && !error && pagination.paginationProps.totalItems === 0 && (
                   <tr>
-                    <td colSpan={10}>{search ? 'Không có kết quả phù hợp.' : 'Chưa có dữ liệu.'}</td>
+                    <td colSpan={tab === 'vouchers' && voucherView === 'report' ? 7 : 10}>
+                      {search ? 'Không có kết quả phù hợp.' : 'Chưa có dữ liệu.'}
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -908,6 +861,68 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
           />
         )}
       </div>
+
+      {tab === 'catalog' && (
+        <DataFilterPanel
+          open={showFilters}
+          title="Lọc danh mục vật tư"
+          description="Lọc theo loại vật tư và cảnh báo tồn kho."
+          activeCount={catalogActiveFilterCount}
+          onClose={() => setShowFilters(false)}
+          onReset={() => {
+            setItemKindFilters([]);
+            setAlertFilters([]);
+          }}
+        >
+          <DataFilterSection title="Loại vật tư" selectedCount={itemKindFilters.length} defaultExpanded>
+            <DataFilterCheckboxGroup
+              options={[
+                { value: 'raw_material', label: 'NVL' },
+                { value: 'finished_good', label: 'Thành phẩm' },
+                { value: 'resale', label: 'Hàng mua' }
+              ]}
+              selectedValues={itemKindFilters}
+              onChange={setItemKindFilters}
+            />
+          </DataFilterSection>
+          <DataFilterSection title="Cảnh báo & trạng thái" selectedCount={alertFilters.length} defaultExpanded>
+            <DataFilterCheckboxGroup
+              options={alertFilterOptions}
+              selectedValues={alertFilters}
+              onChange={setAlertFilters}
+            />
+          </DataFilterSection>
+        </DataFilterPanel>
+      )}
+
+      {tab === 'vouchers' && voucherView === 'list' && (
+        <DataFilterPanel
+          open={showFilters}
+          title="Lọc danh sách phiếu kho"
+          description="Lọc theo kho và loại phiếu kho."
+          activeCount={voucherActiveFilterCount}
+          onClose={() => setShowFilters(false)}
+          onReset={() => {
+            setWarehouseFilters([]);
+            setKindFilters([]);
+          }}
+        >
+          <DataFilterSection title="Kho" selectedCount={warehouseFilters.length} defaultExpanded>
+            <DataFilterCheckboxGroup
+              options={warehouseScopeOptions}
+              selectedValues={warehouseFilters}
+              onChange={setWarehouseFilters}
+            />
+          </DataFilterSection>
+          <DataFilterSection title="Loại phiếu" selectedCount={kindFilters.length} defaultExpanded>
+            <DataFilterCheckboxGroup
+              options={voucherKindOptions}
+              selectedValues={kindFilters}
+              onChange={setKindFilters}
+            />
+          </DataFilterSection>
+        </DataFilterPanel>
+      )}
 
       {(creating || reversal) && (
         <WarehouseVoucherDialog
@@ -944,14 +959,6 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         <CatalogCsvDialog
           existingItems={[...catalogById.values()]}
           onClose={() => setCsvModalOpen(false)}
-          onSaved={saved}
-        />
-      )}
-      {legacyLinkModalOpen && (
-        <CatalogLegacyLinkDialog
-          items={[...catalogById.values()]}
-          links={catalogMeta.links}
-          onClose={() => setLegacyLinkModalOpen(false)}
           onSaved={saved}
         />
       )}
@@ -1168,10 +1175,8 @@ function StockDetails({
               <dd title={conversionsLabel}>{conversionsLabel}</dd>
             </div>
             <div>
-              <dt>Liên kết & trạng thái</dt>
-              <dd>
-                {stock.active ? 'Đang sử dụng' : 'Ngừng sử dụng'} · {stock.linksCount} liên kết
-              </dd>
+              <dt>Trạng thái mã</dt>
+              <dd>{stock.active ? 'Đang sử dụng' : 'Ngừng sử dụng'}</dd>
             </div>
             <div>
               <dt>Quy cách / ghi chú</dt>
@@ -1668,199 +1673,6 @@ function CatalogCsvDialog({
           {busy ? 'Đang nhập…' : `Xác nhận nhập ${preview.length} mã`}
         </button>
       </footer>
-    </dialog>
-  );
-}
-
-function CatalogLegacyLinkDialog({
-  items,
-  links,
-  onClose,
-  onSaved
-}: {
-  items: CatalogItem[];
-  links: CatalogLink[];
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [sourceType, setSourceType] = useState<CatalogSourceRef['type']>('inventory');
-  const [sources, setSources] = useState<CatalogSource[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [selectedSource, setSelectedSource] = useState<CatalogSource | null>(null);
-  const [targetId, setTargetId] = useState('');
-
-  useEffect(() => {
-    const element = dialog.current;
-    element?.showModal();
-    return () => element?.close();
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void loadLegacyCatalogSources(sourceType)
-      .then(rows => {
-        if (!cancelled) setSources(rows);
-      })
-      .catch(cause => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Không tải được dữ liệu nguồn.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sourceType]);
-
-  const target = items.find(item => item.id === targetId);
-  let validConversion = false;
-  let unitNotice = '';
-  if (selectedSource && target) {
-    try {
-      unitNotice = `1 ${selectedSource.unit} = ${conversionFactor(target, selectedSource.unit).toLocaleString('vi-VN')} ${target.baseUnit}`;
-      validConversion = true;
-    } catch (cause) {
-      unitNotice = cause instanceof Error ? cause.message : 'Chưa có quy đổi.';
-    }
-  }
-
-  const saveLink = async () => {
-    if (!selectedSource || !targetId || !validConversion || busy) return;
-    const prior = links.find(link => link.sourceKey === selectedSource.key);
-    setBusy(true);
-    setError('');
-    try {
-      await mutateItemCatalog({
-        action: 'link',
-        catalogItemId: targetId,
-        source: selectedSource.ref,
-        sourceFingerprint: selectedSource.fingerprint,
-        expectedLinkRevision: prior?.revision || 0,
-        requestId: crypto.randomUUID()
-      });
-      showSuccessToast('Đã liên kết mã vật tư');
-      onSaved();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Không lưu được liên kết.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <dialog
-      ref={dialog}
-      className="warehouse-dialog"
-      aria-labelledby="catalog-legacy-dialog-title"
-      onCancel={event => {
-        event.preventDefault();
-        if (!busy) onClose();
-      }}
-    >
-      <header>
-        <h2 id="catalog-legacy-dialog-title">Liên kết dữ liệu cũ vào mã vật tư</h2>
-        <button type="button" className="btn btn-outline" disabled={busy} onClick={onClose}>
-          Đóng
-        </button>
-      </header>
-      {error && (
-        <p className="warehouse-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="warehouse-toolbar">
-        <label>
-          Nguồn dữ liệu
-          <select
-            disabled={loading || busy}
-            value={sourceType}
-            onChange={event => {
-              setSelectedSource(null);
-              setSourceType(event.target.value as CatalogSourceRef['type']);
-            }}
-          >
-            <option value="inventory">Vật tư kho cũ</option>
-            <option value="customer_product">Sản phẩm theo khách</option>
-            <option value="po_item">Dòng PO</option>
-          </select>
-        </label>
-      </div>
-      {selectedSource && (
-        <div className="warehouse-toolbar">
-          <span>
-            Đang chọn: <strong>{selectedSource.label}</strong> — {selectedSource.name} ({selectedSource.unit})
-          </span>
-          <select value={targetId} onChange={event => setTargetId(event.target.value)}>
-            <option value="">Chọn mã vật tư để liên kết…</option>
-            {items
-              .filter(item => item.active && (selectedSource.ref.type !== 'inventory' || item.kind === 'raw_material'))
-              .map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.code} — {item.name} ({item.baseUnit})
-                </option>
-              ))}
-          </select>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={busy || !targetId || !validConversion}
-            onClick={() => void saveLink()}
-          >
-            Xác nhận liên kết
-          </button>
-          {unitNotice && <span className="warehouse-note">{unitNotice}</span>}
-        </div>
-      )}
-      <div className="warehouse-grid-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Hồ sơ nguồn</th>
-              <th>Mã hiện tại</th>
-              <th>Tên hàng</th>
-              <th>ĐVT</th>
-              <th>Mã nội bộ</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sources.map((source, index) => {
-              const resolved = resolveCatalogSource(source, links, items);
-              return (
-                <tr key={`${source.key}-${index}`}>
-                  <td title={source.label}>{source.label}</td>
-                  <td>{source.code || '—'}</td>
-                  <td title={source.name}>{source.name || '—'}</td>
-                  <td>{source.unit || '—'}</td>
-                  <td>{resolved.item?.code || 'Chưa liên kết'}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      disabled={busy || Boolean(source.problem)}
-                      onClick={() => {
-                        setSelectedSource(source);
-                        setTargetId(resolved.item?.id || '');
-                      }}
-                    >
-                      Chọn liên kết
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-            {!loading && !sources.length && (
-              <tr>
-                <td colSpan={6}>Chưa có dữ liệu nguồn.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
     </dialog>
   );
 }

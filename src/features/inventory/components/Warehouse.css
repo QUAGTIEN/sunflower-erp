@@ -97,12 +97,30 @@
   white-space: nowrap;
 }
 .warehouse-toolbar > input[type='search'] {
-  flex: 1 1 240px;
-  min-width: 160px;
+  width: auto;
+  flex: 1 1 280px;
+  min-width: 180px;
+}
+.warehouse-toolbar > select,
+.warehouse-toolbar > label > input,
+.warehouse-toolbar > label > select {
+  width: auto;
+  flex: 0 0 auto;
 }
 .warehouse-toolbar > label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.warehouse-dialog .warehouse-toolbar > label,
+.warehouse-stock-card .warehouse-toolbar > label {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 4px;
 }
 .warehouse-toolbar > .warehouse-check,
@@ -218,14 +236,85 @@
   background: #f1f5f9;
 }
 .warehouse-list {
-  min-width: 1080px;
+  width: 100%;
+  min-width: 100%;
+}
+.warehouse-list th {
+  text-align: left !important;
 }
 .warehouse-list th:last-child {
-  width: 100px;
+  width: 96px;
 }
-.warehouse-list .warehouse-number {
+.warehouse-list td.warehouse-number {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+.warehouse-list--catalog th:nth-child(1) {
+  width: 105px;
+}
+.warehouse-list--catalog th:nth-child(2) {
+  width: 220px;
+}
+.warehouse-list--catalog th:nth-child(3) {
+  width: 105px;
+}
+.warehouse-list--catalog th:nth-child(4) {
+  width: 80px;
+}
+.warehouse-list--catalog th:nth-child(5),
+.warehouse-list--catalog th:nth-child(6) {
+  width: 95px;
+}
+.warehouse-list--catalog th:nth-child(7) {
+  width: 105px;
+}
+.warehouse-list--catalog th:nth-child(8) {
+  width: 150px;
+}
+.warehouse-list--catalog th:nth-child(9) {
+  width: auto;
+}
+.warehouse-list--vouchers th:nth-child(1) {
+  width: 125px;
+}
+.warehouse-list--vouchers th:nth-child(2) {
+  width: 130px;
+}
+.warehouse-list--vouchers th:nth-child(3) {
+  width: 135px;
+}
+.warehouse-list--vouchers th:nth-child(4) {
+  width: 115px;
+}
+.warehouse-list--vouchers th:nth-child(5) {
+  width: 175px;
+}
+.warehouse-list--vouchers th:nth-child(6) {
+  width: auto;
+}
+.warehouse-list--vouchers th:nth-child(7) {
+  width: 85px;
+}
+.warehouse-list--vouchers th:nth-child(8) {
+  width: 125px;
+}
+.warehouse-list--vouchers th:nth-child(9) {
+  width: 150px;
+}
+.warehouse-list--report th:nth-child(1) {
+  width: 130px;
+}
+.warehouse-list--report th:nth-child(2) {
+  width: auto;
+}
+.warehouse-list--report th:nth-child(3) {
+  width: 95px;
+}
+.warehouse-list--report th:nth-child(4),
+.warehouse-list--report th:nth-child(5),
+.warehouse-list--report th:nth-child(6),
+.warehouse-list--report th:nth-child(7) {
+  width: 120px;
 }
 .warehouse-error,
 .warehouse-warning {
