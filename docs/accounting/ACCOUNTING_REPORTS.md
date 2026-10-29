@@ -56,13 +56,15 @@ Bộ lọc kỳ tiền **không áp dụng** cho hàng/kho. Màn hình ghi ngày
 - Dashboard, Khách hàng và Nhà cung cấp không còn khối tóm tắt công nợ (D10e-UI, 25/10/2026); bảng khách/NCC giữ cột "Công nợ". Tổng hợp nợ, ứng trước, nợ gần/quá hạn xem tại Kế toán.
 - Người dùng đã xác nhận áp dụng đề xuất: báo trước 3 ngày; tuổi nợ quá hạn 1–30 / 31–60 / 61–90 / trên 90 ngày. Báo cáo tiền tổng hợp chỉ dành Admin/Kế toán có Accounting; Sale/Mua hàng tiếp tục xem dữ liệu được phép ở phân hệ hiện tại. Mã lượt 6 đã khớp các lựa chọn này. Bộ lọc báo cáo vẫn chỉnh được 0–365 ngày; Dashboard dùng 3 ngày. Không tạo thông báo gửi tự động/mail hoặc lịch chạy nền.
 
-`POST /api/accounting/reports`: xác thực token + hồ sơ thật qua `requireActiveErpCaller`; body `{}` tải báo cáo, `{action: partner_summary}` trả tóm tắt phạm vi trên. Các bộ dữ liệu được đọc trong transaction nhất quán; không có ghi/migration khi tải. Client tiếp tục bị chặn đọc trực tiếp sổ tiền. Lượt 6 không sửa Firestore rules hay tạo collection mới.
+`POST /api/accounting/reports`: xác thực token + hồ sơ thật qua `requireActiveErpCaller`; chỉ còn `{action: partner_summary}` trả tóm tắt phạm vi trên (Sale/Mua hàng chỉ thấy đối tác của mình nên phải lọc ở máy chủ).
+
+Báo cáo đầy đủ (quyết định của người dùng ngày 29/10/2026) đọc thẳng Firestore qua `useAccountingReportsLiveData`; rules cho `canUseLedger` (Admin, accountant có Accounting) đọc thêm `goods_order_state`, `goods_source_state`, `warehouse_source_state`, ghi vẫn chặn. Số liệu tính bằng `buildAccountingReports` (`model/accountingReportView.ts`). Dấu đối soát nguồn dựng từ `model/sourceFingerprints.ts` và băm SHA-256 bằng Web Crypto, trùng với dấu máy chủ đã ghi; trình duyệt cần HTTPS. Đánh đổi đã chấp nhận: mỗi collection cập nhật riêng nên ngay lúc có người ghi sổ, báo cáo có thể lệch trong giây lát rồi tự khớp.
 
 ## Giới hạn và lượt 7
 
 Đây là báo cáo của **sổ nghiệp vụ mới đã ghi**, chưa phải xác nhận đủ dữ liệu kế toán công ty. Chưa chốt ngày cắt, nhập đầu kỳ thật, chuyển hóa đơn/tồn cũ, giá vốn, thuế, sổ cái, báo cáo tài chính hoặc kết nối ngân hàng. Bảng lãi gộp cũ giữ nguyên, chưa thành giá vốn thực tế.
 
-Snapshot API hiện đọc các collection nghiệp vụ trong transaction, tương ứng cách load sổ hiện có. Cần đo với khối lượng dữ liệu thực khi nghiệm thu; không tuyên bố đã kiểm chứng tải lớn.
+Báo cáo đọc toàn bộ các collection trên mỗi lần mở lần đầu; các lần sau dùng bộ nhớ đệm Firestore. Cần đo với khối lượng dữ liệu thực khi nghiệm thu; không tuyên bố đã kiểm chứng tải lớn.
 
 Lượt 7: chốt nguồn/ngày cắt và bảng đối soát, phê duyệt dữ liệu thật, chuyển đổi có chống trùng/đối soát, kiểm thử tích hợp và nghiệm thu, triển khai web/API/rules cùng phiên bản khi được yêu cầu. Chưa làm các thao tác đó trong lượt 6; push Git không đồng nghĩa deploy.
 

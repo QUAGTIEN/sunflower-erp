@@ -593,14 +593,16 @@ test('reversals use original snapshots after catalog deactivation; missing sourc
 });
 test('server-owned goods states and legacy bypass protections stay enforced in rules and integrations', () => {
   const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
-  for (const name of [
-    'goods_order_state',
-    'goods_source_state',
-    'goods_dispatch_state',
-    'goods_requests',
-    'goods_counters'
-  ])
+  for (const name of ['goods_dispatch_state', 'goods_requests', 'goods_counters'])
     assert.match(rules, new RegExp('match /' + name + '/\\{[^}]+\\}\\s*\\{\\s*allow read, write: if false;'));
+  // Báo cáo reads the order and source states for Admin and Kế toán; nobody writes them from the client.
+  for (const name of ['goods_order_state', 'goods_source_state'])
+    assert.match(
+      rules,
+      new RegExp(
+        'match /' + name + '/\\{[^}]+\\}\\s*\\{\\s*allow read: if canUseLedger\\(\\);\\s*allow write: if false;'
+      )
+    );
   assert.match(rules, /activeGoodsTripId/);
   assert.match(rules, /goodsDeliveryClosed/);
   const delivery = fs.readFileSync(path.join(root, 'src/features/delivery/pages/DeliveryPage.tsx'), 'utf8');

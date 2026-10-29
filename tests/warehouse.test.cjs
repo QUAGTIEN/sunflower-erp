@@ -537,8 +537,12 @@ test('static rules contract freezes legacy and protects quantity writer and mana
   const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
   for (const collection of ['inventory', 'warehouse_exports'])
     assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{[^}]*allow write: if false;`));
-  for (const collection of ['warehouse_source_state', 'warehouse_requests', 'warehouse_counters'])
+  for (const collection of ['warehouse_requests', 'warehouse_counters'])
     assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{ allow read, write: if false;`));
+  assert.match(
+    rules,
+    /match \/warehouse_source_state\/\{documentId\} \{\s*allow read: if canUseLedger\(\);\s*allow write: if false;/
+  );
   for (const collection of ['warehouse_vouchers', 'item_catalog', 'catalog_links']) {
     const block = rules.match(new RegExp(`match /${collection}/\\{documentId\\} \\{([\\s\\S]*?)\\n    \\}`));
     assert.ok(block, `${collection} has a rules block`);

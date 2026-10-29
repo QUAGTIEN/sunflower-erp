@@ -389,11 +389,22 @@ service cloud.firestore {
       allow read: if canReadWarehouse();
       allow write: if false;
     }
-    match /warehouse_source_state/{documentId} { allow read, write: if false; }
+    // Báo cáo compares these recorded goods states with the orders; Admin and Kế toán read them like the ledger.
+    match /warehouse_source_state/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
     match /warehouse_requests/{documentId} { allow read, write: if false; }
     match /warehouse_counters/{documentId} { allow read, write: if false; }
-    match /goods_order_state/{documentId} { allow read, write: if false; }
-    match /goods_source_state/{documentId} { allow read, write: if false; }
+    // Read by Báo cáo for Admin and Kế toán, as the old report API returned them.
+    match /goods_order_state/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
+    match /goods_source_state/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
     match /goods_dispatch_state/{documentId} { allow read, write: if false; }
     match /goods_requests/{documentId} { allow read, write: if false; }
     match /goods_counters/{documentId} { allow read, write: if false; }

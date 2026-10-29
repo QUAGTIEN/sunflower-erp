@@ -12,7 +12,7 @@ import { canUseLedger, FINANCE_KINDS, type LedgerEntry } from '../model/accounti
 import { AGE_BUCKETS, buildDebtReport } from '../model/accountingReports';
 import { reportCsv } from '../model/accountingReports';
 import { deadlineAlert, goodsReportAlert, type GoodsReportRow, type StockReportRow } from '../model/operationalReports';
-import { loadAccountingReports, type AccountingReportData } from '../api/accountingReportsService';
+import { useAccountingReportsLiveData } from './useAccountingReportsLiveData';
 import { LedgerDetails } from './AccountingLedgerWorkspace';
 import './Ledger.css';
 import '@/features/inventory/components/Warehouse.css';
@@ -29,10 +29,6 @@ const names = {
   legacy: 'Dữ liệu chưa chuyển đổi'
 };
 export function AccountingReportsWorkspace({ actor }: { actor: WarehouseActor }) {
-  const [data, setData] = useState<AccountingReportData | null>(null),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
-    [refresh, setRefresh] = useState(0);
   const [view, setView] = useState<keyof typeof names>('partners'),
     [side, setSide] = useState('ar'),
     [partnerId, setPartnerId] = useState('');
@@ -48,29 +44,7 @@ export function AccountingReportsWorkspace({ actor }: { actor: WarehouseActor })
   const [stockDetail, setStockDetail] = useState<StockReportRow | null>(null),
     [threshold, setThreshold] = useState<StockReportRow | null>(null);
   const allowed = canUseLedger(actor);
-  useEffect(() => {
-    if (!allowed) return;
-    let cancelled = false;
-    void loadAccountingReports()
-      .then(next => {
-        if (!cancelled) {
-          setData(next);
-          setError('');
-        }
-      })
-      .catch(cause => {
-        if (!cancelled) {
-          setData(null);
-          setError(cause instanceof Error ? cause.message : 'Không tải được báo cáo.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [allowed, refresh]);
+  const { data, loading, error, reload } = useAccountingReportsLiveData(allowed);
   const report = useMemo(() => {
     if (!data) return { lines: [], partners: [], error: '' };
     try {
@@ -399,15 +373,7 @@ export function AccountingReportsWorkspace({ actor }: { actor: WarehouseActor })
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <IconButton
-          label="Tải lại"
-          icon={<RefreshCw />}
-          disabled={loading}
-          onClick={() => {
-            setLoading(true);
-            setRefresh(v => v + 1);
-          }}
-        />
+        <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
         <IconButton
           label="Xuất CSV"
           icon={<Download />}
@@ -620,8 +586,6 @@ export function AccountingReportsWorkspace({ actor }: { actor: WarehouseActor })
           onClose={() => setThreshold(null)}
           onSaved={() => {
             setThreshold(null);
-            setLoading(true);
-            setRefresh(v => v + 1);
           }}
         />
       )}

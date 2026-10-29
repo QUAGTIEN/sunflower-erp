@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
+const { createHash } = require('node:crypto');
 const root = path.resolve(__dirname, '..');
 const { createLoader: loader } = require('./helpers/loadTs.cjs');
 
@@ -308,7 +309,20 @@ function reportBackend(extra = {}) {
     './firebaseAdmin.js': { getFirebaseAdminServices: () => ({ firestore }) },
     './adminUsers.js': { AdminApiError: ApiError }
   });
-  return { store, load, server: load('server/accountingReports.ts'), po, purchase };
+  // Báo cáo is built in the browser from the collections rules let canUseLedger read; the test does the same.
+  const view = loader()('src/features/accounting/model/accountingReportView.ts');
+  const ledger = loader()('src/features/accounting/model/accountingLedger.ts');
+  const loadAccountingReports = async actor => {
+    if (!ledger.canUseLedger(actor)) throw new ApiError(403, 'rules deny');
+    const docs = collection =>
+      [...store]
+        .filter(([k]) => k.startsWith(collection + '/'))
+        .map(([k, v]) => ({ ...structuredClone(v), id: k.split('/')[1] }));
+    const snapshots = Object.fromEntries(view.REPORT_COLLECTIONS.map(([name, collection]) => [name, docs(collection)]));
+    const fingerprint = input => createHash('sha256').update(JSON.stringify(input)).digest('hex');
+    return { success: true, ...view.buildAccountingReports(snapshots, fingerprint, '2026-01-20', 'now') };
+  };
+  return { store, load, server: { ...load('server/accountingReports.ts'), loadAccountingReports }, po, purchase };
 }
 test('report API restricts full reports to active Admin/accountants, read summaries do not grant posting', async () => {
   const b = reportBackend();
@@ -539,9 +553,11 @@ test('actual report controls drill into partner, line and current goods; CSV exp
     'src/features/accounting/components/AccountingReportsWorkspace.tsx',
     'AccountingReportsWorkspace',
     { actor: admin },
-    { data, loading: false, from: '2026-01-01', to: '2026-01-31' },
+    { from: '2026-01-01', to: '2026-01-31' },
     {
-      '../api/accountingReportsService': { loadAccountingReports: async () => data },
+      './useAccountingReportsLiveData': {
+        useAccountingReportsLiveData: () => ({ data, loading: false, error: '', reload() {} })
+      },
       '@/features/inventory/api/warehouseService': { warehouseRequest: async () => ({ success: true }) }
     }
   );
@@ -657,4 +673,21 @@ test('actual threshold form freezes ambiguous payload and only reports confirmed
   } finally {
     global.window = oldWindow;
   }
+});
+
+test('Báo cáo queries only collections ledger users may read and hashes like the servers', async () => {
+  const { REPORT_LIVE_QUERIES } = loader({ '@/infrastructure/firebase/erpDataGateway': {} })(
+    'src/features/accounting/components/useAccountingReportsLiveData.ts'
+  );
+  const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
+  const readers = ['canUseLedger()', 'isActive()', 'canReadWarehouse()', 'canManageItemCatalog()'];
+  for (const { collection } of REPORT_LIVE_QUERIES) {
+    const rule = rules.match(new RegExp(String.raw`match /${collection}/\{documentId\} \{\s*allow read: if ([^;]+);`));
+    assert.ok(rule && readers.some(reader => rule[1].includes(reader)), `${collection} is readable by ledger users`);
+  }
+  const { sha256Hex } = loader()('src/shared/utils/sha256Hex.ts');
+  const text = JSON.stringify({ customerId: 'c', rows: [{ id: 'p1', name: 'Tem nhãn' }] });
+  assert.equal(await sha256Hex(text), createHash('sha256').update(text).digest('hex'));
+  const api = fs.readFileSync(path.join(root, 'api/accounting/reports.ts'), 'utf8');
+  assert.ok(!api.includes('loadAccountingReports'), 'the report API only serves the partner summary');
 });
