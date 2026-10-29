@@ -369,7 +369,10 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
 
   return (
     <div className="inventory-view warehouse-workspace" data-erp-table-text="single-line">
-      <PageContextHeader section="Kho vật tư" current={tabNames[tab]} />
+      <PageContextHeader
+        section="Kho vật tư"
+        current={tab === 'catalog' && activeStock ? `${tabNames.catalog} · ${activeStock.code}` : tabNames[tab]}
+      />
       <nav className="content-tabs" aria-label="Kho vật tư" role="tablist">
         {Object.entries(tabNames).map(([key, name]) => (
           <button
@@ -380,6 +383,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
             onClick={() => {
               if (confirmAppNavigation()) {
                 setTab(key as typeof tab);
+                setStock(null);
                 setSearch('');
                 setVoucherMenuOpen(false);
                 setShowFilters(false);
@@ -412,177 +416,179 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         </div>
       )}
 
-      <div className="warehouse-toolbar">
-        <input
-          aria-label="Tìm kiếm kho"
-          type="search"
-          placeholder={
-            tab === 'catalog'
-              ? 'Tìm theo mã / tên / khách hàng…'
-              : voucherView === 'list'
-                ? 'Tìm số phiếu, LSX, PO…'
-                : 'Tìm mã hoặc tên vật tư…'
-          }
-          value={search}
-          onChange={event => setSearch(event.target.value)}
-        />
-        {tab === 'catalog' && (
-          <>
-            <DataFilterButton
-              activeCount={catalogActiveFilterCount}
-              open={showFilters}
-              onClick={() => setShowFilters(true)}
-            />
-            <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
-            {canManageCatalog && (
-              <div className="warehouse-toolbar-end">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  disabled={!canWriteCatalog}
-                  onClick={() => setCsvModalOpen(true)}
-                >
-                  Nhập CSV
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={!canWriteCatalog}
-                  onClick={() => {
-                    setEditingCatalogItem(null);
-                    setCreatingCatalogItem(true);
-                  }}
-                >
-                  + Thêm vật tư
-                </button>
-              </div>
-            )}
-          </>
-        )}
-        {tab === 'vouchers' && voucherView === 'list' && (
-          <>
-            <DataFilterButton
-              activeCount={voucherActiveFilterCount}
-              open={showFilters}
-              onClick={() => setShowFilters(true)}
-            />
-            <label>
-              Từ ngày
-              <input type="date" value={from} onChange={event => setFrom(event.target.value)} />
-            </label>
-            <label>
-              Đến ngày
-              <input type="date" value={to} onChange={event => setTo(event.target.value)} />
-            </label>
-          </>
-        )}
-        {tab === 'vouchers' && voucherView === 'report' && (
-          <>
-            <select
-              aria-label="Loại báo cáo"
-              value={reportScope}
-              onChange={event => setReportScope(event.target.value as typeof reportScope)}
-            >
-              <option value="raw_main">Nhập xuất tồn kho NVL</option>
-              <option value="finished_main">Nhập xuất tồn thành phẩm</option>
-            </select>
-            <label>
-              Từ ngày
-              <input type="date" value={from} onChange={event => setFrom(event.target.value)} />
-            </label>
-            <label>
-              Đến ngày
-              <input type="date" value={to} onChange={event => setTo(event.target.value)} />
-            </label>
-          </>
-        )}
-        {tab === 'vouchers' && (
-          <>
-            <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
-            {canPostWarehouse(currentUser) && (
-              <div className="warehouse-menu-wrap warehouse-toolbar-end">
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={!canWrite}
-                  onClick={() => setVoucherMenuOpen(open => !open)}
-                >
-                  + Lập phiếu kho
-                </button>
-                {voucherMenuOpen && (
-                  <div className="warehouse-action-menu" role="menu" aria-label="Chọn loại phiếu kho">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setVoucherMenuOpen(false);
-                        setCreatingKind('purchase_receipt');
-                        setCreating(true);
-                      }}
-                    >
-                      Nhập mua NVL
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setVoucherMenuOpen(false);
-                        setCreatingKind('production_issue');
-                        setCreating(true);
-                      }}
-                    >
-                      Cấp NVL cho LSX
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setVoucherMenuOpen(false);
-                        setCreatingKind('production_return');
-                        setCreating(true);
-                      }}
-                    >
-                      Hoàn NVL từ LSX
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setVoucherMenuOpen(false);
-                        setGoodsOptions({ kind: 'production_receipt' });
-                      }}
-                    >
-                      Nhập thành phẩm từ QC
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setVoucherMenuOpen(false);
-                        setGoodsOptions({ kind: 'production_surplus_receipt' });
-                      }}
-                    >
-                      Nhập thành phẩm dư từ SX
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setVoucherMenuOpen(false);
-                        setGoodsOptions({ kind: 'purchase_receipt' });
-                      }}
-                    >
-                      Nhập hàng mua / gia công
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {!(tab === 'catalog' && activeStock) && (
+        <div className="warehouse-toolbar">
+          <input
+            aria-label="Tìm kiếm kho"
+            type="search"
+            placeholder={
+              tab === 'catalog'
+                ? 'Tìm theo mã / tên / khách hàng…'
+                : voucherView === 'list'
+                  ? 'Tìm số phiếu, LSX, PO…'
+                  : 'Tìm mã hoặc tên vật tư…'
+            }
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+          />
+          {tab === 'catalog' && (
+            <>
+              <DataFilterButton
+                activeCount={catalogActiveFilterCount}
+                open={showFilters}
+                onClick={() => setShowFilters(true)}
+              />
+              <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
+              {canManageCatalog && (
+                <div className="warehouse-toolbar-end">
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    disabled={!canWriteCatalog}
+                    onClick={() => setCsvModalOpen(true)}
+                  >
+                    Nhập CSV
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={!canWriteCatalog}
+                    onClick={() => {
+                      setEditingCatalogItem(null);
+                      setCreatingCatalogItem(true);
+                    }}
+                  >
+                    + Thêm vật tư
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+          {tab === 'vouchers' && voucherView === 'list' && (
+            <>
+              <DataFilterButton
+                activeCount={voucherActiveFilterCount}
+                open={showFilters}
+                onClick={() => setShowFilters(true)}
+              />
+              <label>
+                Từ ngày
+                <input type="date" value={from} onChange={event => setFrom(event.target.value)} />
+              </label>
+              <label>
+                Đến ngày
+                <input type="date" value={to} onChange={event => setTo(event.target.value)} />
+              </label>
+            </>
+          )}
+          {tab === 'vouchers' && voucherView === 'report' && (
+            <>
+              <select
+                aria-label="Loại báo cáo"
+                value={reportScope}
+                onChange={event => setReportScope(event.target.value as typeof reportScope)}
+              >
+                <option value="raw_main">Nhập xuất tồn kho NVL</option>
+                <option value="finished_main">Nhập xuất tồn thành phẩm</option>
+              </select>
+              <label>
+                Từ ngày
+                <input type="date" value={from} onChange={event => setFrom(event.target.value)} />
+              </label>
+              <label>
+                Đến ngày
+                <input type="date" value={to} onChange={event => setTo(event.target.value)} />
+              </label>
+            </>
+          )}
+          {tab === 'vouchers' && (
+            <>
+              <IconButton label="Tải lại" icon={<RefreshCw />} disabled={loading} onClick={reload} />
+              {canPostWarehouse(currentUser) && (
+                <div className="warehouse-menu-wrap warehouse-toolbar-end">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={!canWrite}
+                    onClick={() => setVoucherMenuOpen(open => !open)}
+                  >
+                    + Lập phiếu kho
+                  </button>
+                  {voucherMenuOpen && (
+                    <div className="warehouse-action-menu" role="menu" aria-label="Chọn loại phiếu kho">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setVoucherMenuOpen(false);
+                          setCreatingKind('purchase_receipt');
+                          setCreating(true);
+                        }}
+                      >
+                        Nhập mua NVL
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setVoucherMenuOpen(false);
+                          setCreatingKind('production_issue');
+                          setCreating(true);
+                        }}
+                      >
+                        Cấp NVL cho LSX
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setVoucherMenuOpen(false);
+                          setCreatingKind('production_return');
+                          setCreating(true);
+                        }}
+                      >
+                        Hoàn NVL từ LSX
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setVoucherMenuOpen(false);
+                          setGoodsOptions({ kind: 'production_receipt' });
+                        }}
+                      >
+                        Nhập thành phẩm từ QC
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setVoucherMenuOpen(false);
+                          setGoodsOptions({ kind: 'production_surplus_receipt' });
+                        }}
+                      >
+                        Nhập thành phẩm dư từ SX
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setVoucherMenuOpen(false);
+                          setGoodsOptions({ kind: 'purchase_receipt' });
+                        }}
+                      >
+                        Nhập hàng mua / gia công
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
-      {tab === 'catalog' && (
+      {tab === 'catalog' && !activeStock && (
         <DataFilterChipBar
           chips={[
             ...itemKindFilters.map(value => ({
@@ -636,7 +642,30 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         </p>
       )}
 
-      <div className={`warehouse-split-layout ${tab === 'catalog' && activeStock ? 'has-panel' : ''}`}>
+      {tab === 'catalog' && activeStock ? (
+        <StockDetails
+          key={`${activeStock.warehouseId}-${activeStock.id}`}
+          stock={activeStock}
+          currentUser={currentUser}
+          vouchers={allVouchers.filter(
+            voucher =>
+              voucher.warehouseId === activeStock.warehouseId &&
+              voucher.lines.some(line => line.catalogItemId === activeStock.catalogItemId)
+          )}
+          onEditCatalog={
+            canManageCatalog && catalogById.has(activeStock.id)
+              ? () => {
+                  setEditingCatalogItem(catalogById.get(activeStock.id)!);
+                  setCreatingCatalogItem(false);
+                }
+              : undefined
+          }
+          onClose={() => setStock(null)}
+          onSaved={() => {
+            reload();
+          }}
+        />
+      ) : (
         <div className="warehouse-list-frame">
           <div className="table-container erp-primary-data-table">
             <table
@@ -701,11 +730,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                     return (
                       <tr
                         key={`${row.warehouseId}-${row.id}`}
-                        className={`warehouse-row-clickable ${
-                          activeStock?.id === row.id && activeStock?.warehouseId === row.warehouseId
-                            ? 'warehouse-row-active'
-                            : ''
-                        }`}
+                        className="warehouse-row-clickable"
                         onClick={event => {
                           if ((event.target as HTMLElement).closest('button, [role="menu"]')) return;
                           setStock(row);
@@ -836,31 +861,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
           </div>
           <DataTablePagination {...pagination.paginationProps} />
         </div>
-        {tab === 'catalog' && activeStock && (
-          <StockDetails
-            key={`${activeStock.warehouseId}-${activeStock.id}`}
-            stock={activeStock}
-            currentUser={currentUser}
-            vouchers={allVouchers.filter(
-              voucher =>
-                voucher.warehouseId === activeStock.warehouseId &&
-                voucher.lines.some(line => line.catalogItemId === activeStock.catalogItemId)
-            )}
-            onEditCatalog={
-              canManageCatalog && catalogById.has(activeStock.id)
-                ? () => {
-                    setEditingCatalogItem(catalogById.get(activeStock.id)!);
-                    setCreatingCatalogItem(false);
-                  }
-                : undefined
-            }
-            onClose={() => setStock(null)}
-            onSaved={() => {
-              reload();
-            }}
-          />
-        )}
-      </div>
+      )}
 
       {tab === 'catalog' && (
         <DataFilterPanel
@@ -1114,7 +1115,7 @@ function StockDetails({
     : 'Chỉ dùng ĐVT cơ sở';
 
   return (
-    <aside className="warehouse-stock-card" aria-labelledby="warehouse-stock-title">
+    <section className="warehouse-stock-card warehouse-stock-card--fullpage" aria-labelledby="warehouse-stock-title">
       <form
         onSubmit={async event => {
           event.preventDefault();
@@ -1156,7 +1157,7 @@ function StockDetails({
               </button>
             )}
             <button type="button" className="btn btn-outline" disabled={busy} onClick={close}>
-              Đóng
+              Quay lại danh mục
             </button>
           </div>
         </header>
@@ -1187,46 +1188,48 @@ function StockDetails({
 
         <div className="warehouse-stock-card-section">
           <h3>Tồn và ngưỡng</h3>
-          <p className="warehouse-stock-card-meta">
-            <span>
-              Tồn theo sổ: <strong>{stockNumber(stock.quantity)}</strong> {stock.unit}
-            </span>
-            <span>
-              Tồn dư: <strong>{stockNumber(stock.surplusQuantity)}</strong> {stock.unit}
-            </span>
-            <span>Trạng thái: {stockAlert(stock.quantity, stock.minQuantity)}</span>
-          </p>
+          <div className="warehouse-stock-threshold-bar">
+            <p className="warehouse-stock-card-meta">
+              <span>
+                Tồn theo sổ: <strong>{stockNumber(stock.quantity)}</strong> {stock.unit}
+              </span>
+              <span>
+                Tồn dư: <strong>{stockNumber(stock.surplusQuantity)}</strong> {stock.unit}
+              </span>
+              <span>Trạng thái: {stockAlert(stock.quantity, stock.minQuantity)}</span>
+            </p>
+            {canPostWarehouse(currentUser) && (
+              <div className="warehouse-toolbar warehouse-threshold-controls">
+                <label>
+                  Ngưỡng tối thiểu ({stock.unit}) *
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    max="1000000000"
+                    step="0.000001"
+                    value={threshold}
+                    disabled={busy}
+                    onChange={event => setThreshold(event.target.value)}
+                  />
+                </label>
+                <button className="btn btn-primary" disabled={busy || !dirty}>
+                  {busy ? 'Đang lưu…' : 'Lưu ngưỡng tồn'}
+                </button>
+              </div>
+            )}
+          </div>
           {error && (
             <p className="warehouse-error" role="alert">
               {error}
             </p>
           )}
-          {canPostWarehouse(currentUser) && (
-            <div className="warehouse-toolbar">
-              <label>
-                Ngưỡng tối thiểu ({stock.unit}) *
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  max="1000000000"
-                  step="0.000001"
-                  value={threshold}
-                  disabled={busy}
-                  onChange={event => setThreshold(event.target.value)}
-                />
-              </label>
-              <button className="btn btn-primary" disabled={busy || !dirty}>
-                {busy ? 'Đang lưu…' : 'Lưu ngưỡng tồn'}
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="warehouse-stock-card-section">
           <h3>Nguồn tồn (dư từ LSX / nhập mua)</h3>
-          <div className="warehouse-grid-scroll">
-            <table>
+          <div className="table-container erp-primary-data-table">
+            <table className="warehouse-list warehouse-detail-table warehouse-detail-table--sources">
               <thead>
                 <tr>
                   <th>Nguồn</th>
@@ -1269,8 +1272,8 @@ function StockDetails({
 
         <div className="warehouse-stock-card-section">
           <h3>Khách đang dùng</h3>
-          <div className="warehouse-grid-scroll">
-            <table>
+          <div className="table-container erp-primary-data-table">
+            <table className="warehouse-list warehouse-detail-table warehouse-detail-table--users">
               <thead>
                 <tr>
                   <th>Khách hàng</th>
@@ -1296,8 +1299,8 @@ function StockDetails({
 
         <div className="warehouse-stock-card-section">
           <h3>Thẻ kho (lịch sử nhập xuất gần nhất)</h3>
-          <div className="warehouse-grid-scroll">
-            <table>
+          <div className="table-container erp-primary-data-table">
+            <table className="warehouse-list warehouse-detail-table warehouse-detail-table--ledger">
               <thead>
                 <tr>
                   <th>Số phiếu</th>
@@ -1333,7 +1336,7 @@ function StockDetails({
           </div>
         </div>
       </form>
-    </aside>
+    </section>
   );
 }
 
