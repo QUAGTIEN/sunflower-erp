@@ -1421,7 +1421,15 @@ test('the company white-label sheet v2 lists the PO of each line and keeps hand-
 
 test('completed LSX with shortfall shows shortfall actions and request_materials creates procurement_requests without payables', async () => {
   const b = backend();
-  await b.manage(draft());
+  // QC needs one result per LSX line, so the order carries both PO lines the results below cover.
+  await b.manage(
+    draft({
+      lines: [
+        { itemId: 'roll', quantity: 100 },
+        { itemId: 'manual', quantity: 50 }
+      ]
+    })
+  );
   await b.action('submit');
   await b.action('release');
   await b.action('start');
