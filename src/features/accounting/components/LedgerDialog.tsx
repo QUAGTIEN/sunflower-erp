@@ -1,6 +1,4 @@
-import { LoadingStatus } from '@/components/LoadingStates';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { loadAccountingLedger } from '../api/accountingLedgerService';
 import {
   FINANCE_KINDS,
   canUseLedger,
@@ -29,20 +27,21 @@ export interface LedgerDialogOptions {
 type InputLine = { quantity: string; unitPrice: string; discount: string; taxRate: string };
 export function LedgerDialog({
   actor,
+  ledger,
   options,
   onClose,
   onSaved
 }: {
   actor: WarehouseActor;
+  ledger: LedgerData;
   options: LedgerDialogOptions;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [data, setData] = useState<LedgerData | null>(null),
-    [loading, setLoading] = useState(true),
-    [loadError, setLoadError] = useState(''),
-    [reload, setReload] = useState(0);
+  // The form works on the figures it opened with; live changes are adopted only through "Tải lại số liệu",
+  // so amounts never shift under a confirmation the user already ticked.
+  const [data, setData] = useState(ledger);
   const [side, setSide] = useState<DebtSide>(options.side || 'ar'),
     [partnerId, setPartnerId] = useState(options.partnerId || '');
   const [reference, setReference] = useState(''),
@@ -73,25 +72,6 @@ export function LedgerDialog({
     element?.showModal();
     return () => element?.close();
   }, []);
-  useEffect(() => {
-    let cancelled = false;
-    void loadAccountingLedger()
-      .then(next => {
-        if (!cancelled) {
-          setData(next);
-          setLoadError('');
-        }
-      })
-      .catch(cause => {
-        if (!cancelled) setLoadError(cause instanceof Error ? cause.message : 'Không tải được sổ kế toán.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [reload]);
   const dirty = Boolean(
     reference || note || amount || target || Object.keys(entries).length || Object.keys(allocations).length
   );
@@ -119,12 +99,12 @@ export function LedgerDialog({
       window.removeEventListener('beforeunload', beforeUnload);
     };
   }, [dirty, locked, mutation.pending]);
-  const sources = data?.sources.filter(s => s.side === side && s.partnerId === partnerId) || [];
+  const sources = data.sources.filter(s => s.side === side && s.partnerId === partnerId);
   const sourceLines = sources
     .flatMap(source =>
       source.lines.map(line => {
         const key = `${source.id}:${line.id}`,
-          state = data?.sourceStates.find(s => s.id === `${side}_${source.id}`),
+          state = data.sourceStates.find(s => s.id === `${side}_${source.id}`),
           input = entries[key];
         const remaining = Math.max(0, line.quantity - (state?.lines[line.id]?.used || 0));
         const values = {
@@ -146,15 +126,15 @@ export function LedgerDialog({
       })
     )
     .filter(row => row.remaining > 0);
-  const debtLines =
-    data?.documents
-      .filter(d => !d.voided && d.side === side && d.partnerId === partnerId)
-      .flatMap(document => document.lines.map(line => ({ document, line, key: `${document.id}:${line.id}` }))) || [];
-  const eligibleFunds =
-    data?.funds.filter(f => !f.voided && f.side === side && f.partnerId === partnerId && fundAvailable(f) > 0) || [];
+  const debtLines = data.documents
+    .filter(d => !d.voided && d.side === side && d.partnerId === partnerId)
+    .flatMap(document => document.lines.map(line => ({ document, line, key: `${document.id}:${line.id}` })));
+  const eligibleFunds = data.funds.filter(
+    f => !f.voided && f.side === side && f.partnerId === partnerId && fundAvailable(f) > 0
+  );
   const fund = eligibleFunds.find(f => f.id === fundId),
     chosen = debtLines.find(row => row.key === target);
-  const openingOrder = data?.openingOrders.find(
+  const openingOrder = data.openingOrders.find(
     row => row.id === openingOrderId && row.side === side && row.partnerId === partnerId
   );
   const selectedSources = sourceLines.filter(row => row.values.quantity > 0),
@@ -178,7 +158,7 @@ export function LedgerDialog({
               : Number(amount) <= 0);
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!data || !allowed || loading || (!mutation.uncertain && (invalid || !confirmed))) return;
+    if (!allowed || (!mutation.uncertain && (invalid || !confirmed))) return;
     const lines =
       kind === 'charge'
         ? selectedSources.map(row => ({ sourceVoucherId: row.source.id, sourceLine: row.line.id, ...row.values }))
@@ -256,13 +236,12 @@ export function LedgerDialog({
             Đóng
           </button>
         </header>
-        {(loadError || mutation.error) && (
+        {mutation.error && (
           <p role="alert" className="warehouse-error">
-            {loadError || mutation.error}
+            {mutation.error}
           </p>
         )}
-        <LoadingStatus loading={loading} hasData={!!data} label="Đang tải sổ công nợ" rows={3} />
-        <fieldset disabled={!data || loading || locked || !allowed}>
+        <fieldset disabled={locked || !allowed}>
           {original ? (
             <p>
               {original.reference} · {original.partnerName} · {formatMoney(original.amount)}. Đảo toàn bộ phiếu; giữ
@@ -319,7 +298,7 @@ export function LedgerDialog({
                     }}
                   >
                     <option value="">Chọn đối tác</option>
-                    {data?.partners
+                    {data.partners
                       .filter(p => p.side === side)
                       .map(p => (
                         <option key={p.id} value={p.id}>
@@ -465,7 +444,7 @@ export function LedgerDialog({
                     Đơn cũ (nếu có)
                     <select value={openingOrderId} onChange={event => setOpeningOrderId(event.target.value)}>
                       <option value="">Chưa xác định đơn</option>
-                      {data?.openingOrders
+                      {data.openingOrders
                         .filter(row => row.side === side && row.partnerId === partnerId)
                         .map(row => (
                           <option key={row.id} value={row.id}>
@@ -478,7 +457,7 @@ export function LedgerDialog({
                     Mã nội bộ (nếu đã đối chiếu)
                     <select value={catalogItemId} onChange={event => setCatalogItemId(event.target.value)}>
                       <option value="">Chưa chi tiết mã</option>
-                      {data?.items.map(item => (
+                      {data.items.map(item => (
                         <option key={item.id} value={item.id}>
                           {item.code} — {item.name}
                         </option>
@@ -596,7 +575,7 @@ export function LedgerDialog({
                         Phiếu khách trả / trả NCC (nếu có)
                         <select value={returnVoucherId} onChange={event => setReturnVoucherId(event.target.value)}>
                           <option value="">Điều chỉnh theo chứng từ riêng</option>
-                          {data?.returns
+                          {data.returns
                             .filter(
                               row =>
                                 row.side === side &&
@@ -659,11 +638,10 @@ export function LedgerDialog({
           <button
             type="button"
             className="btn btn-outline"
-            disabled={locked || loading}
+            disabled={locked || data === ledger}
             onClick={() => {
-              setLoading(true);
               setConfirmed(false);
-              setReload(value => value + 1);
+              setData(ledger);
             }}
           >
             Tải lại số liệu
@@ -673,13 +651,7 @@ export function LedgerDialog({
           </button>
           <button
             className="btn btn-primary"
-            disabled={
-              !data ||
-              loading ||
-              !allowed ||
-              mutation.busy ||
-              (!mutation.uncertain && (invalid || !note.trim() || !confirmed))
-            }
+            disabled={!allowed || mutation.busy || (!mutation.uncertain && (invalid || !note.trim() || !confirmed))}
           >
             {mutation.busy ? 'Đang ghi…' : mutation.uncertain ? 'Kiểm tra / gửi lại yêu cầu' : 'Ghi sổ'}
           </button>

@@ -7,7 +7,6 @@ import { warehouseDate, stockNumber } from '@/features/inventory/model/warehouse
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
-import { loadAccountingLedger } from '../api/accountingLedgerService';
 import {
   canUseLedger,
   FINANCE_KINDS,
@@ -19,6 +18,7 @@ import {
   type DebtSide
 } from '../model/accountingLedger';
 import { LedgerDialog, type LedgerDialogOptions } from './LedgerDialog';
+import { useLedgerLiveData } from './useLedgerLiveData';
 import '@/features/inventory/components/Warehouse.css';
 import './Ledger.css';
 
@@ -46,42 +46,17 @@ const views = {
   legacy: 'Dữ liệu cũ'
 };
 export function AccountingLedgerWorkspace({ actor, onRefresh }: { actor: WarehouseActor; onRefresh: () => void }) {
-  const [data, setData] = useState(empty),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
-    [refresh, setRefresh] = useState(0);
   const [view, setView] = useState<keyof typeof views>('ar'),
     [detailView, setDetailView] = useState('partners'),
     [search, setSearch] = useState('');
   const [options, setOptions] = useState<LedgerDialogOptions | null>(null),
     [selected, setSelected] = useState<LedgerEntry | null>(null);
-  const allowed = canUseLedger(actor),
-    side: DebtSide = view === 'ap' ? 'ap' : 'ar',
+  const allowed = canUseLedger(actor);
+  const ledger = useLedgerLiveData(allowed);
+  const data = ledger.data || empty,
+    { loading, error, reload } = ledger;
+  const side: DebtSide = view === 'ap' ? 'ap' : 'ar',
     writable = allowed && !loading && !error;
-  useEffect(() => {
-    if (!allowed) return;
-    let cancelled = false;
-    void loadAccountingLedger()
-      .then(next => {
-        if (!cancelled) {
-          setData(next);
-          setError('');
-        }
-      })
-      .catch(cause => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Không tải được sổ kế toán.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh, allowed]);
-  const reload = () => {
-    setLoading(true);
-    setRefresh(value => value + 1);
-  };
   const matches = (...values: unknown[]) =>
     values.join(' ').toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'));
   const documents = data.documents.filter(d => !d.voided && d.side === side);
@@ -203,7 +178,7 @@ export function AccountingLedgerWorkspace({ actor, onRefresh }: { actor: Warehou
           </button>
         )}
       </div>
-      <LoadingStatus loading={loading} hasData={data !== empty} label="Đang tải sổ công nợ" />
+      <LoadingStatus loading={loading} hasData={Boolean(ledger.data)} label="Đang tải sổ công nợ" />
       {error && (
         <p className="warehouse-error" role="alert">
           {error}
@@ -512,11 +487,11 @@ export function AccountingLedgerWorkspace({ actor, onRefresh }: { actor: Warehou
       {options && (
         <LedgerDialog
           actor={actor}
+          ledger={data}
           options={options}
           onClose={() => setOptions(null)}
           onSaved={() => {
             setOptions(null);
-            reload();
             onRefresh();
           }}
         />

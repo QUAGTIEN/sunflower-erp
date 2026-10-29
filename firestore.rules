@@ -444,12 +444,36 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
-    match /finance_control/{documentId} { allow read, write: if false; }
-    match /finance_documents/{documentId} { allow read, write: if false; }
-    match /finance_funds/{documentId} { allow read, write: if false; }
-    match /finance_entries/{documentId} { allow read, write: if false; }
-    match /finance_source_state/{documentId} { allow read, write: if false; }
-    match /finance_periods/{documentId} { allow read, write: if false; }
+    // Sổ công nợ reads its ledger directly; only Admin and Kế toán with the accounting page, as the API allows.
+    // Every financial write, and the request/counter bookkeeping, stays on /api/accounting/manage.
+    function canUseLedger() {
+      return isAdmin()
+        || (isActive() && userProfile().role == 'accountant' && hasPage('accounting'));
+    }
+    match /finance_control/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
+    match /finance_documents/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
+    match /finance_funds/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
+    match /finance_entries/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
+    match /finance_source_state/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
+    match /finance_periods/{documentId} {
+      allow read: if canUseLedger();
+      allow write: if false;
+    }
     match /finance_requests/{documentId} { allow read, write: if false; }
     match /finance_reference_keys/{documentId} { allow read, write: if false; }
     match /finance_counters/{documentId} { allow read, write: if false; }

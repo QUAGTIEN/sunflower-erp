@@ -7,7 +7,6 @@ import {
   roundStock,
   type WarehouseActor
 } from '../src/features/inventory/model/warehouse.js';
-import { itemIdentity } from '../src/features/production/model/productionOrder.js';
 import {
   canUseLedger,
   FINANCE_KINDS,
@@ -20,9 +19,9 @@ import {
   type DebtLine,
   type MoneyFund,
   type LedgerEntry,
-  type FinanceSource,
   type FinanceSourceState
 } from '../src/features/accounting/model/accountingLedger.js';
+import { sourceKind } from '../src/features/accounting/model/ledgerView.js';
 
 type Data = Record<string, unknown>;
 const fail = (status: number, message: string): never => {
@@ -51,46 +50,6 @@ const date = (value: unknown) => {
   return s;
 };
 
-function sourceKind(v: Data, side: DebtSide) {
-  if (v.reversedBy || v.kind === 'reversal') return false;
-  if (side === 'ar') return v.warehouseId === 'finished_main' && v.kind === 'delivery';
-  return (
-    v.kind === 'purchase_receipt' ||
-    (v.warehouseId === 'finished_main' &&
-      !!v.purchaseId &&
-      (v.kind === 'delivery' || (v.kind === 'failed_return' && v.returnToSupplier !== true)))
-  );
-}
-function sourceView(v: Data, side: DebtSide, po: Data, purchase: Data, partner: Data): FinanceSource {
-  return {
-    id: String(v.id),
-    code: String(v.code),
-    side,
-    partnerId: String(side === 'ar' ? po.customerId || '' : purchase.supplierId || ''),
-    partnerName: String(
-      side === 'ar' ? partner.companyName || po.customerName || '' : partner.supplierName || purchase.supplierName || ''
-    ),
-    poId: String(side === 'ar' ? v.poId || '' : purchase.linkedPoId || ''),
-    purchaseId: side === 'ap' ? String(purchase.id || '') : '',
-    lines: rows(v.lines).map(line => {
-      const original =
-        side === 'ar'
-          ? rows(po.items).find((row, index) => itemIdentity(row, index) === line.poItemId)
-          : rows(purchase.items)[Number(String(line.sourceLine).replace('line-', ''))];
-      return {
-        id: String(line.sourceLine),
-        catalogItemId: String(line.catalogItemId),
-        code: String(line.code),
-        name: String(line.name),
-        unit: String(line.unit),
-        quantity: Number(line.quantity),
-        poItemId: String(line.poItemId || original?.poItemId || ''),
-        suggestedPrice: Number(original?.unitPrice || 0)
-      };
-    })
-  };
-}
-
 /** One financial writer. Physical goods events remain quantity-only. */
 export async function manageAccountingLedger(actor: WarehouseActor, body: Data) {
   if (!canUseLedger(actor)) fail(403, 'Chỉ Admin và Kế toán có quyền Kế toán được sử dụng sổ tiền.');
@@ -105,149 +64,6 @@ export async function manageAccountingLedger(actor: WarehouseActor, body: Data) 
       (await tx.get(firestore.collection(name))).docs.map(doc => ({ ...doc.data(), id: doc.id }) as Data);
     const control = await read('finance_control', 'main'),
       revision = Number(control?.revision || 0);
-    if (body.action === 'load') {
-      const names = [
-        'finance_documents',
-        'finance_funds',
-        'finance_entries',
-        'finance_source_state',
-        'finance_periods',
-        'invoices',
-        'warehouse_vouchers',
-        'pos',
-        'purchase_orders',
-        'customers',
-        'suppliers',
-        'item_catalog'
-      ];
-      const data = await Promise.all(names.map(list));
-      const [
-        documents,
-        funds,
-        entries,
-        sourceStates,
-        periods,
-        invoices,
-        vouchers,
-        pos,
-        purchases,
-        customers,
-        suppliers,
-        items
-      ] = data;
-      const sources: FinanceSource[] = [];
-      for (const v of vouchers)
-        for (const side of ['ar', 'ap'] as const) {
-          if (!sourceKind(v, side)) continue;
-          const purchase =
-            purchases.find(p => p.id === (v.purchaseId || (v.sourceType === 'purchase' ? v.sourceId : ''))) || {};
-          const po = pos.find(p => p.id === v.poId) || {};
-          const partner = (side === 'ar' ? customers : suppliers).find(
-            p => p.id === (side === 'ar' ? po.customerId : purchase.supplierId)
-          );
-          if (!partner || partner.deleted || po.deleted || purchase.deleted) continue;
-          const legacy = invoices.some(
-            inv =>
-              inv.ledgerVersion !== 1 &&
-              !inv.deleted &&
-              inv.type === (side === 'ar' ? 'receivable' : 'payable') &&
-              (side === 'ar' ? inv.poId === po.id : inv.poId === purchase.id || inv.purchaseOrderId === purchase.id)
-          );
-          if (!legacy) sources.push(sourceView(v, side, po, purchase, partner));
-        }
-      return {
-        success: true,
-        revision,
-        documents,
-        funds,
-        entries,
-        sourceStates,
-        periods,
-        sources,
-        partners: [
-          ...customers
-            .filter(
-              p =>
-                !p.deleted ||
-                documents.some(d => d.side === 'ar' && d.partnerId === p.id && !d.voided) ||
-                funds.some(d => d.side === 'ar' && d.partnerId === p.id && !d.voided)
-            )
-            .map(p => ({
-              id: p.id,
-              name: `${p.companyName || p.id}${p.deleted ? ' (ngừng sử dụng)' : ''}`,
-              side: 'ar'
-            })),
-          ...suppliers
-            .filter(
-              p =>
-                !p.deleted ||
-                documents.some(d => d.side === 'ap' && d.partnerId === p.id && !d.voided) ||
-                funds.some(d => d.side === 'ap' && d.partnerId === p.id && !d.voided)
-            )
-            .map(p => ({
-              id: p.id,
-              name: `${p.supplierName || p.id}${p.deleted ? ' (ngừng sử dụng)' : ''}`,
-              side: 'ap'
-            }))
-        ],
-        legacy: invoices.filter(inv => inv.ledgerVersion !== 1),
-        items: items.filter(i => i.active).map(i => ({ id: i.id, code: i.code, name: i.name, baseUnit: i.baseUnit })),
-        openingOrders: [
-          ...pos
-            .filter(p => !p.deleted)
-            .map(p => ({
-              id: p.id,
-              code: p.poCode,
-              side: 'ar',
-              partnerId: p.customerId,
-              poId: p.id,
-              purchaseId: '',
-              lines: rows(p.items).map((r, i) => ({ id: itemIdentity(r, i), name: r.productName || '' }))
-            })),
-          ...purchases
-            .filter(p => !p.deleted)
-            .map(p => ({
-              id: p.id,
-              code: p.purCode,
-              side: 'ap',
-              partnerId: p.supplierId,
-              poId: p.linkedPoId || '',
-              purchaseId: p.id,
-              lines: rows(p.items).map((r, i) => ({ id: `line-${i}`, name: r.productName || r.materialName || '' }))
-            }))
-        ],
-        returns: vouchers
-          .filter(v => !v.reversedBy && v.kind === 'customer_return')
-          .flatMap(v => [
-            {
-              id: v.id,
-              code: v.code,
-              side: 'ar',
-              dispatchId: v.dispatchId,
-              lines: rows(v.lines).map(l => ({
-                sourceLine: l.sourceLine,
-                quantity: l.quantity,
-                catalogItemId: l.catalogItemId
-              }))
-            },
-            ...(v.returnToSupplier === true
-              ? [
-                  {
-                    id: v.id,
-                    code: v.code,
-                    side: 'ap',
-                    dispatchId: v.dispatchId,
-                    lines: rows(v.lines).map(l => ({
-                      sourceLine: l.sourceLine,
-                      quantity: l.quantity,
-                      catalogItemId: l.catalogItemId
-                    }))
-                  }
-                ]
-              : [])
-          ])
-      };
-    }
     const action = String(body.action);
     if (!['post', 'reverse', 'period'].includes(action)) fail(400, 'Thao tác kế toán không hợp lệ.');
     if (action !== 'post' && actor.role !== 'admin') fail(403, 'Chỉ Admin được đảo phiếu và khóa/mở kỳ.');

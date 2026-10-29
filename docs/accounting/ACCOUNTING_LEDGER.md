@@ -61,7 +61,14 @@ Khách/NCC đã có phát sinh được đánh dấu `financeLinked` do API qu�
 
 ## Hợp đồng kỹ thuật
 
-`POST /api/accounting/manage`: load/post/reverse/period, xác thực token và hồ sơ hiện tại bằng `requireActiveErpCaller`. API chỉ dành cho Admin hoặc accountant có Accounting, lấy danh tính từ máy chủ. Không lưu local khi API lỗi.
+`POST /api/accounting/manage`: post/reverse/period, xác thực token và hồ sơ hiện tại bằng `requireActiveErpCaller`. API chỉ dành cho Admin hoặc accountant có Accounting, lấy danh tính từ máy chủ. Không lưu local khi API lỗi.
+
+Đọc sổ (quyết định của người dùng ngày 29/10/2026): màn Sổ công nợ đọc thẳng Firestore qua `useLedgerLiveData`;
+rules cho Admin và accountant có Accounting (`canUseLedger`) đọc `finance_control`, `finance_documents`,
+`finance_funds`, `finance_entries`, `finance_source_state`, `finance_periods`. `finance_requests`, `finance_counters`,
+`finance_reference_keys` vẫn chặn hoàn toàn; mọi ghi vẫn chặn client. Nguồn chờ ghi nợ, đối tác và đơn đầu kỳ dựng bằng
+`buildLedgerView` (`model/ledgerView.ts`). Hộp thoại ghi sổ giữ số liệu lúc mở; số mới chỉ áp dụng khi bấm
+"Tải lại số liệu", và `expectedRevision` (revision của `finance_control/main`) vẫn chặn ghi trên số cũ.
 
 | Collection | Vai trò |
 |---|---|

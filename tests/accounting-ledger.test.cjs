@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, '..');
 const { createLoader: loader } = require('./helpers/loadTs.cjs');
 
 const model = loader()('src/features/accounting/model/accountingLedger.ts');
+const ledgerView = loader()('src/features/accounting/model/ledgerView.ts');
 const admin = { uid: 'admin', role: 'admin', displayName: 'Admin', active: true, allowedPages: [] };
 const accountant = { ...admin, uid: 'acc1', role: 'accountant', allowedPages: ['accounting'] };
 const today = loader()('src/features/inventory/model/warehouse.ts').warehouseDate();
@@ -170,7 +171,28 @@ function backend(extra = {}) {
       ...extra
     });
   const reverse = (entryId, actor = admin) => manage(base({ action: 'reverse', entryId }), actor);
-  const loadData = () => manage({ action: 'load' });
+  // The page builds Sổ công nợ from what Firestore returns; the test reads the same collections from the store.
+  const loadData = async () => {
+    const docs = collection =>
+      [...store.keys()]
+        .filter(key => key.startsWith(`${collection}/`))
+        .map(key => ({ ...store.get(key), id: key.split('/')[1] }));
+    return ledgerView.buildLedgerView({
+      revision: Number(store.get('finance_control/main')?.revision || 0),
+      documents: docs('finance_documents'),
+      funds: docs('finance_funds'),
+      entries: docs('finance_entries'),
+      sourceStates: docs('finance_source_state'),
+      periods: docs('finance_periods'),
+      invoices: docs('invoices'),
+      vouchers: docs('warehouse_vouchers'),
+      pos: docs('pos'),
+      purchases: docs('purchase_orders'),
+      customers: docs('customers'),
+      suppliers: docs('suppliers'),
+      items: docs('item_catalog')
+    });
+  };
   return {
     store,
     firestore,
@@ -472,7 +494,7 @@ test('permissions, dates, amounts and forged action are checked on the server', 
     { ...admin, role: 'sale', allowedPages: ['accounting'] },
     { ...admin, role: 'purchaser', allowedPages: ['accounting'] }
   ])
-    await assert.rejects(b.manage({ action: 'load' }, actor), e => e.status === 403);
+    await assert.rejects(b.post('payment', { amount: 1, method: 'bank_transfer' }, actor), e => e.status === 403);
   const p = await b.payment();
   await assert.rejects(b.reverse(p.id, accountant), e => e.status === 403);
   for (const amount of [0, -1, 0.1, '5', Infinity]) await assert.rejects(b.payment(amount));
@@ -620,17 +642,20 @@ test('actual charge form sends selected quantities/price/tax with current revisi
   const ui = harness(
     'src/features/accounting/components/LedgerDialog.tsx',
     'LedgerDialog',
-    { actor: admin, options: { kind: 'charge', side: 'ar', partnerId: 'c1' }, onClose() {}, onSaved() {} },
     {
-      data,
-      loading: false,
+      actor: admin,
+      ledger: data,
+      options: { kind: 'charge', side: 'ar', partnerId: 'c1' },
+      onClose() {},
+      onSaved() {}
+    },
+    {
       entries: { 'pod1:p1': { quantity: '20', unitPrice: '10', discount: '0', taxRate: '8' } },
       reference: 'INV1',
       note: 'Thực tế',
       confirmed: true
     },
     {
-      '../api/accountingLedgerService': { loadAccountingLedger: async () => data },
       './useLedgerMutation': {
         useLedgerMutation: () => ({
           busy: false,
@@ -693,20 +718,18 @@ test('actual allocation form prevents excess fund use and submits individual doc
     'LedgerDialog',
     {
       actor: accountant,
+      ledger: data,
       options: { kind: 'allocation', side: 'ar', partnerId: 'c1', fundId: 'pay1' },
       onClose() {},
       onSaved() {}
     },
     {
-      data,
-      loading: false,
       allocations: { 'doc1:line-0': '81' },
       reference: 'ALLOC1',
       note: 'Phân bổ',
       confirmed: true
     },
     {
-      '../api/accountingLedgerService': { loadAccountingLedger: async () => data },
       './useLedgerMutation': {
         useLedgerMutation: () => ({
           busy: false,
@@ -757,7 +780,7 @@ test('workspace keeps legacy rows read-only and only Admin sees reversal menu', 
   };
   const stubs = {
     './LedgerDialog': { LedgerDialog: function LedgerDialog() {} },
-    '../api/accountingLedgerService': { loadAccountingLedger: async () => data },
+    './useLedgerLiveData': { useLedgerLiveData: () => ({ data, loading: false, error: '', reload() {} }) },
     '@/hooks/useDataTablePagination': {
       useDataTablePagination: rows => ({ rows, paginationProps: { totalItems: rows.length } })
     }
@@ -767,7 +790,7 @@ test('workspace keeps legacy rows read-only and only Admin sees reversal menu', 
       'src/features/accounting/components/AccountingLedgerWorkspace.tsx',
       'AccountingLedgerWorkspace',
       props,
-      { data, loading: false, view: 'history' },
+      { view: 'history' },
       stubs
     );
   let tree = ui.render(),
@@ -879,18 +902,27 @@ test('rules and queue handlers close all legacy financial write paths; no auto i
     rules,
     /match \/invoices\/\{documentId\} \{\s*allow read: if isActive\(\);\s*allow create, update, delete: if false;/
   );
+  for (const name of ['finance_requests', 'finance_reference_keys', 'finance_counters'])
+    assert.match(rules, new RegExp('match /' + name + '/\\{documentId\\} \\{ allow read, write: if false; \\}'));
   for (const name of [
     'finance_control',
     'finance_documents',
     'finance_funds',
     'finance_entries',
     'finance_source_state',
-    'finance_periods',
-    'finance_requests',
-    'finance_reference_keys',
-    'finance_counters'
+    'finance_periods'
   ])
-    assert.match(rules, new RegExp('match /' + name + '/\\{documentId\\} \\{ allow read, write: if false; \\}'));
+    assert.match(
+      rules,
+      new RegExp(
+        'match /' + name + '/\\{documentId\\} \\{\\s*allow read: if canUseLedger\\(\\);\\s*allow write: if false;'
+      )
+    );
+  // Same scope as canUseLedger in the model: Admin, or an active Kế toán with the accounting page.
+  assert.match(
+    rules,
+    /function canUseLedger\(\) \{\s*return isAdmin\(\)\s*\|\| \(isActive\(\) && userProfile\(\)\.role == 'accountant' && hasPage\('accounting'\)\);/
+  );
   for (const f of ['src/features/sales/pages/SalesPage.tsx', 'src/features/dashboard/pages/DashboardPage.tsx']) {
     const s = fs.readFileSync(path.join(root, f), 'utf8');
     assert.match(s, /assertManualFinancialTransition/);
@@ -986,4 +1018,23 @@ test('phase 6 event report reconciles with actual phase 5 writer after allocatio
   await check();
   await b.reverse(d1.id);
   await check();
+});
+
+test('Sổ công nợ queries only collections that Admin and Kế toán with the accounting page may read', () => {
+  const { LEDGER_LIVE_QUERIES } = loader({ '@/infrastructure/firebase/erpDataGateway': {} })(
+    'src/features/accounting/components/useLedgerLiveData.ts'
+  );
+  const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
+  const readRule = collection =>
+    rules.match(new RegExp(String.raw`match /${collection}/\{documentId\} \{\s*allow read: if ([^;]+);`))?.[1];
+  const ledgerReaders = ['canUseLedger()', 'isActive()', 'canReadWarehouse()', 'canManageItemCatalog()'];
+  for (const { collection } of LEDGER_LIVE_QUERIES) {
+    const rule = readRule(collection);
+    assert.ok(rule, `${collection} has a read rule`);
+    assert.ok(
+      ledgerReaders.some(reader => rule.includes(reader)),
+      `${collection} is readable by ledger users`
+    );
+  }
+  assert.ok(!LEDGER_LIVE_QUERIES.some(query => /finance_(requests|counters|reference_keys)/.test(query.collection)));
 });
