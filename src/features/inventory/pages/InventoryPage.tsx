@@ -5,6 +5,7 @@ import { stockAlert } from '@/features/accounting/model/operationalReports';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { UserProfile } from '@/shared/types';
 import { PageContextHeader } from '@/components/PageContextHeader';
+import { PageBackButton } from '@/components/PageBackButton';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
@@ -1115,7 +1116,11 @@ function StockDetails({
     : 'Chỉ dùng ĐVT cơ sở';
 
   return (
-    <section className="warehouse-stock-card warehouse-stock-card--fullpage" aria-labelledby="warehouse-stock-title">
+    <section
+      className="warehouse-stock-card warehouse-stock-card--fullpage"
+      aria-labelledby="warehouse-stock-title"
+      data-erp-table-layout="content"
+    >
       <form
         onSubmit={async event => {
           event.preventDefault();
@@ -1146,20 +1151,21 @@ function StockDetails({
           }
         }}
       >
-        <header>
-          <h2 id="warehouse-stock-title">
-            Thẻ vật tư · {stock.code} — {stock.name}
-          </h2>
-          <div className="warehouse-toolbar">
-            {onEditCatalog && (
-              <button type="button" className="btn btn-outline" disabled={busy} onClick={onEditCatalog}>
-                Sửa mã
-              </button>
-            )}
-            <button type="button" className="btn btn-outline" disabled={busy} onClick={close}>
-              Quay lại danh mục
-            </button>
+        <header className="warehouse-stock-card-header">
+          <PageBackButton title="Quay lại danh mục vật tư" disabled={busy} onClick={close} />
+          <div className="warehouse-stock-card-heading">
+            <h2 id="warehouse-stock-title" title={stock.name}>
+              {stock.name}
+            </h2>
+            <span title={stock.code}>
+              {stock.code} · {itemKindLabels[stock.itemKind]}
+            </span>
           </div>
+          {onEditCatalog && (
+            <button type="button" className="btn btn-outline" disabled={busy} onClick={onEditCatalog}>
+              Sửa mã
+            </button>
+          )}
         </header>
 
         <div className="warehouse-stock-card-section">
