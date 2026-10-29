@@ -1,12 +1,10 @@
 import { useRef } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
-import { RefreshingIndicator } from '@/components/LoadingStates';
 
 interface Props {
   month: string;
   currentMonth: string;
-  refreshing: boolean;
   disabled: boolean;
   onSelect: (month: string) => void;
   onRefresh: () => void;
@@ -21,7 +19,7 @@ const shiftMonth = (month: string, offset: number) => {
   return new Date(Date.UTC(year, monthNumber - 1 + offset, 1)).toISOString().slice(0, 7);
 };
 
-export function AttendanceMonthNav({ month, currentMonth, refreshing, disabled, onSelect, onRefresh }: Props) {
+export function AttendanceMonthNav({ month, currentMonth, disabled, onSelect, onRefresh }: Props) {
   const picker = useRef<HTMLInputElement>(null);
   const openPicker = () => {
     try {
@@ -32,7 +30,6 @@ export function AttendanceMonthNav({ month, currentMonth, refreshing, disabled, 
   };
   return (
     <div className="attendance-month-controls">
-      <RefreshingIndicator active={refreshing} />
       <div className="attendance-month-nav" role="group" aria-label="Chọn tháng">
         <button
           type="button"
@@ -83,7 +80,7 @@ export function AttendanceMonthNav({ month, currentMonth, refreshing, disabled, 
       >
         Tháng này
       </button>
-      <IconButton label="Tải lại" icon={<RefreshCw />} onClick={onRefresh} disabled={disabled || refreshing} />
+      <IconButton label="Tải lại" icon={<RefreshCw />} onClick={onRefresh} disabled={disabled} />
     </div>
   );
 }

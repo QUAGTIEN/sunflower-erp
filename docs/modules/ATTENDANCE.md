@@ -69,11 +69,23 @@ Thứ tự áp dụng cho một ngày: thiết lập của công ty → ngày l�
 
 Mỗi ngày chấm lưu loại công, hình thức làm việc, giờ/phút, ghi chú, người chấm và thời điểm chấm.
 
+## Đọc dữ liệu
+
+Màn hình đọc thẳng Firestore (`useAttendanceWorkspace`), nên tháng đã xem hiện ngay từ bộ nhớ đệm và thay đổi của người
+khác tự cập nhật. Quyết định của người dùng ngày 29/10/2026: đọc thẳng Firestore, ghi vẫn qua API.
+
+| Người xem | Truy vấn | Rules cho phép |
+|---|---|---|
+| Admin/Kế toán đang hoạt động | `users`, mọi `attendance_profiles`, `attendance_sheets` theo `month`, `attendance_calendars` | Đọc toàn bộ |
+| Nhân viên khác | `attendance_profiles` và `attendance_sheets` lọc `userId` = chính mình, `attendance_calendars` | Chỉ tài liệu có `userId` của mình |
+
+Truy vấn của nhân viên bắt buộc lọc `userId`, nếu không rules từ chối cả truy vấn. Lịch ngày nghỉ công ty không riêng
+tư nên mọi tài khoản đang hoạt động đều đọc được. Sau khi lưu, phản hồi máy chủ được giữ đến khi bản Firestore có
+revision mới hơn, để lần lưu kế tiếp không gửi revision cũ.
+
 ## API và an toàn
 
-- `POST /api/attendance/manage`, xác thực bằng `requireActiveErpCaller`:
-  - `load` `{ month }`: Admin/Kế toán nhận toàn bộ nhân viên, thiết lập, bảng công tháng và lịch năm; người khác chỉ
-    nhận dữ liệu của mình. Đọc trong transaction chỉ đọc.
+- `POST /api/attendance/manage`, xác thực bằng `requireActiveErpCaller`, chỉ dùng để ghi:
   - `save_day` `{ userId, date, entry | null, expectedRevision }`: chấm, sửa hoặc xóa công một ngày.
   - `mark_present` `{ date }`: chấm Đi làm cho mọi nhân viên Full-time đang hoạt động chưa có công ngày đó; không ghi
     đè ngày đã chấm, bỏ qua Part-time, từ chối ngày nghỉ.
@@ -81,7 +93,9 @@ Mỗi ngày chấm lưu loại công, hình thức làm việc, giờ/phút, ghi
   - `set_day_off` `{ date, off: true | false | null, name, expectedRevision }`.
 - Mọi thao tác ghi cần `requestId`, chạy trong transaction, kiểm tra revision và ghi `audit_events`. Không tin tên,
   vai trò hay người chấm do client gửi.
-- `firestore.rules` chặn mọi đọc/ghi trực tiếp vào các collection chấm công, kể cả Admin.
-- Không có fallback lưu local khi API lỗi.
+- `firestore.rules` chặn mọi ghi trực tiếp vào các collection chấm công, kể cả Admin; `attendance_requests` và hai
+  collection cũ bị chặn cả đọc.
+- Web và `firestore.rules` phải deploy cùng phiên bản: web mới đọc thẳng sẽ bị từ chối nếu rules cũ còn chặn đọc.
+- Không có fallback lưu local khi Firebase lỗi.
 
 Không bao gồm: tính lương, trừ lương vì đi trễ, máy chấm công, GPS, xuất Excel.

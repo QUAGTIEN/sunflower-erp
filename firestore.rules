@@ -622,16 +622,28 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // Attendance is private and transactionally managed by the authenticated API: only Admin and
-    // Kế toán record it there, and staff read only their own timesheet. No client access at all.
+    // Attendance is written only by the authenticated API, where Admin and Kế toán record it.
+    // Reads mirror that API: recorders read everyone, staff read only documents carrying their own
+    // userId, so their queries must filter on userId. The company day-off calendar is not private.
+    function canRecordAttendance() {
+      return hasUserProfile()
+        && userProfile().active == true
+        && userProfile().role in ['admin', 'accountant'];
+    }
+    function ownsAttendanceRecord() {
+      return isActive() && resource.data.userId == request.auth.uid;
+    }
     match /attendance_sheets/{documentId} {
-      allow read, write: if false;
+      allow read: if canRecordAttendance() || ownsAttendanceRecord();
+      allow write: if false;
     }
     match /attendance_profiles/{documentId} {
-      allow read, write: if false;
+      allow read: if canRecordAttendance() || ownsAttendanceRecord();
+      allow write: if false;
     }
     match /attendance_calendars/{documentId} {
-      allow read, write: if false;
+      allow read: if isActive();
+      allow write: if false;
     }
     match /attendance_requests/{documentId} {
       allow read, write: if false;

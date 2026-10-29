@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const { createLoader: loader } = require('./helpers/loadTs.cjs');
 const model = loader()('src/features/attendance/model/timesheet.ts');
 const holidays = loader()('src/features/attendance/model/vietnamHolidays.ts');
+const workspaceModel = loader()('src/features/attendance/model/attendanceWorkspace.ts');
 const admin = { uid: 'boss', displayName: 'Giám đốc', role: 'admin', active: true };
 const accountant = { uid: 'accountant', displayName: 'Kế toán', role: 'accountant', active: true };
 const sale = { uid: 'sale', displayName: 'Sale', role: 'sale', active: true };
@@ -226,28 +227,57 @@ test('only Admin and Kế toán record attendance; every other role, and a locke
   assert.equal(model.canRecordAttendance(accountant), true);
 });
 
-test('staff load only their own timesheet without other employees, emails or permissions', async () => {
+/** What Firestore returns to a viewer: recorders query everything, staff only documents with their userId. */
+function liveSnapshots(store, viewer, recorder) {
+  const docs = collection =>
+    [...store.keys()]
+      .filter(key => key.startsWith(`${collection}/`))
+      .map(key => ({ ...store.get(key), id: key.split('/')[1] }));
+  const visible = rows => (recorder ? rows : rows.filter(row => row.userId === viewer.uid));
+  return {
+    users: recorder ? docs('users') : [],
+    profiles: visible(docs('attendance_profiles')),
+    sheets: visible(docs('attendance_sheets')),
+    calendars: docs('attendance_calendars')
+  };
+}
+
+test('staff see only their own timesheet without other employees, emails or permissions', async () => {
   const b = backend();
   await b.save();
   await b.save({ userId: other.uid });
-  const own = await b.manage(sale, { action: 'load', month: '2026-01' });
+  const view = (viewer, recorder) =>
+    workspaceModel.buildAttendanceWorkspace(viewer, recorder, '2026-01', liveSnapshots(b.store, viewer, recorder));
+  const own = view(sale, false);
   assert.equal(own.canRecord, false);
   assert.deepEqual(
     own.employees.map(person => person.uid),
     ['sale']
   );
   assert.deepEqual(own.sheets, []);
-  const workerView = await b.manage(worker, { action: 'load', month: '2026-01' });
+  const workerView = view(worker, false);
   assert.deepEqual(
     workerView.sheets.map(sheet => sheet.userId),
     ['worker']
   );
   assert.ok(!JSON.stringify(workerView).includes('private@example.test'));
-  const full = await b.manage(accountant, { action: 'load', month: '2026-01' });
+  const full = view(accountant, true);
   assert.equal(full.canRecord, true);
   assert.equal(full.sheets.length, 2);
   assert.ok(!JSON.stringify(full).includes('allowedPages'));
   assert.ok(!JSON.stringify(full).includes('private@example.test'));
+  assert.deepEqual(full.calendar, { year: 2026, overrides: {}, revision: 0 }, 'a missing year has no overrides');
+  await assert.rejects(b.manage(admin, { action: 'load', month: '2026-01' }), error => error.status === 400);
+});
+
+test('a server reply newer than the live snapshot wins until the snapshot catches up', () => {
+  const live = [{ id: 'worker_2026-01', revision: 2 }];
+  assert.equal(workspaceModel.newerSheets(live, [{ id: 'worker_2026-01', revision: 3 }])[0].revision, 3);
+  assert.equal(workspaceModel.newerSheets([{ id: 'worker_2026-01', revision: 4 }], live)[0].revision, 4);
+  assert.equal(workspaceModel.newerSheets([], [{ id: 'other_2026-01', revision: 1 }]).length, 1);
+  const calendar = { year: 2026, overrides: {}, revision: 1 };
+  assert.equal(workspaceModel.newerCalendar(calendar, { ...calendar, revision: 2 }).revision, 2);
+  assert.equal(workspaceModel.newerCalendar(calendar, { ...calendar, year: 2025, revision: 9 }).revision, 1);
 });
 
 test('recorders can save, change and clear a day with revisions, audit and authoritative names', async () => {
@@ -360,7 +390,7 @@ test('inactive accounts with a recorded month stay visible to recorders under th
       revision: 1
     }
   });
-  const data = await b.manage(admin, { action: 'load', month: '2026-01' });
+  const data = workspaceModel.buildAttendanceWorkspace(admin, true, '2026-01', liveSnapshots(b.store, admin, true));
   assert.deepEqual(
     data.employees.find(person => person.uid === 'left'),
     { uid: 'left', displayName: 'Đã xóa', role: '', active: false }
@@ -464,17 +494,24 @@ test('all active roles can open attendance (Bảng công) without granting produ
   assert.equal(access.canAccessPage({ ...worker, role: 'sale', allowedPages: ['production'] }, 'production'), false);
 });
 
-test('attendance collections, including the retired ones, deny every direct Firestore read and write', () => {
+test('attendance rules never allow client writes and limit reads to recorders or the record owner', () => {
   const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
-  for (const collection of [
-    'attendance_sheets',
-    'attendance_profiles',
-    'attendance_calendars',
-    'attendance_requests',
-    'attendance_months',
-    'attendance_settings'
-  ])
-    assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{\\s*allow read, write: if false;`));
+  for (const collection of ['attendance_requests', 'attendance_months', 'attendance_settings'])
+    assert.match(rules, new RegExp(String.raw`match /${collection}/\{documentId\} \{\s*allow read, write: if false;`));
+  for (const collection of ['attendance_sheets', 'attendance_profiles'])
+    assert.match(
+      rules,
+      new RegExp(
+        String.raw`match /${collection}/\{documentId\} \{\s*` +
+          String.raw`allow read: if canRecordAttendance\(\) \|\| ownsAttendanceRecord\(\);\s*allow write: if false;`
+      )
+    );
+  assert.match(
+    rules,
+    /match \/attendance_calendars\/\{documentId\} \{\s*allow read: if isActive\(\);\s*allow write: if false;/
+  );
+  assert.match(rules, /userProfile\(\)\.role in \['admin', 'accountant'\]/);
+  assert.match(rules, /resource\.data\.userId == request\.auth\.uid/);
   const shell = fs.readFileSync(path.join(root, 'src/app/AppShell.tsx'), 'utf8');
   assert.ok(shell.includes('data-page-id="attendance"'));
   assert.ok(shell.includes('data-page-id="work_schedule"'));

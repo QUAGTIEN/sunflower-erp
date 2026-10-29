@@ -4,20 +4,20 @@ import { PageContextHeader } from '@/components/PageContextHeader';
 import { TableSkeleton } from '@/components/LoadingStates';
 import { registerNavigationGuard } from '@/shared/feedback/navigationGuard';
 import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
-import { loadAttendance, mutateAttendance } from '../api/attendanceService';
+import { mutateAttendance } from '../api/attendanceService';
 import { AttendanceMonthNav } from '../components/AttendanceMonthNav';
 import { AttendanceRecorderBoard } from '../components/AttendanceRecorderBoard';
 import { AttendanceTimesheetTable } from '../components/AttendanceTimesheetTable';
 import { AttendanceEntryDialog } from '../components/AttendanceEntryDialog';
 import { AttendanceDayOffDialog } from '../components/AttendanceDayOffDialog';
 import { AttendanceProfilesDialog } from '../components/AttendanceProfilesDialog';
+import { useAttendanceWorkspace } from '../components/useAttendanceWorkspace';
 import { attendanceEmployees, employmentTypeFor } from '../model/attendanceRoster';
 import {
   businessDate,
   canRecordAttendance,
   resolveDay,
   type AttendanceCalendar,
-  type AttendanceWorkspace,
   type EmploymentType,
   type TimesheetEntryInput,
   type TimesheetMonth
@@ -27,13 +27,6 @@ import './Attendance.css';
 type Tab = 'record' | 'timesheet';
 const TAB_LABELS: Record<Tab, string> = { record: 'Chấm công', timesheet: 'Bảng công' };
 const MONTH_PATTERN = /^(20\d{2})-(0[1-9]|1[0-2])$/;
-const emptyWorkspace = (month: string): AttendanceWorkspace => ({
-  canRecord: false,
-  employees: [],
-  profiles: [],
-  sheets: [],
-  calendar: { year: Number(month.slice(0, 4)), overrides: {}, revision: 0 }
-});
 const errorText = (error: unknown) =>
   error instanceof Error ? error.message : 'Không thể xử lý chấm công. Kiểm tra kết nối và thử lại.';
 
@@ -42,11 +35,6 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const recorder = canRecordAttendance(currentUser);
   const [month, setMonth] = useState(today.slice(0, 7));
   const [tab, setTab] = useState<Tab>(recorder ? 'record' : 'timesheet');
-  const [workspace, setWorkspace] = useState<AttendanceWorkspace>(() => emptyWorkspace(today));
-  const [loading, setLoading] = useState(true);
-  const [loadedMonth, setLoadedMonth] = useState('');
-  const [error, setError] = useState('');
-  const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
@@ -54,35 +42,10 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const [editing, setEditing] = useState<{ userId: string; date: string } | null>(null);
   const [dayOffDate, setDayOffDate] = useState('');
   const [profilesOpen, setProfilesOpen] = useState(false);
-  // Months already viewed show at once while the server copy refreshes in the background.
-  const monthCache = useRef(new Map<string, AttendanceWorkspace>());
+  const { workspace, loading, error, reload, applySheet, applyCalendar } = useAttendanceWorkspace(currentUser, month);
   // A failed write is retried with the same requestId so the server can answer it without writing twice.
   const lastRequest = useRef({ payload: '', id: '' });
 
-  useEffect(() => {
-    let valid = true;
-    loadAttendance(month)
-      .then(data => {
-        monthCache.current.set(month, data);
-        if (valid) {
-          setWorkspace(data);
-          setLoadedMonth(month);
-          setError('');
-        }
-      })
-      .catch(cause => {
-        if (valid) setError(errorText(cause));
-      })
-      .finally(() => {
-        if (valid) setLoading(false);
-      });
-    return () => {
-      valid = false;
-    };
-  }, [month, reload]);
-  useEffect(() => {
-    if (loadedMonth) monthCache.current.set(loadedMonth, workspace);
-  }, [loadedMonth, workspace]);
   useEffect(() => {
     if (!busy && !editing && !dayOffDate && !profilesOpen) return;
     const release = registerNavigationGuard(() =>
@@ -94,24 +57,12 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
   const activeDate = selectedDate.startsWith(month) ? selectedDate : today.startsWith(month) ? today : `${month}-01`;
   const canRecord = recorder && workspace.canRecord;
   const visibleTab: Tab = canRecord ? tab : 'timesheet';
-  const showSkeleton = loading && loadedMonth !== month;
   const employees = attendanceEmployees(workspace);
   const activeEmployeeId = employees.some(person => person.uid === selectedEmployeeId) ? selectedEmployeeId : '';
 
-  const refresh = () => {
-    setLoading(true);
-    setReload(value => value + 1);
-  };
   const selectMonth = (value: string) => {
     if (!MONTH_PATTERN.test(value) || value === month || busy) return;
-    const cached = monthCache.current.get(value);
-    if (cached) {
-      setWorkspace(cached);
-      setLoadedMonth(value);
-    }
     setMonth(value);
-    setLoading(true);
-    setError('');
   };
   const send = async (body: Record<string, unknown>) => {
     const payload = JSON.stringify(body);
@@ -125,15 +76,10 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
       setBusy(false);
     }
   };
-  const replaceSheet = (sheet: TimesheetMonth) =>
-    setWorkspace(previous => ({
-      ...previous,
-      sheets: [...previous.sheets.filter(item => item.id !== sheet.id), sheet]
-    }));
   const saveDay = async (userId: string, date: string, entry: TimesheetEntryInput | null) => {
     const sheet = workspace.sheets.find(item => item.userId === userId);
     const result = await send({ action: 'save_day', userId, date, entry, expectedRevision: sheet?.revision || 0 });
-    replaceSheet(result.sheet as TimesheetMonth);
+    applySheet(result.sheet as TimesheetMonth);
     setEditing(null);
     showSuccessToast(entry ? 'Đã lưu chấm công.' : 'Đã xóa công ngày.');
   };
@@ -145,7 +91,6 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
         `Đã chấm đi làm cho ${Number(result.marked || 0)} nhân viên.` +
           (skipped ? ` ${skipped} nhân viên Part-time cần chấm giờ riêng.` : '')
       );
-      refresh();
     } catch (cause) {
       showErrorToast(errorText(cause));
     }
@@ -157,7 +102,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
       ...change,
       expectedRevision: workspace.calendar.revision
     });
-    setWorkspace(previous => ({ ...previous, calendar: result.calendar as AttendanceCalendar }));
+    applyCalendar(result.calendar as AttendanceCalendar);
     setDayOffDate('');
     showSuccessToast('Đã cập nhật lịch ngày nghỉ.');
   };
@@ -167,7 +112,6 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
     await send({ action: 'set_profiles', changes });
     setProfilesOpen(false);
     showSuccessToast('Đã lưu thiết lập hình thức làm việc.');
-    refresh();
   };
 
   const editingEmployee = editing && workspace.employees.find(person => person.uid === editing.userId);
@@ -191,7 +135,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
       {error && (
         <div className="attendance-error attendance-message" role="alert">
           <span>{error}</span>
-          <button type="button" className="btn btn-outline" onClick={refresh} disabled={loading}>
+          <button type="button" className="btn btn-outline" onClick={reload}>
             Tải lại
           </button>
         </div>
@@ -224,10 +168,9 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
         <AttendanceMonthNav
           month={month}
           currentMonth={today.slice(0, 7)}
-          refreshing={loading && loadedMonth === month}
           disabled={busy}
           onSelect={selectMonth}
-          onRefresh={refresh}
+          onRefresh={reload}
         />
         {visibleTab === 'record' && (
           <button type="button" className="btn btn-outline" disabled={busy} onClick={() => setProfilesOpen(true)}>
@@ -235,7 +178,7 @@ export function AttendancePage({ currentUser }: { currentUser: UserProfile }) {
           </button>
         )}
       </div>
-      {showSkeleton ? (
+      {loading ? (
         <TableSkeleton label="Đang tải chấm công" columns={7} rows={5} />
       ) : error ? null : visibleTab === 'record' ? (
         <AttendanceRecorderBoard

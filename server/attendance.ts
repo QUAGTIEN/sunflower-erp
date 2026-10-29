@@ -4,19 +4,18 @@ import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
 import {
   assertAttendanceDate,
-  assertAttendanceMonth,
   businessDate,
   canRecordAttendance,
   resolveDay,
   validateTimesheetEntry,
   type AttendanceActor,
   type AttendanceCalendar,
-  type AttendanceEmployee,
   type EmployeeProfile,
   type EmploymentType,
   type TimesheetEntry,
   type TimesheetMonth
 } from '../src/features/attendance/model/timesheet.js';
+import { emptyAttendanceCalendar } from '../src/features/attendance/model/attendanceWorkspace.js';
 
 const SHEETS = 'attendance_sheets';
 const PROFILES = 'attendance_profiles';
@@ -31,13 +30,6 @@ const identifier = (value: unknown, label = 'Mã nhân viên'): string =>
 const assertRevision = (expected: unknown, actual: number) => {
   if (expected !== actual) fail(409, 'Dữ liệu vừa được cập nhật ở phiên khác. Tải lại trước khi tiếp tục.');
 };
-const employee = (id: string, data: Record<string, unknown>): AttendanceEmployee => ({
-  uid: id,
-  displayName: String(data.displayName || id),
-  role: String(data.role || ''),
-  active: data.active === true
-});
-const emptyCalendar = (year: number): AttendanceCalendar => ({ year, overrides: {}, revision: 0 });
 // Without a saved profile an employee is Full-time, the common case; Admin/Kế toán switch Part-time explicitly.
 const employmentTypeOf = (profile: Record<string, unknown> | undefined): EmploymentType =>
   profile?.employmentType === 'part_time' ? 'part_time' : 'full_time';
@@ -77,62 +69,11 @@ async function replayedResult(tx: Transaction, ref: DocumentReference, actorId: 
   return data.result as Record<string, unknown>;
 }
 
-async function loadWorkspace(firestore: Firestore, actor: AttendanceActor, month: string) {
-  const recorder = canRecordAttendance(actor);
-  const calendarRef = firestore.collection(CALENDARS).doc(month.slice(0, 4));
-  // Loading only reads, so a read-only transaction keeps one consistent snapshot without write locks.
-  return firestore.runTransaction(
-    async tx => {
-      if (!recorder) {
-        const [profile, sheet, calendar] = await Promise.all([
-          tx.get(firestore.collection(PROFILES).doc(actor.uid)),
-          tx.get(firestore.collection(SHEETS).doc(sheetId(actor.uid, month))),
-          tx.get(calendarRef)
-        ]);
-        return {
-          success: true,
-          canRecord: false,
-          employees: [employee(actor.uid, { ...actor })],
-          profiles: profile.exists ? [{ ...profile.data(), userId: actor.uid }] : [],
-          sheets: sheet.exists ? [{ ...sheet.data(), id: sheet.id }] : [],
-          calendar: calendar.exists ? calendar.data() : emptyCalendar(Number(month.slice(0, 4)))
-        };
-      }
-      const [users, profiles, sheets, calendar] = await Promise.all([
-        tx.get(firestore.collection('users')),
-        tx.get(firestore.collection(PROFILES)),
-        tx.get(firestore.collection(SHEETS).where('month', '==', month)),
-        tx.get(calendarRef)
-      ]);
-      const employees = users.docs.map(doc => employee(doc.id, doc.data()));
-      // A deleted account keeps its recorded month visible under the name stored on the sheet.
-      for (const doc of sheets.docs) {
-        const data = doc.data();
-        if (!employees.some(person => person.uid === data.userId))
-          employees.push({ uid: String(data.userId), displayName: String(data.employeeName), role: '', active: false });
-      }
-      return {
-        success: true,
-        canRecord: true,
-        employees,
-        profiles: profiles.docs.map(doc => ({ ...doc.data(), userId: doc.id })),
-        sheets: sheets.docs.map(doc => ({ ...doc.data(), id: doc.id })),
-        calendar: calendar.exists ? calendar.data() : emptyCalendar(Number(month.slice(0, 4)))
-      };
-    },
-    { readOnly: true }
-  );
-}
-
-/** All attendance reads and writes go through this API; Firestore rules deny every client access. */
+/** All attendance writes go through this API; clients read their permitted documents straight from Firestore. */
 export async function manageAttendance(actor: AttendanceActor, body: Record<string, unknown>) {
   if (!actor.active) fail(403, 'Tài khoản đã bị khóa.');
   const action = String(body.action);
   const { firestore } = getFirebaseAdminServices();
-  if (action === 'load') {
-    assertAttendanceMonth(body.month);
-    return loadWorkspace(firestore, actor, body.month);
-  }
   if (!['save_day', 'mark_present', 'set_profiles', 'set_day_off'].includes(action))
     fail(400, 'Thao tác chấm công không hợp lệ.');
   if (!canRecordAttendance(actor)) fail(403, 'Chỉ Admin và Kế toán được chấm công.');
@@ -336,7 +277,7 @@ async function setDayOff(tx: Transaction, firestore: Firestore, actor: Attendanc
   const date = body.date;
   const year = Number(date.slice(0, 4));
   const ref = firestore.collection(CALENDARS).doc(String(year));
-  const previous = ((await tx.get(ref)).data() as AttendanceCalendar | undefined) || emptyCalendar(year);
+  const previous = ((await tx.get(ref)).data() as AttendanceCalendar | undefined) || emptyAttendanceCalendar(year);
   assertRevision(body.expectedRevision, previous.revision);
   const calendar = structuredClone(previous);
   const before = calendar.overrides[date] || null;

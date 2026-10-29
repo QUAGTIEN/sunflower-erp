@@ -72,6 +72,15 @@ const text = node =>
         ? text(node.props.children)
         : '';
 
+const liveWorkspace = data => ({
+  workspace: data,
+  loading: false,
+  error: '',
+  reload() {},
+  applySheet() {},
+  applyCalendar() {}
+});
+
 /** Shallow-render a component with named useState slots, so a test can set state by variable name. */
 function screen(file, name, props, initial = {}, stubs = {}) {
   const ast = ts.createSourceFile(file, fs.readFileSync(path.join(root, file), 'utf8'), ts.ScriptTarget.Latest, true);
@@ -151,7 +160,8 @@ test('Admin/Kế toán see Chấm công and Bảng công; other roles only see t
       'src/features/attendance/pages/AttendancePage.tsx',
       'AttendancePage',
       { currentUser },
-      { loading: false, month: '2026-10', loadedMonth: '2026-10', workspace: data }
+      { month: '2026-10' },
+      { '../components/useAttendanceWorkspace': { useAttendanceWorkspace: () => liveWorkspace(data) } }
     );
     const tree = ui.render();
     return {
@@ -315,21 +325,18 @@ test('the entry dialog offers only work on a day off, hides OT for part-time and
 test('a failed save keeps the dialog open and retries with the same request ID; success follows the server', async () => {
   const calls = [];
   const toasts = [];
+  const applied = [];
   let fail = true;
   const ui = screen(
     'src/features/attendance/pages/AttendancePage.tsx',
     'AttendancePage',
     { currentUser: admin },
+    { month: '2026-10', editing: { userId: 'worker', date: '2026-10-22' } },
     {
-      loading: false,
-      month: '2026-10',
-      loadedMonth: '2026-10',
-      workspace: workspace(),
-      editing: { userId: 'worker', date: '2026-10-22' }
-    },
-    {
+      '../components/useAttendanceWorkspace': {
+        useAttendanceWorkspace: () => ({ ...liveWorkspace(workspace()), applySheet: sheet => applied.push(sheet) })
+      },
       '../api/attendanceService': {
-        loadAttendance: async () => workspace(),
         mutateAttendance: async body => {
           calls.push(body);
           if (fail) throw new Error('Mất kết nối');
@@ -352,5 +359,35 @@ test('a failed save keeps the dialog open and retries with the same request ID; 
   assert.equal(calls[1].expectedRevision, 2);
   assert.equal(ui.state.get('editing'), null);
   assert.deepEqual(toasts, ['Đã lưu chấm công.']);
-  assert.equal(ui.state.get('workspace').sheets.find(sheet => sheet.userId === 'worker').revision, 3);
+  assert.deepEqual(
+    applied.map(sheet => [sheet.userId, sheet.revision]),
+    [['worker', 3]],
+    'the server reply is kept until the live snapshot catches up'
+  );
+});
+
+test('staff query only their own attendance documents, as the Firestore rules require', () => {
+  const { attendanceQueries } = loader({ '@/infrastructure/firebase/erpDataGateway': {} })(
+    'src/features/attendance/components/useAttendanceWorkspace.ts'
+  );
+  const staff = attendanceQueries(false, 'sale', '2026-10', 0);
+  assert.deepEqual(
+    staff.map(query => [query.collection, query.filter]),
+    [
+      ['attendance_profiles', { fieldName: 'userId', fieldValue: 'sale' }],
+      ['attendance_sheets', { fieldName: 'userId', fieldValue: 'sale' }],
+      ['attendance_calendars', undefined]
+    ]
+  );
+  const recorder = attendanceQueries(true, 'boss', '2026-10', 0);
+  assert.deepEqual(
+    recorder.map(query => [query.collection, query.filter]),
+    [
+      ['attendance_profiles', undefined],
+      ['attendance_sheets', { fieldName: 'month', fieldValue: '2026-10' }],
+      ['attendance_calendars', undefined],
+      ['users', undefined]
+    ]
+  );
+  assert.notEqual(attendanceQueries(true, 'boss', '2026-10', 1)[0].key, recorder[0].key, 'reload resubscribes');
 });
