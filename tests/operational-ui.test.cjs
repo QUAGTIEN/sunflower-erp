@@ -169,18 +169,24 @@ test('inventory uses canonical ledger balances, text warnings and threshold acti
     'src/features/inventory/pages/InventoryPage.tsx',
     'Inventory',
     { currentUser: admin, onRefresh() {} },
+    {},
     {
-      data: {
-        items: [item],
-        balances: [balance],
-        sources: [],
-        vouchers: [],
-        progress: [],
-        legacyInventory: [],
-        legacyExports: []
-      },
-      loaded: true,
-      loading: false
+      '../components/useWarehouseLiveData': {
+        useWarehouseLiveData: () => ({
+          data: {
+            items: [item],
+            rawBalances: [balance],
+            goodsBalances: [],
+            rawVouchers: [],
+            goodsVouchers: [],
+            itemUsers: {}
+          },
+          loaded: true,
+          loading: false,
+          error: '',
+          reload() {}
+        })
+      }
     }
   );
   let tree = ui.render();

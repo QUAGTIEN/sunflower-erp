@@ -17,7 +17,7 @@ import {
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
 import { isFirebaseRuntimeEnabled } from '@/infrastructure/firebase/erpDataGateway';
-import { loadItemCatalog, mutateItemCatalog } from '@/features/catalog/api/itemCatalogService';
+import { mutateItemCatalog } from '@/features/catalog/api/itemCatalogService';
 import {
   CATALOG_KINDS,
   canManageItemCatalog,
@@ -32,8 +32,8 @@ import {
 import { confirmAppNavigation, registerNavigationGuard } from '@/shared/feedback/navigationGuard';
 import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
-import { loadWarehouse, mutateWarehouse } from '../api/warehouseService';
-import { loadFinishedGoods } from '../api/finishedGoodsService';
+import { mutateWarehouse } from '../api/warehouseService';
+import { useWarehouseLiveData } from '../components/useWarehouseLiveData';
 import {
   canPostWarehouse,
   canReadWarehouse,
@@ -44,35 +44,14 @@ import {
   WAREHOUSE_KINDS,
   type WarehouseBalance,
   type WarehouseCustomerUsage,
-  type WarehouseData,
   type WarehouseKind,
   type WarehouseVoucher
 } from '../model/warehouse';
-import { GOODS_KINDS, type GoodsData, type GoodsVoucher } from '../model/finishedGoods';
+import { GOODS_KINDS, type GoodsVoucher } from '../model/finishedGoods';
 import { WarehouseVoucherDialog } from '../components/WarehouseVoucherDialog';
 import { GoodsVoucherDialog, type GoodsDialogOptions } from '../components/GoodsVoucherDialog';
 import '../components/Warehouse.css';
 
-const empty: WarehouseData = {
-  items: [],
-  balances: [],
-  vouchers: [],
-  sources: [],
-  progress: [],
-  legacyInventory: [],
-  legacyExports: []
-};
-const emptyGoods: GoodsData = {
-  items: [],
-  balances: [],
-  vouchers: [],
-  orderStates: [],
-  sourceStates: [],
-  dispatchStates: [],
-  orders: [],
-  sources: [],
-  trips: []
-};
 const tabNames = {
   catalog: 'Danh mục vật tư',
   vouchers: 'Phiếu kho'
@@ -138,13 +117,6 @@ const shortKindLabel = (voucher: UnifiedVoucher): { label: string; tone: string 
 };
 
 export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile; onRefresh: () => void }) {
-  const [data, setData] = useState(empty);
-  const [goodsData, setGoodsData] = useState(emptyGoods);
-  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [refresh, setRefresh] = useState(0);
   const [tab, setTab] = useState<keyof typeof tabNames>('catalog');
   const [voucherView, setVoucherView] = useState<keyof typeof voucherViewNames>('list');
   const [search, setSearch] = useState('');
@@ -168,42 +140,10 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   const [csvModalOpen, setCsvModalOpen] = useState(false);
   const permitted = canReadWarehouse(currentUser);
   const canManageCatalog = canManageItemCatalog(currentUser);
+  const { data, loaded, loading, error, reload } = useWarehouseLiveData(permitted);
   const canWrite = canPostWarehouse(currentUser) && loaded && !loading;
   const canWriteCatalog = canManageCatalog && isFirebaseRuntimeEnabled && loaded && !loading;
 
-  useEffect(() => {
-    if (!permitted) return;
-    let cancelled = false;
-    void Promise.all([
-      loadWarehouse(),
-      loadFinishedGoods().catch(() => emptyGoods),
-      canManageCatalog ? loadItemCatalog().catch(() => ({ items: [], links: [], imports: [] })) : Promise.resolve(null)
-    ])
-      .then(([nextRaw, nextGoods, nextCatalog]) => {
-        if (!cancelled) {
-          setData(nextRaw);
-          setGoodsData(nextGoods);
-          if (nextCatalog) setCatalogItems(nextCatalog.items);
-          setLoaded(true);
-          setError('');
-        }
-      })
-      .catch(cause => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Không tải được sổ kho.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [permitted, canManageCatalog, refresh]);
-
-  const reload = () => {
-    setLoaded(false);
-    setLoading(true);
-    setRefresh(value => value + 1);
-  };
   const saved = () => {
     setCreating(false);
     setGoodsOptions(null);
@@ -211,13 +151,12 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
     setCreatingCatalogItem(false);
     setEditingCatalogItem(null);
     setCsvModalOpen(false);
-    reload();
     onRefresh();
   };
 
   const allVouchers: UnifiedVoucher[] = [
-    ...data.vouchers.map(v => ({ ...v, warehouseId: 'raw_main' as const })),
-    ...goodsData.vouchers.map(v => ({ ...v, warehouseId: 'finished_main' as const }))
+    ...data.rawVouchers.map(v => ({ ...v, warehouseId: 'raw_main' as const })),
+    ...data.goodsVouchers.map(v => ({ ...v, warehouseId: 'finished_main' as const }))
   ];
 
   const surplusByItem = new Map<string, number>();
@@ -232,7 +171,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   }
 
   const catalogById = new Map<string, CatalogItem>();
-  for (const item of [...data.items, ...goodsData.items, ...catalogItems]) {
+  for (const item of data.items) {
     catalogById.set(item.id, item);
   }
 
@@ -242,8 +181,8 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
       const isRaw = itemKind === 'raw_material';
       const warehouseId: 'raw_main' | 'finished_main' = isRaw ? 'raw_main' : 'finished_main';
       const found = isRaw
-        ? data.balances.find(balance => balance.id === item.id)
-        : goodsData.balances.find(balance => balance.catalogItemId === item.id);
+        ? data.rawBalances.find(balance => balance.id === item.id)
+        : data.goodsBalances.find(balance => balance.catalogItemId === item.id);
       const quantity = found?.quantity || 0;
       const rawSurplus = surplusByItem.get(item.id) || 0;
       const surplusQuantity = quantity > 0 ? Math.min(quantity, rawSurplus) : 0;
@@ -264,7 +203,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         notes: item.notes || '',
         active: item.active !== false,
         catalogRevision: item.revision || 1,
-        users: data.itemUsers?.[item.id] || []
+        users: data.itemUsers[item.id] || []
       };
     })
     .sort((a, b) => a.code.localeCompare(b.code, 'vi'));
@@ -313,8 +252,8 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
 
   const reportVouchers =
     reportScope === 'finished_main'
-      ? goodsData.vouchers.map(voucher => ({ ...voucher, lines: voucher.lines.filter(line => line.delta !== 0) }))
-      : data.vouchers;
+      ? data.goodsVouchers.map(voucher => ({ ...voucher, lines: voucher.lines.filter(line => line.delta !== 0) }))
+      : data.rawVouchers;
   const reportPages = useDataTablePagination(
     from && to && from <= to
       ? warehouseSummary(reportVouchers, from, to).filter(row => matches(row.code, row.name))
@@ -359,7 +298,6 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         requestId: crypto.randomUUID()
       });
       showSuccessToast(nextActive ? 'Đã kích hoạt lại mã vật tư' : 'Đã ngừng sử dụng mã vật tư');
-      reload();
       onRefresh();
     } catch (cause) {
       showErrorToast(cause instanceof Error ? cause.message : 'Không cập nhật được trạng thái mã.');
@@ -636,7 +574,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
           {error}
         </p>
       )}
-      <LoadingStatus loading={loading} hasData={data !== empty} label="Đang tải sổ kho" />
+      <LoadingStatus loading={loading} hasData={loaded} label="Đang tải sổ kho" />
       {tab === 'vouchers' && voucherView === 'report' && (!from || !to || from > to) && (
         <p role="alert" className="warehouse-error">
           Chọn khoảng ngày hợp lệ.
@@ -662,9 +600,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
               : undefined
           }
           onClose={() => setStock(null)}
-          onSaved={() => {
-            reload();
-          }}
+          onSaved={onRefresh}
         />
       ) : (
         <div className="warehouse-list-frame">

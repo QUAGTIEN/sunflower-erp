@@ -138,12 +138,13 @@ service cloud.firestore {
       ));
     }
 
+    // Warehouse readers see the catalog and its customer links on the live Kho vật tư page.
     match /item_catalog/{documentId} {
-      allow read: if canManageItemCatalog();
+      allow read: if canManageItemCatalog() || canReadWarehouse();
       allow write: if false;
     }
     match /catalog_links/{documentId} {
-      allow read: if canManageItemCatalog();
+      allow read: if canManageItemCatalog() || canReadWarehouse();
       allow write: if false;
     }
     match /catalog_requests/{documentId} {
@@ -383,7 +384,11 @@ service cloud.firestore {
       allow read: if canReadWarehouse();
       allow write: if false;
     }
-    match /warehouse_vouchers/{documentId} { allow read, write: if false; }
+    // Quantity-only vouchers of both stores; posting and reversal stay on the warehouse APIs.
+    match /warehouse_vouchers/{documentId} {
+      allow read: if canReadWarehouse();
+      allow write: if false;
+    }
     match /warehouse_source_state/{documentId} { allow read, write: if false; }
     match /warehouse_requests/{documentId} { allow read, write: if false; }
     match /warehouse_counters/{documentId} { allow read, write: if false; }

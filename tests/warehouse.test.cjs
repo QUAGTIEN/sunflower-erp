@@ -537,8 +537,14 @@ test('static rules contract freezes legacy and protects quantity writer and mana
   const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
   for (const collection of ['inventory', 'warehouse_exports'])
     assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{[^}]*allow write: if false;`));
-  for (const collection of ['warehouse_vouchers', 'warehouse_source_state', 'warehouse_requests', 'warehouse_counters'])
+  for (const collection of ['warehouse_source_state', 'warehouse_requests', 'warehouse_counters'])
     assert.match(rules, new RegExp(`match /${collection}/\\{documentId\\} \\{ allow read, write: if false;`));
+  for (const collection of ['warehouse_vouchers', 'item_catalog', 'catalog_links']) {
+    const block = rules.match(new RegExp(`match /${collection}/\\{documentId\\} \\{([\\s\\S]*?)\\n    \\}`));
+    assert.ok(block, `${collection} has a rules block`);
+    assert.match(block[1], /allow read: if (canManageItemCatalog\(\) \|\| )?canReadWarehouse\(\);/);
+    assert.match(block[1], /allow write: if false;/);
+  }
   assert.match(rules, /warehouseReceiptRevision/);
   assert.match(rules, /Quantity receipt\/direct-shipping state and its source are server-owned/);
 });
@@ -799,4 +805,39 @@ test('production_return records optional rollCode and remainingMeters and load c
   assert.equal(loaded.itemUsers.paper[0].customerName, 'Công ty Ánh Dương');
   assert.ok(loaded.itemUsers.paper[0].sources.some(source => source.includes('LSX-1')));
   assert.ok(loaded.itemUsers.paper[0].sources.some(source => source.includes('Khai báo SP')));
+
+  const docs = collection =>
+    [...b.store.keys()]
+      .filter(key => key.startsWith(`${collection}/`))
+      .map(key => ({ ...b.store.get(key), id: key.split('/')[1] }));
+  const live = loader()('src/features/inventory/model/warehouseLiveData.ts').splitWarehouseLedgers({
+    catalog: docs('item_catalog'),
+    balances: docs('warehouse_balances'),
+    vouchers: docs('warehouse_vouchers'),
+    commands: docs('production_commands'),
+    customers: docs('customers'),
+    links: docs('catalog_links')
+  });
+  assert.deepEqual(live.itemUsers, loaded.itemUsers, 'the live page shows the same customers as the API');
+  assert.deepEqual(live.rawVouchers, loaded.vouchers);
+  assert.deepEqual(live.rawBalances, loaded.balances);
+  assert.deepEqual(live.goodsVouchers, []);
+});
+
+test('the live Kho vật tư page queries only collections that warehouse readers may read', () => {
+  const { WAREHOUSE_LIVE_QUERIES } = loader({ '@/infrastructure/firebase/erpDataGateway': {} })(
+    'src/features/inventory/components/useWarehouseLiveData.ts'
+  );
+  assert.deepEqual(
+    WAREHOUSE_LIVE_QUERIES.map(query => query.collection),
+    ['item_catalog', 'warehouse_balances', 'warehouse_vouchers', 'production_commands', 'customers', 'catalog_links']
+  );
+  const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
+  assert.match(rules, /match \/production_commands\/\{documentId\} \{\s*allow read: if isActive\(\);/);
+  assert.match(
+    rules,
+    /match \/customers\/\{documentId\} \{\s*allow read: if isActive\(\)\s*&& \(isAdmin\(\)\s*\|\| userProfile\(\)\.role != 'sale'/
+  );
+  const page = fs.readFileSync(path.join(root, 'src/features/inventory/pages/InventoryPage.tsx'), 'utf8');
+  assert.ok(!/loadWarehouse|loadFinishedGoods|loadItemCatalog/.test(page), 'the page no longer loads through the APIs');
 });

@@ -57,7 +57,8 @@ Lượt 3 không có giữ chỗ NVL dự kiến, khóa chất lượng, giá v�
 
 Transaction kiểm tra source, trạng thái, ánh xạ/quy đổi, lượng còn lại, balance revision và requestId trước ghi. Tổng hợp nhiều dòng cùng mã trước kiểm tra âm. Phiếu, số dư, tiến độ, biên nhận, số phiếu và audit cùng ghi hoặc cùng không ghi. Trả lại biên nhận đã thành công cả khi ngày/nguồn đã đổi; không tạo tác động mới.
 
-Phải triển khai **web + API mới + firestore.rules cùng phiên bản**. Rules đóng ghi client cho legacy/sổ mới và bảo vệ nguồn mua NVL khỏi sửa/xóa nhận hàng ngoài API; `warehouse_balances` chỉ đọc theo quyền để Dashboard cập nhật. Các collection còn lại của sổ chỉ đọc qua API. API dùng cấu hình Firebase Admin đã có; không thêm khóa phía client. Vite đơn thuần không phục vụ API, demo không ghi kho local.
+Phải triển khai **web + API mới + firestore.rules cùng phiên bản**. Rules đóng ghi client cho legacy/sổ mới và bảo vệ nguồn mua NVL khỏi sửa/xóa nhận hàng ngoài API; `warehouse_balances`, `warehouse_vouchers`, `item_catalog` và `catalog_links` cho người có quyền đọc kho
+(`canReadWarehouse`) đọc thẳng. Các collection còn lại của sổ chỉ đọc qua API. API dùng cấu hình Firebase Admin đã có; không thêm khóa phía client. Vite đơn thuần không phục vụ API, demo không ghi kho local.
 
 Chưa deploy Vercel/Firebase, chưa kết nối dữ liệu thật, chưa nhập tồn đầu kỳ và chưa kiểm thử trình duyệt. Push Git không xác nhận các việc này.
 
@@ -83,4 +84,12 @@ Nhận hàng vẫn chỉ ghi lượng. Kế toán xác nhận chứng từ riên
 - **D-KHO3 (28/10/2026) — Cảnh báo tồn dư khi lập LSX:** Khi lập LSX cho mã sản phẩm đang có tồn thành phẩm (`warehouse_balances/fg_<catalogItemId>` > 0), form hiển thị cảnh báo `"Kho đang có N <ĐVT> dư"` để người lập lệnh biết và quyết định điều chỉnh, chưa tự trừ số lượng cần sản xuất.
 - **D-KHO4 (28/10/2026) — Quản lý cuộn lẻ:** Hỗ trợ ghi nhận tùy chọn `rollCode` (mã cuộn) và `remainingMeters` (số mét còn lại) trên dòng phiếu hoàn NVL (`production_return`) và hiển thị trực tiếp trong mục **Nguồn tồn** của Thẻ kho.
 - **D-KHO5 (28/10/2026) — Theo dõi hàng giao:** Bỏ khỏi Kho vật tư, dùng thống nhất tại `Giao hàng → Hàng giao & thành phẩm`.
-- **Tra cứu khách hàng dùng vật tư (`itemUsers`):** Máy chủ tổng hợp danh sách khách hàng đang dùng từng mã vật tư/thành phẩm từ (1) thực tế LSX và phiếu kho, (2) khai báo sản phẩm khách hàng (`customers[].products` và `catalog_links`), trả về trong `action: 'load'` của `/api/warehouse/manage`. Hiển thị cột **Khách đang dùng** trên bảng Tồn kho, cho phép tìm kiếm theo tên khách và xem chi tiết trong Thẻ kho.
+- **Tra cứu khách hàng dùng vật tư (`itemUsers`):** Máy chủ tổng hợp danh sách khách hàng đang dùng từng mã vật tư/thành phẩm từ (1) thực tế LSX và phiếu kho, (2) khai báo sản phẩm khách hàng (`customers[].products` và `catalog_links`), tính bằng `buildItemUsers` trong `model/itemUsers.ts`, dùng chung cho máy chủ (`action: 'load'`) và trang Kho vật tư. Hiển thị cột **Khách đang dùng** trên bảng Tồn kho, cho phép tìm kiếm theo tên khách và xem chi tiết trong Thẻ kho.
+
+## Đọc trực tiếp trên trang Kho vật tư
+
+Quyết định của người dùng ngày 29/10/2026: trang đọc thẳng Firestore, ghi vẫn qua API. `useWarehouseLiveData` theo dõi
+`item_catalog`, `warehouse_balances`, `warehouse_vouchers`, `production_commands`, `customers`, `catalog_links`, rồi
+tách hai kho bằng `splitWarehouseLedgers` (số dư cũ không có `warehouseId` thuộc kho NVL). Lần mở sau hiện ngay từ bộ
+nhớ đệm và tự cập nhật khi có phiếu mới; không tải lại toàn bộ sau mỗi lần ghi. Các hộp thoại lập phiếu, thẻ vật tư
+trong LSX và trang Giao hàng vẫn đọc qua `load` của API vì cần danh sách nguồn do máy chủ tính.
