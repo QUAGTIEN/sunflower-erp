@@ -31,9 +31,9 @@ nghiệp vụ viết bằng tiếng Việt; định danh trong code (biến, col
 | Lint | `npm run lint` hoặc `npx eslint <file>` |
 | Định dạng | `npm run format -- <file>` / `npm run format:check -- <file>` (Prettier, cấu hình `.prettierrc.json`) |
 
-Baseline ngày 25/10/2026:
+Baseline ngày 29/10/2026:
 - Build đạt; vendor tách riêng (React, Firebase, icon), không còn cảnh báo chunk > 500 KB.
-- Test 354/354 đạt.
+- Test 363/363 đạt.
 - Lint 187 lỗi: phần lớn `no-explicit-any` (174), còn 9 `set-state-in-effect` và 2 cảnh báo `exhaustive-deps`
   chờ quyết định vì sửa sẽ đổi thời điểm chạy. Không commit nếu số lỗi tăng.
 - Toàn bộ code, CSS và `tests/` đã theo Prettier (trừ tài liệu `.md`, `vercel.json`, `scripts/clear-db.js`).
