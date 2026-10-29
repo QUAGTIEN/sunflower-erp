@@ -370,7 +370,7 @@ test('staff query only their own attendance documents, as the Firestore rules re
   const { attendanceQueries } = loader({ '@/infrastructure/firebase/erpDataGateway': {} })(
     'src/features/attendance/components/useAttendanceWorkspace.ts'
   );
-  const staff = attendanceQueries(false, 'sale', '2026-10', 0);
+  const staff = attendanceQueries(false, 'sale', '2026-10');
   assert.deepEqual(
     staff.map(query => [query.collection, query.filter]),
     [
@@ -379,7 +379,7 @@ test('staff query only their own attendance documents, as the Firestore rules re
       ['attendance_calendars', undefined]
     ]
   );
-  const recorder = attendanceQueries(true, 'boss', '2026-10', 0);
+  const recorder = attendanceQueries(true, 'boss', '2026-10');
   assert.deepEqual(
     recorder.map(query => [query.collection, query.filter]),
     [
@@ -389,5 +389,4 @@ test('staff query only their own attendance documents, as the Firestore rules re
       ['users', undefined]
     ]
   );
-  assert.notEqual(attendanceQueries(true, 'boss', '2026-10', 1)[0].key, recorder[0].key, 'reload resubscribes');
 });
