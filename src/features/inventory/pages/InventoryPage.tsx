@@ -602,7 +602,8 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
           onClose={() => setStock(null)}
           onSaved={onRefresh}
         />
-      ) : (
+      ) : loading && !loaded ? null : (
+        // The skeleton above stands in for the table until the first data arrives, so the two never stack.
         <div className="warehouse-list-frame">
           <div className="table-container erp-primary-data-table">
             <table

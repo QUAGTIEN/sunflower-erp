@@ -213,6 +213,23 @@ test('inventory uses canonical ledger balances, text warnings and threshold acti
   tree = ui.render();
   assert.equal(menu(tree).length, 0);
 });
+test('inventory shows only the skeleton, not an empty table, until the first data arrives', () => {
+  const empty = { items: [], rawBalances: [], goodsBalances: [], rawVouchers: [], goodsVouchers: [], itemUsers: {} };
+  const tree = screen(
+    'src/features/inventory/pages/InventoryPage.tsx',
+    'Inventory',
+    { currentUser: admin, onRefresh() {} },
+    {},
+    {
+      '../components/useWarehouseLiveData': {
+        useWarehouseLiveData: () => ({ data: empty, loaded: false, loading: true, error: '', reload() {} })
+      }
+    }
+  ).render();
+  assert.ok(nodes(tree).some(node => node.type?.name === 'LoadingStatus'));
+  assert.ok(!nodes(tree).some(node => node.type === 'table'));
+  assert.ok(!nodes(tree).some(node => node.type?.name === 'DataTablePagination'));
+});
 test('purchasing keeps request processing actions and columns while replacing icon controls', () => {
   const request = {
     id: 'r1',
