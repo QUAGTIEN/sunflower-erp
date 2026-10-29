@@ -26,6 +26,6 @@ test('customer product codes use one column per field and move row actions into 
 test('attendance dialogs never style radio or checkbox inputs as text boxes', () => {
   const css = readSource('src/features/attendance/pages/Attendance.css');
   assert.match(css, /\.attendance-dialog input:not\(\[type='radio'\]\):not\(\[type='checkbox'\]\)/);
-  assert.match(css, /\.attendance-status-options input \{[^}]*width: 16px;/);
+  assert.match(css, /\.attendance-status-options input \{[^}]*width: 16px(\s*!important)?;/);
   assert.match(css, /\.attendance-status-options label \{[^}]*justify-content: flex-start;[^}]*white-space: nowrap;/);
 });
