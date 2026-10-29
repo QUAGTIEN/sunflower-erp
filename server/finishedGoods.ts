@@ -29,6 +29,7 @@ import {
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
 import { productionCatalogReader } from './productionCatalog.js';
+import { goodsSourceFingerprintInput, poFingerprintInput } from '../src/features/inventory/model/sourceFingerprints.js';
 
 type Data = Record<string, unknown>;
 const fail = (status: number, message: string): never => {
@@ -44,40 +45,9 @@ const text = (value: unknown, max = 1000) =>
     ? value.trim()
     : fail(400, `Nội dung không hợp lệ, tối đa ${max} ký tự.`);
 const rows = (value: unknown): Data[] => (Array.isArray(value) ? (value as Data[]) : []);
-export const poStamp = (po: Data) =>
-  hash({
-    customerId: po.customerId || '',
-    rows: rows(po.items).map((row, index) => ({
-      id: itemIdentity(row, index),
-      name: row.productName || '',
-      code: row.productCode || '',
-      quantity: row.quantity,
-      unit: row.unit,
-      size: row.size || '',
-      material: row.material || '',
-      specifications: row.specifications || {}
-    }))
-  });
+export const poStamp = (po: Data) => hash(poFingerprintInput(po));
 export const sourceStamp = (source: Data, type: 'production' | 'purchase') =>
-  hash({
-    type,
-    poId: source.poId || source.linkedPoId || '',
-    supplierId: source.supplierId || '',
-    lines: rows(source[type === 'production' ? 'lines' : 'items']).map((row, index) => ({
-      id: type === 'production' ? row.lineId || row.itemId : `line-${index}`,
-      ...(type === 'production' && row.poId ? { linePoId: row.poId } : {}),
-      poItemId: row.poItemId || '',
-      name: row.productName || '',
-      unit: row.unit,
-      quantity: row.quantity,
-      goodQuantity: row.goodQuantity ?? null,
-      ...(type === 'production' && Number(row.surplusQuantity) > 0
-        ? { surplusQuantity: Number(row.surplusQuantity) }
-        : {}),
-      catalog: type === 'production' ? row.catalog || null : null,
-      size: row.size || ''
-    }))
-  });
+  hash(goodsSourceFingerprintInput(source, type));
 const sourceUsed = (line: GoodsSourceState['lines'][string]) =>
   roundStock(
     line.received + line.directSent - line.directFailed + line.failedIntoCompany - (line.directCustomerReturned || 0)

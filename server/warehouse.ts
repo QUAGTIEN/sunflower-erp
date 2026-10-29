@@ -19,6 +19,11 @@ import {
   type WarehouseVoucher
 } from '../src/features/inventory/model/warehouse.js';
 import { buildItemUsers } from '../src/features/inventory/model/itemUsers.js';
+import {
+  rawSourceFingerprintInput,
+  sourceLine,
+  sourceRows
+} from '../src/features/inventory/model/sourceFingerprints.js';
 
 type Data = Record<string, unknown>;
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -36,33 +41,7 @@ const WAREHOUSE_NOTE: Record<WarehouseKind, string> = {
   production_return: 'hoàn NVL',
   reversal: 'đảo phiếu'
 };
-const sourceRows = (type: 'purchase' | 'production', data: Data): Data[] =>
-  Array.isArray(data[type === 'purchase' ? 'items' : 'materials'])
-    ? (data[type === 'purchase' ? 'items' : 'materials'] as Data[])
-    : [];
-const sourceLine = (type: 'purchase' | 'production', row: Data, index: number) =>
-  type === 'purchase' ? `line-${index}` : String(row.id || '');
-export const sourceStamp = (type: 'purchase' | 'production', data: Data) =>
-  hash({
-    type,
-    supplierId: data.supplierId || '',
-    poId: data.poId || data.linkedPoId || '',
-    requestId: data.procurementRequestId || '',
-    rows: sourceRows(type, data).map((row, index) => ({
-      id: sourceLine(type, row, index),
-      name: row.materialName || row.productName || row.name || '',
-      sourceItemId: row.poItemId || row.itemId || '',
-      code: row.productCode || row.code || '',
-      width: row.width || '',
-      size: row.size || '',
-      specifications: row.specifications || null,
-      allowancePercent: row.allowancePercent || 0,
-      unit: row.unit,
-      quantity: row.quantity,
-      catalogItemId: row.catalogItemId || '',
-      catalog: row.catalog || null
-    }))
-  });
+export const sourceStamp = (type: 'purchase' | 'production', data: Data) => hash(rawSourceFingerprintInput(type, data));
 function sourceView(type: 'purchase' | 'production', sourceId: string, data: Data, managed: boolean): WarehouseSource {
   return {
     id: sourceId,
