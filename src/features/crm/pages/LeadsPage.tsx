@@ -1960,7 +1960,7 @@ export const Leads: React.FC<LeadsProps> = ({
               setUploadingFiles
             }}
           />
-          <footer className={`lead-form-page__footer${editingLead ? ' lead-form-page__footer--fixed' : ''}`}>
+          <footer className="lead-form-page__footer lead-form-page__footer--fixed">
             <span>{t('Các thay đổi chỉ được ghi nhận khi bấm Lưu.')}</span>
             <div>
               <button type="button" className="btn btn-outline" onClick={closeLeadForm}>

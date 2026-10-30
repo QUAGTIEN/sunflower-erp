@@ -36,3 +36,8 @@ test('a customer without orders shows a red "Chưa có đơn hàng" business res
     /\.crm-business-result\.is-empty strong,\s*\.crm-business-result\.is-empty span \{\s*color: #b42318;/
   );
 });
+
+test('the lead form keeps its save bar fixed at the bottom for new, converted and edited leads', () => {
+  const page = readSource('src/features/crm/pages/LeadsPage.tsx');
+  assert.match(page, /<footer className="lead-form-page__footer lead-form-page__footer--fixed">/);
+});
