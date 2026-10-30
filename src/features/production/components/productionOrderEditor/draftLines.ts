@@ -72,27 +72,82 @@ export function plannableLines(pos: ProductionPO[], commands: CommandRecord[], e
   return { lines, blockedPoCodes };
 }
 
+/** Why an order or one of its lines cannot go into a production order; empty when it can. */
+export const PICKER_BLOCKS = {
+  pastProduction: 'Đơn đã qua giai đoạn sản xuất',
+  legacyOrders: 'Có LSX cũ chưa đối soát theo dòng',
+  noItems: 'Đơn chưa có mặt hàng',
+  notProduction: 'Hàng mua / dịch vụ, không cần sản xuất',
+  invalidQuantity: 'Số lượng trên đơn không hợp lệ',
+  fullyPlanned: 'Đã lập lệnh đủ số lượng',
+  inOrder: 'Đã có trong lệnh này'
+} as const;
+export interface PickerLine {
+  key: string;
+  po: ProductionPO;
+  item: Record<string, unknown>;
+  itemId: string;
+  remaining: number;
+  blockedReason: string;
+}
 export interface PickerOrder {
   po: ProductionPO;
-  lines: PlannableLine[];
+  lines: PickerLine[];
+  blockedReason: string;
 }
 export interface PickerCustomer {
   key: string;
   label: string;
   orders: PickerOrder[];
 }
+export const selectableLines = (order: PickerOrder) => order.lines.filter(line => !line.blockedReason);
 
-/** Plannable lines as the picker shows them: customer, then each of its orders, then the order's product lines. */
-export function pickerCustomers(lines: PlannableLine[]): PickerCustomer[] {
+function orderBlock(po: ProductionPO, allocations: Map<string, number> | null) {
+  if (!PLANNABLE_PO_STATUSES.includes(String(po.status))) return PICKER_BLOCKS.pastProduction;
+  if (!allocations) return PICKER_BLOCKS.legacyOrders;
+  if (!(po.items || []).length) return PICKER_BLOCKS.noItems;
+  return '';
+}
+
+function lineBlock(item: Record<string, unknown>, isProduction: boolean, remaining: number, taken: boolean) {
+  if (taken) return PICKER_BLOCKS.inOrder;
+  if (!isProduction) return PICKER_BLOCKS.notProduction;
+  const ordered = Number(item.quantity);
+  if (!Number.isFinite(ordered) || ordered <= 0) return PICKER_BLOCKS.invalidQuantity;
+  return remaining > 0 ? '' : PICKER_BLOCKS.fullyPlanned;
+}
+
+/**
+ * Every customer with an order, each order and its product lines. Orders and lines that cannot be planned stay
+ * listed with the reason, so a customer never silently disappears from the picker.
+ */
+export function pickerCustomers(
+  pos: ProductionPO[],
+  commands: CommandRecord[],
+  excludedId: string,
+  takenKeys: Set<string>
+): PickerCustomer[] {
   const customers = new Map<string, PickerCustomer>();
-  for (const line of lines) {
-    const key = customerKeyOf(line.po);
-    const customer = customers.get(key) || { key, label: customerLabelOf(line.po), orders: [] };
-    const order = customer.orders.find(entry => entry.po.id === line.po.id);
-    if (order) order.lines.push(line);
-    else customer.orders.push({ po: line.po, lines: [line] });
+  for (const po of pos) {
+    if (po.deleted) continue;
+    const allocations = poAllocations(commands, po.id, excludedId);
+    const blockedReason = orderBlock(po, allocations);
+    const productionIds = productionItemIds(po);
+    const lines = (po.items || []).map((item, index): PickerLine => {
+      const itemId = itemIdentity(item, index);
+      const key = allocationKey(po.id, itemId);
+      const remaining = allocations ? remainingQuantity(item, allocations.get(key) || 0) : 0;
+      const reason = lineBlock(item, productionIds.includes(itemId), remaining, takenKeys.has(key));
+      return { key, po, item, itemId, remaining, blockedReason: blockedReason || reason };
+    });
+    const key = customerKeyOf(po);
+    const customer = customers.get(key) || { key, label: customerLabelOf(po), orders: [] };
+    customer.orders.push({ po, lines, blockedReason });
     customers.set(key, customer);
   }
+  // Orders that still have lines to plan come first; otherwise the incoming (newest first) order is kept.
+  for (const customer of customers.values())
+    customer.orders.sort((a, b) => Number(!selectableLines(a).length) - Number(!selectableLines(b).length));
   return [...customers.values()].sort((a, b) => a.label.localeCompare(b.label, 'vi'));
 }
 

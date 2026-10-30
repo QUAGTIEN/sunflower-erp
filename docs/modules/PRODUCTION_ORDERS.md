@@ -38,6 +38,10 @@
     cột tick lồng nhau:
     tick khách hàng → hiện đơn hàng của khách đó; tick đơn hàng → hiện mã sản phẩm còn cần sản xuất; tick mã (hoặc cả
     đơn) rồi "Đồng ý" thêm dòng với số lượng còn lại. Bỏ tick khách hoặc đơn sẽ bỏ luôn phần đã chọn bên dưới.
+    Hộp thoại liệt kê **mọi khách có đơn hàng** (trừ đơn đã xóa). Đơn hoặc dòng chưa lập lệnh được vẫn hiện, làm mờ,
+    không tick được và ghi lý do (`PICKER_BLOCKS` trong `draftLines.ts`): đơn đã qua giai đoạn sản xuất, có LSX cũ
+    chưa đối soát theo dòng, đơn chưa có mặt hàng, hàng mua / dịch vụ, số lượng trên đơn không hợp lệ, đã lập lệnh đủ,
+    đã có trong lệnh. Đơn còn hàng cần sản xuất xếp trước.
   - **Chi tiết lệnh:** một trang, không chia tab: thông tin chung dạng lưới, bảng mặt hàng (PO, quy cách, góc / răng
     cưa, lõi, mã NVL, mã nội bộ, đạt / hỏng), vật tư dự kiến, sổ cấp NVL, thành phẩm, QC khi đang sản xuất và lịch
     sử thao tác thu gọn.

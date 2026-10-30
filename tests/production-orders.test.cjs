@@ -1345,7 +1345,11 @@ test('the picker ticks customers, then their orders, then product lines; one ord
   tick('Chọn đơn hàng PO-05');
   tick('Chọn cả PO-01');
   tick('Chọn Tem cuộn của PO-05');
-  assert.equal(box('Chọn Tem nhập tay của PO-05'), undefined, 'a line already on the draft is not offered again');
+  assert.equal(
+    box('Chọn Tem nhập tay của PO-05').props.disabled,
+    true,
+    'a line already on the draft cannot be taken again'
+  );
   // D-LSX2: lines of another customer can join the same order.
   tick('Chọn khách hàng Công ty B');
   tick('Chọn đơn hàng PO-02');
@@ -1365,6 +1369,57 @@ test('the picker ticks customers, then their orders, then product lines; one ord
       ['po5', 'roll', '100']
     ]
   );
+});
+
+test('every customer with an order is listed; orders and lines that cannot be planned show the reason', () => {
+  const { pickerCustomers, selectableLines, PICKER_BLOCKS } = loader()(
+    'src/features/production/components/productionOrderEditor/draftLines.ts'
+  );
+  const customer = (id, name) => ({ customerId: id, customerName: name });
+  const legacyCustomer = { ...po(), id: 'po2', poCode: 'PO-02', ...customer('c2', 'Khách có LSX cũ') };
+  const shipped = { ...po(), id: 'po3', poCode: 'PO-03', status: 'completed', ...customer('c3', 'Khách đã giao') };
+  const resale = {
+    ...po(),
+    id: 'po4',
+    poCode: 'PO-04',
+    ...customer('c4', 'Khách mua mực'),
+    items: [{ itemId: 'ink', productName: 'Mực', quantity: 5, unit: 'hộp', productType: 'muc_in' }]
+  };
+  const oddQuantity = {
+    ...po(),
+    id: 'po5',
+    poCode: 'PO-05',
+    ...customer('c5', 'Khách dữ liệu cũ'),
+    items: [{ itemId: 'roll', productName: 'Tem', quantity: '12 cuộn', unit: 'cuộn' }]
+  };
+  const legacy = { id: 'old', poId: 'po2', status: 'producing', qtyToProduce: 10 };
+  const planned = {
+    id: 'p',
+    poId: 'po1',
+    productionOrderVersion: 2,
+    status: 'draft',
+    lines: [{ itemId: 'roll', quantity: 100 }]
+  };
+  const customers = pickerCustomers(
+    [po(), legacyCustomer, shipped, resale, oddQuantity, { ...po(), id: 'gone', deleted: true }],
+    [legacy, planned],
+    'draft1',
+    new Set(['po1::manual'])
+  );
+  assert.deepEqual(
+    customers.map(entry => entry.label),
+    ['Công ty A', 'Khách có LSX cũ', 'Khách dữ liệu cũ', 'Khách đã giao', 'Khách mua mực']
+  );
+  const order = code => customers.flatMap(entry => entry.orders).find(entry => entry.po.poCode === code);
+  assert.equal(order('PO-02').blockedReason, PICKER_BLOCKS.legacyOrders);
+  assert.equal(order('PO-03').blockedReason, PICKER_BLOCKS.pastProduction);
+  assert.equal(order('PO-04').lines[0].blockedReason, PICKER_BLOCKS.notProduction);
+  assert.equal(order('PO-05').lines[0].blockedReason, PICKER_BLOCKS.invalidQuantity);
+  assert.deepEqual(
+    order('PO-01').lines.map(line => line.blockedReason),
+    [PICKER_BLOCKS.fullyPlanned, PICKER_BLOCKS.inOrder]
+  );
+  assert.equal(selectableLines(order('PO-01')).length, 0);
 });
 
 test('the company white-label sheet v2 lists the PO of each line and keeps hand-filled areas blank', () => {

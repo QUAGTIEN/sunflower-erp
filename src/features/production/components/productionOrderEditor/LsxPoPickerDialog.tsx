@@ -5,9 +5,9 @@ import {
   EMPTY_PRINT_DETAILS,
   draftLineKey,
   pickerCustomers,
-  plannableLines,
+  selectableLines,
   type DraftLine,
-  type PlannableLine
+  type PickerLine
 } from './draftLines';
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
 const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
 const matches = (value: string, search: string) =>
   value.toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'));
-const productLabel = (line: PlannableLine) =>
+const productLabel = (line: PickerLine) =>
   `${String(line.item.productCode || 'Nhập tay')} · ${String(line.item.productName || '')}`;
 const toggle = (values: string[], keys: string[], checked: boolean) =>
   checked ? [...new Set([...values, ...keys])] : values.filter(value => !keys.includes(value));
@@ -62,8 +62,8 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
   const [poIds, setPoIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const taken = new Set(draftLines.map(draftLineKey));
-  const available = plannableLines(pos, commands, draftId).lines.filter(line => !taken.has(line.key));
-  const customers = pickerCustomers(available);
+  const customers = pickerCustomers(pos, commands, draftId, taken);
+  const available = customers.flatMap(customer => customer.orders.flatMap(selectableLines));
   const tickedCustomers = customers.filter(customer => customerKeys.includes(customer.key));
   const tickedOrders = tickedCustomers
     .flatMap(customer => customer.orders)
@@ -159,7 +159,7 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
                 <small>{customer.orders.length} đơn</small>
               </label>
             ))}
-          {!customers.length && <p className="lsx-picker-empty">Không còn đơn hàng cần sản xuất.</p>}
+          {!customers.length && <p className="lsx-picker-empty">Chưa có đơn hàng nào.</p>}
         </PickerColumn>
         <PickerColumn
           title="2. Đơn hàng"
@@ -170,11 +170,13 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
               <div className="lsx-picker-group">
                 <span title={customer.label}>{customer.label}</span>
               </div>
-              {customer.orders.map(({ po, lines }) => {
+              {customer.orders.map(order => {
+                const { po, lines, blockedReason } = order;
+                const openLines = selectableLines(order);
                 const code = String(po.poCode || po.id);
                 const deadline = po.expectedDeliveryDate ? formatDate(String(po.expectedDeliveryDate)) : '';
                 return (
-                  <label key={po.id} className="lsx-picker-row">
+                  <label key={po.id} className={openLines.length ? 'lsx-picker-row' : 'lsx-picker-row is-blocked'}>
                     <input
                       type="checkbox"
                       aria-label={`Chọn đơn hàng ${code}`}
@@ -188,9 +190,9 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
                       }
                     />
                     <span title={code}>{code}</span>
-                    <small>
-                      {deadline && `Hạn ${deadline} · `}
-                      {lines.length} mã
+                    <small title={blockedReason || undefined}>
+                      {blockedReason ||
+                        `${deadline ? `Hạn ${deadline} · ` : ''}${openLines.length}/${lines.length} mã cần SX`}
                     </small>
                   </label>
                 );
@@ -216,8 +218,8 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
           {tickedOrders.map(({ po, lines }) => {
             const visible = lines.filter(line => matches(productLabel(line), productSearch));
             if (!visible.length) return null;
-            const keys = visible.map(line => line.key);
-            const allChecked = keys.every(key => selected.includes(key));
+            const keys = visible.filter(line => !line.blockedReason).map(line => line.key);
+            const allChecked = keys.length > 0 && keys.every(key => selected.includes(key));
             const someChecked = keys.some(key => selected.includes(key));
             const code = String(po.poCode || po.id);
             return (
@@ -227,6 +229,7 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
                     type="checkbox"
                     aria-label={`Chọn cả ${code}`}
                     checked={allChecked}
+                    disabled={!keys.length}
                     ref={element => {
                       if (element) element.indeterminate = someChecked && !allChecked;
                     }}
@@ -237,16 +240,17 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
                   </span>
                 </label>
                 {visible.map(line => (
-                  <label key={line.key} className="lsx-picker-row">
+                  <label key={line.key} className={line.blockedReason ? 'lsx-picker-row is-blocked' : 'lsx-picker-row'}>
                     <input
                       type="checkbox"
                       aria-label={`Chọn ${String(line.item.productName || line.itemId)} của ${code}`}
                       checked={selected.includes(line.key)}
+                      disabled={!!line.blockedReason}
                       onChange={event => setSelected(current => toggle(current, [line.key], event.target.checked))}
                     />
                     <span title={productLabel(line)}>{productLabel(line)}</span>
-                    <small>
-                      Còn {number(line.remaining)} {String(line.item.unit || '')}
+                    <small title={line.blockedReason || undefined}>
+                      {line.blockedReason || `Còn ${number(line.remaining)} ${String(line.item.unit || '')}`.trim()}
                     </small>
                   </label>
                 ))}

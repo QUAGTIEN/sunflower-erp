@@ -465,6 +465,19 @@
   font-size: 12px;
   white-space: nowrap;
 }
+/* Orders and lines that cannot be planned stay visible with the reason, muted and not selectable. */
+.lsx-picker-row > small {
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lsx-workspace .lsx-picker-dialog label.lsx-picker-row.is-blocked {
+  color: #94a3b8;
+  cursor: default;
+}
+.lsx-workspace .lsx-picker-dialog label.lsx-picker-row.is-blocked > small {
+  color: #b45309;
+}
 .lsx-picker-empty {
   margin: 0;
   padding: 24px 12px;
