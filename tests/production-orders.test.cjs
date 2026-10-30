@@ -1561,3 +1561,64 @@ test('before completion purchasing is asked only for the NVL shortage against cu
     'the full re-order stays for completed orders'
   );
 });
+
+test('the LSX header is a compact voucher form that folds to one summary line', () => {
+  const patches = [];
+  const values = {
+    deliveryDeadline: '2026-06-10',
+    plannedStartDate: '',
+    plannedEndDate: '',
+    priority: 'normal',
+    machineId: 'machine1',
+    operatorId: '',
+    shift: 'Ca sáng',
+    printTemplate: { id: 'white_label', version: 2 },
+    technicalNotes: '',
+    notes: ''
+  };
+  const render = interactive(
+    'src/features/production/components/productionOrderEditor/LsxGeneralInfo.tsx',
+    'LsxGeneralInfo',
+    {
+      values,
+      customers: ['Công ty A', 'Công ty B', 'Công ty C'],
+      machines: [{ id: 'machine1', code: 'M01', name: 'Máy in' }],
+      operators: [],
+      onChange: patch => patches.push(patch),
+      onTemplateChange() {}
+    }
+  );
+  let tree = render();
+  assert.deepEqual(
+    nodes(tree)
+      .filter(node => node.type === 'legend')
+      .map(node => node.props.children),
+    ['Đơn hàng & khách', 'Kế hoạch sản xuất', 'Phiếu & ghi chú']
+  );
+  const chips = nodes(tree).filter(node =>
+    String(node.props?.className || '')
+      .split(' ')
+      .includes('lsx-customer-chip')
+  );
+  assert.deepEqual(
+    chips.map(node => [node.props.children].flat().join('')),
+    ['Công ty A', 'Công ty B', '+1'],
+    'two customers show as chips and the rest as a count'
+  );
+  const radio = value => nodes(tree).find(node => node.type === 'input' && node.props.value === value);
+  assert.equal(radio('normal').props.checked, true);
+  radio('urgent').props.onChange();
+  const end = nodes(tree).find(node => node.props?.['aria-label'] === 'Hoàn thành dự kiến');
+  end.props.onChange({ target: { value: '2026-06-08' } });
+  assert.deepEqual(patches, [{ priority: 'urgent' }, { plannedEndDate: '2026-06-08' }]);
+  nodes(tree)
+    .find(node => node.props?.label === 'Thu gọn thông tin chung')
+    .props.onClick();
+  tree = render();
+  assert.ok(!nodes(tree).some(node => node.type === 'legend'), 'folded, the fields are hidden');
+  const summary = nodes(tree).find(node => node.props?.className === 'lsx-general-summary');
+  assert.equal(
+    summary.props.children,
+    'Công ty A, Công ty B, Công ty C · Cần 10/6/2026 · Bình thường · Máy M01 · Ca sáng'
+  );
+});

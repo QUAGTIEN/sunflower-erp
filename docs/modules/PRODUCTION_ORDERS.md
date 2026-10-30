@@ -27,8 +27,11 @@
 - Giao diện theo kiểu chứng từ MISA (duyệt 27/10/2026):
   - **Danh sách:** tìm kiếm, lọc trạng thái / loại lệnh, nút "Lập lệnh sản xuất"; cột Số LSX, Khách hàng, PO, Số
     dòng, Ngày cần, Trạng thái; bấm dòng để mở chi tiết.
-  - **Lập lệnh:** thông tin chung lưới 4 cột; ô **Khách hàng** chỉ đọc, tự liệt kê khách của các dòng đã chọn (D-LSX2),
-    rồi ngày cần, ưu tiên, mẫu phiếu, máy, người chạy máy, ca, ghi chú chung. Lưới **Mặt hàng** mỗi dòng một hàng liền
+  - **Lập lệnh:** thanh tiêu đề (quay lại, tên, **Chọn hàng…**, **Lưu nháp**) dính trên cùng khi cuộn. Thông tin chung
+    dạng chứng từ gọn, nhãn bên trái ô, chia ba nhóm trên nền nhạt: *Đơn hàng & khách* (khách hàng dạng thẻ theo
+    dòng đã chọn — D-LSX2, ngày cần *, ưu tiên dạng ba nút Bình thường / Hơi gấp / Gấp), *Kế hoạch sản xuất* (khoảng
+    ngày dự kiến, máy, người chạy máy, ca / tổ), *Phiếu & ghi chú* (mẫu phiếu, yêu cầu kỹ thuật, ghi chú chung). Nút
+    thu gọn đưa phần này về một dòng tóm tắt. Lưới **Mặt hàng** mỗi dòng một hàng liền
     nhau: #, khách hàng, đơn hàng, mã SP, tên, quy cách, ĐVT, còn lại, tồn TP (mã nội bộ đã liên kết), SL lệnh, menu ⋮
     cho mã nội bộ / khổ NVL / ưu tiên dòng và bỏ dòng. Nút **Chọn hàng…** ở đầu trang, cạnh Lưu nháp, mở hộp thoại ba
     cột tick lồng nhau:

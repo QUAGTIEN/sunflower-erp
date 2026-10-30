@@ -44,6 +44,7 @@ import {
   customerLabelOf,
   type DraftLine
 } from './productionOrderEditor/draftLines';
+import { LsxGeneralInfo } from './productionOrderEditor/LsxGeneralInfo';
 import { LsxMaterialsTable } from './productionOrderEditor/LsxMaterialsTable';
 import './ProductionOrders.css';
 
@@ -440,124 +441,14 @@ export function ProductionOrderWorkspace({
             </div>
           </header>
           <fieldset disabled={busy}>
-            <section className="lsx-section">
-              <h3>Thông tin chung</h3>
-              <div className="lsx-fields">
-                <div className="lsx-field-wide">
-                  <span>Khách hàng (theo hàng đã chọn)</span>
-                  <output className="lsx-readonly" title={draftCustomers.join('; ')}>
-                    {draftCustomers.length
-                      ? `${draftCustomers.length} khách · ${draftCustomers.join(', ')}`
-                      : 'Chưa chọn hàng'}
-                  </output>
-                </div>
-                <label>
-                  Ngày cần *
-                  <input
-                    type="date"
-                    value={draft.deliveryDeadline}
-                    onChange={event => updateDraft({ deliveryDeadline: event.target.value })}
-                  />
-                </label>
-                <label>
-                  Ưu tiên
-                  <select value={draft.priority} onChange={event => updateDraft({ priority: event.target.value })}>
-                    <option value="normal">Bình thường</option>
-                    <option value="high">Hơi gấp</option>
-                    <option value="urgent">Gấp</option>
-                  </select>
-                </label>
-                <label>
-                  Bắt đầu dự kiến
-                  <input
-                    type="date"
-                    value={draft.plannedStartDate}
-                    onChange={event => updateDraft({ plannedStartDate: event.target.value })}
-                  />
-                </label>
-                <label>
-                  Hoàn thành dự kiến
-                  <input
-                    type="date"
-                    min={draft.plannedStartDate || undefined}
-                    value={draft.plannedEndDate}
-                    onChange={event => updateDraft({ plannedEndDate: event.target.value })}
-                  />
-                </label>
-                <label>
-                  Máy sản xuất
-                  <select value={draft.machineId} onChange={event => updateDraft({ machineId: event.target.value })}>
-                    <option value="">Chọn máy (bắt buộc khi phát hành)</option>
-                    {machines
-                      .filter(machine => machine.status === 'available')
-                      .map(machine => (
-                        <option key={machine.id} value={machine.id}>
-                          {machine.code} — {machine.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <label>
-                  Người chạy máy
-                  <select value={draft.operatorId} onChange={event => updateDraft({ operatorId: event.target.value })}>
-                    <option value="">Chọn nhân sự</option>
-                    {users
-                      .filter(user => user.active && ['producer', 'admin'].includes(user.role))
-                      .map(user => (
-                        <option key={user.uid} value={user.uid}>
-                          {user.displayName}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <label>
-                  Ca / tổ sản xuất
-                  <input
-                    value={draft.shift}
-                    maxLength={100}
-                    onChange={event => updateDraft({ shift: event.target.value })}
-                    placeholder="Ca sáng / Tổ in 01"
-                  />
-                </label>
-                <label>
-                  Mẫu phiếu
-                  <select
-                    value={draft.printTemplate.id}
-                    onChange={event =>
-                      updateDraft({
-                        printTemplate: latestTemplate(event.target.value as ProductionPrintTemplate['id'])
-                      })
-                    }
-                  >
-                    {Object.entries(PRODUCTION_PRINT_TEMPLATES).map(([id, label]) => (
-                      <option key={id} value={id}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="lsx-field-wide">
-                  Yêu cầu kỹ thuật chung
-                  <input
-                    value={draft.technicalNotes}
-                    maxLength={3000}
-                    title={draft.technicalNotes}
-                    onChange={event => updateDraft({ technicalNotes: event.target.value })}
-                    placeholder="Màu in, keo, kiểm tra trước khi chạy hàng loạt…"
-                  />
-                </label>
-                <label className="lsx-field-full">
-                  Ghi chú chung
-                  <input
-                    value={draft.notes}
-                    maxLength={3000}
-                    title={draft.notes}
-                    onChange={event => updateDraft({ notes: event.target.value })}
-                    placeholder="Lưu ý QA, đóng gói…"
-                  />
-                </label>
-              </div>
-            </section>
+            <LsxGeneralInfo
+              values={draft}
+              customers={draftCustomers}
+              machines={machines.filter(machine => machine.status === 'available')}
+              operators={users.filter(user => user.active && ['producer', 'admin'].includes(user.role))}
+              onChange={updateDraft}
+              onTemplateChange={id => updateDraft({ printTemplate: latestTemplate(id) })}
+            />
             <LsxItemsTable
               lines={draft.lines}
               pos={visiblePOs}

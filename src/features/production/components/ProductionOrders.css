@@ -54,40 +54,13 @@
 .lsx-list-row {
   cursor: pointer;
 }
-.lsx-workspace :is(.lsx-editor, .lsx-section) label,
-.lsx-field-wide {
+.lsx-workspace :is(.lsx-editor, .lsx-section) label {
   display: grid;
   gap: 6px;
   color: #475569;
   font-size: 13px;
   font-weight: 500;
   min-width: 0;
-}
-/* Customers follow the chosen lines (D-LSX2), so the field reads like a disabled input across two columns. */
-.lsx-field-wide {
-  grid-column: span 2;
-}
-.lsx-field-full {
-  grid-column: 1 / -1;
-}
-@media (max-width: 600px) {
-  .lsx-field-wide {
-    grid-column: auto;
-  }
-}
-.lsx-readonly {
-  display: block;
-  min-height: var(--erp-control-height, 36px);
-  box-sizing: border-box;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  border-radius: var(--erp-control-radius, 6px);
-  padding: 7px 9px;
-  background: #f8fafc;
-  color: #0f172a;
-  font-weight: 400;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .lsx-workspace
   :is(.lsx-list-toolbar, .lsx-editor, .lsx-section, .lsx-picker-dialog)
@@ -145,11 +118,6 @@
   padding-bottom: 8px;
   border-bottom: 1px solid #e2e8f0;
   font-size: 15px;
-}
-.lsx-fields {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
 }
 .lsx-workspace .table-container {
   min-width: 0;
@@ -292,7 +260,6 @@
   background: rgb(15 23 42 / 35%);
 }
 @media (max-width: 900px) {
-  .lsx-fields,
   .lsx-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -301,7 +268,6 @@
   }
 }
 @media (max-width: 600px) {
-  .lsx-fields,
   .lsx-summary {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -650,4 +616,191 @@
 }
 .lsx-detail-materials th:nth-child(5) {
   width: 72px;
+}
+
+/* Editor: the header stays reachable while scrolling, and each section opens with a tinted title band. */
+.lsx-editor > .lsx-heading {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: -16px -16px 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--erp-border-color, #d8e1ee);
+  background: #fff;
+}
+.lsx-editor .lsx-section > .lsx-section-header {
+  margin: -12px -12px 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--erp-border-color, #d8e1ee);
+  background: #f1f5f9;
+}
+/* Order header as a compact voucher form: labels beside fields, three groups on a soft ground. */
+.lsx-general {
+  background: #f8fafc;
+}
+.lsx-general-summary {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: #334155;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lsx-general .lsx-section-header > .erp-icon-button {
+  margin-left: auto;
+}
+.lsx-general-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+.lsx-workspace .lsx-general-group {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 0 16px;
+  border-left: 1px solid #e2e8f0;
+}
+.lsx-workspace .lsx-general-group:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.lsx-workspace .lsx-general-group:last-child {
+  padding-right: 0;
+}
+.lsx-general-group > legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.lsx-workspace .lsx-general .lsx-inline-field {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.lsx-inline-field > span:first-child {
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.lsx-inline-field.is-required > span:first-child {
+  color: #0f172a;
+  font-weight: 600;
+}
+.lsx-workspace .lsx-general :is(input:not([type='checkbox']):not([type='radio']), select) {
+  min-height: 32px;
+  padding: 5px 10px;
+  border-color: #c3cddb;
+}
+.lsx-customer-chips {
+  display: flex;
+  min-width: 0;
+  min-height: 32px;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+.lsx-customer-chip {
+  overflow: hidden;
+  max-width: 180px;
+  flex: 0 1 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lsx-customer-chip.is-more {
+  flex: none;
+  background: #e2e8f0;
+  color: #334155;
+}
+.lsx-muted {
+  color: #94a3b8;
+  font-size: 13px;
+}
+.lsx-priority {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+}
+.lsx-workspace .lsx-priority label.lsx-priority-option {
+  display: inline-flex;
+  min-height: 32px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border: 1px solid #c3cddb;
+  border-radius: var(--erp-control-radius, 6px);
+  background: #fff;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lsx-workspace .lsx-priority input[type='radio'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.lsx-priority-option:has(input:focus-visible) {
+  outline: 2px solid var(--erp-focus-ring, #dbeafe);
+  outline-offset: 1px;
+}
+.lsx-workspace .lsx-priority .is-normal:has(input:checked) {
+  border-color: #64748b;
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.lsx-workspace .lsx-priority .is-high:has(input:checked) {
+  border-color: #d97706;
+  background: #fef3c7;
+  color: #92400e;
+}
+.lsx-workspace .lsx-priority .is-urgent:has(input:checked) {
+  border-color: #dc2626;
+  background: #fee2e2;
+  color: #991b1b;
+}
+.lsx-date-range {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+}
+@media (max-width: 1180px) {
+  .lsx-general-groups {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .lsx-workspace .lsx-general-group,
+  .lsx-workspace .lsx-general-group:first-child {
+    padding: 0;
+    border-left: 0;
+  }
+}
+@media (max-width: 600px) {
+  .lsx-workspace .lsx-general .lsx-inline-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
 }
