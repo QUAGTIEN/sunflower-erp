@@ -396,8 +396,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   // Helper to parse message text for PO or LSX codes and retrieve matching documents
   const renderMessageContent = (msgText: string) => {
     // Simple text split to render links if any
-    const poRegex = /PO-\d{4}-\d{4}/g;
-    const lsxRegex = /LSX-\d{4}-\d{4}/g;
+    // Order codes are DH-YYMM-NNNN (D-MA1); older ones were PO-YYMM-NNNN or PO-YYYYMM-NNNN, LSX likewise.
+    const poRegex = /\b(?:DH-\d{4}|PO-\d{4}|PO-\d{6})-\d{4}\b/g;
+    const lsxRegex = /\bLSX-(?:\d{4}|\d{8})-\d{4}\b/g;
 
     const poMatches = msgText.match(poRegex) || [];
     const lsxMatches = msgText.match(lsxRegex) || [];

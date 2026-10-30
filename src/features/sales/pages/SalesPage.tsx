@@ -43,6 +43,7 @@ import {
 } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
+import { DOCUMENT_CODE_PREFIXES, codeCounterKey, codeMonth, formatDocumentCode } from '@/shared/utils/documentCodes';
 import { normalizeCustomerProduct, type CustomerRecord, type LeadRecord } from '@/features/crm/model/crmModels';
 import { synchronizeCustomerProductOrderItems } from '@/features/crm/model/customerProductCatalog';
 import '@/components/CustomerHistory.css';
@@ -657,24 +658,10 @@ export const Sales: React.FC<SalesProps> = ({
             ...poData,
             items: synchronizeCustomerProductOrderItems(poData.items, catalogCustomer).map(withCalculatedPOFinancials)
           };
-          const now = new Date();
-          const yyyy = now.getFullYear();
-          const mm = String(now.getMonth() + 1).padStart(2, '0');
-          const prefix = `PO-${yyyy}${mm}-`;
-
-          const monthPOs = pos.filter(p => p.poCode && p.poCode.startsWith(prefix));
-          let maxSeq = 0;
-          monthPOs.forEach(p => {
-            const parts = p.poCode.split('-');
-            if (parts.length === 3) {
-              const seq = parseInt(parts[2], 10);
-              if (!isNaN(seq) && seq > maxSeq) {
-                maxSeq = seq;
-              }
-            }
-          });
-          const nextSeq = String(maxSeq + 1).padStart(4, '0');
-          const poCode = `${prefix}${nextSeq}`;
+          // D-MA1: DH-YYMM-NNNN from a monthly counter issued in a transaction, so concurrent orders never collide.
+          const month = codeMonth();
+          const sequence = await dbService.nextSequence(codeCounterKey(DOCUMENT_CODE_PREFIXES.order, month));
+          const poCode = formatDocumentCode(DOCUMENT_CODE_PREFIXES.order, month, sequence);
 
           const reusableDesignByItemIndex = new Map<number, { design: DesignRecord; version: DesignVersion }>();
           if (poData.repeatSourcePoId && poData.designReuseRequested) {
@@ -734,7 +721,8 @@ export const Sales: React.FC<SalesProps> = ({
 
           const newPO = {
             poCode,
-            customerPoCode: poData.customerPoCode || poCode,
+            // The customer's own PO number is a separate reference; it never defaults to our order code.
+            customerPoCode: poData.customerPoCode || '',
             customerId: poData.customerId,
             customerName: poData.customerName,
             customerRank: poData.customerRank,
@@ -1114,7 +1102,7 @@ export const Sales: React.FC<SalesProps> = ({
                 placeholder={
                   activeListView === 'orders'
                     ? selectedOrderCustomer
-                      ? t('Nhập mã đơn hàng, tên sản phẩm hoặc người tạo...')
+                      ? t('Nhập mã đơn hàng, số PO khách, tên sản phẩm hoặc người tạo...')
                       : t('Tìm mã khách hàng, công ty, người liên hệ...')
                     : t('Tìm mã khách hàng, công ty, người liên hệ...')
                 }

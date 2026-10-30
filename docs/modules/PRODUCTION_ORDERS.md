@@ -58,7 +58,7 @@ dòng sản xuất của chính PO đó đủ sản lượng đạt. `action: ca
 - Lưu thông số từ PO, nhân sự, máy, ca, ngày cần, ưu tiên, ghi chú và vật tư dự kiến. Sau phát hành, thông số và dòng hàng được khóa; danh mục sản phẩm thay đổi không sửa phiếu đã phát hành.
 - QC ghi nhận sản lượng đạt / hỏng theo từng mặt hàng và ĐVT. Thiếu sản lượng có thể lập lệnh bổ sung. PO chỉ chuyển từ chờ sản xuất sang chờ giao khi đủ sản lượng đạt của toàn bộ các dòng cần SX.
 - Xem trước / in A4 ngang / lưu PDF, có vật tư dự kiến, vùng ghi cấp kho / đối soát và chữ ký. Bản nháp / hủy có cảnh báo không dùng để triển khai.
-- Chống phân bổ vượt PO, trùng yêu cầu, ghi đè phiên bản cũ và hai lệnh chạy cùng máy bằng giao dịch máy chủ. Mã LSX đánh số liên tục theo ngày Việt Nam. Lưu nhật ký và audit trong cùng giao dịch.
+- Chống phân bổ vượt PO, trùng yêu cầu, ghi đè phiên bản cũ và hai lệnh chạy cùng máy bằng giao dịch máy chủ. Mã LSX `LSX-YYMM-NNNN` đánh số liên tục theo tháng Việt Nam (D-MA1, bộ đếm `production_counters/LSX-YYMM`); lệnh cũ giữ mã `LSX-YYYYMMDD-NNNN`. Lưu nhật ký và audit trong cùng giao dịch.
 
 ## Quyền và dữ liệu
 

@@ -1472,7 +1472,7 @@ export default function POFormFullScreen({
         </div>
 
         <div className="form-group">
-          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số đơn hàng khách hàng')}</label>
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số PO khách')}</label>
           <input
             type="text"
             value={customerPoCode}
@@ -1695,7 +1695,7 @@ export default function POFormFullScreen({
                     <strong>{t('Hạng')}:</strong> {customerRank || '—'}
                   </span>
                   <span>
-                    <strong>{t('Số đơn hàng khách hàng')}:</strong> {customerPoCode || '—'}
+                    <strong>{t('Số PO khách')}:</strong> {customerPoCode || '—'}
                   </span>
                   <span>
                     <strong>{t('Ngày giao')}:</strong>{' '}

@@ -23,6 +23,12 @@ import {
 } from '../src/features/production/model/productionOrder.js';
 import { getPOQueueUpdate, getPOQueueStatus } from '../src/features/sales/model/poWorkflow.js';
 import { productionCatalogReader } from './productionCatalog.js';
+import {
+  DOCUMENT_CODE_PREFIXES,
+  codeCounterKey,
+  codeMonth,
+  formatDocumentCode
+} from '../src/shared/utils/documentCodes.js';
 
 export { requireActiveErpCaller as requireProductionCaller } from './erpCaller.js';
 
@@ -163,7 +169,11 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     const advancedAllowed = ['cancel', 'complete', 'start', 'return', ...MATERIAL_REQUEST_ACTIONS].includes(action);
     for (const po of linePOs) assertPOAccess(actor, advancedAllowed ? { ...po, status: 'waiting_production' } : po);
     if (action !== 'create') assertTransition(actor, previous!, action);
-    const counterRef = firestore.collection('production_counters').doc(businessDate);
+    // D-MA1: LSX-YYMM-NNNN, numbered per month; older per-day counter documents stay as they are.
+    const lsxMonth = codeMonth(new Date(now));
+    const counterRef = firestore
+      .collection('production_counters')
+      .doc(codeCounterKey(DOCUMENT_CODE_PREFIXES.productionOrder, lsxMonth));
     const counter = action === 'create' ? await transaction.get(counterRef) : null;
     const sequence = Number(counter?.data()?.sequence || 0) + 1;
     const readers = new Map(linePOs.map(po => [po.id, productionCatalogReader(transaction, firestore, po)]));
@@ -189,7 +199,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
         id,
         productionOrderVersion: 2,
         revision: (previous?.revision || 0) + 1,
-        lsxCode: previous?.lsxCode || `LSX-${businessDate.replaceAll('-', '')}-${String(sequence).padStart(4, '0')}`,
+        lsxCode: previous?.lsxCode || formatDocumentCode(DOCUMENT_CODE_PREFIXES.productionOrder, lsxMonth, sequence),
         poId: firstPO.id,
         poIds: orderPoIds,
         poCode: poCodes.join(', '),

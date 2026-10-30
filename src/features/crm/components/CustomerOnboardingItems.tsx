@@ -136,7 +136,7 @@ export const CustomerOnboardingItems: React.FC<CustomerOnboardingItemsProps> = (
 
       <div className="customer-onboarding-order-meta">
         <label>
-          Mã đơn hàng khách hàng
+          Số PO khách
           <input
             value={customerPoCode}
             onChange={event => onCustomerPoCodeChange(event.target.value)}

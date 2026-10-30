@@ -165,7 +165,7 @@ export const getProcurementRequestId = (poId: string, itemId: string, itemIndex:
   `procurement-${poId}-${itemId || itemIndex}`;
 
 export const getProcurementRequestCode = (poCode: string, itemIndex: number): string =>
-  `MH-${poCode.replace(/^PO-/, '')}-${String(itemIndex + 1).padStart(2, '0')}`;
+  `MH-${poCode.replace(/^(PO|DH)-/, '')}-${String(itemIndex + 1).padStart(2, '0')}`;
 
 export const normalizeSupplierRecord = (value: unknown): SupplierRecord => {
   const source = asRecord(value);

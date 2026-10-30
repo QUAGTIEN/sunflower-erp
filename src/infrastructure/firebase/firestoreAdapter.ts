@@ -223,6 +223,33 @@ export const dbService = {
     return finalDoc;
   },
 
+  /**
+   * Issues the next number of a document sequence (`code_counters/{counterKey}`) in a transaction, so two users
+   * never receive the same code. A number is never handed out twice, even if the document is not saved afterwards.
+   */
+  async nextSequence(counterKey: string): Promise<number> {
+    const database = await getFirebaseDatabase(`issuing a code from ${counterKey}`);
+    if (database) {
+      try {
+        const counterReference = doc(database, 'code_counters', counterKey);
+        return await runTransaction(database, async transaction => {
+          const counter = await transaction.get(counterReference);
+          const sequence = Number(counter.data()?.sequence || 0) + 1;
+          transaction.set(counterReference, { sequence, updatedAt: new Date().toISOString() });
+          return sequence;
+        });
+      } catch (error) {
+        // Codes must stay unique, so a failed counter never falls back to a local number.
+        reportFirebaseFailure(`issuing a code from ${counterKey}`, error);
+        throw error;
+      }
+    }
+    const counter = readLocalCollection('code_counters').find(item => item.id === counterKey);
+    const sequence = Number(counter?.sequence || 0) + 1;
+    upsertLocalDocument('code_counters', { id: counterKey, sequence, updatedAt: new Date().toISOString() });
+    return sequence;
+  },
+
   async updateDocument(colName: string, docId: string, updatedFields: ErpDocument): Promise<boolean> {
     const finalUpdatedFields = normalizeCollectionUpdate(colName, {
       ...updatedFields,

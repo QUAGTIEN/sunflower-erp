@@ -1628,3 +1628,31 @@ test('the LSX header is a compact voucher form that folds to one summary line', 
     'Công ty A, Công ty B, Công ty C · Cần 10/6/2026 · Bình thường · Máy M01 · Ca sáng'
   );
 });
+
+test('D-MA1: order and LSX codes are PREFIX-YYMM-NNNN in Vietnamese time, numbered per month', async () => {
+  const codes = loader()('src/shared/utils/documentCodes.ts');
+  assert.equal(codes.codeMonth(new Date('2026-10-31T18:00:00Z')), '2611', '01:00 on 1/11 in Vietnam is November');
+  assert.equal(codes.codeMonth(new Date('2026-10-31T16:59:00Z')), '2610');
+  assert.equal(codes.formatDocumentCode('DH', '2610', 7), 'DH-2610-0007');
+  assert.equal(codes.codeCounterKey('LSX', '2610'), 'LSX-2610');
+
+  const b = backend();
+  await b.manage(draft());
+  await b.manage(draft({ id: 'command2', requestId: 'request2', lines: [{ itemId: 'roll', quantity: 10 }] }));
+  const month = codes.codeMonth();
+  assert.equal(b.order().lsxCode, `LSX-${month}-0001`);
+  assert.equal(b.order('command2').lsxCode, `LSX-${month}-0002`);
+  assert.equal(b.store.get(`production_counters/LSX-${month}`).sequence, 2);
+
+  const { readSource } = require('./helpers/loadTs.cjs');
+  const sales = readSource('src/features/sales/pages/SalesPage.tsx');
+  assert.match(sales, /dbService\.nextSequence\(\s*codeCounterKey\(DOCUMENT_CODE_PREFIXES\.order, month\)\s*\)/);
+  assert.doesNotMatch(sales, /PO-\$\{yyyy\}/, 'order codes are no longer counted in the browser from loaded orders');
+  assert.match(sales, /customerPoCode: poData\.customerPoCode \|\| ''/, 'the customer PO never defaults to our code');
+  const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
+  const counter = rules.match(/match \/code_counters\/\{counterKey\} \{([\s\S]*?)\n    \}/);
+  assert.ok(counter, 'the order code counter has rules');
+  assert.match(counter[1], /counterKey\.matches\('\^DH-\[0-9\]\{4\}\$'\)/);
+  assert.match(counter[1], /request\.resource\.data\.sequence == resource\.data\.sequence \+ 1/);
+  assert.match(counter[1], /allow delete: if false;/);
+});

@@ -696,6 +696,21 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // D-MA1: order codes DH-YYMM-NNNN come from a monthly counter that only ever moves up by one,
+    // so two users never receive the same number and a number is never handed out again.
+    match /code_counters/{counterKey} {
+      allow read: if isActive();
+      allow create: if canUseOrderFlow()
+        && counterKey.matches('^DH-[0-9]{4}$')
+        && request.resource.data.keys().hasOnly(['sequence', 'updatedAt'])
+        && request.resource.data.sequence == 1;
+      allow update: if canUseOrderFlow()
+        && counterKey.matches('^DH-[0-9]{4}$')
+        && request.resource.data.keys().hasOnly(['sequence', 'updatedAt'])
+        && request.resource.data.sequence == resource.data.sequence + 1;
+      allow delete: if false;
+    }
+
     // Any collection not reviewed above is denied by default.
     match /{document=**} {
       allow read, write: if false;

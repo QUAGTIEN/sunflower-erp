@@ -34,8 +34,8 @@ Nhóm NVL: `DCG` decal giấy, `DCN` decal nhiệt, `PP` màng PP, `PET` màng P
 
 | Chứng từ | Mã hiện tại | Nơi cấp | Ghi chú |
 |---|---|---|---|
-| Đơn hàng | `PO-YYYYMM-NNNN` | Trình duyệt, đếm theo đơn đã có | Hai người tạo cùng lúc có thể trùng số |
-| Lệnh sản xuất | `LSX-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | |
+| Đơn hàng | `PO-YYYYMM-NNNN` | Trình duyệt, đếm theo đơn đã có | Đã thay ở đợt 1 |
+| Lệnh sản xuất | `LSX-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | Đã thay ở đợt 1 |
 | Phiếu kho NVL | `KHO-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | |
 | Phiếu thành phẩm / giao | `TP-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | Trùng tiền tố `TP` với mã thành phẩm mới |
 | Chứng từ tiền | `KT-YYYYMMDD-NNNN` | Máy chủ | Ngoài phạm vi D-MA1 |
@@ -46,6 +46,11 @@ Nhóm NVL: `DCG` decal giấy, `DCN` decal nhiệt, `PP` màng PP, `PET` màng P
 
 ## Thứ tự triển khai
 
-1. Đơn hàng `DH` và lệnh sản xuất `LSX` theo tháng, cấp số bằng bộ đếm trong giao dịch để không trùng.
+1. **Đã làm.** Đơn hàng `DH-YYMM-NNNN`: trình duyệt lấy số từ `code_counters/DH-YYMM` trong một giao dịch Firestore;
+   rules chỉ cho tạo số 1 hoặc tăng đúng 1, không xóa. Lệnh sản xuất `LSX-YYMM-NNNN`: máy chủ lấy số từ
+   `production_counters/LSX-YYMM` trong giao dịch lập lệnh. Tháng tính theo giờ Việt Nam (`codeMonth`,
+   `src/shared/utils/documentCodes.ts`). Số đã cấp không cấp lại dù đơn không được lưu. Ô **Số PO khách** để trống khi
+   khách không gửi, không còn tự lấy mã đơn của mình; tìm kiếm đơn hàng tìm được theo số này. Kênh chat nhận cả mã mới
+   và mã cũ.
 2. Mã khách viết tắt và mã hàng tự cấp trong danh mục (`TP`, `TC`, `HM`, `NVL-NHÓM`).
 3. Yêu cầu mua, đơn mua, phiếu nhập / xuất kho, chuyến giao hàng.
