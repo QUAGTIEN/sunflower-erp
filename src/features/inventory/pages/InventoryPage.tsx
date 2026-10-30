@@ -995,6 +995,31 @@ function VoucherDetails({
   );
 }
 
+const stockDetailTabs = { ledger: 'Thẻ kho', sources: 'Nguồn tồn', users: 'Khách đang dùng' } as const;
+const stockAlertTones: Record<string, string> = {
+  'Tồn âm': 'danger',
+  'Cần nhập hàng': 'warn',
+  'Trong ngưỡng': 'ok'
+};
+
+/**
+ * Thẻ kho rows, newest first. The balance after each voucher is walked back from the current book balance,
+ * so the newest row always matches the book balance shown above.
+ */
+const stockCardEntries = (vouchers: UnifiedVoucher[], catalogItemId: string, currentQuantity: number) => {
+  let balanceAfter = currentQuantity;
+  return [...vouchers]
+    .sort((a, b) => b.postedAt.localeCompare(a.postedAt))
+    .map(voucher => {
+      const delta = voucher.lines
+        .filter(line => line.catalogItemId === catalogItemId)
+        .reduce((sum, line) => sum + line.delta, 0);
+      const entry = { voucher, delta, balanceAfter };
+      balanceAfter -= delta;
+      return entry;
+    });
+};
+
 function StockDetails({
   stock,
   currentUser,
@@ -1056,9 +1081,10 @@ function StockDetails({
         }))
     );
 
-  const conversionsLabel = stock.conversions.length
-    ? stock.conversions.map(entry => `1 ${entry.unit} = ${stockNumber(entry.factor)} ${stock.unit}`).join(' · ')
-    : 'Chỉ dùng ĐVT cơ sở';
+  const [detailTab, setDetailTab] = useState<keyof typeof stockDetailTabs>('ledger');
+  const canEditThreshold = canPostWarehouse(currentUser);
+  const alert = stockAlert(stock.quantity, stock.minQuantity);
+  const ledger = stockCardEntries(vouchers, stock.catalogItemId, stock.quantity);
 
   return (
     <section
@@ -1069,7 +1095,7 @@ function StockDetails({
       <form
         onSubmit={async event => {
           event.preventDefault();
-          if (pending.current || !canPostWarehouse(currentUser)) return;
+          if (pending.current || !canEditThreshold) return;
           const body = {
             action: 'threshold',
             catalogItemId: stock.catalogItemId,
@@ -1102,9 +1128,15 @@ function StockDetails({
             <h2 id="warehouse-stock-title" title={stock.name}>
               {stock.name}
             </h2>
-            <span title={stock.code}>
-              {stock.code} · {itemKindLabels[stock.itemKind]}
-            </span>
+            <div className="warehouse-stock-card-tags">
+              <span className="warehouse-pill warehouse-pill--neutral" title="Mã vật tư">
+                {stock.code}
+              </span>
+              <span className="warehouse-pill warehouse-pill--info">{itemKindLabels[stock.itemKind]}</span>
+              <span className={`warehouse-pill warehouse-pill--${stock.active ? 'ok' : 'neutral'}`}>
+                {stock.active ? 'Đang sử dụng' : 'Ngừng sử dụng'}
+              </span>
+            </div>
           </div>
           {onEditCatalog && (
             <button type="button" className="btn btn-outline" disabled={busy} onClick={onEditCatalog}>
@@ -1113,47 +1145,28 @@ function StockDetails({
           )}
         </header>
 
-        <div className="warehouse-stock-card-section">
-          <h3>Thông tin mã</h3>
-          <dl className="warehouse-kv-grid">
-            <div>
-              <dt>Loại & ĐVT cơ sở</dt>
-              <dd>
-                {itemKindLabels[stock.itemKind]} · {stock.unit}
-              </dd>
-            </div>
-            <div>
-              <dt>Hệ số quy đổi</dt>
-              <dd title={conversionsLabel}>{conversionsLabel}</dd>
-            </div>
-            <div>
-              <dt>Trạng thái mã</dt>
-              <dd>{stock.active ? 'Đang sử dụng' : 'Ngừng sử dụng'}</dd>
-            </div>
-            <div>
-              <dt>Quy cách / ghi chú</dt>
-              <dd title={stock.notes || '—'}>{stock.notes || '—'}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="warehouse-stock-card-section">
-          <h3>Tồn và ngưỡng</h3>
-          <div className="warehouse-stock-threshold-bar">
-            <p className="warehouse-stock-card-meta">
-              <span>
-                Tồn theo sổ: <strong>{stockNumber(stock.quantity)}</strong> {stock.unit}
-              </span>
-              <span>
-                Tồn dư: <strong>{stockNumber(stock.surplusQuantity)}</strong> {stock.unit}
-              </span>
-              <span>Trạng thái: {stockAlert(stock.quantity, stock.minQuantity)}</span>
-            </p>
-            {canPostWarehouse(currentUser) && (
-              <div className="warehouse-toolbar warehouse-threshold-controls">
-                <label>
-                  Ngưỡng tối thiểu ({stock.unit}) *
+        <div className="warehouse-stock-kpis">
+          <div className="warehouse-stock-kpi">
+            <span>Tồn theo sổ</span>
+            <strong className={stock.quantity < 0 ? 'is-negative' : undefined}>
+              {stockNumber(stock.quantity)}
+              <small>{stock.unit}</small>
+            </strong>
+          </div>
+          <div className="warehouse-stock-kpi">
+            <span title="Phần tồn đến từ hàng dư / hoàn của LSX">Tồn dư</span>
+            <strong>
+              {stockNumber(stock.surplusQuantity)}
+              <small>{stock.unit}</small>
+            </strong>
+          </div>
+          <div className="warehouse-stock-kpi">
+            {canEditThreshold ? (
+              <>
+                <label htmlFor="warehouse-stock-threshold">Ngưỡng tối thiểu ({stock.unit}) *</label>
+                <div className="warehouse-stock-kpi-form">
                   <input
+                    id="warehouse-stock-threshold"
                     required
                     type="number"
                     min="0"
@@ -1163,128 +1176,188 @@ function StockDetails({
                     disabled={busy}
                     onChange={event => setThreshold(event.target.value)}
                   />
-                </label>
-                <button className="btn btn-primary" disabled={busy || !dirty}>
-                  {busy ? 'Đang lưu…' : 'Lưu ngưỡng tồn'}
-                </button>
-              </div>
+                  <button className="btn btn-primary" disabled={busy || !dirty}>
+                    {busy ? 'Đang lưu…' : 'Lưu'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span>Ngưỡng tối thiểu</span>
+                {stock.minQuantity === null ? (
+                  <strong className="is-empty">Chưa thiết lập</strong>
+                ) : (
+                  <strong>
+                    {stockNumber(stock.minQuantity)}
+                    <small>{stock.unit}</small>
+                  </strong>
+                )}
+              </>
             )}
           </div>
-          {error && (
-            <p className="warehouse-error" role="alert">
-              {error}
-            </p>
+          <div className="warehouse-stock-kpi">
+            <span>Cảnh báo tồn</span>
+            <div className="warehouse-stock-kpi-status">
+              <span className={`warehouse-pill warehouse-pill--${stockAlertTones[alert] || 'neutral'}`}>{alert}</span>
+            </div>
+          </div>
+        </div>
+        {error && (
+          <p className="warehouse-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        <dl className="warehouse-kv-grid warehouse-stock-info">
+          <div>
+            <dt>ĐVT cơ sở</dt>
+            <dd>{stock.unit}</dd>
+          </div>
+          <div>
+            <dt>Hệ số quy đổi</dt>
+            <dd className="warehouse-stock-conversions">
+              {stock.conversions.length
+                ? stock.conversions.map(entry => (
+                    <span key={entry.unit} className="warehouse-pill warehouse-pill--neutral">
+                      1 {entry.unit} = {stockNumber(entry.factor)} {stock.unit}
+                    </span>
+                  ))
+                : 'Chỉ dùng ĐVT cơ sở'}
+            </dd>
+          </div>
+          <div className="warehouse-stock-info-wide">
+            <dt>Quy cách / ghi chú</dt>
+            <dd title={stock.notes || undefined}>{stock.notes || '—'}</dd>
+          </div>
+        </dl>
+
+        <div className="warehouse-stock-card-section">
+          <div className="warehouse-subtabs" role="tablist" aria-label="Chi tiết vật tư">
+            {Object.entries(stockDetailTabs).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={detailTab === key}
+                className={detailTab === key ? 'active' : undefined}
+                onClick={() => setDetailTab(key as keyof typeof stockDetailTabs)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {detailTab === 'ledger' && (
+            <div className="table-container erp-primary-data-table">
+              <table className="warehouse-list warehouse-detail-table warehouse-detail-table--ledger">
+                <thead>
+                  <tr>
+                    <th>Ngày</th>
+                    <th>Số phiếu</th>
+                    <th>Loại phiếu</th>
+                    <th>Nguồn</th>
+                    <th className="warehouse-number">Nhập</th>
+                    <th className="warehouse-number">Xuất</th>
+                    <th className="warehouse-number">Tồn sau phiếu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.map(({ voucher, delta, balanceAfter }) => {
+                    const kind = shortKindLabel(voucher);
+                    return (
+                      <tr key={voucher.id}>
+                        <td>{voucher.postingDate}</td>
+                        <td title={voucher.reversedBy ? `${voucher.code} (đã đảo)` : voucher.code}>{voucher.code}</td>
+                        <td>
+                          <span className={`warehouse-pill warehouse-pill--${kind.tone}`}>{kind.label}</span>
+                        </td>
+                        <td title={voucher.sourceCode}>{voucher.sourceCode || '—'}</td>
+                        <td className="warehouse-number">{delta > 0 ? stockNumber(delta) : ''}</td>
+                        <td className="warehouse-number">{delta < 0 ? stockNumber(-delta) : ''}</td>
+                        <td className="warehouse-number">{stockNumber(balanceAfter)}</td>
+                      </tr>
+                    );
+                  })}
+                  {!ledger.length && (
+                    <tr>
+                      <td colSpan={7}>Chưa có phiếu nhập xuất cho mã này.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
 
-        <div className="warehouse-stock-card-section">
-          <h3>Nguồn tồn (dư từ LSX / nhập mua)</h3>
-          <div className="table-container erp-primary-data-table">
-            <table className="warehouse-list warehouse-detail-table warehouse-detail-table--sources">
-              <thead>
-                <tr>
-                  <th>Nguồn</th>
-                  <th>Khách / Đơn mua</th>
-                  <th>Cuộn / số mét</th>
-                  <th>Số lượng</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stockSources.map(entry => (
-                  <tr key={entry.id}>
-                    <td title={`${entry.sourceCode} (${entry.voucherCode})`}>{entry.sourceCode}</td>
-                    <td title={entry.customerName}>{entry.customerName}</td>
-                    <td>
-                      {entry.rollCode || entry.remainingMeters !== undefined
-                        ? [
-                            entry.rollCode ? `Cuộn ${entry.rollCode}` : '',
-                            entry.remainingMeters !== undefined ? `Còn ${stockNumber(entry.remainingMeters)} m` : ''
-                          ]
-                            .filter(Boolean)
-                            .join(' · ')
-                        : entry.kind === 'purchase_receipt'
-                          ? 'Nhập mua'
-                          : '—'}
-                    </td>
-                    <td className="warehouse-number">
-                      {stockNumber(entry.delta)} {entry.baseUnit}
-                    </td>
-                  </tr>
-                ))}
-                {!stockSources.length && (
+          {detailTab === 'sources' && (
+            <div className="table-container erp-primary-data-table">
+              <table className="warehouse-list warehouse-detail-table warehouse-detail-table--sources">
+                <thead>
                   <tr>
-                    <td colSpan={4}>Chưa có nguồn tồn dư hoặc phiếu nhập mua.</td>
+                    <th>Ngày</th>
+                    <th>Nguồn</th>
+                    <th>Khách / Đơn mua</th>
+                    <th>Cuộn / số mét</th>
+                    <th className="warehouse-number">Số lượng</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="warehouse-stock-card-section">
-          <h3>Khách đang dùng</h3>
-          <div className="table-container erp-primary-data-table">
-            <table className="warehouse-list warehouse-detail-table warehouse-detail-table--users">
-              <thead>
-                <tr>
-                  <th>Khách hàng</th>
-                  <th>Nguồn ghi nhận</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stock.users.map(usage => (
-                  <tr key={`${usage.customerId}-${usage.customerName}`}>
-                    <td title={usage.customerName}>{usage.customerName}</td>
-                    <td title={usage.sources.join(', ')}>{usage.sources.join(', ')}</td>
-                  </tr>
-                ))}
-                {!stock.users.length && (
-                  <tr>
-                    <td colSpan={2}>Chưa có khách hàng dùng mã vật tư này.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="warehouse-stock-card-section">
-          <h3>Thẻ kho (lịch sử nhập xuất gần nhất)</h3>
-          <div className="table-container erp-primary-data-table">
-            <table className="warehouse-list warehouse-detail-table warehouse-detail-table--ledger">
-              <thead>
-                <tr>
-                  <th>Số phiếu</th>
-                  <th>Nguồn</th>
-                  <th>Ngày</th>
-                  <th>Tăng / giảm</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vouchers
-                  .sort((a, b) => b.postedAt.localeCompare(a.postedAt))
-                  .map(voucher => (
-                    <tr key={voucher.id}>
-                      <td>{voucher.code}</td>
-                      <td title={voucher.sourceCode}>{voucher.sourceCode}</td>
-                      <td>{voucher.postingDate}</td>
+                </thead>
+                <tbody>
+                  {stockSources.map(entry => (
+                    <tr key={entry.id}>
+                      <td>{entry.postingDate}</td>
+                      <td title={`${entry.sourceCode} (${entry.voucherCode})`}>{entry.sourceCode}</td>
+                      <td title={entry.customerName}>{entry.customerName}</td>
+                      <td>
+                        {entry.rollCode || entry.remainingMeters !== undefined
+                          ? [
+                              entry.rollCode ? `Cuộn ${entry.rollCode}` : '',
+                              entry.remainingMeters !== undefined ? `Còn ${stockNumber(entry.remainingMeters)} m` : ''
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')
+                          : entry.kind === 'purchase_receipt'
+                            ? 'Nhập mua'
+                            : '—'}
+                      </td>
                       <td className="warehouse-number">
-                        {stockNumber(
-                          voucher.lines
-                            .filter(line => line.catalogItemId === stock.catalogItemId)
-                            .reduce((sum, line) => sum + line.delta, 0)
-                        )}
+                        {stockNumber(entry.delta)} {entry.baseUnit}
                       </td>
                     </tr>
                   ))}
-                {!vouchers.length && (
+                  {!stockSources.length && (
+                    <tr>
+                      <td colSpan={5}>Chưa có nguồn tồn dư hoặc phiếu nhập mua.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {detailTab === 'users' && (
+            <div className="table-container erp-primary-data-table">
+              <table className="warehouse-list warehouse-detail-table warehouse-detail-table--users">
+                <thead>
                   <tr>
-                    <td colSpan={4}>Chưa có phiếu.</td>
+                    <th>Khách hàng</th>
+                    <th>Nguồn ghi nhận</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {stock.users.map(usage => (
+                    <tr key={`${usage.customerId}-${usage.customerName}`}>
+                      <td title={usage.customerName}>{usage.customerName}</td>
+                      <td title={usage.sources.join(', ')}>{usage.sources.join(', ')}</td>
+                    </tr>
+                  ))}
+                  {!stock.users.length && (
+                    <tr>
+                      <td colSpan={2}>Chưa có khách hàng dùng mã vật tư này.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </form>
     </section>
