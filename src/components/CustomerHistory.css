@@ -2797,32 +2797,17 @@
 }
 
 .po-grid-zoom-control {
-  min-height: 36px;
-  padding: 4px 9px;
-  border: 1px solid #d9e1ec;
-  border-radius: 6px;
-  background: #f8fafc;
+  gap: 4px;
 }
 
-.po-grid-zoom-control label,
 .po-grid-zoom-control output {
-  color: #475569;
+  min-width: 40px;
+  color: #172554;
   font-size: 12px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
   white-space: nowrap;
-}
-
-.po-grid-zoom-control input[type='range'] {
-  width: 110px;
-  min-width: 80px;
-  accent-color: #1e3a8a;
-  cursor: pointer;
-}
-
-.po-grid-zoom-control output {
-  min-width: 38px;
-  color: #172554;
-  text-align: right;
 }
 
 .po-order-context-summary {
@@ -3469,14 +3454,6 @@
   .po-items-card-header {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .po-grid-zoom-control {
-    width: 100%;
-  }
-
-  .po-grid-zoom-control input[type='range'] {
-    flex: 1 1 auto;
   }
 
   .po-total-summary-card {

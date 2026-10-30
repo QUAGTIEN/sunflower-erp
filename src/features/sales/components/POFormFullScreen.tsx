@@ -1,7 +1,8 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Plus, Folder, CheckSquare, History, Paperclip } from 'lucide-react';
+import { Plus, Folder, CheckSquare, History, Paperclip, Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { calculatePOItemFinancials, withCalculatedPOFinancials } from '@/domain/poFinancials';
 import {
@@ -1644,27 +1645,27 @@ export default function POFormFullScreen({
                 </div>
                 <div className="po-items-card-actions">
                   <div className="po-grid-zoom-control" role="group" aria-label={t('Thu phóng bảng mã hàng')}>
-                    <label htmlFor="po-grid-zoom">{t('Thu phóng')}</label>
-                    <input
-                      id="po-grid-zoom"
-                      type="range"
-                      min={PO_GRID_MIN_ZOOM}
-                      max={PO_GRID_MAX_ZOOM}
-                      step={PO_GRID_ZOOM_STEP}
-                      value={tableZoom}
-                      onChange={event => setTableZoom(Number(event.target.value))}
-                      aria-label={t('Tỷ lệ hiển thị bảng')}
+                    <IconButton
+                      label={t('Thu nhỏ bảng')}
+                      icon={<ZoomOut size={16} />}
+                      disabled={tableZoom <= PO_GRID_MIN_ZOOM}
+                      onClick={() => setTableZoom(current => Math.max(PO_GRID_MIN_ZOOM, current - PO_GRID_ZOOM_STEP))}
                     />
-                    <output htmlFor="po-grid-zoom">{tableZoom}%</output>
+                    <output aria-label={t('Tỷ lệ hiển thị bảng')}>{tableZoom}%</output>
+                    <IconButton
+                      label={t('Phóng to bảng')}
+                      icon={<ZoomIn size={16} />}
+                      disabled={tableZoom >= PO_GRID_MAX_ZOOM}
+                      onClick={() => setTableZoom(current => Math.min(PO_GRID_MAX_ZOOM, current + PO_GRID_ZOOM_STEP))}
+                    />
+                    <IconButton
+                      label={isTableFocusMode ? t('Thu gọn bảng') : t('Mở toàn màn hình')}
+                      icon={isTableFocusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                      active={isTableFocusMode}
+                      aria-pressed={isTableFocusMode}
+                      onClick={() => setIsTableFocusMode(current => !current)}
+                    />
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={() => setIsTableFocusMode(current => !current)}
-                    aria-pressed={isTableFocusMode}
-                  >
-                    {isTableFocusMode ? t('Thu gọn') : t('Mở toàn màn hình')}
-                  </button>
                   {usesCatalogProducts && (
                     <button
                       type="button"
@@ -1672,7 +1673,7 @@ export default function POFormFullScreen({
                       onClick={() => openSearchPopup(-1)}
                       disabled={!customerId || !catalogProducts.length || isSaving}
                     >
-                      {t('Chọn sản phẩm')}
+                      {t('Chọn mã sản phẩm')}
                     </button>
                   )}
                   <button
@@ -1681,7 +1682,7 @@ export default function POFormFullScreen({
                     onClick={handleAddRow}
                     disabled={isSaving || (usesCatalogProducts && !customerId)}
                   >
-                    {usesCatalogProducts ? t('Thêm dòng nhập tay') : t('Thêm mã hàng')}
+                    {usesCatalogProducts ? t('Thêm mã sản phẩm') : t('Thêm mã hàng')}
                   </button>
                 </div>
               </div>

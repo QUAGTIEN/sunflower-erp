@@ -87,7 +87,7 @@ export function CustomerProductPicker({ companyName, products, single, initialId
       >
         <header>
           <div>
-            <h2 id="po-catalog-picker-title">{t('Chọn sản phẩm')}</h2>
+            <h2 id="po-catalog-picker-title">{t('Chọn mã sản phẩm')}</h2>
             <span>
               {companyName} · {products.length} {t('mã sản phẩm')}
             </span>
@@ -186,7 +186,7 @@ export function CustomerProductPicker({ companyName, products, single, initialId
             disabled={!selected.length}
             onClick={() => onConfirm(selected)}
           >
-            {single ? t('Chọn sản phẩm') : t('Thêm vào đơn hàng')}
+            {single ? t('Chọn mã sản phẩm') : t('Thêm vào đơn hàng')}
           </button>
         </footer>
       </div>

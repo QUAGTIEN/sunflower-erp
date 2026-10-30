@@ -80,6 +80,7 @@ function form(products = [], initial = {}) {
     '@/features/crm/model/crmModels': { createCustomerSnapshot: customer => ({ companyName: customer.companyName }) },
     '@/components/CustomerHistory.css': {},
     '@/components/PageBackButton': { PageBackButton: () => null },
+    '@/components/IconButton': { IconButton: () => null },
     './POFormCatalog.css': {},
     '@/shared/utils/dateFormatting': {
       formatDate: value => value,
@@ -138,15 +139,15 @@ const edit = (tree, placeholder, value) => {
 
 test('manual entry is available without catalog products but still requires a customer', () => {
   const ready = form();
-  assert.equal(button(ready.render(), 'Thêm dòng nhập tay').props.disabled, false);
-  assert.equal(button(ready.render(), 'Chọn sản phẩm').props.disabled, true);
+  assert.equal(button(ready.render(), 'Thêm mã sản phẩm').props.disabled, false);
+  assert.equal(button(ready.render(), 'Chọn mã sản phẩm').props.disabled, true);
   const unselected = form([], { customerId: '' });
-  assert.equal(button(unselected.render(), 'Thêm dòng nhập tay').props.disabled, true);
+  assert.equal(button(unselected.render(), 'Thêm mã sản phẩm').props.disabled, true);
 });
 
 test('a user can add, edit and save a new PO item without a registered product or code', async () => {
   const screen = form();
-  button(screen.render(), 'Thêm dòng nhập tay').props.onClick();
+  button(screen.render(), 'Thêm mã sản phẩm').props.onClick();
   edit(screen.render(), 'Tên sản phẩm', 'Dịch vụ đóng gói');
   edit(screen.render(), 'Quy cách', 'Theo yêu cầu');
   edit(screen.render(), 'ĐVT', 'lần');
@@ -171,7 +172,7 @@ test('catalog selection still fills locked fields and can be combined with edita
     currentPrice: 10000
   };
   const screen = form([product]);
-  button(screen.render(), 'Chọn sản phẩm').props.onClick();
+  button(screen.render(), 'Chọn mã sản phẩm').props.onClick();
   nodes(screen.render())
     .find(node => node.type === 'CustomerProductPicker')
     .props.onConfirm(['product-a']);
@@ -180,7 +181,7 @@ test('catalog selection still fills locked fields and can be combined with edita
     nodes(screen.render()).some(node => node.type === 'input' && node.props.placeholder === 'Tên sản phẩm'),
     false
   );
-  button(screen.render(), 'Thêm dòng nhập tay').props.onClick();
+  button(screen.render(), 'Thêm mã sản phẩm').props.onClick();
   edit(screen.render(), 'Mã sản phẩm', 'TEM001');
   edit(screen.render(), 'Tên sản phẩm', 'Hàng nhập trực tiếp');
   await button(screen.render(), 'Lưu Đơn Hàng').props.onClick({ preventDefault() {} });
