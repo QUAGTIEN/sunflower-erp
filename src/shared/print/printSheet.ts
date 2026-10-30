@@ -141,8 +141,11 @@ h2{margin:10px 0 6px;font-size:12px;color:#1e3a8a;text-transform:uppercase}
 .sheet-signatures > div > div{display:flex;flex-direction:column;align-items:center;min-height:96px}
 .sheet-signatures small{font-style:italic}
 .sheet-signatures span{margin-top:auto;font-weight:bold}
+.sheet-totals{width:45%;margin-left:auto}
+.sheet-totals td{border-color:#9ca3af}
+.sheet-grand-total td{font-weight:bold;font-size:12px;background:#f3f6fb}
 .sheet-footer{margin-top:8px;color:#6b7280;font-size:9.5px}
-@media print{th,tfoot td,.sheet-header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{th,tfoot td,.sheet-grand-total td,.sheet-header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 `;
 
 export function printDocumentHtml(title: string, body: string, orientation: 'landscape' | 'portrait' = 'landscape') {

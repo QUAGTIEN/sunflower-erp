@@ -214,6 +214,9 @@ Chức năng chính:
 - Lưu ảnh chụp thông tin khách hàng tại thời điểm tạo đơn để bảo toàn lịch sử.
 - Phân công chi tiết cho Thiết kế, Mua hàng, Sản xuất và các bộ phận liên quan.
 - Theo dõi lịch sử cập nhật và hàng đợi PO.
+- **Xuất đơn hàng** (chi tiết đơn hoặc menu dòng): phiếu "Đơn đặt hàng" A4 ngang gửi khách gồm thông tin khách theo ảnh
+  chụp lúc tạo đơn, từng mặt hàng (đơn giá, chiết khấu, VAT, ngày giao), tổng tiền, số tiền bằng chữ và ô ký; lưu PDF
+  qua hộp thoại in của trình duyệt. Bản nội bộ (giá mua, NCC, lãi) chưa làm.
 
 Các trạng thái hàng đợi chuẩn:
 

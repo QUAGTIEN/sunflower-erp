@@ -47,6 +47,8 @@ import { DOCUMENT_CODE_PREFIXES } from '@/shared/utils/documentCodes';
 import { normalizeCustomerProduct, type CustomerRecord, type LeadRecord } from '@/features/crm/model/crmModels';
 import { synchronizeCustomerProductOrderItems } from '@/features/crm/model/customerProductCatalog';
 import '@/components/CustomerHistory.css';
+import { PrintPreviewDialog } from '@/components/PrintPreviewDialog';
+import { orderSheetHtml, type PrintableOrder } from '@/features/sales/model/orderSheet';
 import { Trash2, Pencil, Check, Copy, FileText, Settings2 } from 'lucide-react';
 
 interface SalesProps {
@@ -136,6 +138,7 @@ export const Sales: React.FC<SalesProps> = ({
   const isPurchaseOnly = currentUser.role === 'purchaser';
   const canViewSaleFinancials = isFull || isSaleOnly;
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
+  const [printPO, setPrintPO] = useState<PrintableOrder | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [repeatSourcePO, setRepeatSourcePO] = useState<any | null>(null);
@@ -1217,6 +1220,7 @@ export const Sales: React.FC<SalesProps> = ({
                                 label={`${t('Thao tác')} ${po.poCode}`}
                                 actions={[
                                   { label: t('Chi tiết'), onSelect: () => setSelectedPO(po) },
+                                  { label: t('Xuất đơn hàng'), onSelect: () => setPrintPO(po) },
                                   ...(currentUser.role === 'admin' || currentUser.role === 'sale'
                                     ? [{ label: t('Đặt lại'), onSelect: () => handleOpenRepeatOrder(po) }]
                                     : [])
@@ -1503,6 +1507,9 @@ export const Sales: React.FC<SalesProps> = ({
                 {t('CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG')}: {selectedPO.poCode} - {selectedPO.customerName}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" className="btn btn-sm btn-outline" onClick={() => setPrintPO(selectedPO)}>
+                  {t('Xuất đơn hàng')}
+                </button>
                 {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                   <>
                     <button
@@ -2554,6 +2561,14 @@ export const Sales: React.FC<SalesProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {printPO && (
+        <PrintPreviewDialog
+          title={`${t('Xem bản in đơn hàng')} — ${String(printPO.poCode || '')}`}
+          frameTitle={t('Đơn đặt hàng')}
+          html={orderSheetHtml(printPO)}
+          onClose={() => setPrintPO(null)}
+        />
       )}
     </div>
   );
