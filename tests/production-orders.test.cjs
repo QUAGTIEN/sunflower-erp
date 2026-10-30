@@ -558,9 +558,16 @@ test('combined order list filters and searches legacy items and opens their exis
       .filter(node => node.type === 'tr' && node.key)
       .map(node => node.key);
   assert.deepEqual(rowIds().sort(), ['new', 'old']);
-  nodes(tree)
-    .find(node => node.type === 'select' && node.props.value === 'all')
-    .props.onChange({ target: { value: 'legacy' } });
+  // Status and order type live in the shared filter panel, as on the other list screens.
+  const filterGroup = value =>
+    nodes(tree).find(
+      node => node.type?.name === 'DataFilterCheckboxGroup' && node.props.options.some(option => option.value === value)
+    );
+  assert.deepEqual(
+    filterGroup('legacy').props.options.map(option => option.label),
+    ['Lệnh mới', 'Lệnh cũ (1)']
+  );
+  filterGroup('legacy').props.onChange(['legacy']);
   tree = render();
   assert.deepEqual(rowIds(), ['old']);
   nodes(tree)
@@ -573,7 +580,7 @@ test('combined order list filters and searches legacy items and opens their exis
     .props.actions.find(action => action.label === 'Chi tiết')
     .onSelect();
   assert.deepEqual(opened, ['old']);
-  assert.ok(nodes(tree).some(node => node.type === 'option' && node.props.value === 'transfer_pending'));
+  assert.ok(filterGroup('transfer_pending'), 'legacy statuses can be filtered too');
 });
 
 test('machine list combines catalog, active LSX, operator and deadline while retaining edit/save', async () => {
@@ -671,7 +678,6 @@ test('legacy-only lists count the displayed records and keep detail tables at co
   const html = renderToStaticMarkup(
     React.createElement(Component, { ...props, commands: [legacy, { ...legacy, id: 'deleted', deleted: true }] })
   );
-  assert.match(html, /Lệnh cũ \(1\)/);
   assert.match(html, /Tổng số: <strong>1<\/strong>/);
   assert.match(html, /Lệnh cũ · Đang sản xuất/);
   assert.doesNotMatch(html, /Thao tác LSX-OLD/, 'old orders without a legacy opener have no row actions');

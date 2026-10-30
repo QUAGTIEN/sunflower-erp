@@ -25,7 +25,8 @@
   lượng lĩnh; ba ô ký NVL thừa/thiếu, người chạy máy, kho cấp + nhận NVL. Lệnh đã lưu với mẫu v1 hoặc phiếu chung vẫn
   xuất đúng mẫu cũ.
 - Giao diện theo kiểu chứng từ MISA (duyệt 27/10/2026):
-  - **Danh sách:** tìm kiếm, lọc trạng thái / loại lệnh, nút "Lập lệnh sản xuất"; cột Số LSX, Khách hàng, PO, Số
+  - **Danh sách:** một thanh công cụ như các màn danh sách khác: ô tìm kiếm, nút **Bộ lọc** (trạng thái, lệnh mới / cũ,
+    chọn nhiều, hiện thành thẻ "Đang lọc"), nút "Lập lệnh sản xuất" bên phải; cột Số LSX, Khách hàng, PO, Số
     dòng, Ngày cần, Trạng thái; bấm dòng để mở chi tiết.
   - **Lập lệnh:** thanh tiêu đề (quay lại, tên, **Chọn hàng**, **Lưu nháp**) dính trên cùng khi cuộn. Thông tin chung
     dạng chứng từ gọn, nhãn bên trái ô, chia ba nhóm trên nền nhạt: *Đơn hàng & khách* (khách hàng dạng thẻ theo

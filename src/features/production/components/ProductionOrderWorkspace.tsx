@@ -5,6 +5,13 @@ import { PageBackButton } from '@/components/PageBackButton';
 import { ProductionMaterialLedger } from '@/features/inventory/components/ProductionMaterialLedger';
 import { ProductionGoodsLedger } from '@/features/inventory/components/ProductionGoodsLedger';
 import { DataTablePagination } from '@/components/DataTablePagination';
+import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '@/components/DataWorkspaceFilters';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
@@ -132,8 +139,9 @@ export function ProductionOrderWorkspace({
   onOpenLegacy
 }: Props) {
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
-  const [orderType, setOrderType] = useState('all');
+  const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  const [orderTypeFilters, setOrderTypeFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedId, setSelectedId] = useState(initialSelectedId || '');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -202,13 +210,19 @@ export function ProductionOrderWorkspace({
   const visiblePOs = pos.filter(po => !po.deleted);
   const accessibleCommands = commands.filter(command => !command.deleted);
   const legacyCount = accessibleCommands.filter(command => command.productionOrderVersion !== 2).length;
+  const statusOptions = Object.entries(LIST_STATUSES).map(([value, label]) => ({ value, label }));
+  const orderTypeOptions = [
+    { value: 'managed', label: 'Lệnh mới' },
+    { value: 'legacy', label: `Lệnh cũ${legacyCount ? ` (${legacyCount})` : ''}` }
+  ];
+  const activeFilterCount = statusFilters.length + orderTypeFilters.length;
   const visible = accessibleCommands
     .filter(
       command =>
-        orderType === 'all' ||
-        (orderType === 'managed' ? command.productionOrderVersion === 2 : command.productionOrderVersion !== 2)
+        !orderTypeFilters.length ||
+        orderTypeFilters.includes(command.productionOrderVersion === 2 ? 'managed' : 'legacy')
     )
-    .filter(command => !status || command.status === status)
+    .filter(command => !statusFilters.length || statusFilters.includes(String(command.status)))
     .filter(command =>
       `${command.lsxCode} ${command.poCode} ${command.customerName} ${command.operatorName} ${command.productNameToBeCut || command.productName || ''} ${(command.lines || []).map(line => `${line.productCode} ${line.productName}`).join(' ')}`
         .toLocaleLowerCase('vi')
@@ -913,19 +927,7 @@ export function ProductionOrderWorkspace({
               onChange={event => setSearch(event.target.value)}
               placeholder="Tìm số LSX, khách hàng, đơn hàng, sản phẩm…"
             />
-            <select aria-label="Trạng thái" value={status} onChange={event => setStatus(event.target.value)}>
-              <option value="">Tất cả trạng thái</option>
-              {Object.entries(LIST_STATUSES).map(([id, label]) => (
-                <option key={id} value={id}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <select aria-label="Loại lệnh" value={orderType} onChange={event => setOrderType(event.target.value)}>
-              <option value="all">Tất cả lệnh</option>
-              <option value="managed">Lệnh mới</option>
-              <option value="legacy">Lệnh cũ{legacyCount ? ` (${legacyCount})` : ''}</option>
-            </select>
+            <DataFilterButton activeCount={activeFilterCount} open={showFilters} onClick={() => setShowFilters(true)} />
             {canCreate && (
               <button
                 className="btn btn-primary"
@@ -938,6 +940,50 @@ export function ProductionOrderWorkspace({
               </button>
             )}
           </div>
+          <DataFilterChipBar
+            chips={[
+              ...statusFilters.map(value => ({
+                id: `status:${value}`,
+                label: LIST_STATUSES[value] || value,
+                onRemove: () => setStatusFilters(current => current.filter(item => item !== value))
+              })),
+              ...orderTypeFilters.map(value => ({
+                id: `type:${value}`,
+                label: orderTypeOptions.find(option => option.value === value)?.label || value,
+                onRemove: () => setOrderTypeFilters(current => current.filter(item => item !== value))
+              }))
+            ]}
+            onClear={() => {
+              setStatusFilters([]);
+              setOrderTypeFilters([]);
+            }}
+          />
+          <DataFilterPanel
+            open={showFilters}
+            title="Lọc lệnh sản xuất"
+            description="Lọc theo trạng thái và loại lệnh."
+            activeCount={activeFilterCount}
+            onClose={() => setShowFilters(false)}
+            onReset={() => {
+              setStatusFilters([]);
+              setOrderTypeFilters([]);
+            }}
+          >
+            <DataFilterSection title="Trạng thái" selectedCount={statusFilters.length} defaultExpanded>
+              <DataFilterCheckboxGroup
+                options={statusOptions}
+                selectedValues={statusFilters}
+                onChange={setStatusFilters}
+              />
+            </DataFilterSection>
+            <DataFilterSection title="Loại lệnh" selectedCount={orderTypeFilters.length} defaultExpanded>
+              <DataFilterCheckboxGroup
+                options={orderTypeOptions}
+                selectedValues={orderTypeFilters}
+                onChange={setOrderTypeFilters}
+              />
+            </DataFilterSection>
+          </DataFilterPanel>
           <div className="lsx-list-frame">
             <div className="table-container erp-primary-data-table">
               <table className="lsx-list" data-resize-key="production-orders">
