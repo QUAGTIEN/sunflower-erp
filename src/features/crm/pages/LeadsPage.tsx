@@ -1212,7 +1212,7 @@ export const Leads: React.FC<LeadsProps> = ({
       );
       return;
     }
-    if (!window.confirm(`Mở biểu mẫu khách hàng và đơn đầu tiên cho "${lead.companyName}"?`)) return;
+    if (!window.confirm(`Mở hồ sơ khách hàng cho "${lead.companyName}"? Đơn hàng đầu tiên có thể tạo sau.`)) return;
     onConvertLead(lead);
   };
 

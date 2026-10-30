@@ -57,7 +57,7 @@ import { InlineEntityFieldManager } from '@/components/InlineEntityFieldManager'
 import { useEntityFieldDefinitions } from '@/hooks/useEntityFieldDefinitions';
 import { useSystemFieldConfiguration } from '@/hooks/useSystemFieldConfiguration';
 import { getMissingRequiredEntityFields, type EntityCustomFieldValues } from '@/features/crm/model/entityFieldConfig';
-import { createCustomerOnboardingItem } from '@/features/crm/model/customerOnboardingItem';
+import { createCustomerOnboardingItem, splitOnboardingItems } from '@/features/crm/model/customerOnboardingItem';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
 import {
@@ -820,15 +820,15 @@ export const Crm: React.FC<CrmProps> = ({
           return;
         }
 
-        const normalizedItems = onboardingItems.map((item, index) =>
-          normalizePendingOrderItem(withCalculatedPOFinancials(item), index)
+        const { products, orderItems, incomplete } = splitOnboardingItems(
+          onboardingItems.map((item, index) => normalizePendingOrderItem(withCalculatedPOFinancials(item), index))
         );
-        const duplicateCodes = normalizedItems
+        const duplicateCodes = products
           .map(item => item.productCode.trim().toLocaleLowerCase('vi-VN'))
           .filter((code, index, codes) => code && codes.indexOf(code) !== index);
 
-        if (normalizedItems.some(item => !item.productCode.trim() || !item.productName.trim() || item.quantity <= 0)) {
-          alert(t('Vui lòng nhập đủ mã hàng, tên hàng và số lượng lớn hơn 0.'));
+        if (incomplete) {
+          alert(t('Vui lòng nhập đủ mã hàng và tên hàng, hoặc để trống cả dòng nếu chưa có mã sản phẩm.'));
           return;
         }
         if (duplicateCodes.length > 0) {
@@ -836,14 +836,14 @@ export const Crm: React.FC<CrmProps> = ({
           return;
         }
 
-        const itemFinancials = normalizedItems.map(item => calculatePOItemFinancials(item));
+        const itemFinancials = orderItems.map(item => calculatePOItemFinancials(item));
         const pendingOrderDraft: CustomerPendingOrderDraft | null =
-          normalizedItems.length > 0
+          orderItems.length > 0
             ? {
                 customerPoCode: onboardingCustomerPoCode.trim(),
                 expectedDeliveryDate: onboardingExpectedDeliveryDate,
                 notes: onboardingOrderNotes.trim(),
-                items: normalizedItems,
+                items: orderItems,
                 links: {},
                 totalAmount: itemFinancials.reduce((total, item) => total + item.amountBeforeVat, 0),
                 discountAmount: itemFinancials.reduce((total, item) => total + item.discountAmount, 0),
@@ -856,7 +856,7 @@ export const Crm: React.FC<CrmProps> = ({
 
         const createdCustomer = await dbService.addDocument(
           'customers',
-          buildNewCustomerPayload(pendingOrderDraft, mapPreparedItemsToProducts(normalizedItems))
+          buildNewCustomerPayload(pendingOrderDraft, mapPreparedItemsToProducts(products))
         );
 
         auditService.recordSafely(currentUser, {
@@ -3139,14 +3139,14 @@ export const Crm: React.FC<CrmProps> = ({
             <div className="customer-onboarding-header">
               <div>
                 <span className="customer-onboarding-step">
-                  {onboardingSourceLead ? 'CHUYỂN ĐỔI LEAD · HỒ SƠ & ĐƠN ĐẦU TIÊN' : 'HỒ SƠ KHÁCH HÀNG & MÃ HÀNG'}
+                  {onboardingSourceLead ? 'CHUYỂN ĐỔI LEAD · HỒ SƠ KHÁCH HÀNG' : 'HỒ SƠ KHÁCH HÀNG & MÃ HÀNG'}
                 </span>
                 <h2>
                   {onboardingSourceLead ? `TẠO KHÁCH HÀNG: ${onboardingSourceLead.companyName}` : 'THÊM KHÁCH HÀNG MỚI'}
                 </h2>
                 <p>
                   {onboardingSourceLead
-                    ? 'Thông tin từ Lead đã được điền sẵn. Hoàn thiện cùng bộ dữ liệu như khách hàng đặt trực tiếp.'
+                    ? 'Thông tin từ Lead đã được điền sẵn. Mã sản phẩm và đơn đầu tiên có thể để trống, bổ sung sau.'
                     : 'Nhập hồ sơ, mã hàng và thông tin đơn đầu tiên ngay trên cùng một biểu mẫu.'}
                 </p>
               </div>

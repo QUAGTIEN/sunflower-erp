@@ -31,3 +31,16 @@ export const createCustomerOnboardingItem = (
   files: [],
   previewImages: []
 });
+
+/**
+ * Splits the onboarding rows: a lead becomes a customer without a first order, so untouched rows are dropped, rows with
+ * a code and a name become the customer's product codes, and only those with a quantity go into the first order.
+ */
+export function splitOnboardingItems(items: CustomerPendingOrderItem[]) {
+  const filled = items.filter(item => item.productCode.trim() || item.productName.trim());
+  return {
+    products: filled,
+    orderItems: filled.filter(item => Number(item.quantity) > 0),
+    incomplete: filled.some(item => !item.productCode.trim() || !item.productName.trim())
+  };
+}

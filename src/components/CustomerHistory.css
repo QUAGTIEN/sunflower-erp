@@ -2206,6 +2206,12 @@
   white-space: nowrap;
 }
 
+.crm-business-result.is-empty strong,
+.crm-business-result.is-empty span {
+  color: #b42318;
+  font-weight: 600;
+}
+
 .waiting-days-badge.is-overdue {
   border-color: #fed7aa;
   color: #c2410c;

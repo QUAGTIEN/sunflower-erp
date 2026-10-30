@@ -417,15 +417,27 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                       {visibleCustomerColumnIds.has('note') && <td key="note">{renderCustomerText(customer.note)}</td>}
                       {visibleCustomerColumnIds.has('businessResult') && (
                         <td key="businessResult">
-                          <div
-                            className="crm-business-result"
-                            title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}
-                          >
-                            <strong>
-                              {customerOrders.length} {t('đơn')}
-                            </strong>
-                            <span className="crm-business-result__value">· {orderValue.toLocaleString('vi-VN')} đ</span>
-                          </div>
+                          {customerOrders.length ? (
+                            <div
+                              className="crm-business-result"
+                              title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}
+                            >
+                              <strong>
+                                {customerOrders.length} {t('đơn')}
+                              </strong>
+                              <span className="crm-business-result__value">
+                                · {orderValue.toLocaleString('vi-VN')} đ
+                              </span>
+                            </div>
+                          ) : (
+                            <div
+                              className="crm-business-result is-empty"
+                              title={t('Khách hàng mới, chưa có đơn hàng. Cần tạo đơn hàng.')}
+                            >
+                              <strong>0 {t('đơn')}</strong>
+                              <span>· {t('Chưa có đơn hàng')}</span>
+                            </div>
+                          )}
                         </td>
                       )}
                       {visibleCustomerCustomFields.map(definition => (

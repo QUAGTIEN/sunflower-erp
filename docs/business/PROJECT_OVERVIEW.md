@@ -360,6 +360,10 @@ Danh mục này giúp lãnh đạo trả lời câu hỏi “nhóm khách nào �
 
 ### 6.2. Tiềm năng → Khách hàng
 
+Chuyển được ngay, không bắt buộc mã sản phẩm hay đơn đầu tiên (quyết định ngày 30/10/2026). Dòng mã hàng để trống bị bỏ
+qua; dòng có mã và tên thành mã sản phẩm của khách; chỉ dòng có số lượng mới vào đơn đầu tiên. Khách chưa có đơn hiện
+"0 đơn · Chưa có đơn hàng" màu đỏ ở cột Kết quả kinh doanh.
+
 Được kế thừa:
 
 - Toàn bộ nhận diện doanh nghiệp, địa bàn, liên hệ, nguồn, nhu cầu và tệp.
