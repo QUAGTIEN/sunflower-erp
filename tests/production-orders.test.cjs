@@ -1190,7 +1190,10 @@ test('LSX editor puts the back button first, drops the subtitle and the detail v
   assert.match(workspace, /<PageBackButton[\s\S]{0,400}?<h2>\{draft\.revision/);
   assert.match(workspace, />\s*Xuất lệnh sản xuất\s*</);
   assert.doesNotMatch(workspace, /In phiếu|label="Xuất PDF"/);
-  assert.match(workspace, /setPrintReady\(true\);[\s\S]{0,400}frame\.contentWindow\?\.print\(\);/);
+  assert.match(workspace, /<PrintPreviewDialog[\s\S]{0,200}html=\{productionPrintHtml\(printOrder\)\}/);
+  const preview = readSource('src/components/PrintPreviewDialog.tsx');
+  assert.match(preview, /setReady\(true\);\s*print\(\);/);
+  assert.match(preview, /contentWindow\?\.print\(\);/);
   const shell = readSource('src/app/AppShell.tsx');
   assert.match(shell, /<ListTodo size=\{16\} \/>\s*<span className="sidebar-item-label">Công việc/);
   assert.match(shell, /<CalendarCheck size=\{16\} \/>\s*<span className="sidebar-item-label">Chấm công/);

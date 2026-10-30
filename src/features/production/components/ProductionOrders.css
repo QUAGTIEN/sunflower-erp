@@ -232,33 +232,6 @@
   max-height: 160px;
   object-fit: contain;
 }
-.lsx-print-dialog {
-  position: fixed;
-  inset: 16px;
-  width: calc(100vw - 32px);
-  height: calc(100vh - 32px);
-  max-width: none;
-  max-height: none;
-  margin: 0;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: white;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  z-index: 12000;
-  box-shadow: 0 0 0 100vmax rgb(15 23 42 / 35%);
-}
-.lsx-print-dialog iframe {
-  width: 100%;
-  flex: 1;
-  min-height: 0;
-  border: 1px solid #d8e1ee;
-}
-.lsx-print-dialog::backdrop {
-  background: rgb(15 23 42 / 35%);
-}
 @media (max-width: 900px) {
   .lsx-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));

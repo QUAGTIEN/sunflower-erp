@@ -43,6 +43,7 @@ import {
   type ProductionPrintTemplate
 } from '../model/productionOrder';
 import { productionPrintHtml } from '../model/productionPrint';
+import { PrintPreviewDialog } from '@/components/PrintPreviewDialog';
 import { LsxItemsTable } from './productionOrderEditor/LsxItemsTable';
 import { LsxPoPickerDialog } from './productionOrderEditor/LsxPoPickerDialog';
 import {
@@ -148,7 +149,6 @@ export function ProductionOrderWorkspace({
   const [error, setError] = useState('');
   const [machines, setMachines] = useState<ProductionMachine[]>([]);
   const [printOrder, setPrintOrder] = useState<ProductionOrder | null>(null);
-  const [printReady, setPrintReady] = useState(false);
   const [qc, setQc] = useState<
     Record<string, { goodQuantity: string; rejectQuantity: string; surplusQuantity: string }>
   >({});
@@ -158,17 +158,12 @@ export function ProductionOrderWorkspace({
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogReload, setCatalogReload] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const printFrame = useRef<HTMLIFrameElement>(null);
-  const printDialog = useRef<HTMLDialogElement>(null);
   const request = useRef({ payload: '', id: '' });
   const pending = useRef(false);
   useEffect(() => {
     if (!hasProductionAccess(currentUser, 'production')) return;
     return dbService.subscribeCollection('machines', data => setMachines(data as ProductionMachine[]));
   }, [currentUser]);
-  useEffect(() => {
-    if (printOrder && printDialog.current && !printDialog.current.open) printDialog.current.showModal();
-  }, [printOrder]);
   const draftPoIds = [...new Set((draft?.lines || []).map(line => line.poId))].sort().join(',');
   useEffect(() => {
     if (!draftPoIds) return;
@@ -532,7 +527,6 @@ export function ProductionOrderWorkspace({
               <button
                 className="btn btn-outline"
                 onClick={() => {
-                  setPrintReady(false);
                   setPrintOrder(selected);
                 }}
               >
@@ -1055,52 +1049,12 @@ export function ProductionOrderWorkspace({
         </>
       )}
       {printOrder && (
-        <dialog
-          ref={printDialog}
-          className="lsx-print-dialog"
-          aria-labelledby="lsx-print-title"
-          onCancel={event => {
-            event.preventDefault();
-            setPrintOrder(null);
-          }}
-        >
-          <header className="lsx-heading">
-            <h2 id="lsx-print-title">Xem phiếu in — {printOrder.lsxCode}</h2>
-            <div className="lsx-actions">
-              <button className="btn btn-outline" onClick={() => setPrintOrder(null)}>
-                Đóng
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={!printReady}
-                onClick={() => {
-                  printFrame.current?.contentWindow?.focus();
-                  printFrame.current?.contentWindow?.print();
-                }}
-              >
-                In / lưu PDF
-              </button>
-            </div>
-          </header>
-          <iframe
-            ref={printFrame}
-            title="Phiếu lệnh sản xuất"
-            sandbox="allow-same-origin allow-modals"
-            srcDoc={productionPrintHtml(printOrder)}
-            onLoad={event => {
-              const fonts = event.currentTarget.contentDocument?.fonts;
-              const frame = event.currentTarget;
-              const markReady = () => {
-                setPrintReady(true);
-                // Export opens the browser print dialog once the sheet is ready, where the user picks "Save as PDF".
-                frame.contentWindow?.focus();
-                frame.contentWindow?.print();
-              };
-              if (fonts) void fonts.ready.then(markReady);
-              else markReady();
-            }}
-          />
-        </dialog>
+        <PrintPreviewDialog
+          title={`Xem phiếu in — ${printOrder.lsxCode}`}
+          frameTitle="Phiếu lệnh sản xuất"
+          html={productionPrintHtml(printOrder)}
+          onClose={() => setPrintOrder(null)}
+        />
       )}
     </section>
   );

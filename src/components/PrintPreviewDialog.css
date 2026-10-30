@@ -1,0 +1,43 @@
+.erp-print-dialog {
+  position: fixed;
+  inset: 16px;
+  width: calc(100vw - 32px);
+  height: calc(100vh - 32px);
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  z-index: 12000;
+  box-shadow: 0 0 0 100vmax rgb(15 23 42 / 35%);
+}
+.erp-print-dialog::backdrop {
+  background: rgb(15 23 42 / 35%);
+}
+.erp-print-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.erp-print-dialog__header h2 {
+  margin: 0;
+  color: var(--color-primary, #172554);
+  font-size: 18px;
+}
+.erp-print-dialog__header > div {
+  display: flex;
+  gap: 8px;
+}
+.erp-print-dialog iframe {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid #d8e1ee;
+}
