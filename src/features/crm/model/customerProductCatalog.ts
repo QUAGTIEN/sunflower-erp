@@ -77,6 +77,7 @@ export function getCustomerProductOrderHistory(product: CustomerProductRecord, o
   let totalQuantity = 0;
   let lastPoId = '';
   let lastPoCode = '';
+  let lastOrderDate = '';
   let latest = -1;
   for (const order of orders) {
     if (order.deleted === true) continue;
@@ -99,10 +100,74 @@ export function getCustomerProductOrderHistory(product: CustomerProductRecord, o
       latest = timestamp;
       lastPoId = String(order.id || '');
       lastPoCode = String(order.poCode || '');
+      lastOrderDate = String(order.orderDate || order.createdAt || '');
     }
   }
-  return { orderCount, totalQuantity, lastPoId, lastPoCode };
+  return { orderCount, totalQuantity, lastPoId, lastPoCode, lastOrderDate };
 }
+
+/** One customer product in the Mã sản phẩm directory, with that customer's own order history for it. */
+export interface ProductDirectoryRow {
+  key: string;
+  customer: CustomerRecord;
+  product: CustomerProductRecord;
+  productTypeName: string;
+  orderCount: number;
+  totalQuantity: number;
+  lastPoId: string;
+  lastPoCode: string;
+  lastOrderDate: string;
+}
+
+/**
+ * Every product code created in the customers' profiles. A product only counts the orders of its own customer, so two
+ * customers using the same code stay two rows and are never merged by code. Codes are listed together, the customer
+ * who ordered the most first, so a search on one code shows at once who uses it and who buys most.
+ */
+export function buildProductDirectory(
+  customers: CustomerRecord[],
+  orders: Array<Record<string, unknown>>
+): ProductDirectoryRow[] {
+  const ordersByCustomer = new Map<string, Array<Record<string, unknown>>>();
+  for (const order of orders) {
+    const customerId = String(order.customerId || '');
+    if (!customerId || order.deleted === true) continue;
+    ordersByCustomer.set(customerId, [...(ordersByCustomer.get(customerId) || []), order]);
+  }
+  const typeNames = new Map(CUSTOMER_PRODUCT_TYPES.map(type => [type.id, type.name]));
+  return customers
+    .filter(customer => customer.deleted !== true)
+    .flatMap(customer =>
+      getActiveCustomerProducts(customer).map(product => ({
+        key: `${customer.id}:${product.id}`,
+        customer,
+        product,
+        productTypeName: typeNames.get(product.productType) || '',
+        ...getCustomerProductOrderHistory(product, ordersByCustomer.get(customer.id) || [])
+      }))
+    )
+    .sort(
+      (left, right) =>
+        normalizeProductCode(left.product.productCode).localeCompare(normalizeProductCode(right.product.productCode)) ||
+        right.totalQuantity - left.totalQuantity
+    );
+}
+
+/** Search across code, former codes, product name and customer, as one types a code to see who uses it. */
+export const productDirectoryMatches = (row: ProductDirectoryRow, search: string) => {
+  const needle = search.trim().toLocaleLowerCase('vi-VN');
+  if (!needle) return true;
+  return [
+    ...getCustomerProductCodes(row.product),
+    row.product.productName,
+    row.customer.companyName,
+    row.customer.customerCode
+  ].some(value =>
+    String(value || '')
+      .toLocaleLowerCase('vi-VN')
+      .includes(needle)
+  );
+};
 export const canManageCustomerProducts = (
   user: Pick<UserProfile, 'uid' | 'role' | 'active'>,
   customer: Pick<CustomerRecord, 'assignedSaleId' | 'deleted'>

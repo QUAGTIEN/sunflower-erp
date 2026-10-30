@@ -133,7 +133,8 @@ test('a product history follows its stable id and legacy codes without changing 
     orderCount: 2,
     totalQuantity: 350,
     lastPoId: 'po2',
-    lastPoCode: 'PO2'
+    lastPoCode: 'PO2',
+    lastOrderDate: '2026-10-01'
   });
   assert.deepEqual(orders, original);
 });

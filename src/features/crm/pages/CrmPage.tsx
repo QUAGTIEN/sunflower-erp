@@ -12,6 +12,7 @@ import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
 import { useLanguage } from '@/context/LanguageContext';
 import { CustomerOverview } from '@/features/crm/components/CustomerOverview';
+import { CustomerProductDirectory } from '@/features/crm/components/CustomerProductDirectory';
 import { CustomerOnboardingItems } from '@/features/crm/components/CustomerOnboardingItems';
 import { BusinessLocationFields } from '@/features/crm/components/BusinessLocationFields';
 import { CustomerProductEditor } from '@/features/crm/components/CustomerProductEditor';
@@ -30,7 +31,9 @@ import { CustomerContractDialog } from '@/features/crm/components/CustomerContra
 import { updateCustomerProduct } from '@/features/crm/api/customerProductService';
 import {
   getCustomerProductCodes,
+  buildProductDirectory,
   getCustomerProductOrderHistory,
+  productDirectoryMatches,
   getCustomerProductSize,
   getCustomerProductVersion,
   hasCustomerProductCode,
@@ -154,6 +157,7 @@ export const Crm: React.FC<CrmProps> = ({
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
   const inlineSystemFieldConfiguration = useSystemFieldConfiguration('customers');
   const [filterType, setFilterType] = useState<CrmListFilter>('overview');
+  const [productSearch, setProductSearch] = useState('');
 
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const [storedCustomerFilterDefinitions, setStoredCustomerFilterDefinitions] = useState<CustomerFilterDefinition[]>(
@@ -1869,6 +1873,8 @@ export const Crm: React.FC<CrmProps> = ({
       (currentUser.role !== 'sale' || !customer.assignedSaleId || customer.assignedSaleId === currentUser.uid)
   );
   const accessibleCustomerIds = new Set(accessibleCustomers.map(customer => customer.id));
+  const productDirectory = buildProductDirectory(accessibleCustomers, pos);
+  const visibleProductDirectory = productDirectory.filter(row => productDirectoryMatches(row, productSearch));
   const customerMaterialsById = useMemo(() => buildCustomerMaterialHistory(pos), [pos]);
   const customerSamplesById = useMemo(() => buildCustomerOrderedSampleHistory(pos), [pos]);
 
@@ -2709,7 +2715,15 @@ export const Crm: React.FC<CrmProps> = ({
     <SystemFieldSurface table="customers" className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
       <PageContextHeader
         section={t('Khách hàng')}
-        current={selectedCustomer ? t('Chi tiết khách hàng') : filterType === 'overview' ? 'Tổng quan' : t('Tất cả')}
+        current={
+          selectedCustomer
+            ? t('Chi tiết khách hàng')
+            : filterType === 'overview'
+              ? 'Tổng quan'
+              : filterType === 'products'
+                ? 'Mã sản phẩm'
+                : t('Tất cả')
+        }
       />
 
       {currentUser.role === 'admin' &&
@@ -2866,8 +2880,29 @@ export const Crm: React.FC<CrmProps> = ({
               >
                 <span>{t('Tất cả')}</span>
               </button>
+              <button
+                type="button"
+                className={`crm-list-tab ${filterType === 'products' ? 'is-active' : ''}`}
+                onClick={() => setFilterType('products')}
+                role="tab"
+                aria-selected={filterType === 'products'}
+              >
+                Mã sản phẩm
+              </button>
             </div>
             <div className="crm-list-toolbar">
+              {filterType === 'products' && (
+                <div className="crm-list-search">
+                  <Search size={16} />
+                  <input
+                    type="search"
+                    aria-label="Tìm mã sản phẩm"
+                    placeholder="Tìm mã sản phẩm, tên sản phẩm hoặc khách hàng..."
+                    value={productSearch}
+                    onChange={event => setProductSearch(event.target.value)}
+                  />
+                </div>
+              )}
               {filterType === 'all' && (
                 <>
                   <div className="crm-list-search">
@@ -2926,6 +2961,12 @@ export const Crm: React.FC<CrmProps> = ({
               orders={pos}
               invoices={invoices}
               provinceByCustomerId={provinceByCustomerId}
+              onOpenCustomer={openCustomerDetail}
+            />
+          ) : filterType === 'products' ? (
+            <CustomerProductDirectory
+              rows={visibleProductDirectory}
+              totalCount={productDirectory.length}
               onOpenCustomer={openCustomerDetail}
             />
           ) : (

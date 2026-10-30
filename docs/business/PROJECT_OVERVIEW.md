@@ -188,6 +188,10 @@ Khách hàng là hồ sơ doanh nghiệp chính thức sau chuyển đổi, dùn
 Chức năng chính:
 
 - Trang Tổng quan theo dõi khách hàng theo địa bàn, hoạt động mua hàng và các chỉ số liên quan.
+- Tab **Mã sản phẩm** gom mọi mã sản phẩm đã tạo trong hồ sơ các khách mà người xem được mở: mã, tên, khách hàng, loại,
+  chất liệu, quy cách, ĐVT, số đơn, số lượng đã đặt, đơn gần nhất. Tìm theo mã (cả mã cũ), tên hoặc khách để biết khách nào
+  đang dùng; cùng một mã ở hai khách là hai dòng, khách đặt nhiều đứng trước. Số đơn và số lượng chỉ tính đơn của chính
+  khách đó. Bấm dòng để mở hồ sơ khách.
 - Quản lý hồ sơ doanh nghiệp, mã khách hàng, hạng khách hàng, mã số thuế và Sale phụ trách.
 - Quản lý địa bàn và địa chỉ giao hàng.
 - Quản lý nhiều đầu mối liên hệ, số điện thoại mua hàng, kho và email.

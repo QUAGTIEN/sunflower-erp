@@ -18,7 +18,7 @@ export const DOCUMENT_REPOSITORY_FOLDER_IDS: Record<string, string> = {
   other: 'other'
 };
 
-export type CrmListFilter = 'overview' | 'all';
+export type CrmListFilter = 'overview' | 'all' | 'products';
 export type CrmTimeFilter = 'last_30_days' | 'last_90_days' | 'this_year' | 'no_orders';
 
 export interface CrmFilterOption {

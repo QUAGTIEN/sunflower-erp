@@ -1,0 +1,42 @@
+/* Mã sản phẩm: one row per customer product, code first, the name column takes the remaining width. */
+.customer-product-directory {
+  display: grid;
+  min-width: 0;
+}
+.customer-product-directory-table {
+  min-width: 1180px;
+  table-layout: fixed;
+}
+.customer-product-directory-table th:nth-child(1) {
+  width: 140px;
+}
+.customer-product-directory-table th:nth-child(3) {
+  width: 200px;
+}
+.customer-product-directory-table th:nth-child(4),
+.customer-product-directory-table th:nth-child(5),
+.customer-product-directory-table th:nth-child(6) {
+  width: 130px;
+}
+.customer-product-directory-table th:nth-child(7) {
+  width: 64px;
+}
+.customer-product-directory-table th:nth-child(8),
+.customer-product-directory-table th:nth-child(9) {
+  width: 96px;
+}
+.customer-product-directory-table th:nth-child(10) {
+  width: 180px;
+}
+.customer-product-directory-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customer-product-directory-row {
+  cursor: pointer;
+}
+.customer-product-directory .customer-product-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
