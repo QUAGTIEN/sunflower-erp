@@ -196,7 +196,12 @@ export function ProductionOrderWorkspace({
   useEffect(() => {
     if (!draft && !busy) return;
     const unregister = registerNavigationGuard(
-      () => !busy && window.confirm('LSX đang có dữ liệu chưa lưu. Bạn có muốn rời trang?')
+      () => !busy && window.confirm('LSX đang có dữ liệu chưa lưu. Bạn có muốn rời trang?'),
+      () => {
+        setPickerOpen(false);
+        setDraft(null);
+        setError('');
+      }
     );
     const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', beforeUnload);

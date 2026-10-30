@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
-const { createLoader: loader } = require('./helpers/loadTs.cjs');
+const { createLoader: loader, readSource } = require('./helpers/loadTs.cjs');
 const model = loader()('src/features/catalog/model/itemCatalog.ts');
 const admin = { uid: 'admin1', displayName: 'Admin', role: 'admin', active: true, allowedPages: [] };
 const accountant = {
@@ -657,6 +657,34 @@ test('unsaved-input navigation guards block leaving and are removed on cleanup',
   assert.equal(guard.confirmAppNavigation(), false);
   unregister();
   assert.equal(guard.confirmAppNavigation(), true);
+});
+test('a guard the user agreed to leave discards its input, so later navigations do not ask again', () => {
+  const guard = loader()('src/shared/feedback/navigationGuard.ts');
+  const discarded = [];
+  let unregisterLsx = () => {};
+  unregisterLsx = guard.registerNavigationGuard(
+    () => true,
+    () => {
+      discarded.push('lsx');
+      unregisterLsx();
+    }
+  );
+  const unregisterBusy = guard.registerNavigationGuard(
+    () => false,
+    () => discarded.push('busy')
+  );
+  assert.equal(guard.confirmAppNavigation(), false);
+  assert.deepEqual(discarded, [], 'nothing is discarded while another form still blocks leaving');
+  unregisterBusy();
+  assert.equal(guard.confirmAppNavigation(), true);
+  assert.deepEqual(discarded, ['lsx']);
+  assert.equal(guard.confirmAppNavigation(), true, 'the discarded form no longer guards navigation');
+  assert.deepEqual(discarded, ['lsx']);
+  const workspace = readSource('src/features/production/components/ProductionOrderWorkspace.tsx');
+  assert.match(
+    workspace,
+    /registerNavigationGuard\([\s\S]*?window\.confirm\([^)]*\),\s*\(\)\s*=>\s*\{\s*setPickerOpen\(false\);\s*setDraft\(null\);/
+  );
 });
 test('changing a mapping retains its previous and next values in the immutable audit trail', async () => {
   const b = backend();
