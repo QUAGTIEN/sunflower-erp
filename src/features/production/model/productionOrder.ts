@@ -63,7 +63,8 @@ export interface ProductionCatalogSnapshot {
 }
 export const PRODUCTION_PRINT_TEMPLATES = {
   standard: 'Phiếu chung hiện có',
-  white_label: 'Tem trắng — mẫu công ty'
+  white_label: 'Tem trắng — mẫu công ty',
+  production_order: 'Lệnh sản xuất — mẫu A4 chuẩn'
 } as const;
 export interface ProductionPrintTemplate {
   id: keyof typeof PRODUCTION_PRINT_TEMPLATES;
@@ -72,7 +73,8 @@ export interface ProductionPrintTemplate {
 /** Print layouts are versioned so a reprint of an older order keeps the layout it was issued with. */
 export const PRODUCTION_PRINT_VERSIONS: Record<ProductionPrintTemplate['id'], number[]> = {
   standard: [1],
-  white_label: [1, 2]
+  white_label: [1, 2],
+  production_order: [1]
 };
 export const DEFAULT_PRINT_TEMPLATE: ProductionPrintTemplate = { id: 'white_label', version: 2 };
 export interface PlannedMaterial {

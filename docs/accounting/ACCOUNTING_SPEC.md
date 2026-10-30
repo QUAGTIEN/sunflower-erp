@@ -109,6 +109,17 @@ Chấp nhận dấu phẩy, chấm phẩy hoặc tab; dấu nháy CSV và ghi ch
 - Chia nội dung theo 6 dòng sản phẩm/5 dòng vật tư mỗi tờ; ghi chú dài có trang bổ sung, không bỏ dữ liệu. Bản nháp/chờ duyệt/hủy có dấu cảnh báo không dùng triển khai sản xuất.
 - Các ô cấp kho, thừa/thiếu và ký xác nhận để trống để ghi nhận theo chứng từ thực tế. Không điền số 0 giả, không coi mẫu in là phiếu kho đã ghi sổ. In không đổi trạng thái, tồn kho hay công nợ.
 
+### Mẫu lệnh sản xuất A4 chuẩn
+
+- **Lệnh sản xuất — mẫu A4 chuẩn v1** (`printTemplate: {id: production_order, version: 1}`), bố cục theo mẫu tham chiếu
+  người dùng gửi ngày 30/10/2026: đầu phiếu công ty, số phiếu/lần sửa đổi, ngày ban hành, bảng thành phẩm (mã, tên, quy
+  cách, ĐVT, số lượng, khách, đơn hàng), vật tư dự kiến kèm cột SL lĩnh thực tế để trống, yêu cầu kỹ thuật, ghi chú và ký
+  Người lập lệnh / Giám đốc sản xuất / Trưởng phòng KHSX.
+- Dòng tổng chỉ cộng khi mọi dòng cùng ĐVT; không quy đổi đơn vị. Định mức vật tư theo từng thành phẩm/công đoạn chưa có
+  trong dữ liệu lệnh nên vật tư in theo cả lệnh.
+- Đầu phiếu dùng chung `src/shared/print/printSheet.ts`. Địa chỉ, điện thoại, MST công ty chưa được người dùng cung cấp
+  nên in dòng chấm để điền tay. Xuất PDF qua hộp thoại in của trình duyệt ("Lưu dưới dạng PDF").
+
 ## Hợp đồng lượt 3 — sổ số lượng NVL
 
 Đã triển khai mã nguồn theo quyết định người dùng tại `ACCOUNTING_DECISIONS.md`; chi tiết collection, API, quyền, kiểm tra và giới hạn tại `WAREHOUSE.md`.

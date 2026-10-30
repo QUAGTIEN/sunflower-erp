@@ -1137,6 +1137,46 @@ test('multi-page white-label prints retain all lines, materials and full long no
   assert.ok(html.includes('PHẦN-CUỐI-GHI-CHÚ'));
   assert.ok(html.includes('Trang 4 / 4'));
 });
+test('the A4 production order sheet lists every line and material with signatures and no unit conversion', async () => {
+  const b = backend();
+  await b.manage(draft({ printTemplate: { id: 'production_order', version: 1 } }));
+  const print = loader()('src/features/production/model/productionPrint.ts');
+  const order = b.order();
+  assert.deepEqual(order.printTemplate, { id: 'production_order', version: 1 });
+  const html = print.productionPrintHtml({
+    ...order,
+    technicalNotes: 'Bế sát mép',
+    lines: [
+      { ...order.lines[0], productCode: 'TP-AQUA-001', unit: 'cái', quantity: 10000 },
+      { ...order.lines[0], productCode: 'TP-AQUA-002', unit: 'cái', quantity: 20000 }
+    ]
+  });
+  for (const label of [
+    'LỆNH SẢN XUẤT',
+    'Ngày ban hành',
+    'TP-AQUA-001',
+    'TP-AQUA-002',
+    '30.000',
+    'Vật tư dự kiến sử dụng',
+    'SL lĩnh thực tế',
+    'Bế sát mép',
+    'Người lập lệnh',
+    'Giám đốc sản xuất',
+    'Trưởng phòng KHSX',
+    'KHÔNG DÙNG ĐỂ TRIỂN KHAI'
+  ])
+    assert.ok(html.includes(label), label);
+  const mixedUnits = print.productionPrintHtml({
+    ...order,
+    lines: [
+      { ...order.lines[0], unit: 'cái', quantity: 10 },
+      { ...order.lines[0], unit: 'cuộn', quantity: 5 }
+    ]
+  });
+  assert.match(mixedUnits, /Tổng cộng<\/td><td class="num"><\/td>/, 'cái and cuộn are never added together');
+  const unsafe = print.productionPrintHtml({ ...order, notes: '<script>alert(1)</script>' });
+  assert.ok(!unsafe.includes('<script>alert'));
+});
 test('read-only machine subscriptions do not initialize machine records for accounting', () => {
   let writes = 0;
   const service = loader({

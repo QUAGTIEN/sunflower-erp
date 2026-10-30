@@ -1,6 +1,7 @@
 import { PRODUCTION_STATUSES, type ProductionOrder } from './productionOrder';
 import { whiteLabelPrintHtml } from './whiteLabelPrint';
 import { companyOrderSheetHtml } from './companyOrderSheet';
+import { productionOrderSheetHtml } from './productionOrderSheet';
 const escape = (value: unknown) =>
   String(value ?? '').replace(
     /[&<>"']/g,
@@ -8,6 +9,7 @@ const escape = (value: unknown) =>
   );
 const quantity = (value: number | undefined) => (value === undefined ? '—' : value.toLocaleString('vi-VN'));
 export function productionPrintHtml(order: ProductionOrder) {
+  if (order.printTemplate?.id === 'production_order') return productionOrderSheetHtml(order);
   if (order.printTemplate?.id === 'white_label' && order.printTemplate.version === 2)
     return companyOrderSheetHtml(order);
   if (order.printTemplate?.id === 'white_label' && order.printTemplate.version === 1) return whiteLabelPrintHtml(order);
