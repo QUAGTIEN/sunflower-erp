@@ -736,3 +736,55 @@ test('D-MA1: the server issues item codes by series and reserves a customer shor
   assert.equal((customers.match(/'shortCode', 'shortCodeSetAt', 'shortCodeSetById'/g) || []).length, 2);
   assert.doesNotMatch(rules, /match \/(catalog_counters|customer_short_codes)\//, 'both stay server-only');
 });
+
+test('D-DAO1: dies get DAO codes from the catalog API, retries never duplicate and edits check the revision', async () => {
+  const dies = loader()('src/features/catalog/model/dieCatalog.ts');
+  const die = {
+    name: 'Dao tem 40×30',
+    cylinderType: 'R',
+    cylinderSize: 100,
+    labelWidth: 40,
+    labelHeight: 30,
+    corner: 'rounded',
+    cornerRadius: 2,
+    perforated: true,
+    labelsAcross: 4,
+    labelsAround: 2,
+    gapAcross: 3,
+    gapAround: 2.5,
+    storageLocation: 'Tủ A',
+    notes: ''
+  };
+  assert.throws(() => dies.validateDieInput({ ...die, labelsAcross: 1.5 }), /số nguyên/);
+  assert.throws(() => dies.validateDieInput({ ...die, cylinderType: 'X' }), /dao tròn/);
+  assert.equal(dies.validateDieInput({ ...die, corner: 'square', cornerRadius: 9 }).cornerRadius, 0);
+  assert.equal(dies.dieCylinderLabel(die), 'R100');
+  assert.equal(dies.dieCylinderLabel({ cylinderType: 'D', cylinderSize: 100 }), '100D');
+  assert.equal(dies.dieLayoutLabel(die), '4 ngang × 2 dọc');
+
+  const b = backend();
+  const body = { action: 'die_create', die, requestId: 'die-req-1' };
+  const first = await b.manage(body);
+  const retried = await b.manage(body);
+  assert.equal(first.code, 'DAO-0001');
+  assert.deepEqual(retried, first, 'a retried request answers the same die');
+  assert.equal((await b.manage({ ...body, requestId: 'die-req-2' })).code, 'DAO-0002');
+  const stored = b.store.get('die_catalog/DAO-0001');
+  assert.equal(stored.revision, 1);
+  assert.equal(stored.active, true);
+
+  const edit = extra => b.manage({ action: 'die_update', id: 'DAO-0001', die: { ...die, labelsAcross: 5 }, ...extra });
+  await assert.rejects(edit({ expectedRevision: 0, active: true, requestId: 'die-req-3' }), /vừa được cập nhật/);
+  await edit({ expectedRevision: 1, active: false, requestId: 'die-req-4' });
+  assert.equal(b.store.get('die_catalog/DAO-0001').labelsAcross, 5);
+  assert.equal(b.store.get('die_catalog/DAO-0001').active, false);
+  assert.equal(b.store.get('die_catalog/DAO-0001').code, 'DAO-0001', 'the code never changes');
+  const sale = { uid: 'sale1', displayName: 'Sale', role: 'sale', active: true, allowedPages: ['crm', 'inventory'] };
+  await assert.rejects(b.manage({ ...body, requestId: 'die-req-5' }, sale), error => error.status === 403);
+
+  const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
+  assert.match(
+    rules,
+    /match \/die_catalog\/\{documentId\} \{\s*allow read: if canManageItemCatalog\(\) \|\| canReadWarehouse\(\);\s*allow write: if false;/
+  );
+});

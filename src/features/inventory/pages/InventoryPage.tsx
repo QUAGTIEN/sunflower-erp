@@ -54,10 +54,12 @@ import {
 import { GOODS_KINDS, type GoodsVoucher } from '../model/finishedGoods';
 import { WarehouseVoucherDialog } from '../components/WarehouseVoucherDialog';
 import { GoodsVoucherDialog, type GoodsDialogOptions } from '../components/GoodsVoucherDialog';
+import { DieCatalogWorkspace } from '../components/DieCatalogWorkspace';
 import '../components/Warehouse.css';
 
 const tabNames = {
   catalog: 'Danh mục vật tư',
+  dies: 'Danh mục dao',
   vouchers: 'Phiếu kho'
 };
 const voucherViewNames = {
@@ -359,7 +361,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
         </div>
       )}
 
-      {!(tab === 'catalog' && activeStock) && (
+      {tab !== 'dies' && !(tab === 'catalog' && activeStock) && (
         <div className="warehouse-toolbar">
           <input
             aria-label="Tìm kiếm kho"
@@ -578,14 +580,16 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
           {error}
         </p>
       )}
-      <LoadingStatus loading={loading} hasData={loaded} label="Đang tải sổ kho" />
+      {tab !== 'dies' && <LoadingStatus loading={loading} hasData={loaded} label="Đang tải sổ kho" />}
       {tab === 'vouchers' && voucherView === 'report' && (!from || !to || from > to) && (
         <p role="alert" className="warehouse-error">
           Chọn khoảng ngày hợp lệ.
         </p>
       )}
 
-      {tab === 'catalog' && activeStock ? (
+      {tab === 'dies' ? (
+        <DieCatalogWorkspace canManage={canManageCatalog && isFirebaseRuntimeEnabled} />
+      ) : tab === 'catalog' && activeStock ? (
         <StockDetails
           key={`${activeStock.warehouseId}-${activeStock.id}`}
           stock={activeStock}

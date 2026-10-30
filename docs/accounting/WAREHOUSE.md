@@ -93,3 +93,16 @@ Quyết định của người dùng ngày 29/10/2026: trang đọc thẳng Fire
 tách hai kho bằng `splitWarehouseLedgers` (số dư cũ không có `warehouseId` thuộc kho NVL). Lần mở sau hiện ngay từ bộ
 nhớ đệm và tự cập nhật khi có phiếu mới; không tải lại toàn bộ sau mỗi lần ghi. Các hộp thoại lập phiếu, thẻ vật tư
 trong LSX và trang Giao hàng vẫn đọc qua `load` của API vì cần danh sách nguồn do máy chủ tính.
+
+## Danh mục dao — quyết định D-DAO1 (30/10/2026)
+
+Người dùng giao Claude tự đặt chi tiết; các lựa chọn dưới đây là mặc định, người dùng có thể sửa.
+
+- Tab **Danh mục dao** trong Kho vật tư. Dao là công cụ, **không có tồn kho**, không vào sổ kho.
+- Mã `DAO-NNNN` do máy chủ cấp (`catalog_counters/DAO`), không đổi. Lưu ở `die_catalog/<mã>`; tạo / sửa qua
+  `/api/catalog/manage` (`die_create`, `die_update`) với `requestId` và `expectedRevision`. Ai quản lý danh mục vật tư
+  thì quản lý dao; người đọc được kho (cả Sản xuất) xem được. Client không ghi trực tiếp.
+- Thông số: tên dao, loại trục **R (dao tròn) / D (dao phẳng)** kèm cỡ trục (số trên dao, ví dụ R100), kích thước tem
+  rộng × cao (mm), góc (bo góc R… mm / vuông góc), răng cưa (có / không), số tem trên một hàng ngang và hàng dọc,
+  khoảng cách giữa các tem ngang và dọc (mm), vị trí cất dao, mô tả đặc thù khác, trạng thái đang dùng / ngừng.
+- Chưa gắn dao vào LSX; đó là bước tiếp theo khi người dùng cần.

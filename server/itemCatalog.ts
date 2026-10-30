@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
+import { manageDie } from './dieCatalog.js';
 import type { DocumentReference, Firestore, Transaction } from 'firebase-admin/firestore';
 import {
   canManageItemCatalog,
@@ -111,6 +112,7 @@ export async function manageItemCatalog(
   if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 250_000)
     throw new AdminApiError(400, 'Yêu cầu quá lớn. Mỗi đợt tối đa 50 mã hàng.');
   const action = body.action;
+  if (action === 'die_create' || action === 'die_update') return manageDie(actor, body);
   if (!['create', 'update', 'import', 'link'].includes(String(action)))
     throw new AdminApiError(400, 'Thao tác danh mục không hợp lệ.');
   const requestId = id(body.requestId);

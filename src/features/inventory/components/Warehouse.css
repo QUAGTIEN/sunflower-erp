@@ -545,3 +545,53 @@
   background: white;
   touch-action: none;
 }
+
+/* Danh mục dao (D-DAO1): one row per die, code first and the name taking the remaining width. */
+.warehouse-workspace table.die-catalog-table {
+  min-width: 1180px;
+  table-layout: fixed;
+}
+.die-catalog-table th:nth-child(1) {
+  width: 104px;
+}
+.die-catalog-table th:nth-child(3),
+.die-catalog-table th:nth-child(6),
+.die-catalog-table th:nth-child(10) {
+  width: 96px;
+}
+.die-catalog-table th:nth-child(4),
+.die-catalog-table th:nth-child(5),
+.die-catalog-table th:nth-child(7),
+.die-catalog-table th:nth-child(8) {
+  width: 132px;
+}
+.die-catalog-table th:nth-child(9) {
+  width: 140px;
+}
+.die-catalog-table th:nth-child(11) {
+  width: 52px;
+}
+.die-catalog-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.die-catalog-table tr.is-muted td {
+  color: #64748b;
+}
+.die-dialog-group {
+  margin: 4px 0 8px;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.die-dialog-notes {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.die-dialog-notes textarea {
+  resize: vertical;
+}

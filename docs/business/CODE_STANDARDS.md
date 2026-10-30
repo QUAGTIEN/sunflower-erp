@@ -13,6 +13,7 @@ không sửa, không dùng lại kể cả khi chứng từ bị hủy hoặc x�
 | Hàng chuẩn / tem trắng | `TC-NNNN` | `TC-0031` |
 | Hàng mua bán lại | `HM-NNNN` | `HM-0004` |
 | Nguyên vật liệu | `NVL-NHÓM-NNN` | `NVL-DCG-001` |
+| Dao cắt (D-DAO1) | `DAO-NNNN` | `DAO-0012` |
 | Yêu cầu mua | `YCM-YYMM-NNNN` | `YCM-2610-0003` |
 | Đơn mua NCC | `DM-YYMM-NNNN` | `DM-2610-0002` |
 | Phiếu nhập kho | `PN-YYMM-NNNN` | `PN-2610-0040` |

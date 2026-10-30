@@ -147,6 +147,11 @@ service cloud.firestore {
       allow read: if canManageItemCatalog() || canReadWarehouse();
       allow write: if false;
     }
+    // Danh mục dao (D-DAO1): written only by the catalog API; producers read it to plan cutting.
+    match /die_catalog/{documentId} {
+      allow read: if canManageItemCatalog() || canReadWarehouse();
+      allow write: if false;
+    }
     match /catalog_requests/{documentId} {
       allow read: if canManageItemCatalog();
       allow write: if false;
