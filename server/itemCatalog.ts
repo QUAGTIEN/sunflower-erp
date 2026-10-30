@@ -1,17 +1,22 @@
 import { createHash } from 'node:crypto';
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
+import type { DocumentReference, Firestore, Transaction } from 'firebase-admin/firestore';
 import {
   canManageItemCatalog,
+  catalogCodeSeries,
   catalogSources,
   conversionFactor,
   normalizeCatalogCode,
   normalizeUnit,
+  formatCatalogCode,
   sourceKey,
+  validateCatalogCodeRequest,
   validateCatalogInput,
   validateCatalogUpdate,
   type CatalogActor,
   type CatalogInput,
+  type CatalogKind,
   type CatalogItem,
   type CatalogLink,
   type CatalogSourceRef
@@ -42,6 +47,62 @@ function sourceRef(value: unknown): CatalogSourceRef {
     throw new AdminApiError(400, 'Nguồn liên kết không hợp lệ.');
   return { type: raw.type!, documentId: raw.documentId, rowKey: raw.rowKey };
 }
+interface CodeWrite {
+  ref: DocumentReference;
+  data: Record<string, unknown>;
+}
+/** Codes typed before D-MA1 may already hold a number of a series; the counter steps over them. */
+const MAX_TAKEN_CODES_SKIPPED = 50;
+
+/**
+ * Issues the next D-MA1 code for a new item inside the catalog transaction. A finished good of one customer needs
+ * that customer's short code; if it has none yet, the short code given here is reserved once and never changes.
+ */
+async function issueCatalogCode(
+  tx: Transaction,
+  firestore: Firestore,
+  kind: CatalogKind,
+  raw: unknown,
+  actorId: string,
+  now: string
+) {
+  const request = validateCatalogCodeRequest(kind, raw);
+  const writes: CodeWrite[] = [];
+  let shortCode = '';
+  if (request.scheme === 'customer') {
+    const customerRef = firestore.collection('customers').doc(id(request.customerId));
+    const customer = await tx.get(customerRef);
+    if (!customer.exists || customer.data()?.deleted) throw new AdminApiError(404, 'Không tìm thấy khách hàng.');
+    shortCode = String(customer.data()?.shortCode || '');
+    if (!shortCode) {
+      if (!request.shortCode)
+        throw new AdminApiError(400, 'Khách hàng chưa có mã viết tắt. Nhập mã viết tắt để cấp mã thành phẩm.');
+      const registryRef = firestore.collection('customer_short_codes').doc(request.shortCode);
+      const registry = await tx.get(registryRef);
+      if (registry.exists && registry.data()?.customerId !== customer.id)
+        throw new AdminApiError(409, `Mã viết tắt ${request.shortCode} đã dùng cho khách hàng khác.`);
+      shortCode = request.shortCode;
+      writes.push(
+        { ref: registryRef, data: { customerId: customer.id, createdAt: now, createdById: actorId } },
+        { ref: customerRef, data: { ...customer.data(), shortCode, shortCodeSetAt: now, shortCodeSetById: actorId } }
+      );
+    }
+  }
+  const series = catalogCodeSeries(request, shortCode);
+  const counterRef = firestore.collection('catalog_counters').doc(series.key);
+  let sequence = Number((await tx.get(counterRef)).data()?.sequence || 0);
+  for (let skipped = 0; skipped < MAX_TAKEN_CODES_SKIPPED; skipped++) {
+    sequence += 1;
+    const code = formatCatalogCode(series, sequence);
+    const taken = await tx.get(firestore.collection('item_catalog').doc(itemId({ code } as CatalogInput)));
+    if (!taken.exists) {
+      writes.push({ ref: counterRef, data: { sequence, updatedAt: now } });
+      return { code, writes };
+    }
+  }
+  throw new AdminApiError(409, `Dãy mã ${series.key} có quá nhiều mã đã nhập tay. Liên hệ Admin để đối soát.`);
+}
+
 export async function manageItemCatalog(
   actor: CatalogActor & { uid: string; displayName: string },
   body: Record<string, unknown>
@@ -66,10 +127,17 @@ export async function manageItemCatalog(
       return acknowledged.data()!.result as { success: boolean; ids: string[]; requestId: string };
     }
     let inputs: CatalogInput[] = [];
+    let codeWrites: CodeWrite[] = [];
     if (action === 'import') {
       if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 50)
         throw new AdminApiError(400, 'Mỗi đợt cần 1–50 mã hàng.');
       inputs = body.items.map(value => validateCatalogInput(value as Record<string, unknown>));
+    } else if (action === 'create' && body.codeRequest !== undefined) {
+      // D-MA1: the server issues the code; whatever code the client sent is ignored.
+      const item = validateCatalogInput(body.item as Record<string, unknown>, { codeIssued: true });
+      const issued = await issueCatalogCode(tx, firestore, item.kind, body.codeRequest, actor.uid, now);
+      inputs = [validateCatalogInput({ ...item, code: issued.code })];
+      codeWrites = issued.writes;
     } else if (action !== 'link') inputs = [validateCatalogInput(body.item as Record<string, unknown>)];
     const ids = inputs.map(itemId);
     if (new Set(ids).size !== ids.length) throw new AdminApiError(400, 'Mã nội bộ trùng trong đợt nhập.');
@@ -153,6 +221,7 @@ export async function manageItemCatalog(
       if (action === 'link') ids.push(target.id);
     }
     // Everything above is read/validate only. Duplicate codes or a stale link abort the entire batch.
+    for (const write of codeWrites) tx.set(write.ref, write.data);
     for (const write of writes)
       tx.set(firestore.collection('item_catalog').doc(write.key), { ...write.item, updatedById: actor.uid });
     if (linkWrite) tx.set(firestore.collection('catalog_links').doc(linkWrite.key), linkWrite.data);

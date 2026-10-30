@@ -89,9 +89,68 @@ const requiredText = (value: unknown, label: string, max: number) => {
     fail(`${label} bắt buộc, tối đa ${max} ký tự và không chứa ký tự điều khiển.`);
   return (value as string).trim();
 };
-export function validateCatalogInput(raw: Record<string, unknown>): CatalogInput {
+/**
+ * D-MA1 item codes, issued by the server: customer-specific finished goods `TP-<short code>-NNN`, standard goods
+ * `TC-NNNN`, resale `HM-NNNN`, materials `NVL-<group>-NNN`. Groups are fixed; adding one needs the user's approval.
+ */
+export const MATERIAL_GROUPS = {
+  DCG: 'Decal giấy',
+  DCN: 'Decal nhiệt',
+  PP: 'Màng PP',
+  PET: 'Màng PET',
+  MUC: 'Mực',
+  RIB: 'Ribbon',
+  KEO: 'Keo',
+  LOI: 'Lõi giấy'
+} as const;
+export type MaterialGroup = keyof typeof MATERIAL_GROUPS;
+export type CatalogCodeRequest =
+  | { scheme: 'customer'; customerId: string; shortCode?: string }
+  | { scheme: 'standard' }
+  | { scheme: 'resale' }
+  | { scheme: 'material'; group: MaterialGroup };
+/** What the user picked in the form to have a new item's code issued; the server issues the number. */
+export interface CatalogCodeChoice {
+  scheme: 'customer' | 'standard';
+  customerId: string;
+  shortCode: string;
+  group: string;
+}
+export const EMPTY_CODE_CHOICE: CatalogCodeChoice = { scheme: 'customer', customerId: '', shortCode: '', group: '' };
+/** A customer's short code: 3–5 capital letters or digits, starting with a letter, without accents. */
+export const CUSTOMER_SHORT_CODE = /^[A-Z][A-Z0-9]{2,4}$/;
+
+export function validateCatalogCodeRequest(kind: CatalogKind, raw: unknown): CatalogCodeRequest {
+  const value = record(raw);
+  if (kind === 'resale') return { scheme: 'resale' };
+  if (kind === 'raw_material') {
+    if (!Object.hasOwn(MATERIAL_GROUPS, String(value.group))) fail('Chọn nhóm NVL để cấp mã.');
+    return { scheme: 'material', group: value.group as MaterialGroup };
+  }
+  if (value.scheme === 'standard') return { scheme: 'standard' };
+  if (value.scheme !== 'customer' || typeof value.customerId !== 'string' || !value.customerId.trim())
+    fail('Chọn khách hàng của thành phẩm, hoặc chọn hàng chuẩn dùng chung.');
+  const shortCode = text(value.shortCode).toUpperCase();
+  if (shortCode && !CUSTOMER_SHORT_CODE.test(shortCode))
+    fail('Mã khách viết tắt gồm 3–5 chữ in hoa hoặc số, bắt đầu bằng chữ, không dấu.');
+  return { scheme: 'customer', customerId: (value.customerId as string).trim(), ...(shortCode ? { shortCode } : {}) };
+}
+/** The counter an item code is numbered from, e.g. `TP-AQUA` with 3 digits or `TC` with 4. */
+export function catalogCodeSeries(request: CatalogCodeRequest, customerShortCode = '') {
+  if (request.scheme === 'customer') return { key: `TP-${customerShortCode}`, width: 3 };
+  if (request.scheme === 'material') return { key: `NVL-${request.group}`, width: 3 };
+  return { key: request.scheme === 'standard' ? 'TC' : 'HM', width: 4 };
+}
+export const formatCatalogCode = (series: { key: string; width: number }, sequence: number) =>
+  `${series.key}-${String(sequence).padStart(series.width, '0')}`;
+
+/** With `codeIssued` the code is left empty for the server to issue under D-MA1; it is checked again there. */
+export function validateCatalogInput(
+  raw: Record<string, unknown>,
+  options: { codeIssued?: boolean } = {}
+): CatalogInput {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) fail('Dữ liệu mã hàng không hợp lệ.');
-  const code = requiredText(raw.code, 'Mã nội bộ', 100);
+  const code = options.codeIssued ? '' : requiredText(raw.code, 'Mã nội bộ', 100);
   const name = requiredText(raw.name, 'Tên hàng', 250);
   if (!Object.hasOwn(CATALOG_KINDS, String(raw.kind))) fail('Chọn nhóm hàng hợp lệ.');
   const baseUnit = normalizeUnit(requiredText(raw.baseUnit, 'ĐVT cơ sở', 40));

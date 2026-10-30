@@ -19,7 +19,10 @@ import {
   parseCatalogCsv,
   previewCatalogImport,
   resolveCatalogSource,
+  EMPTY_CODE_CHOICE,
+  validateCatalogCodeRequest,
   validateCatalogInput,
+  type CatalogCodeChoice,
   type CatalogInput,
   type CatalogItem,
   type CatalogKind,
@@ -27,10 +30,13 @@ import {
   type CatalogSource,
   type CatalogSourceRef
 } from '../model/itemCatalog';
+import { CatalogCodeFields } from './CatalogCodeFields';
 import './ItemCatalog.css';
 
 interface Editor {
   item: CatalogInput;
+  /** How a new item's code is issued (D-MA1); unused when editing an item, whose code never changes. */
+  codeChoice: CatalogCodeChoice;
   conversionText: string;
   previous?: CatalogItem;
   source?: CatalogSource;
@@ -232,9 +238,10 @@ export function ItemCatalogWorkspace({ currentUser }: { currentUser: UserProfile
             notes: previous.notes
           }
         : source
-          ? { ...blankItem(), code: source.code, name: source.name, baseUnit: source.unit }
+          ? { ...blankItem(), name: source.name, baseUnit: source.unit }
           : blankItem(),
       conversionText: previous?.conversions.map(entry => `${entry.unit}:${entry.factor}`).join('\n') || '',
+      codeChoice: EMPTY_CODE_CHOICE,
       previous,
       source,
       active: previous?.active ?? true
@@ -246,12 +253,16 @@ export function ItemCatalogWorkspace({ currentUser }: { currentUser: UserProfile
     event.preventDefault();
     if (!editor) return;
     try {
-      const item = validateCatalogInput({ ...editor.item, conversions: conversionsFromText(editor.conversionText) });
+      const item = validateCatalogInput(
+        { ...editor.item, conversions: conversionsFromText(editor.conversionText) },
+        { codeIssued: !editor.previous }
+      );
       const priorLink = editor.source ? data.links.find(link => link.sourceKey === editor.source!.key) : undefined;
       void execute(
         {
           action: editor.previous ? 'update' : 'create',
           item,
+          ...(editor.previous ? {} : { codeRequest: validateCatalogCodeRequest(item.kind, editor.codeChoice) }),
           ...(editor.previous
             ? { id: editor.previous.id, expectedRevision: editor.previous.revision, active: editor.active }
             : {}),
@@ -404,16 +415,12 @@ export function ItemCatalogWorkspace({ currentUser }: { currentUser: UserProfile
           )}
           <fieldset disabled={busy}>
             <div className="catalog-form-grid">
-              <label>
-                Mã nội bộ *
-                <input
-                  required
-                  maxLength={100}
-                  readOnly={Boolean(editor.previous)}
-                  value={editor.item.code}
-                  onChange={event => updateItem({ code: event.target.value })}
-                />
-              </label>
+              {editor.previous && (
+                <label>
+                  Mã nội bộ
+                  <input readOnly value={editor.item.code} />
+                </label>
+              )}
               <label>
                 Tên hàng *
                 <input
@@ -437,6 +444,13 @@ export function ItemCatalogWorkspace({ currentUser }: { currentUser: UserProfile
                   ))}
                 </select>
               </label>
+              {!editor.previous && (
+                <CatalogCodeFields
+                  kind={editor.item.kind}
+                  value={editor.codeChoice}
+                  onChange={codeChoice => setEditor(current => (current ? { ...current, codeChoice } : current))}
+                />
+              )}
               <label>
                 ĐVT cơ sở *
                 <input

@@ -587,7 +587,11 @@ test('real catalog form preserves its request ID after a lost response and does 
     load: async () => ({ items: b.items(), links: b.links(), imports: [] })
   });
   button(screen.render(), 'Tạo mã hàng').props.onClick();
-  screen.setField('Mã nội bộ *', 'UI001');
+  // D-MA1: a new item has no code box; the user picks the material group and the server issues the code.
+  assert.ok(!nodes(screen.render()).some(node => node.type === 'label' && node.props.children?.[0] === 'Mã nội bộ *'));
+  nodes(screen.render())
+    .find(node => node.type?.name === 'CatalogCodeFields')
+    .props.onChange({ scheme: 'customer', customerId: '', shortCode: '', group: 'DCG' });
   screen.setField('Tên hàng *', 'Giấy UI');
   screen.setField('ĐVT cơ sở *', 'kg');
   for (let i = 0; i < 2; i++) {
@@ -600,7 +604,7 @@ test('real catalog form preserves its request ID after a lost response and does 
   assert.equal(calls[0].requestId, calls[1].requestId);
   assert.equal(b.items().length, 1);
   assert.equal(screen.state.get('editor'), null);
-  assert.equal(screen.state.get('data').items[0].code, 'UI001');
+  assert.equal(screen.state.get('data').items[0].code, 'NVL-DCG-001');
 });
 test('real CSV preview performs no writes and disables commit for any invalid row', async () => {
   const screen = catalogScreen();
@@ -690,4 +694,45 @@ test('HTTP catalog endpoint rejects malformed JSON and maps validation errors to
   assert.equal(validation.status, 400);
   assert.equal((await validation.json()).error, 'Đơn vị chưa hợp lệ');
   assert.equal(validation.headers.get('cache-control'), 'no-store');
+});
+
+test('D-MA1: the server issues item codes by series and reserves a customer short code once', async () => {
+  const { createHash } = require('node:crypto');
+  const itemKey = code => `item_catalog/itm-${createHash('sha256').update(code).digest('hex')}`;
+  const b = backend({
+    'customers/c2': { companyName: 'Khách 2' },
+    [itemKey('TC-0001')]: item({ code: 'TC-0001', normalizedCode: 'TC-0001', kind: 'finished_good' })
+  });
+  const issue = (value, codeRequest, actor = admin) =>
+    b.create(input({ code: 'FORGED', ...value }), { codeRequest }, actor);
+  const codes = () => b.items().map(entry => entry.code);
+
+  await issue({}, { group: 'DCG' });
+  await issue({ kind: 'resale', baseUnit: 'cái', conversions: [] }, {});
+  await issue({ kind: 'finished_good', baseUnit: 'cái', conversions: [] }, { scheme: 'standard' });
+  assert.ok(codes().includes('NVL-DCG-001'));
+  assert.ok(codes().includes('HM-0001'));
+  assert.ok(codes().includes('TC-0002'), 'a code typed before D-MA1 is stepped over, never overwritten');
+  assert.ok(!codes().includes('FORGED'), 'the code sent by the client is ignored');
+
+  const product = { kind: 'finished_good', baseUnit: 'cái', conversions: [] };
+  await assert.rejects(issue(product, { scheme: 'customer', customerId: 'c1' }), /chưa có mã viết tắt/);
+  await assert.rejects(issue(product, { scheme: 'customer', customerId: 'c1', shortCode: 'Ánh' }), /3–5 chữ/);
+  await issue(product, { scheme: 'customer', customerId: 'c1', shortCode: 'aqua' }, accountant);
+  assert.equal(b.store.get('customers/c1').shortCode, 'AQUA');
+  assert.equal(b.store.get('customers/c1').companyName, 'Khách 1', 'reserving the short code keeps the customer');
+  assert.equal(b.store.get('customer_short_codes/AQUA').customerId, 'c1');
+  await issue(product, { scheme: 'customer', customerId: 'c1', shortCode: 'OTHER' });
+  assert.equal(b.store.get('customers/c1').shortCode, 'AQUA', 'a reserved short code never changes');
+  assert.ok(codes().includes('TP-AQUA-001') && codes().includes('TP-AQUA-002'));
+  await assert.rejects(
+    issue(product, { scheme: 'customer', customerId: 'c2', shortCode: 'AQUA' }),
+    /đã dùng cho khách hàng khác/
+  );
+  await assert.rejects(issue({}, { group: 'XYZ' }), /nhóm NVL/);
+
+  const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
+  const customers = rules.match(/match \/customers\/\{documentId\} \{([\s\S]*?)\n    \}/)[1];
+  assert.equal((customers.match(/'shortCode', 'shortCodeSetAt', 'shortCodeSetById'/g) || []).length, 2);
+  assert.doesNotMatch(rules, /match \/(catalog_counters|customer_short_codes)\//, 'both stay server-only');
 });

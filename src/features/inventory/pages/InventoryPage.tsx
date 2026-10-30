@@ -18,13 +18,17 @@ import {
 } from '@/components/DataWorkspaceFilters';
 import { isFirebaseRuntimeEnabled } from '@/infrastructure/firebase/erpDataGateway';
 import { mutateItemCatalog } from '@/features/catalog/api/itemCatalogService';
+import { CatalogCodeFields } from '@/features/catalog/components/CatalogCodeFields';
 import {
   CATALOG_KINDS,
   canManageItemCatalog,
   catalogCsvTemplate,
   parseCatalogCsv,
   previewCatalogImport,
+  EMPTY_CODE_CHOICE,
+  validateCatalogCodeRequest,
   validateCatalogInput,
+  type CatalogCodeChoice,
   type CatalogInput,
   type CatalogItem,
   type CatalogKind
@@ -1321,6 +1325,8 @@ function CatalogItemDialog({
   const [conversionText, setConversionText] = useState(
     previous?.conversions.map(entry => `${entry.unit}:${entry.factor}`).join('\n') || ''
   );
+  // New items get a D-MA1 code issued by the server; an existing item's code never changes.
+  const [codeChoice, setCodeChoice] = useState<CatalogCodeChoice>(EMPTY_CODE_CHOICE);
   const [active, setActive] = useState(previous?.active ?? true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -1335,10 +1341,14 @@ function CatalogItemDialog({
     event.preventDefault();
     if (pending.current) return;
     try {
-      const validated = validateCatalogInput({ ...item, conversions: conversionsFromText(conversionText) });
+      const validated = validateCatalogInput(
+        { ...item, conversions: conversionsFromText(conversionText) },
+        { codeIssued: !previous }
+      );
       const body = {
         action: previous ? 'update' : 'create',
         item: validated,
+        ...(previous ? {} : { codeRequest: validateCatalogCodeRequest(validated.kind, codeChoice) }),
         ...(previous ? { id: previous.id, expectedRevision: previous.revision, active } : {})
       };
       const payload = JSON.stringify(body);
@@ -1383,16 +1393,12 @@ function CatalogItemDialog({
         )}
         <fieldset disabled={busy}>
           <div className="warehouse-fields">
-            <label>
-              Mã nội bộ *
-              <input
-                required
-                maxLength={100}
-                readOnly={Boolean(previous)}
-                value={item.code}
-                onChange={event => setItem({ ...item, code: event.target.value })}
-              />
-            </label>
+            {previous && (
+              <label>
+                Mã nội bộ
+                <input readOnly value={item.code} />
+              </label>
+            )}
             <label>
               Tên vật tư *
               <input
@@ -1416,6 +1422,7 @@ function CatalogItemDialog({
                 ))}
               </select>
             </label>
+            {!previous && <CatalogCodeFields kind={item.kind} value={codeChoice} onChange={setCodeChoice} />}
             <label>
               ĐVT cơ sở *
               <input

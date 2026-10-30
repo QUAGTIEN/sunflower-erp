@@ -52,5 +52,11 @@ Nhóm NVL: `DCG` decal giấy, `DCN` decal nhiệt, `PP` màng PP, `PET` màng P
    `src/shared/utils/documentCodes.ts`). Số đã cấp không cấp lại dù đơn không được lưu. Ô **Số PO khách** để trống khi
    khách không gửi, không còn tự lấy mã đơn của mình; tìm kiếm đơn hàng tìm được theo số này. Kênh chat nhận cả mã mới
    và mã cũ.
-2. Mã khách viết tắt và mã hàng tự cấp trong danh mục (`TP`, `TC`, `HM`, `NVL-NHÓM`).
+2. **Đã làm.** Tạo mã hàng mới (Kho vật tư và Kế toán → Danh mục) không còn ô gõ mã: người dùng chọn cách cấp mã
+   (thành phẩm theo khách / hàng chuẩn, nhóm NVL; hàng mua bán lại tự là `HM`), xem trước dãy mã, máy chủ cấp số trong
+   giao dịch danh mục từ `catalog_counters/<dãy>` và bỏ qua số đã bị mã nhập tay trước đây chiếm. Mã khách gửi lên bị
+   bỏ qua. Mã khách viết tắt được đặt **lần đầu cấp mã thành phẩm cho khách đó** (ô xuất hiện khi khách chưa có), lưu
+   vào `customers/<id>.shortCode` và giữ chỗ ở `customer_short_codes/<MÃ>` để không trùng; sau đó không đổi. Rules
+   chặn client ghi `shortCode`; `catalog_counters`, `customer_short_codes` chỉ máy chủ đọc/ghi. Nhập CSV vẫn nhận mã
+   có sẵn trong tệp để chuyển mã cũ.
 3. Yêu cầu mua, đơn mua, phiếu nhập / xuất kho, chuyến giao hàng.

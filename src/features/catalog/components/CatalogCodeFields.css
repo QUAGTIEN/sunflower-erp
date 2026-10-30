@@ -1,0 +1,21 @@
+/* The issued code is shown before saving so the user sees which series the new item joins (D-MA1). */
+.catalog-code-preview {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  color: #475569;
+  font-size: 13px;
+}
+.catalog-code-preview strong {
+  display: flex;
+  min-height: var(--erp-control-height, 36px);
+  box-sizing: border-box;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px dashed #c3cddb;
+  border-radius: var(--erp-control-radius, 6px);
+  background: #f8fafc;
+  color: #1e3a8a;
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-weight: 600;
+}

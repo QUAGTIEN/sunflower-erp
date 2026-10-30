@@ -158,13 +158,15 @@ service cloud.firestore {
         && (isAdmin()
           || userProfile().role != 'sale'
           || resource.data.assignedSaleId == request.auth.uid);
+      // The short code of item codes (D-MA1) is reserved once by the catalog API and never written by a client.
       allow create: if (hasPage('crm') || hasPage('sales'))
-        && !request.resource.data.keys().hasAny(['financeLinked'])
+        && !request.resource.data.keys().hasAny(['financeLinked', 'shortCode', 'shortCodeSetAt', 'shortCodeSetById'])
         && (isAdmin()
           || userProfile().role != 'sale'
           || request.resource.data.assignedSaleId == request.auth.uid);
       allow update: if (hasPage('crm') || hasPage('sales'))
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['financeLinked'])
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['financeLinked', 'shortCode', 'shortCodeSetAt', 'shortCodeSetById'])
         && (isAdmin()
           || userProfile().role != 'sale'
           || (resource.data.assignedSaleId == request.auth.uid
