@@ -72,6 +72,30 @@ export function plannableLines(pos: ProductionPO[], commands: CommandRecord[], e
   return { lines, blockedPoCodes };
 }
 
+export interface PickerOrder {
+  po: ProductionPO;
+  lines: PlannableLine[];
+}
+export interface PickerCustomer {
+  key: string;
+  label: string;
+  orders: PickerOrder[];
+}
+
+/** Plannable lines as the picker shows them: customer, then each of its orders, then the order's product lines. */
+export function pickerCustomers(lines: PlannableLine[]): PickerCustomer[] {
+  const customers = new Map<string, PickerCustomer>();
+  for (const line of lines) {
+    const key = customerKeyOf(line.po);
+    const customer = customers.get(key) || { key, label: customerLabelOf(line.po), orders: [] };
+    const order = customer.orders.find(entry => entry.po.id === line.po.id);
+    if (order) order.lines.push(line);
+    else customer.orders.push({ po: line.po, lines: [line] });
+    customers.set(key, customer);
+  }
+  return [...customers.values()].sort((a, b) => a.label.localeCompare(b.label, 'vi'));
+}
+
 /** Key of the customer an order belongs to; a PO without a customer stands alone, as no shared customer is proven. */
 export const customerKeyOf = (po: ProductionPO) => (po.customerId ? String(po.customerId) : `po:${po.id}`);
 export const customerLabelOf = (po: ProductionPO) =>

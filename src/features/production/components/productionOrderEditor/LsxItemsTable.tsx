@@ -20,8 +20,6 @@ interface Props {
   stockBalances?: Record<string, number>;
   catalogLoading: boolean;
   catalogError: string;
-  /** Empty while no customer is chosen; the picker only lists that customer's POs. */
-  pickHint: string;
   onPick: () => void;
   onReloadCatalog: () => void;
   onChange: (lines: DraftLine[]) => void;
@@ -31,7 +29,7 @@ const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
 // Specifications saved by an old product-code bug read "undefinedxundefinedmm"; flag them instead of showing them.
 const isBrokenSpecification = (value: string) => !value.trim() || /undefined|null|NaN/.test(value);
 
-/** Lines of the order being drafted, entered like a document grid; each line keeps its own PO. */
+/** Lines of the order being drafted, one row each; every line keeps its own order and that order's customer. */
 export function LsxItemsTable({
   lines,
   pos,
@@ -41,7 +39,6 @@ export function LsxItemsTable({
   stockBalances,
   catalogLoading,
   catalogError,
-  pickHint,
   onPick,
   onReloadCatalog,
   onChange
@@ -58,9 +55,8 @@ export function LsxItemsTable({
     <section className="lsx-section">
       <div className="lsx-section-header">
         <h3>Mặt hàng</h3>
-        <span className="lsx-section-summary">{pickHint}</span>
-        <button type="button" className="btn btn-primary" disabled={!!pickHint} onClick={onPick}>
-          Chọn hàng từ đơn hàng…
+        <button type="button" className="btn btn-primary" onClick={onPick}>
+          Chọn hàng…
         </button>
       </div>
       {catalogLoading && (
@@ -81,11 +77,16 @@ export function LsxItemsTable({
           <thead>
             <tr>
               <th className="lsx-number">#</th>
+              <th>Khách hàng</th>
+              <th>Đơn hàng</th>
               <th>Mã SP</th>
               <th>Tên sản phẩm</th>
-              <th>Đơn hàng</th>
+              <th>Quy cách</th>
               <th>ĐVT</th>
               <th className="lsx-number">Còn lại</th>
+              <th className="lsx-number" title="Tồn kho thành phẩm của mã nội bộ đã liên kết">
+                Tồn TP
+              </th>
               <th className="lsx-number">SL lệnh *</th>
               <th aria-label="Thao tác" />
             </tr>
@@ -103,23 +104,33 @@ export function LsxItemsTable({
               const productName = String(item?.productName || line.itemId);
               const specification = [item?.size, item?.material].filter(Boolean).map(String).join(' · ');
               const mapped = catalogLines[key];
-              const availableStock = mapped?.catalog?.id ? Number(stockBalances?.[mapped.catalog.id] || 0) : 0;
+              const finishedStock = mapped?.catalog?.id ? Number(stockBalances?.[mapped.catalog.id] || 0) : null;
+              const customerName = String(po?.customerName || 'Chưa có khách');
               return (
                 <Fragment key={key}>
                   <tr>
                     <td className="lsx-number">{position + 1}</td>
-                    <td title={String(item?.productCode || '')}>{String(item?.productCode || 'Nhập tay')}</td>
-                    <td title={productName}>
-                      {productName}
-                      {availableStock > 0 && mapped?.catalog && (
-                        <span className="lsx-tag lsx-tag--warning" style={{ marginLeft: 6 }}>
-                          Kho đang có {number(availableStock)} {mapped.catalog.baseUnit} dư
-                        </span>
-                      )}
-                    </td>
+                    <td title={customerName}>{customerName}</td>
                     <td title={String(po?.poCode || line.poId)}>{String(po?.poCode || line.poId)}</td>
+                    <td title={String(item?.productCode || '')}>{String(item?.productCode || 'Nhập tay')}</td>
+                    <td title={productName}>{productName}</td>
+                    {isBrokenSpecification(specification) ? (
+                      <td className="lsx-text-danger">Chưa có quy cách</td>
+                    ) : (
+                      <td title={specification}>{specification}</td>
+                    )}
                     <td>{String(item?.unit || '—')}</td>
                     <td className="lsx-number">{number(remaining)}</td>
+                    <td
+                      className="lsx-number"
+                      title={
+                        finishedStock === null
+                          ? 'Chưa liên kết mã nội bộ nên chưa xem được tồn'
+                          : `${number(finishedStock)} ${mapped?.catalog?.baseUnit || ''}`
+                      }
+                    >
+                      {finishedStock === null ? '—' : number(finishedStock)}
+                    </td>
                     <td>
                       <input
                         aria-label={`Số lượng ${productName} của ${po?.poCode || line.poId}`}
@@ -154,16 +165,8 @@ export function LsxItemsTable({
                   {isExpanded && (
                     <tr className="lsx-line-details">
                       <td />
-                      <td colSpan={7}>
+                      <td colSpan={10}>
                         <div className="lsx-line-details-grid">
-                          <div>
-                            <span>Quy cách / chất liệu</span>
-                            {isBrokenSpecification(specification) ? (
-                              <strong className="lsx-text-danger">Chưa có quy cách đúng trên đơn hàng</strong>
-                            ) : (
-                              <strong title={specification}>{specification}</strong>
-                            )}
-                          </div>
                           <div>
                             <span>Mã nội bộ</span>
                             {mapped?.catalog?.code ? (
@@ -207,8 +210,8 @@ export function LsxItemsTable({
             })}
             {!lines.length && (
               <tr>
-                <td colSpan={8}>
-                  Chưa có mặt hàng. Bấm “Chọn hàng từ đơn hàng…” để lấy dòng từ các đơn hàng của khách hàng.
+                <td colSpan={11}>
+                  Chưa có mặt hàng. Bấm “Chọn hàng…” rồi tick khách hàng, đơn hàng và mã sản phẩm cần sản xuất.
                 </td>
               </tr>
             )}

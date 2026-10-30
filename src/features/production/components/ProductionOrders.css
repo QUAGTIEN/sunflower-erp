@@ -54,12 +54,30 @@
 .lsx-list-row {
   cursor: pointer;
 }
-.lsx-workspace :is(.lsx-editor, .lsx-section) label {
+.lsx-workspace :is(.lsx-editor, .lsx-section) label,
+.lsx-field-wide {
   display: grid;
   gap: 6px;
   color: #334155;
   font-size: 13px;
   min-width: 0;
+}
+/* Customers follow the chosen lines (D-LSX2), so the field reads like a disabled input across two columns. */
+.lsx-field-wide {
+  grid-column: span 2;
+}
+.lsx-readonly {
+  display: block;
+  min-height: var(--erp-control-height, 36px);
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--erp-control-radius, 6px);
+  padding: 7px 9px;
+  background: #f8fafc;
+  color: #172554;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lsx-workspace
   :is(.lsx-list-toolbar, .lsx-editor, .lsx-section, .lsx-picker-dialog)
@@ -311,32 +329,42 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.lsx-workspace table.lsx-items {
+  min-width: 1180px;
+}
+/* One line per item: #, khách hàng, đơn hàng, mã SP, tên (fills), quy cách, ĐVT, còn lại, tồn TP, SL lệnh, thao tác. */
 .lsx-items th:nth-child(1) {
   width: 44px;
 }
 .lsx-items th:nth-child(2) {
-  width: 112px;
+  width: 160px;
 }
-.lsx-items th:nth-child(4) {
+.lsx-items th:nth-child(3) {
   width: 120px;
 }
-.lsx-items th:nth-child(5) {
-  width: 72px;
+.lsx-items th:nth-child(4) {
+  width: 112px;
 }
 .lsx-items th:nth-child(6) {
-  width: 96px;
+  width: 180px;
 }
 .lsx-items th:nth-child(7) {
-  width: 140px;
+  width: 64px;
 }
 .lsx-items th:nth-child(8),
+.lsx-items th:nth-child(9) {
+  width: 96px;
+}
+.lsx-items th:nth-child(10) {
+  width: 130px;
+}
+.lsx-items th:nth-child(11),
 .lsx-materials th:nth-child(7) {
   width: 52px;
 }
-/* Hộp thoại "Chọn hàng từ PO": dòng PO của một khách, gom nhóm theo PO. */
 .lsx-picker-dialog {
   display: flex;
-  width: min(880px, calc(100vw - 32px));
+  width: min(1200px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
   box-sizing: border-box;
   flex-direction: column;
@@ -354,46 +382,102 @@
 .lsx-picker-dialog::backdrop {
   background: rgb(15 23 42 / 35%);
 }
-.lsx-picker-filters {
+/* Three ticking columns: customers → their orders → the orders' product lines. */
+.lsx-picker-columns {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: 8px;
-}
-.lsx-picker-table {
+  grid-template-columns: 280px 320px minmax(0, 1fr);
+  gap: 12px;
   min-height: 0;
+}
+.lsx-picker-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--erp-border-color, #d8e1ee);
+  border-radius: 6px;
+}
+.lsx-picker-column-head {
+  display: flex;
+  height: 36px;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--erp-border-color, #d8e1ee);
+  background: #eef2f8;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lsx-picker-column-head > span:last-child {
+  color: #64748b;
+  font-weight: 500;
+}
+.lsx-picker-column > input[type='search'] {
+  box-sizing: border-box;
+  width: calc(100% - 16px);
+  margin: 8px;
+}
+.lsx-picker-list {
+  min-height: 160px;
   max-height: 52dvh;
   overflow: auto;
-  border: 1px solid var(--erp-border-color, #d8e1ee);
 }
-.lsx-picker-dialog table.lsx-candidates {
-  min-width: 640px;
-  table-layout: fixed;
+.lsx-picker-row,
+.lsx-picker-group {
+  display: flex;
+  min-height: 36px;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid #edf1f7;
+  font-size: 13px;
 }
-.lsx-candidates td {
+.lsx-picker-row {
+  cursor: pointer;
+}
+.lsx-picker-row:hover {
+  background: #f4f7ff;
+}
+.lsx-picker-row input,
+.lsx-picker-group input {
+  flex: none;
+}
+.lsx-picker-row > span,
+.lsx-picker-group > span,
+div.lsx-picker-group {
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.lsx-candidates th:nth-child(1) {
-  width: 44px;
+.lsx-picker-row > small {
+  flex: none;
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
 }
-.lsx-candidates th:nth-child(2) {
-  width: 112px;
-}
-.lsx-candidates th:nth-child(4) {
-  width: 72px;
-}
-.lsx-candidates th:nth-child(5),
-.lsx-candidates th:nth-child(6) {
-  width: 96px;
-}
-.lsx-picker-group td {
+.lsx-picker-group {
+  min-height: 30px;
   background: #f1f5f9;
   color: #172554;
   font-weight: 600;
 }
-.lsx-candidates tr.is-selected td {
-  background: #f4f7ff;
+.lsx-picker-empty {
+  margin: 0;
+  padding: 12px;
+  color: #64748b;
+  font-size: 12.5px;
+}
+@media (max-width: 900px) {
+  .lsx-picker-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .lsx-picker-footer {
   display: flex;

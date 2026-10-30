@@ -41,7 +41,6 @@ import {
   EMPTY_PRINT_DETAILS,
   customerKeyOf,
   customerLabelOf,
-  plannableLines,
   type DraftLine
 } from './productionOrderEditor/draftLines';
 import { LsxMaterialsTable } from './productionOrderEditor/LsxMaterialsTable';
@@ -59,8 +58,6 @@ interface Props {
 interface Draft {
   id: string;
   revision?: number;
-  /** Chosen first; every line comes from this customer's POs (see `customerKeyOf`). */
-  customerKey: string;
   lines: DraftLine[];
   materials: PlannedMaterial[];
   machineId: string;
@@ -73,7 +70,6 @@ interface Draft {
 }
 const emptyDraft = (): Draft => ({
   id: crypto.randomUUID(),
-  customerKey: '',
   lines: [],
   materials: [],
   machineId: '',
@@ -214,25 +210,18 @@ export function ProductionOrderWorkspace({
     command => command.productionOrderVersion === 2 && command.id === selectedId && !command.deleted
   ) as ProductionOrder | undefined;
   const selectedPoCodes = selected ? (selected.poCodes?.length ? selected.poCodes.join(', ') : selected.poCode) : '';
-  // Customers with PO lines still to plan, plus the customer of the order being edited.
-  const customerOptions: [string, string][] = draft
+  // An order may mix customers (D-LSX2); the header lists those of the lines chosen so far.
+  const draftCustomers = draft
     ? [
-        ...new Map<string, string>([
-          ...plannableLines(visiblePOs, commands, draft.id).lines.map(
-            line => [customerKeyOf(line.po), customerLabelOf(line.po)] as [string, string]
-          ),
-          ...visiblePOs
-            .filter(po => draft.lines.some(line => line.poId === po.id))
+        ...new Map(
+          draft.lines
+            .map(line => visiblePOs.find(po => po.id === line.poId))
+            .filter((po): po is ProductionPO => Boolean(po))
             .map(po => [customerKeyOf(po), customerLabelOf(po)] as [string, string])
-        ]).entries()
-      ].sort((a, b) => a[1].localeCompare(b[1], 'vi'))
+        ).values()
+      ]
     : [];
   const updateDraft = (patch: Partial<Draft>) => setDraft(current => (current ? { ...current, ...patch } : current));
-  const chooseCustomer = (customerKey: string) => {
-    if (!draft || customerKey === draft.customerKey) return;
-    if (draft.lines.length && !window.confirm('Đổi khách hàng sẽ bỏ các mặt hàng đã chọn. Tiếp tục?')) return;
-    updateDraft({ customerKey, lines: [] });
-  };
   const addLines = (lines: DraftLine[]) => {
     if (!draft) return;
     setCatalogLoading(true);
@@ -252,11 +241,9 @@ export function ProductionOrderWorkspace({
     setCatalog({ materials: [], lines: {} });
     setCatalogError('');
     setCatalogLoading(true);
-    const firstPO = pos.find(po => po.id === linePoId(order.lines[0] || {}, order));
     setDraft({
       id: order.id,
       revision: order.revision,
-      customerKey: firstPO ? customerKeyOf(firstPO) : '',
       lines: order.lines.map(line => ({
         poId: linePoId(line, order),
         itemId: line.itemId,
@@ -281,10 +268,8 @@ export function ProductionOrderWorkspace({
     setCatalog({ materials: [], lines: {} });
     setCatalogError('');
     setCatalogLoading(true);
-    const firstPO = pos.find(po => po.id === linePoId(shortLines[0] || order.lines[0] || {}, order));
     setDraft({
       id: crypto.randomUUID(),
-      customerKey: firstPO ? customerKeyOf(firstPO) : '',
       lines: shortLines.map(line => ({
         poId: linePoId(line, order),
         itemId: line.itemId,
@@ -432,22 +417,14 @@ export function ProductionOrderWorkspace({
             <section className="lsx-section">
               <h3>Thông tin chung</h3>
               <div className="lsx-fields">
-                <label>
-                  Khách hàng *
-                  <select
-                    required
-                    value={draft.customerKey}
-                    onChange={event => chooseCustomer(event.target.value)}
-                    title={customerOptions.find(([key]) => key === draft.customerKey)?.[1]}
-                  >
-                    <option value="">Chọn khách hàng</option>
-                    {customerOptions.map(([key, label]) => (
-                      <option key={key} value={key}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="lsx-field-wide">
+                  <span>Khách hàng (theo hàng đã chọn)</span>
+                  <output className="lsx-readonly" title={draftCustomers.join('; ')}>
+                    {draftCustomers.length
+                      ? `${draftCustomers.length} khách · ${draftCustomers.join(', ')}`
+                      : 'Chưa chọn hàng'}
+                  </output>
+                </div>
                 <label>
                   Ngày cần *
                   <input
@@ -537,7 +514,6 @@ export function ProductionOrderWorkspace({
               stockBalances={catalog.stockBalances}
               catalogLoading={catalogLoading}
               catalogError={catalogError}
-              pickHint={draft.customerKey ? '' : 'Chọn khách hàng trước để lấy hàng từ đơn hàng.'}
               onPick={() => setPickerOpen(true)}
               onReloadCatalog={() => {
                 setCatalogLoading(true);
@@ -553,8 +529,6 @@ export function ProductionOrderWorkspace({
           </fieldset>
           {pickerOpen && (
             <LsxPoPickerDialog
-              customerKey={draft.customerKey}
-              customerName={customerOptions.find(([key]) => key === draft.customerKey)?.[1] || ''}
               pos={visiblePOs}
               commands={commands}
               draftId={draft.id}

@@ -1,18 +1,16 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatDate } from '@/shared/utils/dateFormatting';
 import type { CommandRecord, ProductionPO } from '../../model/productionOrder';
 import {
   EMPTY_PRINT_DETAILS,
-  customerKeyOf,
   draftLineKey,
+  pickerCustomers,
   plannableLines,
   type DraftLine,
   type PlannableLine
 } from './draftLines';
 
 interface Props {
-  customerKey: string;
-  customerName: string;
   pos: ProductionPO[];
   commands: CommandRecord[];
   draftId: string;
@@ -22,39 +20,59 @@ interface Props {
 }
 
 const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
-const matchesSearch = (line: PlannableLine, search: string) =>
-  `${line.item.productCode || ''} ${line.item.productName || ''}`
-    .toLocaleLowerCase('vi')
-    .includes(search.trim().toLocaleLowerCase('vi'));
+const matches = (value: string, search: string) =>
+  value.toLocaleLowerCase('vi').includes(search.trim().toLocaleLowerCase('vi'));
+const productLabel = (line: PlannableLine) =>
+  `${String(line.item.productCode || 'Nhập tay')} · ${String(line.item.productName || '')}`;
+const toggle = (values: string[], keys: string[], checked: boolean) =>
+  checked ? [...new Set([...values, ...keys])] : values.filter(value => !keys.includes(value));
 
-/** MISA-style "choose from orders": the customer's open PO lines grouped by PO; tick a whole PO or single lines. */
-export function LsxPoPickerDialog({
-  customerKey,
-  customerName,
-  pos,
-  commands,
-  draftId,
-  draftLines,
-  onClose,
-  onConfirm
-}: Props) {
+function PickerColumn({
+  title,
+  count,
+  tools,
+  children
+}: {
+  title: string;
+  count: string;
+  tools?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="lsx-picker-column" aria-label={title}>
+      <div className="lsx-picker-column-head">
+        <span>{title}</span>
+        <span>{count}</span>
+      </div>
+      {tools}
+      <div className="lsx-picker-list">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * Tick customers to list their orders, tick orders to list their product lines, then tick the lines to plan.
+ * One order may mix customers (D-LSX2); unticking a customer or an order also drops what was chosen under it.
+ */
+export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose, onConfirm }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [poFilter, setPoFilter] = useState('');
-  const [search, setSearch] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  const [customerKeys, setCustomerKeys] = useState<string[]>([]);
+  const [poIds, setPoIds] = useState<string[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const taken = new Set(draftLines.map(draftLineKey));
-  const available = plannableLines(
-    pos.filter(po => customerKeyOf(po) === customerKey),
-    commands,
-    draftId
-  ).lines.filter(line => !taken.has(line.key));
-  const customerPOs = [...new Map(available.map(line => [line.po.id, line.po])).values()];
-  const visible = available.filter(line => (!poFilter || line.po.id === poFilter) && matchesSearch(line, search));
-  const groups = customerPOs
-    .map(po => ({ po, lines: visible.filter(line => line.po.id === po.id) }))
-    .filter(group => group.lines.length);
+  const available = plannableLines(pos, commands, draftId).lines.filter(line => !taken.has(line.key));
+  const customers = pickerCustomers(available);
+  const tickedCustomers = customers.filter(customer => customerKeys.includes(customer.key));
+  const tickedOrders = tickedCustomers
+    .flatMap(customer => customer.orders)
+    .filter(order => poIds.includes(order.po.id));
   const chosen = available.filter(line => selected.includes(line.key));
-  const chosenPoCount = new Set(chosen.map(line => line.po.id)).size;
+  const chosenOrders = new Set(chosen.map(line => line.po.id));
+  const chosenCustomers = tickedCustomers.filter(customer =>
+    customer.orders.some(order => chosenOrders.has(order.po.id))
+  );
 
   useEffect(() => {
     const element = dialog.current;
@@ -62,10 +80,29 @@ export function LsxPoPickerDialog({
     return () => element?.close();
   }, []);
 
-  const setLines = (keys: string[], checked: boolean) =>
-    setSelected(current =>
-      checked ? [...new Set([...current, ...keys])] : current.filter(key => !keys.includes(key))
+  const tickCustomer = (key: string, checked: boolean) => {
+    setCustomerKeys(current => toggle(current, [key], checked));
+    if (checked) return;
+    const orders = customers.find(customer => customer.key === key)?.orders || [];
+    setPoIds(current =>
+      toggle(
+        current,
+        orders.map(order => order.po.id),
+        false
+      )
     );
+    setSelected(current =>
+      toggle(
+        current,
+        orders.flatMap(order => order.lines.map(line => line.key)),
+        false
+      )
+    );
+  };
+  const tickOrder = (poId: string, lineKeys: string[], checked: boolean) => {
+    setPoIds(current => toggle(current, [poId], checked));
+    if (!checked) setSelected(current => toggle(current, lineKeys, false));
+  };
   const confirm = () =>
     onConfirm(
       chosen.map(line => ({
@@ -75,6 +112,9 @@ export function LsxPoPickerDialog({
         printDetails: EMPTY_PRINT_DETAILS
       }))
     );
+  // Enter in a search box sits inside the order form and must not submit the draft.
+  const stopEnter = (event: { key: string; preventDefault: () => void }) =>
+    event.key === 'Enter' && event.preventDefault();
 
   return (
     <dialog
@@ -87,99 +127,136 @@ export function LsxPoPickerDialog({
       }}
     >
       <header className="lsx-heading">
-        <h2 id="lsx-picker-title">Chọn hàng từ đơn hàng — {customerName}</h2>
+        <h2 id="lsx-picker-title">Chọn hàng cần sản xuất</h2>
       </header>
-      <div className="lsx-picker-filters">
-        <select aria-label="Lọc theo đơn hàng" value={poFilter} onChange={event => setPoFilter(event.target.value)}>
-          <option value="">Tất cả đơn hàng</option>
-          {customerPOs.map(po => (
-            <option key={po.id} value={po.id}>
-              {String(po.poCode || po.id)}
-            </option>
+      <div className="lsx-picker-columns">
+        <PickerColumn
+          title="Khách hàng"
+          count={`${tickedCustomers.length} / ${customers.length}`}
+          tools={
+            <input
+              type="search"
+              aria-label="Tìm khách hàng"
+              placeholder="Tìm khách hàng"
+              value={customerSearch}
+              onChange={event => setCustomerSearch(event.target.value)}
+              onKeyDown={stopEnter}
+            />
+          }
+        >
+          {customers
+            .filter(customer => matches(customer.label, customerSearch))
+            .map(customer => (
+              <label key={customer.key} className="lsx-picker-row">
+                <input
+                  type="checkbox"
+                  aria-label={`Chọn khách hàng ${customer.label}`}
+                  checked={customerKeys.includes(customer.key)}
+                  onChange={event => tickCustomer(customer.key, event.target.checked)}
+                />
+                <span title={customer.label}>{customer.label}</span>
+                <small>{customer.orders.length} đơn</small>
+              </label>
+            ))}
+          {!customers.length && <p className="lsx-picker-empty">Không còn đơn hàng cần sản xuất.</p>}
+        </PickerColumn>
+        <PickerColumn title="Đơn hàng" count={`${tickedOrders.length} đã chọn`}>
+          {tickedCustomers.map(customer => (
+            <div key={customer.key} role="group" aria-label={customer.label}>
+              <div className="lsx-picker-group" title={customer.label}>
+                {customer.label}
+              </div>
+              {customer.orders.map(({ po, lines }) => {
+                const code = String(po.poCode || po.id);
+                const deadline = po.expectedDeliveryDate ? formatDate(String(po.expectedDeliveryDate)) : '';
+                return (
+                  <label key={po.id} className="lsx-picker-row">
+                    <input
+                      type="checkbox"
+                      aria-label={`Chọn đơn hàng ${code}`}
+                      checked={poIds.includes(po.id)}
+                      onChange={event =>
+                        tickOrder(
+                          po.id,
+                          lines.map(line => line.key),
+                          event.target.checked
+                        )
+                      }
+                    />
+                    <span title={code}>{code}</span>
+                    <small>
+                      {deadline && `Hạn ${deadline} · `}
+                      {lines.length} mã
+                    </small>
+                  </label>
+                );
+              })}
+            </div>
           ))}
-        </select>
-        <input
-          type="search"
-          aria-label="Tìm mã hoặc tên sản phẩm"
-          placeholder="Tìm mã / tên sản phẩm"
-          value={search}
-          onChange={event => setSearch(event.target.value)}
-          // The dialog sits inside the order form; Enter here must not submit the draft.
-          onKeyDown={event => event.key === 'Enter' && event.preventDefault()}
-        />
-      </div>
-      <div className="table-container lsx-picker-table">
-        <table className="lsx-candidates">
-          <thead>
-            <tr>
-              <th aria-label="Chọn" />
-              <th>Mã SP</th>
-              <th>Tên sản phẩm</th>
-              <th>ĐVT</th>
-              <th className="lsx-number">SL đơn hàng</th>
-              <th className="lsx-number">Còn lại</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map(({ po, lines }) => {
-              const keys = lines.map(line => line.key);
-              const allChecked = keys.every(key => selected.includes(key));
-              const someChecked = keys.some(key => selected.includes(key));
-              const deadline = po.expectedDeliveryDate ? formatDate(String(po.expectedDeliveryDate)) : '';
-              return (
-                <Fragment key={po.id}>
-                  <tr className="lsx-picker-group">
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`Chọn cả ${po.poCode || po.id}`}
-                        checked={allChecked}
-                        ref={element => {
-                          if (element) element.indeterminate = someChecked && !allChecked;
-                        }}
-                        onChange={event => setLines(keys, event.target.checked)}
-                      />
-                    </td>
-                    <td colSpan={5}>
-                      {String(po.poCode || po.id)}
-                      {deadline && ` · ngày cần ${deadline}`} · {lines.length} dòng còn lại
-                    </td>
-                  </tr>
-                  {lines.map(line => (
-                    <tr key={line.key} className={selected.includes(line.key) ? 'is-selected' : undefined}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          aria-label={`Chọn ${line.item.productName} của ${po.poCode}`}
-                          checked={selected.includes(line.key)}
-                          onChange={event => setLines([line.key], event.target.checked)}
-                        />
-                      </td>
-                      <td title={String(line.item.productCode || '')}>{String(line.item.productCode || 'Nhập tay')}</td>
-                      <td title={String(line.item.productName || '')}>{String(line.item.productName || '')}</td>
-                      <td>{String(line.item.unit || '—')}</td>
-                      <td className="lsx-number">{number(line.item.quantity)}</td>
-                      <td className="lsx-number">{number(line.remaining)}</td>
-                    </tr>
-                  ))}
-                </Fragment>
-              );
-            })}
-            {!groups.length && (
-              <tr>
-                <td colSpan={6}>
-                  {available.length
-                    ? 'Không có dòng phù hợp bộ lọc.'
-                    : 'Khách hàng này không còn dòng đơn hàng cần sản xuất.'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+          {!tickedCustomers.length && <p className="lsx-picker-empty">Tick khách hàng để xem đơn hàng.</p>}
+        </PickerColumn>
+        <PickerColumn
+          title="Mã sản phẩm"
+          count={`${chosen.length} đã chọn`}
+          tools={
+            <input
+              type="search"
+              aria-label="Tìm mã hoặc tên sản phẩm"
+              placeholder="Tìm mã / tên sản phẩm"
+              value={productSearch}
+              onChange={event => setProductSearch(event.target.value)}
+              onKeyDown={stopEnter}
+            />
+          }
+        >
+          {tickedOrders.map(({ po, lines }) => {
+            const visible = lines.filter(line => matches(productLabel(line), productSearch));
+            if (!visible.length) return null;
+            const keys = visible.map(line => line.key);
+            const allChecked = keys.every(key => selected.includes(key));
+            const someChecked = keys.some(key => selected.includes(key));
+            const code = String(po.poCode || po.id);
+            return (
+              <div key={po.id} role="group" aria-label={code}>
+                <label className="lsx-picker-group">
+                  <input
+                    type="checkbox"
+                    aria-label={`Chọn cả ${code}`}
+                    checked={allChecked}
+                    ref={element => {
+                      if (element) element.indeterminate = someChecked && !allChecked;
+                    }}
+                    onChange={event => setSelected(current => toggle(current, keys, event.target.checked))}
+                  />
+                  <span title={`${code} · ${String(po.customerName || '')}`}>
+                    {code} · {String(po.customerName || 'Chưa có khách')}
+                  </span>
+                </label>
+                {visible.map(line => (
+                  <label key={line.key} className="lsx-picker-row">
+                    <input
+                      type="checkbox"
+                      aria-label={`Chọn ${String(line.item.productName || line.itemId)} của ${code}`}
+                      checked={selected.includes(line.key)}
+                      onChange={event => setSelected(current => toggle(current, [line.key], event.target.checked))}
+                    />
+                    <span title={productLabel(line)}>{productLabel(line)}</span>
+                    <small>
+                      Còn {number(line.remaining)} {String(line.item.unit || '')}
+                    </small>
+                  </label>
+                ))}
+              </div>
+            );
+          })}
+          {!tickedOrders.length && <p className="lsx-picker-empty">Tick đơn hàng để xem mã sản phẩm.</p>}
+        </PickerColumn>
       </div>
       <footer className="lsx-picker-footer">
         <span>
-          {chosen.length ? `Đã chọn ${chosen.length} dòng từ ${chosenPoCount} đơn hàng` : 'Chưa chọn dòng nào'}
+          {chosen.length
+            ? `Đã chọn ${chosen.length} mã sản phẩm từ ${chosenOrders.size} đơn hàng của ${chosenCustomers.length} khách hàng`
+            : 'Chưa chọn mã sản phẩm nào'}
         </span>
         <button type="button" className="btn btn-outline" onClick={onClose}>
           Hủy

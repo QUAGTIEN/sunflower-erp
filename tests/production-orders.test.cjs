@@ -754,10 +754,10 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
   tree = render();
   assert.equal(tree.props['data-erp-table-layout'], 'content');
   assert.ok(!nodes(tree).some(node => node.props?.className === 'lsx-list-frame'));
-  nodes(tree)
-    .find(node => node.type === 'select' && node.props.value === '' && node.props.required)
-    .props.onChange({ target: { value: 'customer1' } });
-  tree = render();
+  assert.ok(
+    !nodes(tree).some(node => node.type === 'select' && node.props.required),
+    'customers follow the chosen lines; there is no customer to pick first'
+  );
   nodes(tree)
     .find(node => node.type?.name === 'LsxItemsTable')
     .props.onPick();
@@ -1279,7 +1279,7 @@ test('QC on a multi-PO order ships each PO only when its own lines are fully pro
   assert.equal(b.store.get('pos/po2').productionProgress, 'partial');
 });
 
-test('the PO picker lists open production lines of one customer grouped by PO; ticking a PO takes all its lines', () => {
+test('the picker ticks customers, then their orders, then product lines; one order may mix customers', () => {
   const { plannableLines } = loader()('src/features/production/components/productionOrderEditor/draftLines.ts');
   const po2 = { ...po(), id: 'po2', poCode: 'PO-02', customerId: 'customer2', customerName: 'Công ty B' };
   const shipped = { ...po(), id: 'po3', poCode: 'PO-03', status: 'completed' };
@@ -1305,22 +1305,12 @@ test('the PO picker lists open production lines of one customer grouped by PO; t
   );
   assert.deepEqual(result.blockedPoCodes, ['PO-02']);
 
-  const text = node =>
-    typeof node === 'string' || typeof node === 'number'
-      ? String(node)
-      : Array.isArray(node)
-        ? node.map(text).join('')
-        : node?.props
-          ? text(node.props.children)
-          : '';
   const confirmed = [];
   const po5 = { ...po(), id: 'po5', poCode: 'PO-05' };
   const render = interactive(
     'src/features/production/components/productionOrderEditor/LsxPoPickerDialog.tsx',
     'LsxPoPickerDialog',
     {
-      customerKey: 'customer1',
-      customerName: 'Công ty A',
       pos: [po(), po2, po5],
       commands: [],
       draftId: 'draft1',
@@ -1330,20 +1320,35 @@ test('the PO picker lists open production lines of one customer grouped by PO; t
     }
   );
   let tree = render();
-  const groups = () =>
-    nodes(tree)
-      .filter(node => node.type === 'tr' && node.props.className === 'lsx-picker-group')
-      .map(node => text(node));
-  assert.deepEqual(groups(), ['PO-01 · 2 dòng còn lại', 'PO-05 · 1 dòng còn lại']);
-  assert.ok(!groups().some(group => group.includes('PO-02')), 'another customer’s PO is never offered');
   const box = label => nodes(tree).find(node => node.type === 'input' && node.props['aria-label'] === label);
+  const tick = (label, checked = true) => {
+    box(label).props.onChange({ target: { checked } });
+    tree = render();
+  };
   const agree = () => nodes(tree).find(node => node.type === 'button' && node.props.children === 'Đồng ý');
+  const footer = () =>
+    nodes(tree).find(node => node.type === 'span' && /^(Đã chọn|Chưa chọn)/.test(node.props.children));
   assert.equal(agree().props.disabled, true);
-  box('Chọn cả PO-01').props.onChange({ target: { checked: true } });
-  box('Chọn Tem cuộn của PO-05').props.onChange({ target: { checked: true } });
-  tree = render();
-  assert.equal(box('Chọn cả PO-01').props.checked, true);
-  assert.ok(nodes(tree).some(node => node.props?.children === 'Đã chọn 3 dòng từ 2 đơn hàng'));
+  assert.equal(box('Chọn đơn hàng PO-01'), undefined, 'orders appear only after their customer is ticked');
+  tick('Chọn khách hàng Công ty A');
+  assert.ok(box('Chọn đơn hàng PO-01') && box('Chọn đơn hàng PO-05'));
+  assert.equal(box('Chọn đơn hàng PO-02'), undefined, 'an unticked customer’s orders stay hidden');
+  assert.equal(box('Chọn cả PO-01'), undefined, 'product lines appear only after their order is ticked');
+  tick('Chọn đơn hàng PO-01');
+  tick('Chọn đơn hàng PO-05');
+  tick('Chọn cả PO-01');
+  tick('Chọn Tem cuộn của PO-05');
+  assert.equal(box('Chọn Tem nhập tay của PO-05'), undefined, 'a line already on the draft is not offered again');
+  // D-LSX2: lines of another customer can join the same order.
+  tick('Chọn khách hàng Công ty B');
+  tick('Chọn đơn hàng PO-02');
+  tick('Chọn Tem cuộn của PO-02');
+  assert.equal(footer().props.children, 'Đã chọn 4 mã sản phẩm từ 3 đơn hàng của 2 khách hàng');
+  tick('Chọn khách hàng Công ty B', false);
+  assert.equal(box('Chọn đơn hàng PO-02'), undefined);
+  assert.equal(footer().props.children, 'Đã chọn 3 mã sản phẩm từ 2 đơn hàng của 1 khách hàng');
+  tick('Chọn khách hàng Công ty B');
+  assert.equal(box('Chọn đơn hàng PO-02').props.checked, false, 'unticking a customer drops its orders and lines');
   agree().props.onClick();
   assert.deepEqual(
     confirmed.map(line => [line.poId, line.itemId, line.quantity]),

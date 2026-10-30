@@ -27,11 +27,12 @@
 - Giao diện theo kiểu chứng từ MISA (duyệt 27/10/2026):
   - **Danh sách:** tìm kiếm, lọc trạng thái / loại lệnh, nút "Lập lệnh sản xuất"; cột Số LSX, Khách hàng, PO, Số
     dòng, Ngày cần, Trạng thái; bấm dòng để mở chi tiết.
-  - **Lập lệnh:** thông tin chung lưới 4 cột (Khách hàng * đầu tiên, ngày cần, ưu tiên, mẫu phiếu, máy, người chạy
-    máy, ca, ghi chú chung); lưới **Mặt hàng** (#, mã, tên, PO, ĐVT, còn lại, SL lệnh, menu ⋮ cho mã nội bộ / khổ
-    NVL / ưu tiên dòng và bỏ dòng). Nút **Chọn hàng từ PO…** mở hộp thoại các PO còn hàng của khách, gom nhóm theo
-    PO: tick cả PO hoặc từng dòng, "Đồng ý" thêm dòng với số lượng còn lại. Đổi khách khi đã có dòng phải xác nhận
-    và xóa lưới.
+  - **Lập lệnh:** thông tin chung lưới 4 cột; ô **Khách hàng** chỉ đọc, tự liệt kê khách của các dòng đã chọn (D-LSX2),
+    rồi ngày cần, ưu tiên, mẫu phiếu, máy, người chạy máy, ca, ghi chú chung. Lưới **Mặt hàng** mỗi dòng một hàng liền
+    nhau: #, khách hàng, đơn hàng, mã SP, tên, quy cách, ĐVT, còn lại, tồn TP (mã nội bộ đã liên kết), SL lệnh, menu ⋮
+    cho mã nội bộ / khổ NVL / ưu tiên dòng và bỏ dòng. Nút **Chọn hàng…** mở hộp thoại ba cột tick lồng nhau:
+    tick khách hàng → hiện đơn hàng của khách đó; tick đơn hàng → hiện mã sản phẩm còn cần sản xuất; tick mã (hoặc cả
+    đơn) rồi "Đồng ý" thêm dòng với số lượng còn lại. Bỏ tick khách hoặc đơn sẽ bỏ luôn phần đã chọn bên dưới.
   - **Chi tiết lệnh:** một trang, không chia tab: thông tin chung dạng lưới, bảng mặt hàng (PO, quy cách, góc / răng
     cưa, lõi, mã NVL, mã nội bộ, đạt / hỏng), vật tư dự kiến, sổ cấp NVL, thành phẩm, QC khi đang sản xuất và lịch
     sử thao tác thu gọn.
