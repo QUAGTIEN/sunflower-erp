@@ -58,13 +58,17 @@
 .lsx-field-wide {
   display: grid;
   gap: 6px;
-  color: #334155;
+  color: #475569;
   font-size: 13px;
+  font-weight: 500;
   min-width: 0;
 }
 /* Customers follow the chosen lines (D-LSX2), so the field reads like a disabled input across two columns. */
 .lsx-field-wide {
   grid-column: span 2;
+}
+.lsx-field-full {
+  grid-column: 1 / -1;
 }
 @media (max-width: 600px) {
   .lsx-field-wide {
@@ -80,7 +84,8 @@
   border-radius: var(--erp-control-radius, 6px);
   padding: 7px 9px;
   background: #f8fafc;
-  color: #172554;
+  color: #0f172a;
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -91,10 +96,14 @@
   min-width: 0;
   border: 1px solid #cbd5e1;
   border-radius: var(--erp-control-radius, 6px);
-  padding: 7px 9px;
+  padding: 7px 10px;
   background: #fff;
-  color: #172554;
+  color: #0f172a;
   font: inherit;
+  font-weight: 400;
+}
+.lsx-workspace :is(input, textarea)::placeholder {
+  color: #94a3b8;
 }
 .lsx-workspace :is(input:not([type='checkbox']), select) {
   min-height: var(--erp-control-height, 36px);
@@ -144,7 +153,8 @@
 }
 .lsx-workspace .table-container {
   min-width: 0;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   margin: 0;
 }
 .lsx-workspace table {
@@ -335,33 +345,33 @@
   white-space: nowrap;
 }
 .lsx-workspace table.lsx-items {
-  min-width: 1180px;
+  min-width: 1040px;
 }
-/* One line per item: #, khách hàng, đơn hàng, mã SP, tên (fills), quy cách, ĐVT, còn lại, tồn TP, SL lệnh, thao tác. */
+/* One row per line: #, khách hàng, đơn hàng, mã SP, tên (fills), quy cách, ĐVT, còn lại, tồn TP, SL lệnh, thao tác. */
 .lsx-items th:nth-child(1) {
   width: 44px;
 }
 .lsx-items th:nth-child(2) {
-  width: 160px;
+  width: 150px;
 }
 .lsx-items th:nth-child(3) {
-  width: 120px;
-}
-.lsx-items th:nth-child(4) {
   width: 112px;
 }
+.lsx-items th:nth-child(4) {
+  width: 100px;
+}
 .lsx-items th:nth-child(6) {
-  width: 180px;
+  width: 160px;
 }
 .lsx-items th:nth-child(7) {
-  width: 64px;
+  width: 60px;
 }
 .lsx-items th:nth-child(8),
 .lsx-items th:nth-child(9) {
-  width: 96px;
+  width: 88px;
 }
 .lsx-items th:nth-child(10) {
-  width: 130px;
+  width: 116px;
 }
 .lsx-items th:nth-child(11),
 .lsx-materials th:nth-child(10) {
@@ -369,16 +379,16 @@
 }
 .lsx-picker-dialog {
   display: flex;
-  width: min(1200px, calc(100vw - 32px));
+  width: min(1180px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
   box-sizing: border-box;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px;
+  gap: 16px;
+  padding: 20px 24px;
   border: 1px solid var(--erp-border-color, #d8e1ee);
-  border-radius: 6px;
+  border-radius: 8px;
   background: #fff;
-  color: #172554;
+  color: #0f172a;
   box-shadow: 0 16px 40px rgb(15 23 42 / 18%);
 }
 .lsx-picker-dialog:not([open]) {
@@ -387,10 +397,19 @@
 .lsx-picker-dialog::backdrop {
   background: rgb(15 23 42 / 35%);
 }
+.lsx-picker-dialog .lsx-heading {
+  display: grid;
+  gap: 4px;
+}
+.lsx-picker-dialog .lsx-heading p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12.5px;
+}
 /* Three ticking columns: customers → their orders → the orders' product lines. */
 .lsx-picker-columns {
   display: grid;
-  grid-template-columns: 280px 320px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.4fr);
   gap: 12px;
   min-height: 0;
 }
@@ -404,57 +423,70 @@
 }
 .lsx-picker-column-head {
   display: flex;
-  height: 36px;
+  height: 40px;
   flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 0 12px;
   border-bottom: 1px solid var(--erp-border-color, #d8e1ee);
-  background: #eef2f8;
-  color: #334155;
+  background: var(--erp-table-header-bg, #e7ebf1);
+  color: #1e293b;
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
 }
 .lsx-picker-column-head > span:last-child {
   color: #64748b;
+  font-size: 12px;
   font-weight: 500;
 }
-.lsx-picker-column > input[type='search'] {
-  box-sizing: border-box;
-  width: calc(100% - 16px);
-  margin: 8px;
+.lsx-picker-search {
+  flex: none;
+  padding: 8px 12px;
+  border-bottom: 1px solid #edf1f7;
 }
 .lsx-picker-list {
-  min-height: 160px;
-  max-height: 52dvh;
-  overflow: auto;
+  height: min(360px, 48dvh);
+  overflow-y: auto;
 }
-.lsx-picker-row,
-.lsx-picker-group {
+/* The picker sits inside the order form, whose labels stack; its rows stay one line: tick, name, detail. */
+.lsx-workspace .lsx-picker-dialog label.lsx-picker-row,
+.lsx-workspace .lsx-picker-dialog .lsx-picker-group {
   display: flex;
-  min-height: 36px;
+  min-height: 40px;
   box-sizing: border-box;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: 0 12px;
   border-bottom: 1px solid #edf1f7;
+  color: #0f172a;
   font-size: 13px;
+  font-weight: 400;
 }
-.lsx-picker-row {
+.lsx-workspace .lsx-picker-dialog label.lsx-picker-row {
   cursor: pointer;
 }
-.lsx-picker-row:hover {
-  background: #f4f7ff;
+.lsx-workspace .lsx-picker-dialog label.lsx-picker-row:hover {
+  background: var(--erp-row-hover, #f5f8fc);
+}
+.lsx-workspace .lsx-picker-dialog label.lsx-picker-row:has(input:checked) {
+  background: #f1f5ff;
+}
+.lsx-workspace .lsx-picker-dialog .lsx-picker-group {
+  min-height: 32px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
 }
 .lsx-picker-row input,
 .lsx-picker-group input {
   flex: none;
+  margin: 0;
 }
 .lsx-picker-row > span,
-.lsx-picker-group > span,
-div.lsx-picker-group {
+.lsx-picker-group > span {
   min-width: 0;
   flex: 1;
   overflow: hidden;
@@ -467,32 +499,33 @@ div.lsx-picker-group {
   font-size: 12px;
   white-space: nowrap;
 }
-.lsx-picker-group {
-  min-height: 30px;
-  background: #f1f5f9;
-  color: #172554;
-  font-weight: 600;
-}
 .lsx-picker-empty {
   margin: 0;
-  padding: 12px;
+  padding: 24px 12px;
   color: #64748b;
   font-size: 12.5px;
+  text-align: center;
 }
 @media (max-width: 900px) {
   .lsx-picker-columns {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .lsx-picker-list {
+    height: auto;
+    max-height: 32dvh;
   }
 }
 .lsx-picker-footer {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #edf1f7;
 }
 .lsx-picker-footer > span {
   flex: 1;
-  color: #64748b;
-  font-size: 12.5px;
+  color: #475569;
+  font-size: 13px;
 }
 .lsx-materials th:nth-child(1) {
   width: 240px;
@@ -572,9 +605,6 @@ div.lsx-picker-group {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
   gap: 6px;
-}
-.lsx-add-row td {
-  border-bottom: 0;
 }
 @media (max-width: 900px) {
   .lsx-line-details-grid {

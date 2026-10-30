@@ -57,6 +57,9 @@ export function LsxMaterialsTable({ materials, catalogMaterials, materialBalance
       <div className="lsx-section-header">
         <h3>Vật tư dự kiến sử dụng</h3>
         <span className="lsx-section-summary">Có thể bổ sung khi lưu nháp; bắt buộc trước khi phát hành.</span>
+        <button type="button" className="btn btn-outline" onClick={() => onChange([...materials, newMaterial()])}>
+          Thêm vật tư
+        </button>
       </div>
       <div className="table-container">
         <table className="lsx-materials">
@@ -68,7 +71,9 @@ export function LsxMaterialsTable({ materials, catalogMaterials, materialBalance
               <th>ĐVT</th>
               <th className="lsx-number">Số lượng</th>
               <th className="lsx-number">Hao hụt (%)</th>
-              <th className="lsx-number">Cần cả hao hụt</th>
+              <th className="lsx-number" title="Số lượng × (1 + hao hụt)">
+                Cần dùng
+              </th>
               <th className="lsx-number" title="Tồn sổ kho NVL quy về ĐVT của dòng; chỉ để xem, không tự trừ kho">
                 Tồn kho
               </th>
@@ -193,17 +198,11 @@ export function LsxMaterialsTable({ materials, catalogMaterials, materialBalance
                 </tr>
               );
             })}
-            <tr className="lsx-add-row">
-              <td colSpan={10}>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => onChange([...materials, newMaterial()])}
-                >
-                  Thêm dòng vật tư
-                </button>
-              </td>
-            </tr>
+            {!materials.length && (
+              <tr>
+                <td colSpan={10}>Chưa có vật tư. Bấm “Thêm vật tư” để khai báo vật tư dự kiến.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

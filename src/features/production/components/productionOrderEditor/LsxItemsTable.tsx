@@ -20,7 +20,6 @@ interface Props {
   stockBalances?: Record<string, number>;
   catalogLoading: boolean;
   catalogError: string;
-  onPick: () => void;
   onReloadCatalog: () => void;
   onChange: (lines: DraftLine[]) => void;
 }
@@ -39,7 +38,6 @@ export function LsxItemsTable({
   stockBalances,
   catalogLoading,
   catalogError,
-  onPick,
   onReloadCatalog,
   onChange
 }: Props) {
@@ -48,6 +46,10 @@ export function LsxItemsTable({
     onChange(lines.map(line => (draftLineKey(line) === key ? { ...line, ...patch } : line)));
   const updateDetails = (line: DraftLine, patch: Partial<LinePrintDetails>) =>
     update(draftLineKey(line), { printDetails: { ...(line.printDetails || EMPTY_PRINT_DETAILS), ...patch } });
+  const orderCount = new Set(lines.map(line => line.poId)).size;
+  const customerCount = new Set(lines.map(line => String(pos.find(po => po.id === line.poId)?.customerId || line.poId)))
+    .size;
+  const summary = `${lines.length} dòng · ${orderCount} đơn hàng · ${customerCount} khách hàng`;
   const toggleExpanded = (key: string) =>
     setExpanded(current => (current.includes(key) ? current.filter(value => value !== key) : [...current, key]));
 
@@ -55,9 +57,7 @@ export function LsxItemsTable({
     <section className="lsx-section">
       <div className="lsx-section-header">
         <h3>Mặt hàng</h3>
-        <button type="button" className="btn btn-primary" onClick={onPick}>
-          Chọn hàng…
-        </button>
+        {lines.length > 0 && <span className="lsx-section-summary">{summary}</span>}
       </div>
       {catalogLoading && (
         <p role="status" className="lsx-hint">
@@ -211,7 +211,7 @@ export function LsxItemsTable({
             {!lines.length && (
               <tr>
                 <td colSpan={11}>
-                  Chưa có mặt hàng. Bấm “Chọn hàng…” rồi tick khách hàng, đơn hàng và mã sản phẩm cần sản xuất.
+                  Chưa có mặt hàng. Bấm “Chọn hàng…” ở đầu trang để tick khách hàng, đơn hàng và mã sản phẩm.
                 </td>
               </tr>
             )}

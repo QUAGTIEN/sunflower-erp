@@ -30,7 +30,8 @@
   - **Lập lệnh:** thông tin chung lưới 4 cột; ô **Khách hàng** chỉ đọc, tự liệt kê khách của các dòng đã chọn (D-LSX2),
     rồi ngày cần, ưu tiên, mẫu phiếu, máy, người chạy máy, ca, ghi chú chung. Lưới **Mặt hàng** mỗi dòng một hàng liền
     nhau: #, khách hàng, đơn hàng, mã SP, tên, quy cách, ĐVT, còn lại, tồn TP (mã nội bộ đã liên kết), SL lệnh, menu ⋮
-    cho mã nội bộ / khổ NVL / ưu tiên dòng và bỏ dòng. Nút **Chọn hàng…** mở hộp thoại ba cột tick lồng nhau:
+    cho mã nội bộ / khổ NVL / ưu tiên dòng và bỏ dòng. Nút **Chọn hàng…** ở đầu trang, cạnh Lưu nháp, mở hộp thoại ba
+    cột tick lồng nhau:
     tick khách hàng → hiện đơn hàng của khách đó; tick đơn hàng → hiện mã sản phẩm còn cần sản xuất; tick mã (hoặc cả
     đơn) rồi "Đồng ý" thêm dòng với số lượng còn lại. Bỏ tick khách hoặc đơn sẽ bỏ luôn phần đã chọn bên dưới.
   - **Chi tiết lệnh:** một trang, không chia tab: thông tin chung dạng lưới, bảng mặt hàng (PO, quy cách, góc / răng
@@ -126,7 +127,7 @@ Chi tiết LSX v2 hiển thị lịch sử phiếu thành phẩm, mở nhập th
 - Thông tin chung có **Bắt đầu / Hoàn thành dự kiến** (`plannedStartDate`, `plannedEndDate`, tùy chọn, ngày hoàn
   thành không trước ngày bắt đầu) và **Yêu cầu kỹ thuật chung** (`technicalNotes`, tách khỏi ghi chú chung). Lệnh cũ
   để trống. Chi tiết lệnh hiển thị các trường này; mẫu phiếu in chưa thêm.
-- Bảng vật tư dự kiến có thêm **Cần cả hao hụt** = số lượng × (1 + hao hụt), **Tồn kho** và **Thiếu**, quy về ĐVT
+- Bảng vật tư dự kiến có thêm **Cần dùng** = số lượng × (1 + hao hụt), **Tồn kho** và **Thiếu**, quy về ĐVT
   của dòng bằng hệ số quy đổi đã khai báo của mã NVL (`materialShortage`). Dòng chưa chọn mã hoặc ĐVT chưa có quy
   đổi hiện "—", không tự quy đổi. `action: catalog` trả thêm `materialBalances` (tồn kho NVL theo ĐVT cơ sở).
 - `action: request_material_shortage`: với lệnh nháp / chờ duyệt / đã phát hành / đang chạy, máy chủ đọc tồn kho

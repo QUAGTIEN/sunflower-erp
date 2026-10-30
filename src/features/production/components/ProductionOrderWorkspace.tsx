@@ -426,7 +426,15 @@ export function ProductionOrderWorkspace({
               <h2>{draft.revision ? 'Chỉnh sửa LSX nháp' : 'Lập lệnh sản xuất'}</h2>
             </div>
             <div className="lsx-actions">
-              <button className="btn btn-primary" disabled={busy || !draft.lines.length}>
+              {/* Choosing lines is the first step of an order, so it sits with the page actions. */}
+              <button type="button" className="btn btn-outline" disabled={busy} onClick={() => setPickerOpen(true)}>
+                Chọn hàng…
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={busy || !draft.lines.length}
+                title={draft.lines.length ? undefined : 'Chọn hàng trước khi lưu nháp'}
+              >
                 {busy ? 'Đang lưu…' : 'Lưu nháp'}
               </button>
             </div>
@@ -452,6 +460,14 @@ export function ProductionOrderWorkspace({
                   />
                 </label>
                 <label>
+                  Ưu tiên
+                  <select value={draft.priority} onChange={event => updateDraft({ priority: event.target.value })}>
+                    <option value="normal">Bình thường</option>
+                    <option value="high">Hơi gấp</option>
+                    <option value="urgent">Gấp</option>
+                  </select>
+                </label>
+                <label>
                   Bắt đầu dự kiến
                   <input
                     type="date"
@@ -467,31 +483,6 @@ export function ProductionOrderWorkspace({
                     value={draft.plannedEndDate}
                     onChange={event => updateDraft({ plannedEndDate: event.target.value })}
                   />
-                </label>
-                <label>
-                  Ưu tiên
-                  <select value={draft.priority} onChange={event => updateDraft({ priority: event.target.value })}>
-                    <option value="normal">Bình thường</option>
-                    <option value="high">Hơi gấp</option>
-                    <option value="urgent">Gấp</option>
-                  </select>
-                </label>
-                <label>
-                  Mẫu phiếu
-                  <select
-                    value={draft.printTemplate.id}
-                    onChange={event =>
-                      updateDraft({
-                        printTemplate: latestTemplate(event.target.value as ProductionPrintTemplate['id'])
-                      })
-                    }
-                  >
-                    {Object.entries(PRODUCTION_PRINT_TEMPLATES).map(([id, label]) => (
-                      <option key={id} value={id}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
                 </label>
                 <label>
                   Máy sản xuất
@@ -528,6 +519,23 @@ export function ProductionOrderWorkspace({
                     placeholder="Ca sáng / Tổ in 01"
                   />
                 </label>
+                <label>
+                  Mẫu phiếu
+                  <select
+                    value={draft.printTemplate.id}
+                    onChange={event =>
+                      updateDraft({
+                        printTemplate: latestTemplate(event.target.value as ProductionPrintTemplate['id'])
+                      })
+                    }
+                  >
+                    {Object.entries(PRODUCTION_PRINT_TEMPLATES).map(([id, label]) => (
+                      <option key={id} value={id}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <label className="lsx-field-wide">
                   Yêu cầu kỹ thuật chung
                   <input
@@ -538,7 +546,7 @@ export function ProductionOrderWorkspace({
                     placeholder="Màu in, keo, kiểm tra trước khi chạy hàng loạt…"
                   />
                 </label>
-                <label className="lsx-field-wide">
+                <label className="lsx-field-full">
                   Ghi chú chung
                   <input
                     value={draft.notes}
@@ -559,7 +567,6 @@ export function ProductionOrderWorkspace({
               stockBalances={catalog.stockBalances}
               catalogLoading={catalogLoading}
               catalogError={catalogError}
-              onPick={() => setPickerOpen(true)}
               onReloadCatalog={() => {
                 setCatalogLoading(true);
                 setCatalogReload(value => value + 1);

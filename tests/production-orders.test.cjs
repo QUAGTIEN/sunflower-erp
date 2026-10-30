@@ -758,9 +758,10 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
     !nodes(tree).some(node => node.type === 'select' && node.props.required),
     'customers follow the chosen lines; there is no customer to pick first'
   );
+  // Choosing lines is a page action in the editor header, not part of the item grid.
   nodes(tree)
-    .find(node => node.type?.name === 'LsxItemsTable')
-    .props.onPick();
+    .find(node => node.type === 'button' && node.props.children === 'Chọn hàng…')
+    .props.onClick();
   tree = render();
   nodes(tree)
     .find(node => node.type?.name === 'LsxPoPickerDialog')

@@ -44,7 +44,7 @@ function PickerColumn({
         <span>{title}</span>
         <span>{count}</span>
       </div>
-      {tools}
+      {tools && <div className="lsx-picker-search">{tools}</div>}
       <div className="lsx-picker-list">{children}</div>
     </section>
   );
@@ -128,11 +128,12 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
     >
       <header className="lsx-heading">
         <h2 id="lsx-picker-title">Chọn hàng cần sản xuất</h2>
+        <p>Tick khách hàng để xem đơn hàng, tick đơn hàng để xem mã sản phẩm, rồi tick mã cần đưa vào lệnh.</p>
       </header>
       <div className="lsx-picker-columns">
         <PickerColumn
-          title="Khách hàng"
-          count={`${tickedCustomers.length} / ${customers.length}`}
+          title="1. Khách hàng"
+          count={`Đã chọn ${tickedCustomers.length}/${customers.length}`}
           tools={
             <input
               type="search"
@@ -160,11 +161,14 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
             ))}
           {!customers.length && <p className="lsx-picker-empty">Không còn đơn hàng cần sản xuất.</p>}
         </PickerColumn>
-        <PickerColumn title="Đơn hàng" count={`${tickedOrders.length} đã chọn`}>
+        <PickerColumn
+          title="2. Đơn hàng"
+          count={`Đã chọn ${tickedOrders.length}/${tickedCustomers.flatMap(customer => customer.orders).length}`}
+        >
           {tickedCustomers.map(customer => (
             <div key={customer.key} role="group" aria-label={customer.label}>
-              <div className="lsx-picker-group" title={customer.label}>
-                {customer.label}
+              <div className="lsx-picker-group">
+                <span title={customer.label}>{customer.label}</span>
               </div>
               {customer.orders.map(({ po, lines }) => {
                 const code = String(po.poCode || po.id);
@@ -196,8 +200,8 @@ export function LsxPoPickerDialog({ pos, commands, draftId, draftLines, onClose,
           {!tickedCustomers.length && <p className="lsx-picker-empty">Tick khách hàng để xem đơn hàng.</p>}
         </PickerColumn>
         <PickerColumn
-          title="Mã sản phẩm"
-          count={`${chosen.length} đã chọn`}
+          title="3. Mã sản phẩm"
+          count={`Đã chọn ${chosen.length}/${tickedOrders.flatMap(order => order.lines).length}`}
           tools={
             <input
               type="search"
