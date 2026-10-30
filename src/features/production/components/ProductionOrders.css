@@ -66,6 +66,11 @@
 .lsx-field-wide {
   grid-column: span 2;
 }
+@media (max-width: 600px) {
+  .lsx-field-wide {
+    grid-column: auto;
+  }
+}
 .lsx-readonly {
   display: block;
   min-height: var(--erp-control-height, 36px);
@@ -359,7 +364,7 @@
   width: 130px;
 }
 .lsx-items th:nth-child(11),
-.lsx-materials th:nth-child(7) {
+.lsx-materials th:nth-child(10) {
   width: 52px;
 }
 .lsx-picker-dialog {
@@ -503,6 +508,15 @@ div.lsx-picker-group {
 }
 .lsx-materials th:nth-child(6) {
   width: 104px;
+}
+/* Cần cả hao hụt, tồn kho, thiếu: read-only figures in the material's own unit. */
+.lsx-materials th:nth-child(7),
+.lsx-materials th:nth-child(8),
+.lsx-materials th:nth-child(9) {
+  width: 112px;
+}
+.lsx-workspace table.lsx-materials {
+  min-width: 1080px;
 }
 .lsx-workspace .lsx-number,
 .lsx-workspace input.lsx-number {

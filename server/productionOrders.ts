@@ -12,9 +12,11 @@ import {
   lineKey,
   linePoId,
   lineSnapshot,
+  materialShortage,
   productionItemIds,
   validateProductionOrderDraft,
   type ProductionActor,
+  type PlannedMaterial,
   type ProductionOrder,
   type ProductionPO,
   type CommandRecord
@@ -31,6 +33,40 @@ const identifier = (value: unknown) => {
   return value;
 };
 const unique = (values: string[]) => [...new Set(values)];
+/** Actions that only ask purchasing for NVL; any drafter may send them for an order they can see. */
+const MATERIAL_REQUEST_ACTIONS = ['request_materials', 'request_material_shortage'];
+interface MaterialRequest {
+  material: PlannedMaterial;
+  index: number;
+  quantity: number;
+}
+
+/**
+ * NVL the current stock cannot cover, in each material's own unit. Only materials linked to an internal code with a
+ * declared conversion are counted; stock is read in the same transaction and never reserved or deducted.
+ */
+async function materialShortages(transaction: Transaction, firestore: Firestore, order: ProductionOrder) {
+  const linked = order.materials
+    .map((material, index) => ({ material, index }))
+    .filter(({ material }) => material.catalogItemId && material.catalog?.factor);
+  const balances = await Promise.all(
+    linked.map(({ material }) =>
+      transaction.get(firestore.collection('warehouse_balances').doc(String(material.catalogItemId)))
+    )
+  );
+  const requests = linked
+    .map(({ material, index }, position) => ({
+      material,
+      index,
+      quantity:
+        materialShortage(material, material.catalog!.factor, Number(balances[position].data()?.quantity || 0))
+          .shortage || 0
+    }))
+    .filter(request => request.quantity > 0);
+  if (!requests.length)
+    throw new AdminApiError(400, 'Tồn kho NVL đủ cho các vật tư đã liên kết mã; không có phần thiếu để đề nghị mua.');
+  return requests;
+}
 const snapshotOf = (po: Record<string, unknown>) =>
   po.customerSnapshot && typeof po.customerSnapshot === 'object'
     ? (po.customerSnapshot as Record<string, unknown>)
@@ -85,7 +121,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
   const { firestore } = getFirebaseAdminServices();
   const action = String(body.action);
   if (action === 'catalog') return loadCatalog(firestore, actor, body);
-  if (!canManageProduction(actor) && !['create', 'save', 'submit', 'request_materials'].includes(action))
+  if (!canManageProduction(actor) && !['create', 'save', 'submit', ...MATERIAL_REQUEST_ACTIONS].includes(action))
     throw new AdminApiError(403, 'Kế toán chỉ được lập, sửa nháp và gửi duyệt LSX của mình.');
   const id = identifier(body.id);
   const drafting = action === 'create' || action === 'save';
@@ -104,7 +140,12 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     const pos = await readPOs(transaction, firestore, touchedPoIds);
     const commands = await readCommands(transaction, firestore, touchedPoIds);
     const previous = commands.find(command => command.id === id) as ProductionOrder | undefined;
-    if (previous && !canManageProduction(actor) && action !== 'request_materials' && previous.createdById !== actor.uid)
+    if (
+      previous &&
+      !canManageProduction(actor) &&
+      !MATERIAL_REQUEST_ACTIONS.includes(action) &&
+      previous.createdById !== actor.uid
+    )
       throw new AdminApiError(403, 'Bạn chỉ được sửa/gửi duyệt LSX do mình lập.');
     const requestId = identifier(body.requestId);
     const linePOs = pos.filter(po => linePoIds.includes(po.id));
@@ -119,7 +160,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     if (action !== 'create' && previous!.revision !== body.expectedRevision)
       throw new AdminApiError(409, 'LSX vừa được cập nhật. Đóng và mở lại để lấy dữ liệu mới.');
     // Read access is checked even when cancelling after the PO has advanced.
-    const advancedAllowed = ['cancel', 'complete', 'start', 'return', 'request_materials'].includes(action);
+    const advancedAllowed = ['cancel', 'complete', 'start', 'return', ...MATERIAL_REQUEST_ACTIONS].includes(action);
     for (const po of linePOs) assertPOAccess(actor, advancedAllowed ? { ...po, status: 'waiting_production' } : po);
     if (action !== 'create') assertTransition(actor, previous!, action);
     const counterRef = firestore.collection('production_counters').doc(businessDate);
@@ -127,6 +168,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     const sequence = Number(counter?.data()?.sequence || 0) + 1;
     const readers = new Map(linePOs.map(po => [po.id, productionCatalogReader(transaction, firestore, po)]));
     let next: ProductionOrder;
+    let materialRequests: MaterialRequest[] = [];
     if (drafting) {
       const fields = validateProductionOrderDraft(linePOs, commands, body, id);
       fields.lines = await Promise.all(fields.lines.map(line => readers.get(line.poId!)!.line(line)));
@@ -280,7 +322,10 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
           throw new AdminApiError(400, 'LSX đã đủ sản lượng, không có phần thiếu để mua thêm NVL.');
         if (!next.materials.length)
           throw new AdminApiError(400, 'LSX chưa khai báo vật tư dự kiến để đề nghị mua thêm.');
+        materialRequests = next.materials.map((material, index) => ({ material, index, quantity: material.quantity }));
       }
+      if (action === 'request_material_shortage')
+        materialRequests = await materialShortages(transaction, firestore, next);
     }
     // Legacy dashboards, machine schedules and chat use this display-only alias.
     next.productName = next.lines.map(line => line.productName).join(', ');
@@ -295,8 +340,8 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
       throw new AdminApiError(400, 'LSX quá lớn. Giảm số mặt hàng hoặc ảnh đính kèm.');
     const after = [...commands.filter(command => command.id !== id), next];
     if (action === 'create') transaction.set(counterRef, { sequence });
-    if (action === 'request_materials') {
-      next.materials.forEach((material, index) => {
+    if (materialRequests.length) {
+      materialRequests.forEach(({ material, index, quantity }) => {
         const reqDocId = `pr_${requestId}_${index + 1}`;
         transaction.set(firestore.collection('procurement_requests').doc(reqDocId), {
           id: reqDocId,
@@ -319,7 +364,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
             allowancePercent: material.allowancePercent || 0,
             catalogItemId: material.catalogItemId || ''
           },
-          quantity: material.quantity,
+          quantity,
           unit: material.unit,
           requiredDate: next.deliveryDeadline || businessDate,
           sourcingType: 'raw_material',
@@ -490,12 +535,20 @@ async function loadCatalog(firestore: Firestore, actor: ProductionActor, body: R
     const stockBalances = Object.fromEntries(
       catalogIds.map((id, index) => [id, Number(balanceSnapshots[index].data()?.quantity || 0)])
     );
+    // NVL balances are keyed by catalog item; balances written before the finished-goods store carry no warehouseId.
+    const rawBalances = await transaction.get(firestore.collection('warehouse_balances'));
+    const materialBalances = Object.fromEntries(
+      rawBalances.docs
+        .filter(doc => !doc.data().warehouseId || doc.data().warehouseId === 'raw_main')
+        .map(doc => [String(doc.data().catalogItemId || doc.id), Number(doc.data().quantity || 0)])
+    );
     return {
       success: true,
       materials: options[0].materials,
       // Keyed by PO and line so two POs with the same item ID never overwrite each other.
       lines: mappedLines,
-      stockBalances
+      stockBalances,
+      materialBalances
     };
   });
 }

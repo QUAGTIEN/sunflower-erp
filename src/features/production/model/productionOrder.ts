@@ -110,6 +110,11 @@ export interface ProductionOrder extends Record<string, unknown> {
   operatorName: string;
   shift: string;
   deliveryDeadline: string;
+  /** Planned production window; optional, and orders made before it simply leave it empty. */
+  plannedStartDate?: string;
+  plannedEndDate?: string;
+  /** Technical requirements for the whole order, kept apart from the general note. */
+  technicalNotes?: string;
   priority: string;
   notes: string;
   createdAt: string;
@@ -258,6 +263,30 @@ export function allocatedQuantities(commands: CommandRecord[], excludedId = '') 
   }
   return allocations;
 }
+/** Before production finishes, purchasing can be asked for the NVL the stock cannot cover. */
+export const MATERIAL_SHORTAGE_STATUSES: ProductionStatus[] = ['draft', 'pending_approval', 'released', 'producing'];
+const roundQuantity = (value: number) => Math.round(value * 1_000_000) / 1_000_000;
+/**
+ * A planned material's need with its allowance, and the NVL stock and shortage in the material's own unit.
+ * Stock is kept in the catalog's base unit; without a declared conversion factor no stock or shortage is shown.
+ */
+export function materialShortage(
+  material: Pick<PlannedMaterial, 'quantity' | 'allowancePercent'>,
+  factor: number | null,
+  stockInBaseUnit: number
+) {
+  const needed = roundQuantity(Number(material.quantity || 0) * (1 + Number(material.allowancePercent || 0) / 100));
+  if (!factor || factor <= 0) return { needed, stock: null, shortage: null };
+  const stock = roundQuantity(stockInBaseUnit / factor);
+  return { needed, stock, shortage: roundQuantity(Math.max(0, needed - stock)) };
+}
+/** An optional calendar date of the draft (YYYY-MM-DD); anything else is rejected with the field's name. */
+function draftDate(value: unknown, label: string) {
+  const date = text(value, 10);
+  if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(date).toISOString().slice(0, 10) !== date))
+    fail(`${label} không hợp lệ.`);
+  return date;
+}
 /** Validate one order whose lines may come from several POs, of one or several customers (D-LSX2). */
 export function validateProductionOrderDraft(
   pos: ProductionPO[],
@@ -345,9 +374,11 @@ export function validateProductionOrderDraft(
       return { ...material, ...(entry.catalogItemId ? { catalogItemId: text(entry.catalogItemId, 180) } : {}) };
     }
   );
-  const deadline = text(raw.deliveryDeadline, 10);
-  if (deadline && (!/^\d{4}-\d{2}-\d{2}$/.test(deadline) || new Date(deadline).toISOString().slice(0, 10) !== deadline))
-    fail('Ngày cần không hợp lệ.');
+  const deadline = draftDate(raw.deliveryDeadline, 'Ngày cần');
+  const plannedStartDate = draftDate(raw.plannedStartDate, 'Ngày bắt đầu dự kiến');
+  const plannedEndDate = draftDate(raw.plannedEndDate, 'Ngày hoàn thành dự kiến');
+  if (plannedStartDate && plannedEndDate && plannedEndDate < plannedStartDate)
+    fail('Ngày hoàn thành dự kiến phải từ ngày bắt đầu dự kiến trở đi.');
   const template = raw.printTemplate as Partial<ProductionPrintTemplate> | undefined;
   if (
     template &&
@@ -365,6 +396,9 @@ export function validateProductionOrderDraft(
     operatorId: text(raw.operatorId, 160),
     shift: text(raw.shift, 100),
     deliveryDeadline: deadline,
+    plannedStartDate,
+    plannedEndDate,
+    technicalNotes: text(raw.technicalNotes, 3000),
     priority: ['urgent', 'high', 'normal'].includes(String(raw.priority)) ? String(raw.priority) : 'normal',
     notes: text(raw.notes, 3000)
   };
@@ -398,7 +432,9 @@ export function assertTransition(actor: ProductionActor, order: ProductionOrder,
                   ? ['draft', 'pending_approval', 'released'].includes(order.status) && manager
                   : action === 'request_materials'
                     ? order.status === 'completed' && canDraftProduction(actor)
-                    : false;
+                    : action === 'request_material_shortage'
+                      ? MATERIAL_SHORTAGE_STATUSES.includes(order.status) && canDraftProduction(actor)
+                      : false;
   if (!permitted) fail('Không có quyền hoặc lệnh đã đổi trạng thái. Hãy tải lại danh sách.');
 }
 export function completedProduction(po: ProductionPO, commands: CommandRecord[]) {

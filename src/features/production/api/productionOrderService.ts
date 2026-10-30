@@ -6,6 +6,8 @@ export interface ProductionDraftCatalog {
   materials: CatalogItem[];
   lines: Record<string, { catalog?: ProductionCatalogSnapshot; error?: string }>;
   stockBalances?: Record<string, number>;
+  /** NVL stock in each catalog item's base unit. */
+  materialBalances?: Record<string, number>;
 }
 /** Internal codes for the lines of these POs, keyed by `poId::itemId`, and the NVL catalog. */
 export async function loadProductionDraftCatalog(poIds: string[]): Promise<ProductionDraftCatalog> {

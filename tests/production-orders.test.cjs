@@ -1487,3 +1487,76 @@ test('completed LSX with shortfall shows shortfall actions and request_materials
   assert.match(html, /Lập lệnh bổ sung/);
   assert.match(html, /Đề nghị mua thêm NVL/);
 });
+
+test('planned dates and technical notes are validated and saved with the draft', async () => {
+  const b = backend();
+  await assert.rejects(
+    b.manage(draft({ plannedStartDate: '2026-11-10', plannedEndDate: '2026-11-05' })),
+    /hoàn thành dự kiến/
+  );
+  await assert.rejects(b.manage(draft({ plannedStartDate: '10/11/2026' })), /Ngày bắt đầu dự kiến không hợp lệ/);
+  await b.manage(
+    draft({ plannedStartDate: '2026-11-05', plannedEndDate: '2026-11-10', technicalNotes: 'Màu theo mẫu duyệt' })
+  );
+  const order = b.order();
+  assert.equal(order.plannedStartDate, '2026-11-05');
+  assert.equal(order.plannedEndDate, '2026-11-10');
+  assert.equal(order.technicalNotes, 'Màu theo mẫu duyệt');
+});
+
+test('material shortage uses the declared factor and never guesses a unit', () => {
+  const { materialShortage } = loader()('src/features/production/model/productionOrder.ts');
+  assert.deepEqual(materialShortage({ quantity: 2, allowancePercent: 10 }, 200, 300), {
+    needed: 2.2,
+    stock: 1.5,
+    shortage: 0.7
+  });
+  assert.deepEqual(materialShortage({ quantity: 2, allowancePercent: 0 }, 200, 900), {
+    needed: 2,
+    stock: 4.5,
+    shortage: 0
+  });
+  assert.deepEqual(materialShortage({ quantity: 2, allowancePercent: 0 }, null, 900), {
+    needed: 2,
+    stock: null,
+    shortage: null
+  });
+});
+
+test('before completion purchasing is asked only for the NVL shortage against current stock', async () => {
+  const fixture = catalogFixture('po_item', {
+    kind: 'raw_material',
+    baseUnit: 'm',
+    conversions: [{ unit: 'cuộn', factor: 200 }]
+  });
+  const material = { id: 'mat1', catalogItemId: fixture.id, code: 'X', name: 'X', unit: 'cuộn', quantity: 2 };
+  const manual = { id: 'mat2', code: 'TAY-01', name: 'Mực nhập tay', unit: 'kg', quantity: 5 };
+  const b = backend({
+    [`item_catalog/${fixture.id}`]: fixture.product,
+    [`warehouse_balances/${fixture.id}`]: { id: fixture.id, quantity: 300, revision: 1 }
+  });
+  await b.manage(
+    draft({
+      materials: [
+        { ...material, allowancePercent: 10 },
+        { ...manual, allowancePercent: 0 }
+      ]
+    })
+  );
+  const requests = () =>
+    [...b.store.keys()].filter(key => key.startsWith('procurement_requests/')).map(key => b.store.get(key));
+  await b.action('request_material_shortage');
+  assert.deepEqual(
+    requests().map(request => [request.productCode, request.quantity, request.unit, request.status]),
+    [['FG01', 0.7, 'cuộn', 'new']],
+    'only the linked material, for 2.2 cuộn needed minus 1.5 cuộn in stock'
+  );
+  assert.equal([...b.store.keys()].filter(key => key.startsWith('purchase_orders/')).length, 0);
+  b.store.set(`warehouse_balances/${fixture.id}`, { id: fixture.id, quantity: 1000, revision: 2 });
+  await assert.rejects(b.action('request_material_shortage'), /không có phần thiếu/);
+  await assert.rejects(
+    b.action('request_materials'),
+    /quyền|trạng thái/,
+    'the full re-order stays for completed orders'
+  );
+});

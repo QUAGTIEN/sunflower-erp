@@ -27,6 +27,7 @@ import {
   linePoId,
   PRODUCTION_PRINT_TEMPLATES,
   PRODUCTION_PRINT_VERSIONS,
+  MATERIAL_SHORTAGE_STATUSES,
   PRODUCTION_STATUSES,
   type CommandRecord,
   type PlannedMaterial,
@@ -64,6 +65,9 @@ interface Draft {
   operatorId: string;
   shift: string;
   deliveryDeadline: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  technicalNotes: string;
   priority: string;
   notes: string;
   printTemplate: ProductionPrintTemplate;
@@ -76,6 +80,9 @@ const emptyDraft = (): Draft => ({
   operatorId: '',
   shift: '',
   deliveryDeadline: '',
+  plannedStartDate: '',
+  plannedEndDate: '',
+  technicalNotes: '',
   priority: 'normal',
   notes: '',
   printTemplate: DEFAULT_PRINT_TEMPLATE
@@ -94,7 +101,8 @@ const actionNames: Record<string, string> = {
   start: 'Đã bắt đầu sản xuất',
   complete: 'Đã nghiệm thu LSX',
   cancel: 'Đã hủy LSX',
-  request_materials: 'Đã tạo đề nghị mua thêm NVL'
+  request_materials: 'Đã tạo đề nghị mua thêm NVL',
+  request_material_shortage: 'Đã gửi đề nghị mua NVL thiếu'
 };
 const historyNames: Record<string, string> = {
   create: 'Lập lệnh',
@@ -106,7 +114,8 @@ const historyNames: Record<string, string> = {
   complete: 'Hoàn thành',
   cancel: 'Hủy lệnh',
   qc: 'Nghiệm thu QC',
-  request_materials: 'Đề nghị mua thêm NVL'
+  request_materials: 'Đề nghị mua thêm NVL',
+  request_material_shortage: 'Đề nghị mua NVL thiếu'
 };
 const LIST_STATUSES: Record<string, string> = { ...PRODUCTION_STATUSES, transfer_pending: 'Chờ duyệt bàn giao' };
 const PRIORITY_LABELS: Record<string, string> = { urgent: 'Gấp', high: 'Hơi gấp', normal: 'Bình thường' };
@@ -255,6 +264,9 @@ export function ProductionOrderWorkspace({
       operatorId: order.operatorId,
       shift: order.shift,
       deliveryDeadline: order.deliveryDeadline,
+      plannedStartDate: order.plannedStartDate || '',
+      plannedEndDate: order.plannedEndDate || '',
+      technicalNotes: order.technicalNotes || '',
       priority: order.priority,
       notes: order.notes,
       printTemplate: order.printTemplate || { id: 'standard', version: 1 }
@@ -281,6 +293,9 @@ export function ProductionOrderWorkspace({
       operatorId: order.operatorId,
       shift: order.shift,
       deliveryDeadline: order.deliveryDeadline,
+      plannedStartDate: '',
+      plannedEndDate: '',
+      technicalNotes: order.technicalNotes || '',
       priority: order.priority,
       notes: `Bổ sung phần thiếu của ${order.lsxCode}`,
       printTemplate: order.printTemplate || DEFAULT_PRINT_TEMPLATE
@@ -327,6 +342,9 @@ export function ProductionOrderWorkspace({
         operatorId: draft.operatorId,
         shift: draft.shift,
         deliveryDeadline: draft.deliveryDeadline,
+        plannedStartDate: draft.plannedStartDate,
+        plannedEndDate: draft.plannedEndDate,
+        technicalNotes: draft.technicalNotes,
         priority: draft.priority,
         notes: draft.notes,
         printTemplate: draft.printTemplate
@@ -434,6 +452,23 @@ export function ProductionOrderWorkspace({
                   />
                 </label>
                 <label>
+                  Bắt đầu dự kiến
+                  <input
+                    type="date"
+                    value={draft.plannedStartDate}
+                    onChange={event => updateDraft({ plannedStartDate: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Hoàn thành dự kiến
+                  <input
+                    type="date"
+                    min={draft.plannedStartDate || undefined}
+                    value={draft.plannedEndDate}
+                    onChange={event => updateDraft({ plannedEndDate: event.target.value })}
+                  />
+                </label>
+                <label>
                   Ưu tiên
                   <select value={draft.priority} onChange={event => updateDraft({ priority: event.target.value })}>
                     <option value="normal">Bình thường</option>
@@ -493,14 +528,24 @@ export function ProductionOrderWorkspace({
                     placeholder="Ca sáng / Tổ in 01"
                   />
                 </label>
-                <label>
+                <label className="lsx-field-wide">
+                  Yêu cầu kỹ thuật chung
+                  <input
+                    value={draft.technicalNotes}
+                    maxLength={3000}
+                    title={draft.technicalNotes}
+                    onChange={event => updateDraft({ technicalNotes: event.target.value })}
+                    placeholder="Màu in, keo, kiểm tra trước khi chạy hàng loạt…"
+                  />
+                </label>
+                <label className="lsx-field-wide">
                   Ghi chú chung
                   <input
                     value={draft.notes}
                     maxLength={3000}
                     title={draft.notes}
                     onChange={event => updateDraft({ notes: event.target.value })}
-                    placeholder="Yêu cầu kỹ thuật, lưu ý QA…"
+                    placeholder="Lưu ý QA, đóng gói…"
                   />
                 </label>
               </div>
@@ -524,6 +569,7 @@ export function ProductionOrderWorkspace({
             <LsxMaterialsTable
               materials={draft.materials}
               catalogMaterials={catalog.materials}
+              materialBalances={catalog.materialBalances}
               onChange={materials => updateDraft({ materials })}
             />
           </fieldset>
@@ -600,6 +646,17 @@ export function ProductionOrderWorkspace({
                   Bắt đầu sản xuất
                 </button>
               )}
+              {MATERIAL_SHORTAGE_STATUSES.includes(selected.status) && canCreate && (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={busy || !selected.materials.some(material => material.catalogItemId)}
+                  title="Máy chủ đối chiếu tồn kho NVL hiện tại và chỉ đề nghị mua phần còn thiếu của vật tư đã có mã"
+                  onClick={() => void transition('request_material_shortage')}
+                >
+                  Đề nghị mua NVL thiếu
+                </button>
+              )}
               {['draft', 'pending_approval', 'released'].includes(selected.status) && manager && (
                 <button className="btn btn-outline" disabled={busy} onClick={() => void transition('cancel')}>
                   Hủy lệnh
@@ -644,6 +701,14 @@ export function ProductionOrderWorkspace({
               <dd>{formatDate(selected.deliveryDeadline)}</dd>
             </div>
             <div>
+              <dt>Dự kiến sản xuất</dt>
+              <dd>
+                {selected.plannedStartDate || selected.plannedEndDate
+                  ? `${formatDate(selected.plannedStartDate || '')} – ${formatDate(selected.plannedEndDate || '')}`
+                  : '—'}
+              </dd>
+            </div>
+            <div>
               <dt>Ưu tiên</dt>
               <dd>{PRIORITY_LABELS[selected.priority] || '—'}</dd>
             </div>
@@ -670,6 +735,10 @@ export function ProductionOrderWorkspace({
             <div>
               <dt>Người lập</dt>
               <dd>{selected.createdBy}</dd>
+            </div>
+            <div className="lsx-summary-wide">
+              <dt>Yêu cầu kỹ thuật chung</dt>
+              <dd title={selected.technicalNotes}>{selected.technicalNotes || '—'}</dd>
             </div>
             <div className="lsx-summary-wide">
               <dt>Ghi chú chung</dt>

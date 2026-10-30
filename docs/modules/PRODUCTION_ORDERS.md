@@ -120,3 +120,16 @@ Chi tiết LSX v2 hiển thị lịch sử phiếu thành phẩm, mở nhập th
 - **Thao tác nhanh khi thiếu hàng trên LSX hoàn thành:** Khi LSX đã hoàn thành (`completed`) mà có dòng thiếu sản lượng (`goodQuantity < quantity`), bảng mặt hàng hiển thị rõ `"Thiếu N <ĐVT>"` và thanh thao tác hiển thị 2 nút nhanh:
   1. **Lập lệnh bổ sung:** Mở form lập LSX nháp điền sẵn khách hàng, các dòng PO còn thiếu với số lượng bằng đúng phần thiếu, vật tư dự kiến và ghi chú tham chiếu LSX gốc.
   2. **Đề nghị mua thêm NVL (`action: 'request_materials'`):** Tạo yêu cầu mua hàng (`procurement_requests`, `sourcingType: 'raw_material'`, trạng thái `new`) từ danh sách vật tư dự kiến của LSX trong giao dịch máy chủ; không tự tạo đơn mua (`purchase_orders`) hay công nợ.
+
+## Kế hoạch và vật tư khi lập lệnh — ngày 30/10/2026
+
+- Thông tin chung có **Bắt đầu / Hoàn thành dự kiến** (`plannedStartDate`, `plannedEndDate`, tùy chọn, ngày hoàn
+  thành không trước ngày bắt đầu) và **Yêu cầu kỹ thuật chung** (`technicalNotes`, tách khỏi ghi chú chung). Lệnh cũ
+  để trống. Chi tiết lệnh hiển thị các trường này; mẫu phiếu in chưa thêm.
+- Bảng vật tư dự kiến có thêm **Cần cả hao hụt** = số lượng × (1 + hao hụt), **Tồn kho** và **Thiếu**, quy về ĐVT
+  của dòng bằng hệ số quy đổi đã khai báo của mã NVL (`materialShortage`). Dòng chưa chọn mã hoặc ĐVT chưa có quy
+  đổi hiện "—", không tự quy đổi. `action: catalog` trả thêm `materialBalances` (tồn kho NVL theo ĐVT cơ sở).
+- `action: request_material_shortage`: với lệnh nháp / chờ duyệt / đã phát hành / đang chạy, máy chủ đọc tồn kho
+  NVL trong cùng giao dịch và tạo `procurement_requests` (`sourcingType: raw_material`, `new`) **chỉ cho phần thiếu**
+  của vật tư đã có mã và quy đổi. Không giữ chỗ, không trừ kho, không tạo đơn mua hay công nợ. Hết thiếu thì từ chối.
+  Lệnh hoàn thành vẫn dùng `request_materials` như trước.

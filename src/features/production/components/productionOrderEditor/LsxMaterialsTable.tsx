@@ -1,16 +1,20 @@
 import { Trash2 } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
+import { conversionFactor } from '@/features/catalog/model/itemCatalog';
 import type { ProductionDraftCatalog } from '../../api/productionOrderService';
-import type { PlannedMaterial } from '../../model/productionOrder';
+import { materialShortage, type PlannedMaterial } from '../../model/productionOrder';
 
 interface Props {
   materials: PlannedMaterial[];
   catalogMaterials: ProductionDraftCatalog['materials'];
+  /** NVL stock in each catalog item's base unit; absent until the catalog has loaded. */
+  materialBalances?: Record<string, number>;
   onChange: (materials: PlannedMaterial[]) => void;
 }
 type EditableField = 'code' | 'name' | 'width' | 'unit' | 'quantity' | 'allowancePercent';
 
 const NUMERIC_FIELDS: EditableField[] = ['quantity', 'allowancePercent'];
+const number = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 3 });
 const newMaterial = (): PlannedMaterial => ({
   id: crypto.randomUUID(),
   code: '',
@@ -22,7 +26,17 @@ const newMaterial = (): PlannedMaterial => ({
 });
 
 /** Planned materials entered row by row, MISA-style: pick the internal code and name/unit follow it. */
-export function LsxMaterialsTable({ materials, catalogMaterials, onChange }: Props) {
+export function LsxMaterialsTable({ materials, catalogMaterials, materialBalances, onChange }: Props) {
+  // Units convert only through the factor declared on the catalog item; an undeclared unit shows no stock.
+  const factorOf = (material: PlannedMaterial) => {
+    const item = catalogMaterials.find(entry => entry.id === material.catalogItemId);
+    if (!item || !materialBalances) return null;
+    try {
+      return conversionFactor(item, material.unit);
+    } catch {
+      return null;
+    }
+  };
   const updateRow = (index: number, patch: Partial<PlannedMaterial>) =>
     onChange(materials.map((material, position) => (position === index ? { ...material, ...patch } : material)));
   const updateField = (index: number, field: EditableField, value: string) =>
@@ -54,6 +68,11 @@ export function LsxMaterialsTable({ materials, catalogMaterials, onChange }: Pro
               <th>ĐVT</th>
               <th className="lsx-number">Số lượng</th>
               <th className="lsx-number">Hao hụt (%)</th>
+              <th className="lsx-number">Cần cả hao hụt</th>
+              <th className="lsx-number" title="Tồn sổ kho NVL quy về ĐVT của dòng; chỉ để xem, không tự trừ kho">
+                Tồn kho
+              </th>
+              <th className="lsx-number">Thiếu</th>
               <th aria-label="Thao tác" />
             </tr>
           </thead>
@@ -62,6 +81,12 @@ export function LsxMaterialsTable({ materials, catalogMaterials, onChange }: Pro
               const linked = !!material.catalogItemId;
               const missingFromCatalog = linked && !catalogMaterials.some(item => item.id === material.catalogItemId);
               const row = index + 1;
+              const factor = factorOf(material);
+              const balance = materialShortage(
+                material,
+                factor,
+                factor === null ? 0 : materialBalances?.[material.catalogItemId || ''] || 0
+              );
               return (
                 <tr key={material.id}>
                   <td>
@@ -148,6 +173,16 @@ export function LsxMaterialsTable({ materials, catalogMaterials, onChange }: Pro
                       onChange={event => updateField(index, 'allowancePercent', event.target.value)}
                     />
                   </td>
+                  <td className="lsx-number">{number(balance.needed)}</td>
+                  <td
+                    className="lsx-number"
+                    title={balance.stock === null ? 'Chọn mã NVL có quy đổi ĐVT đã khai báo để xem tồn' : undefined}
+                  >
+                    {balance.stock === null ? '—' : number(balance.stock)}
+                  </td>
+                  <td className={balance.shortage ? 'lsx-number lsx-text-danger' : 'lsx-number'}>
+                    {balance.shortage === null ? '—' : number(balance.shortage)}
+                  </td>
                   <td>
                     <IconButton
                       label={`Bỏ vật tư dòng ${row}`}
@@ -159,7 +194,7 @@ export function LsxMaterialsTable({ materials, catalogMaterials, onChange }: Pro
               );
             })}
             <tr className="lsx-add-row">
-              <td colSpan={7}>
+              <td colSpan={10}>
                 <button
                   type="button"
                   className="btn btn-outline"
