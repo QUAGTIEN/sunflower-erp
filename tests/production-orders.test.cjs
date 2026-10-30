@@ -1646,13 +1646,53 @@ test('D-MA1: order and LSX codes are PREFIX-YYMM-NNNN in Vietnamese time, number
 
   const { readSource } = require('./helpers/loadTs.cjs');
   const sales = readSource('src/features/sales/pages/SalesPage.tsx');
-  assert.match(sales, /dbService\.nextSequence\(\s*codeCounterKey\(DOCUMENT_CODE_PREFIXES\.order, month\)\s*\)/);
+  assert.match(sales, /dbService\.issueDocumentCode\(DOCUMENT_CODE_PREFIXES\.order\)/);
   assert.doesNotMatch(sales, /PO-\$\{yyyy\}/, 'order codes are no longer counted in the browser from loaded orders');
   assert.match(sales, /customerPoCode: poData\.customerPoCode \|\| ''/, 'the customer PO never defaults to our code');
   const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
   const counter = rules.match(/match \/code_counters\/\{counterKey\} \{([\s\S]*?)\n    \}/);
-  assert.ok(counter, 'the order code counter has rules');
-  assert.match(counter[1], /counterKey\.matches\('\^DH-\[0-9\]\{4\}\$'\)/);
+  assert.ok(counter, 'the document code counter has rules');
   assert.match(counter[1], /request\.resource\.data\.sequence == resource\.data\.sequence \+ 1/);
   assert.match(counter[1], /allow delete: if false;/);
+  const issuers = rules.match(/function canIssueDocumentCode\(counterKey\) \{([\s\S]*?)\n    \}/)[1];
+  assert.match(issuers, /'\^\(DH\|YCM\)-\[0-9\]\{4\}\$'\) && canUseOrderFlow\(\)/);
+  assert.match(issuers, /'\^DM-\[0-9\]\{4\}\$'\) && canUsePurchase\(\)/);
+  assert.match(issuers, /'\^GH-\[0-9\]\{4\}\$'\) && hasPage\('delivery'\)/);
+  assert.doesNotMatch(issuers, /PN|PX|LSX/, 'stock voucher and LSX counters stay server-only');
+});
+
+test('D-MA1 batch 3: stock vouchers are PN or PX and LSX material requests are YCM, from shared counters', async () => {
+  const { stockVoucherPrefix } = loader()('src/features/inventory/model/warehouse.ts');
+  for (const kind of ['purchase_receipt', 'production_return', 'production_receipt', 'customer_return'])
+    assert.equal(stockVoucherPrefix(kind), 'PN', kind);
+  for (const kind of ['production_issue', 'dispatch', 'delivery', 'close_short'])
+    assert.equal(stockVoucherPrefix(kind), 'PX', kind);
+  assert.equal(stockVoucherPrefix('reversal', 'purchase_receipt'), 'PX', 'reversing a receipt takes stock out');
+  assert.equal(stockVoucherPrefix('reversal', 'dispatch'), 'PN');
+
+  const month = loader()('src/shared/utils/documentCodes.ts').codeMonth();
+  const b = backend();
+  await b.manage(draft({ materials: [{ code: 'TAY-01', name: 'Giấy', unit: 'm', quantity: 5 }] }));
+  await b.action('submit');
+  await b.action('release');
+  await b.action('start');
+  await b.action('complete', 'command1', {
+    results: [{ itemId: 'roll', goodQuantity: 30, rejectQuantity: 0 }],
+    qcNote: 'Thiếu'
+  });
+  await b.action('request_materials');
+  const requests = [...b.store.keys()]
+    .filter(key => key.startsWith('procurement_requests/'))
+    .map(key => b.store.get(key).requestCode);
+  assert.deepEqual(requests, [`YCM-${month}-0001`]);
+  assert.equal(b.store.get(`code_counters/YCM-${month}`).sequence, 1);
+
+  const { readSource } = require('./helpers/loadTs.cjs');
+  const purchase = readSource('src/features/procurement/pages/PurchasePage.tsx');
+  const delivery = readSource('src/features/delivery/pages/DeliveryPage.tsx');
+  const requestsSource = readSource('src/features/procurement/api/procurementService.ts');
+  assert.match(purchase, /issueDocumentCode\(DOCUMENT_CODE_PREFIXES\.purchaseOrder\)/);
+  assert.match(delivery, /issueDocumentCode\(DOCUMENT_CODE_PREFIXES\.deliveryTrip\)/);
+  assert.match(requestsSource, /issueDocumentCode\(DOCUMENT_CODE_PREFIXES\.purchaseRequest\)/);
+  assert.doesNotMatch(purchase + delivery, /Math\.random/, 'codes are never random');
 });

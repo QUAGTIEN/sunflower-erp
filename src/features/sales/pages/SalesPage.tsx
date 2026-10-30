@@ -43,7 +43,7 @@ import {
 } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
-import { DOCUMENT_CODE_PREFIXES, codeCounterKey, codeMonth, formatDocumentCode } from '@/shared/utils/documentCodes';
+import { DOCUMENT_CODE_PREFIXES } from '@/shared/utils/documentCodes';
 import { normalizeCustomerProduct, type CustomerRecord, type LeadRecord } from '@/features/crm/model/crmModels';
 import { synchronizeCustomerProductOrderItems } from '@/features/crm/model/customerProductCatalog';
 import '@/components/CustomerHistory.css';
@@ -659,9 +659,7 @@ export const Sales: React.FC<SalesProps> = ({
             items: synchronizeCustomerProductOrderItems(poData.items, catalogCustomer).map(withCalculatedPOFinancials)
           };
           // D-MA1: DH-YYMM-NNNN from a monthly counter issued in a transaction, so concurrent orders never collide.
-          const month = codeMonth();
-          const sequence = await dbService.nextSequence(codeCounterKey(DOCUMENT_CODE_PREFIXES.order, month));
-          const poCode = formatDocumentCode(DOCUMENT_CODE_PREFIXES.order, month, sequence);
+          const poCode = await dbService.issueDocumentCode(DOCUMENT_CODE_PREFIXES.order);
 
           const reusableDesignByItemIndex = new Map<number, { design: DesignRecord; version: DesignVersion }>();
           if (poData.repeatSourcePoId && poData.designReuseRequested) {

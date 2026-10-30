@@ -3,6 +3,7 @@ import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
+import { DOCUMENT_CODE_PREFIXES } from '@/shared/utils/documentCodes';
 import { useLanguage } from '@/context/LanguageContext';
 import { getPODeliveryStage, getPOQueueUpdate, isPOInQueue } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
@@ -496,7 +497,8 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
           return;
         }
 
-        const delCode = `DEL-${new Date().toISOString().substring(2, 7).replace('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+        // D-MA1: GH-YYMM-NNNN from the monthly counter; random numbers could repeat.
+        const delCode = await dbService.issueDocumentCode(DOCUMENT_CODE_PREFIXES.deliveryTrip);
 
         const tripOrders = selectedOrderIds.map((poId, index) => {
           const po = pos.find(p => p.id === poId);

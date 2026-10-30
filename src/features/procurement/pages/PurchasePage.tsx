@@ -33,6 +33,7 @@ import {
 } from '@/features/procurement/model/purchaseModels';
 import { backfillProcurementRequests } from '@/features/procurement/api/procurementService';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
+import { DOCUMENT_CODE_PREFIXES } from '@/shared/utils/documentCodes';
 import './Purchase.css';
 
 type UnknownRecord = Record<string, unknown>;
@@ -341,7 +342,8 @@ export const Purchase: React.FC<PurchaseProps> = ({
         try {
           const now = new Date().toISOString();
           const purchaser = purchasers.find(user => user.uid === assignedPurchaserId);
-          const purCode = `PUR-${now.slice(2, 7).replace('-', '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+          // D-MA1: DM-YYMM-NNNN from the monthly counter; random numbers could repeat.
+          const purCode = await dbService.issueDocumentCode(DOCUMENT_CODE_PREFIXES.purchaseOrder);
           const totalPrice = selectedRequest.quantity * unitPrice;
           const createdOrder = await dbService.addDocument('purchase_orders', {
             purCode,

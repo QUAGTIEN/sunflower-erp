@@ -40,7 +40,7 @@ Mốc đầu lượt: `2235742`, main, origin GitHub đã kiểm tra. Đây là 
 | `warehouse_vouchers`     | Phiếu bất biến và các dòng snapshot số lượng gốc/cơ sở/hệ số, nguồn, người/ngày ghi, lý do, liên kết đảo |
 | `warehouse_source_state` | Ánh xạ theo dòng nguồn, fingerprint, lượng đã nhận hoặc cấp ròng (ĐVT cơ sở), revision                   |
 | `warehouse_requests`     | Biên nhận requestId + dấu nội dung/người thực hiện chống trùng                                           |
-| `warehouse_counters`     | Số phiếu theo ngày Việt Nam, `KHO-YYYYMMDD-xxxx`                                                         |
+| `code_counters/PN-YYMM`, `PX-YYMM` | Số phiếu D-MA1 dùng chung với kho thành phẩm: nhập `PN-YYMM-NNNN`, xuất `PX-YYMM-NNNN`, đảo lấy tiền tố ngược. Phiếu cũ giữ `KHO-YYYYMMDD-xxxx` (`warehouse_counters`) |
 | `audit_events`           | Dòng phiếu, lý do, dấu nguồn, người/thời gian; ngưỡng có trước/sau                                       |
 
 `purchase_orders` có `warehouseReceiptRevision`, `warehouseReceivedComplete`, status nhận một phần/đủ, actualReceiveDate. `procurement_requests` nhận revision/status tương ứng khi còn liên kết đúng đơn mua.

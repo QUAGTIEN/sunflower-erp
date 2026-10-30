@@ -30,6 +30,22 @@ export const WAREHOUSE_KINDS: Record<WarehouseKind, string> = {
   production_return: 'Hoàn NVL từ LSX',
   reversal: 'Đảo phiếu'
 };
+/**
+ * D-MA1 stock vouchers: receipts and returns into a store are PN (phiếu nhập), everything that sends goods out or
+ * closes them on an order is PX (phiếu xuất). A reversal takes the opposite prefix of the voucher it reverses.
+ */
+const STOCK_IN_KINDS = [
+  'purchase_receipt',
+  'production_return',
+  'production_receipt',
+  'production_surplus_receipt',
+  'failed_return',
+  'customer_return'
+];
+export function stockVoucherPrefix(kind: string, reversedKind = ''): 'PN' | 'PX' {
+  const inbound = STOCK_IN_KINDS.includes(kind === 'reversal' ? reversedKind : kind);
+  return (kind === 'reversal' ? !inbound : inbound) ? 'PN' : 'PX';
+}
 export const stockNumber = (value: number) => value.toLocaleString('vi-VN', { maximumFractionDigits: 6 });
 export interface WarehouseBalance {
   id: string;

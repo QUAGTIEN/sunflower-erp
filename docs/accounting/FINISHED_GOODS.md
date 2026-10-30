@@ -32,7 +32,7 @@ Mốc đầu lượt: `54b09f8`, main/origin. Đây là sổ **số lượng**, 
 | `goods_order_state/<poId>`                           | Fingerprint PO, revision, ánh xạ theo ID dòng, lượng đặt/xuất/nhận/hoàn/trả/đóng thiếu ở ĐVT cơ sở                 |
 | `goods_source_state/<production hoặc purchase>_<id>` | Fingerprint nguồn, ánh xạ từng dòng, phần nhập và phần NCC giao thẳng/nhận/hoàn, revision                          |
 | `goods_dispatch_state/<dispatchId>`                  | Lượng xuất/nhận/hoàn/trả theo dòng của từng phiếu xuất gốc                                                         |
-| `goods_requests`, `goods_counters`, `audit_events`   | Chống trùng theo người/nội dung, số phiếu ngày, lịch sử thao tác                                                   |
+| `goods_requests`, `goods_counters`, `audit_events`   | Chống trùng theo người/nội dung, lịch sử thao tác; số phiếu mới lấy từ `code_counters` `PN`/`PX` (D-MA1), phiếu cũ giữ `TP-YYYYMMDD-xxxx`                                                   |
 
 Sổ NVL cùng collection vẫn dùng `raw_main`; API/bảng/dashboard NVL lọc riêng, không trộn thành phẩm vào số NVL.
 

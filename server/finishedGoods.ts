@@ -6,6 +6,7 @@ import { conversionFactor, normalizeUnit } from '../src/features/catalog/model/i
 import { itemIdentity, lineSnapshot, type ProductionPO } from '../src/features/production/model/productionOrder.js';
 import {
   roundStock,
+  stockVoucherPrefix,
   warehouseDate,
   warehouseQuantity,
   type WarehouseActor
@@ -29,6 +30,7 @@ import {
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
 import { productionCatalogReader } from './productionCatalog.js';
+import { documentCodeIssuer } from './documentCounter.js';
 import { goodsSourceFingerprintInput, poFingerprintInput } from '../src/features/inventory/model/sourceFingerprints.js';
 
 type Data = Record<string, unknown>;
@@ -731,8 +733,13 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
       : [];
     const vehicleId = trip?.vehicleId ? id(trip.vehicleId) : '';
     const vehicle = vehicleId ? await read('delivery_vehicles', vehicleId) : undefined;
-    const counter = await read('goods_counters', today),
-      sequence = Number(counter?.sequence || 0) + 1;
+    // D-MA1: PN/PX-YYMM-NNNN shared with the NVL store; older vouchers keep their TP- codes.
+    const codes = await documentCodeIssuer(
+      tx,
+      firestore,
+      reversing ? stockVoucherPrefix('reversal', kind) : stockVoucherPrefix(kind),
+      new Date(now)
+    );
     const requestSource =
       purchaseId && sourceData?.procurementRequestId
         ? await read('procurement_requests', id(sourceData.procurementRequestId))
@@ -742,7 +749,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
       : [];
     const voucher: GoodsVoucher = {
       id: requestId,
-      code: `TP-${today.replaceAll('-', '')}-${String(sequence).padStart(4, '0')}`,
+      code: codes.next(),
       warehouseId: 'finished_main',
       kind: reversing ? 'reversal' : kind,
       ...(reversing ? { originalKind: kind, reversalOf: original!.id } : {}),
@@ -909,7 +916,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
     for (const [key, balance] of balances) set('warehouse_balances', key, balance as unknown as Data);
     set('warehouse_vouchers', requestId, voucher as unknown as Data);
     if (original) update('warehouse_vouchers', original.id, { reversedBy: requestId });
-    set('goods_counters', today, { sequence });
+    codes.commit();
     return finish(
       { success: true, id: requestId, code: voucher.code },
       { voucherId: requestId, kind: voucher.kind, poId, sourceId, lines, note, reversalOf: original?.id || '' }

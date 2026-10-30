@@ -1,5 +1,4 @@
 import {
-  getProcurementRequestCode,
   getProcurementRequestId,
   normalizeProcurementRequests,
   type ProcurementRequestRecord,
@@ -7,6 +6,7 @@ import {
 } from '@/features/procurement/model/purchaseModels';
 import { isPOCompleted } from '@/features/sales/model/poWorkflow';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
+import { DOCUMENT_CODE_PREFIXES } from '@/shared/utils/documentCodes';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -44,7 +44,6 @@ export const synchronizeProcurementRequestsForPO = async (
     activeRequestIds.add(requestId);
     const current = existing.find(request => request.id === requestId);
     const snapshot = {
-      requestCode: getProcurementRequestCode(poCode, itemIndex),
       poId,
       poCode,
       poItemId: itemId,
@@ -71,6 +70,8 @@ export const synchronizeProcurementRequestsForPO = async (
       const created = await dbService.addDocument('procurement_requests', {
         id: requestId,
         ...snapshot,
+        // D-MA1: issued once when the request is created; later syncs keep it, older MH- codes stay as they are.
+        requestCode: await dbService.issueDocumentCode(DOCUMENT_CODE_PREFIXES.purchaseRequest),
         status: 'new',
         assignedPurchaserId: '',
         assignedPurchaserName: '',

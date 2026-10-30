@@ -698,16 +698,20 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // D-MA1: order codes DH-YYMM-NNNN come from a monthly counter that only ever moves up by one,
-    // so two users never receive the same number and a number is never handed out again.
+    // D-MA1: document codes PREFIX-YYMM-NNNN come from monthly counters that only ever move up by one, so two
+    // users never receive the same number and a number is never handed out again. Browsers issue order, purchase
+    // request, purchase order and delivery trip codes; stock voucher (PN/PX) and LSX counters are server-only.
+    function canIssueDocumentCode(counterKey) {
+      return (counterKey.matches('^(DH|YCM)-[0-9]{4}$') && canUseOrderFlow())
+        || (counterKey.matches('^DM-[0-9]{4}$') && canUsePurchase())
+        || (counterKey.matches('^GH-[0-9]{4}$') && hasPage('delivery'));
+    }
     match /code_counters/{counterKey} {
       allow read: if isActive();
-      allow create: if canUseOrderFlow()
-        && counterKey.matches('^DH-[0-9]{4}$')
+      allow create: if canIssueDocumentCode(counterKey)
         && request.resource.data.keys().hasOnly(['sequence', 'updatedAt'])
         && request.resource.data.sequence == 1;
-      allow update: if canUseOrderFlow()
-        && counterKey.matches('^DH-[0-9]{4}$')
+      allow update: if canIssueDocumentCode(counterKey)
         && request.resource.data.keys().hasOnly(['sequence', 'updatedAt'])
         && request.resource.data.sequence == resource.data.sequence + 1;
       allow delete: if false;

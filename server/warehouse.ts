@@ -7,6 +7,7 @@ import {
   canPostWarehouse,
   canReadWarehouse,
   roundStock,
+  stockVoucherPrefix,
   warehouseDate,
   warehouseQuantity,
   WarehouseValidationError,
@@ -19,6 +20,7 @@ import {
   type WarehouseVoucher
 } from '../src/features/inventory/model/warehouse.js';
 import { buildItemUsers } from '../src/features/inventory/model/itemUsers.js';
+import { documentCodeIssuer } from './documentCounter.js';
 import {
   rawSourceFingerprintInput,
   sourceLine,
@@ -382,9 +384,8 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
     }
     const note = text(body.note);
     if (!note) fail(400, 'Nhập nội dung/lý do ghi sổ.');
-    const counterRef = firestore.collection('warehouse_counters').doc(today),
-      counter = (await tx.get(counterRef)).data();
-    const sequence = Number(counter?.sequence || 0) + 1;
+    // D-MA1: PN/PX-YYMM-NNNN shared with the finished-goods store; older vouchers keep their KHO- codes.
+    const codes = await documentCodeIssuer(tx, firestore, stockVoucherPrefix(kind, original?.kind), new Date(now));
     const requestSourceRef =
       sourceType === 'purchase' && source.procurementRequestId
         ? firestore.collection('procurement_requests').doc(id(source.procurementRequestId))
@@ -399,7 +400,7 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
     // All source/progress/stock reads precede all writes; one transaction serializes competing receipts/returns.
     const voucher: WarehouseVoucher = {
       id: requestId,
-      code: `KHO-${today.replaceAll('-', '')}-${String(sequence).padStart(4, '0')}`,
+      code: codes.next(),
       warehouseId: 'raw_main',
       kind,
       sourceId,
@@ -475,7 +476,7 @@ export async function manageWarehouse(actor: WarehouseActor, body: Data) {
         ]
       });
     }
-    tx.set(counterRef, { sequence });
+    codes.commit();
     tx.set(requestRef, { digest, actorId: actor.uid, result, createdAt: now });
     tx.set(firestore.collection('audit_events').doc(), {
       actorId: actor.uid,

@@ -23,6 +23,7 @@ import {
 } from '../src/features/production/model/productionOrder.js';
 import { getPOQueueUpdate, getPOQueueStatus } from '../src/features/sales/model/poWorkflow.js';
 import { productionCatalogReader } from './productionCatalog.js';
+import { documentCodeIssuer } from './documentCounter.js';
 import {
   DOCUMENT_CODE_PREFIXES,
   codeCounterKey,
@@ -179,6 +180,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     const readers = new Map(linePOs.map(po => [po.id, productionCatalogReader(transaction, firestore, po)]));
     let next: ProductionOrder;
     let materialRequests: MaterialRequest[] = [];
+    let requestCodes: Awaited<ReturnType<typeof documentCodeIssuer>> | undefined;
     if (drafting) {
       const fields = validateProductionOrderDraft(linePOs, commands, body, id);
       fields.lines = await Promise.all(fields.lines.map(line => readers.get(line.poId!)!.line(line)));
@@ -336,6 +338,14 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
       }
       if (action === 'request_material_shortage')
         materialRequests = await materialShortages(transaction, firestore, next);
+      // D-MA1: YCM-YYMM-NNNN, the same series as purchase requests raised from orders.
+      if (materialRequests.length)
+        requestCodes = await documentCodeIssuer(
+          transaction,
+          firestore,
+          DOCUMENT_CODE_PREFIXES.purchaseRequest,
+          new Date(now)
+        );
     }
     // Legacy dashboards, machine schedules and chat use this display-only alias.
     next.productName = next.lines.map(line => line.productName).join(', ');
@@ -355,7 +365,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
         const reqDocId = `pr_${requestId}_${index + 1}`;
         transaction.set(firestore.collection('procurement_requests').doc(reqDocId), {
           id: reqDocId,
-          requestCode: `PR-${next.lsxCode}-${String(index + 1).padStart(2, '0')}`,
+          requestCode: requestCodes!.next(),
           poId: next.poId,
           poCode: next.poCode,
           poItemId: material.id,
@@ -394,6 +404,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
           deleted: false
         });
       });
+      requestCodes?.commit();
     }
     transaction.set(commandRef, next);
     for (const po of pos) updatePO(transaction, firestore, po, after, next, action, actor, now);

@@ -1,8 +1,17 @@
 /**
  * Document codes of decision D-MA1: `PREFIX-YYMM-NNNN`, numbered per month in Vietnamese business time.
- * Shared by the browser and the server so both issue the same shape.
+ * Shared by the browser and the server so both issue the same shape from `code_counters/PREFIX-YYMM`.
  */
-export const DOCUMENT_CODE_PREFIXES = { order: 'DH', productionOrder: 'LSX' } as const;
+export const DOCUMENT_CODE_PREFIXES = {
+  order: 'DH',
+  productionOrder: 'LSX',
+  purchaseRequest: 'YCM',
+  purchaseOrder: 'DM',
+  stockIn: 'PN',
+  stockOut: 'PX',
+  deliveryTrip: 'GH'
+} as const;
+export type DocumentCodePrefix = (typeof DOCUMENT_CODE_PREFIXES)[keyof typeof DOCUMENT_CODE_PREFIXES];
 
 /** YYMM of the date in Asia/Ho_Chi_Minh, the month a document's sequence restarts in. */
 export function codeMonth(date = new Date()) {

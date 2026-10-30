@@ -15,6 +15,7 @@ import {
   type QueryConstraint
 } from 'firebase/firestore';
 import type { ErpDocument } from '@/shared/types';
+import { codeCounterKey, codeMonth, formatDocumentCode, type DocumentCodePrefix } from '@/shared/utils/documentCodes';
 import { firebaseAuth, getFirebaseDatabase, isFirebaseRuntimeEnabled, reportFirebaseFailure } from './client';
 import {
   deleteLocalDocument,
@@ -248,6 +249,12 @@ export const dbService = {
     const sequence = Number(counter?.sequence || 0) + 1;
     upsertLocalDocument('code_counters', { id: counterKey, sequence, updatedAt: new Date().toISOString() });
     return sequence;
+  },
+
+  /** The next D-MA1 code of a prefix this month, e.g. `DH-2610-0007`, from that month's counter. */
+  async issueDocumentCode(prefix: DocumentCodePrefix): Promise<string> {
+    const month = codeMonth();
+    return formatDocumentCode(prefix, month, await this.nextSequence(codeCounterKey(prefix, month)));
   },
 
   async updateDocument(colName: string, docId: string, updatedFields: ErpDocument): Promise<boolean> {

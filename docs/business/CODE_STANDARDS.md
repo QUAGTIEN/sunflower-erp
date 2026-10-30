@@ -36,12 +36,12 @@ Nhóm NVL: `DCG` decal giấy, `DCN` decal nhiệt, `PP` màng PP, `PET` màng P
 |---|---|---|---|
 | Đơn hàng | `PO-YYYYMM-NNNN` | Trình duyệt, đếm theo đơn đã có | Đã thay ở đợt 1 |
 | Lệnh sản xuất | `LSX-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | Đã thay ở đợt 1 |
-| Phiếu kho NVL | `KHO-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | |
-| Phiếu thành phẩm / giao | `TP-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | Trùng tiền tố `TP` với mã thành phẩm mới |
+| Phiếu kho NVL | `KHO-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | Đã thay ở đợt 3 |
+| Phiếu thành phẩm / giao | `TP-YYYYMMDD-NNNN` | Máy chủ, bộ đếm theo ngày | Đã thay ở đợt 3 |
 | Chứng từ tiền | `KT-YYYYMMDD-NNNN` | Máy chủ | Ngoài phạm vi D-MA1 |
-| Đơn mua | `PUR-YYMM-` + 4 số ngẫu nhiên | Trình duyệt | Có thể trùng |
-| Chuyến giao hàng | `DEL-YYMM-` + 4 số ngẫu nhiên | Trình duyệt | Có thể trùng |
-| Yêu cầu mua | `MH-…`, `PR-<LSX>-NN` | Trình duyệt / máy chủ | Theo mã đơn hàng hoặc LSX nguồn |
+| Đơn mua | `PUR-YYMM-` + 4 số ngẫu nhiên | Trình duyệt | Đã thay ở đợt 3 |
+| Chuyến giao hàng | `DEL-YYMM-` + 4 số ngẫu nhiên | Trình duyệt | Đã thay ở đợt 3 |
+| Yêu cầu mua | `MH-…`, `PR-<LSX>-NN` | Trình duyệt / máy chủ | Đã thay ở đợt 3 |
 | Khách hàng / NCC | `KH-NNNN`, `NCC-NNNN` | Trình duyệt | Giữ nguyên |
 
 ## Thứ tự triển khai
@@ -59,4 +59,10 @@ Nhóm NVL: `DCG` decal giấy, `DCN` decal nhiệt, `PP` màng PP, `PET` màng P
    vào `customers/<id>.shortCode` và giữ chỗ ở `customer_short_codes/<MÃ>` để không trùng; sau đó không đổi. Rules
    chặn client ghi `shortCode`; `catalog_counters`, `customer_short_codes` chỉ máy chủ đọc/ghi. Nhập CSV vẫn nhận mã
    có sẵn trong tệp để chuyển mã cũ.
-3. Yêu cầu mua, đơn mua, phiếu nhập / xuất kho, chuyến giao hàng.
+3. **Đã làm.** Mọi mã theo tháng lấy số từ một chỗ, `code_counters/<TIỀN TỐ>-YYMM`, nên máy chủ và trình duyệt
+   không bao giờ cấp trùng. Trình duyệt cấp `DH`, `YCM` (yêu cầu mua sinh từ đơn hàng, cấp một lần khi tạo), `DM` (đơn
+   mua, thay số ngẫu nhiên), `GH` (chuyến giao, thay số ngẫu nhiên); rules cho phép theo vai trò: `DH`, `YCM` cho người
+   dùng luồng đơn hàng, `DM` cho Mua hàng / Kho, `GH` cho Giao hàng. Máy chủ cấp `YCM` cho đề nghị mua NVL từ LSX và
+   `PN` / `PX` cho phiếu kho NVL lẫn thành phẩm. Phiếu nhập mua, hoàn NVL, nhập thành phẩm / dư, hoàn giao thất bại,
+   khách trả là `PN`; cấp NVL, xuất giao, NCC giao thẳng, xác nhận nhận hàng, đóng phần thiếu là `PX`; phiếu đảo lấy
+   tiền tố ngược với phiếu gốc. Bộ đếm `PN`, `PX`, `LSX` chỉ máy chủ ghi.

@@ -874,3 +874,14 @@ test('a mixed-customer LSX attributes each line to its own customer and its mate
   assert.deepEqual(names('tem-b'), ['Công ty B']);
   assert.ok(!JSON.stringify(users).includes('Công ty A, Công ty B'), 'the joined order name is never a customer');
 });
+
+test('D-MA1: NVL receipts are PN, issues are PX and both share the monthly stock voucher counters', async () => {
+  const month = loader()('src/shared/utils/documentCodes.ts').codeMonth();
+  const b = backend();
+  const receipt = await b.manage(b.request('purchase_receipt', 50));
+  const issue = await b.manage(b.request('production_issue', 10));
+  assert.equal(b.store.get(`warehouse_vouchers/${receipt.id}`).code, `PN-${month}-0001`);
+  assert.equal(b.store.get(`warehouse_vouchers/${issue.id}`).code, `PX-${month}-0001`);
+  assert.equal(b.store.get(`code_counters/PN-${month}`).sequence, 1);
+  assert.equal(b.store.get(`code_counters/PX-${month}`).sequence, 1);
+});
