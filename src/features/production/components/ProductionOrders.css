@@ -765,19 +765,19 @@
   outline-offset: 1px;
 }
 .lsx-workspace .lsx-priority .is-normal:has(input:checked) {
-  border-color: #64748b;
-  background: #e2e8f0;
-  color: #0f172a;
+  border-color: #1e3a8a;
+  background: #1e3a8a;
+  color: #fff;
 }
 .lsx-workspace .lsx-priority .is-high:has(input:checked) {
-  border-color: #d97706;
-  background: #fef3c7;
-  color: #92400e;
+  border-color: #b45309;
+  background: #b45309;
+  color: #fff;
 }
 .lsx-workspace .lsx-priority .is-urgent:has(input:checked) {
-  border-color: #dc2626;
-  background: #fee2e2;
-  color: #991b1b;
+  border-color: #b91c1c;
+  background: #b91c1c;
+  color: #fff;
 }
 .lsx-date-range {
   display: grid;

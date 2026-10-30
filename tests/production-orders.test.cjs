@@ -760,7 +760,7 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
   );
   // Choosing lines is a page action in the editor header, not part of the item grid.
   nodes(tree)
-    .find(node => node.type === 'button' && node.props.children === 'Chọn hàng…')
+    .find(node => node.type === 'button' && node.props.children === 'Chọn hàng')
     .props.onClick();
   tree = render();
   nodes(tree)

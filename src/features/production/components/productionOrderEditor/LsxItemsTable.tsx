@@ -211,7 +211,7 @@ export function LsxItemsTable({
             {!lines.length && (
               <tr>
                 <td colSpan={11}>
-                  Chưa có mặt hàng. Bấm “Chọn hàng…” ở đầu trang để tick khách hàng, đơn hàng và mã sản phẩm.
+                  Chưa có mặt hàng. Bấm “Chọn hàng” ở đầu trang để tick khách hàng, đơn hàng và mã sản phẩm.
                 </td>
               </tr>
             )}

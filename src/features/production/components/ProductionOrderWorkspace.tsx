@@ -428,8 +428,8 @@ export function ProductionOrderWorkspace({
             </div>
             <div className="lsx-actions">
               {/* Choosing lines is the first step of an order, so it sits with the page actions. */}
-              <button type="button" className="btn btn-outline" disabled={busy} onClick={() => setPickerOpen(true)}>
-                Chọn hàng…
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => setPickerOpen(true)}>
+                Chọn hàng
               </button>
               <button
                 className="btn btn-primary"
