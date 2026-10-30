@@ -71,8 +71,9 @@ function productionReceiptSources(source: Data & { id: string }) {
         : source.lsxCode || source.id,
     type: 'production',
     poId,
-    customerId: String(source.customerId || ''),
-    customerName: String(source.customerName || ''),
+    // Each receipt belongs to one PO, so it carries that PO's customer even when the order mixes customers.
+    customerId: String(lines.find(row => row.poId === poId)?.customerId || source.customerId || ''),
+    customerName: String(lines.find(row => row.poId === poId)?.customerName || source.customerName || ''),
     blocked: '',
     lines: lines
       .filter(row => String(row.poId || source.poId) === poId)

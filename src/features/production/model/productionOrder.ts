@@ -29,6 +29,9 @@ export interface ProductionLine {
   /** PO of this line. Orders made before multi-PO orders leave it empty and use the order's `poId`. */
   poId?: string;
   poCode?: string;
+  /** Customer of the line's PO; one order may hold lines of several customers (D-LSX2). */
+  customerId?: string;
+  customerName?: string;
   /** Unique key of the line inside the order: `poId__itemId`; older lines are keyed by `itemId` alone. */
   lineId?: string;
   productCode: string;
@@ -93,8 +96,11 @@ export interface ProductionOrder extends Record<string, unknown> {
   poCode: string;
   poIds?: string[];
   poCodes?: string[];
+  /** Every customer's name joined; `customerId` is set only when the order holds one customer. */
   customerName: string;
   customerId: string;
+  customerIds?: string[];
+  customerNames?: string[];
   status: ProductionStatus;
   lines: ProductionLine[];
   materials: PlannedMaterial[];
@@ -252,7 +258,7 @@ export function allocatedQuantities(commands: CommandRecord[], excludedId = '') 
   }
   return allocations;
 }
-/** Validate one order whose lines may come from several POs of the same customer. */
+/** Validate one order whose lines may come from several POs, of one or several customers (D-LSX2). */
 export function validateProductionOrderDraft(
   pos: ProductionPO[],
   commands: CommandRecord[],
@@ -260,9 +266,6 @@ export function validateProductionOrderDraft(
   excludedId = ''
 ) {
   if (!pos.length) fail('Chọn ít nhất một đơn hàng để lập lệnh.');
-  const customers = new Set(pos.map(po => String(po.customerId || '')));
-  if (pos.length > 1 && (customers.size > 1 || customers.has('')))
-    fail('Một lệnh sản xuất chỉ gồm các đơn hàng của cùng một khách hàng.');
   for (const po of pos) {
     const ids = (po.items || []).map(itemIdentity);
     if (new Set(ids).size !== ids.length)
@@ -309,6 +312,8 @@ export function validateProductionOrderDraft(
       ...snapshot,
       poId,
       poCode: String(po!.poCode || poId),
+      customerId: String(po!.customerId || ''),
+      customerName: String(po!.customerName || ''),
       lineId: `${poId}__${id}`,
       printDetails: { materialWidth, priority: text(details.priority, 20) }
     };

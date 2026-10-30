@@ -1,9 +1,18 @@
 # Lệnh sản xuất — bước triển khai đầu
 
-## Quyết định D-LSX1 (chốt 27/10/2026): một lệnh gồm nhiều PO của cùng khách
+## Quyết định D-LSX2 (chốt 30/10/2026): một lệnh gồm hàng của nhiều khách
 
-- Lập lệnh chọn được **khách hàng, PO và mã sản phẩm độc lập**; một LSX có thể lấy dòng từ nhiều PO, nhưng
-  **chỉ của một khách** (máy chủ chặn khác khách hoặc PO thiếu khách khi gộp).
+- Thay phần "chỉ của một khách" của D-LSX1: một LSX có thể lấy dòng từ nhiều đơn hàng của **nhiều khách**.
+- Mỗi dòng LSX lưu `customerId`, `customerName` của đơn hàng nguồn. Lệnh lưu `customerIds`, `customerNames`,
+  `customerName` (nối tên); `customerId` chỉ có khi lệnh gồm một khách, lệnh nhiều khách để trống để không gán cả
+  lệnh cho khách đầu tiên. `customerCode` nối mã khách khi có nhiều khách.
+- Phiếu nhập thành phẩm tách theo đơn hàng nên mang khách của đơn hàng đó. Phiếu cấp NVL của lệnh nhiều khách không
+  ghi `customerId`; "Khách đang dùng" vật tư tính cho từng khách của lệnh, mã thành phẩm tính theo khách của dòng.
+
+## Quyết định D-LSX1 (chốt 27/10/2026): một lệnh gồm nhiều PO
+
+- Lập lệnh chọn được **khách hàng, PO và mã sản phẩm độc lập**; một LSX có thể lấy dòng từ nhiều PO (phạm vi khách
+  xem D-LSX2).
 - Mỗi PO có bao nhiêu mã thì giữ bấy nhiêu dòng; cùng mã ở hai PO là hai dòng riêng, không gộp số lượng.
 - Không lập lệnh cho hàng không thuộc PO (sản xuất tồn kho) trong đợt này.
 - Bỏ bước chốt cột “Cần SX” trước lệnh đầu: dòng nào đưa vào lệnh là dòng cần sản xuất. Dòng mua bán lại / dịch vụ

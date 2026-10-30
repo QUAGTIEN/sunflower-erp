@@ -1198,10 +1198,10 @@ test('LSX editor uses the merged item table and the inline material table', () =
   assert.doesNotMatch(workspace, /Đơn hàng PO \*|Mã nội bộ và thông tin bổ sung trên phiếu/);
 });
 
-test('one order can draw lines from several POs of one customer; allocation stays per PO line', async () => {
+test('one order can draw lines from several POs and customers; allocation stays per PO line', async () => {
   const b = backend({
     'pos/po2': { ...po(), id: 'po2', poCode: 'PO-02' },
-    'pos/po3': { ...po(), id: 'po3', poCode: 'PO-03', customerId: 'customer2' }
+    'pos/po3': { ...po(), id: 'po3', poCode: 'PO-03', customerId: 'customer2', customerName: 'Công ty B' }
   });
   await b.manage(
     draft({
@@ -1227,14 +1227,26 @@ test('one order can draw lines from several POs of one customer; allocation stay
   const extra = (id, lines) => b.manage(draft({ id, requestId: `request-${id}`, poId: undefined, lines }));
   await assert.rejects(extra('command2', [{ poId: 'po1', itemId: 'roll', quantity: 1 }]), /vượt phần còn lại/);
   await extra('command2', [{ poId: 'po2', itemId: 'roll', quantity: 60 }]);
-  await assert.rejects(
-    extra('command3', [
-      { poId: 'po1', itemId: 'manual', quantity: 1 },
-      { poId: 'po3', itemId: 'manual', quantity: 1 }
-    ]),
-    /cùng một khách hàng/
+  assert.equal(order.customerId, 'customer1', 'a single-customer order keeps the old customer fields');
+  assert.deepEqual(order.customerIds, ['customer1']);
+  // D-LSX2: one order may mix customers; each line keeps its own PO's customer.
+  await extra('command3', [
+    { poId: 'po1', itemId: 'manual', quantity: 1 },
+    { poId: 'po3', itemId: 'manual', quantity: 1 }
+  ]);
+  const mixed = b.order('command3');
+  assert.equal(mixed.customerId, '', 'a mixed order is never attributed to its first customer');
+  assert.deepEqual(mixed.customerIds, ['customer1', 'customer2']);
+  assert.deepEqual(mixed.customerNames, ['Công ty A', 'Công ty B']);
+  assert.equal(mixed.customerName, 'Công ty A, Công ty B');
+  assert.deepEqual(
+    mixed.lines.map(line => [line.poId, line.customerId, line.customerName]),
+    [
+      ['po1', 'customer1', 'Công ty A'],
+      ['po3', 'customer2', 'Công ty B']
+    ]
   );
-  await assert.rejects(extra('command3', [{ poId: 'po9', itemId: 'manual', quantity: 1 }]), /Không tìm thấy đơn hàng/);
+  await assert.rejects(extra('command4', [{ poId: 'po9', itemId: 'manual', quantity: 1 }]), /Không tìm thấy đơn hàng/);
 });
 
 test('QC on a multi-PO order ships each PO only when its own lines are fully produced', async () => {

@@ -31,6 +31,19 @@ const identifier = (value: unknown) => {
   return value;
 };
 const unique = (values: string[]) => [...new Set(values)];
+const snapshotOf = (po: Record<string, unknown>) =>
+  po.customerSnapshot && typeof po.customerSnapshot === 'object'
+    ? (po.customerSnapshot as Record<string, unknown>)
+    : {};
+/** Customers of the order's POs in line order; a PO without a customer is listed by its own name. */
+const orderCustomers = (pos: Record<string, unknown>[]) => [
+  ...new Map(
+    pos.map(po => {
+      const id = String(po.customerId || '');
+      return [id || `po:${String(po.id)}`, { id, name: String(po.customerName || '') }] as const;
+    })
+  ).values()
+];
 
 /** PO IDs named by the lines of a create/save request; lines without a PO use the request's `poId`. */
 function requestedPoIds(body: Record<string, unknown>) {
@@ -66,7 +79,7 @@ async function readCommands(transaction: Transaction, firestore: Firestore, poId
   return [...byId.values()];
 }
 
-/** Production orders draw lines from one or more POs of one customer; every PO write serializes allocations. */
+/** Production orders draw lines from one or more POs of one or more customers; PO writes serialize allocations. */
 export async function manageProductionOrder(actor: ProductionActor, body: Record<string, unknown>) {
   if (!canDraftProduction(actor)) throw new AdminApiError(403, 'Bạn không có quyền lập lệnh sản xuất.');
   const { firestore } = getFirebaseAdminServices();
@@ -125,11 +138,9 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
       const customer = firstPO.customerId
         ? (await transaction.get(firestore.collection('customers').doc(identifier(firstPO.customerId)))).data()
         : undefined;
-      const customerSnapshot =
-        firstPO.customerSnapshot && typeof firstPO.customerSnapshot === 'object'
-          ? (firstPO.customerSnapshot as Record<string, unknown>)
-          : {};
+      const customerSnapshot = snapshotOf(firstPO);
       const poCodes = orderPOs.map(po => String(po.poCode || po.id));
+      const customers = orderCustomers(orderPOs);
       next = {
         ...(previous || {}),
         ...fields,
@@ -141,19 +152,28 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
         poIds: orderPoIds,
         poCode: poCodes.join(', '),
         poCodes,
-        customerId: String(firstPO.customerId || ''),
-        customerName: String(firstPO.customerName || ''),
+        // One customer keeps the old single-customer fields; several leave customerId empty so no reader
+        // attributes the whole order to the first customer.
+        customerId: customers.length === 1 ? customers[0].id : '',
+        customerName: customers.map(customer => customer.name).join(', '),
+        customerIds: customers.map(customer => customer.id),
+        customerNames: customers.map(customer => customer.name),
         machineName: '',
         operatorName: '',
         status: 'draft',
         inventoryPostingMode: 'actual_issue',
-        customerCode: String(
-          previous?.customerCode ||
-            customerSnapshot.customerCode ||
-            firstPO.customerCode ||
-            customer?.customerCode ||
-            ''
-        ),
+        customerCode:
+          customers.length > 1
+            ? unique(orderPOs.map(po => String(snapshotOf(po).customerCode || po.customerCode || '')))
+                .filter(Boolean)
+                .join(', ')
+            : String(
+                previous?.customerCode ||
+                  customerSnapshot.customerCode ||
+                  firstPO.customerCode ||
+                  customer?.customerCode ||
+                  ''
+              ),
         createdAt: previous?.createdAt || now,
         createdById: previous?.createdById || actor.uid,
         createdBy: previous?.createdBy || actor.displayName,

@@ -845,3 +845,32 @@ test('the live Kho vật tư page queries only collections that warehouse reader
   const page = fs.readFileSync(path.join(root, 'src/features/inventory/pages/InventoryPage.tsx'), 'utf8');
   assert.ok(!/loadWarehouse|loadFinishedGoods|loadItemCatalog/.test(page), 'the page no longer loads through the APIs');
 });
+
+test('a mixed-customer LSX attributes each line to its own customer and its materials to all of them', () => {
+  const { buildItemUsers } = loader()('src/features/inventory/model/itemUsers.ts');
+  const command = {
+    id: 'lsx1',
+    lsxCode: 'LSX-1',
+    customerId: '',
+    customerName: 'Công ty A, Công ty B',
+    materials: [{ catalogItemId: 'paper' }],
+    lines: [
+      { customerId: 'a', customerName: 'Công ty A', catalog: { id: 'tem-a' } },
+      { customerId: 'b', customerName: 'Công ty B', catalog: { id: 'tem-b' } }
+    ]
+  };
+  const issue = {
+    id: 'v1',
+    code: 'KHO-1',
+    sourceType: 'production',
+    sourceId: 'lsx1',
+    lines: [{ catalogItemId: 'ink' }]
+  };
+  const users = buildItemUsers([], [issue], [command], [], []);
+  const names = id => (users[id] || []).map(user => user.customerName).sort();
+  assert.deepEqual(names('paper'), ['Công ty A', 'Công ty B']);
+  assert.deepEqual(names('ink'), ['Công ty A', 'Công ty B'], 'a material voucher of the order serves every customer');
+  assert.deepEqual(names('tem-a'), ['Công ty A']);
+  assert.deepEqual(names('tem-b'), ['Công ty B']);
+  assert.ok(!JSON.stringify(users).includes('Công ty A, Công ty B'), 'the joined order name is never a customer');
+});

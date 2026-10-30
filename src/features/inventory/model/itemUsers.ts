@@ -2,6 +2,24 @@ import { catalogSources, normalizeCatalogCode } from '../../catalog/model/itemCa
 import type { WarehouseCustomerUsage } from './warehouse.js';
 
 type Data = Record<string, unknown>;
+interface UsageCustomer {
+  id: string;
+  name: string;
+}
+
+const linesOf = (value: unknown): Data[] => (Array.isArray(value) ? (value as Data[]) : []);
+const customerOf = (record: Data | undefined): UsageCustomer => ({
+  id: String(record?.customerId || ''),
+  name: String(record?.customerName || '')
+});
+/** An order may mix customers (D-LSX2): its lines name their own, older orders only the order's. */
+function orderCustomers(cmd: Data): UsageCustomer[] {
+  const fromLines = linesOf(cmd.lines)
+    .map(customerOf)
+    .filter(customer => customer.name);
+  const customers = fromLines.length ? fromLines : [customerOf(cmd)];
+  return [...new Map(customers.map(customer => [customer.id || customer.name, customer])).values()];
+}
 
 /**
  * Customers shown as using a catalog item: from LSX materials and lines, posted stock vouchers, confirmed
@@ -41,29 +59,31 @@ export function buildItemUsers(
   }
   for (const cmd of commands) {
     if (cmd.deleted || cmd.status === 'cancelled') continue;
-    const customerId = String(cmd.customerId || '');
-    const customerName = String(cmd.customerName || '');
     const lsxCode = String(cmd.lsxCode || cmd.id);
-    if (!customerName) continue;
-    for (const mat of Array.isArray(cmd.materials) ? (cmd.materials as Data[]) : []) {
+    const customers = orderCustomers(cmd);
+    // Planned materials serve the whole order, so they count for every customer in it.
+    for (const mat of linesOf(cmd.materials)) {
       const catId = String(mat.catalogItemId || (mat.catalog as Data | undefined)?.id || '');
-      if (catId) addUsage(catId, customerId, customerName, `LSX ${lsxCode}`);
+      for (const customer of customers) if (catId) addUsage(catId, customer.id, customer.name, `LSX ${lsxCode}`);
     }
-    for (const line of Array.isArray(cmd.lines) ? (cmd.lines as Data[]) : []) {
+    for (const line of linesOf(cmd.lines)) {
       const catId = String((line.catalog as Data | undefined)?.id || '');
-      if (catId) addUsage(catId, customerId, customerName, `LSX ${lsxCode}`);
+      const customer = line.customerName ? customerOf(line) : customerOf(cmd);
+      if (catId) addUsage(catId, customer.id, customer.name, `LSX ${lsxCode}`);
     }
   }
   for (const voucher of vouchers) {
     if (voucher.reversedBy || voucher.kind === 'reversal') continue;
     const cmd = voucher.sourceType === 'production' ? commandMap.get(String(voucher.sourceId || '')) : undefined;
-    const customerId = String(voucher.customerId || cmd?.customerId || '');
-    const customerName = String(voucher.customerName || cmd?.customerName || '');
-    if (!customerName) continue;
+    // A material voucher of a mixed-customer order names no single customer; it serves each of them.
+    const customers =
+      cmd && !voucher.customerId
+        ? orderCustomers(cmd)
+        : [{ id: String(voucher.customerId || ''), name: String(voucher.customerName || cmd?.customerName || '') }];
     const label = String(voucher.sourceCode || voucher.code || '');
-    for (const line of Array.isArray(voucher.lines) ? (voucher.lines as Data[]) : []) {
+    for (const line of linesOf(voucher.lines)) {
       const catId = String(line.catalogItemId || '');
-      if (catId) addUsage(catId, customerId, customerName, label);
+      for (const customer of customers) if (catId) addUsage(catId, customer.id, customer.name, label);
     }
   }
   const activeCustomers = customers.filter(c => !c.deleted);
