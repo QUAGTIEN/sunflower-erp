@@ -261,7 +261,15 @@ export const LeadCandidateDataTable: React.FC<LeadCandidateDataTableProps> = ({
         const isAlreadyInQueue = !candidate.workQueueHidden && isActive;
         const isSelectedForQueue = selectedQueueCandidateSet.has(candidate.id);
         return (
-          <tr key={candidate.id} className={isSelectedForQueue ? 'is-selected' : ''}>
+          <tr
+            key={candidate.id}
+            className={`is-clickable${isSelectedForQueue ? ' is-selected' : ''}`}
+            onClick={event => {
+              // Checkboxes, links and the row menu keep their own action instead of opening the detail.
+              if ((event.target as HTMLElement).closest('a, button, input, select, label, [role="menu"]')) return;
+              openEditForm(candidate);
+            }}
+          >
             <ReorderableTableCells order={orderedColumnIds} expandOverflowText={false}>
               {visibleColumnSet.has('select') && (
                 <td key="select" className="lead-candidate-select-column">

@@ -245,7 +245,15 @@ export const LeadCandidateTaskTable: React.FC<LeadCandidateTaskTableProps> = ({
         const isBusy = taskActionCandidateId === candidate.id;
         const isActive = candidate.status === 'new' || candidate.status === 'retry';
         return (
-          <tr key={candidate.id} className={isOverdue ? 'is-overdue' : ''}>
+          <tr
+            key={candidate.id}
+            className={`is-clickable${isOverdue ? ' is-overdue' : ''}`}
+            onClick={event => {
+              // Checkboxes, links and the row menu keep their own action instead of opening the detail.
+              if ((event.target as HTMLElement).closest('a, button, input, select, label, [role="menu"]')) return;
+              openEditForm(candidate);
+            }}
+          >
             <ReorderableTableCells order={orderedColumnIds} expandOverflowText={false}>
               {visibleColumnSet.has('index') && (
                 <td key="index" className="erp-table-index-column">

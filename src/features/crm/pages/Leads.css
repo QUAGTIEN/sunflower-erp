@@ -2053,6 +2053,10 @@
   background: #fffbeb;
 }
 
+.lead-candidate-table tbody tr.is-clickable {
+  cursor: pointer;
+}
+
 .lead-candidate-company-button {
   display: flex;
   min-width: 0;

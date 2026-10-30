@@ -41,3 +41,13 @@ test('the lead form keeps its save bar fixed at the bottom for new, converted an
   const page = readSource('src/features/crm/pages/LeadsPage.tsx');
   assert.match(page, /<footer className="lead-form-page__footer lead-form-page__footer--fixed">/);
 });
+
+test('clicking a raw data row opens its detail, except on checkboxes, links and the row menu', () => {
+  for (const file of ['LeadCandidateDataTable.tsx', 'LeadCandidateTaskTable.tsx']) {
+    const table = readSource(`src/features/crm/components/leadCandidateWorkspace/${file}`);
+    assert.match(
+      table,
+      /className=\{`is-clickable[\s\S]*?closest\('a, button, input, select, label, \[role="menu"\]'\)\) return;\s*openEditForm\(candidate\);/
+    );
+  }
+});
