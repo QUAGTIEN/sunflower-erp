@@ -186,7 +186,7 @@ export function CustomerProductPicker({ companyName, products, single, initialId
             disabled={!selected.length}
             onClick={() => onConfirm(selected)}
           >
-            {single ? t('Chọn sản phẩm') : t('Thêm vào PO')}
+            {single ? t('Chọn sản phẩm') : t('Thêm vào đơn hàng')}
           </button>
         </footer>
       </div>

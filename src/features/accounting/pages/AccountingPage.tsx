@@ -130,12 +130,12 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
         <body>
           <div class="header">
             <div class="title">PHIẾU YÊU CẦU SẢN XUẤT VÀ TÍNH PHÍ</div>
-            <div>Mã PO: ${po.poCode} | Ngày in: ${new Date().toLocaleDateString('vi-VN')}</div>
+            <div>Mã đơn hàng: ${po.poCode} | Ngày in: ${new Date().toLocaleDateString('vi-VN')}</div>
           </div>
           <div class="grid">
             <div>
               <strong>Khách Hàng:</strong> ${po.customerName}<br>
-              <strong>Ngày Đặt PO:</strong> ${formatDate(po.orderDate)}<br>
+              <strong>Ngày Đặt Hàng:</strong> ${formatDate(po.orderDate)}<br>
               <strong>Ngày Giao Dự Kiến:</strong> ${formatDate(po.expectedDeliveryDate)}
             </div>
             <div>
@@ -256,7 +256,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
               <table className="accounting-costing-table" data-resize-key="accounting-costing">
                 <thead>
                   <tr>
-                    <th>{t('Mã PO')}</th>
+                    <th>{t('Mã đơn hàng')}</th>
                     <th>{t('Khách Hàng')}</th>
                     <th>{t('Doanh Thu')}</th>
                     <th>{t('Chi Phí NVL')}</th>
@@ -337,7 +337,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <p style={{ fontSize: '13px' }}>
-                Điều chỉnh các cấu thành chi phí thực tế cho PO: <strong>{customCostModalPo.poCode}</strong>
+                Điều chỉnh các cấu thành chi phí thực tế cho đơn hàng: <strong>{customCostModalPo.poCode}</strong>
               </p>
               <div className="form-group">
                 <label>Chi phí vận chuyển thực tế (đ) *</label>

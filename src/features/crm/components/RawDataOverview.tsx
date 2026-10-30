@@ -76,7 +76,7 @@ type SignalDefinition = {
   matches?: (values: Set<string>) => boolean;
 };
 const SIGNAL_DEFINITIONS: SignalDefinition[] = [
-  { id: 'po_promised', label: 'Hẹn lên PO', icon: CalendarClock, tone: 'blue' },
+  { id: 'po_promised', label: 'Hẹn lên đơn hàng', icon: CalendarClock, tone: 'blue' },
   { id: 'sample_reviewing', label: 'Đang duyệt mẫu', icon: FileText, tone: 'green' },
   { id: 'sample_test_ok', label: 'Test mẫu OK', icon: CheckCircle2, tone: 'green' },
   { id: 'sample_test_not_ok', label: 'Test mẫu chưa OK', icon: CircleX, tone: 'red' },

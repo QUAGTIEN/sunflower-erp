@@ -150,7 +150,7 @@ test('a user can add, edit and save a new PO item without a registered product o
   edit(screen.render(), 'Tên sản phẩm', 'Dịch vụ đóng gói');
   edit(screen.render(), 'Quy cách', 'Theo yêu cầu');
   edit(screen.render(), 'ĐVT', 'lần');
-  await button(screen.render(), 'Lưu Đơn Hàng PO').props.onClick({ preventDefault() {} });
+  await button(screen.render(), 'Lưu Đơn Hàng').props.onClick({ preventDefault() {} });
   assert.deepEqual(screen.alerts, []);
   const [item] = screen.saved().items;
   assert.equal(item.productName, 'Dịch vụ đóng gói');
@@ -183,7 +183,7 @@ test('catalog selection still fills locked fields and can be combined with edita
   button(screen.render(), 'Thêm dòng nhập tay').props.onClick();
   edit(screen.render(), 'Mã sản phẩm', 'TEM001');
   edit(screen.render(), 'Tên sản phẩm', 'Hàng nhập trực tiếp');
-  await button(screen.render(), 'Lưu Đơn Hàng PO').props.onClick({ preventDefault() {} });
+  await button(screen.render(), 'Lưu Đơn Hàng').props.onClick({ preventDefault() {} });
   assert.deepEqual(screen.alerts, []);
   const [linked, manual] = catalog.synchronizeCustomerProductOrderItems(screen.saved().items, { products: [product] });
   assert.equal(linked.customerProductId, 'product-a');

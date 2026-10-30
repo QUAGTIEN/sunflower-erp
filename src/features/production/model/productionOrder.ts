@@ -232,9 +232,9 @@ export const PLANNABLE_PO_STATUSES = [
 ];
 export function assertPOAccess(actor: ProductionActor, po: ProductionPO) {
   if (!canDraftProduction(actor)) fail('Bạn không có quyền lập lệnh sản xuất.');
-  if (po.deleted || !Array.isArray(po.items) || !po.items.length) fail('PO không tồn tại hoặc chưa có mặt hàng.');
+  if (po.deleted || !Array.isArray(po.items) || !po.items.length) fail('Đơn hàng không tồn tại hoặc chưa có mặt hàng.');
   if (!PLANNABLE_PO_STATUSES.includes(String(po.status)))
-    fail('PO đã chuyển giai đoạn, không thể lập / phát hành thêm LSX.');
+    fail('Đơn hàng đã chuyển giai đoạn, không thể lập / phát hành thêm LSX.');
 }
 export function allocatedQuantities(commands: CommandRecord[], excludedId = '') {
   const allocations = new Map<string, number>();
@@ -242,7 +242,7 @@ export function allocatedQuantities(commands: CommandRecord[], excludedId = '') 
     if (command.deleted || command.id === excludedId || command.status === 'cancelled') continue;
     if (command.productionOrderVersion !== 2)
       fail(
-        'PO đang có LSX cũ chưa phân bổ theo từng dòng. Cần đối soát lệnh cũ trước khi lập thêm để tránh trùng số lượng.'
+        'Đơn hàng đang có LSX cũ chưa phân bổ theo từng dòng. Cần đối soát lệnh cũ trước khi lập thêm để tránh trùng số lượng.'
       );
     for (const line of command.lines || []) {
       const qty = command.status === 'completed' ? (line.goodQuantity ?? 0) : line.quantity;
@@ -259,14 +259,14 @@ export function validateProductionOrderDraft(
   raw: Record<string, unknown>,
   excludedId = ''
 ) {
-  if (!pos.length) fail('Chọn ít nhất một PO để lập lệnh.');
+  if (!pos.length) fail('Chọn ít nhất một đơn hàng để lập lệnh.');
   const customers = new Set(pos.map(po => String(po.customerId || '')));
   if (pos.length > 1 && (customers.size > 1 || customers.has('')))
-    fail('Một lệnh sản xuất chỉ gồm các PO của cùng một khách hàng.');
+    fail('Một lệnh sản xuất chỉ gồm các đơn hàng của cùng một khách hàng.');
   for (const po of pos) {
     const ids = (po.items || []).map(itemIdentity);
     if (new Set(ids).size !== ids.length)
-      fail(`PO ${po.poCode || po.id} có mã dòng bị trùng. Cần sửa dữ liệu PO trước.`);
+      fail(`Đơn hàng ${po.poCode || po.id} có mã dòng bị trùng. Cần sửa dữ liệu đơn hàng trước.`);
   }
   const allocations = allocatedQuantities(commands, excludedId);
   if (!Array.isArray(raw.lines) || !raw.lines.length || raw.lines.length > 200)
@@ -295,7 +295,7 @@ export function validateProductionOrderDraft(
     )
       fail(`Số lượng ${text(items[index].productName)} vượt phần còn lại hoặc không hợp lệ.`);
     const snapshot = lineSnapshot(items[index], index, quantity);
-    if (!snapshot.productName || !snapshot.unit) fail('Mặt hàng cần có tên sản phẩm và đơn vị tính trong PO.');
+    if (!snapshot.productName || !snapshot.unit) fail('Mặt hàng cần có tên sản phẩm và đơn vị tính trong đơn hàng.');
     const details =
       line.printDetails && typeof line.printDetails === 'object' && !Array.isArray(line.printDetails)
         ? (line.printDetails as Record<string, unknown>)

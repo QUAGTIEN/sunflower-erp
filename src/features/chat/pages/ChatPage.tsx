@@ -747,7 +747,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               <input
                 type="text"
                 className="chat-composer__input"
-                placeholder={t('Nhập nội dung... (Gõ @ để tag nhân viên, # để gọi đơn hàng PO/LSX)')}
+                placeholder={t('Nhập nội dung... (Gõ @ để tag nhân viên, # để gọi đơn hàng/LSX)')}
                 aria-label={t('Nội dung tin nhắn')}
                 value={messageText}
                 onChange={e => setMessageText(e.target.value)}
@@ -784,7 +784,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                     type="text"
                     value={newChannelName}
                     onChange={e => setNewChannelName(e.target.value)}
-                    placeholder={t('Ví dụ: Thảo luận PO-Aqua...')}
+                    placeholder={t('Ví dụ: Thảo luận đơn hàng Aqua...')}
                     required
                   />
                 </div>

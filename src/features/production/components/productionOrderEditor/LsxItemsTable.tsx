@@ -60,7 +60,7 @@ export function LsxItemsTable({
         <h3>Mặt hàng</h3>
         <span className="lsx-section-summary">{pickHint}</span>
         <button type="button" className="btn btn-primary" disabled={!!pickHint} onClick={onPick}>
-          Chọn hàng từ PO…
+          Chọn hàng từ đơn hàng…
         </button>
       </div>
       {catalogLoading && (
@@ -83,7 +83,7 @@ export function LsxItemsTable({
               <th className="lsx-number">#</th>
               <th>Mã SP</th>
               <th>Tên sản phẩm</th>
-              <th>PO</th>
+              <th>Đơn hàng</th>
               <th>ĐVT</th>
               <th className="lsx-number">Còn lại</th>
               <th className="lsx-number">SL lệnh *</th>
@@ -159,7 +159,7 @@ export function LsxItemsTable({
                           <div>
                             <span>Quy cách / chất liệu</span>
                             {isBrokenSpecification(specification) ? (
-                              <strong className="lsx-text-danger">Chưa có quy cách đúng trên PO</strong>
+                              <strong className="lsx-text-danger">Chưa có quy cách đúng trên đơn hàng</strong>
                             ) : (
                               <strong title={specification}>{specification}</strong>
                             )}
@@ -207,7 +207,9 @@ export function LsxItemsTable({
             })}
             {!lines.length && (
               <tr>
-                <td colSpan={8}>Chưa có mặt hàng. Bấm “Chọn hàng từ PO…” để lấy dòng từ các PO của khách hàng.</td>
+                <td colSpan={8}>
+                  Chưa có mặt hàng. Bấm “Chọn hàng từ đơn hàng…” để lấy dòng từ các đơn hàng của khách hàng.
+                </td>
               </tr>
             )}
           </tbody>

@@ -433,7 +433,7 @@ export function GoodsVoucherDialog({
                 </label>
               ) : kind === 'dispatch' || kind === 'close_short' ? (
                 <label>
-                  PO *
+                  Đơn hàng *
                   <select
                     required
                     value={poId}
@@ -442,7 +442,7 @@ export function GoodsVoucherDialog({
                       reset();
                     }}
                   >
-                    <option value="">Chọn PO</option>
+                    <option value="">Chọn đơn hàng</option>
                     {data?.orders
                       .filter(order => !order.legacyDelivered && !['completed', 'cancelled'].includes(order.status))
                       .map(order => (
@@ -523,7 +523,7 @@ export function GoodsVoucherDialog({
                   <thead>
                     <tr>
                       <th>Dòng nguồn</th>
-                      <th>Dòng PO</th>
+                      <th>Dòng đơn hàng</th>
                       <th>Mã nội bộ *</th>
                       <th>ĐVT</th>
                       <th>Phần còn lại</th>
@@ -563,7 +563,7 @@ export function GoodsVoucherDialog({
                           <td>
                             {source?.type === 'purchase' ? (
                               <select
-                                aria-label={`Dòng PO ${row.id}`}
+                                aria-label={`Dòng đơn hàng ${row.id}`}
                                 value={row.poItemId}
                                 disabled={
                                   !!state?.lines[row.id] ||
@@ -574,7 +574,7 @@ export function GoodsVoucherDialog({
                                 }
                                 onChange={event => change({ poItemId: event.target.value })}
                               >
-                                <option value="">Chọn dòng PO</option>
+                                <option value="">Chọn dòng đơn hàng</option>
                                 {po?.lines.map(line => (
                                   <option key={line.id} value={line.id}>
                                     {line.name}
@@ -636,7 +636,7 @@ export function GoodsVoucherDialog({
               </div>
               <label className="warehouse-check">
                 <input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />
-                Xác nhận đúng mã nội bộ, dòng PO và số lượng thực tế.
+                Xác nhận đúng mã nội bộ, dòng đơn hàng và số lượng thực tế.
               </label>
             </>
           )}

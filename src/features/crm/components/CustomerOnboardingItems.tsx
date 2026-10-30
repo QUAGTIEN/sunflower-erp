@@ -127,7 +127,7 @@ export const CustomerOnboardingItems: React.FC<CustomerOnboardingItemsProps> = (
       <div className="customer-data-section__heading customer-onboarding-items__heading">
         <div>
           <span>Danh sách mã hàng & đơn đầu tiên</span>
-          <small>Nhập ngay tại hồ sơ khách hàng; Sale PO sẽ nhận sẵn toàn bộ dữ liệu này.</small>
+          <small>Nhập ngay tại hồ sơ khách hàng; đơn hàng sẽ nhận sẵn toàn bộ dữ liệu này.</small>
         </div>
         <button type="button" className="btn btn-primary" onClick={addItem}>
           <Plus size={14} /> Thêm mã hàng
@@ -136,7 +136,7 @@ export const CustomerOnboardingItems: React.FC<CustomerOnboardingItemsProps> = (
 
       <div className="customer-onboarding-order-meta">
         <label>
-          Mã PO khách hàng
+          Mã đơn hàng khách hàng
           <input
             value={customerPoCode}
             onChange={event => onCustomerPoCodeChange(event.target.value)}

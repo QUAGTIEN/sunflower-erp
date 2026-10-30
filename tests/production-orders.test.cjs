@@ -1234,7 +1234,7 @@ test('one order can draw lines from several POs of one customer; allocation stay
     ]),
     /cùng một khách hàng/
   );
-  await assert.rejects(extra('command3', [{ poId: 'po9', itemId: 'manual', quantity: 1 }]), /Không tìm thấy PO/);
+  await assert.rejects(extra('command3', [{ poId: 'po9', itemId: 'manual', quantity: 1 }]), /Không tìm thấy đơn hàng/);
 });
 
 test('QC on a multi-PO order ships each PO only when its own lines are fully produced', async () => {
@@ -1331,7 +1331,7 @@ test('the PO picker lists open production lines of one customer grouped by PO; t
   box('Chọn Tem cuộn của PO-05').props.onChange({ target: { checked: true } });
   tree = render();
   assert.equal(box('Chọn cả PO-01').props.checked, true);
-  assert.ok(nodes(tree).some(node => node.props?.children === 'Đã chọn 3 dòng từ 2 PO'));
+  assert.ok(nodes(tree).some(node => node.props?.children === 'Đã chọn 3 dòng từ 2 đơn hàng'));
   agree().props.onClick();
   assert.deepEqual(
     confirmed.map(line => [line.poId, line.itemId, line.quantity]),

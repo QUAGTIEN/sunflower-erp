@@ -76,7 +76,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
         getName: item => readName(item, 'companyName', 'name', 'customerCode', 'code')
       },
       { name: 'leads', label: 'Khách hàng tiềm năng', getName: item => readName(item, 'companyName', 'name') },
-      { name: 'pos', label: 'Đơn đặt hàng PO', getName: item => readName(item, 'poCode') },
+      { name: 'pos', label: 'Đơn hàng', getName: item => readName(item, 'poCode') },
       { name: 'suppliers', label: 'Nhà cung cấp', getName: item => readName(item, 'supplierName', 'name', 'code') },
       { name: 'purchase_orders', label: 'Đơn mua hàng NCC', getName: item => readName(item, 'purCode') },
       { name: 'production_commands', label: 'Lệnh sản xuất LSX', getName: item => readName(item, 'cmdCode') },
@@ -278,7 +278,7 @@ export const RecycleBin: React.FC<RecycleBinProps> = ({ currentUser, onRefresh }
               style={{ width: '220px', display: 'inline-block' }}
             >
               <option value="all">-- {t('Tất cả')} --</option>
-              <option value="pos">{t('Đơn đặt hàng PO')}</option>
+              <option value="pos">{t('Đơn hàng')}</option>
               <option value="customers">{t('Khách hàng')}</option>
               <option value="leads">{t('Khách hàng tiềm năng')}</option>
               <option value="customer_products">{t('Mã sản phẩm khách hàng')}</option>

@@ -147,7 +147,7 @@ export const DEFAULT_SYSTEM_FILTER_DEFINITIONS: SystemFilterDefinition[] = [
   ),
   definition(
     CUSTOMER_FILTER_IDS.poTime,
-    'Thời gian phát sinh PO',
+    'Thời gian phát sinh đơn hàng',
     'Khoảng thời gian khách hàng phát sinh đơn hàng.',
     ['crm_customers'],
     ['crm_customers'],
@@ -156,7 +156,7 @@ export const DEFAULT_SYSTEM_FILTER_DEFINITIONS: SystemFilterDefinition[] = [
   definition(
     CUSTOMER_FILTER_IDS.product,
     'Sản phẩm đã mua',
-    'Sản phẩm lấy từ hồ sơ khách hàng và PO.',
+    'Sản phẩm lấy từ hồ sơ khách hàng và đơn hàng.',
     ['crm_customers'],
     ['crm_customers'],
     'system_data'

@@ -599,7 +599,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
               <thead>
                 <tr>
                   <th>{t('Mã đơn mua')}</th>
-                  <th>{t('PO khách hàng')}</th>
+                  <th>{t('Đơn hàng khách hàng')}</th>
                   <th>{t('Mặt hàng')}</th>
                   <th>{t('Giá trị')}</th>
                   <th>{t('Ngày đặt')}</th>
@@ -835,7 +835,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
           <input
             value={searchTerm}
             onChange={event => setSearchTerm(event.target.value)}
-            placeholder={t('Tìm NCC, MST, liên hệ, mặt hàng, mã PO hoặc đơn mua...')}
+            placeholder={t('Tìm NCC, MST, liên hệ, mặt hàng, mã đơn hàng hoặc đơn mua...')}
           />
         </div>
         <DataFilterButton

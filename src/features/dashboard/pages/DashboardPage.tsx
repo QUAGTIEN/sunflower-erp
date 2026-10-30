@@ -172,7 +172,7 @@ const RevenueTrendChart: React.FC<{ data: RevenueTrendPoint[] }> = ({ data }) =>
       <svg
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Giá trị PO trước và sau chiết khấu trong sáu tháng gần nhất"
+        aria-label="Giá trị đơn hàng trước và sau chiết khấu trong sáu tháng gần nhất"
       >
         <desc>
           Phần navy là doanh thu sau chiết khấu. Phần champagne là chiết khấu trực tiếp. Tổng chiều cao cột là giá trị
@@ -657,7 +657,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <thead>
                 <tr>
                   <th style={{ width: '40px' }}></th>
-                  <th>{t('Mã PO')}</th>
+                  <th>{t('Mã đơn hàng')}</th>
                   <th>{t('Tên Khách Hàng')}</th>
                   <th>{t('Ngày Đặt')}</th>
                   <th>{t('Hạn Giao Hàng')}</th>
@@ -704,7 +704,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               onOpenPO(po.id);
                             }}
                           >
-                            {t('Mở PO')}
+                            {t('Mở đơn hàng')}
                           </button>
                         </td>
                       </tr>
@@ -755,7 +755,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                         <th style={{ padding: '6px 8px', textAlign: 'right' }}>Thuế (%)</th>
                                         <th style={{ padding: '6px 8px', textAlign: 'right' }}>Chiết khấu</th>
                                         <th style={{ padding: '6px 8px', textAlign: 'right' }}>Thành tiền (gồm VAT)</th>
-                                        <th style={{ padding: '6px 8px', textAlign: 'right' }}>KPI PO</th>
+                                        <th style={{ padding: '6px 8px', textAlign: 'right' }}>KPI đơn hàng</th>
                                         <th style={{ padding: '6px 8px' }}>File liên quan</th>
                                       </tr>
                                     </thead>
@@ -845,7 +845,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     }}
                                   >
                                     <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                                      {t('Cập nhật nhanh trạng thái PO:')}
+                                      {t('Cập nhật nhanh trạng thái đơn hàng:')}
                                     </span>
                                     <select
                                       value={getPOQueueStatus(po)}
@@ -1160,7 +1160,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </article>
       </div>
       <div className="dashboard-revenue-chart-heading">
-        <span>{t('Giá trị PO 6 tháng gần nhất')}</span>
+        <span>{t('Giá trị đơn hàng 6 tháng gần nhất')}</span>
         <small>{t('Tổng cột = trước chiết khấu')}</small>
       </div>
       <RevenueTrendChart data={revenueTrendData} />
@@ -1170,7 +1170,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const adminQueueContent = (
     <section className="customer-overview-panel dashboard-po-queue-panel" aria-labelledby="dashboard-po-queue-title">
       <header className="customer-overview-panel__header">
-        <h3 id="dashboard-po-queue-title">{t('Hàng đợi xử lý PO')}</h3>
+        <h3 id="dashboard-po-queue-title">{t('Hàng đợi xử lý đơn hàng')}</h3>
       </header>
       <div className="dashboard-po-queue-content">
         <div className="dashboard-po-queue-chart">
@@ -1488,7 +1488,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <section className="sale-dashboard__panel sale-dashboard__orders" aria-labelledby="sale-orders-title">
             <header className="sale-dashboard__panel-header sale-dashboard__orders-header">
-              <h2 id="sale-orders-title">{t('Theo dõi đơn hàng PO gần đây')}</h2>
+              <h2 id="sale-orders-title">{t('Theo dõi đơn hàng gần đây')}</h2>
               <div className="sale-dashboard__filters" role="group" aria-label={t('Lọc tiến độ đơn hàng')}>
                 {(
                   [
@@ -1514,7 +1514,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <table>
                 <thead>
                   <tr>
-                    <th>{t('Mã PO')}</th>
+                    <th>{t('Mã đơn hàng')}</th>
                     <th>{t('Khách hàng')}</th>
                     <th>{t('Ngày đặt')}</th>
                     <th className="is-number">{t('Trị giá')}</th>
@@ -1599,7 +1599,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <table>
                 <thead>
                   <tr>
-                    <th>{t('Mã PO')}</th>
+                    <th>{t('Mã đơn hàng')}</th>
                     <th>{t('Sản Phẩm')}</th>
                     <th>{t('Quy Cách/Kích Thước')}</th>
                     <th>{t('Ghi Chú Yêu Cầu')}</th>
@@ -1701,7 +1701,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     style={{ fontSize: '11px' }}
                     onClick={() => setSelectedProgressCategory('waiting_delivery')}
                   >
-                    {t('Theo dõi hàng PO')}
+                    {t('Theo dõi hàng theo đơn hàng')}
                   </button>
                   <button className="btn btn-sm btn-primary" onClick={() => onNavigate('purchase')}>
                     {t('Mua Vật Tư')}
@@ -1779,7 +1779,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   style={{ fontSize: '11px' }}
                   onClick={() => setSelectedProgressCategory('waiting_production')}
                 >
-                  {t('Theo dõi hàng PO')}
+                  {t('Theo dõi hàng theo đơn hàng')}
                 </button>
                 <button className="btn btn-sm btn-primary" onClick={() => onNavigate('production')}>
                   {t('Vào Xưởng')}

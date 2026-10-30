@@ -172,10 +172,10 @@ export function useCustomerListFilters({
     { value: UNASSIGNED_FILTER_VALUE, label: 'Chưa xếp hạng' }
   ];
   const timeFilterOptions: CrmFilterOption[] = [
-    { value: 'last_30_days', label: 'Có PO trong 30 ngày' },
-    { value: 'last_90_days', label: 'Có PO trong 90 ngày' },
-    { value: 'this_year', label: `Có PO trong năm ${currentYear}` },
-    { value: 'no_orders', label: 'Chưa có PO' }
+    { value: 'last_30_days', label: 'Có đơn hàng trong 30 ngày' },
+    { value: 'last_90_days', label: 'Có đơn hàng trong 90 ngày' },
+    { value: 'this_year', label: `Có đơn hàng trong năm ${currentYear}` },
+    { value: 'no_orders', label: 'Chưa có đơn hàng' }
   ];
   const saleFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.sale)!;
   const rankFilterDefinition = customerFilterById.get(CUSTOMER_FILTER_IDS.rank)!;
@@ -356,12 +356,16 @@ export function useCustomerListFilters({
     customerSystemAdvancedField('note', 'Ghi chú yêu cầu riêng', advancedFilterGroups.additional, 'text', customer => [
       customer.note
     ]),
-    customerSystemAdvancedField('orderCount', 'Số PO', advancedFilterGroups.result, 'number', customer => [
+    customerSystemAdvancedField('orderCount', 'Số đơn hàng', advancedFilterGroups.result, 'number', customer => [
       getCustomerOrders(customer.id).length
     ]),
-    customerSystemAdvancedField('orderValue', 'Tổng giá trị PO', advancedFilterGroups.result, 'number', customer => [
-      getCustomerOrderValue(customer.id)
-    ]),
+    customerSystemAdvancedField(
+      'orderValue',
+      'Tổng giá trị đơn hàng',
+      advancedFilterGroups.result,
+      'number',
+      customer => [getCustomerOrderValue(customer.id)]
+    ),
     customerSystemAdvancedField(
       'outstandingDebt',
       'Công nợ sổ mới',

@@ -73,8 +73,8 @@ const SALES_CUSTOMER_COLUMNS: TableColumnOption[] = [
   { id: 'phone', label: 'Số điện thoại', defaultVisible: false, group: 'Thông tin khách hàng' },
   { id: 'email', label: 'Email', defaultVisible: false, group: 'Thông tin khách hàng' },
   { id: 'sale', label: 'Sale phụ trách', defaultVisible: true, group: 'Phụ trách' },
-  { id: 'count', label: 'Số PO', defaultVisible: true, group: 'Kết quả đơn hàng' },
-  { id: 'latest', label: 'PO gần nhất', defaultVisible: true, group: 'Kết quả đơn hàng' },
+  { id: 'count', label: 'Số đơn hàng', defaultVisible: true, group: 'Kết quả đơn hàng' },
+  { id: 'latest', label: 'Đơn hàng gần nhất', defaultVisible: true, group: 'Kết quả đơn hàng' },
   { id: 'value', label: 'Tổng giá trị', defaultVisible: true, group: 'Kết quả đơn hàng' },
   { id: 'status', label: 'Trạng thái gần nhất', defaultVisible: true, group: 'Kết quả đơn hàng' },
   { id: 'actions', label: 'Thao tác', required: true, group: 'Điều khiển bảng' }
@@ -536,7 +536,7 @@ export const Sales: React.FC<SalesProps> = ({
   const handleOpenEditModal = (po: any) => {
     if (po.productionPlanFrozen) {
       showErrorToast(
-        'PO đã có phân bổ sản xuất. Không sửa mặt hàng khi còn LSX; hủy các lệnh nháp / chưa chạy trước, hoặc xử lý điều chỉnh qua bộ phận sản xuất.'
+        'Đơn hàng đã có phân bổ sản xuất. Không sửa mặt hàng khi còn LSX; hủy các lệnh nháp / chưa chạy trước, hoặc xử lý điều chỉnh qua bộ phận sản xuất.'
       );
       return;
     }
@@ -564,7 +564,7 @@ export const Sales: React.FC<SalesProps> = ({
     return runMutationAction(
       'SalesPage.tsx:handleDeletePO',
       async () => {
-        if (!(await confirmDelete(t('Đưa đơn hàng PO này vào Thùng rác?')))) return;
+        if (!(await confirmDelete(t('Đưa đơn hàng này vào Thùng rác?')))) return;
         const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
         if (password === 'admin123' || password === '123456') {
           await requireConfirmedMutation(
@@ -601,7 +601,7 @@ export const Sales: React.FC<SalesProps> = ({
               status: selectedPO.status,
               updatedBy: currentUser.displayName,
               updatedAt: new Date().toISOString(),
-              note: `${t('Chỉnh sửa thông số đơn hàng PO')} (Tổng trị giá: ${subtotal.toLocaleString()} đ)`
+              note: `${t('Chỉnh sửa thông số đơn hàng')} (Tổng trị giá: ${subtotal.toLocaleString()} đ)`
             }
           ];
 
@@ -1047,14 +1047,14 @@ export const Sales: React.FC<SalesProps> = ({
         current={
           !selectedPO
             ? selectedOrderCustomer?.companyName ||
-              (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Khách hàng có PO'))
+              (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Khách hàng có đơn hàng'))
             : undefined
         }
       />
 
       {!selectedPO && (
         <>
-          <div className="sales-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách Sale PO')}>
+          <div className="sales-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách đơn hàng')}>
             <button
               type="button"
               className={`sales-list-tab ${activeListView === 'orders' ? 'is-active' : ''}`}
@@ -1067,7 +1067,7 @@ export const Sales: React.FC<SalesProps> = ({
               aria-selected={activeListView === 'orders'}
             >
               <FileText size={16} />
-              <span>{t('Khách hàng có PO')}</span>
+              <span>{t('Khách hàng có đơn hàng')}</span>
             </button>
             <button
               type="button"
@@ -1097,12 +1097,12 @@ export const Sales: React.FC<SalesProps> = ({
                   />
                   <div className="sales-customer-po-header__heading">
                     <h1 title={selectedOrderCustomer.companyName}>{selectedOrderCustomer.companyName}</h1>
-                    <span className="sales-customer-po-header__count">{customerPOs.length} PO</span>
+                    <span className="sales-customer-po-header__count">{customerPOs.length} đơn hàng</span>
                   </div>
                 </div>
                 {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                   <button className="btn btn-primary" onClick={() => handleOpenCreatePO(selectedOrderCustomer.id)}>
-                    {t('Tạo PO mới')}
+                    {t('Tạo đơn hàng mới')}
                   </button>
                 )}
               </div>
@@ -1114,7 +1114,7 @@ export const Sales: React.FC<SalesProps> = ({
                 placeholder={
                   activeListView === 'orders'
                     ? selectedOrderCustomer
-                      ? t('Nhập mã PO, tên sản phẩm hoặc người tạo...')
+                      ? t('Nhập mã đơn hàng, tên sản phẩm hoặc người tạo...')
                       : t('Tìm mã khách hàng, công ty, người liên hệ...')
                     : t('Tìm mã khách hàng, công ty, người liên hệ...')
                 }
@@ -1176,7 +1176,7 @@ export const Sales: React.FC<SalesProps> = ({
                   <table data-resize-key="sales-po-list">
                     <thead>
                       <tr>
-                        <th>{t('Mã PO')}</th>
+                        <th>{t('Mã đơn hàng')}</th>
                         <th>{t('Ngày tạo')}</th>
                         <th>{t('Sản phẩm')}</th>
                         <th>{t('Tổng số lượng')}</th>
@@ -1265,8 +1265,8 @@ export const Sales: React.FC<SalesProps> = ({
                           {salesVisibleColumnSet.has('phone') && <th key="phone">{t('Số điện thoại')}</th>}
                           {salesVisibleColumnSet.has('email') && <th key="email">{t('Email')}</th>}
                           {salesVisibleColumnSet.has('sale') && <th key="sale">{t('Sale phụ trách')}</th>}
-                          {salesVisibleColumnSet.has('count') && <th key="count">{t('Số PO')}</th>}
-                          {salesVisibleColumnSet.has('latest') && <th key="latest">{t('PO gần nhất')}</th>}
+                          {salesVisibleColumnSet.has('count') && <th key="count">{t('Số đơn hàng')}</th>}
+                          {salesVisibleColumnSet.has('latest') && <th key="latest">{t('Đơn hàng gần nhất')}</th>}
                           {salesVisibleColumnSet.has('value') && <th key="value">{t('Tổng giá trị')}</th>}
                           {salesVisibleColumnSet.has('status') && <th key="status">{t('Trạng thái gần nhất')}</th>}
                           <th key="actions">{t('Thao tác')}</th>
@@ -1365,7 +1365,7 @@ export const Sales: React.FC<SalesProps> = ({
                                       {t(getPOQueueLabel(latestPO))}
                                     </span>
                                   ) : (
-                                    t('Chưa có PO')
+                                    t('Chưa có đơn hàng')
                                   )}
                                 </td>
                               )}
@@ -1374,7 +1374,7 @@ export const Sales: React.FC<SalesProps> = ({
                                   label={`${t('Thao tác')} ${customer.companyName}`}
                                   actions={[
                                     {
-                                      label: t('Xem PO'),
+                                      label: t('Xem đơn hàng'),
                                       onSelect: () => {
                                         setSelectedOrderCustomerId(customer.id);
                                         setSearchTerm('');
@@ -1480,7 +1480,9 @@ export const Sales: React.FC<SalesProps> = ({
                                 label={`${t('Thao tác')} ${customer.companyName}`}
                                 actions={[
                                   {
-                                    label: customer.pendingOrderDraft ? 'Phân công & phát hành PO' : t('Tạo PO'),
+                                    label: customer.pendingOrderDraft
+                                      ? 'Phân công & phát hành đơn hàng'
+                                      : t('Tạo đơn hàng'),
                                     onSelect: () => handleOpenCreatePO(customer.id)
                                   }
                                 ]}
@@ -1512,7 +1514,7 @@ export const Sales: React.FC<SalesProps> = ({
             <div className="card-header app-detail-header">
               <PageBackButton onClick={() => setSelectedPO(null)} />
               <span className="card-title" style={{ fontSize: '18px', color: 'var(--color-primary)' }}>
-                {t('CHI TIẾT TIẾN ĐỘ PO')}: {selectedPO.poCode} - {selectedPO.customerName}
+                {t('CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG')}: {selectedPO.poCode} - {selectedPO.customerName}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
@@ -1520,10 +1522,10 @@ export const Sales: React.FC<SalesProps> = ({
                     <button
                       className="btn btn-sm btn-outline repeat-order-button"
                       onClick={() => handleOpenRepeatOrder(selectedPO)}
-                      title="Tạo PO mới từ đơn này"
+                      title="Tạo đơn hàng mới từ đơn này"
                     >
                       <Copy size={14} />
-                      <span>Đặt lại từ PO này</span>
+                      <span>Đặt lại từ đơn hàng này</span>
                     </button>
                     <button
                       className="btn btn-sm btn-primary btn-symbol-sm"
@@ -1551,7 +1553,7 @@ export const Sales: React.FC<SalesProps> = ({
                   customers.find(customer => customer.id === selectedPO.customerId)?.customerRank ||
                   t('Chưa xếp hạng')}
               </strong>
-              <span className="po-kpi-definition">{t('KPI PO là tỷ lệ giá trị còn lại sau chiết khấu.')}</span>
+              <span className="po-kpi-definition">{t('KPI đơn hàng là tỷ lệ giá trị còn lại sau chiết khấu.')}</span>
             </div>
 
             {/* Status changer for authorized roles */}
@@ -1567,7 +1569,7 @@ export const Sales: React.FC<SalesProps> = ({
                   border: '1px solid var(--color-border)'
                 }}
               >
-                <span style={{ fontWeight: 600 }}>{t('Cập nhật nhanh tiến độ PO:')}</span>
+                <span style={{ fontWeight: 600 }}>{t('Cập nhật nhanh tiến độ đơn hàng:')}</span>
                 <select
                   value={getPOQueueStatus(selectedPO)}
                   onChange={e => updatePOStatus(selectedPO.id, e.target.value as POQueueStatus)}
@@ -1614,7 +1616,7 @@ export const Sales: React.FC<SalesProps> = ({
                   style={{ border: '1px solid var(--color-border-light)', padding: '16px', borderRadius: '4px' }}
                 >
                   <h3 style={{ marginBottom: '12px', color: 'var(--color-primary)' }}>
-                    {t('Chi Tiết Các Mặt Hàng Trong PO:')}
+                    {t('Chi Tiết Các Mặt Hàng Trong Đơn Hàng:')}
                   </h3>
                   <div className="po-inline-grid-container">
                     <table className="po-inline-grid po-items-overview-table po-sale-items-table">
@@ -1631,7 +1633,7 @@ export const Sales: React.FC<SalesProps> = ({
                           <th>{t('Thuế (%)')}</th>
                           <th>{t('Chiết khấu')}</th>
                           <th>{t('Thành tiền (gồm VAT)')}</th>
-                          <th>{t('KPI PO')}</th>
+                          <th>{t('KPI đơn hàng')}</th>
                           <th>{t('File liên quan')}</th>
                         </tr>
                       </thead>
@@ -2495,7 +2497,7 @@ export const Sales: React.FC<SalesProps> = ({
       <DataFilterPanel
         open={showSalesFilters && activeListView === 'orders'}
         title={t('Lọc danh sách tạo đơn hàng')}
-        description={t('Lọc khách hàng theo trạng thái PO gần nhất và Sale phụ trách.')}
+        description={t('Lọc khách hàng theo trạng thái đơn hàng gần nhất và Sale phụ trách.')}
         activeCount={salesActiveFilterCount}
         onClose={() => setShowSalesFilters(false)}
         onReset={() => {
@@ -2505,7 +2507,7 @@ export const Sales: React.FC<SalesProps> = ({
       >
         <>
           <DataFilterSection
-            title={t('Trạng thái PO gần nhất')}
+            title={t('Trạng thái đơn hàng gần nhất')}
             selectedCount={salesStatusFilters.length}
             defaultExpanded
           >

@@ -43,8 +43,8 @@ export const DEFAULT_CUSTOMER_FILTER_DEFINITIONS: CustomerFilterDefinition[] = [
   },
   {
     id: CUSTOMER_FILTER_IDS.poTime,
-    name: 'Thời gian phát sinh PO',
-    description: 'Theo dõi khách đã mua gần đây hoặc chưa phát sinh PO.',
+    name: 'Thời gian phát sinh đơn hàng',
+    description: 'Theo dõi khách đã mua gần đây hoặc chưa phát sinh đơn hàng.',
     active: true
   },
   {

@@ -537,7 +537,7 @@ export function ProductionOrderWorkspace({
               stockBalances={catalog.stockBalances}
               catalogLoading={catalogLoading}
               catalogError={catalogError}
-              pickHint={draft.customerKey ? '' : 'Chọn khách hàng trước để lấy hàng từ PO.'}
+              pickHint={draft.customerKey ? '' : 'Chọn khách hàng trước để lấy hàng từ đơn hàng.'}
               onPick={() => setPickerOpen(true)}
               onReloadCatalog={() => {
                 setCatalogLoading(true);
@@ -662,7 +662,7 @@ export function ProductionOrderWorkspace({
               <dd title={selected.customerName}>{selected.customerName || '—'}</dd>
             </div>
             <div>
-              <dt>PO</dt>
+              <dt>Đơn hàng</dt>
               <dd title={selectedPoCodes}>{selectedPoCodes}</dd>
             </div>
             <div>
@@ -718,7 +718,7 @@ export function ProductionOrderWorkspace({
                     <th className="lsx-number">#</th>
                     <th>Mã SP</th>
                     <th>Tên sản phẩm</th>
-                    <th>PO</th>
+                    <th>Đơn hàng</th>
                     <th>Quy cách</th>
                     <th className="lsx-number">SL lệnh</th>
                     <th>ĐVT</th>
@@ -940,8 +940,8 @@ export function ProductionOrderWorkspace({
                   />
                 </label>
                 <p className="lsx-hint">
-                  Chỉ sản lượng đạt QC được tính cho PO. Phần thiếu có thể lập lệnh bổ sung; PO chỉ chuyển chờ giao khi
-                  đủ tất cả dòng cần SX.
+                  Chỉ sản lượng đạt QC được tính cho đơn hàng. Phần thiếu có thể lập lệnh bổ sung; đơn hàng chỉ chuyển
+                  chờ giao khi đủ tất cả dòng cần SX.
                 </p>
                 <button className="btn btn-primary" disabled={busy}>
                   {busy ? 'Đang lưu…' : 'Xác nhận nghiệm thu'}
@@ -970,7 +970,7 @@ export function ProductionOrderWorkspace({
               aria-label="Tìm lệnh sản xuất"
               value={search}
               onChange={event => setSearch(event.target.value)}
-              placeholder="Tìm số LSX, khách hàng, PO, sản phẩm…"
+              placeholder="Tìm số LSX, khách hàng, đơn hàng, sản phẩm…"
             />
             <select aria-label="Trạng thái" value={status} onChange={event => setStatus(event.target.value)}>
               <option value="">Tất cả trạng thái</option>
@@ -1004,7 +1004,7 @@ export function ProductionOrderWorkspace({
                   <tr>
                     <th>Số LSX</th>
                     <th>Khách hàng</th>
-                    <th>PO</th>
+                    <th>Đơn hàng</th>
                     <th className="lsx-number">Số dòng</th>
                     <th>Ngày cần</th>
                     <th>Trạng thái</th>
@@ -1050,7 +1050,9 @@ export function ProductionOrderWorkspace({
                   })}
                   {!visible.length && (
                     <tr>
-                      <td colSpan={7}>Chưa có lệnh phù hợp. Bấm “Lập lệnh sản xuất” để lấy hàng từ PO của khách.</td>
+                      <td colSpan={7}>
+                        Chưa có lệnh phù hợp. Bấm “Lập lệnh sản xuất” để lấy hàng từ đơn hàng của khách.
+                      </td>
                     </tr>
                   )}
                 </tbody>

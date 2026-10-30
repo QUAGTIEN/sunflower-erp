@@ -452,7 +452,7 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                             ...(currentUser.role === 'admin' || currentUser.role === 'sale'
                               ? [
                                   {
-                                    label: t('Tạo PO'),
+                                    label: t('Tạo đơn hàng'),
                                     icon: <ClipboardPlus size={14} />,
                                     onSelect: () => onPreparedOrderCreated?.(customer.id)
                                   }

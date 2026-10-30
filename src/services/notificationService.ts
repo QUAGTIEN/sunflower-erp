@@ -154,7 +154,7 @@ export const buildWorkflowNotificationCandidates = ({
       eventKey: `sales:waiting-design:${poId}:${getRecordCreatedAt(po)}`,
       entityId: poId,
       entityCode: poCode,
-      title: 'PO đang chờ thiết kế',
+      title: 'Đơn hàng đang chờ thiết kế',
       message: `${poCode} cần được theo dõi và bàn giao thiết kế.`,
       createdAt: getRecordCreatedAt(po),
       createdById: asText(po.saleId)
@@ -170,7 +170,7 @@ export const buildWorkflowNotificationCandidates = ({
       eventKey: `purchase:request:${request.id}:${request.status}:${request.assignedPurchaserId || 'team'}`,
       entityId: request.id,
       entityCode: request.requestCode,
-      title: request.status === 'new' ? 'PO mới cần xử lý mua hàng' : 'Yêu cầu mua hàng đang chờ xử lý',
+      title: request.status === 'new' ? 'Đơn hàng mới cần xử lý mua hàng' : 'Yêu cầu mua hàng đang chờ xử lý',
       message: `${request.poCode} · ${request.productName} · ${request.quantity.toLocaleString('vi-VN')} ${request.unit}`,
       createdAt: request.createdAt,
       createdById: request.createdById

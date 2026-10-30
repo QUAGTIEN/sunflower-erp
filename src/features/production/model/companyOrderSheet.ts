@@ -75,7 +75,7 @@ function metaBox(order: ProductionOrder) {
       <p><span>KHÁCH HÀNG</span><b>${escape(order.customerName)}</b></p>
       <p><span>NGÀY LÊN LỆNH</span><b>${date(order.createdAt)}</b></p>
       <p><span>NGƯỜI XUỐNG ĐƠN</span><b>${escape(order.createdBy)}</b></p>
-      <p><span>PO</span><b>${escape(poCodes)}</b></p>
+      <p><span>ĐƠN HÀNG</span><b>${escape(poCodes)}</b></p>
       <p><span>MÁY / CA</span><b>${escape([order.machineName, order.shift].filter(Boolean).join(' / '))}</b></p>
       <p class="wide"><span>NGƯỜI CHẠY MÁY</span><b>${escape(order.operatorName || '')}</b></p>
     </div>
@@ -145,7 +145,7 @@ export function companyOrderSheetHtml(order: ProductionOrder) {
       const last = page === pages.length - 1;
       return `<section class="sheet">${header}${warning}${metaBox(order)}
       <table class="lines"><colgroup>${[3, 13, 7, 12, 7, 5, 5, 5, 6, 6, 13, 7, 11].map(width => `<col style="width:${width}%">`).join('')}</colgroup>
-      <thead><tr><th>STT</th><th>MÃ LIỆU / TÊN HÀNG</th><th>PO</th><th>QUY CÁCH</th><th>SỐ LƯỢNG</th><th>MÉT /ROLL</th><th>PCS /ROLL</th><th>LOẠI GÓC</th><th>LOẠI RĂNG CƯA</th><th>LOẠI LÕI</th><th>MÃ NGUYÊN VẬT LIỆU<br>SỐ LƯỢNG NVL LĨNH</th><th>TÌNH TRẠNG</th><th>GHI CHÚ RIÊNG</th></tr></thead>
+      <thead><tr><th>STT</th><th>MÃ LIỆU / TÊN HÀNG</th><th>ĐƠN HÀNG</th><th>QUY CÁCH</th><th>SỐ LƯỢNG</th><th>MÉT /ROLL</th><th>PCS /ROLL</th><th>LOẠI GÓC</th><th>LOẠI RĂNG CƯA</th><th>LOẠI LÕI</th><th>MÃ NGUYÊN VẬT LIỆU<br>SỐ LƯỢNG NVL LĨNH</th><th>TÌNH TRẠNG</th><th>GHI CHÚ RIÊNG</th></tr></thead>
       <tbody>${lines.map((line, index) => lineRow(order, line, page * LINES_PER_SHEET + index)).join('')}</tbody></table>
       ${last ? `${order.notes ? `<div class="note">${escape(order.notes)}</div>` : ''}${materialsTable(order)}` : ''}
       <section class="confirm"><div><b>NVL THỪA / THIẾU</b><span></span></div><div><b>XÁC NHẬN NGƯỜI CHẠY MÁY</b><span></span></div><div><b>XÁC NHẬN KHO CẤP + NHẬN NVL</b><span></span></div></section>

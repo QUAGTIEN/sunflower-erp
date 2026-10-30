@@ -206,7 +206,7 @@ export const Production: React.FC<ProductionProps> = ({
                   status: 'waiting_production',
                   updatedBy: currentUser.displayName,
                   updatedAt: new Date().toISOString(),
-                  note: `Đã hủy lệnh sản xuất ${lsx.lsxCode}. Trạng thái PO quay lại chờ sản xuất.`
+                  note: `Đã hủy lệnh sản xuất ${lsx.lsxCode}. Trạng thái đơn hàng quay lại chờ sản xuất.`
                 }
               ];
               await requireConfirmedMutation(
@@ -272,7 +272,7 @@ export const Production: React.FC<ProductionProps> = ({
                   status: po.status,
                   updatedBy: currentUser.displayName,
                   updatedAt: now,
-                  note: `Lệnh cũ ${selectedLsx.lsxCode} hoàn thành; cần đối soát sản lượng theo từng dòng PO và phiếu xuất kho riêng. Không tự chuyển hàng chờ giao hoặc trừ kho ước lượng.`
+                  note: `Lệnh cũ ${selectedLsx.lsxCode} hoàn thành; cần đối soát sản lượng theo từng dòng đơn hàng và phiếu xuất kho riêng. Không tự chuyển hàng chờ giao hoặc trừ kho ước lượng.`
                 }
               ]
             })
@@ -669,7 +669,7 @@ export const Production: React.FC<ProductionProps> = ({
                     {selectedLsx.productNameToBeCut || selectedLsx.productName}
                   </div>
                   <div>
-                    <span style={{ fontWeight: 600 }}>{t('Mã PO Gốc')}:</span> {selectedLsx.poCode}
+                    <span style={{ fontWeight: 600 }}>{t('Mã đơn hàng gốc')}:</span> {selectedLsx.poCode}
                   </div>
                   <div>
                     <span style={{ fontWeight: 600 }}>{t('Máy Phân Công')}:</span> {selectedLsx.machineId}
@@ -819,7 +819,7 @@ export const Production: React.FC<ProductionProps> = ({
                     className="btn btn-success"
                     style={{ width: '100%', marginTop: '12px', padding: '10px', fontWeight: 600 }}
                   >
-                    {t('Xác nhận hoàn thành (cần đối soát PO / kho)')}
+                    {t('Xác nhận hoàn thành (cần đối soát đơn hàng / kho)')}
                   </button>
                 </form>
               )}

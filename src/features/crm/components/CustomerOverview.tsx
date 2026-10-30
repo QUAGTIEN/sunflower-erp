@@ -44,7 +44,7 @@ function RankBars({
   color: 'blue' | 'teal';
   onOpenCustomer: Props['onOpenCustomer'];
 }) {
-  if (!rows.length) return <p className="customer-overview__empty">Chưa có khách hàng phát sinh PO.</p>;
+  if (!rows.length) return <p className="customer-overview__empty">Chưa có khách hàng phát sinh đơn hàng.</p>;
   const max = Math.max(1, ...rows.map(measure));
   return (
     <div className="customer-overview__ranking">
@@ -104,8 +104,8 @@ export function CustomerOverview({
     : '#e8edf5';
   const metrics = [
     ['Tổng khách hàng', data.customerCount],
-    ['Đã có PO', data.purchasedCount],
-    ['Chưa có PO', data.neverOrderedCount],
+    ['Đã có đơn hàng', data.purchasedCount],
+    ['Chưa có đơn hàng', data.neverOrderedCount],
     ['Mua trong 90 ngày', data.activeCount],
     ['Lâu chưa đặt đơn', data.inactiveCount],
     ['Còn nợ sổ mới', debtReady ? data.debtCount : '—']
@@ -137,7 +137,7 @@ export function CustomerOverview({
             <div
               className="customer-overview__donut"
               role="img"
-              aria-label={`${data.activeCount} khách mua trong 90 ngày, ${data.inactiveCount} khách lâu chưa đặt lại, ${data.neverOrderedCount} khách chưa từng có PO`}
+              aria-label={`${data.activeCount} khách mua trong 90 ngày, ${data.inactiveCount} khách lâu chưa đặt lại, ${data.neverOrderedCount} khách chưa từng có đơn hàng`}
               style={{ background: donutBackground }}
             >
               <span>
@@ -158,13 +158,13 @@ export function CustomerOverview({
               </div>
               <div>
                 <i className="is-amber" />
-                <span>Chưa từng có PO</span>
+                <span>Chưa từng có đơn hàng</span>
                 <strong>{number(data.neverOrderedCount)}</strong>
               </div>
               {data.unknownLastOrderCount > 0 && (
                 <div>
                   <i className="is-muted" />
-                  <span>Có PO, chưa rõ ngày đặt</span>
+                  <span>Có đơn hàng, chưa rõ ngày đặt</span>
                   <strong>{number(data.unknownLastOrderCount)}</strong>
                 </div>
               )}
@@ -179,7 +179,7 @@ export function CustomerOverview({
           <header>
             <div>
               <h2 id="customer-overview-inactive">Khách lâu chưa đặt đơn</h2>
-              <p>Khách đã có PO nhưng hơn 90 ngày chưa đặt lại</p>
+              <p>Khách đã có đơn hàng nhưng hơn 90 ngày chưa đặt lại</p>
             </div>
             {data.inactive.length > 5 && (
               <button
@@ -201,7 +201,7 @@ export function CustomerOverview({
           </div>
           <div className="customer-overview__list-heading">
             <span>Khách cần xem lại</span>
-            <span>PO gần nhất · Số ngày</span>
+            <span>Đơn hàng gần nhất · Số ngày</span>
           </div>
           {data.inactive.length ? (
             <div className={`customer-overview__inactive-list ${showAllInactive ? 'is-expanded' : ''}`}>
@@ -297,7 +297,7 @@ export function CustomerOverview({
           <header>
             <div>
               <h2 id="customer-overview-value">Khách mua nhiều</h2>
-              <p>Top 5 theo tổng giá trị PO</p>
+              <p>Top 5 theo tổng giá trị đơn hàng</p>
             </div>
           </header>
           <RankBars
@@ -308,7 +308,7 @@ export function CustomerOverview({
             color="blue"
             onOpenCustomer={onOpenCustomer}
           />
-          <p className="customer-overview__panel-note">Giá trị PO, chưa phải tiền đã thu.</p>
+          <p className="customer-overview__panel-note">Giá trị đơn hàng, chưa phải tiền đã thu.</p>
         </section>
 
         <section
@@ -317,19 +317,19 @@ export function CustomerOverview({
         >
           <header>
             <div>
-              <h2 id="customer-overview-orders">Khách nhiều PO</h2>
+              <h2 id="customer-overview-orders">Khách nhiều đơn hàng</h2>
               <p>Top 5 theo số đơn từ trước đến nay</p>
             </div>
           </header>
           <RankBars
             rows={data.mostOrders}
             measure={row => row.orderCount}
-            display={value => `${number(value)} PO`}
-            exact={value => `${number(value)} PO`}
+            display={value => `${number(value)} đơn hàng`}
+            exact={value => `${number(value)} đơn hàng`}
             color="teal"
             onOpenCustomer={onOpenCustomer}
           />
-          <p className="customer-overview__panel-note">Chọn tên khách để mở hồ sơ và lịch sử PO.</p>
+          <p className="customer-overview__panel-note">Chọn tên khách để mở hồ sơ và lịch sử đơn hàng.</p>
         </section>
       </div>
     </div>

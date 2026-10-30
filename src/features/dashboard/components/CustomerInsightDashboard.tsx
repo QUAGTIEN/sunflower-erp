@@ -116,9 +116,9 @@ export const CustomerInsightDashboard: React.FC<CustomerInsightDashboardProps> =
         </article>
         <article className="is-orders">
           <div>
-            <span>PO đang hoạt động</span>
+            <span>Đơn hàng đang hoạt động</span>
             <strong>{activeOrdersCount} đơn</strong>
-            <small>PO chưa hoàn thành trong kỳ đang chọn</small>
+            <small>Đơn hàng chưa hoàn thành trong kỳ đang chọn</small>
           </div>
         </article>
       </div>

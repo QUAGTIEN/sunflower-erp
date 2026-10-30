@@ -87,11 +87,11 @@ export function LsxPoPickerDialog({
       }}
     >
       <header className="lsx-heading">
-        <h2 id="lsx-picker-title">Chọn hàng từ PO — {customerName}</h2>
+        <h2 id="lsx-picker-title">Chọn hàng từ đơn hàng — {customerName}</h2>
       </header>
       <div className="lsx-picker-filters">
-        <select aria-label="Lọc theo PO" value={poFilter} onChange={event => setPoFilter(event.target.value)}>
-          <option value="">Tất cả PO</option>
+        <select aria-label="Lọc theo đơn hàng" value={poFilter} onChange={event => setPoFilter(event.target.value)}>
+          <option value="">Tất cả đơn hàng</option>
           {customerPOs.map(po => (
             <option key={po.id} value={po.id}>
               {String(po.poCode || po.id)}
@@ -116,7 +116,7 @@ export function LsxPoPickerDialog({
               <th>Mã SP</th>
               <th>Tên sản phẩm</th>
               <th>ĐVT</th>
-              <th className="lsx-number">SL PO</th>
+              <th className="lsx-number">SL đơn hàng</th>
               <th className="lsx-number">Còn lại</th>
             </tr>
           </thead>
@@ -170,7 +170,7 @@ export function LsxPoPickerDialog({
                 <td colSpan={6}>
                   {available.length
                     ? 'Không có dòng phù hợp bộ lọc.'
-                    : 'Khách hàng này không còn dòng PO cần sản xuất.'}
+                    : 'Khách hàng này không còn dòng đơn hàng cần sản xuất.'}
                 </td>
               </tr>
             )}
@@ -178,7 +178,9 @@ export function LsxPoPickerDialog({
         </table>
       </div>
       <footer className="lsx-picker-footer">
-        <span>{chosen.length ? `Đã chọn ${chosen.length} dòng từ ${chosenPoCount} PO` : 'Chưa chọn dòng nào'}</span>
+        <span>
+          {chosen.length ? `Đã chọn ${chosen.length} dòng từ ${chosenPoCount} đơn hàng` : 'Chưa chọn dòng nào'}
+        </span>
         <button type="button" className="btn btn-outline" onClick={onClose}>
           Hủy
         </button>

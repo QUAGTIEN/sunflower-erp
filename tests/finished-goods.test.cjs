@@ -344,7 +344,7 @@ test('mapping is explicit and immutable; embedded vendor catalog snapshots are n
     /ID dòng/
   );
   b.store.get('pos/po1').items[0].quantity = 101;
-  await assert.rejects(b.post('purchase_receipt', 5), /PO đã đổi/);
+  await assert.rejects(b.post('purchase_receipt', 5), /Đơn hàng đã đổi/);
 });
 test('duplicate/replayed/concurrent requests cannot double-receive or issue beyond remaining order', async () => {
   const b = backend(),
@@ -502,7 +502,7 @@ test('purchase cannot substitute a second PO line with identical catalog code', 
     b.post('purchase_receipt', 10, {
       lines: [{ sourceLine: 'line-0', poItemId: 'p2', catalogItemId: catalogId, quantity: 10 }]
     }),
-    /đổi dòng PO/
+    /đổi dòng đơn hàng/
   );
   await b.post('purchase_receipt', 10);
   assert.ok(b.store.get('goods_order_state/po1').lines.p1);
@@ -571,11 +571,11 @@ test('all stops require dispatch before departure; duplicate or empty trip order
   await b.post('dispatch', 10);
   await b.trip('approved');
   await b.trip('loading');
-  await assert.rejects(b.trip('delivering'), /từng PO/);
+  await assert.rejects(b.trip('delivering'), /từng đơn hàng/);
   b.store.get('deliveries/trip1').orders.push({ poId: 'po1' });
   await assert.rejects(b.trip('delivering'), /trùng dòng/);
   b.store.get('deliveries/trip1').orders = [];
-  await assert.rejects(b.trip('delivering'), /PO hợp lệ/);
+  await assert.rejects(b.trip('delivering'), /đơn hàng hợp lệ/);
 });
 test('reversals use original snapshots after catalog deactivation; missing sources and company-to-supplier returns denied', async () => {
   const b = backend();
@@ -967,7 +967,7 @@ test('a multi-PO order is received per PO: sources split by PO and each receipt 
         lines: [{ sourceLine, poItemId: 'p1', catalogItemId: catalogId, quantity }]
       })
     );
-  await assert.rejects(receipt('po3', 'po1__p1', 1), /Chọn PO thuộc lệnh/);
+  await assert.rejects(receipt('po3', 'po1__p1', 1), /Chọn đơn hàng thuộc lệnh/);
   await assert.rejects(receipt('po2', 'po1__p1', 1), /không tồn tại/);
   await receipt('po2', 'po2__p1', 10);
   assert.equal(b.store.get('goods_source_state/production_lsx9').lines.po2__p1.received, 10);

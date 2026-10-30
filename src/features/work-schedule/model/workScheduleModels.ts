@@ -327,7 +327,7 @@ export const WORK_SCHEDULE_REFERENCE_LABELS: Record<WorkScheduleReferenceType, s
   lead_candidate: 'Dữ liệu thô',
   customer: 'Khách hàng',
   lead: 'Lead',
-  po: 'PO',
+  po: 'Đơn hàng',
   design_request: 'Yêu cầu thiết kế',
   production_order: 'Lệnh sản xuất',
   delivery: 'Giao hàng',

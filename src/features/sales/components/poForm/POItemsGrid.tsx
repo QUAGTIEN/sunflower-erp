@@ -57,7 +57,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
           <th style={{ width: '65px' }}>{t('Thuế (%)')}</th>
           <th style={{ width: '190px' }}>{t('Chiết khấu')}</th>
           <th style={{ width: '125px' }}>{t('Thành tiền (gồm VAT)')}</th>
-          <th style={{ width: '85px' }}>{t('KPI PO')}</th>
+          <th style={{ width: '85px' }}>{t('KPI đơn hàng')}</th>
           <th style={{ width: usesCatalogProducts ? '180px' : '140px' }}>
             {usesCatalogProducts ? t('Thao tác') : t('File liên quan')}
           </th>

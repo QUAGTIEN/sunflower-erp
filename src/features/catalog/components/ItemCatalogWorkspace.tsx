@@ -44,7 +44,11 @@ const blankItem = (): CatalogInput => ({
   conversions: [],
   notes: ''
 });
-const sourceTypes = { inventory: 'Vật tư kho', customer_product: 'Sản phẩm theo khách', po_item: 'Dòng PO' } as const;
+const sourceTypes = {
+  inventory: 'Vật tư kho',
+  customer_product: 'Sản phẩm theo khách',
+  po_item: 'Dòng đơn hàng'
+} as const;
 const linkLabels = {
   unlinked: 'Chưa liên kết',
   linked: 'Đã liên kết',
@@ -651,7 +655,7 @@ export function ItemCatalogWorkspace({ currentUser }: { currentUser: UserProfile
               <input
                 value={search}
                 onChange={event => setSearch(event.target.value)}
-                placeholder="Khách, PO, mã hoặc tên…"
+                placeholder="Khách, đơn hàng, mã hoặc tên…"
               />
             </label>
             <label className="catalog-check">
@@ -671,7 +675,7 @@ export function ItemCatalogWorkspace({ currentUser }: { currentUser: UserProfile
           </div>
           <p>
             Chọn từng dòng để tạo mã riêng hoặc liên kết vào mã đã có. Hai khách cùng mã không tự được gộp. Liên kết
-            không sửa PO, LSX, sản phẩm khách hoặc số tồn.
+            không sửa đơn hàng, LSX, sản phẩm khách hoặc số tồn.
           </p>
           {sourceLoading && <p role="status">Đang đọc dữ liệu nguồn…</p>}
           <div className="card catalog-list-frame">

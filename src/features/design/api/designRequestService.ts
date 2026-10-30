@@ -160,7 +160,7 @@ const synchronizePORequests = async (
               type: 'source_sync',
               workStatus: existing.workStatus,
               approvalStatus: existing.approvalStatus,
-              note: 'Đồng bộ thông tin bàn giao từ PO.',
+              note: 'Đồng bộ thông tin bàn giao từ đơn hàng.',
               updatedBy: actor.displayName || 'Hệ thống',
               updatedAt: now
             }
@@ -192,7 +192,7 @@ const synchronizePORequests = async (
           type: 'created',
           workStatus: initialStatuses.workStatus,
           approvalStatus: initialStatuses.approvalStatus,
-          note: 'Tự động tạo yêu cầu thiết kế từ mặt hàng trong PO.',
+          note: 'Tự động tạo yêu cầu thiết kế từ mặt hàng trong đơn hàng.',
           updatedBy: actor.displayName || 'Hệ thống',
           updatedAt: now
         }
@@ -207,7 +207,7 @@ const synchronizePORequests = async (
   )) {
     await dbService.updateDocument('design_requests', obsoleteRequest.id, {
       archived: true,
-      archivedReason: 'Mặt hàng không còn tồn tại trong PO.',
+      archivedReason: 'Mặt hàng không còn tồn tại trong đơn hàng.',
       archivedBy: actor.displayName || 'Hệ thống'
     });
   }

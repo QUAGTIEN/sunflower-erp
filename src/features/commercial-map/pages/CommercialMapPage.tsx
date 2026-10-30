@@ -752,7 +752,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                 <article>
                   <span>Giá trị thương mại</span>
                   <strong>{formatCurrency(overviewSummary.revenue)}</strong>
-                  <small>{overviewSummary.orders} PO phát sinh</small>
+                  <small>{overviewSummary.orders} đơn hàng phát sinh</small>
                 </article>
                 <article>
                   <span>Sale phụ trách chính</span>
@@ -853,7 +853,8 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                       <div>
                         <h2>Hiệu quả theo khu vực / KCN</h2>
                         <p>
-                          {overviewSummary.total} hồ sơ · Tổng giá trị PO {formatCurrency(overviewSummary.revenue)}
+                          {overviewSummary.total} hồ sơ · Tổng giá trị đơn hàng{' '}
+                          {formatCurrency(overviewSummary.revenue)}
                         </p>
                       </div>
                       {currentUser.role === 'admin' && (
@@ -875,7 +876,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                             <th>Hợp tác</th>
                             <th>Tiềm năng</th>
                             <th>Dữ liệu thô</th>
-                            <th>PO</th>
+                            <th>Đơn hàng</th>
                             <th>Giá trị</th>
                           </tr>
                         </thead>
@@ -916,7 +917,7 @@ export const CommercialMap: React.FC<CommercialMapProps> = ({
                               <th>Hợp tác</th>
                               <th>Tiềm năng</th>
                               <th>Dữ liệu thô</th>
-                              <th>PO</th>
+                              <th>Đơn hàng</th>
                               <th>Giá trị</th>
                             </tr>
                           </thead>

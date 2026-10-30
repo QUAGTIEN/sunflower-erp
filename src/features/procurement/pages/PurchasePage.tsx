@@ -68,7 +68,7 @@ const PURCHASE_PAGE_REFERENCE_TIME = Date.now();
 const SOURCING_TYPES: SourcingType[] = ['finished_good', 'raw_material', 'subcontract'];
 
 const PURCHASE_REQUEST_COLUMNS: TableColumnOption[] = [
-  { id: 'request', label: 'Yêu cầu / PO', required: true, group: 'Thông tin yêu cầu' },
+  { id: 'request', label: 'Yêu cầu / đơn hàng', required: true, group: 'Thông tin yêu cầu' },
   { id: 'customer', label: 'Khách hàng', defaultVisible: true, group: 'Thông tin yêu cầu' },
   { id: 'product', label: 'Mặt hàng', defaultVisible: true, group: 'Thông tin hàng hóa' },
   { id: 'sourcing', label: 'Phương án cung ứng', defaultVisible: true, group: 'Thông tin hàng hóa' },
@@ -82,7 +82,7 @@ const PURCHASE_REQUEST_COLUMNS: TableColumnOption[] = [
 const PURCHASE_ORDER_COLUMNS: TableColumnOption[] = [
   { id: 'order', label: 'Mã đơn mua', required: true, group: 'Thông tin đơn mua' },
   { id: 'supplier', label: 'Nhà cung cấp', defaultVisible: true, group: 'Thông tin đơn mua' },
-  { id: 'po', label: 'PO khách hàng', defaultVisible: true, group: 'Thông tin đơn mua' },
+  { id: 'po', label: 'Đơn hàng khách hàng', defaultVisible: true, group: 'Thông tin đơn mua' },
   { id: 'product', label: 'Mặt hàng', defaultVisible: true, group: 'Thông tin hàng hóa' },
   { id: 'value', label: 'Giá trị', defaultVisible: true, group: 'Thông tin hàng hóa' },
   { id: 'expectedDate', label: 'Ngày nhận dự kiến', defaultVisible: true, group: 'Tiến độ' },
@@ -442,7 +442,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
     <div className="purchase-page" data-erp-table-text="single-line">
       <PageContextHeader
         section={t('Mua hàng')}
-        current={activeListView === 'orders' ? t('Đơn mua đã phát hành') : t('Yêu cầu từ Sale PO')}
+        current={activeListView === 'orders' ? t('Đơn mua đã phát hành') : t('Yêu cầu từ đơn hàng')}
       />
 
       <div className="purchase-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>
@@ -456,7 +456,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
           role="tab"
           aria-selected={activeListView === 'requests'}
         >
-          <span>{t('Yêu cầu từ Sale PO')}</span>
+          <span>{t('Yêu cầu từ đơn hàng')}</span>
         </button>
         <button
           type="button"
@@ -481,8 +481,8 @@ export const Purchase: React.FC<PurchaseProps> = ({
               onChange={event => setSearchTerm(event.target.value)}
               placeholder={
                 activeListView === 'requests'
-                  ? t('Tìm mã PO, khách hàng, mã hàng, vật liệu hoặc NCC...')
-                  : t('Tìm mã đơn mua, NCC, PO khách hàng hoặc mặt hàng...')
+                  ? t('Tìm mã đơn hàng, khách hàng, mã hàng, vật liệu hoặc NCC...')
+                  : t('Tìm mã đơn mua, NCC, đơn hàng khách hàng hoặc mặt hàng...')
               }
             />
           </div>
@@ -529,7 +529,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     getHeaderProps={getRequestHeaderProps}
                     labels={requestColumnLabels}
                   >
-                    <th key="request">{t('Yêu cầu / PO')}</th>
+                    <th key="request">{t('Yêu cầu / đơn hàng')}</th>
                     {requestVisibleColumnSet.has('customer') && <th key="customer">{t('Khách hàng')}</th>}
                     {requestVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng')}</th>}
                     {requestVisibleColumnSet.has('sourcing') && <th key="sourcing">{t('Phương án cung ứng')}</th>}
@@ -644,7 +644,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                   >
                     <th key="order">{t('Mã đơn mua')}</th>
                     {orderVisibleColumnSet.has('supplier') && <th key="supplier">{t('Nhà cung cấp')}</th>}
-                    {orderVisibleColumnSet.has('po') && <th key="po">{t('PO khách hàng')}</th>}
+                    {orderVisibleColumnSet.has('po') && <th key="po">{t('Đơn hàng khách hàng')}</th>}
                     {orderVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng')}</th>}
                     {orderVisibleColumnSet.has('value') && (
                       <th key="value" className="erp-number-cell">

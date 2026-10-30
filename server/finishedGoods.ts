@@ -246,7 +246,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
         tripPoIds.some(value => typeof value !== 'string' || !value) ||
         new Set(tripPoIds).size !== tripPoIds.length
       )
-        fail(400, 'Chuyến cần các PO hợp lệ, không trùng dòng.');
+        fail(400, 'Chuyến cần các đơn hàng hợp lệ, không trùng dòng.');
       const nextStatus = String(body.status),
         transitions: Record<string, string[]> = {
           planning: ['approved'],
@@ -268,7 +268,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
             )
         )
       )
-        fail(400, 'Ghi phiếu xuất cho từng PO trong chuyến trước khi xuất phát.');
+        fail(400, 'Ghi phiếu xuất cho từng đơn hàng trong chuyến trước khi xuất phát.');
       const vehicleId = id(trip!.vehicleId),
         vehicle = await read('delivery_vehicles', vehicleId);
       if (
@@ -351,33 +351,34 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
       (sourceType === 'production' && productionPoIds.length > 1
         ? productionPoIds.includes(id(body.poId))
           ? String(body.poId)
-          : fail(400, 'Chọn PO thuộc lệnh sản xuất này.')
+          : fail(400, 'Chọn đơn hàng thuộc lệnh sản xuất này.')
         : source
           ? String(sourceType === 'production' ? source.poId : source.linkedPoId || '')
           : id(body.poId));
     id(poId);
-    const po: Data = (await read('pos', poId)) || fail(404, 'Không tìm thấy PO nguồn.');
-    if (po.deleted && !reversing) fail(400, 'PO đã xóa.');
+    const po: Data = (await read('pos', poId)) || fail(404, 'Không tìm thấy đơn hàng nguồn.');
+    if (po.deleted && !reversing) fail(400, 'Đơn hàng đã xóa.');
     if (
       !reversing &&
       ['cancelled', 'completed'].includes(String(po.status)) &&
       (receipt || newDispatch || kind === 'close_short')
     )
-      fail(400, 'PO đã hoàn tất/hủy; chỉ xử lý phiếu giao/hoàn đang có.');
+      fail(400, 'Đơn hàng đã hoàn tất/hủy; chỉ xử lý phiếu giao/hoàn đang có.');
     const poRows = rows(po.items),
       identities = poRows.map(itemIdentity);
-    if (new Set(identities).size !== identities.length) fail(400, 'PO trùng ID dòng, cần đối soát.');
+    if (new Set(identities).size !== identities.length) fail(400, 'Đơn hàng trùng ID dòng, cần đối soát.');
     const oldOrder = (await read('goods_order_state', poId)) as GoodsOrderState | undefined;
     if (
       (!oldOrder && poRows.some(row => Number(row.qtyDelivered) > 0)) ||
       (!oldOrder && po.deliveryProgress === 'delivered_with_tolerance')
     )
-      fail(409, 'PO có giao/đóng thiếu theo luồng cũ. Cần đối soát trước khi dùng sổ mới.');
+      fail(409, 'Đơn hàng có giao/đóng thiếu theo luồng cũ. Cần đối soát trước khi dùng sổ mới.');
     const order: GoodsOrderState = oldOrder
       ? structuredClone(oldOrder)
       : { id: poId, fingerprint: poStamp(po), revision: 0, lines: {} };
-    if (!reversing && order.fingerprint !== poStamp(po)) fail(409, 'PO đã đổi nội dung sau ghi sổ. Cần đối soát.');
-    if (body.expectedOrderRevision !== order.revision) fail(409, 'Tiến độ PO vừa thay đổi. Tải lại.');
+    if (!reversing && order.fingerprint !== poStamp(po))
+      fail(409, 'Đơn hàng đã đổi nội dung sau ghi sổ. Cần đối soát.');
+    if (body.expectedOrderRevision !== order.revision) fail(409, 'Tiến độ đơn hàng vừa thay đổi. Tải lại.');
     const purchaseId = original?.purchaseId || (sourceType === 'purchase' ? sourceId : dispatch?.purchaseId || '');
     const sourceStateId =
       sourceType === 'production' || sourceType === 'purchase'
@@ -415,7 +416,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
     const tripId = original?.tripId || dispatch?.tripId || (kind === 'dispatch' ? id(body.tripId) : '');
     const trip = tripId ? await read('deliveries', tripId) : undefined;
     if (tripId && (!trip || trip.deleted || !rows(trip.orders).some(row => row.poId === poId)))
-      fail(400, 'Chuyến không chứa PO này.');
+      fail(400, 'Chuyến không chứa đơn hàng này.');
     if (!reversing && kind === 'dispatch' && !['planning', 'approved', 'loading'].includes(String(trip!.status)))
       fail(400, 'Chỉ xuất kho trước khi chuyến xuất phát.');
     if (!reversing && kind === 'delivery' && trip && trip.status !== 'delivering') fail(400, 'Chuyến chưa xuất phát.');
@@ -467,7 +468,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
         entry.poItemId &&
         entry.poItemId !== sourcePoItemId
       )
-        fail(409, 'Không được đổi dòng PO đã có trên đơn mua.');
+        fail(409, 'Không được đổi dòng đơn hàng đã có trên đơn mua.');
       const poItemId =
         frozenLine?.poItemId ||
         storedSource?.poItemId ||
@@ -480,7 +481,7 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
             : sourceLine);
       const poIndex = identities.indexOf(poItemId),
         poRow = poRows[poIndex];
-      if (poIndex < 0) fail(400, 'Chọn đúng dòng PO cho hàng mua, không ghép theo mã/tên.');
+      if (poIndex < 0) fail(400, 'Chọn đúng dòng đơn hàng cho hàng mua, không ghép theo mã/tên.');
       const catalogItemId = frozenLine?.catalogItemId || id(entry.catalogItemId);
       const item = (await read('item_catalog', catalogItemId)) as CatalogItem | undefined;
       if (
@@ -497,9 +498,9 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
           : undefined;
       const requiredId = previous?.catalogItemId || frozen?.id || resolved?.id || storedSource?.catalogItemId;
       if (requiredId && requiredId !== catalogItemId) fail(409, 'Mã nội bộ khác ánh xạ đã xác nhận.');
-      if (!requiredId && body.confirmMapping !== true) fail(400, 'Xác nhận mã nội bộ và dòng PO đã chọn.');
+      if (!requiredId && body.confirmMapping !== true) fail(400, 'Xác nhận mã nội bộ và dòng đơn hàng đã chọn.');
       if (sourceType === 'purchase' && !storedSource && body.confirmMapping !== true)
-        fail(400, 'Xác nhận mã nội bộ và dòng PO cho hàng mua.');
+        fail(400, 'Xác nhận mã nội bộ và dòng đơn hàng cho hàng mua.');
       const unit = frozenLine?.unit || String(row?.unit || poRow.unit || ''),
         factor = conversionFactor(item!, unit),
         poFactor = conversionFactor(item!, String(poRow.unit || ''));
@@ -594,12 +595,12 @@ export async function manageFinishedGoods(actor: WarehouseActor, body: Data) {
       if (Object.values(order.lines).some(line => goodsTransit(line) > 0))
         fail(400, 'Còn hàng đang giao, chưa được đóng thiếu.');
       if (poRows.some((_, index) => !order.lines[identities[index]] && Number(poRows[index].quantity) > 0))
-        fail(400, 'Cần đối soát mã của toàn bộ dòng PO trước khi đóng thiếu.');
+        fail(400, 'Cần đối soát mã của toàn bộ dòng đơn hàng trước khi đóng thiếu.');
     }
     const sign = reversing ? -1 : 1;
     for (const line of lines) {
       const orderLine = order.lines[line.poItemId];
-      if (!orderLine || orderLine.catalogItemId !== line.catalogItemId) fail(409, 'Ánh xạ PO cần đối soát.');
+      if (!orderLine || orderLine.catalogItemId !== line.catalogItemId) fail(409, 'Ánh xạ đơn hàng cần đối soát.');
       const amount = sign * line.baseQuantity;
       if (newDispatch) orderLine.sent = roundStock(orderLine.sent + amount);
       if (kind === 'delivery') orderLine.delivered = roundStock(orderLine.delivered + amount);

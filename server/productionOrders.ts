@@ -39,14 +39,14 @@ function requestedPoIds(body: Record<string, unknown>) {
     lines.map(line => String((line && typeof line === 'object' && line.poId) || body.poId || '')).filter(Boolean)
   );
   if (!ids.length && body.poId) ids.push(String(body.poId));
-  if (ids.length > MAX_POS_PER_ORDER) throw new AdminApiError(400, 'Một lệnh gồm tối đa 20 PO.');
+  if (ids.length > MAX_POS_PER_ORDER) throw new AdminApiError(400, 'Một lệnh gồm tối đa 20 đơn hàng.');
   return ids.map(identifier);
 }
 
 async function readPOs(transaction: Transaction, firestore: Firestore, poIds: string[]) {
   const snapshots = await Promise.all(poIds.map(poId => transaction.get(firestore.collection('pos').doc(poId))));
   return snapshots.map((snapshot, index) => {
-    if (!snapshot.exists) throw new AdminApiError(404, 'Không tìm thấy PO.');
+    if (!snapshot.exists) throw new AdminApiError(404, 'Không tìm thấy đơn hàng.');
     return { ...snapshot.data(), id: poIds[index] } as ProductionPO;
   });
 }
@@ -171,7 +171,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
           if (getPOQueueStatus(po) !== 'waiting_production')
             throw new AdminApiError(
               400,
-              `PO ${po.poCode || po.id} phải hoàn tất thiết kế / sẵn sàng sản xuất trước khi phát hành.`
+              `Đơn hàng ${po.poCode || po.id} phải hoàn tất thiết kế / sẵn sàng sản xuất trước khi phát hành.`
             );
         validateProductionOrderDraft(linePOs, commands, releaseInput(next), id);
         for (const line of next.lines) {
@@ -183,7 +183,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
             index < 0 ||
             lineSnapshot(po.items![index], index, line.quantity).sourceFingerprint !== line.sourceFingerprint
           )
-            throw new AdminApiError(409, 'Thông tin PO đã thay đổi. Trả về nháp và lưu lại trước khi phát hành.');
+            throw new AdminApiError(409, 'Thông tin đơn hàng đã thay đổi. Trả về nháp và lưu lại trước khi phát hành.');
           const current = await readers.get(po.id)!.line(line);
           if (!isDeepStrictEqual(current.catalog || null, line.catalog || null))
             throw new AdminApiError(409, 'Danh mục/liên kết mã đã đổi. Trả về nháp và lưu lại trước khi phát hành.');
@@ -449,7 +449,7 @@ async function loadCatalog(firestore: Firestore, actor: ProductionActor, body: R
   const poIds = unique(
     (Array.isArray(body.poIds) ? (body.poIds as unknown[]) : [body.poId]).map(value => identifier(value))
   );
-  if (!poIds.length || poIds.length > MAX_POS_PER_ORDER) throw new AdminApiError(400, 'Chọn từ 1 đến 20 PO.');
+  if (!poIds.length || poIds.length > MAX_POS_PER_ORDER) throw new AdminApiError(400, 'Chọn từ 1 đến 20 đơn hàng.');
   return firestore.runTransaction(async transaction => {
     const pos = await readPOs(transaction, firestore, poIds);
     for (const po of pos) assertPOAccess(actor, po);

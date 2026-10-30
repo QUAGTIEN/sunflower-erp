@@ -57,7 +57,7 @@ test('dashboard renders the focused overview and limits classification records t
   assert.match(dashboardSource, /phân loại/);
   assert.match(dashboardSource, /Dữ liệu thô/);
   assert.match(dashboardSource, /Tiềm năng/);
-  assert.match(dashboardSource, /PO đang hoạt động/);
+  assert.match(dashboardSource, /Đơn hàng đang hoạt động/);
   assert.match(dashboardSource, /product_needs/);
   assert.match(dashboardSource, /contact_interaction/);
   assert.doesNotMatch(dashboardSource, /key: `crm:/);
@@ -73,10 +73,10 @@ test('dashboard renders the focused overview and limits classification records t
   );
   assert.doesNotMatch(dashboardPageSource, /Bảng tin hoạt động/);
   assert.doesNotMatch(dashboardPageSource, /Đơn Hàng Sắp Giao Trong Tuần/);
-  assert.match(dashboardPageSource, /Giá trị PO 6 tháng gần nhất/);
+  assert.match(dashboardPageSource, /Giá trị đơn hàng 6 tháng gần nhất/);
   assert.match(dashboardPageSource, /dashboard-revenue-trend__discount/);
   assert.match(dashboardPageSource, /Tổng cột = trước chiết khấu/);
-  assert.match(dashboardPageSource, /Hàng đợi xử lý PO/);
+  assert.match(dashboardPageSource, /Hàng đợi xử lý đơn hàng/);
   assert.match(dashboardPageSource, /Việc cần xử lý/);
   assert.match(dashboardPageSource, /Chiết khấu phải trả/);
   assert.match(dashboardPageSource, /DEFAULT_WORK_SCHEDULE_GROUPS/);

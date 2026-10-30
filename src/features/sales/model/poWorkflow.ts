@@ -20,7 +20,7 @@ export interface POStatusLike {
 const QUEUE_STATUS_SET = new Set<string>(PO_QUEUE_STATES.map(state => state.value));
 
 const LEGACY_STATUS_LABELS: Record<string, string> = {
-  receive_po: 'Đã nhận PO',
+  receive_po: 'Đã nhận đơn hàng',
   bom_extracted: 'Đã bóc tách NVL',
   design_sent: 'Đã gửi thiết kế',
   layout_pending: 'Chờ khách duyệt',

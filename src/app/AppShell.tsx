@@ -133,11 +133,11 @@ const DEFAULT_PAGE_CONTEXTS: Record<string, AppPageContext> = {
   customer_data: { section: 'Dữ liệu thô', current: 'Tất cả dữ liệu' },
   leads: { section: 'Tiềm năng', current: 'Tổng quan' },
   crm: { section: 'Khách hàng', current: 'Tất cả' },
-  sales: { section: 'Đơn hàng', current: 'Danh sách PO' },
+  sales: { section: 'Đơn hàng', current: 'Danh sách đơn hàng' },
   sales_management: { section: 'Quản lý Sale', current: 'Tổng quan' },
   design: { section: 'Thiết kế', current: 'Danh sách yêu cầu thiết kế' },
   design_library: { section: 'Kho mẫu', current: 'Danh sách mẫu thiết kế' },
-  purchase: { section: 'Mua hàng', current: 'Yêu cầu từ Sale PO' },
+  purchase: { section: 'Mua hàng', current: 'Yêu cầu từ đơn hàng' },
   suppliers: { section: 'Nhà cung cấp', current: 'Danh sách nhà cung cấp' },
   inventory: { section: 'Kho vật tư', current: 'Tồn kho' },
   production: { section: 'Sản xuất', current: 'Danh sách LSX' },
@@ -1138,11 +1138,11 @@ function AppShell() {
               <div className="login-hero-divider"></div>
               <p className="login-hero-desc">
                 {t(
-                  'Giải pháp ERP toàn diện giúp tối ưu quy trình sản xuất tem nhãn từ nhận PO đến giao hàng và quản lý công nợ hiệu quả.'
+                  'Giải pháp ERP toàn diện giúp tối ưu quy trình sản xuất tem nhãn từ nhận đơn hàng đến giao hàng và quản lý công nợ hiệu quả.'
                 )}
               </p>
               <div className="login-hero-flow">
-                <span>PO</span>
+                <span>Đơn hàng</span>
                 <span className="flow-arrow">→</span>
                 <span>{t('Thiết kế')}</span>
                 <span className="flow-arrow">→</span>
@@ -1155,7 +1155,7 @@ function AppShell() {
                 <span>{t('Thu công nợ')}</span>
               </div>
               <div className="login-hero-modules">
-                <div className="hero-module">{t('Quản lý PO')}</div>
+                <div className="hero-module">{t('Quản lý đơn hàng')}</div>
                 <div className="hero-module">{t('Thiết kế & Duyệt mẫu')}</div>
                 <div className="hero-module">{t('Theo dõi Sản xuất')}</div>
                 <div className="hero-module">{t('Quản lý Nguyên vật liệu')}</div>

@@ -119,8 +119,8 @@ export const ApprovedDesignLibrary: React.FC<ApprovedDesignLibraryProps> = ({ de
         <div>
           <span className="card-title">KHO MẪU THIẾT KẾ ĐÃ DUYỆT</span>
           <p>
-            Tìm lại mẫu chuẩn theo khách hàng, mã hàng hoặc PO cũ. Đơn đặt lại sẽ tự sao chép mẫu vào phiên bản mới để
-            kiểm tra và xác nhận.
+            Tìm lại mẫu chuẩn theo khách hàng, mã hàng hoặc đơn hàng cũ. Đơn đặt lại sẽ tự sao chép mẫu vào phiên bản
+            mới để kiểm tra và xác nhận.
           </p>
         </div>
         <div className="approved-library__count">
@@ -137,7 +137,7 @@ export const ApprovedDesignLibrary: React.FC<ApprovedDesignLibraryProps> = ({ de
             type="text"
             value={searchQuery}
             onChange={event => setSearchQuery(event.target.value)}
-            placeholder="Tìm khách hàng, mã hàng, tên sản phẩm hoặc PO..."
+            placeholder="Tìm khách hàng, mã hàng, tên sản phẩm hoặc đơn hàng..."
           />
         </div>
         <select value={customerFilter} onChange={event => setCustomerFilter(event.target.value)}>
@@ -170,7 +170,7 @@ export const ApprovedDesignLibrary: React.FC<ApprovedDesignLibraryProps> = ({ de
               <div className="approved-template-card__customer">{customerLabel}</div>
               <h3>{item.productName || 'Sản phẩm chưa đặt tên'}</h3>
               <div className="approved-template-card__code">
-                {item.productCode || 'Chưa có mã hàng'} · {po.poCode || 'PO chưa xác định'}
+                {item.productCode || 'Chưa có mã hàng'} · {po.poCode || 'Đơn hàng chưa xác định'}
               </div>
               <dl>
                 <div>

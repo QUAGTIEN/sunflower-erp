@@ -364,7 +364,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
               tab === 'catalog'
                 ? 'Tìm theo mã / tên / khách hàng…'
                 : voucherView === 'list'
-                  ? 'Tìm số phiếu, LSX, PO…'
+                  ? 'Tìm số phiếu, LSX, đơn hàng…'
                   : 'Tìm mã hoặc tên vật tư…'
             }
             value={search}
@@ -637,7 +637,7 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
                       <th>Ngày</th>
                       <th>Loại phiếu</th>
                       <th>Kho</th>
-                      <th>Nguồn (LSX / PO / đơn mua)</th>
+                      <th>Nguồn (LSX / đơn hàng / đơn mua)</th>
                       <th>Khách</th>
                       <th>Số dòng</th>
                       <th>Người lập</th>

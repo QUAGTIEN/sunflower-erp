@@ -23,9 +23,9 @@ const item = (
 export const CUSTOMER_INSIGHT_GROUPS: CustomerInsightGroup[] = [
   {
     id: 'order_progress',
-    label: 'Tiến độ mẫu / đơn hàng / PO',
+    label: 'Tiến độ mẫu / đơn hàng',
     items: [
-      item('po_promised', 'Khách hẹn lên PO', 'leads', 'pending_order_draft'),
+      item('po_promised', 'Khách hẹn lên đơn hàng', 'leads', 'pending_order_draft'),
       item('sample_reviewing', 'Khách đang duyệt mẫu', 'leads'),
       item('sample_test_ok', 'Khách test mẫu OK', 'leads'),
       item('sample_test_not_ok', 'Khách test mẫu chưa OK', 'leads'),

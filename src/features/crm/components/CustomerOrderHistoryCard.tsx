@@ -50,7 +50,7 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
       hidden={!['overview', 'po', 'products'].includes(customerHistoryTab)}
     >
       <div className="customer-product-catalog-toolbar">
-        <h2>{customerHistoryTab === 'products' ? t('Sản phẩm của khách hàng') : t('Danh sách đơn hàng (PO)')}</h2>
+        <h2>{customerHistoryTab === 'products' ? t('Sản phẩm của khách hàng') : t('Danh sách đơn hàng')}</h2>
         {customerHistoryTab === 'overview' && (
           <button type="button" className="btn btn-outline" onClick={() => setCustomerHistoryTab('po')}>
             {t('Xem tất cả')} ({getCustomerOrders(selectedCustomer.id).length})
@@ -68,7 +68,7 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
           <table>
             <thead>
               <tr>
-                <th>{t('Mã PO')}</th>
+                <th>{t('Mã đơn hàng')}</th>
                 <th>{t('Ngày đặt')}</th>
                 <th>{t('Trị giá (Net)')}</th>
                 <th>{t('Tiến độ')}</th>
@@ -111,7 +111,7 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
                           type="button"
                           className="btn btn-sm btn-outline repeat-order-button"
                           onClick={() => onRepeatOrder(po.id)}
-                          title={t('Tạo PO mới từ đơn cũ')}
+                          title={t('Tạo đơn hàng mới từ đơn cũ')}
                         >
                           <Copy size={13} /> {t('Đặt lại')}
                         </button>
@@ -142,7 +142,7 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
                 <th>{t('Quy cách')}</th>
                 <th className="customer-product-number">{t('Số đơn')}</th>
                 <th className="customer-product-number">{t('SL đã đặt')}</th>
-                <th>{t('PO gần nhất')}</th>
+                <th>{t('Đơn hàng gần nhất')}</th>
                 <th>{t('Tệp')}</th>
                 <th aria-label={t('Thao tác')} />
               </tr>

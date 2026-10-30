@@ -713,7 +713,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                     status: 'waiting_delivery',
                     updatedBy: currentUser.displayName,
                     updatedAt: new Date().toISOString(),
-                    note: `Đã hủy chuyến giao hàng ${trip.delCode}. Trạng thái PO quay lại chờ xe giao.`
+                    note: `Đã hủy chuyến giao hàng ${trip.delCode}. Trạng thái đơn hàng quay lại chờ xe giao.`
                   }
                 ];
                 await requireConfirmedMutation(
@@ -939,14 +939,14 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
             <div className="delivery-section-heading">
               <div>
                 <h2>Đơn đã sẵn sàng nhưng chưa xếp chuyến</h2>
-                <p>Dữ liệu lấy trực tiếp từ PO đã đóng gói hoặc đang giao một phần.</p>
+                <p>Dữ liệu lấy trực tiếp từ đơn hàng đã đóng gói hoặc đang giao một phần.</p>
               </div>
             </div>
             <div className="table-container">
               <table>
                 <thead>
                   <tr>
-                    <th>Mã PO</th>
+                    <th>Mã đơn hàng</th>
                     <th>Khách hàng</th>
                     <th>Khu vực</th>
                     <th>Hạn giao</th>
@@ -1408,7 +1408,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
               <table>
                 <thead>
                   <tr>
-                    <th>Mã PO</th>
+                    <th>Mã đơn hàng</th>
                     <th>Khách hàng</th>
                     <th>Yêu cầu</th>
                     <th>Đã giao</th>

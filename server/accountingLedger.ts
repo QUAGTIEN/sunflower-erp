@@ -303,12 +303,12 @@ export async function manageAccountingLedger(actor: WarehouseActor, body: Data) 
                 purchase.supplierId !== partnerId ||
                 (purchase.linkedPoId && purchase.linkedPoId !== poId)
               )
-                fail(400, 'Đơn mua đầu kỳ không thuộc đối tác/PO đã chọn.');
+                fail(400, 'Đơn mua đầu kỳ không thuộc đối tác/đơn hàng đã chọn.');
             }
             if (debtSide === 'ar' && poId) {
               const po = await read('pos', poId);
               orderCode = String(po?.poCode || poId);
-              if (!po || po.customerId !== partnerId) fail(400, 'PO đầu kỳ không thuộc khách hàng.');
+              if (!po || po.customerId !== partnerId) fail(400, 'Đơn hàng đầu kỳ không thuộc khách hàng.');
             }
             if ((debtSide === 'ar' && purchaseId) || (debtSide === 'ap' && poId && !purchaseId))
               fail(400, 'Chọn đúng đơn bán/mua đầu kỳ.');

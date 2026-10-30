@@ -212,7 +212,7 @@ export default function POFormFullScreen({
       setCustomerRank(templatePo.customerRank || sourceCustomer?.customerRank || '');
       setCustomerPoCode('');
       setExpectedDeliveryDate(defaultDeliveryDate);
-      setNotes(`Đơn đặt lại từ ${templatePo.poCode || 'PO cũ'}. ${templatePo.notes || ''}`.trim());
+      setNotes(`Đơn đặt lại từ ${templatePo.poCode || 'Đơn hàng cũ'}. ${templatePo.notes || ''}`.trim());
 
       // Reuse approved design sources only. Old quotes, contracts and order
       // documents are intentionally not copied into the new commercial order.
@@ -840,7 +840,7 @@ export default function POFormFullScreen({
           return;
         }
         if (poItems.length === 0) {
-          alert(t('Vui lòng thêm ít nhất 1 mặt hàng vào PO!'));
+          alert(t('Vui lòng thêm ít nhất 1 mặt hàng vào đơn hàng!'));
           return;
         }
 
@@ -1378,7 +1378,7 @@ export default function POFormFullScreen({
                   fontSize: '12.5px'
                 }}
               >
-                {t('Chưa phân công công việc phòng ban nào cho PO này.')}
+                {t('Chưa phân công công việc phòng ban nào cho đơn hàng này.')}
               </div>
             )}
           </div>
@@ -1429,7 +1429,7 @@ export default function POFormFullScreen({
               if (
                 nextCustomerId !== customerId &&
                 poItems.length &&
-                !window.confirm(t('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong PO. Bạn có muốn tiếp tục?'))
+                !window.confirm(t('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong đơn hàng. Bạn có muốn tiếp tục?'))
               )
                 return;
               const nextCustomer = customers.find(customer => customer.id === nextCustomerId);
@@ -1468,11 +1468,11 @@ export default function POFormFullScreen({
               </option>
             ))}
           </select>
-          <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu PO.')}</span>
+          <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu đơn hàng.')}</span>
         </div>
 
         <div className="form-group">
-          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số PO khách hàng')}</label>
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số đơn hàng khách hàng')}</label>
           <input
             type="text"
             value={customerPoCode}
@@ -1545,7 +1545,7 @@ export default function POFormFullScreen({
             <strong>{t('Thông tin đơn đầu tiên đã được chuẩn bị từ CRM')}</strong>
             <span>
               {t(
-                'Mặt hàng, giá, ngày giao và tệp liên quan đã được điền sẵn. Hãy bổ sung phân công phòng ban rồi lưu để phát hành PO.'
+                'Mặt hàng, giá, ngày giao và tệp liên quan đã được điền sẵn. Hãy bổ sung phân công phòng ban rồi lưu để phát hành đơn hàng.'
               )}
             </span>
           </div>
@@ -1568,16 +1568,16 @@ export default function POFormFullScreen({
                 {isCustomerOnboarding
                   ? t('Chuẩn bị đơn hàng đầu tiên')
                   : po
-                    ? `${t('Chỉnh sửa đơn hàng PO')}: ${po.poCode}`
+                    ? `${t('Chỉnh sửa đơn hàng')}: ${po.poCode}`
                     : templatePo
                       ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
-                      : t('Tạo đơn hàng khách hàng (PO)')}
+                      : t('Tạo đơn hàng khách hàng')}
               </h2>
               <p>
                 {isCustomerOnboarding
-                  ? t('Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại Sale PO.')
+                  ? t('Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại phân hệ Đơn hàng.')
                   : po
-                    ? `${t('Mã PO nội bộ:')} ${po.poCode}`
+                    ? `${t('Mã đơn hàng nội bộ:')} ${po.poCode}`
                     : templatePo
                       ? 'Kế thừa thông số và mẫu đã duyệt; giá, ngày giao và phân công cần kiểm tra lại.'
                       : t('Khởi tạo tệp thông tin đơn hàng mới và phân công sản xuất')}
@@ -1596,8 +1596,8 @@ export default function POFormFullScreen({
                 {isSaving
                   ? t('Đang lưu...')
                   : isCustomerOnboarding
-                    ? t('Lưu khách hàng & chuẩn bị PO')
-                    : t('Lưu Đơn Hàng PO')}
+                    ? t('Lưu khách hàng & chuẩn bị đơn hàng')
+                    : t('Lưu Đơn Hàng')}
               </span>
             </button>
           </div>
@@ -1695,7 +1695,7 @@ export default function POFormFullScreen({
                     <strong>{t('Hạng')}:</strong> {customerRank || '—'}
                   </span>
                   <span>
-                    <strong>{t('Số PO')}:</strong> {customerPoCode || '—'}
+                    <strong>{t('Số đơn hàng khách hàng')}:</strong> {customerPoCode || '—'}
                   </span>
                   <span>
                     <strong>{t('Ngày giao')}:</strong>{' '}

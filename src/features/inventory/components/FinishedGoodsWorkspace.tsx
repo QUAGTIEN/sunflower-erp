@@ -156,13 +156,13 @@ export function FinishedGoodsWorkspace({
           <option value="stock">Tồn thành phẩm / hàng mua</option>
           <option value="vouchers">Phiếu hàng hóa</option>
           <option value="dispatches">Theo dõi hàng giao</option>
-          <option value="orders">Tiến độ từng mã / PO</option>
+          <option value="orders">Tiến độ từng mã / đơn hàng</option>
           <option value="report">Nhập xuất tồn</option>
         </select>
         <input
           type="search"
           aria-label="Tìm thành phẩm"
-          placeholder="Mã hàng, PO, phiếu…"
+          placeholder="Mã hàng, đơn hàng, phiếu…"
           value={search}
           onChange={event => setSearch(event.target.value)}
         />
@@ -228,7 +228,7 @@ export function FinishedGoodsWorkspace({
                   <>
                     <th>Phiếu</th>
                     <th>Nghiệp vụ</th>
-                    <th>PO</th>
+                    <th>Đơn hàng</th>
                     <th>Nguồn</th>
                     <th>Ngày</th>
                     <th>Người ghi</th>
@@ -239,14 +239,14 @@ export function FinishedGoodsWorkspace({
                   <>
                     <th>Phiếu xuất</th>
                     <th>Tuyến hàng</th>
-                    <th>PO</th>
+                    <th>Đơn hàng</th>
                     <th>Mặt hàng / đang giao</th>
                     <th>Ngày xuất</th>
                     <th>Thao tác</th>
                   </>
                 ) : view === 'orders' ? (
                   <>
-                    <th>PO / khách</th>
+                    <th>Đơn hàng / khách</th>
                     <th>Mã / tên hàng</th>
                     <th>ĐVT</th>
                     <th>SL đặt</th>

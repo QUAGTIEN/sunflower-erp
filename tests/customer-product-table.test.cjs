@@ -13,7 +13,7 @@ test('customer product codes use one column per field and move row actions into 
     'Quy cách',
     'Số đơn',
     'SL đã đặt',
-    'PO gần nhất',
+    'Đơn hàng gần nhất',
     'Tệp'
   ];
   for (const header of headers) assert.ok(card.includes(`{t('${header}')}</th>`), header);

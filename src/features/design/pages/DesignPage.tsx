@@ -74,7 +74,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 
 const DESIGN_LIST_COLUMNS: TableColumnOption[] = [
   { id: 'request', label: 'Mã yêu cầu', required: true, group: 'Thông tin yêu cầu' },
-  { id: 'po', label: 'Mã PO', defaultVisible: true, group: 'Thông tin yêu cầu' },
+  { id: 'po', label: 'Mã đơn hàng', defaultVisible: true, group: 'Thông tin yêu cầu' },
   { id: 'product', label: 'Mặt hàng cần thiết kế', defaultVisible: true, group: 'Thông tin sản phẩm' },
   { id: 'specification', label: 'Quy cách / Chất liệu', defaultVisible: true, group: 'Thông tin sản phẩm' },
   { id: 'dueDate', label: 'Hạn xử lý', defaultVisible: true, group: 'Tiến độ' },
@@ -630,7 +630,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                 <input
                   value={searchTerm}
                   onChange={event => setSearchTerm(event.target.value)}
-                  placeholder={t('Tìm mã yêu cầu, mã PO, mã hàng hoặc sản phẩm...')}
+                  placeholder={t('Tìm mã yêu cầu, mã đơn hàng, mã hàng hoặc sản phẩm...')}
                 />
               </div>
               <DataFilterButton
@@ -689,7 +689,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                       labels={designColumnLabels}
                     >
                       <th key="request">{t('Mã yêu cầu')}</th>
-                      {designVisibleColumnSet.has('po') && <th key="po">{t('Mã PO')}</th>}
+                      {designVisibleColumnSet.has('po') && <th key="po">{t('Mã đơn hàng')}</th>}
                       {designVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng cần thiết kế')}</th>}
                       {designVisibleColumnSet.has('specification') && (
                         <th key="specification">{t('Quy cách / Chất liệu')}</th>
@@ -864,7 +864,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
               </div>
               <dl className="design-brief-grid">
                 <div>
-                  <dt>{t('Mã PO')}</dt>
+                  <dt>{t('Mã đơn hàng')}</dt>
                   <dd>{selectedRequest.customerReferenceCode || selectedRequest.poCode}</dd>
                 </div>
                 <div>

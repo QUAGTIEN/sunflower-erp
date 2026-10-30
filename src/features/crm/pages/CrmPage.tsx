@@ -3118,14 +3118,14 @@ export const Crm: React.FC<CrmProps> = ({
               <div className="modal-footer customer-onboarding-footer">
                 <div className="customer-onboarding-footer-note">
                   {onboardingItems.length > 0
-                    ? `${onboardingItems.length} mã hàng sẽ được lưu vào hồ sơ và chuyển sẵn sang Sale PO.`
+                    ? `${onboardingItems.length} mã hàng sẽ được lưu vào hồ sơ và chuyển sẵn sang phân hệ Đơn hàng.`
                     : 'Bạn có thể lưu hồ sơ trước và bổ sung mã hàng sau.'}
                 </div>
                 <button type="button" className="btn btn-outline" onClick={closeCustomerOnboarding}>
                   Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {onboardingItems.length > 0 ? 'Lưu khách hàng & chuẩn bị Sale PO' : 'Lưu hồ sơ khách hàng'}
+                  {onboardingItems.length > 0 ? 'Lưu khách hàng & chuẩn bị đơn hàng' : 'Lưu hồ sơ khách hàng'}
                 </button>
               </div>
             </form>
