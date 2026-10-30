@@ -5,6 +5,7 @@ Quy tắc làm việc cho người phát triển và AI: [../CLAUDE.md](../CLAUD
 | Thư mục | Tài liệu | Nội dung |
 |---|---|---|
 | `business/` | [PROJECT_OVERVIEW.md](business/PROJECT_OVERVIEW.md) | Mục tiêu, vai trò, phân hệ, luồng nghiệp vụ, thuật ngữ |
+| | [CODE_STANDARDS.md](business/CODE_STANDARDS.md) | Chuẩn mã đơn hàng, LSX, mã hàng, chứng từ (D-MA1) |
 | `dev/` | [ARCHITECTURE.md](dev/ARCHITECTURE.md) | Kiến trúc, lớp mã nguồn, hướng phụ thuộc, mẫu ghi sổ máy chủ |
 | | [CODEBASE_MAP.md](dev/CODEBASE_MAP.md) | Sửa ở đâu: phân hệ → file, API → server, component dùng chung |
 | | [DEVELOPER_GUIDELINES.md](dev/DEVELOPER_GUIDELINES.md) | Quy chuẩn UI/UX (chuẩn MISA) và quy tắc kỹ thuật |
