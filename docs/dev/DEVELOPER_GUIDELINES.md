@@ -184,8 +184,9 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 
 ### 1.14. Điều hướng và menu
 - Menu bên trái phải giữ nguyên chiều rộng, vị trí và nhịp khoảng cách giữa các trang.
-- Menu chia tối đa 2 cấp theo luồng nghiệp vụ (quyết định ngày 31/10/2026): Tổng quan · Làm việc · Kinh doanh ·
-  Sản xuất (Lệnh sản xuất, Danh sách máy, Danh sách dao, Giao hàng) · Thiết kế · Kho & mua hàng · Kế toán · Hệ thống.
+- Menu chia tối đa 2 cấp theo luồng nghiệp vụ (quyết định ngày 31/10/2026, sửa 01/11/2026): Tổng quan · Làm việc ·
+  Kinh doanh · Thiết kế · Sản xuất (Lệnh sản xuất, Danh sách máy, Danh sách dao, Giao hàng) · Mua hàng (Kho vật tư,
+  Mua hàng, Nhà cung cấp) · Kế toán · Hệ thống.
   Nhóm mặc định gập, mỗi lần chỉ mở một nhóm; mục con chỉ có chữ (không icon), thụt vào dọc một đường kẻ mảnh;
   nhóm đang chứa trang hiện tại mà gập thì tiêu đề nhóm được tô nền; nhóm không có mục nào người dùng được vào thì ẩn. Thêm trang mới vào
   `src/app/navigation/sidebarMenu.ts`, không viết nút menu riêng trong `AppShell.tsx`.

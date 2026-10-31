@@ -532,7 +532,12 @@ test('production has exactly two tabs; legacy detail and machine management stay
   assert.ok(nodes(tree).some(node => node.type?.name === 'MachineManagement' && node.props.canManage));
   const menu = fs.readFileSync(path.join(root, 'src/app/navigation/sidebarMenu.ts'), 'utf8');
   const groups = [...menu.matchAll(/kind: 'group',\s*id: '([^']+)'/g)].map(match => match[1]);
-  assert.equal(groups.indexOf('production'), groups.indexOf('business') + 1);
+  assert.deepEqual(groups.slice(groups.indexOf('business'), groups.indexOf('business') + 4), [
+    'business',
+    'design',
+    'production',
+    'warehouse'
+  ]);
 });
 
 test('combined order list filters and searches legacy items and opens their existing detail flow', () => {

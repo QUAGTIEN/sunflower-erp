@@ -106,6 +106,23 @@ export const SIDEBAR_MENU: SidebarMenuEntry[] = [
   },
   {
     kind: 'group',
+    id: 'design',
+    label: 'Thiết kế',
+    icon: Palette,
+    items: [
+      item({ id: 'design', page: 'design', label: 'Yêu cầu thiết kế', title: 'Yêu Cầu Thiết Kế', icon: Palette }),
+      item({
+        id: 'design_library',
+        page: 'design_library',
+        accessPage: 'design',
+        label: 'Kho mẫu',
+        title: 'Kho Thiết Kế & Layout',
+        icon: FolderOpen
+      })
+    ]
+  },
+  {
+    kind: 'group',
     id: 'production',
     label: 'Sản xuất',
     icon: Factory,
@@ -139,25 +156,8 @@ export const SIDEBAR_MENU: SidebarMenuEntry[] = [
   },
   {
     kind: 'group',
-    id: 'design',
-    label: 'Thiết kế',
-    icon: Palette,
-    items: [
-      item({ id: 'design', page: 'design', label: 'Yêu cầu thiết kế', title: 'Yêu Cầu Thiết Kế', icon: Palette }),
-      item({
-        id: 'design_library',
-        page: 'design_library',
-        accessPage: 'design',
-        label: 'Kho mẫu',
-        title: 'Kho Thiết Kế & Layout',
-        icon: FolderOpen
-      })
-    ]
-  },
-  {
-    kind: 'group',
     id: 'warehouse',
-    label: 'Kho & mua hàng',
+    label: 'Mua hàng',
     icon: Warehouse,
     items: [
       item({
