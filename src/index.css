@@ -579,14 +579,10 @@ body {
   white-space: nowrap;
 }
 
-/* Sidebar groups: a heading that opens its pages, which sit indented under its icon. */
+/* Sidebar groups: folded headings; an open group lists its pages as plain text along a guide line. */
 .sidebar-group {
   display: flex;
   flex-direction: column;
-}
-
-.sidebar-group-toggle {
-  font-weight: 600;
 }
 
 .sidebar-group-toggle.has-active {
@@ -595,7 +591,7 @@ body {
 
 .sidebar-group-chevron {
   flex: 0 0 auto;
-  color: #c7d6f5;
+  color: #9fb3dc;
   transition: transform var(--transition-fast);
 }
 
@@ -606,6 +602,10 @@ body {
 .sidebar-group-items {
   display: flex;
   flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 4px 20px;
+  padding-left: 8px;
+  border-left: 1px solid rgb(255 255 255 / 16%);
 }
 
 .sidebar-group-items[hidden] {
@@ -613,9 +613,15 @@ body {
 }
 
 .sidebar-group-items > .sidebar-item {
-  min-height: 32px;
-  padding-left: 29px;
+  min-height: 30px;
+  padding: 5px 10px;
+  color: #dbe5fb;
   font-size: 13.5px;
+}
+
+.sidebar-group-items > .sidebar-item:hover,
+.sidebar-group-items > .sidebar-item.active {
+  color: #ffffff;
 }
 
 .sidebar-footer {

@@ -186,7 +186,8 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 - Menu bên trái phải giữ nguyên chiều rộng, vị trí và nhịp khoảng cách giữa các trang.
 - Menu chia tối đa 2 cấp theo luồng nghiệp vụ (quyết định ngày 31/10/2026): Tổng quan · Làm việc · Kinh doanh ·
   Sản xuất (Lệnh sản xuất, Danh sách máy, Danh sách dao, Giao hàng) · Thiết kế · Kho & mua hàng · Kế toán · Hệ thống.
-  Nhóm mở / đóng được và nhớ theo trình duyệt; nhóm không có mục nào người dùng được vào thì ẩn. Thêm trang mới vào
+  Nhóm mặc định gập, mỗi lần chỉ mở một nhóm; mục con chỉ có chữ (không icon), thụt vào dọc một đường kẻ mảnh;
+  nhóm đang chứa trang hiện tại mà gập thì tiêu đề nhóm được tô nền; nhóm không có mục nào người dùng được vào thì ẩn. Thêm trang mới vào
   `src/app/navigation/sidebarMenu.ts`, không viết nút menu riêng trong `AppShell.tsx`.
 - Mục đang chọn sử dụng nền xanh nhạt vừa đủ, không có viền nổi; chữ không được đậm quá mức.
 - Tên phân hệ phải ngắn gọn, dễ hiểu và ưu tiên từ 2 đến 3 từ.

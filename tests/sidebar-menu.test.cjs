@@ -76,3 +76,12 @@ test('the shell renders the menu from the groups and pages switch tabs on reques
     assert.match(source, /onTabChange\?\.\(/, page);
   }
 });
+
+test('sidebar groups start folded, open one at a time and list sub-items as plain text', () => {
+  const shell = readSource('src/app/AppShell.tsx');
+  assert.match(shell, /const \[openMenuGroup, setOpenMenuGroup\] = useState<string \| null>\(null\);/);
+  assert.match(shell, /setOpenMenuGroup\(current => \(current === groupId \? null : groupId\)\)/);
+  assert.match(shell, /const isOpen = openMenuGroup === entry\.id;/);
+  assert.match(shell, /\{!nested && <ItemIcon size=\{16\} \/>\}/);
+  assert.match(shell, /renderMenuItem\(groupItem, true\)/);
+});

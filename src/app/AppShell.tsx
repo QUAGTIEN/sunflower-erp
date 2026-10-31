@@ -161,17 +161,6 @@ const COLLECTION_PAGES: Record<string, string[]> = {
 const isPageWaitingForData = (pageId: string, pendingCollections: ReadonlySet<string>) =>
   [...pendingCollections].some(collectionName => COLLECTION_PAGES[collectionName]?.includes(pageId));
 
-const COLLAPSED_MENU_GROUPS_KEY = 'erp_sidebar_collapsed_groups';
-
-function readCollapsedMenuGroups(): string[] {
-  try {
-    const stored: unknown = JSON.parse(localStorage.getItem(COLLAPSED_MENU_GROUPS_KEY) || '[]');
-    return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
 function AppShell() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activePage, setActivePageState] = useState<string>('dashboard');
@@ -195,7 +184,8 @@ function AppShell() {
   // Tabs that sidebar sub-items stand for: what each kept-alive page shows, and the last tab the sidebar asked for.
   const [pageTabs, setPageTabs] = useState<Record<string, string>>({});
   const [pageTabRequest, setPageTabRequest] = useState<(PageTabRequest & { page: string }) | null>(null);
-  const [collapsedMenuGroups, setCollapsedMenuGroups] = useState<string[]>(readCollapsedMenuGroups);
+  // Groups start folded and open one at a time, so the menu stays short.
+  const [openMenuGroup, setOpenMenuGroup] = useState<string | null>(null);
   const rememberPageTab = useCallback((page: string, tab: string) => {
     setPageTabs(previous => (previous[page] === tab ? previous : { ...previous, [page]: tab }));
   }, []);
@@ -1311,15 +1301,7 @@ function AppShell() {
   const activeMenuItem = findActiveMenuItem(SIDEBAR_MENU, highlightedPage, pageTabs[highlightedPage]);
   const activeMenuGroupId = activeMenuItem ? findMenuGroupOf(SIDEBAR_MENU, activeMenuItem.id)?.id : undefined;
   const toggleMenuGroup = (groupId: string) => {
-    const next = collapsedMenuGroups.includes(groupId)
-      ? collapsedMenuGroups.filter(id => id !== groupId)
-      : [...collapsedMenuGroups, groupId];
-    setCollapsedMenuGroups(next);
-    try {
-      localStorage.setItem(COLLAPSED_MENU_GROUPS_KEY, JSON.stringify(next));
-    } catch {
-      // Remembering the open groups is a convenience; the menu still works without storage.
-    }
+    setOpenMenuGroup(current => (current === groupId ? null : groupId));
   };
   const openMenuItem = (menuItem: SidebarMenuItem) => {
     if (!confirmAppNavigation()) return;
@@ -1329,9 +1311,10 @@ function AppShell() {
       setPageTabRequest(previous => ({ page: menuItem.page, tab, requestId: (previous?.requestId ?? 0) + 1 }));
     }
     showPage(menuItem.page);
+    setOpenMenuGroup(findMenuGroupOf(SIDEBAR_MENU, menuItem.id)?.id ?? null);
     setIsSidebarOpen(false);
   };
-  const renderMenuItem = (menuItem: SidebarMenuItem) => {
+  const renderMenuItem = (menuItem: SidebarMenuItem, nested = false) => {
     const ItemIcon = menuItem.icon;
     const isActive = activeMenuItem?.id === menuItem.id;
     return (
@@ -1345,7 +1328,7 @@ function AppShell() {
         title={t(menuItem.title)}
       >
         <div className={`sidebar-item-content${menuItem.danger ? ' sidebar-item-content-danger' : ''}`}>
-          <ItemIcon size={16} />
+          {!nested && <ItemIcon size={16} />}
           <span className="sidebar-item-label">{menuItem.translateLabel ? t(menuItem.label) : menuItem.label}</span>
         </div>
         {menuItem.id === 'chat' && unreadChannelCount > 0 && (
@@ -1373,7 +1356,7 @@ function AppShell() {
                 const groupItems = entry.items.filter(isMenuItemAllowed);
                 if (!groupItems.length) return null;
                 const GroupIcon = entry.icon;
-                const isOpen = !collapsedMenuGroups.includes(entry.id);
+                const isOpen = openMenuGroup === entry.id;
                 return (
                   <div key={entry.id} className="sidebar-group">
                     <button
@@ -1390,7 +1373,7 @@ function AppShell() {
                       <ChevronDown size={14} className="sidebar-group-chevron" aria-hidden="true" />
                     </button>
                     <div id={`sidebar-group-${entry.id}`} className="sidebar-group-items" hidden={!isOpen}>
-                      {groupItems.map(groupItem => renderMenuItem(groupItem))}
+                      {groupItems.map(groupItem => renderMenuItem(groupItem, true))}
                     </div>
                   </div>
                 );
