@@ -184,6 +184,10 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 
 ### 1.14. Điều hướng và menu
 - Menu bên trái phải giữ nguyên chiều rộng, vị trí và nhịp khoảng cách giữa các trang.
+- Menu chia tối đa 2 cấp theo luồng nghiệp vụ (quyết định ngày 31/10/2026): Tổng quan · Làm việc · Kinh doanh ·
+  Sản xuất (Lệnh sản xuất, Danh sách máy, Danh sách dao, Giao hàng) · Thiết kế · Kho & mua hàng · Kế toán · Hệ thống.
+  Nhóm mở / đóng được và nhớ theo trình duyệt; nhóm không có mục nào người dùng được vào thì ẩn. Thêm trang mới vào
+  `src/app/navigation/sidebarMenu.ts`, không viết nút menu riêng trong `AppShell.tsx`.
 - Mục đang chọn sử dụng nền xanh nhạt vừa đủ, không có viền nổi; chữ không được đậm quá mức.
 - Tên phân hệ phải ngắn gọn, dễ hiểu và ưu tiên từ 2 đến 3 từ.
 - Nút quay lại phải đưa người dùng về đúng màn hình trước đó và giữ bộ lọc, tab hoặc trang dữ liệu khi có thể.

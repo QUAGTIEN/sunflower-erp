@@ -579,6 +579,45 @@ body {
   white-space: nowrap;
 }
 
+/* Sidebar groups: a heading that opens its pages, which sit indented under its icon. */
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-group-toggle {
+  font-weight: 600;
+}
+
+.sidebar-group-toggle.has-active {
+  background-color: #203765;
+}
+
+.sidebar-group-chevron {
+  flex: 0 0 auto;
+  color: #c7d6f5;
+  transition: transform var(--transition-fast);
+}
+
+.sidebar-group-toggle[aria-expanded='false'] .sidebar-group-chevron {
+  transform: rotate(-90deg);
+}
+
+.sidebar-group-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-group-items[hidden] {
+  display: none;
+}
+
+.sidebar-group-items > .sidebar-item {
+  min-height: 32px;
+  padding-left: 29px;
+  font-size: 13.5px;
+}
+
 .sidebar-footer {
   position: relative;
   z-index: 2;

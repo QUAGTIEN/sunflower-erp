@@ -24,6 +24,7 @@ import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
 import { ProductionOrderWorkspace } from '@/features/production/components/ProductionOrderWorkspace';
 import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
+import type { PageTabRequest } from '@/shared/types/pageTabRequest';
 import './Production.css';
 
 interface ProductionProps {
@@ -32,9 +33,15 @@ interface ProductionProps {
   currentUser: UserProfile;
   onRefresh: () => void;
   initialSelectedLsxId?: string;
+  /** Sidebar sub-items Lệnh sản xuất / Danh sách máy open this page on that tab. */
+  tabRequest?: PageTabRequest;
+  onTabChange?: (tab: ProductionTab) => void;
   messages: any[];
   users: any[];
 }
+
+type ProductionTab = 'commands' | 'machines';
+const isProductionTab = (tab: string): tab is ProductionTab => tab === 'commands' || tab === 'machines';
 
 const getProductionQuantity = (command: any): number => {
   const quantity = Number(command?.qtyToProduce ?? command?.quantity ?? 0);
@@ -47,6 +54,8 @@ export const Production: React.FC<ProductionProps> = ({
   currentUser,
   onRefresh,
   initialSelectedLsxId,
+  tabRequest,
+  onTabChange,
   messages,
   users
 }) => {
@@ -59,7 +68,12 @@ export const Production: React.FC<ProductionProps> = ({
   const [transferReason, setTransferReason] = useState('');
   const [targetOperatorId, setTargetOperatorId] = useState('');
   const handledNavigation = useRef('');
-  const [productionTab, setProductionTab] = useState<'commands' | 'machines'>('commands');
+  const [productionTab, setProductionTab] = useState<ProductionTab>('commands');
+  const [handledTabRequest, setHandledTabRequest] = useState(0);
+  if (tabRequest && tabRequest.requestId !== handledTabRequest) {
+    setHandledTabRequest(tabRequest.requestId);
+    if (isProductionTab(tabRequest.tab)) setProductionTab(tabRequest.tab);
+  }
 
   // Auto-select LSX when initialSelectedLsxId changes
   useEffect(() => {
@@ -453,7 +467,10 @@ export const Production: React.FC<ProductionProps> = ({
           role="tab"
           aria-selected={productionTab === 'commands'}
           className={productionTab === 'commands' ? 'is-active' : ''}
-          onClick={() => setProductionTab('commands')}
+          onClick={() => {
+            setProductionTab('commands');
+            onTabChange?.('commands');
+          }}
         >
           Lệnh sản xuất
         </button>
@@ -463,7 +480,9 @@ export const Production: React.FC<ProductionProps> = ({
           aria-selected={productionTab === 'machines'}
           className={productionTab === 'machines' ? 'is-active' : ''}
           onClick={() => {
-            if (confirmAppNavigation()) setProductionTab('machines');
+            if (!confirmAppNavigation()) return;
+            setProductionTab('machines');
+            onTabChange?.('machines');
           }}
         >
           Danh sách máy

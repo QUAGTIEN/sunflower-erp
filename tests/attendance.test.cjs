@@ -512,7 +512,7 @@ test('attendance rules never allow client writes and limit reads to recorders or
   );
   assert.match(rules, /userProfile\(\)\.role in \['admin', 'accountant'\]/);
   assert.match(rules, /resource\.data\.userId == request\.auth\.uid/);
-  const shell = fs.readFileSync(path.join(root, 'src/app/AppShell.tsx'), 'utf8');
-  assert.ok(shell.includes('data-page-id="attendance"'));
-  assert.ok(shell.includes('data-page-id="work_schedule"'));
+  const menu = fs.readFileSync(path.join(root, 'src/app/navigation/sidebarMenu.ts'), 'utf8');
+  assert.match(menu, /page: 'attendance'/);
+  assert.match(menu, /page: 'work_schedule'/);
 });

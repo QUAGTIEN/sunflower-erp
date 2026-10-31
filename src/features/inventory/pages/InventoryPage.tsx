@@ -56,6 +56,7 @@ import { WarehouseVoucherDialog } from '../components/WarehouseVoucherDialog';
 import { GoodsVoucherDialog, type GoodsDialogOptions } from '../components/GoodsVoucherDialog';
 import { DieCatalogWorkspace } from '../components/DieCatalogWorkspace';
 import '../components/Warehouse.css';
+import type { PageTabRequest } from '@/shared/types/pageTabRequest';
 
 const tabNames = {
   catalog: 'Danh mục vật tư',
@@ -122,8 +123,20 @@ const shortKindLabel = (voucher: UnifiedVoucher): { label: string; tone: string 
   return { label: GOODS_KINDS[voucher.kind as keyof typeof GOODS_KINDS] || voucher.kind, tone: 'neutral' };
 };
 
-export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile; onRefresh: () => void }) {
-  const [tab, setTab] = useState<keyof typeof tabNames>('catalog');
+type InventoryTab = keyof typeof tabNames;
+const isInventoryTab = (tab: string): tab is InventoryTab => Object.hasOwn(tabNames, tab);
+
+interface InventoryProps {
+  currentUser: UserProfile;
+  onRefresh: () => void;
+  /** The sidebar opens Danh mục dao from the Sản xuất group and Kho vật tư on its catalogue. */
+  tabRequest?: PageTabRequest;
+  onTabChange?: (tab: InventoryTab) => void;
+}
+
+export function Inventory({ currentUser, onRefresh, tabRequest, onTabChange }: InventoryProps) {
+  const [tab, setTab] = useState<InventoryTab>('catalog');
+  const [handledTabRequest, setHandledTabRequest] = useState(0);
   const [voucherView, setVoucherView] = useState<keyof typeof voucherViewNames>('list');
   const [search, setSearch] = useState('');
   const [itemKindFilters, setItemKindFilters] = useState<string[]>([]);
@@ -141,6 +154,18 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
   const [selected, setSelected] = useState<UnifiedVoucher | null>(null);
   const [reversal, setReversal] = useState<WarehouseVoucher | null>(null);
   const [stock, setStock] = useState<UnifiedStockRow | null>(null);
+  // Each tab starts clean: no open stock card, search, voucher menu or filter panel from the previous tab.
+  const openTab = (nextTab: InventoryTab) => {
+    setTab(nextTab);
+    setStock(null);
+    setSearch('');
+    setVoucherMenuOpen(false);
+    setShowFilters(false);
+  };
+  if (tabRequest && tabRequest.requestId !== handledTabRequest) {
+    setHandledTabRequest(tabRequest.requestId);
+    if (isInventoryTab(tabRequest.tab) && tabRequest.tab !== tab) openTab(tabRequest.tab);
+  }
   const [editingCatalogItem, setEditingCatalogItem] = useState<CatalogItem | null>(null);
   const [creatingCatalogItem, setCreatingCatalogItem] = useState(false);
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -326,13 +351,9 @@ export function Inventory({ currentUser, onRefresh }: { currentUser: UserProfile
             aria-selected={tab === key}
             className={tab === key ? 'active' : ''}
             onClick={() => {
-              if (confirmAppNavigation()) {
-                setTab(key as typeof tab);
-                setStock(null);
-                setSearch('');
-                setVoucherMenuOpen(false);
-                setShowFilters(false);
-              }
+              if (!confirmAppNavigation()) return;
+              openTab(key as InventoryTab);
+              onTabChange?.(key as InventoryTab);
             }}
           >
             {name}

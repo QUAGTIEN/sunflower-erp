@@ -22,6 +22,14 @@ import {
   NOTIFICATION_MODULE_LABELS
 } from '@/app/config/appConfig';
 import { canAccessPage, getDefaultPagesForRole } from '@/app/navigation/accessControl';
+import {
+  SIDEBAR_MENU,
+  findActiveMenuItem,
+  findMenuGroupOf,
+  menuItemTab,
+  type SidebarMenuItem
+} from '@/app/navigation/sidebarMenu';
+import type { PageTabRequest } from '@/shared/types/pageTabRequest';
 import { canReadWarehouse } from '@/features/inventory/model/warehouse';
 import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import '@/styles/ErpUiStandards.css';
@@ -38,31 +46,7 @@ import type { ProcurementRequestRecord } from '@/features/procurement/model/purc
 import type { UserNotificationRecord } from '@/domain/notificationModels';
 import { markAllNotificationsRead, markNotificationRead } from '@/services/notificationService';
 import { synchronizeProvinceData } from '@/features/crm/api/provinceDataSynchronization';
-import {
-  LayoutDashboard,
-  MessageSquare,
-  Users,
-  FileText,
-  Palette,
-  ShoppingBag,
-  Building2,
-  Archive,
-  FolderOpen,
-  Settings,
-  Truck,
-  DollarSign,
-  Trash2,
-  UserCog,
-  LogOut,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Target,
-  Bell,
-  CheckCheck,
-  MapPinned,
-  ListTodo,
-  CalendarCheck
-} from 'lucide-react';
+import { Bell, CheckCheck, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 const loadSalesManagementModule = () => import('@/features/sales-management');
 const loadCrmModule = () => import('@/features/crm');
@@ -177,6 +161,17 @@ const COLLECTION_PAGES: Record<string, string[]> = {
 const isPageWaitingForData = (pageId: string, pendingCollections: ReadonlySet<string>) =>
   [...pendingCollections].some(collectionName => COLLECTION_PAGES[collectionName]?.includes(pageId));
 
+const COLLAPSED_MENU_GROUPS_KEY = 'erp_sidebar_collapsed_groups';
+
+function readCollapsedMenuGroups(): string[] {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(COLLAPSED_MENU_GROUPS_KEY) || '[]');
+    return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 function AppShell() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activePage, setActivePageState] = useState<string>('dashboard');
@@ -197,6 +192,13 @@ function AppShell() {
     },
     [showPage]
   );
+  // Tabs that sidebar sub-items stand for: what each kept-alive page shows, and the last tab the sidebar asked for.
+  const [pageTabs, setPageTabs] = useState<Record<string, string>>({});
+  const [pageTabRequest, setPageTabRequest] = useState<(PageTabRequest & { page: string }) | null>(null);
+  const [collapsedMenuGroups, setCollapsedMenuGroups] = useState<string[]>(readCollapsedMenuGroups);
+  const rememberPageTab = useCallback((page: string, tab: string) => {
+    setPageTabs(previous => (previous[page] === tab ? previous : { ...previous, [page]: tab }));
+  }, []);
   const [reportedPageContext, setReportedPageContext] = useState<(AppPageContext & { pageId: string }) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -232,6 +234,7 @@ function AppShell() {
       : (DEFAULT_PAGE_CONTEXTS[activePage] ?? { section: activePage });
 
   const isPageAllowed = (pageId: string): boolean => canAccessPage(user, pageId);
+  const isMenuItemAllowed = (menuItem: SidebarMenuItem) => isPageAllowed(menuItem.accessPage || menuItem.page);
   const tableColumnLayouts = useTableColumnLayoutManager(user);
   useGlobalTableColumnResize(activePage, user?.uid || '', tableColumnLayouts);
   useAdaptiveTableText(activePage, user?.uid || '');
@@ -1028,7 +1031,14 @@ function AppShell() {
           setTimeout(() => setActivePage('dashboard'), 0);
           return null;
         }
-        return <Inventory currentUser={user} onRefresh={refreshData} />;
+        return (
+          <Inventory
+            currentUser={user}
+            onRefresh={refreshData}
+            tabRequest={pageTabRequest?.page === 'inventory' ? pageTabRequest : undefined}
+            onTabChange={tab => rememberPageTab('inventory', tab)}
+          />
+        );
       case 'production':
         if (!isPageAllowed('production')) {
           setTimeout(() => setActivePage('dashboard'), 0);
@@ -1041,6 +1051,8 @@ function AppShell() {
             currentUser={user}
             onRefresh={refreshData}
             initialSelectedLsxId={selectedLsxId}
+            tabRequest={pageTabRequest?.page === 'production' ? pageTabRequest : undefined}
+            onTabChange={tab => rememberPageTab('production', tab)}
             messages={messages}
             users={users}
           />
@@ -1074,6 +1086,7 @@ function AppShell() {
             }}
             onNavigateToLSX={lsxId => {
               setSelectedLsxId(lsxId);
+              rememberPageTab('production', 'commands');
               setActivePage('production');
             }}
             users={users}
@@ -1295,6 +1308,52 @@ function AppShell() {
 
   // Render Dashboard Layout
   const unreadChannelCount = getUnreadChannelMessagesTotal();
+  const activeMenuItem = findActiveMenuItem(SIDEBAR_MENU, highlightedPage, pageTabs[highlightedPage]);
+  const activeMenuGroupId = activeMenuItem ? findMenuGroupOf(SIDEBAR_MENU, activeMenuItem.id)?.id : undefined;
+  const toggleMenuGroup = (groupId: string) => {
+    const next = collapsedMenuGroups.includes(groupId)
+      ? collapsedMenuGroups.filter(id => id !== groupId)
+      : [...collapsedMenuGroups, groupId];
+    setCollapsedMenuGroups(next);
+    try {
+      localStorage.setItem(COLLAPSED_MENU_GROUPS_KEY, JSON.stringify(next));
+    } catch {
+      // Remembering the open groups is a convenience; the menu still works without storage.
+    }
+  };
+  const openMenuItem = (menuItem: SidebarMenuItem) => {
+    if (!confirmAppNavigation()) return;
+    const tab = menuItemTab(SIDEBAR_MENU, menuItem, pageTabs[menuItem.page]);
+    if (tab) {
+      rememberPageTab(menuItem.page, tab);
+      setPageTabRequest(previous => ({ page: menuItem.page, tab, requestId: (previous?.requestId ?? 0) + 1 }));
+    }
+    showPage(menuItem.page);
+    setIsSidebarOpen(false);
+  };
+  const renderMenuItem = (menuItem: SidebarMenuItem) => {
+    const ItemIcon = menuItem.icon;
+    const isActive = activeMenuItem?.id === menuItem.id;
+    return (
+      <button
+        key={menuItem.id}
+        type="button"
+        data-page-id={menuItem.page}
+        className={`sidebar-item${isActive ? ' active' : ''}`}
+        aria-current={isActive ? 'page' : undefined}
+        onClick={() => openMenuItem(menuItem)}
+        title={t(menuItem.title)}
+      >
+        <div className={`sidebar-item-content${menuItem.danger ? ' sidebar-item-content-danger' : ''}`}>
+          <ItemIcon size={16} />
+          <span className="sidebar-item-label">{menuItem.translateLabel ? t(menuItem.label) : menuItem.label}</span>
+        </div>
+        {menuItem.id === 'chat' && unreadChannelCount > 0 && (
+          <span className="sidebar-badge">{unreadChannelCount}</span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <TableColumnLayoutContext.Provider value={tableColumnLayouts}>
@@ -1309,345 +1368,33 @@ function AppShell() {
           {/* APP SIDEBAR NAVIGATION (Strictly Text Links, No Icons) */}
           <aside className={`app-sidebar ${isSidebarOpen ? 'sidebar-open' : ''}`}>
             <nav className="sidebar-menu" onPointerOver={handleSidebarPreload} onFocusCapture={handleSidebarPreload}>
-              {isPageAllowed('dashboard') && (
-                <button
-                  data-page-id="dashboard"
-                  className={`sidebar-item ${highlightedPage === 'dashboard' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('dashboard');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Tổng Quan Dashboards')}
-                >
-                  <div className="sidebar-item-content">
-                    <LayoutDashboard size={16} />
-                    <span className="sidebar-item-label">Tổng quan</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('chat') && (
-                <button
-                  data-page-id="chat"
-                  className={`sidebar-item ${highlightedPage === 'chat' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('chat');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Kênh Thảo Luận')}
-                >
-                  <div className="sidebar-item-content">
-                    <MessageSquare size={16} />
-                    <span className="sidebar-item-label">Kênh chat</span>
-                  </div>
-                  {unreadChannelCount > 0 && <span className="sidebar-badge">{unreadChannelCount}</span>}
-                </button>
-              )}
-
-              {isPageAllowed('work_schedule') && (
-                <button
-                  data-page-id="work_schedule"
-                  className={`sidebar-item ${highlightedPage === 'work_schedule' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('work_schedule');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Công việc')}
-                >
-                  <div className="sidebar-item-content">
-                    <ListTodo size={16} />
-                    <span className="sidebar-item-label">Công việc</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('attendance') && (
-                <button
-                  data-page-id="attendance"
-                  className={`sidebar-item ${highlightedPage === 'attendance' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('attendance');
-                    setIsSidebarOpen(false);
-                  }}
-                  title="Chấm công"
-                >
-                  <div className="sidebar-item-content">
-                    <CalendarCheck size={16} />
-                    <span className="sidebar-item-label">Chấm công</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('sales_management') && (
-                <button
-                  data-page-id="sales_management"
-                  className={`sidebar-item ${highlightedPage === 'sales_management' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('sales_management');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Quản lý Sale')}
-                >
-                  <div className="sidebar-item-content">
-                    <UserCog size={16} />
-                    <span className="sidebar-item-label">Quản lý Sale</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('commercial_map') && (
-                <button
-                  data-page-id="commercial_map"
-                  className={`sidebar-item ${highlightedPage === 'commercial_map' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('commercial_map');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Thương mại')}
-                >
-                  <div className="sidebar-item-content">
-                    <MapPinned size={16} />
-                    <span className="sidebar-item-label">Thương mại</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('customer_data') && (
-                <button
-                  data-page-id="customer_data"
-                  className={`sidebar-item ${highlightedPage === 'customer_data' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('customer_data');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Dữ liệu thô')}
-                >
-                  <div className="sidebar-item-content">
-                    <Archive size={16} />
-                    <span className="sidebar-item-label">Dữ liệu thô</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('leads') && (
-                <button
-                  data-page-id="leads"
-                  className={`sidebar-item ${highlightedPage === 'leads' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('leads');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Khách Hàng Tiềm Năng (Lead)')}
-                >
-                  <div className="sidebar-item-content">
-                    <Target size={16} />
-                    <span className="sidebar-item-label">Tiềm năng</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('crm') && (
-                <button
-                  data-page-id="crm"
-                  className={`sidebar-item ${highlightedPage === 'crm' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('crm');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Khách Hàng Hợp Tác')}
-                >
-                  <div className="sidebar-item-content">
-                    <Users size={16} />
-                    <span className="sidebar-item-label">Khách hàng</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('sales') && (
-                <button
-                  data-page-id="sales"
-                  className={`sidebar-item ${highlightedPage === 'sales' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('sales');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Đơn hàng')}
-                >
-                  <div className="sidebar-item-content">
-                    <FileText size={16} />
-                    <span className="sidebar-item-label">{t('Đơn hàng')}</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('production') && (
-                <button
-                  data-page-id="production"
-                  className={`sidebar-item ${highlightedPage === 'production' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('production');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Lệnh Sản Xuất (LSX)')}
-                >
-                  <div className="sidebar-item-content">
-                    <Settings size={16} />
-                    <span className="sidebar-item-label">Sản xuất</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('design') && (
-                <>
-                  <button
-                    data-page-id="design"
-                    className={`sidebar-item ${highlightedPage === 'design' ? 'active' : ''}`}
-                    onClick={() => {
-                      setActivePage('design');
-                      setIsSidebarOpen(false);
-                    }}
-                    title={t('Yêu Cầu Thiết Kế')}
-                  >
-                    <div className="sidebar-item-content">
-                      <Palette size={16} />
-                      <span className="sidebar-item-label">Thiết kế</span>
+              {SIDEBAR_MENU.map(entry => {
+                if (entry.kind === 'item') return isMenuItemAllowed(entry) ? renderMenuItem(entry) : null;
+                const groupItems = entry.items.filter(isMenuItemAllowed);
+                if (!groupItems.length) return null;
+                const GroupIcon = entry.icon;
+                const isOpen = !collapsedMenuGroups.includes(entry.id);
+                return (
+                  <div key={entry.id} className="sidebar-group">
+                    <button
+                      type="button"
+                      className={`sidebar-item sidebar-group-toggle${!isOpen && activeMenuGroupId === entry.id ? ' has-active' : ''}`}
+                      aria-expanded={isOpen}
+                      aria-controls={`sidebar-group-${entry.id}`}
+                      onClick={() => toggleMenuGroup(entry.id)}
+                    >
+                      <div className="sidebar-item-content">
+                        <GroupIcon size={16} />
+                        <span className="sidebar-item-label">{entry.label}</span>
+                      </div>
+                      <ChevronDown size={14} className="sidebar-group-chevron" aria-hidden="true" />
+                    </button>
+                    <div id={`sidebar-group-${entry.id}`} className="sidebar-group-items" hidden={!isOpen}>
+                      {groupItems.map(groupItem => renderMenuItem(groupItem))}
                     </div>
-                  </button>
-                  <button
-                    data-page-id="design_library"
-                    className={`sidebar-item ${highlightedPage === 'design_library' ? 'active' : ''}`}
-                    onClick={() => {
-                      setActivePage('design_library');
-                      setIsSidebarOpen(false);
-                    }}
-                    title={t('Kho Thiết Kế & Layout')}
-                  >
-                    <div className="sidebar-item-content">
-                      <FolderOpen size={16} />
-                      <span className="sidebar-item-label">Kho mẫu</span>
-                    </div>
-                  </button>
-                </>
-              )}
-
-              {isPageAllowed('purchase') && (
-                <button
-                  data-page-id="purchase"
-                  className={`sidebar-item ${highlightedPage === 'purchase' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('purchase');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Mua Hàng')}
-                >
-                  <div className="sidebar-item-content">
-                    <ShoppingBag size={16} />
-                    <span className="sidebar-item-label">Mua hàng</span>
                   </div>
-                </button>
-              )}
-
-              {isPageAllowed('suppliers') && (
-                <button
-                  data-page-id="suppliers"
-                  className={`sidebar-item ${highlightedPage === 'suppliers' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('suppliers');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Danh Sách Nhà Cung Cấp')}
-                >
-                  <div className="sidebar-item-content">
-                    <Building2 size={16} />
-                    <span className="sidebar-item-label">Nhà cung cấp</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('inventory') && (
-                <button
-                  data-page-id="inventory"
-                  className={`sidebar-item ${highlightedPage === 'inventory' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('inventory');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Kho vật tư')}
-                >
-                  <div className="sidebar-item-content">
-                    <Archive size={16} />
-                    <span className="sidebar-item-label">Kho vật tư</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('delivery') && (
-                <button
-                  data-page-id="delivery"
-                  className={`sidebar-item ${highlightedPage === 'delivery' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('delivery');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Kế Hoạch Giao Hàng')}
-                >
-                  <div className="sidebar-item-content">
-                    <Truck size={16} />
-                    <span className="sidebar-item-label">Giao hàng</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('accounting') && (
-                <button
-                  data-page-id="accounting"
-                  className={`sidebar-item ${highlightedPage === 'accounting' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('accounting');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Kế Toán & Lãi Gộp')}
-                >
-                  <div className="sidebar-item-content">
-                    <DollarSign size={16} />
-                    <span className="sidebar-item-label">Kế toán</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('recycle_bin') && (
-                <button
-                  data-page-id="recycle_bin"
-                  className={`sidebar-item ${highlightedPage === 'recycle_bin' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('recycle_bin');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Thùng Rác')}
-                >
-                  <div className="sidebar-item-content sidebar-item-content-danger">
-                    <Trash2 size={16} />
-                    <span className="sidebar-item-label">Thùng rác</span>
-                  </div>
-                </button>
-              )}
-
-              {isPageAllowed('users') && (
-                <button
-                  data-page-id="users"
-                  className={`sidebar-item ${highlightedPage === 'users' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActivePage('users');
-                    setIsSidebarOpen(false);
-                  }}
-                  title={t('Quản Lý Tài Khoản')}
-                >
-                  <div className="sidebar-item-content">
-                    <UserCog size={16} />
-                    <span className="sidebar-item-label">Tài khoản</span>
-                  </div>
-                </button>
-              )}
+                );
+              })}
             </nav>
             <div className="sidebar-footer">
               <button

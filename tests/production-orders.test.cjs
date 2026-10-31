@@ -530,9 +530,9 @@ test('production has exactly two tabs; legacy detail and machine management stay
   tabs[1].props.onClick();
   tree = render();
   assert.ok(nodes(tree).some(node => node.type?.name === 'MachineManagement' && node.props.canManage));
-  const shell = fs.readFileSync(path.join(root, 'src/app/AppShell.tsx'), 'utf8');
-  const pages = [...shell.matchAll(/data-page-id="([^"]+)"/g)].map(match => match[1]);
-  assert.equal(pages.indexOf('production'), pages.indexOf('sales') + 1);
+  const menu = fs.readFileSync(path.join(root, 'src/app/navigation/sidebarMenu.ts'), 'utf8');
+  const groups = [...menu.matchAll(/kind: 'group',\s*id: '([^']+)'/g)].map(match => match[1]);
+  assert.equal(groups.indexOf('production'), groups.indexOf('business') + 1);
 });
 
 test('combined order list filters and searches legacy items and opens their existing detail flow', () => {
@@ -1234,9 +1234,9 @@ test('LSX editor puts the back button first, drops the subtitle and the detail v
   const preview = readSource('src/components/PrintPreviewDialog.tsx');
   assert.match(preview, /setReady\(true\);\s*print\(\);/);
   assert.match(preview, /contentWindow\?\.print\(\);/);
-  const shell = readSource('src/app/AppShell.tsx');
-  assert.match(shell, /<ListTodo size=\{16\} \/>\s*<span className="sidebar-item-label">Công việc/);
-  assert.match(shell, /<CalendarCheck size=\{16\} \/>\s*<span className="sidebar-item-label">Chấm công/);
+  const menu = readSource('src/app/navigation/sidebarMenu.ts');
+  assert.match(menu, /label: 'Công việc',\s*title: 'Công việc',\s*icon: ListTodo/);
+  assert.match(menu, /label: 'Chấm công',\s*title: 'Chấm công',\s*icon: CalendarCheck/);
 });
 
 test('LSX editor uses the merged item table and the inline material table', () => {
