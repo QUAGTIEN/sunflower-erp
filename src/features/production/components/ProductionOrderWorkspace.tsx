@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
+import { ChevronDown, ChevronRight, Printer } from 'lucide-react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { PageBackButton } from '@/components/PageBackButton';
+import { IconButton } from '@/components/IconButton';
 import { ProductionMaterialLedger } from '@/features/inventory/components/ProductionMaterialLedger';
 import { ProductionGoodsLedger } from '@/features/inventory/components/ProductionGoodsLedger';
 import { DataTablePagination } from '@/components/DataTablePagination';
@@ -16,7 +18,7 @@ import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
 import { registerNavigationGuard } from '@/shared/feedback/navigationGuard';
-import { formatDate } from '@/shared/utils/dateFormatting';
+import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
 import { getCustomerProductSpecSummary } from '@/features/crm/model/customerProductCatalog';
 import type { ProductionMachine } from '../api/machineService';
 import {
@@ -129,6 +131,58 @@ const historyNames: Record<string, string> = {
 const LIST_STATUSES: Record<string, string> = { ...PRODUCTION_STATUSES, transfer_pending: 'Chờ duyệt bàn giao' };
 const PRIORITY_LABELS: Record<string, string> = { urgent: 'Gấp', high: 'Hơi gấp', normal: 'Bình thường' };
 const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
+const DETAIL_TABS = [
+  { id: 'items', label: 'Mặt hàng' },
+  { id: 'materials', label: 'Vật tư' },
+  { id: 'goods', label: 'Thành phẩm' },
+  { id: 'history', label: 'Lịch sử' }
+] as const;
+type DetailTab = (typeof DETAIL_TABS)[number]['id'];
+
+function SummaryValue({ value, empty, strong = false }: { value?: string; empty: string; strong?: boolean }) {
+  if (!value) return <dd className="lsx-summary-empty">{empty}</dd>;
+  return (
+    <dd className={strong ? 'lsx-summary-strong' : undefined} title={value}>
+      {value}
+    </dd>
+  );
+}
+
+/** Thông số đầy đủ của một dòng, mở từ bảng mặt hàng; phần dư / thiếu chỉ có sau nghiệm thu. */
+function LineSpecification({ line, completed }: { line: ProductionOrder['lines'][number]; completed: boolean }) {
+  const shortage = line.quantity - (line.goodQuantity ?? 0);
+  return (
+    <div className="lsx-line-spec">
+      <dl>
+        <div>
+          <dt>Mã nội bộ</dt>
+          <dd>{line.catalog?.code || 'Chưa liên kết'}</dd>
+        </div>
+        {getCustomerProductSpecSummary(line.specifications, line.productType).map(field => (
+          <div key={field.id}>
+            <dt>{field.label}</dt>
+            <dd>{field.value}</dd>
+          </div>
+        ))}
+        {completed && Number(line.surplusQuantity) > 0 && (
+          <div>
+            <dt>SL dư</dt>
+            <dd>{number(line.surplusQuantity)}</dd>
+          </div>
+        )}
+        {completed && shortage > 1e-8 && (
+          <div>
+            <dt>SL thiếu</dt>
+            <dd>
+              {number(shortage)} {line.unit}
+            </dd>
+          </div>
+        )}
+      </dl>
+      {line.image && <img src={line.image} alt={`Mẫu ${line.productName}`} />}
+    </div>
+  );
+}
 
 export function ProductionOrderWorkspace({
   pos,
@@ -158,6 +212,8 @@ export function ProductionOrderWorkspace({
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogReload, setCatalogReload] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [detailTab, setDetailTab] = useState<{ orderId: string; tab: DetailTab }>({ orderId: '', tab: 'items' });
+  const [expandedLines, setExpandedLines] = useState<string[]>([]);
   const request = useRef({ payload: '', id: '' });
   const pending = useRef(false);
   useEffect(() => {
@@ -234,6 +290,12 @@ export function ProductionOrderWorkspace({
     command => command.productionOrderVersion === 2 && command.id === selectedId && !command.deleted
   ) as ProductionOrder | undefined;
   const selectedPoCodes = selected ? (selected.poCodes?.length ? selected.poCodes.join(', ') : selected.poCode) : '';
+  // Opening another order starts on its item list instead of the tab left open on the previous one.
+  const activeDetailTab: DetailTab = selected && detailTab.orderId === selected.id ? detailTab.tab : 'items';
+  const toggleLineSpecification = (specId: string) =>
+    setExpandedLines(current =>
+      current.includes(specId) ? current.filter(item => item !== specId) : [...current, specId]
+    );
   // An order may mix customers (D-LSX2); the header lists those of the lines chosen so far.
   const draftCustomers = draft
     ? [
@@ -511,27 +573,10 @@ export function ProductionOrderWorkspace({
                   setError('');
                 }}
               />
-              <div>
-                <h2>
-                  {selected.lsxCode}{' '}
-                  <span className={`lsx-status lsx-status--${selected.status}`}>
-                    {PRODUCTION_STATUSES[selected.status]}
-                  </span>
-                </h2>
-                <span>
-                  {selected.customerName} · {selectedPoCodes}
-                </span>
-              </div>
+              <h2>{selected.lsxCode}</h2>
             </div>
             <div className="lsx-actions">
-              <button
-                className="btn btn-outline"
-                onClick={() => {
-                  setPrintOrder(selected);
-                }}
-              >
-                Xuất lệnh sản xuất
-              </button>
+              <IconButton label="Xuất lệnh sản xuất" icon={<Printer />} onClick={() => setPrintOrder(selected)} />
               {canEditProductionDraft(currentUser, selected) && (
                 <>
                   <button className="btn btn-outline" disabled={busy} onClick={() => edit(selected)}>
@@ -557,19 +602,8 @@ export function ProductionOrderWorkspace({
                   Bắt đầu sản xuất
                 </button>
               )}
-              {MATERIAL_SHORTAGE_STATUSES.includes(selected.status) && canCreate && (
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  disabled={busy || !selected.materials.some(material => material.catalogItemId)}
-                  title="Máy chủ đối chiếu tồn kho NVL hiện tại và chỉ đề nghị mua phần còn thiếu của vật tư đã có mã"
-                  onClick={() => void transition('request_material_shortage')}
-                >
-                  Đề nghị mua NVL thiếu
-                </button>
-              )}
               {['draft', 'pending_approval', 'released'].includes(selected.status) && manager && (
-                <button className="btn btn-outline" disabled={busy} onClick={() => void transition('cancel')}>
+                <button className="btn btn-danger" disabled={busy} onClick={() => void transition('cancel')}>
                   Hủy lệnh
                 </button>
               )}
@@ -599,322 +633,381 @@ export function ProductionOrderWorkspace({
             </div>
           </header>
           <dl className="lsx-summary" aria-label="Thông tin chung">
-            <div>
+            <div className="lsx-summary-span-2">
               <dt>Khách hàng</dt>
-              <dd title={selected.customerName}>{selected.customerName || '—'}</dd>
+              <SummaryValue value={selected.customerName} empty="Chưa có" strong />
             </div>
             <div>
               <dt>Đơn hàng</dt>
-              <dd title={selectedPoCodes}>{selectedPoCodes}</dd>
+              <SummaryValue value={selectedPoCodes} empty="Chưa có" />
             </div>
             <div>
-              <dt>Ngày cần</dt>
-              <dd>{formatDate(selected.deliveryDeadline)}</dd>
-            </div>
-            <div>
-              <dt>Dự kiến sản xuất</dt>
-              <dd>
-                {selected.plannedStartDate || selected.plannedEndDate
-                  ? `${formatDate(selected.plannedStartDate || '')} – ${formatDate(selected.plannedEndDate || '')}`
-                  : '—'}
-              </dd>
+              <dt>Trạng thái</dt>
+              <dd className={`lsx-status lsx-status--${selected.status}`}>{PRODUCTION_STATUSES[selected.status]}</dd>
             </div>
             <div>
               <dt>Ưu tiên</dt>
-              <dd>{PRIORITY_LABELS[selected.priority] || '—'}</dd>
+              <SummaryValue value={PRIORITY_LABELS[selected.priority]} empty="Chưa chọn" />
+            </div>
+            <div>
+              <dt>Ngày cần</dt>
+              <SummaryValue
+                value={selected.deliveryDeadline && formatDate(selected.deliveryDeadline)}
+                empty="Chưa có"
+                strong
+              />
+            </div>
+            <div>
+              <dt>Dự kiến sản xuất</dt>
+              <SummaryValue
+                value={
+                  selected.plannedStartDate || selected.plannedEndDate
+                    ? `${formatDate(selected.plannedStartDate || '')} – ${formatDate(selected.plannedEndDate || '')}`
+                    : ''
+                }
+                empty="Chưa lên lịch"
+              />
             </div>
             <div>
               <dt>Máy</dt>
-              <dd>
-                {selected.machineName ||
-                  machines.find(machine => machine.id === selected.machineId)?.name ||
-                  'Chưa chọn'}
-              </dd>
+              <SummaryValue
+                value={selected.machineName || machines.find(machine => machine.id === selected.machineId)?.name}
+                empty="Chưa chọn"
+              />
             </div>
             <div>
               <dt>Người chạy máy</dt>
-              <dd>
-                {selected.operatorName ||
-                  users.find(user => user.uid === selected.operatorId)?.displayName ||
-                  'Chưa chọn'}
-              </dd>
+              <SummaryValue
+                value={selected.operatorName || users.find(user => user.uid === selected.operatorId)?.displayName}
+                empty="Chưa chọn"
+              />
             </div>
             <div>
               <dt>Ca / tổ</dt>
-              <dd>{selected.shift || '—'}</dd>
-            </div>
-            <div>
-              <dt>Người lập</dt>
-              <dd>{selected.createdBy}</dd>
-            </div>
-            <div className="lsx-summary-wide">
-              <dt>Yêu cầu kỹ thuật chung</dt>
-              <dd title={selected.technicalNotes}>{selected.technicalNotes || '—'}</dd>
-            </div>
-            <div className="lsx-summary-wide">
-              <dt>Ghi chú chung</dt>
-              <dd title={selected.notes}>{selected.notes || '—'}</dd>
+              <SummaryValue value={selected.shift} empty="Chưa chọn" />
             </div>
             <div>
               <dt>Mẫu phiếu</dt>
-              <dd>
-                {PRODUCTION_PRINT_TEMPLATES[selected.printTemplate?.id || 'standard']} v
-                {selected.printTemplate?.version || 1}
-              </dd>
+              <SummaryValue
+                value={`${PRODUCTION_PRINT_TEMPLATES[selected.printTemplate?.id || 'standard']} v${selected.printTemplate?.version || 1}`}
+                empty="Chưa chọn"
+              />
+            </div>
+            <div>
+              <dt>Người lập</dt>
+              <SummaryValue value={selected.createdBy} empty="Chưa có" />
+            </div>
+            <div>
+              <dt>Ngày lập</dt>
+              <SummaryValue value={selected.createdAt && formatDateTime(selected.createdAt)} empty="Chưa có" />
+            </div>
+            <div className="lsx-summary-span-3">
+              <dt>Yêu cầu kỹ thuật chung</dt>
+              <SummaryValue value={selected.technicalNotes} empty="Không có" />
+            </div>
+            <div className="lsx-summary-span-2">
+              <dt>Ghi chú chung</dt>
+              <SummaryValue value={selected.notes} empty="Không có" />
             </div>
           </dl>
-          <section className="lsx-section">
-            <h3>Mặt hàng</h3>
-            <div className="table-container">
-              <table className="lsx-detail-lines">
-                <thead>
-                  <tr>
-                    <th className="lsx-number">#</th>
-                    <th>Mã SP</th>
-                    <th>Tên sản phẩm</th>
-                    <th>Đơn hàng</th>
-                    <th>Quy cách</th>
-                    <th className="lsx-number">SL lệnh</th>
-                    <th>ĐVT</th>
-                    <th>Góc / răng cưa</th>
-                    <th>Lõi</th>
-                    <th>Mã NVL</th>
-                    <th>Mã nội bộ</th>
-                    <th className="lsx-number">Đạt / hỏng</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selected.lines.map((line, position) => {
-                    const spec = line.specifications;
-                    const corner = [spec.dieCut || spec.corner, spec.perforated]
-                      .filter(Boolean)
-                      .map(String)
-                      .join(' / ');
-                    const core = [spec.coreType, spec.core].filter(Boolean).map(String).join(' ');
-                    return (
-                      <tr key={lineKey(line)}>
-                        <td className="lsx-number">{position + 1}</td>
-                        <td title={line.productCode}>{line.productCode || 'Nhập tay'}</td>
-                        <td title={line.productName}>{line.productName}</td>
-                        <td>{line.poCode || selected.poCode}</td>
-                        <td title={`${line.specification} · ${line.material}`}>
-                          {[line.specification, line.material].filter(Boolean).join(' · ') || '—'}
-                        </td>
-                        <td className="lsx-number">{number(line.quantity)}</td>
-                        <td>{line.unit}</td>
-                        <td title={corner}>{corner || '—'}</td>
-                        <td>{core || '—'}</td>
-                        <td title={String(spec.paperCode || '')}>{String(spec.paperCode || '—')}</td>
-                        <td>{line.catalog?.code || 'Chưa liên kết'}</td>
-                        <td className="lsx-number">
-                          {selected.status === 'completed'
-                            ? `${number(line.goodQuantity)} / ${number(line.rejectQuantity)}${Number(line.surplusQuantity) > 0 ? ` · Dư ${number(line.surplusQuantity)}` : ''}${line.quantity - (line.goodQuantity ?? 0) > 0 ? ` · Thiếu ${number(line.quantity - (line.goodQuantity ?? 0))} ${line.unit}` : ''}`
-                            : '—'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <details>
-              <summary>Xem toàn bộ thông số kỹ thuật và ảnh</summary>
-              <div className="lsx-specifications">
-                {selected.lines.map(line => (
-                  <article key={lineKey(line)}>
-                    <h3>
-                      {line.productCode || 'Nhập tay'} — {line.productName}
-                    </h3>
-                    <dl>
-                      {getCustomerProductSpecSummary(line.specifications, line.productType).map(field => (
-                        <div key={field.id}>
-                          <dt>{field.label}</dt>
-                          <dd>{field.value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                    {line.image && <img src={line.image} alt={`Mẫu ${line.productName}`} />}
-                  </article>
-                ))}
-              </div>
-            </details>
-          </section>
-          <section className="lsx-section">
-            <h3>Vật tư dự kiến</h3>
-            <div className="table-container">
-              <table className="lsx-detail-materials">
-                <thead>
-                  <tr>
-                    <th>Mã NVL</th>
-                    <th>Tên NVL</th>
-                    <th className="lsx-number">Khổ (mm)</th>
-                    <th className="lsx-number">Số lượng</th>
-                    <th>ĐVT</th>
-                    <th className="lsx-number">Hao hụt (%)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selected.materials.map(material => (
-                    <tr key={material.id}>
-                      <td>{material.code}</td>
-                      <td title={material.name}>{material.name}</td>
-                      <td className="lsx-number">{material.width || '—'}</td>
-                      <td className="lsx-number">{number(material.quantity)}</td>
-                      <td>{material.unit}</td>
-                      <td className="lsx-number">{number(material.allowancePercent)}</td>
-                    </tr>
-                  ))}
-                  {!selected.materials.length && (
+          <div className="content-tabs content-tabs--segmented" role="tablist" aria-label="Nội dung lệnh sản xuất">
+            {DETAIL_TABS.map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeDetailTab === tab.id}
+                onClick={() => setDetailTab({ orderId: selected.id, tab: tab.id })}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* Panels stay mounted so ledger data and QC input survive a tab switch. */}
+          <div className="lsx-detail-panels" data-erp-table-layout="content">
+            <section role="tabpanel" aria-label="Mặt hàng" hidden={activeDetailTab !== 'items'}>
+              <div className="table-container">
+                <table className="lsx-detail-lines">
+                  <thead>
                     <tr>
-                      <td colSpan={6}>Chưa khai báo vật tư dự kiến.</td>
+                      <th className="lsx-expand-cell" aria-label="Thông số" />
+                      <th className="lsx-number">STT</th>
+                      <th>Mã SP</th>
+                      <th>Tên sản phẩm</th>
+                      <th>Đơn hàng</th>
+                      <th>Quy cách</th>
+                      <th>ĐVT</th>
+                      <th className="lsx-number">SL lệnh</th>
+                      <th className="lsx-number">Đạt</th>
+                      <th className="lsx-number">Hỏng</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-          <ProductionMaterialLedger
-            key={selected.id}
-            orderId={selected.id}
-            status={selected.status}
-            currentUser={currentUser}
-            onRefresh={onRefresh}
-          />
-          <ProductionGoodsLedger
-            key={`goods-${selected.id}`}
-            orderId={selected.id}
-            status={selected.status}
-            currentUser={currentUser}
-            onRefresh={onRefresh}
-          />
-          {selected.status === 'producing' && manager && (
-            <form
-              className="lsx-section"
-              onSubmit={event => {
-                event.preventDefault();
-                void transition('complete');
-              }}
-            >
-              <h3>Nghiệm thu sản lượng / QC</h3>
-              <fieldset disabled={busy}>
-                <div className="table-container">
-                  <table>
-                    <thead>
+                  </thead>
+                  <tbody>
+                    {selected.lines.map((line, position) => {
+                      const specId = `${selected.id}:${lineKey(line)}`;
+                      const expanded = expandedLines.includes(specId);
+                      const completed = selected.status === 'completed';
+                      const specification = [line.specification, line.material].filter(Boolean).join(' · ');
+                      return (
+                        <Fragment key={lineKey(line)}>
+                          <tr>
+                            <td className="lsx-expand-cell">
+                              <IconButton
+                                label={expanded ? 'Ẩn thông số kỹ thuật' : 'Xem thông số kỹ thuật'}
+                                icon={expanded ? <ChevronDown /> : <ChevronRight />}
+                                aria-expanded={expanded}
+                                onClick={() => toggleLineSpecification(specId)}
+                              />
+                            </td>
+                            <td className="lsx-number">{position + 1}</td>
+                            <td title={line.productCode}>{line.productCode || 'Nhập tay'}</td>
+                            <td title={line.productName}>{line.productName}</td>
+                            <td title={line.poCode || selected.poCode}>{line.poCode || selected.poCode}</td>
+                            <td title={specification}>{specification || '—'}</td>
+                            <td>{line.unit}</td>
+                            <td className="lsx-number">{number(line.quantity)}</td>
+                            <td className="lsx-number">{completed ? number(line.goodQuantity) : '—'}</td>
+                            <td className="lsx-number">{completed ? number(line.rejectQuantity) : '—'}</td>
+                          </tr>
+                          {expanded && (
+                            <tr className="lsx-line-spec-row">
+                              <td />
+                              <td colSpan={9}>
+                                <LineSpecification line={line} completed={completed} />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                  {new Set(selected.lines.map(line => line.unit)).size === 1 && (
+                    <tfoot>
                       <tr>
-                        <th>Sản phẩm</th>
-                        <th>SL lệnh / ĐVT</th>
-                        <th>SL đạt QC</th>
-                        <th>SL hỏng</th>
-                        <th>SL dư</th>
+                        <td colSpan={7} className="lsx-number">
+                          Tổng cộng
+                        </td>
+                        <td className="lsx-number">
+                          {number(selected.lines.reduce((sum, line) => sum + line.quantity, 0))}
+                        </td>
+                        <td colSpan={2} />
                       </tr>
-                    </thead>
-                    <tbody>
-                      {selected.lines.map(line => (
-                        <tr key={lineKey(line)}>
-                          <td>
-                            {line.productCode} — {line.productName}
-                          </td>
-                          <td>
-                            {number(line.quantity)} {line.unit}
-                          </td>
-                          <td>
-                            <input
-                              aria-label={`Đạt QC ${line.productName}`}
-                              type="number"
-                              required
-                              min="0"
-                              step="any"
-                              max={line.quantity}
-                              value={qc[lineKey(line)]?.goodQuantity ?? ''}
-                              onChange={event =>
-                                setQc({
-                                  ...qc,
-                                  [lineKey(line)]: {
-                                    goodQuantity: event.target.value,
-                                    rejectQuantity: qc[lineKey(line)]?.rejectQuantity || '0',
-                                    surplusQuantity: qc[lineKey(line)]?.surplusQuantity || '0'
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </section>
+            <section role="tabpanel" aria-label="Vật tư" hidden={activeDetailTab !== 'materials'}>
+              <div className="lsx-heading">
+                <h3>Vật tư dự kiến</h3>
+                {MATERIAL_SHORTAGE_STATUSES.includes(selected.status) && canCreate && (
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    disabled={busy || !selected.materials.some(material => material.catalogItemId)}
+                    title="Máy chủ đối chiếu tồn kho NVL hiện tại và chỉ đề nghị mua phần còn thiếu của vật tư đã có mã"
+                    onClick={() => void transition('request_material_shortage')}
+                  >
+                    Đề nghị mua NVL thiếu
+                  </button>
+                )}
+              </div>
+              <div className="table-container">
+                <table className="lsx-detail-materials">
+                  <thead>
+                    <tr>
+                      <th>Mã NVL</th>
+                      <th>Tên NVL</th>
+                      <th className="lsx-number">Khổ (mm)</th>
+                      <th className="lsx-number">Số lượng</th>
+                      <th>ĐVT</th>
+                      <th className="lsx-number">Hao hụt (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selected.materials.map(material => (
+                      <tr key={material.id}>
+                        <td>{material.code}</td>
+                        <td title={material.name}>{material.name}</td>
+                        <td className="lsx-number">{material.width || '—'}</td>
+                        <td className="lsx-number">{number(material.quantity)}</td>
+                        <td>{material.unit}</td>
+                        <td className="lsx-number">{number(material.allowancePercent)}</td>
+                      </tr>
+                    ))}
+                    {!selected.materials.length && (
+                      <tr>
+                        <td colSpan={6}>Chưa khai báo vật tư dự kiến.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <ProductionMaterialLedger
+                key={selected.id}
+                orderId={selected.id}
+                status={selected.status}
+                currentUser={currentUser}
+                onRefresh={onRefresh}
+              />
+            </section>
+            <section role="tabpanel" aria-label="Thành phẩm" hidden={activeDetailTab !== 'goods'}>
+              <ProductionGoodsLedger
+                key={`goods-${selected.id}`}
+                orderId={selected.id}
+                status={selected.status}
+                currentUser={currentUser}
+                onRefresh={onRefresh}
+              />
+              {selected.status === 'producing' && manager && (
+                <form
+                  className="lsx-section"
+                  onSubmit={event => {
+                    event.preventDefault();
+                    void transition('complete');
+                  }}
+                >
+                  <h3>Nghiệm thu sản lượng / QC</h3>
+                  <fieldset disabled={busy}>
+                    <div className="table-container">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Sản phẩm</th>
+                            <th>SL lệnh / ĐVT</th>
+                            <th>SL đạt QC</th>
+                            <th>SL hỏng</th>
+                            <th>SL dư</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selected.lines.map(line => (
+                            <tr key={lineKey(line)}>
+                              <td>
+                                {line.productCode} — {line.productName}
+                              </td>
+                              <td>
+                                {number(line.quantity)} {line.unit}
+                              </td>
+                              <td>
+                                <input
+                                  aria-label={`Đạt QC ${line.productName}`}
+                                  type="number"
+                                  required
+                                  min="0"
+                                  step="any"
+                                  max={line.quantity}
+                                  value={qc[lineKey(line)]?.goodQuantity ?? ''}
+                                  onChange={event =>
+                                    setQc({
+                                      ...qc,
+                                      [lineKey(line)]: {
+                                        goodQuantity: event.target.value,
+                                        rejectQuantity: qc[lineKey(line)]?.rejectQuantity || '0',
+                                        surplusQuantity: qc[lineKey(line)]?.surplusQuantity || '0'
+                                      }
+                                    })
                                   }
-                                })
-                              }
-                            />
-                          </td>
-                          <td>
-                            <input
-                              aria-label={`Hỏng ${line.productName}`}
-                              type="number"
-                              required
-                              min="0"
-                              step="any"
-                              max={line.quantity}
-                              value={qc[lineKey(line)]?.rejectQuantity ?? '0'}
-                              onChange={event =>
-                                setQc({
-                                  ...qc,
-                                  [lineKey(line)]: {
-                                    goodQuantity: qc[lineKey(line)]?.goodQuantity || '0',
-                                    rejectQuantity: event.target.value,
-                                    surplusQuantity: qc[lineKey(line)]?.surplusQuantity || '0'
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  aria-label={`Hỏng ${line.productName}`}
+                                  type="number"
+                                  required
+                                  min="0"
+                                  step="any"
+                                  max={line.quantity}
+                                  value={qc[lineKey(line)]?.rejectQuantity ?? '0'}
+                                  onChange={event =>
+                                    setQc({
+                                      ...qc,
+                                      [lineKey(line)]: {
+                                        goodQuantity: qc[lineKey(line)]?.goodQuantity || '0',
+                                        rejectQuantity: event.target.value,
+                                        surplusQuantity: qc[lineKey(line)]?.surplusQuantity || '0'
+                                      }
+                                    })
                                   }
-                                })
-                              }
-                            />
-                          </td>
-                          <td>
-                            <input
-                              aria-label={`SL dư ${line.productName}`}
-                              type="number"
-                              min="0"
-                              step="any"
-                              value={qc[lineKey(line)]?.surplusQuantity ?? '0'}
-                              onChange={event =>
-                                setQc({
-                                  ...qc,
-                                  [lineKey(line)]: {
-                                    goodQuantity: qc[lineKey(line)]?.goodQuantity || '0',
-                                    rejectQuantity: qc[lineKey(line)]?.rejectQuantity || '0',
-                                    surplusQuantity: event.target.value
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  aria-label={`SL dư ${line.productName}`}
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  value={qc[lineKey(line)]?.surplusQuantity ?? '0'}
+                                  onChange={event =>
+                                    setQc({
+                                      ...qc,
+                                      [lineKey(line)]: {
+                                        goodQuantity: qc[lineKey(line)]?.goodQuantity || '0',
+                                        rejectQuantity: qc[lineKey(line)]?.rejectQuantity || '0',
+                                        surplusQuantity: event.target.value
+                                      }
+                                    })
                                   }
-                                })
-                              }
-                            />
-                          </td>
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <label>
+                      Ghi chú nghiệm thu *
+                      <textarea
+                        required
+                        rows={2}
+                        maxLength={2000}
+                        value={qcNote}
+                        onChange={event => setQcNote(event.target.value)}
+                      />
+                    </label>
+                    <p className="lsx-hint">
+                      Chỉ sản lượng đạt QC được tính cho đơn hàng. Phần thiếu có thể lập lệnh bổ sung; đơn hàng chỉ
+                      chuyển chờ giao khi đủ tất cả dòng cần SX.
+                    </p>
+                    <button className="btn btn-primary" disabled={busy}>
+                      {busy ? 'Đang lưu…' : 'Xác nhận nghiệm thu'}
+                    </button>
+                  </fieldset>
+                </form>
+              )}
+            </section>
+            <section role="tabpanel" aria-label="Lịch sử" hidden={activeDetailTab !== 'history'}>
+              <div className="table-container">
+                <table className="lsx-history">
+                  <thead>
+                    <tr>
+                      <th>Thời gian</th>
+                      <th>Người thực hiện</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...selected.history].reverse().map((entry, index) => {
+                      const action = historyNames[entry.action] || entry.action;
+                      const description = entry.action === 'qc' ? `${action}: ${entry.note}` : action;
+                      return (
+                        <tr key={index}>
+                          <td>{formatDateTime(entry.at)}</td>
+                          <td title={entry.actorName}>{entry.actorName}</td>
+                          <td title={description}>{description}</td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <label>
-                  Ghi chú nghiệm thu *
-                  <textarea
-                    required
-                    rows={2}
-                    maxLength={2000}
-                    value={qcNote}
-                    onChange={event => setQcNote(event.target.value)}
-                  />
-                </label>
-                <p className="lsx-hint">
-                  Chỉ sản lượng đạt QC được tính cho đơn hàng. Phần thiếu có thể lập lệnh bổ sung; đơn hàng chỉ chuyển
-                  chờ giao khi đủ tất cả dòng cần SX.
-                </p>
-                <button className="btn btn-primary" disabled={busy}>
-                  {busy ? 'Đang lưu…' : 'Xác nhận nghiệm thu'}
-                </button>
-              </fieldset>
-            </form>
-          )}
-          <details className="lsx-section">
-            <summary>Lịch sử thao tác</summary>
-            <ol className="lsx-history">
-              {selected.history.map((entry, index) => (
-                <li key={index}>
-                  {new Date(entry.at).toLocaleString('vi-VN')} · {entry.actorName} ·{' '}
-                  {historyNames[entry.action] || entry.action}
-                  {entry.action === 'qc' ? `: ${entry.note}` : ''}
-                </li>
-              ))}
-            </ol>
-          </details>
+                      );
+                    })}
+                    {!selected.history.length && (
+                      <tr>
+                        <td colSpan={3}>Chưa có thao tác.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
         </>
       ) : (
         <>

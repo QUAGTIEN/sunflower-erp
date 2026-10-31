@@ -127,6 +127,9 @@ dữ liệu, quyền truy cập hoặc luồng nghiệp vụ chỉ để đáp �
 - Tab hiển thị dạng chữ trên một hàng, có khoảng cách đồng đều.
 - Tab đang chọn sử dụng chữ xanh đậm và đường gạch dưới cùng màu chủ đạo.
 - Không dùng nền xanh lớn, khung bao hoặc kiểu nút bấm cho từng tab.
+- Ngoại lệ duy nhất (quyết định UI ngày 31/10/2026): tab **bên trong trang chi tiết một chứng từ** (ví dụ chi tiết
+  lệnh sản xuất) dùng thanh phân đoạn `content-tabs content-tabs--segmented`: nền xám nhạt, các tab chia đều, tab đang
+  chọn là ô trắng chữ đậm. Tab điều hướng chính đầu trang vẫn dùng kiểu gạch chân.
 - Chiều cao, padding và khoảng cách giữa các tab phải thống nhất trên toàn hệ thống.
 - Chuyển tab không được làm thay đổi vị trí tiêu đề, thanh công cụ hoặc làm giật bố cục.
 - Khi số lượng tab không đủ chỗ, ưu tiên cuộn ngang thay vì xuống nhiều hàng gây thay đổi chiều cao.

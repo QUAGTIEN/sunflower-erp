@@ -1228,7 +1228,7 @@ test('LSX editor puts the back button first, drops the subtitle and the detail v
   const workspace = readSource('src/features/production/components/ProductionOrderWorkspace.tsx');
   assert.doesNotMatch(workspace, /Một PO có thể chia thành nhiều lệnh/);
   assert.match(workspace, /<PageBackButton[\s\S]{0,400}?<h2>\{draft\.revision/);
-  assert.match(workspace, />\s*Xuất lệnh sản xuất\s*</);
+  assert.match(workspace, /<IconButton\s+label="Xuất lệnh sản xuất"\s+icon=\{<Printer \/>\}/);
   assert.doesNotMatch(workspace, /In phiếu|label="Xuất PDF"/);
   assert.match(workspace, /<PrintPreviewDialog[\s\S]{0,200}html=\{productionPrintHtml\(printOrder\)\}/);
   const preview = readSource('src/components/PrintPreviewDialog.tsx');
@@ -1793,4 +1793,18 @@ test('D-MA1 batch 3: stock vouchers are PN or PX and LSX material requests are Y
   assert.match(delivery, /issueDocumentCode\(DOCUMENT_CODE_PREFIXES\.deliveryTrip\)/);
   assert.match(requestsSource, /issueDocumentCode\(DOCUMENT_CODE_PREFIXES\.purchaseRequest\)/);
   assert.doesNotMatch(purchase + delivery, /Math\.random/, 'codes are never random');
+});
+
+test('LSX detail keeps the code alone in the header and splits the content into segmented tabs', () => {
+  const { readSource } = require('./helpers/loadTs.cjs');
+  const workspace = readSource('src/features/production/components/ProductionOrderWorkspace.tsx');
+  assert.match(workspace, /<PageBackButton[\s\S]{0,300}?<h2>\{selected\.lsxCode\}<\/h2>/);
+  assert.doesNotMatch(workspace, /Xem toàn bộ thông số kỹ thuật và ảnh/);
+  assert.match(workspace, /className="content-tabs content-tabs--segmented"\s+role="tablist"/);
+  for (const tab of ['Mặt hàng', 'Vật tư', 'Thành phẩm', 'Lịch sử'])
+    assert.match(workspace, new RegExp('role="tabpanel"\\s+aria-label="' + tab + '"\\s+hidden='));
+  assert.match(workspace, /data-erp-table-layout="content"/, 'detail tables follow their content height');
+  assert.match(workspace, /className="btn btn-danger"[\s\S]{0,80}?transition\('cancel'\)/);
+  const css = readSource('src/features/production/components/ProductionOrders.css');
+  assert.match(css, /\.lsx-detail-panels > section\[hidden\]\s*\{\s*display: none;/);
 });

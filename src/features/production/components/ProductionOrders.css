@@ -162,10 +162,10 @@
   color: #991b1b;
   font-size: 13px;
 }
-/* Chi tiết lệnh: thông tin chung dạng lưới 4 cột, nhãn trên giá trị. */
+/* Chi tiết lệnh: thông tin chung dạng lưới 6 cột, nhãn trên giá trị. */
 .lsx-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin: 0;
   border: 1px solid var(--erp-border-color, #d8e1ee);
   border-radius: var(--erp-surface-radius, 6px);
@@ -176,7 +176,10 @@
   border-right: 1px solid #eef2f7;
   border-bottom: 1px solid #eef2f7;
 }
-.lsx-summary > .lsx-summary-wide {
+.lsx-summary > .lsx-summary-span-2 {
+  grid-column: span 2;
+}
+.lsx-summary > .lsx-summary-span-3 {
   grid-column: span 3;
 }
 .lsx-summary dt {
@@ -184,20 +187,114 @@
   font-size: 12px;
 }
 .lsx-summary dd {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   overflow: hidden;
-  color: #172554;
   font-size: 13px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.lsx-history {
-  margin: 0;
-  color: #334155;
+.lsx-summary dd:not(.lsx-status) {
+  color: #172554;
+}
+.lsx-summary dd.lsx-summary-strong {
+  font-weight: 600;
+}
+.lsx-summary dd.lsx-summary-empty:not(.lsx-status) {
+  color: #64748b;
+  font-weight: 400;
+}
+.lsx-summary dd.lsx-status {
   font-size: 13px;
-  white-space: pre-wrap;
+  font-weight: 600;
+}
+/* Tab nội dung: các khung con nằm phẳng trong tab, không lồng khung. */
+.lsx-detail-panels > section {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+.lsx-detail-panels > section[hidden] {
+  display: none;
+}
+.lsx-detail-panels .lsx-section {
+  padding: 0;
+  border: 0;
+}
+.lsx-detail-panels .lsx-heading {
+  min-height: 34px;
+}
+.lsx-detail-panels .lsx-heading h3 {
+  color: #1e293b;
+  font-size: 14px;
+  font-weight: 600;
+}
+.lsx-detail-panels .lsx-section + .lsx-section,
+.lsx-detail-panels .table-container + .lsx-section {
+  margin-top: 4px;
+}
+.lsx-workspace table.lsx-detail-lines .lsx-expand-cell {
+  width: 44px;
+  padding: 0 4px;
+  text-align: center;
+}
+.lsx-expand-cell .erp-icon-button {
+  --erp-icon-button-size: 28px;
+  border-color: transparent;
+  background: transparent;
+}
+.lsx-detail-lines tfoot td {
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 600;
+}
+.lsx-detail-lines tr.lsx-line-spec-row > td {
+  background: #f8fafc;
+  white-space: normal;
+}
+.lsx-line-spec {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 4px 0 8px;
+}
+.lsx-line-spec dl {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+}
+.lsx-line-spec dt {
+  color: #64748b;
+  font-size: 12px;
+}
+.lsx-line-spec dd {
+  margin: 2px 0 0;
+  color: #1e293b;
+  font-size: 13px;
   overflow-wrap: anywhere;
+}
+.lsx-line-spec img {
+  max-width: 200px;
+  max-height: 160px;
+  object-fit: contain;
+  border: 1px solid #e2e8f0;
+}
+.lsx-workspace table.lsx-history {
+  min-width: 640px;
+  table-layout: fixed;
+}
+.lsx-history th:nth-child(1) {
+  width: 180px;
+}
+.lsx-history th:nth-child(2) {
+  width: 240px;
+}
+.lsx-history td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lsx-workspace summary {
   cursor: pointer;
@@ -205,44 +302,20 @@
   color: var(--color-primary, #172554);
   padding: 8px 0;
 }
-.lsx-specifications {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
-}
-.lsx-specifications article {
-  padding: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-}
-.lsx-specifications dl > div {
-  display: grid;
-  grid-template-columns: 1fr 1.3fr;
-  gap: 12px;
-  padding: 4px 0;
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-.lsx-specifications dd {
-  margin: 0;
-}
-.lsx-specifications img {
-  max-width: 100%;
-  max-height: 160px;
-  object-fit: contain;
-}
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .lsx-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .lsx-summary > .lsx-summary-wide {
+  .lsx-summary > .lsx-summary-span-3 {
     grid-column: 1 / -1;
   }
 }
 @media (max-width: 600px) {
   .lsx-summary {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .lsx-summary > :is(.lsx-summary-span-2, .lsx-summary-span-3) {
+    grid-column: auto;
   }
   .lsx-workspace .lsx-list-toolbar > input[type='search'] {
     max-width: none;
@@ -273,7 +346,7 @@
   table-layout: fixed;
 }
 .lsx-workspace table.lsx-detail-lines {
-  min-width: 1080px;
+  min-width: 900px;
 }
 .lsx-items td,
 .lsx-materials td,
