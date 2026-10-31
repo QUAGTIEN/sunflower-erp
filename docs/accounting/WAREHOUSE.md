@@ -98,7 +98,7 @@ trong LSX và trang Giao hàng vẫn đọc qua `load` của API vì cần danh 
 
 Người dùng giao Claude tự đặt chi tiết; các lựa chọn dưới đây là mặc định, người dùng có thể sửa.
 
-- Tab **Danh mục dao** trong Kho vật tư. Dao là công cụ, **không có tồn kho**, không vào sổ kho.
+- Mục **Sản xuất › Danh sách dao** trên menu (không còn là tab của Kho vật tư; quyền xem vẫn theo Kho vật tư). Dao là công cụ, **không có tồn kho**, không vào sổ kho.
 - Mã `DAO-NNNN` do máy chủ cấp (`catalog_counters/DAO`), không đổi. Lưu ở `die_catalog/<mã>`; tạo / sửa qua
   `/api/catalog/manage` (`die_create`, `die_update`) với `requestId` và `expectedRevision`. Ai quản lý danh mục vật tư
   thì quản lý dao; người đọc được kho (cả Sản xuất) xem được. Client không ghi trực tiếp.

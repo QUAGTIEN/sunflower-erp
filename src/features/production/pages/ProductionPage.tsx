@@ -23,7 +23,6 @@ import { getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, toDateInputValue } from '@/shared/utils/dateFormatting';
 import { ProductionOrderWorkspace } from '@/features/production/components/ProductionOrderWorkspace';
-import { confirmAppNavigation } from '@/shared/feedback/navigationGuard';
 import type { PageTabRequest } from '@/shared/types/pageTabRequest';
 import './Production.css';
 
@@ -33,9 +32,8 @@ interface ProductionProps {
   currentUser: UserProfile;
   onRefresh: () => void;
   initialSelectedLsxId?: string;
-  /** Sidebar sub-items Lệnh sản xuất / Danh sách máy open this page on that tab. */
+  /** Lệnh sản xuất and Danh sách máy are separate sidebar items; the page shows only the one asked for. */
   tabRequest?: PageTabRequest;
-  onTabChange?: (tab: ProductionTab) => void;
   messages: any[];
   users: any[];
 }
@@ -55,7 +53,6 @@ export const Production: React.FC<ProductionProps> = ({
   onRefresh,
   initialSelectedLsxId,
   tabRequest,
-  onTabChange,
   messages,
   users
 }) => {
@@ -460,34 +457,6 @@ export const Production: React.FC<ProductionProps> = ({
         section={t('Sản xuất')}
         current={productionTab === 'machines' ? 'Danh sách máy' : 'Lệnh sản xuất'}
       />
-
-      <div className="production-tabs content-tabs" role="tablist" aria-label="Quản lý sản xuất">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={productionTab === 'commands'}
-          className={productionTab === 'commands' ? 'is-active' : ''}
-          onClick={() => {
-            setProductionTab('commands');
-            onTabChange?.('commands');
-          }}
-        >
-          Lệnh sản xuất
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={productionTab === 'machines'}
-          className={productionTab === 'machines' ? 'is-active' : ''}
-          onClick={() => {
-            if (!confirmAppNavigation()) return;
-            setProductionTab('machines');
-            onTabChange?.('machines');
-          }}
-        >
-          Danh sách máy
-        </button>
-      </div>
 
       {productionTab === 'commands' ? (
         <ProductionOrderWorkspace

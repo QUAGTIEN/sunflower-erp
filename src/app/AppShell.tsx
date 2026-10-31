@@ -1026,7 +1026,6 @@ function AppShell() {
             currentUser={user}
             onRefresh={refreshData}
             tabRequest={pageTabRequest?.page === 'inventory' ? pageTabRequest : undefined}
-            onTabChange={tab => rememberPageTab('inventory', tab)}
           />
         );
       case 'production':
@@ -1042,7 +1041,6 @@ function AppShell() {
             onRefresh={refreshData}
             initialSelectedLsxId={selectedLsxId}
             tabRequest={pageTabRequest?.page === 'production' ? pageTabRequest : undefined}
-            onTabChange={tab => rememberPageTab('production', tab)}
             messages={messages}
             users={users}
           />

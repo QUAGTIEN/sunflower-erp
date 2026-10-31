@@ -56,7 +56,8 @@ dòng sản xuất của chính PO đó đủ sản lượng đạt. `action: ca
 
 ## Đã triển khai
 
-- Menu **Sản xuất** nằm ngay dưới **Đơn hàng**, có hai tab **Lệnh sản xuất** và **Danh sách máy**. Đơn hàng không còn tab LSX. Toàn bộ lệnh mới / cũ dùng chung `production_commands`; có thể tìm kiếm, lọc loại lệnh và tạo lệnh mới tại Sản xuất.
+- Nhóm menu **Sản xuất** gồm các mục riêng **Lệnh sản xuất**, **Danh sách máy**, **Danh sách dao**, **Giao hàng**; trang
+  Sản xuất không có tab, mỗi mục chỉ hiện đúng dữ liệu của mình. Đơn hàng không còn tab LSX. Toàn bộ lệnh mới / cũ dùng chung `production_commands`; có thể tìm kiếm, lọc loại lệnh và tạo lệnh mới tại Sản xuất.
 - Chọn dòng từ một hoặc nhiều PO của cùng khách (xem D-LSX1), chia từng dòng thành nhiều LSX. Dòng nhập tay dùng `itemId`, không phụ thuộc mã sản phẩm.
 - Nháp → Chờ duyệt → Duyệt & phát hành → Bắt đầu sản xuất → Nghiệm thu QC. Có trả về nháp và hủy lệnh chưa chạy; không xóa cứng lệnh mới.
 - Lưu thông số từ PO, nhân sự, máy, ca, ngày cần, ưu tiên, ghi chú và vật tư dự kiến. Sau phát hành, thông số và dòng hàng được khóa; danh mục sản phẩm thay đổi không sửa phiếu đã phát hành.

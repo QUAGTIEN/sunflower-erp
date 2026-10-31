@@ -125,16 +125,17 @@ const shortKindLabel = (voucher: UnifiedVoucher): { label: string; tone: string 
 
 type InventoryTab = keyof typeof tabNames;
 const isInventoryTab = (tab: string): tab is InventoryTab => Object.hasOwn(tabNames, tab);
+// Danh mục dao is shown under Sản xuất in the sidebar, so it is not one of the Kho vật tư tabs.
+const WAREHOUSE_TABS: InventoryTab[] = ['catalog', 'vouchers'];
 
 interface InventoryProps {
   currentUser: UserProfile;
   onRefresh: () => void;
-  /** The sidebar opens Danh mục dao from the Sản xuất group and Kho vật tư on its catalogue. */
+  /** Danh sách dao belongs to the Sản xuất sidebar group; it opens here on request and never as a Kho vật tư tab. */
   tabRequest?: PageTabRequest;
-  onTabChange?: (tab: InventoryTab) => void;
 }
 
-export function Inventory({ currentUser, onRefresh, tabRequest, onTabChange }: InventoryProps) {
+export function Inventory({ currentUser, onRefresh, tabRequest }: InventoryProps) {
   const [tab, setTab] = useState<InventoryTab>('catalog');
   const [handledTabRequest, setHandledTabRequest] = useState(0);
   const [voucherView, setVoucherView] = useState<keyof typeof voucherViewNames>('list');
@@ -339,27 +340,32 @@ export function Inventory({ currentUser, onRefresh, tabRequest, onTabChange }: I
 
   return (
     <div className="inventory-view warehouse-workspace" data-erp-table-text="single-line">
-      <PageContextHeader
-        section="Kho vật tư"
-        current={tab === 'catalog' && activeStock ? `${tabNames.catalog} · ${activeStock.code}` : tabNames[tab]}
-      />
-      <nav className="content-tabs" aria-label="Kho vật tư" role="tablist">
-        {Object.entries(tabNames).map(([key, name]) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={tab === key}
-            className={tab === key ? 'active' : ''}
-            onClick={() => {
-              if (!confirmAppNavigation()) return;
-              openTab(key as InventoryTab);
-              onTabChange?.(key as InventoryTab);
-            }}
-          >
-            {name}
-          </button>
-        ))}
-      </nav>
+      {tab === 'dies' ? (
+        <PageContextHeader section="Sản xuất" current="Danh sách dao" />
+      ) : (
+        <>
+          <PageContextHeader
+            section="Kho vật tư"
+            current={tab === 'catalog' && activeStock ? `${tabNames.catalog} · ${activeStock.code}` : tabNames[tab]}
+          />
+          <nav className="content-tabs" aria-label="Kho vật tư" role="tablist">
+            {WAREHOUSE_TABS.map(key => (
+              <button
+                key={key}
+                role="tab"
+                aria-selected={tab === key}
+                className={tab === key ? 'active' : ''}
+                onClick={() => {
+                  if (!confirmAppNavigation()) return;
+                  openTab(key);
+                }}
+              >
+                {tabNames[key]}
+              </button>
+            ))}
+          </nav>
+        </>
+      )}
 
       {tab === 'vouchers' && (
         <div className="warehouse-subtabs" role="tablist" aria-label="Chế độ xem phiếu kho">

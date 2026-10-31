@@ -1,15 +1,3 @@
-.production-tabs {
-  display: flex;
-  gap: 8px;
-  padding: 6px;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface, #fff);
-  width: fit-content;
-  max-width: 100%;
-  overflow-x: auto;
-}
-
 .production-tab {
   display: inline-flex;
   align-items: center;
@@ -333,10 +321,6 @@
 }
 
 @media (max-width: 640px) {
-  .production-tabs {
-    width: 100%;
-  }
-
   .machine-summary-grid,
   .machine-form-grid,
   .machine-form-grid--three {

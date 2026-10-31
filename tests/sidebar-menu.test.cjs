@@ -73,7 +73,7 @@ test('the shell renders the menu from the groups and pages switch tabs on reques
   ]) {
     const source = readSource(page);
     assert.match(source, /tabRequest\.requestId !== handledTabRequest/, page);
-    assert.match(source, /onTabChange\?\.\(/, page);
+    assert.doesNotMatch(source, /onTabChange/, page);
   }
 });
 
@@ -84,4 +84,13 @@ test('sidebar groups start folded, open one at a time and list sub-items as plai
   assert.match(shell, /const isOpen = openMenuGroup === entry\.id;/);
   assert.match(shell, /\{!nested && <ItemIcon size=\{16\} \/>\}/);
   assert.match(shell, /renderMenuItem\(groupItem, true\)/);
+});
+
+test('each sidebar item shows its own data once: no Danh mục dao tab in Kho vật tư, no tabs in Sản xuất', () => {
+  const inventory = readSource('src/features/inventory/pages/InventoryPage.tsx');
+  assert.match(inventory, /const WAREHOUSE_TABS: InventoryTab\[\] = \['catalog', 'vouchers'\];/);
+  assert.match(inventory, /\{WAREHOUSE_TABS\.map\(key =>/);
+  assert.match(inventory, /tab === 'dies' \? \(\s*<PageContextHeader section="Sản xuất" current="Danh sách dao" \/>/);
+  const production = readSource('src/features/production/pages/ProductionPage.tsx');
+  assert.doesNotMatch(production, /role="tablist"/);
 });

@@ -7,8 +7,8 @@
 - `src/main.tsx`: CSS/font, reset dữ liệu local cũ, render `AppProviders` → `AppShell`.
 - `src/app/AppShell.tsx`:
   - đăng nhập và sidebar. Menu chia nhóm theo luồng nghiệp vụ, khai báo trong `app/navigation/sidebarMenu.ts`
-    (`SIDEBAR_MENU`); mục con có thể trỏ tới một tab của trang (Sản xuất › Danh sách máy, Danh sách dao): AppShell
-    gửi `tabRequest` cho trang, trang báo lại tab đang mở qua `onTabChange` để sidebar tô đúng mục;
+    (`SIDEBAR_MENU`); mục con có thể trỏ tới một phần của trang (Sản xuất › Danh sách máy, Danh sách dao): AppShell
+    gửi `tabRequest`, trang chỉ hiện đúng phần đó (không có tab trong trang cho phần đã có mục menu riêng);
   - `activePage` + `switch` (`renderPageContent(pageId)`) để render trang (lazy import từ `index.ts` của feature);
   - **giữ trang sống:** `mountedPages` giữ tối đa 5 phân hệ gần nhất (`app/navigation/pageKeepAlive.ts`), mỗi trang
     bọc trong `app/KeepAlivePage.tsx` (ẩn bằng `hidden`, không vẽ lại khi ẩn). Trang ẩn vẫn chạy effect của mình:

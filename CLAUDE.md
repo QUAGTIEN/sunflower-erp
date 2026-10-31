@@ -33,7 +33,7 @@ nghiệp vụ viết bằng tiếng Việt; định danh trong code (biến, col
 
 Baseline ngày 29/10/2026:
 - Build đạt; vendor tách riêng (React, Firebase, icon), không còn cảnh báo chunk > 500 KB.
-- Test 391/391 đạt.
+- Test 392/392 đạt.
 - Lint 187 lỗi: phần lớn `no-explicit-any` (174), còn 9 `set-state-in-effect` và 2 cảnh báo `exhaustive-deps`
   chờ quyết định vì sửa sẽ đổi thời điểm chạy. Không commit nếu số lỗi tăng.
 - Toàn bộ code, CSS và `tests/` đã theo Prettier (trừ tài liệu `.md`, `vercel.json`, `scripts/clear-db.js`).

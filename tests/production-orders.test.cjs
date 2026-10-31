@@ -496,22 +496,20 @@ test('Sale cannot open production, even with an old explicit page grant; other p
   assert.doesNotMatch(html, /PRIVATE-LSX|Lập lệnh sản xuất/);
 });
 
-test('production has exactly two tabs; legacy detail and machine management stay reachable', () => {
+test('production shows orders or machines only, as the sidebar asks; legacy detail stays reachable', () => {
   const legacy = { id: 'old', poId: 'po1', lsxCode: 'LSX-OLD', status: 'producing', productName: 'Tem cũ' };
-  const render = interactive('src/features/production/pages/ProductionPage.tsx', 'Production', {
+  const props = {
     pos: [po()],
     productionCommands: [legacy],
     currentUser: admin,
     users: [producer],
     messages: [],
     onRefresh() {}
-  });
+  };
+  const render = interactive('src/features/production/pages/ProductionPage.tsx', 'Production', props);
   let tree = render();
-  let tabs = nodes(tree).filter(node => node.props?.role === 'tab');
-  assert.deepEqual(
-    tabs.map(tab => tab.props.children.trim()),
-    ['Lệnh sản xuất', 'Danh sách máy']
-  );
+  assert.equal(nodes(tree).filter(node => node.props?.role === 'tab').length, 0, 'no in-page tabs');
+  assert.ok(!nodes(tree).some(node => node.type?.name === 'MachineManagement'));
   nodes(tree)
     .find(node => node.type?.name === 'ProductionOrderWorkspace')
     .props.onOpenLegacy('old');
@@ -526,10 +524,11 @@ test('production has exactly two tabs; legacy detail and machine management stay
       label
     );
   }
-  tabs = nodes(tree).filter(node => node.props?.role === 'tab');
-  tabs[1].props.onClick();
+  props.tabRequest = { tab: 'machines', requestId: 1 };
+  render();
   tree = render();
   assert.ok(nodes(tree).some(node => node.type?.name === 'MachineManagement' && node.props.canManage));
+  assert.ok(!nodes(tree).some(node => node.type?.name === 'ProductionOrderWorkspace'));
   const menu = fs.readFileSync(path.join(root, 'src/app/navigation/sidebarMenu.ts'), 'utf8');
   const groups = [...menu.matchAll(/kind: 'group',\s*id: '([^']+)'/g)].map(match => match[1]);
   assert.deepEqual(groups.slice(groups.indexOf('business'), groups.indexOf('business') + 4), [
