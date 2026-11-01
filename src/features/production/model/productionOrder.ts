@@ -1,12 +1,24 @@
 /** Shared, side-effect-free rules used by the UI and the authenticated server. */
 export type ProductionStatus = 'draft' | 'pending_approval' | 'released' | 'producing' | 'completed' | 'cancelled';
 export const PRODUCTION_STATUSES: Record<ProductionStatus, string> = {
-  draft: 'Nháp',
-  pending_approval: 'Chờ duyệt',
-  released: 'Đã phát hành',
+  draft: 'Nháp (cũ)',
+  pending_approval: 'Chờ duyệt (cũ)',
+  released: 'Đã lập',
   producing: 'Đang sản xuất',
   completed: 'Hoàn thành',
-  cancelled: 'Đã hủy'
+  cancelled: 'Đã xóa'
+};
+/**
+ * Saving an order makes it effective at once (no approval step). Until production starts it can still be edited,
+ * deleted or started; drafts and approvals saved before this rule behave the same way.
+ */
+export const OPEN_PRODUCTION_STATUSES: ProductionStatus[] = ['draft', 'pending_approval', 'released'];
+/** The same four levels as the design schedule. */
+export const PRODUCTION_PRIORITIES: Record<string, string> = {
+  urgent: 'Cực gấp',
+  high: 'Gấp',
+  normal: 'Bình thường',
+  low: 'Thong thả'
 };
 export interface ProductionActor {
   uid: string;
@@ -225,12 +237,9 @@ export const canManageProduction = (actor: ProductionActor) =>
   hasProductionAccess(actor, 'production') && ['admin', 'producer'].includes(actor.role);
 export const canDraftProduction = (actor: ProductionActor) =>
   canManageProduction(actor) || (hasProductionAccess(actor, 'production') && actor.role === 'accountant');
-export const canEditProductionDraft = (
-  actor: ProductionActor,
-  order: Pick<ProductionOrder, 'status' | 'createdById'>
-) =>
-  order.status === 'draft' &&
-  (canManageProduction(actor) || (canDraftProduction(actor) && order.createdById === actor.uid));
+/** In production orders accountants act like admins: any of them may edit or delete an order before it starts. */
+export const canEditProductionOrder = (actor: ProductionActor, order: Pick<ProductionOrder, 'status'>) =>
+  OPEN_PRODUCTION_STATUSES.includes(order.status) && canDraftProduction(actor);
 /** PO statuses that still accept new or changed production orders. */
 export const PLANNABLE_PO_STATUSES = [
   'waiting_design',
@@ -337,7 +346,7 @@ export function validateProductionOrderDraft(
     const materialWidth = text(details.materialWidth, 40);
     if (materialWidth && (!Number.isFinite(Number(materialWidth)) || Number(materialWidth) <= 0))
       fail('Khổ NVL của dòng tem phải là số dương (mm).');
-    if (details.priority && !['normal', 'high', 'urgent'].includes(String(details.priority)))
+    if (details.priority && !Object.hasOwn(PRODUCTION_PRIORITIES, String(details.priority)))
       fail('Ưu tiên của dòng hàng không hợp lệ.');
     return {
       ...snapshot,
@@ -401,7 +410,7 @@ export function validateProductionOrderDraft(
     plannedStartDate,
     plannedEndDate,
     technicalNotes: text(raw.technicalNotes, 3000),
-    priority: ['urgent', 'high', 'normal'].includes(String(raw.priority)) ? String(raw.priority) : 'normal',
+    priority: Object.hasOwn(PRODUCTION_PRIORITIES, String(raw.priority)) ? String(raw.priority) : 'normal',
     notes: text(raw.notes, 3000)
   };
 }
@@ -413,30 +422,18 @@ export const validateProductionDraft = (
   excludedId = ''
 ) => validateProductionOrderDraft([po], commands, raw, excludedId);
 export function assertTransition(actor: ProductionActor, order: ProductionOrder, action: string) {
-  const manager = canManageProduction(actor);
   if (!canDraftProduction(actor)) fail('Bạn không có quyền lập lệnh sản xuất.');
-  const operator =
-    hasProductionAccess(actor, 'production') && actor.role === 'producer' && order.operatorId === actor.uid;
+  const open = OPEN_PRODUCTION_STATUSES.includes(order.status);
   const permitted =
-    action === 'save'
-      ? canEditProductionDraft(actor, order)
-      : action === 'submit'
-        ? canEditProductionDraft(actor, order)
-        : action === 'return'
-          ? order.status === 'pending_approval' && manager
-          : action === 'release'
-            ? order.status === 'pending_approval' && manager
-            : action === 'start'
-              ? order.status === 'released' && (manager || operator)
-              : action === 'complete'
-                ? order.status === 'producing' && manager
-                : action === 'cancel'
-                  ? ['draft', 'pending_approval', 'released'].includes(order.status) && manager
-                  : action === 'request_materials'
-                    ? order.status === 'completed' && canDraftProduction(actor)
-                    : action === 'request_material_shortage'
-                      ? MATERIAL_SHORTAGE_STATUSES.includes(order.status) && canDraftProduction(actor)
-                      : false;
+    action === 'save' || action === 'start' || action === 'cancel'
+      ? open
+      : action === 'complete'
+        ? order.status === 'producing'
+        : action === 'request_materials'
+          ? order.status === 'completed'
+          : action === 'request_material_shortage'
+            ? MATERIAL_SHORTAGE_STATUSES.includes(order.status)
+            : false;
   if (!permitted) fail('Không có quyền hoặc lệnh đã đổi trạng thái. Hãy tải lại danh sách.');
 }
 export function completedProduction(po: ProductionPO, commands: CommandRecord[]) {

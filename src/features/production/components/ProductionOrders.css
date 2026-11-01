@@ -54,6 +54,21 @@
 .lsx-list-row {
   cursor: pointer;
 }
+/* The list stays mounted while an order is open so its search, filters and page are kept. */
+.lsx-list-view:not([hidden]) {
+  display: contents;
+}
+.lsx-priority-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+.lsx-priority-badge--high {
+  color: #a45109;
+}
+.lsx-priority-badge--urgent {
+  color: #b42318;
+}
 .lsx-workspace :is(.lsx-editor, .lsx-section) label {
   display: grid;
   gap: 6px;
@@ -233,53 +248,10 @@
 .lsx-detail-panels .table-container + .lsx-section {
   margin-top: 4px;
 }
-.lsx-workspace table.lsx-detail-lines .lsx-expand-cell {
-  width: 44px;
-  padding: 0 4px;
-  text-align: center;
-}
-.lsx-expand-cell .erp-icon-button {
-  --erp-icon-button-size: 28px;
-  border-color: transparent;
-  background: transparent;
-}
 .lsx-detail-lines tfoot td {
   background: #f8fafc;
   color: #334155;
   font-weight: 600;
-}
-.lsx-detail-lines tr.lsx-line-spec-row > td {
-  background: #f8fafc;
-  white-space: normal;
-}
-.lsx-line-spec {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  padding: 4px 0 8px;
-}
-.lsx-line-spec dl {
-  display: grid;
-  flex: 1 1 auto;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px 24px;
-  margin: 0;
-}
-.lsx-line-spec dt {
-  color: #64748b;
-  font-size: 12px;
-}
-.lsx-line-spec dd {
-  margin: 2px 0 0;
-  color: #1e293b;
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-.lsx-line-spec img {
-  max-width: 200px;
-  max-height: 160px;
-  object-fit: contain;
-  border: 1px solid #e2e8f0;
 }
 .lsx-workspace table.lsx-history {
   min-width: 640px;
@@ -590,29 +562,6 @@
 .lsx-muted-note {
   font-size: 12px;
 }
-.lsx-line-details td {
-  background: #f8fafc;
-  white-space: normal;
-}
-.lsx-line-details-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-.lsx-line-details-grid > div {
-  display: grid;
-  min-width: 0;
-  align-content: start;
-  gap: 6px;
-  color: #334155;
-  font-size: 13px;
-}
-.lsx-line-details-grid strong {
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .lsx-text-danger {
   color: #b42336;
 }
@@ -630,11 +579,6 @@
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
   gap: 6px;
-}
-@media (max-width: 900px) {
-  .lsx-line-details-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 .lsx-detail-lines th:nth-child(1) {
   width: 44px;
@@ -697,18 +641,6 @@
 .lsx-general {
   background: #f8fafc;
 }
-.lsx-general-summary {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  color: #334155;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.lsx-general .lsx-section-header > .erp-icon-button {
-  margin-left: auto;
-}
 .lsx-general-groups {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -745,6 +677,14 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+/* Khách hàng carries the Chọn hàng button after its chips. */
+.lsx-workspace .lsx-general .lsx-inline-field:has(> .lsx-pick-button) {
+  grid-template-columns: 116px minmax(0, 1fr) auto;
+}
+.lsx-pick-button {
+  min-height: 32px;
+  white-space: nowrap;
 }
 .lsx-inline-field > span:first-child {
   color: #475569;
@@ -789,54 +729,6 @@
 .lsx-muted {
   color: #94a3b8;
   font-size: 13px;
-}
-.lsx-priority {
-  display: flex;
-  min-width: 0;
-  gap: 4px;
-}
-.lsx-workspace .lsx-priority label.lsx-priority-option {
-  display: inline-flex;
-  min-height: 32px;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  padding: 0 8px;
-  border: 1px solid #c3cddb;
-  border-radius: var(--erp-control-radius, 6px);
-  background: #fff;
-  color: #334155;
-  font-size: 12.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.lsx-workspace .lsx-priority input[type='radio'] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  min-height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-.lsx-priority-option:has(input:focus-visible) {
-  outline: 2px solid var(--erp-focus-ring, #dbeafe);
-  outline-offset: 1px;
-}
-.lsx-workspace .lsx-priority .is-normal:has(input:checked) {
-  border-color: #1e3a8a;
-  background: #1e3a8a;
-  color: #fff;
-}
-.lsx-workspace .lsx-priority .is-high:has(input:checked) {
-  border-color: #b45309;
-  background: #b45309;
-  color: #fff;
-}
-.lsx-workspace .lsx-priority .is-urgent:has(input:checked) {
-  border-color: #b91c1c;
-  background: #b91c1c;
-  color: #fff;
 }
 .lsx-date-range {
   display: grid;

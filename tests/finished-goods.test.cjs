@@ -898,7 +898,7 @@ test('partial shipping preserves production access; later QC completion preserve
     operatorId: '',
     materials: []
   });
-  assert.equal(b.store.get('production_commands/lsx2').status, 'draft');
+  assert.equal(b.store.get('production_commands/lsx2').status, 'released');
   const command = b.store.get('production_commands/lsx2');
   command.status = 'producing';
   await b.manageProduction({

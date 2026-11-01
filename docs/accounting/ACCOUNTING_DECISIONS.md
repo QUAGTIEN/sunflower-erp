@@ -22,10 +22,10 @@ Kế hoạch chính thức: 7 lượt, theo `ACCOUNTING_SPEC.md`. Yêu cầu tr�
 | D01a | Mẫu tem trắng v1 theo ảnh thật được gửi ngày 22/10/2026; giữ phiếu chung v1 làm mặc định | Có đầu vào biểu mẫu; bảo toàn cách in lệnh cũ, người lập chọn mẫu rõ ràng |
 | D01b | Thêm khổ NVL và ưu tiên theo dòng ở LSX, không sửa kỹ thuật PO | Khổ vật liệu đầu vào khác chiều rộng con tem; không tự suy số liệu |
 | D01c | Cấp kho, thừa/thiếu, người cấp và chữ ký để trống trên bản in | Chưa có chứng từ cấp/hoàn kho thực tế ở lượt 2; không bịa dữ liệu mẫu |
-| D05b-2 | Kế toán có Accounting hoặc Production được lập, sửa/gửi duyệt nháp của mình; không hủy, phát hành, chạy máy, QC hay quản lý máy | Người dùng cho thêm Kế toán lập LSX; chọn phạm vi tối thiểu, giữ quyền vận hành cho Sản xuất/Admin |
+| D05b-2 | ~~Kế toán chỉ lập, sửa/gửi duyệt nháp của mình~~ — thay bởi D-LSX3 (02/11/2026): trong LSX kế toán như Admin (lập, sửa, xóa, bắt đầu, nghiệm thu mọi lệnh); vẫn không quản lý máy | Người dùng chốt bỏ bước duyệt và cho kế toán quyền như Admin ở LSX (`docs/modules/PRODUCTION_ORDERS.md`) |
 | D05c | Quyền Sản xuất kế thừa từ Accounting chỉ áp dụng vai trò accountant, không sửa users cũ và không mở quyền ghi client rules | Cho hồ sơ hiện hữu dùng được, không vô tình cấp quản lý kho/máy/lệnh cũ |
 | D02g | Máy chủ lấy liên kết PO trước; kế thừa sản phẩm khách chỉ khi đúng ID, phiên bản, kỹ thuật và ĐVT | Tái dùng danh mục lượt 1, không ghép nhầm dòng nhập tay hoặc snapshot cũ |
-| D02h | Mã nội bộ/quy đổi và mẫu in được chụp trên lệnh; thay đổi trước phát hành phải trả về lưu lại; sau phát hành dùng snapshot | Không thay ý nghĩa phiếu lịch sử hoặc nội dung đã duyệt |
+| D02h | Mã nội bộ/quy đổi được chụp trên lệnh; thay đổi trước khi bắt đầu sản xuất phải chỉnh sửa và lưu lại; lệnh đã chạy dùng snapshot (D-LSX3 thay mốc phát hành bằng mốc bắt đầu) | Không thay ý nghĩa phiếu lịch sử hoặc nội dung đã chạy |
 
 ## Quyết định lượt 3 — đã được người dùng xác nhận ngày 23/10/2026
 

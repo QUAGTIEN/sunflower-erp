@@ -3,7 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const { createLoader: loader } = require('./helpers/loadTs.cjs');
+const { createLoader } = require('./helpers/loadTs.cjs');
+// Shared column layouts live in Firestore; screens under test get an empty layout that only admins could edit.
+const COLUMN_LAYOUTS = {
+  '@/context/TableColumnLayoutContext': {
+    useTableColumnLayouts: () => ({ layouts: {}, canEditColumns: false, saveLayout() {}, migrateLayout() {} })
+  }
+};
+const loader = (stubs = {}) => createLoader({ ...COLUMN_LAYOUTS, ...stubs });
 const model = loader()('src/features/production/model/productionOrder.ts');
 const admin = { uid: 'boss', displayName: 'Admin', role: 'admin', active: true, allowedPages: [] };
 const sale = { uid: 'sale1', displayName: 'Sale 1', role: 'sale', active: true, allowedPages: ['sales'] };
@@ -190,7 +197,7 @@ test('legacy commands require explicit reconciliation, not a guessed first-item 
 test('create stores authoritative PO snapshot, audit, scope, and leaves inventory untouched', async () => {
   const b = backend();
   await b.manage(draft(), producer);
-  assert.equal(b.order().status, 'draft');
+  assert.equal(b.order().status, 'released', 'saving makes the order effective; there is no approval step');
   assert.equal(b.order().lines[0].productName, 'Tem cuộn');
   assert.equal(b.order().inventoryPostingMode, 'actual_issue');
   assert.equal(b.store.get('pos/po1').productionPlanLocked, true);
@@ -222,8 +229,8 @@ test('retries are idempotent and stale revisions cannot overwrite another user',
   await b.manage(draft());
   assert.equal(b.store.size, count);
   assert.equal(b.order().revision, 1);
-  await b.action('submit');
-  await assert.rejects(b.action('return', 'command1', { expectedRevision: 1 }), error => error.status === 409);
+  await b.action('save', 'command1', draftFields());
+  await assert.rejects(b.action('cancel', 'command1', { expectedRevision: 1 }), error => error.status === 409);
 });
 test('a command ID cannot be overwritten via a different PO', async () => {
   const b = backend({ 'pos/po2': { ...po(), id: 'po2' } });
@@ -248,7 +255,7 @@ test('only active production managers can create and change LSX, including draft
   await b.manage(draft(), producer);
   b.order().createdById = sale.uid;
   const before = structuredClone(b.order());
-  for (const action of ['save', 'submit', 'return', 'release', 'start', 'complete', 'cancel']) {
+  for (const action of ['save', 'start', 'complete', 'cancel']) {
     await assert.rejects(
       b.action(action, 'command1', {}, { ...sale, allowedPages: ['production', 'sales'] }),
       error => error.status === 403
@@ -256,43 +263,41 @@ test('only active production managers can create and change LSX, including draft
     assert.throws(() => model.assertTransition(sale, b.order(), action), /không có quyền/);
   }
   assert.deepEqual(b.order(), before);
-  await b.action('submit', 'command1', {}, producer);
-  await b.action('release', 'command1', {}, producer);
-  assert.equal(b.order().status, 'released');
   assert.equal(b.order().operatorName, producer.displayName);
+  await b.action('start', 'command1', {}, producer);
+  assert.equal(b.order().status, 'producing');
+  for (const action of ['submit', 'return', 'release'])
+    assert.throws(() => model.assertTransition(producer, b.order(), action), /không có quyền/i);
 });
 
-test('technical snapshot cannot change after release, including editing published drafts', async () => {
+test('a saved order stays editable until production starts; a started order cannot change', async () => {
   const b = backend();
   await b.manage(draft());
-  await b.action('submit');
-  await b.action('release');
-  await assert.rejects(b.action('save'), /Không có quyền/);
+  await b.action('save', 'command1', draftFields({ notes: 'Sửa trước khi chạy' }));
+  assert.equal(b.order().notes, 'Sửa trước khi chạy');
+  await b.action('start');
+  await assert.rejects(b.action('save', 'command1', draftFields()), /Không có quyền/);
   assert.equal(b.order().lines[0].specifications.core, '76mm');
 });
-test('release rejects stale PO specifications, offline machines and incomplete materials', async () => {
+test('start rejects stale PO specifications, offline machines and incomplete materials', async () => {
   for (const mode of ['spec', 'machine', 'material']) {
     const b = backend();
     await b.manage(draft(mode === 'material' ? { materials: [] } : {}));
-    await b.action('submit');
     if (mode === 'spec') b.store.get('pos/po1').items[0].specifications.core = '25mm';
     if (mode === 'machine') b.store.get('machines/machine1').status = 'maintenance';
-    await assert.rejects(b.action('release'));
-    assert.equal(b.order().status, 'pending_approval');
+    await assert.rejects(b.action('start'));
+    assert.equal(b.order().status, 'released');
   }
 });
-test('PO can be planned during design but cannot release before production stage', async () => {
+test('PO can be planned during design but cannot start before production stage', async () => {
   const b = backend({ 'pos/po1': { ...po(), status: 'waiting_design' } });
   await b.manage(draft());
-  await b.action('submit');
-  await assert.rejects(b.action('release'), /sẵn sàng sản xuất/);
+  await assert.rejects(b.action('start'), /sẵn sàng sản xuất/);
   assert.equal(b.store.get('pos/po1').productionPlanFrozen, false);
 });
 test('cancellation cannot strand actual material issues; returning all material makes cancellation possible', async () => {
   const b = backend();
   await b.manage(draft());
-  await b.action('submit');
-  await b.action('release');
   b.store.set('warehouse_source_state/production_command1', { lines: { paper: { quantity: 10 } } });
   await assert.rejects(b.action('cancel'), /còn NVL đã cấp/);
   assert.equal(b.order().status, 'released');
@@ -306,8 +311,6 @@ test('a cancelled draft releases reservations and retains its history; running o
   await b.action('cancel');
   assert.equal(b.store.get('pos/po1').productionPlanLocked, false);
   await b.manage(draft({ id: 'command2', requestId: 'request2', lines: [{ itemId: 'roll', quantity: 100 }] }));
-  await b.action('submit', 'command2');
-  await b.action('release', 'command2');
   await b.action('start', 'command2');
   await assert.rejects(b.action('cancel', 'command2'));
   assert.equal(b.order().status, 'cancelled');
@@ -317,8 +320,6 @@ test('concurrent starts for different POs cannot run on the same machine', async
   await b.manage(draft());
   await b.manage(draft({ poId: 'po2', id: 'command2', requestId: 'request2' }));
   for (const id of ['command1', 'command2']) {
-    await b.action('submit', id);
-    await b.action('release', id);
   }
   const result = await Promise.allSettled([b.action('start'), b.action('start', 'command2')]);
   assert.equal(result.filter(result => result.status === 'fulfilled').length, 1);
@@ -337,8 +338,6 @@ test('completing one split never ships the PO; every required item must meet acc
     })
   );
   for (const id of ['command1', 'command2']) {
-    await b.action('submit', id);
-    await b.action('release', id);
     await b.action('start', id);
     await b.action('complete', id, {
       results: b.order(id).lines.map(line => ({ itemId: line.itemId, goodQuantity: line.quantity, rejectQuantity: 0 })),
@@ -351,8 +350,6 @@ test('completing one split never ships the PO; every required item must meet acc
 test('rejected units do not count as good; unmet quantities become available for a supplementary order', async () => {
   const b = backend();
   await b.manage(draft());
-  await b.action('submit');
-  await b.action('release');
   await b.action('start');
   await b.action('complete', 'command1', {
     results: [{ itemId: 'roll', goodQuantity: 35, rejectQuantity: 5 }],
@@ -367,8 +364,6 @@ test('rejected units do not count as good; unmet quantities become available for
 test('QC rejects missing, duplicate, negative, non-numeric and overrun results without partial writes', async () => {
   const b = backend();
   await b.manage(draft());
-  await b.action('submit');
-  await b.action('release');
   await b.action('start');
   for (const results of [
     [],
@@ -379,25 +374,6 @@ test('QC rejects missing, duplicate, negative, non-numeric and overrun results w
   ])
     await assert.rejects(b.action('complete', 'command1', { results, qcNote: 'QC' }));
   assert.equal(b.order().status, 'producing');
-});
-test('printing is escaped, draft marked, and never performs a database or inventory mutation', () => {
-  const print = loader()('src/features/production/model/productionPrint.ts').productionPrintHtml;
-  const order = {
-    lsxCode: '<script>alert(1)</script>',
-    status: 'draft',
-    lines: [],
-    materials: [],
-    createdAt: '2026-10-21',
-    priority: 'normal',
-    notes: '<img onerror="evil">',
-    revision: 1
-  };
-  const html = print(order);
-  assert.ok(!html.includes('<script>'));
-  assert.ok(!html.includes('<img onerror'));
-  assert.match(html, /KHÔNG DÙNG ĐỂ TRIỂN KHAI/);
-  assert.match(html, /Chưa tích hợp phiếu cấp vật tư/);
-  assert.match(html, /size:A4 landscape/);
 });
 test('mixed units are summarized separately and legacy quantities cannot crash the dashboard', () => {
   assert.equal(
@@ -413,14 +389,16 @@ test('mixed units are summarized separately and legacy quantities cannot crash t
   );
   assert.equal(model.productionQuantityLabel({}), '0 tem');
 });
-test('published orders freeze PO details; cancelling the only released order unlocks its scope', async () => {
+test('only a started order freezes PO details; deleting the only saved order unlocks its scope', async () => {
   const b = backend();
   await b.manage(draft());
-  await b.action('submit');
-  await b.action('release');
-  assert.equal(b.store.get('pos/po1').productionPlanFrozen, true);
-  await b.action('cancel');
   assert.equal(b.store.get('pos/po1').productionPlanFrozen, false);
+  assert.equal(b.store.get('pos/po1').productionPlanLocked, true);
+  await b.action('cancel');
+  assert.equal(b.store.get('pos/po1').productionPlanLocked, false);
+  await b.manage(draft({ id: 'command2', requestId: 'request2' }));
+  await b.action('start', 'command2');
+  assert.equal(b.store.get('pos/po1').productionPlanFrozen, true);
 });
 
 const React = require('react');
@@ -539,38 +517,53 @@ test('production shows orders or machines only, as the sidebar asks; legacy deta
   ]);
 });
 
-test('combined order list filters and searches legacy items and opens their existing detail flow', () => {
+test('the order list filters, searches, hides deleted orders and opens old orders in their own flow', () => {
   const opened = [];
-  const render = interactive(
-    'src/features/production/components/ProductionOrderWorkspace.tsx',
-    'ProductionOrderWorkspace',
-    {
-      pos: [po()],
-      currentUser: producer,
-      users: [producer],
-      onRefresh() {},
-      onOpenLegacy: id => opened.push(id),
-      commands: [
-        { id: 'new', poId: 'po1', productionOrderVersion: 2, status: 'draft', lsxCode: 'LSX-NEW', lines: [] },
-        { id: 'old', poId: 'po1', status: 'transfer_pending', lsxCode: 'LSX-OLD', productNameToBeCut: 'Tem nước giặt' }
-      ]
-    }
-  );
+  const edited = [];
+  const deleted = [];
+  const render = interactive('src/features/production/components/ProductionOrderList.tsx', 'ProductionOrderList', {
+    canCreate: true,
+    canChange: command => command.status === 'released',
+    canOpenLegacy: true,
+    onCreate() {},
+    onOpen: command => opened.push(command.id),
+    onPrint() {},
+    onEdit: command => edited.push(command.id),
+    onDelete: command => deleted.push(command.id),
+    commands: [
+      {
+        id: 'new',
+        poId: 'po1',
+        productionOrderVersion: 2,
+        status: 'released',
+        priority: 'urgent',
+        lsxCode: 'LSX-NEW',
+        lines: []
+      },
+      { id: 'gone', poId: 'po1', productionOrderVersion: 2, status: 'cancelled', lsxCode: 'LSX-GONE', lines: [] },
+      { id: 'old', poId: 'po1', status: 'transfer_pending', lsxCode: 'LSX-OLD', productNameToBeCut: 'Tem nước giặt' }
+    ]
+  });
   let tree = render();
   const rowIds = () =>
     nodes(tree)
       .filter(node => node.type === 'tr' && node.key)
       .map(node => node.key);
-  assert.deepEqual(rowIds().sort(), ['new', 'old']);
-  // Status and order type live in the shared filter panel, as on the other list screens.
+  assert.deepEqual(rowIds().sort(), ['new', 'old'], 'a deleted order leaves the list');
+  assert.ok(nodes(tree).some(node => node.props?.children === 'Cực gấp'));
   const filterGroup = value =>
     nodes(tree).find(
       node => node.type?.name === 'DataFilterCheckboxGroup' && node.props.options.some(option => option.value === value)
     );
+  assert.equal(filterGroup('cancelled').props.options.find(option => option.value === 'cancelled').label, 'Đã xóa');
   assert.deepEqual(
-    filterGroup('legacy').props.options.map(option => option.label),
-    ['Lệnh mới', 'Lệnh cũ (1)']
+    filterGroup('urgent').props.options.map(option => option.label),
+    ['Cực gấp', 'Gấp', 'Bình thường', 'Thong thả']
   );
+  filterGroup('cancelled').props.onChange(['cancelled']);
+  tree = render();
+  assert.deepEqual(rowIds(), ['gone'], 'deleted orders come back only through the Đã xóa filter');
+  filterGroup('cancelled').props.onChange([]);
   filterGroup('legacy').props.onChange(['legacy']);
   tree = render();
   assert.deepEqual(rowIds(), ['old']);
@@ -579,11 +572,26 @@ test('combined order list filters and searches legacy items and opens their exis
     .props.onChange({ target: { value: 'NƯỚC GIẶT' } });
   tree = render();
   assert.deepEqual(rowIds(), ['old']);
-  nodes(tree)
-    .find(node => node.type?.name === 'RowActionMenu')
-    .props.actions.find(action => action.label === 'Chi tiết')
-    .onSelect();
+  const actions = () => nodes(tree).find(node => node.type?.name === 'RowActionMenu').props.actions;
+  assert.deepEqual(
+    actions().map(action => action.label),
+    ['Chi tiết'],
+    'old orders are only opened'
+  );
+  actions()[0].onSelect();
   assert.deepEqual(opened, ['old']);
+  filterGroup('legacy').props.onChange([]);
+  nodes(tree)
+    .find(node => node.type === 'input' && node.props.type === 'search')
+    .props.onChange({ target: { value: '' } });
+  tree = render();
+  assert.deepEqual(
+    actions().map(action => action.label),
+    ['Chi tiết', 'Xuất lệnh sản xuất', 'Chỉnh sửa', 'Xóa']
+  );
+  actions()[2].onSelect();
+  actions()[3].onSelect();
+  assert.deepEqual([edited, deleted], [['new'], ['new']]);
   assert.ok(filterGroup('transfer_pending'), 'legacy statuses can be filtered too');
 });
 
@@ -698,7 +706,7 @@ test('legacy-only lists count the displayed records and keep detail tables at co
     React.createElement(Component, { ...props, commands: [order], initialSelectedId: 'new' })
   );
   assert.match(detail, /data-erp-table-layout="content"/);
-  assert.ok(!detail.includes('lsx-list-frame'));
+  assert.match(detail, /class="lsx-list-view" hidden=""/, 'the list stays mounted but hidden behind the detail');
 });
 test('actual UI create handler sends stable PO line IDs and retries the same request without duplication', async () => {
   const states = [],
@@ -755,23 +763,22 @@ test('actual UI create handler sends stable PO line IDs and retries the same req
         ];
   let tree = render();
   assert.equal(tree.props['data-erp-table-layout'], undefined);
-  const listFrame = nodes(tree).find(node => node.props?.className === 'lsx-list-frame');
-  assert.equal(listFrame.props.children[0].props.className, 'table-container erp-primary-data-table');
-  assert.equal(listFrame.props.children[1].type.name, 'DataTablePagination');
+  const listView = () => nodes(tree).find(node => node.props?.className === 'lsx-list-view');
+  assert.equal(listView().props.hidden, false);
   nodes(tree)
-    .find(node => node.type === 'button' && node.props.children === 'Lập lệnh sản xuất')
-    .props.onClick();
+    .find(node => node.type?.name === 'ProductionOrderList')
+    .props.onCreate();
   tree = render();
   assert.equal(tree.props['data-erp-table-layout'], 'content');
-  assert.ok(!nodes(tree).some(node => node.props?.className === 'lsx-list-frame'));
+  assert.equal(listView().props.hidden, true, 'the list keeps its state behind the editor');
   assert.ok(
     !nodes(tree).some(node => node.type === 'select' && node.props.required),
     'customers follow the chosen lines; there is no customer to pick first'
   );
-  // Choosing lines is a page action in the editor header, not part of the item grid.
+  // Lines are picked from the Khách hàng field of the general information.
   nodes(tree)
-    .find(node => node.type === 'button' && node.props.children === 'Chọn hàng')
-    .props.onClick();
+    .find(node => node.type?.name === 'LsxGeneralInfo')
+    .props.onPickLines();
   tree = render();
   nodes(tree)
     .find(node => node.type?.name === 'LsxPoPickerDialog')
@@ -832,28 +839,21 @@ const draftFields = extra => {
   const { action, id, poId, requestId, ...fields } = draft(extra);
   return fields;
 };
-test('existing accountants with Accounting access can draft but cannot operate production or edit another creator', async () => {
+test('in production orders accountants act like admins: any of them may edit, delete or run an order', async () => {
   const b = backend();
   await b.manage(draft(), accountant);
   assert.equal(b.order().createdById, accountant.uid);
-  assert.equal(model.canManageProduction(accountant), false);
-  await b.action('save', 'command1', draftFields(), accountant);
-  await b.action('submit', 'command1', {}, accountant);
-  for (const action of ['return', 'release', 'start', 'complete', 'cancel'])
-    await assert.rejects(b.action(action, 'command1', {}, accountant), error => error.status === 403);
-  await b.action('return');
-  await assert.rejects(
-    b.action('save', 'command1', draftFields(), { ...accountant, uid: 'other-accountant' }),
-    error => error.status === 403
-  );
-  await assert.rejects(
-    b.action('submit', 'command1', {}, { ...accountant, uid: 'other-accountant' }),
-    error => error.status === 403
-  );
-  await b.action('submit', 'command1', {}, accountant);
-  await b.action('release');
-  await b.action('start');
-  await assert.rejects(b.action('save', 'command1', draftFields(), accountant));
+  assert.equal(model.canManageProduction(accountant), false, 'machines stay with admins and producers');
+  const otherAccountant = { ...accountant, uid: 'other-accountant' };
+  await b.action('save', 'command1', draftFields({ notes: 'Kế toán khác sửa' }), otherAccountant);
+  assert.equal(b.order().notes, 'Kế toán khác sửa');
+  await b.manage(draft({ id: 'command2', requestId: 'request2', lines: [{ itemId: 'roll', quantity: 10 }] }));
+  await b.action('cancel', 'command2', {}, otherAccountant);
+  assert.equal(b.order('command2').status, 'cancelled');
+  await b.action('start', 'command1', {}, accountant);
+  assert.equal(b.order().status, 'producing');
+  await assert.rejects(b.action('save', 'command1', draftFields(), accountant), /Không có quyền/);
+  await assert.rejects(b.action('cancel', 'command1', {}, accountant), /Không có quyền/);
   assert.equal(b.store.get('inventory/paper').qtyInStock, 1000);
 });
 test('accountant access respects account status and page revocation without writing profile data', async () => {
@@ -932,26 +932,25 @@ test('production resolves confirmed PO mappings on the server and ignores forged
   assert.equal(options.materials.length, 0);
   assert.equal(options.lines['po1::manual'].catalog, undefined);
 });
-test('stale/inactive mappings block storage; changed catalog requires a refreshed draft before release', async () => {
+test('stale/inactive mappings block storage; changed catalog requires saving the order again before start', async () => {
   const fixture = catalogFixture();
   const b = backend(fixture.data);
   await b.manage(draft());
-  await b.action('submit');
   // Firestore map fields may arrive in a different order than the saved JS object.
   b.order().lines[0].catalog = Object.fromEntries(Object.entries(b.order().lines[0].catalog).reverse());
-  await b.action('release');
   const refresh = backend(fixture.data);
   await refresh.manage(draft());
-  await refresh.action('submit');
   refresh.store.get(`item_catalog/${fixture.id}`).revision = 2;
-  await assert.rejects(refresh.action('release'), error => error.status === 409);
-  await refresh.action('return');
+  await assert.rejects(refresh.action('start'), error => error.status === 409);
   await refresh.action('save', 'command1', draftFields());
-  await refresh.action('submit');
-  await refresh.action('release');
-  b.store.get(`item_catalog/${fixture.id}`).code = 'CHANGED-LATER';
+  await refresh.action('start');
   await b.action('start');
-  assert.equal(b.order().lines[0].catalog.code, 'FG01');
+  b.store.get(`item_catalog/${fixture.id}`).code = 'CHANGED-LATER';
+  await b.action('complete', 'command1', {
+    results: [{ itemId: 'roll', goodQuantity: 40, rejectQuantity: 0 }],
+    qcNote: 'QC đạt'
+  });
+  assert.equal(b.order().lines[0].catalog.code, 'FG01', 'a started order keeps its catalogue snapshot');
   const inactive = backend({ ...fixture.data, [`item_catalog/${fixture.id}`]: { ...fixture.product, active: false } });
   await assert.rejects(inactive.manage(draft()), /không còn hoạt động/);
   assert.equal(inactive.order(), undefined);
@@ -1056,7 +1055,7 @@ test('material selection uses canonical code and explicit conversion but never p
     /Nguyên vật liệu/
   );
 });
-test('print template and per-line details are versioned and cannot change after release', async () => {
+test('print template and per-line details are validated and cannot change after production starts', async () => {
   const b = backend();
   await b.manage(
     draft({
@@ -1067,8 +1066,7 @@ test('print template and per-line details are versioned and cannot change after 
   );
   assert.equal(b.order().printTemplate.id, 'white_label');
   assert.deepEqual(b.order().lines[0].printDetails, { materialWidth: '1120', priority: 'high' });
-  await b.action('submit', 'command1', {}, accountant);
-  await b.action('release');
+  await b.action('start');
   await assert.rejects(b.action('save', 'command1', draftFields({ printTemplate: { id: 'standard', version: 1 } })));
   for (const printTemplate of [
     { id: 'injected-html', version: 1 },
@@ -1081,95 +1079,57 @@ test('print template and per-line details are versioned and cannot change after 
     /Khổ NVL/
   );
 });
-test('white-label print follows the provided fields, escapes values and preserves old generic output', async () => {
-  const b = backend({ 'customers/customer1': { customerCode: 'KH-REAL' } });
-  await b.manage(
-    draft({
-      printTemplate: { id: 'white_label', version: 1 },
-      lines: [{ itemId: 'roll', quantity: 40, printDetails: { materialWidth: '1120', priority: 'high' } }]
-    })
-  );
-  const print = loader()('src/features/production/model/productionPrint.ts');
-  const original = JSON.stringify(b.order());
-  const html = print.productionPrintHtml(b.order());
-  for (const label of [
-    'PHIẾU LỆNH SẢN XUẤT TEM TRẮNG',
-    'KH-REAL',
-    'VẬT TƯ SỬ DỤNG',
-    'NVL KHO CẤP',
-    'NVL THỪA / THIẾU SAU 1 ĐƠN',
-    'XÁC NHẬN',
-    '1120',
-    'Hơi gấp',
-    'KHÔNG DÙNG ĐỂ TRIỂN KHAI'
-  ])
-    assert.ok(html.includes(label), label);
-  assert.ok(!html.includes('Nguyễn Văn C'));
-  assert.ok(!html.includes('KH-0012'));
-  assert.ok(!html.includes('Thừa / ĐVT: 0'));
-  assert.equal(JSON.stringify(b.order()), original);
-  const unsafe = print.productionPrintHtml({
-    ...b.order(),
-    notes: '<script>alert(1)</script>',
-    lines: [{ ...b.order().lines[0], productName: '<img onerror=alert(1)>', image: 'javascript:alert(1)' }]
-  });
-  assert.ok(!unsafe.includes('<script>'));
-  assert.ok(!unsafe.includes('src="javascript:'));
-  assert.ok(unsafe.includes('&lt;img'));
-  const old = { ...b.order(), printTemplate: undefined };
-  assert.ok(!print.productionPrintHtml(old).includes('PHIẾU LỆNH SẢN XUẤT TEM TRẮNG'));
-});
-test('multi-page white-label prints retain all lines, materials and full long notes', async () => {
+test('every order prints on the one black-and-white production order sheet, whatever template it was saved with', async () => {
   const b = backend();
   await b.manage(draft({ printTemplate: { id: 'white_label', version: 1 } }));
   const print = loader()('src/features/production/model/productionPrint.ts');
-  const order = {
-    ...b.order(),
-    lines: Array.from({ length: 13 }, (_, index) => ({
-      ...b.order().lines[0],
-      productCode: `UNIQUE-LINE-${index}-END`
-    })),
-    materials: Array.from({ length: 11 }, (_, index) => ({
-      ...b.order().materials[0],
-      code: `UNIQUE-MAT-${index}-END`
-    })),
-    notes: 'Nội dung dài '.repeat(150) + 'PHẦN-CUỐI-GHI-CHÚ'
-  };
-  const html = print.productionPrintHtml(order);
-  for (let index = 0; index < 13; index++) assert.ok(html.includes(`UNIQUE-LINE-${index}-END`));
-  for (let index = 0; index < 11; index++) assert.ok(html.includes(`UNIQUE-MAT-${index}-END`));
-  assert.ok(html.includes('PHẦN-CUỐI-GHI-CHÚ'));
-  assert.ok(html.includes('Trang 4 / 4'));
-});
-test('the A4 production order sheet lists every line and material with signatures and no unit conversion', async () => {
-  const b = backend();
-  await b.manage(draft({ printTemplate: { id: 'production_order', version: 1 } }));
-  const print = loader()('src/features/production/model/productionPrint.ts');
   const order = b.order();
-  assert.deepEqual(order.printTemplate, { id: 'production_order', version: 1 });
-  const html = print.productionPrintHtml({
-    ...order,
-    technicalNotes: 'Bế sát mép',
-    lines: [
-      { ...order.lines[0], productCode: 'TP-AQUA-001', unit: 'cái', quantity: 10000 },
-      { ...order.lines[0], productCode: 'TP-AQUA-002', unit: 'cái', quantity: 20000 }
-    ]
-  });
+  const lines = Array.from({ length: 13 }, (_, index) => ({
+    ...order.lines[0],
+    productCode: `UNIQUE-LINE-${index}-END`,
+    unit: 'cái',
+    quantity: 1000
+  }));
+  const materials = Array.from({ length: 11 }, (_, index) => ({
+    ...order.materials[0],
+    code: `UNIQUE-MAT-${index}-END`
+  }));
+  const notes = 'Nội dung dài '.repeat(150) + 'PHẦN-CUỐI-GHI-CHÚ';
+  const sheets = ['white_label', 'standard', 'production_order'].map(id =>
+    print.productionPrintHtml({
+      ...order,
+      printTemplate: { id, version: 1 },
+      technicalNotes: 'Bế sát mép',
+      lines,
+      materials,
+      notes
+    })
+  );
+  assert.equal(new Set(sheets).size, 1, 'the saved template no longer picks a layout');
+  const html = sheets[0];
   for (const label of [
+    'CÔNG TY TNHH SẢN XUẤT VÀ CÔNG NGHỆ SUNFLOWER',
     'LỆNH SẢN XUẤT',
-    'Ngày ban hành',
-    'TP-AQUA-001',
-    'TP-AQUA-002',
-    '30.000',
+    order.lsxCode,
+    '13.000',
     'Vật tư dự kiến sử dụng',
     'SL lĩnh thực tế',
     'Bế sát mép',
+    'PHẦN-CUỐI-GHI-CHÚ',
     'Người lập lệnh',
-    'Giám đốc sản xuất',
-    'Trưởng phòng KHSX',
-    'KHÔNG DÙNG ĐỂ TRIỂN KHAI'
+    'Người chạy máy',
+    'Thủ kho',
+    'Bình thường'
   ])
     assert.ok(html.includes(label), label);
+  for (let index = 0; index < 13; index++) assert.ok(html.includes(`UNIQUE-LINE-${index}-END`));
+  for (let index = 0; index < 11; index++) assert.ok(html.includes(`UNIQUE-MAT-${index}-END`));
+  assert.match(html, /Địa chỉ: …/, 'an address the company has not supplied prints blank');
+  assert.doesNotMatch(html, /#0a8a3a/, 'the green white-label layout is gone');
+  assert.match(html, /\.sheet-company b,h2\{color:#000\}/, 'the shared blue accents are overridden to black');
+  assert.match(html, /th\{background:none/, 'table headers carry no fill');
+  assert.doesNotMatch(html, /KHÔNG DÙNG ĐỂ TRIỂN KHAI/, 'a saved order is effective at once');
+  assert.match(print.productionPrintHtml({ ...order, status: 'cancelled' }), /Đã xóa — KHÔNG DÙNG ĐỂ TRIỂN KHAI/);
   const mixedUnits = print.productionPrintHtml({
     ...order,
     lines: [
@@ -1178,8 +1138,14 @@ test('the A4 production order sheet lists every line and material with signature
     ]
   });
   assert.match(mixedUnits, /Tổng cộng<\/td><td class="num"><\/td>/, 'cái and cuộn are never added together');
-  const unsafe = print.productionPrintHtml({ ...order, notes: '<script>alert(1)</script>' });
+  const unsafe = print.productionPrintHtml({
+    ...order,
+    lsxCode: '<script>alert(1)</script>',
+    notes: '<img onerror="evil">'
+  });
   assert.ok(!unsafe.includes('<script>alert'));
+  assert.ok(!unsafe.includes('<img onerror'));
+  assert.equal(JSON.stringify(b.order()), JSON.stringify(order), 'printing never writes the order');
 });
 test('read-only machine subscriptions do not initialize machine records for accounting', () => {
   let writes = 0;
@@ -1197,7 +1163,7 @@ test('read-only machine subscriptions do not initialize machine records for acco
   service.subscribeMachines(() => {}, false);
   assert.equal(writes, 0);
 });
-test('accountant UI exposes only own draft editing and keeps released/running operations hidden', async () => {
+test('the order detail offers Xuất, Chỉnh sửa and Xóa until production starts, with no approval step', async () => {
   const b = backend();
   await b.manage(draft(), accountant);
   const Component = loader({
@@ -1215,16 +1181,15 @@ test('accountant UI exposes only own draft editing and keeps released/running op
         initialSelectedId: order.id
       })
     );
-  assert.match(html(b.order()), /Sửa nháp/);
-  assert.match(html(b.order()), /Gửi duyệt/);
-  assert.doesNotMatch(html({ ...b.order(), createdById: 'another-user' }), /Sửa nháp|Gửi duyệt/);
-  for (const status of ['draft', 'pending_approval', 'released', 'producing']) {
-    assert.doesNotMatch(
-      html({ ...b.order(), status }),
-      /Hủy lệnh|Trả về nháp|Duyệt &amp; phát hành|Bắt đầu sản xuất|Xác nhận nghiệm thu/
-    );
+  for (const order of [b.order(), { ...b.order(), createdById: 'another-user' }, { ...b.order(), status: 'draft' }]) {
+    const detail = html(order);
+    for (const label of ['Xuất lệnh sản xuất', 'Chỉnh sửa', 'Xóa', 'Bắt đầu sản xuất'])
+      assert.ok(detail.includes(label), label);
+    assert.doesNotMatch(detail, /Gửi duyệt|Trả về nháp|Duyệt &amp; phát hành|Sửa nháp|Mẫu phiếu/);
   }
-  assert.match(html({ ...b.order(), status: 'released' }), /Xuất lệnh sản xuất/);
+  const running = html({ ...b.order(), status: 'producing' });
+  assert.doesNotMatch(running, />Chỉnh sửa<|>Xóa<|Bắt đầu sản xuất/);
+  assert.match(running, /Xác nhận nghiệm thu/);
 });
 
 test('LSX editor puts the back button first, drops the subtitle and the detail view exports a PDF', () => {
@@ -1315,8 +1280,6 @@ test('QC on a multi-PO order ships each PO only when its own lines are fully pro
       ]
     })
   );
-  await b.action('submit');
-  await b.action('release');
   await b.action('start');
   const byItem = b.order().lines.map(line => ({ itemId: line.itemId, goodQuantity: line.quantity, rejectQuantity: 0 }));
   await assert.rejects(
@@ -1469,82 +1432,6 @@ test('every customer with an order is listed; orders and lines that cannot be pl
   assert.equal(selectableLines(order('PO-01')).length, 0);
 });
 
-test('the company white-label sheet v2 lists the PO of each line and keeps hand-filled areas blank', () => {
-  const { productionPrintHtml } = loader()('src/features/production/model/productionPrint.ts');
-  const order = {
-    id: 'command9',
-    lsxCode: 'LSX-20261027-0001',
-    productionOrderVersion: 2,
-    revision: 1,
-    status: 'released',
-    poId: 'po1',
-    poIds: ['po1', 'po2'],
-    poCode: 'PO-01, PO-02',
-    poCodes: ['PO-01', 'PO-02'],
-    customerName: 'Công ty A <script>',
-    customerCode: 'DS THÁI NGUYÊN',
-    priority: 'urgent',
-    deliveryDeadline: '2026-10-30',
-    createdAt: '2026-10-27T03:00:00Z',
-    createdBy: 'Kế toán',
-    operatorName: 'Thợ máy',
-    machineName: 'Máy 01',
-    shift: 'Ca sáng',
-    notes: 'KHÁCH KHÓ TÍNH, QA kỹ tem',
-    printTemplate: { id: 'white_label', version: 2 },
-    materials: [],
-    lines: [
-      {
-        itemId: 'roll',
-        poId: 'po2',
-        poCode: 'PO-02',
-        lineId: 'po2__roll',
-        productCode: 'TM01',
-        productName: 'Tem cuộn',
-        unit: 'cuộn',
-        quantity: 20,
-        specification: '',
-        material: '',
-        image: '',
-        specifications: {
-          width: 90,
-          height: 120,
-          metersPerRoll: 123,
-          qtyPerRoll: 1000,
-          dieCut: 'R1.5',
-          perforated: 'Có răng cưa xé',
-          coreType: 'Lõi nhựa',
-          core: '76mm',
-          paperCode: 'KP0738'
-        },
-        printDetails: { materialWidth: '96', priority: '' }
-      }
-    ]
-  };
-  const html = productionPrintHtml(order);
-  for (const text of [
-    'PHIẾU LỆNH SẢN XUẤT TEM TRẮNG',
-    'PO-02',
-    'PO-01, PO-02',
-    'R90 × D120 mm',
-    '123 m',
-    'R1.5',
-    'Lõi nhựa 76mm',
-    'KP0738',
-    'Khổ 96 mm',
-    'RẤT GẤP',
-    'NVL THỪA / THIẾU',
-    'XÁC NHẬN KHO CẤP + NHẬN NVL',
-    'KHÁCH KHÓ TÍNH'
-  ])
-    assert.ok(html.includes(text), text);
-  assert.match(html, /<i class="on"><\/i>Gấp/);
-  assert.ok(!html.includes('<script>'), 'values are escaped');
-  assert.ok(
-    !productionPrintHtml({ ...order, printTemplate: { id: 'white_label', version: 1 } }).includes('Mẫu tem trắng v2')
-  );
-});
-
 test('completed LSX with shortfall shows shortfall actions and request_materials creates procurement_requests without payables', async () => {
   const b = backend();
   // QC needs one result per LSX line, so the order carries both PO lines the results below cover.
@@ -1556,8 +1443,6 @@ test('completed LSX with shortfall shows shortfall actions and request_materials
       ]
     })
   );
-  await b.action('submit');
-  await b.action('release');
   await b.action('start');
   await b.action('complete', 'command1', {
     results: [
@@ -1670,8 +1555,9 @@ test('before completion purchasing is asked only for the NVL shortage against cu
   );
 });
 
-test('the LSX header is a compact voucher form that folds to one summary line', () => {
+test('the LSX header is a compact voucher form with Chọn hàng beside the customers and four priorities', () => {
   const patches = [];
+  let picked = 0;
   const values = {
     deliveryDeadline: '2026-06-10',
     plannedStartDate: '',
@@ -1680,7 +1566,6 @@ test('the LSX header is a compact voucher form that folds to one summary line', 
     machineId: 'machine1',
     operatorId: '',
     shift: 'Ca sáng',
-    printTemplate: { id: 'white_label', version: 2 },
     technicalNotes: '',
     notes: ''
   };
@@ -1693,16 +1578,18 @@ test('the LSX header is a compact voucher form that folds to one summary line', 
       machines: [{ id: 'machine1', code: 'M01', name: 'Máy in' }],
       operators: [],
       onChange: patch => patches.push(patch),
-      onTemplateChange() {}
+      onPickLines: () => picked++
     }
   );
-  let tree = render();
+  const tree = render();
   assert.deepEqual(
     nodes(tree)
       .filter(node => node.type === 'legend')
       .map(node => node.props.children),
-    ['Đơn hàng & khách', 'Kế hoạch sản xuất', 'Phiếu & ghi chú']
+    ['Đơn hàng & khách', 'Kế hoạch sản xuất', 'Ghi chú']
   );
+  assert.ok(!nodes(tree).some(node => node.type?.name === 'IconButton'), 'the header no longer folds');
+  assert.doesNotMatch(JSON.stringify(nodes(tree).map(node => node.props?.children)), /Mẫu phiếu/);
   const chips = nodes(tree).filter(node =>
     String(node.props?.className || '')
       .split(' ')
@@ -1713,22 +1600,25 @@ test('the LSX header is a compact voucher form that folds to one summary line', 
     ['Công ty A', 'Công ty B', '+1'],
     'two customers show as chips and the rest as a count'
   );
-  const radio = value => nodes(tree).find(node => node.type === 'input' && node.props.value === value);
-  assert.equal(radio('normal').props.checked, true);
-  radio('urgent').props.onChange();
+  const customerField = nodes(tree).find(
+    node =>
+      node.props?.className === 'lsx-inline-field' && nodes(node).some(child => child.props?.children === 'Khách hàng')
+  );
+  nodes(customerField)
+    .find(node => node.type === 'button' && node.props.children === 'Chọn hàng')
+    .props.onClick();
+  assert.equal(picked, 1);
+  const priority = nodes(tree).find(node => node.type === 'select' && node.props.value === 'normal');
+  assert.deepEqual(
+    nodes(priority)
+      .filter(node => node.type === 'option')
+      .map(node => node.props.children),
+    ['Cực gấp', 'Gấp', 'Bình thường', 'Thong thả']
+  );
+  priority.props.onChange({ target: { value: 'low' } });
   const end = nodes(tree).find(node => node.props?.['aria-label'] === 'Hoàn thành dự kiến');
   end.props.onChange({ target: { value: '2026-06-08' } });
-  assert.deepEqual(patches, [{ priority: 'urgent' }, { plannedEndDate: '2026-06-08' }]);
-  nodes(tree)
-    .find(node => node.props?.label === 'Thu gọn thông tin chung')
-    .props.onClick();
-  tree = render();
-  assert.ok(!nodes(tree).some(node => node.type === 'legend'), 'folded, the fields are hidden');
-  const summary = nodes(tree).find(node => node.props?.className === 'lsx-general-summary');
-  assert.equal(
-    summary.props.children,
-    'Công ty A, Công ty B, Công ty C · Cần 10/6/2026 · Bình thường · Máy M01 · Ca sáng'
-  );
+  assert.deepEqual(patches, [{ priority: 'low' }, { plannedEndDate: '2026-06-08' }]);
 });
 
 test('D-MA1: order and LSX codes are PREFIX-YYMM-NNNN in Vietnamese time, numbered per month', async () => {
@@ -1775,8 +1665,6 @@ test('D-MA1 batch 3: stock vouchers are PN or PX and LSX material requests are Y
   const month = loader()('src/shared/utils/documentCodes.ts').codeMonth();
   const b = backend();
   await b.manage(draft({ materials: [{ code: 'TAY-01', name: 'Giấy', unit: 'm', quantity: 5 }] }));
-  await b.action('submit');
-  await b.action('release');
   await b.action('start');
   await b.action('complete', 'command1', {
     results: [{ itemId: 'roll', goodQuantity: 30, rejectQuantity: 0 }],
@@ -1808,7 +1696,61 @@ test('LSX detail keeps the code alone in the header and splits the content into 
   for (const tab of ['Mặt hàng', 'Vật tư', 'Thành phẩm', 'Lịch sử'])
     assert.match(workspace, new RegExp('role="tabpanel"\\s+aria-label="' + tab + '"\\s+hidden='));
   assert.match(workspace, /data-erp-table-layout="content"/, 'detail tables follow their content height');
-  assert.match(workspace, /className="btn btn-danger"[\s\S]{0,80}?transition\('cancel'\)/);
+  assert.match(workspace, /className="btn btn-danger"[\s\S]{0,80}?remove\(selected\)/);
+  assert.match(workspace, /<LsxDetailLinesTable order=\{selected\} \/>/);
+  assert.doesNotMatch(workspace, /ChevronDown|ChevronRight|expandedLines/, 'no rows fold open');
   const css = readSource('src/features/production/components/ProductionOrders.css');
   assert.match(css, /\.lsx-detail-panels > section\[hidden\]\s*\{\s*display: none;/);
+});
+test('orders use the four priorities of the design schedule; unknown values fall back to Bình thường', async () => {
+  assert.deepEqual(model.PRODUCTION_PRIORITIES, {
+    urgent: 'Cực gấp',
+    high: 'Gấp',
+    normal: 'Bình thường',
+    low: 'Thong thả'
+  });
+  const b = backend();
+  await b.manage(
+    draft({ priority: 'low', lines: [{ itemId: 'roll', quantity: 40, printDetails: { priority: 'low' } }] })
+  );
+  assert.equal(b.order().priority, 'low');
+  assert.equal(b.order().lines[0].printDetails.priority, 'low');
+  await b.action('save', 'command1', draftFields({ priority: 'rush' }));
+  assert.equal(b.order().priority, 'normal');
+  await assert.rejects(
+    backend().manage(draft({ lines: [{ itemId: 'roll', quantity: 1, printDetails: { priority: 'rush' } }] })),
+    /Ưu tiên của dòng/
+  );
+});
+test('production tables share the standard column tools, and the machine list drops the catalogue banner', () => {
+  const { readSource } = require('./helpers/loadTs.cjs');
+  for (const [file, layoutId] of [
+    ['src/features/production/components/ProductionOrderList.tsx', 'production-orders'],
+    ['src/features/production/components/LsxDetailTables.tsx', 'production-order-lines'],
+    ['src/features/production/components/LsxDetailTables.tsx', 'production-order-materials'],
+    ['src/features/production/components/productionOrderEditor/LsxItemsTable.tsx', 'production-draft-items'],
+    ['src/features/production/components/productionOrderEditor/LsxMaterialsTable.tsx', 'production-draft-materials'],
+    ['src/features/production/components/MachineManagement.tsx', 'production-machine-catalog'],
+    ['src/features/inventory/components/DieCatalogWorkspace.tsx', 'die-catalog']
+  ]) {
+    const source = readSource(file);
+    assert.match(source, new RegExp(String.raw`useStandardTableColumns\(\{\s*layoutId: '${layoutId}'`), file);
+    assert.match(source, /<ReorderableTableCells\s+order=\{table\.orderedColumnIds\}\s+getHeaderProps=/, file);
+    assert.match(source, /<TableColumnCustomizer \{\.\.\.table\.customizerProps\} \/>/, file);
+    assert.match(source, /table\.canEditColumns && <TableColumnsButton/, file);
+  }
+  for (const file of [
+    'src/features/production/components/ProductionOrderList.tsx',
+    'src/features/production/components/LsxDetailTables.tsx',
+    'src/features/production/components/MachineManagement.tsx',
+    'src/features/inventory/components/DieCatalogWorkspace.tsx'
+  ])
+    assert.match(readSource(file), /<DataFilterButton/, file);
+  const machines = readSource('src/features/production/components/MachineManagement.tsx');
+  assert.doesNotMatch(machines, /chưa khớp danh mục máy|machine-alert/);
+  for (const file of [
+    'src/features/production/components/productionOrderEditor/LsxItemsTable.tsx',
+    'src/features/production/components/productionOrderEditor/LsxGeneralInfo.tsx'
+  ])
+    assert.doesNotMatch(readSource(file), /ChevronDown|ChevronUp|setExpanded|setCollapsed/, file);
 });

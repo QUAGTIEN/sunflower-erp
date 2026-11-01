@@ -1562,11 +1562,6 @@ input[type='checkbox']:disabled {
   min-width: 0;
 }
 
-.app-main
-  [data-erp-table-text='single-line']
-  .machine-workspace
-  table
-  :is(th, td):is(:nth-child(4), :nth-child(5), :nth-child(6)),
 .app-main [data-erp-table-text='single-line'] .lsx-lines :is(th, td):is(:nth-child(5), :nth-child(6), :nth-child(7)) {
   text-align: right;
   font-variant-numeric: tabular-nums;

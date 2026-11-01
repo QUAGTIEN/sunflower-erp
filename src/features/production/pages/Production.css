@@ -109,6 +109,26 @@
   font-size: 12px;
 }
 
+.machine-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.machine-toolbar > input[type='search'] {
+  width: auto;
+  flex: 1 1 320px;
+  min-width: 220px;
+  max-width: 520px;
+}
+
+.machine-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .machine-section-heading {
   display: flex;
   align-items: center;

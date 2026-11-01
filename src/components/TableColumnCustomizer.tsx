@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, Settings2, X } from 'lucide-react';
 import { useTableColumnLayouts } from '@/context/TableColumnLayoutContext';
 import './TableColumnCustomizer.css';
 
@@ -165,3 +165,16 @@ export const TableColumnCustomizer: React.FC<TableColumnCustomizerProps> = props
     <TableColumnCustomizerDialog key={JSON.stringify(props.selectedIds)} {...props} />
   ) : null;
 };
+
+/** Toolbar button that opens the column customizer, styled like the filter button beside it. */
+export const TableColumnsButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <button
+    type="button"
+    className="data-filter-button"
+    title="Tùy chỉnh cột"
+    aria-label="Tùy chỉnh cột"
+    onClick={onClick}
+  >
+    <Settings2 size={16} />
+  </button>
+);

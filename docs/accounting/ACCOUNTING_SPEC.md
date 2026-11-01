@@ -87,7 +87,7 @@ Chấp nhận dấu phẩy, chấm phẩy hoặc tab; dấu nháy CSV và ghi ch
 ### Kế toán lập LSX
 
 - Kế toán đang hoạt động, có trang Accounting hoặc Production được vào Sản xuất. Hồ sơ cũ chỉ có Accounting được nhận quyền hiệu lực này mà không sửa dữ liệu users. Màn hình quản trị người dùng giải thích quyền kế thừa.
-- Kế toán tạo nháp từ PO, sửa và gửi duyệt **nháp do chính mình lập**, xem/in lệnh. Không phát hành, trả về nháp, hủy lệnh, bắt đầu chạy máy, QC, quản lý máy hoặc sửa luồng lệnh cũ. Admin/producer giữ quyền xử lý hiện có.
+- Từ D-LSX3 (02/11/2026) không còn bước duyệt; trong LSX kế toán như Admin: lập, sửa, xóa, bắt đầu, nghiệm thu mọi lệnh, xem/in lệnh. Kế toán không quản lý máy hoặc sửa luồng lệnh cũ.
 - UI và API cùng kiểm tra. API lấy vai trò/người thực hiện từ tài khoản xác thực, không tin nội dung client. Quyền ghi trực tiếp Firestore không mở rộng; LSX mới vẫn chỉ ghi qua transaction máy chủ.
 - Mở danh sách máy với quyền chỉ đọc không khởi tạo các máy mặc định trong Firestore.
 
@@ -101,6 +101,8 @@ Chấp nhận dấu phẩy, chấm phẩy hoặc tab; dấu nháy CSV và ghi ch
 - Đổi danh mục/liên kết sau gửi duyệt yêu cầu trả về nháp, lưu lại rồi duyệt. Sau phát hành, lệnh tiếp tục dùng snapshot đã lưu, không tự thay từ danh mục hiện tại. Không backfill hoặc ghi đè PO/LSX lịch sử.
 
 ### Mẫu in tem trắng
+
+Đã thay bởi phiếu lệnh sản xuất chung đen trắng cho mọi lệnh (D-LSX3, 02/11/2026; xem `docs/modules/PRODUCTION_ORDERS.md`). Mốc "phát hành" bên dưới nay là mốc bắt đầu sản xuất.
 
 - Ảnh mẫu người dùng gửi ngày 22/10/2026 là đầu vào cho **Tem trắng — mẫu công ty v1** (`printTemplate: {id: white_label, version: 1}`). Không nhập mã/tên/số lượng ví dụ trên ảnh vào dữ liệu thật.
 - Phiếu chung hiện có (`standard`, v1) vẫn là mặc định; lệnh thiếu printTemplate tiếp tục dùng phiếu chung. Người lập chọn mẫu khi tạo/sửa nháp. Không tự suy mẫu theo tên sản phẩm, không cung cấp HTML mẫu tùy ý.

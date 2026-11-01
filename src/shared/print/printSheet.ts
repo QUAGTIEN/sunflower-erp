@@ -148,7 +148,13 @@ h2{margin:10px 0 6px;font-size:12px;color:#1e3a8a;text-transform:uppercase}
 @media print{th,tfoot td,.sheet-grand-total td,.sheet-header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 `;
 
-export function printDocumentHtml(title: string, body: string, orientation: 'landscape' | 'portrait' = 'landscape') {
+/** `themeCss` is appended after the shared CSS so one sheet can restyle it without forking the layout. */
+export function printDocumentHtml(
+  title: string,
+  body: string,
+  orientation: 'landscape' | 'portrait' = 'landscape',
+  themeCss = ''
+) {
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
-  <style>${PRINT_SHEET_CSS.replace('__ORIENTATION__', orientation)}</style></head><body>${body}</body></html>`;
+  <style>${PRINT_SHEET_CSS.replace('__ORIENTATION__', orientation)}${themeCss}</style></head><body>${body}</body></html>`;
 }

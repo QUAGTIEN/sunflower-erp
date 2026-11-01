@@ -2,14 +2,24 @@ import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@
 import React, { useMemo, useState } from 'react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { DataTablePagination } from '@/components/DataTablePagination';
+import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '@/components/DataWorkspaceFilters';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { RowActionMenu } from '@/components/RowActionMenu';
+import { TableColumnCustomizer, TableColumnsButton, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
+import { useStandardTableColumns } from '@/hooks/useStandardTableColumns';
 import {
   getMachineCommands,
-  getMachineForAssignment,
   getMachineRuntimeStatus,
   getMachineStatusLabel,
   isActiveProductionCommand,
+  MachineRuntimeStatus,
   MachineStatus,
   ProductionCommandLike,
   ProductionMachine
@@ -45,6 +55,22 @@ const EMPTY_FORM: MachineFormState = {
   notes: ''
 };
 
+const MACHINE_COLUMNS: TableColumnOption[] = [
+  { id: 'code', label: 'Mã máy', required: true },
+  { id: 'name', label: 'Tên máy', required: true },
+  { id: 'type', label: 'Loại máy' },
+  { id: 'colorCount', label: 'Số màu' },
+  { id: 'maxWidth', label: 'Khổ tối đa' },
+  { id: 'capacity', label: 'Năng suất tham khảo' },
+  { id: 'materials', label: 'Vật liệu phù hợp' },
+  { id: 'status', label: 'Trạng thái' },
+  { id: 'commands', label: 'LSX đang phân công' },
+  { id: 'operators', label: 'Ca / người vận hành' },
+  { id: 'deadlines', label: 'Hạn giao' },
+  { id: 'actions', label: 'Thao tác', required: true }
+];
+const LOCKED_START = ['code'];
+const LOCKED_END = ['actions'];
 const statusClassName = (status: string): string => `machine-status machine-status--${status}`;
 
 const formatDate = (value: unknown): string => {
@@ -58,6 +84,16 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
   const [editingMachine, setEditingMachine] = useState<ProductionMachine | null>(null);
   const [form, setForm] = useState<MachineFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilters, setStatusFilters] = useState<MachineRuntimeStatus[]>([]);
+  const [typeFilters, setTypeFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const table = useStandardTableColumns({
+    layoutId: 'production-machine-catalog',
+    columns: MACHINE_COLUMNS,
+    lockedStartIds: LOCKED_START,
+    lockedEndIds: LOCKED_END
+  });
 
   const activeCommands = useMemo(() => productionCommands.filter(isActiveProductionCommand), [productionCommands]);
 
@@ -73,19 +109,36 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
       }),
     [machines, activeCommands]
   );
-  const machinePagination = useDataTablePagination(machineRows);
-
-  const unassignedCommands = useMemo(
-    () => activeCommands.filter(command => !getMachineForAssignment(machines, command.machineId)),
-    [activeCommands, machines]
-  );
-  const unassignedMachineNames = useMemo(
-    () =>
-      Array.from(
-        new Set(unassignedCommands.map(command => String(command.machineId || '').trim() || 'Chưa phân công'))
-      ),
-    [unassignedCommands]
-  );
+  const keyword = search.trim().toLocaleLowerCase('vi');
+  const filteredRows = machineRows
+    .filter(row => !statusFilters.length || statusFilters.includes(row.runtimeStatus))
+    .filter(row => !typeFilters.length || typeFilters.includes(row.machine.type))
+    .filter(({ machine, commands }) =>
+      [
+        machine.code,
+        machine.name,
+        machine.type,
+        machine.supportedMaterials.join(' '),
+        ...commands.map(command => command.lsxCode)
+      ]
+        .join(' ')
+        .toLocaleLowerCase('vi')
+        .includes(keyword)
+    );
+  const machinePagination = useDataTablePagination(filteredRows);
+  const statusOptions = [...new Set(machineRows.map(row => row.runtimeStatus))].map(value => ({
+    value,
+    label: getMachineStatusLabel(value)
+  }));
+  const typeOptions = [...new Set(machines.map(machine => machine.type).filter(Boolean))].map(value => ({
+    value,
+    label: value
+  }));
+  const activeFilterCount = statusFilters.length + typeFilters.length;
+  const resetFilters = () => {
+    setStatusFilters([]);
+    setTypeFilters([]);
+  };
 
   const openCreateModal = () => {
     setEditingMachine(null);
@@ -215,14 +268,6 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
           </div>
         </div>
       </div>
-      {unassignedCommands.length > 0 && (
-        <div className="machine-alert" role="status">
-          <div>
-            <strong>{unassignedCommands.length} LSX chưa khớp danh mục máy.</strong>
-            <span>{unassignedMachineNames.join(', ')}</span>
-          </div>
-        </div>
-      )}
       <div className="card">
         <div className="machine-section-heading">
           <div>
@@ -235,87 +280,140 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
             </button>
           )}
         </div>
+        <div className="machine-toolbar">
+          <input
+            type="search"
+            aria-label="Tìm máy"
+            placeholder="Tìm mã máy, tên máy, loại máy, vật liệu, số LSX…"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+          />
+          <DataFilterButton activeCount={activeFilterCount} open={showFilters} onClick={() => setShowFilters(true)} />
+          {table.canEditColumns && <TableColumnsButton onClick={table.openCustomizer} />}
+        </div>
+        <DataFilterChipBar
+          chips={[
+            ...statusFilters.map(value => ({
+              id: `status:${value}`,
+              label: getMachineStatusLabel(value),
+              onRemove: () => setStatusFilters(statusFilters.filter(item => item !== value))
+            })),
+            ...typeFilters.map(value => ({
+              id: `type:${value}`,
+              label: value,
+              onRemove: () => setTypeFilters(typeFilters.filter(item => item !== value))
+            }))
+          ]}
+          onClear={resetFilters}
+        />
         <div className="table-container erp-primary-data-table">
-          <table data-resize-key="production-machine-catalog">
+          <table className="has-dynamic-columns" data-resize-key="production-machine-catalog">
             <thead>
               <tr>
-                <th>Mã máy</th>
-                <th>Tên máy</th>
-                <th>Loại máy</th>
-                <th>Số màu</th>
-                <th>Khổ tối đa</th>
-                <th>Năng suất tham khảo</th>
-                <th>Vật liệu phù hợp</th>
-                <th>Trạng thái</th>
-                <th>LSX đang phân công</th>
-                <th>Ca / người vận hành</th>
-                <th>Hạn giao</th>
-                {canManage && <th>Thao tác</th>}
+                <ReorderableTableCells
+                  order={table.orderedColumnIds}
+                  getHeaderProps={table.getHeaderProps}
+                  labels={table.labels}
+                >
+                  <th key="code">Mã máy</th>
+                  <th key="name">Tên máy</th>
+                  <th key="type">Loại máy</th>
+                  <th key="colorCount" className="machine-number">
+                    Số màu
+                  </th>
+                  <th key="maxWidth" className="machine-number">
+                    Khổ tối đa
+                  </th>
+                  <th key="capacity" className="machine-number">
+                    Năng suất tham khảo
+                  </th>
+                  <th key="materials">Vật liệu phù hợp</th>
+                  <th key="status">Trạng thái</th>
+                  <th key="commands">LSX đang phân công</th>
+                  <th key="operators">Ca / người vận hành</th>
+                  <th key="deadlines">Hạn giao</th>
+                  <th key="actions" aria-label="Thao tác" />
+                </ReorderableTableCells>
               </tr>
             </thead>
             <tbody>
               {machinePagination.rows.map(({ machine, commands, runtimeStatus }) => (
                 <tr key={machine.id}>
-                  <td>
-                    <strong>{machine.code}</strong>
-                  </td>
-                  <td title={[machine.name, machine.notes].filter(Boolean).join(' · ')}>
-                    <strong>{machine.name}</strong>
-                  </td>
-                  <td>{machine.type}</td>
-                  <td>{machine.colorCount || '—'}</td>
-                  <td>{machine.maxWidthMm ? `${machine.maxWidthMm} mm` : '—'}</td>
-                  <td>{machine.capacityPerHour ? `${machine.capacityPerHour.toLocaleString('vi-VN')} sp/giờ` : '—'}</td>
-                  <td>{machine.supportedMaterials.join(', ') || 'Chưa khai báo'}</td>
-                  <td>
-                    <span className={statusClassName(runtimeStatus)}>{getMachineStatusLabel(runtimeStatus)}</span>
-                  </td>
-                  <td
-                    title={commands
-                      .map(command =>
-                        [command.lsxCode, command.poCode, command.productNameToBeCut || command.productName]
-                          .filter(Boolean)
-                          .join(' · ')
-                      )
-                      .join('; ')}
-                  >
-                    {commands.map(command => command.lsxCode).join(', ') || 'Chưa có lệnh'}
-                  </td>
-                  <td
-                    title={commands
-                      .map(command =>
-                        [command.shift || 'Chưa đặt ca', command.operatorName || 'Chưa phân công'].join(' / ')
-                      )
-                      .join('; ')}
-                  >
-                    {commands
-                      .map(command =>
-                        [command.shift || 'Chưa đặt ca', command.operatorName || 'Chưa phân công'].join(' / ')
-                      )
-                      .join('; ') || '—'}
-                  </td>
-                  <td title={commands.map(command => formatDate(command.deliveryDeadline)).join('; ')}>
-                    {commands.map(command => formatDate(command.deliveryDeadline)).join('; ') || '—'}
-                  </td>
-                  {canManage && (
-                    <td>
-                      <RowActionMenu
-                        label={`Thao tác ${machine.name}`}
-                        actions={[
-                          { label: 'Chỉnh sửa máy', onSelect: () => openEditModal(machine) },
-                          ...(machine.status !== 'inactive'
-                            ? [{ label: 'Ngừng sử dụng', onSelect: () => handleDeactivate(machine), danger: true }]
-                            : [])
-                        ]}
-                      />
+                  <ReorderableTableCells order={table.orderedColumnIds} expandOverflowText={false}>
+                    <td key="code">
+                      <strong>{machine.code}</strong>
                     </td>
-                  )}
+                    <td key="name" title={[machine.name, machine.notes].filter(Boolean).join(' · ')}>
+                      <strong>{machine.name}</strong>
+                    </td>
+                    <td key="type">{machine.type}</td>
+                    <td key="colorCount" className="machine-number">
+                      {machine.colorCount || '—'}
+                    </td>
+                    <td key="maxWidth" className="machine-number">
+                      {machine.maxWidthMm ? `${machine.maxWidthMm} mm` : '—'}
+                    </td>
+                    <td key="capacity" className="machine-number">
+                      {machine.capacityPerHour ? `${machine.capacityPerHour.toLocaleString('vi-VN')} sp/giờ` : '—'}
+                    </td>
+                    <td key="materials">{machine.supportedMaterials.join(', ') || 'Chưa khai báo'}</td>
+                    <td key="status">
+                      <span className={statusClassName(runtimeStatus)}>{getMachineStatusLabel(runtimeStatus)}</span>
+                    </td>
+                    <td
+                      key="commands"
+                      title={commands
+                        .map(command =>
+                          [command.lsxCode, command.poCode, command.productNameToBeCut || command.productName]
+                            .filter(Boolean)
+                            .join(' · ')
+                        )
+                        .join('; ')}
+                    >
+                      {commands.map(command => command.lsxCode).join(', ') || 'Chưa có lệnh'}
+                    </td>
+                    <td
+                      key="operators"
+                      title={commands
+                        .map(command =>
+                          [command.shift || 'Chưa đặt ca', command.operatorName || 'Chưa phân công'].join(' / ')
+                        )
+                        .join('; ')}
+                    >
+                      {commands
+                        .map(command =>
+                          [command.shift || 'Chưa đặt ca', command.operatorName || 'Chưa phân công'].join(' / ')
+                        )
+                        .join('; ') || '—'}
+                    </td>
+                    <td
+                      key="deadlines"
+                      title={commands.map(command => formatDate(command.deliveryDeadline)).join('; ')}
+                    >
+                      {commands.map(command => formatDate(command.deliveryDeadline)).join('; ') || '—'}
+                    </td>
+                    <td key="actions">
+                      {canManage && (
+                        <RowActionMenu
+                          label={`Thao tác ${machine.name}`}
+                          actions={[
+                            { label: 'Chỉnh sửa máy', onSelect: () => openEditModal(machine) },
+                            ...(machine.status !== 'inactive'
+                              ? [{ label: 'Ngừng sử dụng', onSelect: () => handleDeactivate(machine), danger: true }]
+                              : [])
+                          ]}
+                        />
+                      )}
+                    </td>
+                  </ReorderableTableCells>
                 </tr>
               ))}
-              {!machineRows.length && (
+              {!filteredRows.length && (
                 <tr>
-                  <td className="machine-table-empty" colSpan={canManage ? 12 : 11}>
-                    Chưa có máy sản xuất. Thêm máy để bắt đầu phân công LSX.
+                  <td className="machine-table-empty" colSpan={table.orderedColumnIds.length}>
+                    {machineRows.length
+                      ? 'Không có máy phù hợp từ khóa hoặc bộ lọc.'
+                      : 'Chưa có máy sản xuất. Thêm máy để bắt đầu phân công LSX.'}
                   </td>
                 </tr>
               )}
@@ -324,6 +422,26 @@ export const MachineManagement: React.FC<MachineManagementProps> = ({ machines, 
         </div>
         <DataTablePagination {...machinePagination.paginationProps} />
       </div>
+      <TableColumnCustomizer {...table.customizerProps} />
+      <DataFilterPanel
+        open={showFilters}
+        title="Lọc danh sách máy"
+        description="Lọc theo trạng thái và loại máy."
+        activeCount={activeFilterCount}
+        onClose={() => setShowFilters(false)}
+        onReset={resetFilters}
+      >
+        <DataFilterSection title="Trạng thái" selectedCount={statusFilters.length} defaultExpanded>
+          <DataFilterCheckboxGroup
+            options={statusOptions}
+            selectedValues={statusFilters}
+            onChange={values => setStatusFilters(values as MachineRuntimeStatus[])}
+          />
+        </DataFilterSection>
+        <DataFilterSection title="Loại máy" selectedCount={typeFilters.length}>
+          <DataFilterCheckboxGroup options={typeOptions} selectedValues={typeFilters} onChange={setTypeFilters} />
+        </DataFilterSection>
+      </DataFilterPanel>
 
       {showModal && (
         <div className="modal-overlay">

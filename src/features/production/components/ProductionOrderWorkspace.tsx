@@ -1,42 +1,30 @@
-import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react';
-import { ChevronDown, ChevronRight, Printer } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Printer } from 'lucide-react';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { RowActionMenu } from '@/components/RowActionMenu';
 import { PageBackButton } from '@/components/PageBackButton';
 import { IconButton } from '@/components/IconButton';
 import { ProductionMaterialLedger } from '@/features/inventory/components/ProductionMaterialLedger';
 import { ProductionGoodsLedger } from '@/features/inventory/components/ProductionGoodsLedger';
-import { DataTablePagination } from '@/components/DataTablePagination';
-import {
-  DataFilterButton,
-  DataFilterCheckboxGroup,
-  DataFilterChipBar,
-  DataFilterPanel,
-  DataFilterSection
-} from '@/components/DataWorkspaceFilters';
-import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
 import { registerNavigationGuard } from '@/shared/feedback/navigationGuard';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
-import { getCustomerProductSpecSummary } from '@/features/crm/model/customerProductCatalog';
-import type { ProductionMachine } from '../api/machineService';
+import { getMachineForAssignment, type ProductionMachine } from '../api/machineService';
 import {
   mutateProductionOrder,
   loadProductionDraftCatalog,
   type ProductionDraftCatalog
 } from '../api/productionOrderService';
 import {
-  canManageProduction,
   canDraftProduction,
-  canEditProductionDraft,
+  canEditProductionOrder,
   DEFAULT_PRINT_TEMPLATE,
   hasProductionAccess,
   lineKey,
   linePoId,
-  PRODUCTION_PRINT_TEMPLATES,
-  PRODUCTION_PRINT_VERSIONS,
   MATERIAL_SHORTAGE_STATUSES,
+  OPEN_PRODUCTION_STATUSES,
+  PRODUCTION_PRIORITIES,
   PRODUCTION_STATUSES,
   type CommandRecord,
   type PlannedMaterial,
@@ -56,6 +44,8 @@ import {
 } from './productionOrderEditor/draftLines';
 import { LsxGeneralInfo } from './productionOrderEditor/LsxGeneralInfo';
 import { LsxMaterialsTable } from './productionOrderEditor/LsxMaterialsTable';
+import { LsxDetailLinesTable, LsxDetailMaterialsTable } from './LsxDetailTables';
+import { ProductionOrderList } from './ProductionOrderList';
 import './ProductionOrders.css';
 
 interface Props {
@@ -98,38 +88,28 @@ const emptyDraft = (): Draft => ({
   notes: '',
   printTemplate: DEFAULT_PRINT_TEMPLATE
 });
-/** The template chosen in the editor; picking a template uses its latest layout version. */
-const latestTemplate = (id: ProductionPrintTemplate['id']): ProductionPrintTemplate => ({
-  id,
-  version: Math.max(...PRODUCTION_PRINT_VERSIONS[id]) as ProductionPrintTemplate['version']
-});
 const actionNames: Record<string, string> = {
-  create: 'Đã tạo LSX thành công',
-  save: 'Đã lưu thành công',
-  submit: 'Đã gửi duyệt LSX',
-  return: 'Đã trả về nháp',
-  release: 'Đã phát hành LSX',
+  create: 'Đã lập lệnh sản xuất',
+  save: 'Đã lưu lệnh sản xuất',
   start: 'Đã bắt đầu sản xuất',
   complete: 'Đã nghiệm thu LSX',
-  cancel: 'Đã hủy LSX',
+  cancel: 'Đã xóa lệnh sản xuất',
   request_materials: 'Đã tạo đề nghị mua thêm NVL',
   request_material_shortage: 'Đã gửi đề nghị mua NVL thiếu'
 };
 const historyNames: Record<string, string> = {
   create: 'Lập lệnh',
-  save: 'Lưu nháp',
+  save: 'Lưu lệnh',
   submit: 'Gửi duyệt',
   return: 'Trả về nháp',
   release: 'Duyệt và phát hành',
   start: 'Bắt đầu chạy máy',
   complete: 'Hoàn thành',
-  cancel: 'Hủy lệnh',
+  cancel: 'Xóa lệnh',
   qc: 'Nghiệm thu QC',
   request_materials: 'Đề nghị mua thêm NVL',
   request_material_shortage: 'Đề nghị mua NVL thiếu'
 };
-const LIST_STATUSES: Record<string, string> = { ...PRODUCTION_STATUSES, transfer_pending: 'Chờ duyệt bàn giao' };
-const PRIORITY_LABELS: Record<string, string> = { urgent: 'Gấp', high: 'Hơi gấp', normal: 'Bình thường' };
 const number = (value: unknown) => Number(value || 0).toLocaleString('vi-VN');
 const DETAIL_TABS = [
   { id: 'items', label: 'Mặt hàng' },
@@ -148,42 +128,6 @@ function SummaryValue({ value, empty, strong = false }: { value?: string; empty:
   );
 }
 
-/** Thông số đầy đủ của một dòng, mở từ bảng mặt hàng; phần dư / thiếu chỉ có sau nghiệm thu. */
-function LineSpecification({ line, completed }: { line: ProductionOrder['lines'][number]; completed: boolean }) {
-  const shortage = line.quantity - (line.goodQuantity ?? 0);
-  return (
-    <div className="lsx-line-spec">
-      <dl>
-        <div>
-          <dt>Mã nội bộ</dt>
-          <dd>{line.catalog?.code || 'Chưa liên kết'}</dd>
-        </div>
-        {getCustomerProductSpecSummary(line.specifications, line.productType).map(field => (
-          <div key={field.id}>
-            <dt>{field.label}</dt>
-            <dd>{field.value}</dd>
-          </div>
-        ))}
-        {completed && Number(line.surplusQuantity) > 0 && (
-          <div>
-            <dt>SL dư</dt>
-            <dd>{number(line.surplusQuantity)}</dd>
-          </div>
-        )}
-        {completed && shortage > 1e-8 && (
-          <div>
-            <dt>SL thiếu</dt>
-            <dd>
-              {number(shortage)} {line.unit}
-            </dd>
-          </div>
-        )}
-      </dl>
-      {line.image && <img src={line.image} alt={`Mẫu ${line.productName}`} />}
-    </div>
-  );
-}
-
 export function ProductionOrderWorkspace({
   pos,
   commands,
@@ -193,10 +137,6 @@ export function ProductionOrderWorkspace({
   initialSelectedId,
   onOpenLegacy
 }: Props) {
-  const [search, setSearch] = useState('');
-  const [statusFilters, setStatusFilters] = useState<string[]>([]);
-  const [orderTypeFilters, setOrderTypeFilters] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedId, setSelectedId] = useState(initialSelectedId || '');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -213,7 +153,6 @@ export function ProductionOrderWorkspace({
   const [catalogReload, setCatalogReload] = useState(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<{ orderId: string; tab: DetailTab }>({ orderId: '', tab: 'items' });
-  const [expandedLines, setExpandedLines] = useState<string[]>([]);
   const request = useRef({ payload: '', id: '' });
   const pending = useRef(false);
   useEffect(() => {
@@ -261,41 +200,17 @@ export function ProductionOrderWorkspace({
       window.removeEventListener('beforeunload', beforeUnload);
     };
   }, [draft, busy]);
-  const manager = canManageProduction(currentUser);
   const canCreate = canDraftProduction(currentUser);
   const visiblePOs = pos.filter(po => !po.deleted);
   const accessibleCommands = commands.filter(command => !command.deleted);
-  const legacyCount = accessibleCommands.filter(command => command.productionOrderVersion !== 2).length;
-  const statusOptions = Object.entries(LIST_STATUSES).map(([value, label]) => ({ value, label }));
-  const orderTypeOptions = [
-    { value: 'managed', label: 'Lệnh mới' },
-    { value: 'legacy', label: `Lệnh cũ${legacyCount ? ` (${legacyCount})` : ''}` }
-  ];
-  const activeFilterCount = statusFilters.length + orderTypeFilters.length;
-  const visible = accessibleCommands
-    .filter(
-      command =>
-        !orderTypeFilters.length ||
-        orderTypeFilters.includes(command.productionOrderVersion === 2 ? 'managed' : 'legacy')
-    )
-    .filter(command => !statusFilters.length || statusFilters.includes(String(command.status)))
-    .filter(command =>
-      `${command.lsxCode} ${command.poCode} ${command.customerName} ${command.operatorName} ${command.productNameToBeCut || command.productName || ''} ${(command.lines || []).map(line => `${line.productCode} ${line.productName}`).join(' ')}`
-        .toLocaleLowerCase('vi')
-        .includes(search.trim().toLocaleLowerCase('vi'))
-    )
-    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
-  const pagination = useDataTablePagination(visible);
+  const canChange = (command: CommandRecord) =>
+    command.productionOrderVersion === 2 && canEditProductionOrder(currentUser, command as ProductionOrder);
   const selected = commands.find(
     command => command.productionOrderVersion === 2 && command.id === selectedId && !command.deleted
   ) as ProductionOrder | undefined;
   const selectedPoCodes = selected ? (selected.poCodes?.length ? selected.poCodes.join(', ') : selected.poCode) : '';
   // Opening another order starts on its item list instead of the tab left open on the previous one.
   const activeDetailTab: DetailTab = selected && detailTab.orderId === selected.id ? detailTab.tab : 'items';
-  const toggleLineSpecification = (specId: string) =>
-    setExpandedLines(current =>
-      current.includes(specId) ? current.filter(item => item !== specId) : [...current, specId]
-    );
   // An order may mix customers (D-LSX2); the header lists those of the lines chosen so far.
   const draftCustomers = draft
     ? [
@@ -432,16 +347,17 @@ export function ProductionOrderWorkspace({
       }
     );
   };
-  const transition = async (action: string) => {
+  /** Deleting cancels the order: it leaves the list, frees the reserved quantities and keeps its history. */
+  const remove = async (order: CommandRecord) => {
+    const confirmed = await confirmDelete(
+      `Xóa lệnh ${order.lsxCode}? Số lượng đã giữ chỗ được giải phóng; lệnh vẫn xem lại được ở bộ lọc “Đã xóa”.`,
+      { title: 'Xác nhận xóa lệnh', confirmLabel: 'Xóa lệnh' }
+    );
+    if (!confirmed) return;
+    void mutate({ action: 'cancel', id: order.id, expectedRevision: order.revision }, () => setSelectedId(''));
+  };
+  const transition = (action: string) => {
     if (!selected) return;
-    if (
-      action === 'cancel' &&
-      !(await confirmDelete(
-        `Hủy lệnh ${selected.lsxCode}? Số lượng đã giữ chỗ sẽ được giải phóng; lịch sử vẫn được giữ lại.`,
-        { title: 'Xác nhận hủy lệnh', confirmLabel: 'Hủy lệnh' }
-      ))
-    )
-      return;
     void mutate({
       action,
       id: selected.id,
@@ -486,6 +402,22 @@ export function ProductionOrderWorkspace({
           {error}
         </div>
       )}
+      <div className="lsx-list-view" hidden={!!draft || !!selected}>
+        <ProductionOrderList
+          commands={accessibleCommands}
+          canCreate={canCreate}
+          canChange={canChange}
+          canOpenLegacy={!!onOpenLegacy}
+          onCreate={() => {
+            setDraft(emptyDraft());
+            setError('');
+          }}
+          onOpen={open}
+          onPrint={command => setPrintOrder(command as ProductionOrder)}
+          onEdit={command => edit(command as ProductionOrder)}
+          onDelete={command => void remove(command)}
+        />
+      </div>
       {draft ? (
         <form onSubmit={saveDraft} className="lsx-editor">
           <header className="lsx-heading">
@@ -500,19 +432,28 @@ export function ProductionOrderWorkspace({
                   }
                 }}
               />
-              <h2>{draft.revision ? 'Chỉnh sửa LSX nháp' : 'Lập lệnh sản xuất'}</h2>
+              <h2>{draft.revision ? 'Chỉnh sửa lệnh sản xuất' : 'Lập lệnh sản xuất'}</h2>
             </div>
             <div className="lsx-actions">
-              {/* Choosing lines is the first step of an order, so it sits with the page actions. */}
-              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => setPickerOpen(true)}>
-                Chọn hàng
-              </button>
+              {draft.revision && (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={busy}
+                  onClick={() => {
+                    const order = commands.find(command => command.id === draft.id);
+                    if (order) void remove(order).then(() => setDraft(null));
+                  }}
+                >
+                  Xóa
+                </button>
+              )}
               <button
                 className="btn btn-primary"
                 disabled={busy || !draft.lines.length}
-                title={draft.lines.length ? undefined : 'Chọn hàng trước khi lưu nháp'}
+                title={draft.lines.length ? undefined : 'Chọn hàng trước khi lưu'}
               >
-                {busy ? 'Đang lưu…' : 'Lưu nháp'}
+                {busy ? 'Đang lưu…' : 'Lưu'}
               </button>
             </div>
           </header>
@@ -523,7 +464,7 @@ export function ProductionOrderWorkspace({
               machines={machines.filter(machine => machine.status === 'available')}
               operators={users.filter(user => user.active && ['producer', 'admin'].includes(user.role))}
               onChange={updateDraft}
-              onTemplateChange={id => updateDraft({ printTemplate: latestTemplate(id) })}
+              onPickLines={() => setPickerOpen(true)}
             />
             <LsxItemsTable
               lines={draft.lines}
@@ -577,35 +518,18 @@ export function ProductionOrderWorkspace({
             </div>
             <div className="lsx-actions">
               <IconButton label="Xuất lệnh sản xuất" icon={<Printer />} onClick={() => setPrintOrder(selected)} />
-              {canEditProductionDraft(currentUser, selected) && (
+              {canChange(selected) && (
                 <>
                   <button className="btn btn-outline" disabled={busy} onClick={() => edit(selected)}>
-                    Sửa nháp
+                    Chỉnh sửa
                   </button>
-                  <button className="btn btn-primary" disabled={busy} onClick={() => void transition('submit')}>
-                    Gửi duyệt
+                  <button className="btn btn-danger" disabled={busy} onClick={() => void remove(selected)}>
+                    Xóa
                   </button>
-                </>
-              )}
-              {selected.status === 'pending_approval' && manager && (
-                <>
-                  <button className="btn btn-outline" disabled={busy} onClick={() => void transition('return')}>
-                    Trả về nháp
-                  </button>
-                  <button className="btn btn-primary" disabled={busy} onClick={() => void transition('release')}>
-                    Duyệt & phát hành
+                  <button className="btn btn-primary" disabled={busy} onClick={() => transition('start')}>
+                    Bắt đầu sản xuất
                   </button>
                 </>
-              )}
-              {selected.status === 'released' && manager && (
-                <button className="btn btn-primary" disabled={busy} onClick={() => void transition('start')}>
-                  Bắt đầu sản xuất
-                </button>
-              )}
-              {['draft', 'pending_approval', 'released'].includes(selected.status) && manager && (
-                <button className="btn btn-danger" disabled={busy} onClick={() => void transition('cancel')}>
-                  Hủy lệnh
-                </button>
               )}
               {selected.status === 'completed' &&
                 canCreate &&
@@ -616,7 +540,7 @@ export function ProductionOrderWorkspace({
                       className="btn btn-outline"
                       disabled={busy || !selected.materials.length}
                       title={!selected.materials.length ? 'LSX chưa khai báo vật tư dự kiến' : undefined}
-                      onClick={() => void transition('request_materials')}
+                      onClick={() => transition('request_materials')}
                     >
                       Đề nghị mua thêm NVL
                     </button>
@@ -647,7 +571,7 @@ export function ProductionOrderWorkspace({
             </div>
             <div>
               <dt>Ưu tiên</dt>
-              <SummaryValue value={PRIORITY_LABELS[selected.priority]} empty="Chưa chọn" />
+              <SummaryValue value={PRODUCTION_PRIORITIES[selected.priority]} empty="Chưa chọn" />
             </div>
             <div>
               <dt>Ngày cần</dt>
@@ -687,13 +611,6 @@ export function ProductionOrderWorkspace({
               <SummaryValue value={selected.shift} empty="Chưa chọn" />
             </div>
             <div>
-              <dt>Mẫu phiếu</dt>
-              <SummaryValue
-                value={`${PRODUCTION_PRINT_TEMPLATES[selected.printTemplate?.id || 'standard']} v${selected.printTemplate?.version || 1}`}
-                empty="Chưa chọn"
-              />
-            </div>
-            <div>
               <dt>Người lập</dt>
               <SummaryValue value={selected.createdBy} empty="Chưa có" />
             </div>
@@ -710,6 +627,13 @@ export function ProductionOrderWorkspace({
               <SummaryValue value={selected.notes} empty="Không có" />
             </div>
           </dl>
+          {selected.machineId &&
+            OPEN_PRODUCTION_STATUSES.includes(selected.status) &&
+            !getMachineForAssignment(machines, selected.machineId) && (
+              <p className="lsx-hint" role="status">
+                Máy của lệnh không còn trong danh mục máy. Chỉnh sửa lệnh và chọn lại máy trước khi bắt đầu sản xuất.
+              </p>
+            )}
           <div className="content-tabs content-tabs--segmented" role="tablist" aria-label="Nội dung lệnh sản xuất">
             {DETAIL_TABS.map(tab => (
               <button
@@ -726,123 +650,26 @@ export function ProductionOrderWorkspace({
           {/* Panels stay mounted so ledger data and QC input survive a tab switch. */}
           <div className="lsx-detail-panels" data-erp-table-layout="content">
             <section role="tabpanel" aria-label="Mặt hàng" hidden={activeDetailTab !== 'items'}>
-              <div className="table-container">
-                <table className="lsx-detail-lines">
-                  <thead>
-                    <tr>
-                      <th className="lsx-expand-cell" aria-label="Thông số" />
-                      <th className="lsx-number">STT</th>
-                      <th>Mã SP</th>
-                      <th>Tên sản phẩm</th>
-                      <th>Đơn hàng</th>
-                      <th>Quy cách</th>
-                      <th>ĐVT</th>
-                      <th className="lsx-number">SL lệnh</th>
-                      <th className="lsx-number">Đạt</th>
-                      <th className="lsx-number">Hỏng</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.lines.map((line, position) => {
-                      const specId = `${selected.id}:${lineKey(line)}`;
-                      const expanded = expandedLines.includes(specId);
-                      const completed = selected.status === 'completed';
-                      const specification = [line.specification, line.material].filter(Boolean).join(' · ');
-                      return (
-                        <Fragment key={lineKey(line)}>
-                          <tr>
-                            <td className="lsx-expand-cell">
-                              <IconButton
-                                label={expanded ? 'Ẩn thông số kỹ thuật' : 'Xem thông số kỹ thuật'}
-                                icon={expanded ? <ChevronDown /> : <ChevronRight />}
-                                aria-expanded={expanded}
-                                onClick={() => toggleLineSpecification(specId)}
-                              />
-                            </td>
-                            <td className="lsx-number">{position + 1}</td>
-                            <td title={line.productCode}>{line.productCode || 'Nhập tay'}</td>
-                            <td title={line.productName}>{line.productName}</td>
-                            <td title={line.poCode || selected.poCode}>{line.poCode || selected.poCode}</td>
-                            <td title={specification}>{specification || '—'}</td>
-                            <td>{line.unit}</td>
-                            <td className="lsx-number">{number(line.quantity)}</td>
-                            <td className="lsx-number">{completed ? number(line.goodQuantity) : '—'}</td>
-                            <td className="lsx-number">{completed ? number(line.rejectQuantity) : '—'}</td>
-                          </tr>
-                          {expanded && (
-                            <tr className="lsx-line-spec-row">
-                              <td />
-                              <td colSpan={9}>
-                                <LineSpecification line={line} completed={completed} />
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
-                      );
-                    })}
-                  </tbody>
-                  {new Set(selected.lines.map(line => line.unit)).size === 1 && (
-                    <tfoot>
-                      <tr>
-                        <td colSpan={7} className="lsx-number">
-                          Tổng cộng
-                        </td>
-                        <td className="lsx-number">
-                          {number(selected.lines.reduce((sum, line) => sum + line.quantity, 0))}
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
+              <LsxDetailLinesTable order={selected} />
             </section>
             <section role="tabpanel" aria-label="Vật tư" hidden={activeDetailTab !== 'materials'}>
-              <div className="lsx-heading">
-                <h3>Vật tư dự kiến</h3>
-                {MATERIAL_SHORTAGE_STATUSES.includes(selected.status) && canCreate && (
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    disabled={busy || !selected.materials.some(material => material.catalogItemId)}
-                    title="Máy chủ đối chiếu tồn kho NVL hiện tại và chỉ đề nghị mua phần còn thiếu của vật tư đã có mã"
-                    onClick={() => void transition('request_material_shortage')}
-                  >
-                    Đề nghị mua NVL thiếu
-                  </button>
-                )}
-              </div>
-              <div className="table-container">
-                <table className="lsx-detail-materials">
-                  <thead>
-                    <tr>
-                      <th>Mã NVL</th>
-                      <th>Tên NVL</th>
-                      <th className="lsx-number">Khổ (mm)</th>
-                      <th className="lsx-number">Số lượng</th>
-                      <th>ĐVT</th>
-                      <th className="lsx-number">Hao hụt (%)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selected.materials.map(material => (
-                      <tr key={material.id}>
-                        <td>{material.code}</td>
-                        <td title={material.name}>{material.name}</td>
-                        <td className="lsx-number">{material.width || '—'}</td>
-                        <td className="lsx-number">{number(material.quantity)}</td>
-                        <td>{material.unit}</td>
-                        <td className="lsx-number">{number(material.allowancePercent)}</td>
-                      </tr>
-                    ))}
-                    {!selected.materials.length && (
-                      <tr>
-                        <td colSpan={6}>Chưa khai báo vật tư dự kiến.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <LsxDetailMaterialsTable
+                order={selected}
+                actions={
+                  MATERIAL_SHORTAGE_STATUSES.includes(selected.status) &&
+                  canCreate && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      disabled={busy || !selected.materials.some(material => material.catalogItemId)}
+                      title="Máy chủ đối chiếu tồn kho NVL hiện tại và chỉ đề nghị mua phần còn thiếu của vật tư đã có mã"
+                      onClick={() => transition('request_material_shortage')}
+                    >
+                      Đề nghị mua NVL thiếu
+                    </button>
+                  )
+                }
+              />
               <ProductionMaterialLedger
                 key={selected.id}
                 orderId={selected.id}
@@ -859,12 +686,12 @@ export function ProductionOrderWorkspace({
                 currentUser={currentUser}
                 onRefresh={onRefresh}
               />
-              {selected.status === 'producing' && manager && (
+              {selected.status === 'producing' && canCreate && (
                 <form
                   className="lsx-section"
                   onSubmit={event => {
                     event.preventDefault();
-                    void transition('complete');
+                    transition('complete');
                   }}
                 >
                   <h3>Nghiệm thu sản lượng / QC</h3>
@@ -1009,138 +836,7 @@ export function ProductionOrderWorkspace({
             </section>
           </div>
         </>
-      ) : (
-        <>
-          <div className="lsx-list-toolbar">
-            <input
-              type="search"
-              aria-label="Tìm lệnh sản xuất"
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder="Tìm số LSX, khách hàng, đơn hàng, sản phẩm…"
-            />
-            <DataFilterButton activeCount={activeFilterCount} open={showFilters} onClick={() => setShowFilters(true)} />
-            {canCreate && (
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  setDraft(emptyDraft());
-                  setError('');
-                }}
-              >
-                Lập lệnh sản xuất
-              </button>
-            )}
-          </div>
-          <DataFilterChipBar
-            chips={[
-              ...statusFilters.map(value => ({
-                id: `status:${value}`,
-                label: LIST_STATUSES[value] || value,
-                onRemove: () => setStatusFilters(current => current.filter(item => item !== value))
-              })),
-              ...orderTypeFilters.map(value => ({
-                id: `type:${value}`,
-                label: orderTypeOptions.find(option => option.value === value)?.label || value,
-                onRemove: () => setOrderTypeFilters(current => current.filter(item => item !== value))
-              }))
-            ]}
-            onClear={() => {
-              setStatusFilters([]);
-              setOrderTypeFilters([]);
-            }}
-          />
-          <DataFilterPanel
-            open={showFilters}
-            title="Lọc lệnh sản xuất"
-            description="Lọc theo trạng thái và loại lệnh."
-            activeCount={activeFilterCount}
-            onClose={() => setShowFilters(false)}
-            onReset={() => {
-              setStatusFilters([]);
-              setOrderTypeFilters([]);
-            }}
-          >
-            <DataFilterSection title="Trạng thái" selectedCount={statusFilters.length} defaultExpanded>
-              <DataFilterCheckboxGroup
-                options={statusOptions}
-                selectedValues={statusFilters}
-                onChange={setStatusFilters}
-              />
-            </DataFilterSection>
-            <DataFilterSection title="Loại lệnh" selectedCount={orderTypeFilters.length} defaultExpanded>
-              <DataFilterCheckboxGroup
-                options={orderTypeOptions}
-                selectedValues={orderTypeFilters}
-                onChange={setOrderTypeFilters}
-              />
-            </DataFilterSection>
-          </DataFilterPanel>
-          <div className="lsx-list-frame">
-            <div className="table-container erp-primary-data-table">
-              <table className="lsx-list" data-resize-key="production-orders">
-                <thead>
-                  <tr>
-                    <th>Số LSX</th>
-                    <th>Khách hàng</th>
-                    <th>Đơn hàng</th>
-                    <th className="lsx-number">Số dòng</th>
-                    <th>Ngày cần</th>
-                    <th>Trạng thái</th>
-                    <th aria-label="Thao tác" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagination.rows.map(command => {
-                    const openable = command.productionOrderVersion === 2 || !!onOpenLegacy;
-                    const poCodes = command.poCodes?.length ? command.poCodes.join(', ') : String(command.poCode || '');
-                    return (
-                      <tr
-                        key={String(command.id)}
-                        className={openable ? 'lsx-list-row' : undefined}
-                        onClick={openable ? () => open(command) : undefined}
-                      >
-                        <td>{String(command.lsxCode || '')}</td>
-                        <td title={String(command.customerName || '')}>{String(command.customerName || '—')}</td>
-                        <td title={poCodes}>{poCodes || '—'}</td>
-                        <td
-                          className="lsx-number"
-                          title={(command.lines || []).map(line => line.productName).join(', ') || undefined}
-                        >
-                          {command.productionOrderVersion === 2 ? command.lines?.length || 0 : '—'}
-                        </td>
-                        <td>{formatDate(command.deliveryDeadline)}</td>
-                        <td>
-                          <span className={`lsx-status lsx-status--${command.status}`}>
-                            {command.productionOrderVersion !== 2 ? 'Lệnh cũ · ' : ''}
-                            {LIST_STATUSES[String(command.status)] || 'Chưa rõ'}
-                          </span>
-                        </td>
-                        <td onClick={event => event.stopPropagation()}>
-                          {openable && (
-                            <RowActionMenu
-                              label={`Thao tác ${command.lsxCode || 'lệnh sản xuất'}`}
-                              actions={[{ label: 'Chi tiết', onSelect: () => open(command) }]}
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {!visible.length && (
-                    <tr>
-                      <td colSpan={7}>
-                        Chưa có lệnh phù hợp. Bấm “Lập lệnh sản xuất” để lấy hàng từ đơn hàng của khách.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <DataTablePagination {...pagination.paginationProps} />
-          </div>
-        </>
-      )}
+      ) : null}
       {printOrder && (
         <PrintPreviewDialog
           title={`Xem phiếu in — ${printOrder.lsxCode}`}

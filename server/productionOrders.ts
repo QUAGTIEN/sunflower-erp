@@ -5,7 +5,6 @@ import { getFirebaseAdminServices } from './firebaseAdmin.js';
 import {
   assertPOAccess,
   assertTransition,
-  canManageProduction,
   canDraftProduction,
   commandPoIds,
   completedProduction,
@@ -40,7 +39,7 @@ const identifier = (value: unknown) => {
   return value;
 };
 const unique = (values: string[]) => [...new Set(values)];
-/** Actions that only ask purchasing for NVL; any drafter may send them for an order they can see. */
+/** Actions that only ask purchasing for NVL. */
 const MATERIAL_REQUEST_ACTIONS = ['request_materials', 'request_material_shortage'];
 interface MaterialRequest {
   material: PlannedMaterial;
@@ -128,8 +127,6 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
   const { firestore } = getFirebaseAdminServices();
   const action = String(body.action);
   if (action === 'catalog') return loadCatalog(firestore, actor, body);
-  if (!canManageProduction(actor) && !['create', 'save', 'submit', ...MATERIAL_REQUEST_ACTIONS].includes(action))
-    throw new AdminApiError(403, 'Kế toán chỉ được lập, sửa nháp và gửi duyệt LSX của mình.');
   const id = identifier(body.id);
   const drafting = action === 'create' || action === 'save';
   const commandRef = firestore.collection('production_commands').doc(id);
@@ -147,13 +144,6 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     const pos = await readPOs(transaction, firestore, touchedPoIds);
     const commands = await readCommands(transaction, firestore, touchedPoIds);
     const previous = commands.find(command => command.id === id) as ProductionOrder | undefined;
-    if (
-      previous &&
-      !canManageProduction(actor) &&
-      !MATERIAL_REQUEST_ACTIONS.includes(action) &&
-      previous.createdById !== actor.uid
-    )
-      throw new AdminApiError(403, 'Bạn chỉ được sửa/gửi duyệt LSX do mình lập.');
     const requestId = identifier(body.requestId);
     const linePOs = pos.filter(po => linePoIds.includes(po.id));
     for (const po of linePOs) assertPOAccess(actor, { ...po, status: 'waiting_production' });
@@ -167,7 +157,7 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
     if (action !== 'create' && previous!.revision !== body.expectedRevision)
       throw new AdminApiError(409, 'LSX vừa được cập nhật. Đóng và mở lại để lấy dữ liệu mới.');
     // Read access is checked even when cancelling after the PO has advanced.
-    const advancedAllowed = ['cancel', 'complete', 'start', 'return', ...MATERIAL_REQUEST_ACTIONS].includes(action);
+    const advancedAllowed = ['cancel', 'complete', 'start', ...MATERIAL_REQUEST_ACTIONS].includes(action);
     for (const po of linePOs) assertPOAccess(actor, advancedAllowed ? { ...po, status: 'waiting_production' } : po);
     if (action !== 'create') assertTransition(actor, previous!, action);
     // D-MA1: LSX-YYMM-NNNN, numbered per month; older per-day counter documents stay as they are.
@@ -195,6 +185,13 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
       const customerSnapshot = snapshotOf(firstPO);
       const poCodes = orderPOs.map(po => String(po.poCode || po.id));
       const customers = orderCustomers(orderPOs);
+      // Names are display copies for the list and the sheet; start re-checks the machine and the operator.
+      const machine = fields.machineId
+        ? (await transaction.get(firestore.collection('machines').doc(identifier(fields.machineId)))).data()
+        : undefined;
+      const operator = fields.operatorId
+        ? (await transaction.get(firestore.collection('users').doc(identifier(fields.operatorId)))).data()
+        : undefined;
       next = {
         ...(previous || {}),
         ...fields,
@@ -212,9 +209,11 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
         customerName: customers.map(customer => customer.name).join(', '),
         customerIds: customers.map(customer => customer.id),
         customerNames: customers.map(customer => customer.name),
-        machineName: '',
-        operatorName: '',
-        status: 'draft',
+        machineName: String(machine?.name || ''),
+        operatorName: String(operator?.displayName || ''),
+        // Saving makes the order effective; it stays editable until production starts.
+        status: 'released',
+        releasedAt: previous?.releasedAt || now,
         inventoryPostingMode: 'actual_issue',
         customerCode:
           customers.length > 1
@@ -238,16 +237,14 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
       next = structuredClone(previous!);
       next.revision += 1;
       next.updatedAt = now;
-      if (action === 'submit') next.status = 'pending_approval';
-      if (action === 'return') next.status = 'draft';
-      if (action === 'release') {
+      if (action === 'start') {
         for (const po of linePOs)
           if (getPOQueueStatus(po) !== 'waiting_production')
             throw new AdminApiError(
               400,
-              `Đơn hàng ${po.poCode || po.id} phải hoàn tất thiết kế / sẵn sàng sản xuất trước khi phát hành.`
+              `Đơn hàng ${po.poCode || po.id} phải hoàn tất thiết kế / sẵn sàng sản xuất trước khi bắt đầu.`
             );
-        validateProductionOrderDraft(linePOs, commands, releaseInput(next), id);
+        validateProductionOrderDraft(linePOs, commands, storedLinesInput(next), id);
         for (const line of next.lines) {
           const po = linePOs.find(po => po.id === linePoId(line, next))!;
           const index = (po.items || []).findIndex(
@@ -257,25 +254,29 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
             index < 0 ||
             lineSnapshot(po.items![index], index, line.quantity).sourceFingerprint !== line.sourceFingerprint
           )
-            throw new AdminApiError(409, 'Thông tin đơn hàng đã thay đổi. Trả về nháp và lưu lại trước khi phát hành.');
+            throw new AdminApiError(
+              409,
+              'Thông tin đơn hàng đã thay đổi. Chỉnh sửa và lưu lại lệnh trước khi bắt đầu.'
+            );
           const current = await readers.get(po.id)!.line(line);
           if (!isDeepStrictEqual(current.catalog || null, line.catalog || null))
-            throw new AdminApiError(409, 'Danh mục/liên kết mã đã đổi. Trả về nháp và lưu lại trước khi phát hành.');
+            throw new AdminApiError(409, 'Danh mục/liên kết mã đã đổi. Chỉnh sửa và lưu lại lệnh trước khi bắt đầu.');
         }
         const materialReader = readers.get(linePOs[0].id)!;
         for (const material of next.materials) {
           const current = await materialReader.material(material);
           if (!isDeepStrictEqual(current.catalog || null, material.catalog || null))
-            throw new AdminApiError(409, 'Danh mục NVL đã đổi. Trả về nháp và lưu lại trước khi phát hành.');
+            throw new AdminApiError(409, 'Danh mục NVL đã đổi. Chỉnh sửa và lưu lại lệnh trước khi bắt đầu.');
         }
-        const machine = next.machineId
-          ? (await transaction.get(firestore.collection('machines').doc(identifier(next.machineId)))).data()
-          : null;
+        if (!next.machineId) throw new AdminApiError(400, 'Chọn máy đang hoạt động trước khi bắt đầu.');
+        const machineRef = firestore.collection('machines').doc(identifier(next.machineId));
+        const machineSnapshot = await transaction.get(machineRef);
+        const machine = machineSnapshot.data();
+        if (!machine || machine.status !== 'available')
+          throw new AdminApiError(400, 'Chọn máy đang hoạt động trong Danh mục máy trước khi bắt đầu.');
         const operator = next.operatorId
           ? (await transaction.get(firestore.collection('users').doc(identifier(next.operatorId)))).data()
           : null;
-        if (!machine || machine.status !== 'available')
-          throw new AdminApiError(400, 'Chọn máy đang hoạt động trong Danh mục máy.');
         if (
           !operator?.active ||
           !['producer', 'admin'].includes(operator.role) ||
@@ -283,24 +284,13 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
         )
           throw new AdminApiError(400, 'Chọn nhân sự đang hoạt động và có quyền Sản xuất.');
         if (!next.deliveryDeadline || !next.materials.length)
-          throw new AdminApiError(400, 'Cần ngày yêu cầu và ít nhất một dòng vật tư dự kiến trước khi phát hành.');
+          throw new AdminApiError(400, 'Cần ngày yêu cầu và ít nhất một dòng vật tư dự kiến trước khi bắt đầu.');
         const colors = Math.max(
           0,
           ...next.lines.map(line => Number(line.specifications.colorCount || 0)).filter(Number.isFinite)
         );
         if (colors > Number(machine.colorCount || 0))
           throw new AdminApiError(400, 'Máy không đủ số màu theo thông số sản phẩm.');
-        next.machineName = String(machine.name);
-        next.operatorName = String(operator.displayName);
-        next.status = 'released';
-        next.releasedAt = now;
-      }
-      if (action === 'start') {
-        const machineRef = firestore.collection('machines').doc(identifier(next.machineId));
-        const machineSnapshot = await transaction.get(machineRef);
-        const machine = machineSnapshot.data();
-        if (!machine || machine.status !== 'available')
-          throw new AdminApiError(400, 'Máy đang bảo trì / ngừng hoạt động, không thể bắt đầu.');
         const queue = await transaction.get(
           firestore
             .collection('production_commands')
@@ -314,6 +304,8 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
           throw new AdminApiError(409, 'Máy đang chạy một LSX khác. Hoàn thành lệnh đó trước khi bắt đầu lệnh mới.');
         // This write also serializes starts for different POs on the same machine.
         transaction.update(machineRef, { runtimeRevision: Number(machine.runtimeRevision || 0) + 1 });
+        next.machineName = String(machine.name);
+        next.operatorName = String(operator.displayName);
         next.status = 'producing';
         next.startedAt = now;
       }
@@ -427,8 +419,8 @@ export async function manageProductionOrder(actor: ProductionActor, body: Record
   });
 }
 
-/** Release re-validates the stored lines exactly as a save would. */
-const releaseInput = (order: ProductionOrder) => ({
+/** Start re-validates the stored lines exactly as a save would. */
+const storedLinesInput = (order: ProductionOrder) => ({
   ...order,
   lines: order.lines.map(line => ({ ...line, poId: linePoId(line, order) }))
 });
@@ -508,7 +500,8 @@ function updatePO(
   transaction.update(firestore.collection('pos').doc(po.id), {
     productionPlanRequiredItemIds: active.length ? productionItemIds(po) : [],
     productionPlanLocked: active.length > 0,
-    productionPlanFrozen: active.some(command => command.releasedAt),
+    // Order lines may still change until an order starts; only a started order freezes the PO's items.
+    productionPlanFrozen: active.some(command => command.startedAt),
     productionRevision: Number(po.productionRevision || 0) + 1,
     ...(action === 'start' && inOrder ? { productionProgress: 'producing' } : {}),
     ...(action === 'complete' && inOrder ? { productionProgress: complete ? 'completed' : 'partial' } : {}),

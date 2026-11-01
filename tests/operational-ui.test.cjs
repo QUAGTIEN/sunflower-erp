@@ -171,6 +171,8 @@ test('inventory uses canonical ledger balances, text warnings and threshold acti
     { currentUser: admin, onRefresh() {} },
     {},
     {
+      // The die list's column tools would otherwise load the real Firebase client.
+      '@/context/TableColumnLayoutContext': { useTableColumnLayouts: () => ({ layouts: {}, canEditColumns: false }) },
       '../components/useWarehouseLiveData': {
         useWarehouseLiveData: () => ({
           data: {
@@ -221,6 +223,7 @@ test('inventory shows only the skeleton, not an empty table, until the first dat
     { currentUser: admin, onRefresh() {} },
     {},
     {
+      '@/context/TableColumnLayoutContext': { useTableColumnLayouts: () => ({ layouts: {}, canEditColumns: false }) },
       '../components/useWarehouseLiveData': {
         useWarehouseLiveData: () => ({ data: empty, loaded: false, loading: true, error: '', reload() {} })
       }
