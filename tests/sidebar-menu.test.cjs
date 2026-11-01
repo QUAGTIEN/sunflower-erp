@@ -64,7 +64,7 @@ test('the shell renders the menu from the groups and pages switch tabs on reques
   const shell = readSource('src/app/AppShell.tsx');
   assert.match(shell, /SIDEBAR_MENU\.map\(entry =>/);
   assert.match(shell, /entry\.items\.filter\(isMenuItemAllowed\)/);
-  assert.match(shell, /aria-expanded=\{isOpen\}/);
+  assert.match(shell, /className="sidebar-group-items" role="group"/);
   assert.match(shell, /tabRequest=\{pageTabRequest\?\.page === 'inventory' \? pageTabRequest : undefined\}/);
   assert.match(shell, /tabRequest=\{pageTabRequest\?\.page === 'production' \? pageTabRequest : undefined\}/);
   for (const page of [
@@ -77,11 +77,13 @@ test('the shell renders the menu from the groups and pages switch tabs on reques
   }
 });
 
-test('sidebar groups start folded, open one at a time and list sub-items as plain text', () => {
+test('sidebar groups stay open with a label heading and list sub-items as plain text', () => {
   const shell = readSource('src/app/AppShell.tsx');
-  assert.match(shell, /const \[openMenuGroup, setOpenMenuGroup\] = useState<string \| null>\(null\);/);
-  assert.match(shell, /setOpenMenuGroup\(current => \(current === groupId \? null : groupId\)\)/);
-  assert.match(shell, /const isOpen = openMenuGroup === entry\.id;/);
+  assert.doesNotMatch(shell, /openMenuGroup|toggleMenuGroup|sidebar-group-toggle|sidebar-group-chevron/);
+  assert.match(shell, /className=\{`sidebar-group-heading/);
+  const css = readSource('src/index.css');
+  assert.match(css, /\.sidebar-group-heading \{[^}]*text-transform: uppercase;/);
+  assert.doesNotMatch(css, /\.sidebar-group-items\[hidden\]/);
   assert.match(shell, /\{!nested && <ItemIcon size=\{16\} \/>\}/);
   assert.match(shell, /renderMenuItem\(groupItem, true\)/);
 });

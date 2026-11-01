@@ -46,7 +46,7 @@ import type { ProcurementRequestRecord } from '@/features/procurement/model/purc
 import type { UserNotificationRecord } from '@/domain/notificationModels';
 import { markAllNotificationsRead, markNotificationRead } from '@/services/notificationService';
 import { synchronizeProvinceData } from '@/features/crm/api/provinceDataSynchronization';
-import { Bell, CheckCheck, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Bell, CheckCheck, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 const loadSalesManagementModule = () => import('@/features/sales-management');
 const loadCrmModule = () => import('@/features/crm');
@@ -185,7 +185,6 @@ function AppShell() {
   const [pageTabs, setPageTabs] = useState<Record<string, string>>({});
   const [pageTabRequest, setPageTabRequest] = useState<(PageTabRequest & { page: string }) | null>(null);
   // Groups start folded and open one at a time, so the menu stays short.
-  const [openMenuGroup, setOpenMenuGroup] = useState<string | null>(null);
   const rememberPageTab = useCallback((page: string, tab: string) => {
     setPageTabs(previous => (previous[page] === tab ? previous : { ...previous, [page]: tab }));
   }, []);
@@ -1298,9 +1297,6 @@ function AppShell() {
   const unreadChannelCount = getUnreadChannelMessagesTotal();
   const activeMenuItem = findActiveMenuItem(SIDEBAR_MENU, highlightedPage, pageTabs[highlightedPage]);
   const activeMenuGroupId = activeMenuItem ? findMenuGroupOf(SIDEBAR_MENU, activeMenuItem.id)?.id : undefined;
-  const toggleMenuGroup = (groupId: string) => {
-    setOpenMenuGroup(current => (current === groupId ? null : groupId));
-  };
   const openMenuItem = (menuItem: SidebarMenuItem) => {
     if (!confirmAppNavigation()) return;
     const tab = menuItemTab(SIDEBAR_MENU, menuItem, pageTabs[menuItem.page]);
@@ -1309,7 +1305,6 @@ function AppShell() {
       setPageTabRequest(previous => ({ page: menuItem.page, tab, requestId: (previous?.requestId ?? 0) + 1 }));
     }
     showPage(menuItem.page);
-    setOpenMenuGroup(findMenuGroupOf(SIDEBAR_MENU, menuItem.id)?.id ?? null);
     setIsSidebarOpen(false);
   };
   const renderMenuItem = (menuItem: SidebarMenuItem, nested = false) => {
@@ -1354,23 +1349,17 @@ function AppShell() {
                 const groupItems = entry.items.filter(isMenuItemAllowed);
                 if (!groupItems.length) return null;
                 const GroupIcon = entry.icon;
-                const isOpen = openMenuGroup === entry.id;
+                // Groups are always open (no folding); the heading is a label, not a button.
                 return (
                   <div key={entry.id} className="sidebar-group">
-                    <button
-                      type="button"
-                      className={`sidebar-item sidebar-group-toggle${!isOpen && activeMenuGroupId === entry.id ? ' has-active' : ''}`}
-                      aria-expanded={isOpen}
-                      aria-controls={`sidebar-group-${entry.id}`}
-                      onClick={() => toggleMenuGroup(entry.id)}
+                    <div
+                      id={`sidebar-group-${entry.id}`}
+                      className={`sidebar-group-heading${activeMenuGroupId === entry.id ? ' has-active' : ''}`}
                     >
-                      <div className="sidebar-item-content">
-                        <GroupIcon size={16} />
-                        <span className="sidebar-item-label">{entry.label}</span>
-                      </div>
-                      <ChevronDown size={14} className="sidebar-group-chevron" aria-hidden="true" />
-                    </button>
-                    <div id={`sidebar-group-${entry.id}`} className="sidebar-group-items" hidden={!isOpen}>
+                      <GroupIcon size={15} aria-hidden="true" />
+                      <span>{entry.label}</span>
+                    </div>
+                    <div className="sidebar-group-items" role="group" aria-labelledby={`sidebar-group-${entry.id}`}>
                       {groupItems.map(groupItem => renderMenuItem(groupItem, true))}
                     </div>
                   </div>

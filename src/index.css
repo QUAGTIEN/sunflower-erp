@@ -585,18 +585,30 @@ body {
   flex-direction: column;
 }
 
-.sidebar-group-toggle.has-active {
-  background-color: #203765;
-}
-
-.sidebar-group-chevron {
-  flex: 0 0 auto;
+/* Group headings are section labels: small, uppercase and muted, so they read differently from the pages below. */
+.sidebar-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  margin-top: 8px;
+  padding: 4px 13px 2px;
   color: #9fb3dc;
-  transition: transform var(--transition-fast);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  cursor: default;
+  user-select: none;
 }
 
-.sidebar-group-toggle[aria-expanded='false'] .sidebar-group-chevron {
-  transform: rotate(-90deg);
+.sidebar-group-heading > svg {
+  flex: none;
+}
+
+.sidebar-group-heading.has-active {
+  color: #ffffff;
 }
 
 .sidebar-group-items {
@@ -606,10 +618,6 @@ body {
   margin: 2px 0 4px 20px;
   padding-left: 8px;
   border-left: 1px solid rgb(255 255 255 / 16%);
-}
-
-.sidebar-group-items[hidden] {
-  display: none;
 }
 
 .sidebar-group-items > .sidebar-item {
