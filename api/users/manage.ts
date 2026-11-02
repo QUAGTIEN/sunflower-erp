@@ -15,6 +15,7 @@ import {
   validateSetActiveBody,
   validateUpdateUserBody
 } from '../../server/adminUsers.js';
+import { manageRecycledItem, validateRecycleBody } from '../../server/recycleBin.js';
 
 // One function for every account action keeps the deployment under the Vercel Hobby function limit.
 export async function POST(request: Request): Promise<Response> {
@@ -32,6 +33,10 @@ export async function POST(request: Request): Promise<Response> {
         return jsonResponse(await deleteManagedUser(caller, validateDeleteUserBody(body)));
       case 'reset_password':
         return jsonResponse(await resetManagedUserPassword(caller, validateResetPasswordBody(body)));
+      // D-TR1: the recycle bin is admin-only, so it shares the admin account endpoint instead of a new function.
+      case 'recycle_restore':
+      case 'recycle_purge':
+        return jsonResponse(await manageRecycledItem(caller, validateRecycleBody(body)));
       default:
         throw new AdminApiError(400, 'Thao tác tài khoản không hợp lệ.', 'users/invalid-action');
     }

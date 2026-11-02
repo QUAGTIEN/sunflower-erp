@@ -1,4 +1,5 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
+import { deletionFields } from '@/features/administration/model/recycleBin';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -206,7 +207,9 @@ export const Production: React.FC<ProductionProps> = ({
         }
         if (await confirmDelete(t('Bạn có chắc chắn muốn xóa lệnh sản xuất này?'))) {
           const lsx = productionCommands.find(l => l.id === lsxId);
-          await requireConfirmedMutation(dbService.updateDocument('production_commands', lsxId, { deleted: true }));
+          await requireConfirmedMutation(
+            dbService.updateDocument('production_commands', lsxId, deletionFields(currentUser))
+          );
 
           if (lsx) {
             const po = pos.find(p => p.id === lsx.poId);

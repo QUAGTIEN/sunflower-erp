@@ -1,4 +1,5 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
+import { deletionFields } from '@/features/administration/model/recycleBin';
 import {
   requireConfirmedMutation,
   showErrorToast,
@@ -572,7 +573,7 @@ export const Sales: React.FC<SalesProps> = ({
         if (password === 'admin123' || password === '123456') {
           await requireConfirmedMutation(
             dbService.updateDocument('pos', poId, {
-              deleted: true,
+              ...deletionFields(currentUser),
               updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
               updatedAt: new Date().toISOString()
             })

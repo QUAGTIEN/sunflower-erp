@@ -71,5 +71,13 @@ export const adminUserService = {
 
   resetPassword(uid: string, password: string): Promise<{ uid: string }> {
     return postAdminRequest(USERS_API, { action: 'reset_password', uid, password });
+  },
+
+  restoreRecycled(kind: string, id: string): Promise<{ id: string }> {
+    return postAdminRequest(USERS_API, { action: 'recycle_restore', kind, id });
+  },
+
+  purgeRecycled(kind: string, id: string): Promise<{ id: string }> {
+    return postAdminRequest(USERS_API, { action: 'recycle_purge', kind, id });
   }
 };

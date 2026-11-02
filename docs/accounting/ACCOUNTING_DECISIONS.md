@@ -99,3 +99,4 @@ Ngưỡng thành phẩm/hàng mua dùng cùng nhóm ghi kho lượt 3 và quy t�
 | Mã | Quyết định |
 |---|---|
 | D-PQ1 | Còn 5 vai trò: Admin, Sale, Thiết kế, Kỹ thuật (`producer`), Kế toán. Bỏ vai trò Mua hàng; mua hàng, NCC, kho NVL thuộc Kế toán. Mỗi vai trò chỉ được tick trang thuộc chức năng của mình, không xem chéo, không quyền ngầm. LSX: Kế toán = Admin; Kỹ thuật chạy/nghiệm thu, toàn quyền máy và dao, xem toàn bộ kho. Giao hàng: Kế toán và Kỹ thuật (sẽ làm lại sau). Tài khoản vai trò cũ bị chặn và do Admin xóa. Chi tiết: `docs/business/PROJECT_OVERVIEW.md` mục 3 |
+| D-TR1 | Thùng rác chỉ Admin dùng; khôi phục/xóa vĩnh viễn qua máy chủ, không xóa vĩnh viễn bản ghi đã vào sổ tiền/hàng, hóa đơn cũ chỉ đọc; xóa mềm ghi người và thời gian xóa |

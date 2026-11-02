@@ -30,6 +30,7 @@ import {
 import { AccountActivityDialog } from '../components/AccountActivityDialog';
 import { AccountFormDialog, type AccountFormValues } from '../components/AccountFormDialog';
 import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
+import './AdministrationLists.css';
 import './UserManagement.css';
 
 interface UserManagementProps {
@@ -212,10 +213,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   };
 
   return (
-    <div className="users-view account-page">
+    <div className="users-view admin-list-page">
       <PageContextHeader section="Tài khoản" current="Danh sách người dùng" />
-      <section className="card account-workspace" data-erp-table-text="single-line">
-        <div className="account-toolbar">
+      <section className="card admin-list-workspace" data-erp-table-text="single-line">
+        <div className="admin-list-toolbar">
           <input
             type="search"
             aria-label="Tìm tài khoản"
@@ -244,7 +245,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
           ]}
           onClear={resetFilters}
         />
-        <div className="account-list-frame">
+        <div className="admin-list-frame">
           <div className="table-container erp-primary-data-table">
             <table className="account-list has-dynamic-columns" data-resize-key="account-list">
               <thead>
@@ -298,7 +299,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 })}
                 {!visibleAccounts.length && (
                   <tr>
-                    <td className="account-table-empty" colSpan={table.orderedColumnIds.length}>
+                    <td className="admin-list-empty" colSpan={table.orderedColumnIds.length}>
                       {users.length ? 'Không có tài khoản phù hợp từ khóa hoặc bộ lọc.' : 'Chưa có tài khoản nào.'}
                     </td>
                   </tr>

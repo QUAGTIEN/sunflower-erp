@@ -335,8 +335,16 @@ Chi tiết: `docs/accounting/`.
 
 **Thùng rác:**
 
-- Tập trung các bản ghi đã xóa mềm như khách hàng, tiềm năng, nhà cung cấp và hóa đơn.
-- Cho phép khôi phục hoặc xử lý theo quyền quản trị.
+- Tập trung bản ghi đã xóa mềm: khách hàng, mã hàng của khách, tiềm năng, đơn hàng, nhà cung cấp, đơn mua NCC,
+  lệnh sản xuất cũ, phiếu giao hàng và hóa đơn kế toán cũ (chỉ đọc). Danh sách và quy tắc ở
+  `src/features/administration/model/recycleBin.ts`.
+- Quyết định **D-TR1** (02/11/2026): chỉ Admin dùng Thùng rác. Khôi phục và xóa vĩnh viễn đi qua máy chủ
+  (`/api/users/manage`, `action` `recycle_restore` / `recycle_purge`, `server/recycleBin.ts`): đọc lại bản ghi trong
+  transaction, chỉ xử lý bản ghi còn đang bị xóa, ghi `audit_events`. Không bao giờ xóa vĩnh viễn bản ghi đã vào sổ tiền
+  hoặc sổ hàng (`financeLinked`, `accountingFlowVersion`, `goodsFlowVersion`); hóa đơn cũ chỉ đọc.
+- Mỗi lần xóa mềm ghi `deletedAt`, `deletedById`, `deletedByName`. Bản ghi xóa trước khi có trường này hiện
+  "Chưa ghi nhận" ở cột Người xóa / Thời gian xóa.
+- Giao diện dùng bảng chuẩn: tìm kiếm, lọc loại tài liệu, tùy chỉnh cột, phân trang; thao tác dòng Khôi phục / Xóa vĩnh viễn.
 
 ## 5. Hệ thống phân loại khách hàng dùng chung
 

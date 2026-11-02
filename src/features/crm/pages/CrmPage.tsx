@@ -1,4 +1,5 @@
 import { usePartnerDebt } from '@/features/accounting/components/usePartnerDebt';
+import { deletionFields } from '@/features/administration/model/recycleBin';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import {
   requireConfirmedMutation,
@@ -1046,7 +1047,7 @@ export const Crm: React.FC<CrmProps> = ({
           if (password === 'admin123' || password === '123456') {
             await requireConfirmedMutation(
               dbService.updateDocument('customers', id, {
-                deleted: true,
+                ...deletionFields(currentUser),
                 deleteRequested: false,
                 deleteRequestedAt: '',
                 updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
@@ -1461,7 +1462,7 @@ export const Crm: React.FC<CrmProps> = ({
         ) {
           await requireConfirmedMutation(
             dbService.updateDocument('customers', cust.id, {
-              deleted: true,
+              ...deletionFields(currentUser),
               deleteRequested: false,
               deleteRequestedAt: ''
             })
