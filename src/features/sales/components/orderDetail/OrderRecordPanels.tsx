@@ -142,19 +142,7 @@ export function OrderNotesPanel({
   );
 }
 
-export function OrderHistoryPanel({
-  logs,
-  createdBy,
-  createdAt,
-  updatedBy,
-  updatedAt
-}: {
-  logs: OrderHistoryLog[];
-  createdBy?: string;
-  createdAt?: string;
-  updatedBy?: string;
-  updatedAt?: string;
-}) {
+export function OrderHistoryPanel({ logs }: { logs: OrderHistoryLog[] }) {
   return (
     <div className="order-panel-stack">
       {logs.length ? (
@@ -172,13 +160,6 @@ export function OrderHistoryPanel({
       ) : (
         <p className="order-muted">Chưa có lịch sử.</p>
       )}
-      <p className="order-audit-line">
-        Người lập: {actorLabel(createdBy) || 'Không rõ'}
-        {createdAt ? ` · ${formatDateTime(createdAt, 'vi-VN')}` : ''} · Người sửa:{' '}
-        {updatedBy
-          ? `${actorLabel(updatedBy)}${updatedAt ? ` · ${formatDateTime(updatedAt, 'vi-VN')}` : ''}`
-          : 'chưa có'}
-      </p>
     </div>
   );
 }

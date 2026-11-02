@@ -2,7 +2,7 @@ import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
 import { TableColumnCustomizer, TableColumnsButton, type TableColumnOption } from '@/components/TableColumnCustomizer';
 import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { useStandardTableColumns } from '@/hooks/useStandardTableColumns';
-import { lineImages, orderTotals } from '../../model/orderDetail';
+import { lineImages } from '../../model/orderDetail';
 
 export interface OrderLine extends Record<string, unknown> {
   itemId?: string;
@@ -26,6 +26,7 @@ interface OrderItemsTableProps {
   onPreviewImage: (image: string) => void;
 }
 
+/** Same columns as the voucher in mockup C; KPI, picture and cost columns can be switched on per layout. */
 const BASE_COLUMNS: TableColumnOption[] = [
   { id: 'index', label: '#', required: true },
   { id: 'code', label: 'Mã hàng', required: true },
@@ -35,12 +36,14 @@ const BASE_COLUMNS: TableColumnOption[] = [
   { id: 'quantity', label: 'Số lượng' },
   { id: 'price', label: 'Đơn giá' },
   { id: 'gross', label: 'Thành tiền' },
-  { id: 'discount', label: 'Chiết khấu' },
-  { id: 'vat', label: 'Thuế GTGT' },
-  { id: 'total', label: 'Tổng (gồm VAT)' },
-  { id: 'kpi', label: 'KPI' },
+  { id: 'discountRate', label: '% CK' },
+  { id: 'discountAmount', label: 'Tiền CK' },
+  { id: 'vatRate', label: '% thuế' },
+  { id: 'vatAmount', label: 'Tiền thuế' },
   { id: 'supplier', label: 'Nhà cung cấp' },
-  { id: 'images', label: 'Ảnh mẫu' }
+  { id: 'total', label: 'Tổng (gồm VAT)', defaultVisible: false },
+  { id: 'kpi', label: 'KPI', defaultVisible: false },
+  { id: 'images', label: 'Ảnh mẫu', defaultVisible: false }
 ];
 const COST_COLUMNS: TableColumnOption[] = [
   { id: 'purchasePrice', label: 'Giá mua', defaultVisible: false },
@@ -49,8 +52,7 @@ const COST_COLUMNS: TableColumnOption[] = [
 const LOCKED_START = ['index'];
 const NO_LOCKED_END: string[] = [];
 
-const money = (value: number) => `${Math.round(value).toLocaleString('vi-VN')} đ`;
-const quantityText = (value: number) => value.toLocaleString('vi-VN');
+const amount = (value: number) => Math.round(value).toLocaleString('vi-VN');
 
 export function OrderItemsTable({
   items,
@@ -60,23 +62,29 @@ export function OrderItemsTable({
   onPreviewImage
 }: OrderItemsTableProps) {
   const table = useStandardTableColumns({
-    layoutId: canViewCosts ? 'order-detail-items-costs' : 'order-detail-items',
+    layoutId: canViewCosts ? 'order-detail-lines-costs' : 'order-detail-lines',
     columns: canViewCosts ? [...BASE_COLUMNS, ...COST_COLUMNS] : BASE_COLUMNS,
     lockedStartIds: LOCKED_START,
     lockedEndIds: NO_LOCKED_END
   });
-  const totals = orderTotals(items);
-  const hidden = (value: string) => (canViewFinancials ? value : '—');
+  const money = (value: number) => (canViewFinancials ? amount(value) : '—');
+  const lines = items.map(item => {
+    const line = calculatePOItemFinancials(item);
+    return { item, line, profit: line.amountBeforeVat - line.quantity * (Number(item.purchasePrice) || 0) };
+  });
+  const units = new Set(items.map(item => item.unit || 'cái'));
+  const sum = (pick: (entry: (typeof lines)[number]) => number) =>
+    lines.reduce((total, entry) => total + pick(entry), 0);
 
   return (
-    <div className="order-items">
+    <div className="order-lines">
       {table.canEditColumns && (
-        <div className="order-items__toolbar">
+        <div className="order-lines__toolbar">
           <TableColumnsButton onClick={table.openCustomizer} />
         </div>
       )}
-      <div className="table-container erp-primary-data-table">
-        <table className="order-items__table has-dynamic-columns" data-resize-key="order-detail-items">
+      <div className="table-container order-grid-wrap">
+        <table className="order-grid">
           <thead>
             <tr>
               <ReorderableTableCells
@@ -84,7 +92,7 @@ export function OrderItemsTable({
                 getHeaderProps={table.getHeaderProps}
                 labels={table.labels}
               >
-                <th key="index" className="order-number">
+                <th key="index" className="order-number order-grid__index">
                   #
                 </th>
                 <th key="code">Mã hàng</th>
@@ -100,19 +108,25 @@ export function OrderItemsTable({
                 <th key="gross" className="order-number">
                   Thành tiền
                 </th>
-                <th key="discount" className="order-number">
-                  Chiết khấu
+                <th key="discountRate" className="order-number">
+                  % CK
                 </th>
-                <th key="vat" className="order-number">
-                  Thuế GTGT
+                <th key="discountAmount" className="order-number">
+                  Tiền CK
                 </th>
+                <th key="vatRate" className="order-number">
+                  % thuế
+                </th>
+                <th key="vatAmount" className="order-number">
+                  Tiền thuế
+                </th>
+                <th key="supplier">Nhà cung cấp</th>
                 <th key="total" className="order-number">
                   Tổng (gồm VAT)
                 </th>
                 <th key="kpi" className="order-number">
                   KPI
                 </th>
-                <th key="supplier">Nhà cung cấp</th>
                 <th key="images">Ảnh mẫu</th>
                 <th key="purchasePrice" className="order-number">
                   Giá mua
@@ -124,21 +138,18 @@ export function OrderItemsTable({
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => {
-              const line = calculatePOItemFinancials(item);
+            {lines.map(({ item, line, profit }, index) => {
               const supplier = item.supplierName || supplierNames[item.supplierId || ''] || '';
               const spec = [item.size, item.material].filter(Boolean).join(' · ');
-              const buyingTotal = line.quantity * (Number(item.purchasePrice) || 0);
-              const discount = line.discountType === 'amount' ? money(line.discountAmount) : `${line.discountRate}%`;
               const images = lineImages(item);
               return (
                 <tr key={item.itemId || index}>
                   <ReorderableTableCells order={table.orderedColumnIds} expandOverflowText={false}>
-                    <td key="index" className="order-number">
+                    <td key="index" className="order-number order-grid__index">
                       {index + 1}
                     </td>
                     <td key="code" title={item.productCode}>
-                      <strong>{item.productCode || '—'}</strong>
+                      {item.productCode || '—'}
                     </td>
                     <td key="name" title={item.productName}>
                       {item.productName || <span className="order-muted">Chưa nhập</span>}
@@ -148,32 +159,34 @@ export function OrderItemsTable({
                     </td>
                     <td key="unit">{item.unit || 'cái'}</td>
                     <td key="quantity" className="order-number">
-                      {quantityText(line.quantity)}
+                      {line.quantity.toLocaleString('vi-VN')}
                     </td>
                     <td key="price" className="order-number">
-                      {hidden(money(line.unitPrice))}
+                      {money(line.unitPrice)}
                     </td>
                     <td key="gross" className="order-number">
-                      {hidden(money(line.grossAmount))}
+                      {money(line.grossAmount)}
                     </td>
-                    <td key="discount" className="order-number">
-                      {hidden(discount)}
+                    <td key="discountRate" className="order-number">
+                      {canViewFinancials ? (line.discountType === 'percent' ? line.discountRate : '') : '—'}
                     </td>
-                    <td
-                      key="vat"
-                      className="order-number"
-                      title={canViewFinancials ? money(line.vatAmount) : undefined}
-                    >
-                      {hidden(`${line.vatRate}%`)}
+                    <td key="discountAmount" className="order-number">
+                      {money(line.discountAmount)}
                     </td>
-                    <td key="total" className="order-number">
-                      <strong>{hidden(money(line.amountWithVat))}</strong>
+                    <td key="vatRate" className="order-number">
+                      {canViewFinancials ? line.vatRate : '—'}
                     </td>
-                    <td key="kpi" className="order-number">
-                      {hidden(`${line.kpiPo.toFixed(1)}%`)}
+                    <td key="vatAmount" className="order-number">
+                      {money(line.vatAmount)}
                     </td>
                     <td key="supplier" title={supplier}>
                       {supplier || <span className="order-muted">Chưa chọn</span>}
+                    </td>
+                    <td key="total" className="order-number">
+                      {money(line.amountWithVat)}
+                    </td>
+                    <td key="kpi" className="order-number">
+                      {canViewFinancials ? `${line.kpiPo.toFixed(1)}%` : '—'}
                     </td>
                     <td key="images">
                       <span className="order-thumbnails">
@@ -192,16 +205,16 @@ export function OrderItemsTable({
                       </span>
                     </td>
                     <td key="purchasePrice" className="order-number">
-                      {money(Number(item.purchasePrice) || 0)}
+                      {amount(Number(item.purchasePrice) || 0)}
                     </td>
                     <td key="profit" className="order-number">
-                      {money(line.amountBeforeVat - buyingTotal)}
+                      {amount(profit)}
                     </td>
                   </ReorderableTableCells>
                 </tr>
               );
             })}
-            {!items.length && (
+            {!lines.length && (
               <tr>
                 <td className="order-empty" colSpan={table.orderedColumnIds.length}>
                   Đơn hàng chưa có mặt hàng.
@@ -209,22 +222,47 @@ export function OrderItemsTable({
               </tr>
             )}
           </tbody>
+          {lines.length > 0 && (
+            <tfoot>
+              <tr>
+                <ReorderableTableCells order={table.orderedColumnIds} expandOverflowText={false}>
+                  <td key="index"></td>
+                  <td key="code">Cộng</td>
+                  <td key="name"></td>
+                  <td key="spec"></td>
+                  <td key="unit"></td>
+                  {/* Quantities of different units are never added together (B6). */}
+                  <td key="quantity" className="order-number">
+                    {units.size === 1 ? sum(entry => entry.line.quantity).toLocaleString('vi-VN') : ''}
+                  </td>
+                  <td key="price"></td>
+                  <td key="gross" className="order-number">
+                    {money(sum(entry => entry.line.grossAmount))}
+                  </td>
+                  <td key="discountRate"></td>
+                  <td key="discountAmount" className="order-number">
+                    {money(sum(entry => entry.line.discountAmount))}
+                  </td>
+                  <td key="vatRate"></td>
+                  <td key="vatAmount" className="order-number">
+                    {money(sum(entry => entry.line.vatAmount))}
+                  </td>
+                  <td key="supplier"></td>
+                  <td key="total" className="order-number">
+                    {money(sum(entry => entry.line.amountWithVat))}
+                  </td>
+                  <td key="kpi"></td>
+                  <td key="images"></td>
+                  <td key="purchasePrice"></td>
+                  <td key="profit" className="order-number">
+                    {amount(sum(entry => entry.profit))}
+                  </td>
+                </ReorderableTableCells>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
-      {canViewFinancials && items.length > 0 && (
-        <dl className="order-totals">
-          <dt>Tổng tiền hàng</dt>
-          <dd>{money(totals.grossAmount)}</dd>
-          <dt>Chiết khấu</dt>
-          <dd>{money(totals.discountAmount)}</dd>
-          <dt>Thuế GTGT</dt>
-          <dd>{money(totals.vatAmount)}</dd>
-          <dt className="order-totals__grand">Tổng thanh toán</dt>
-          <dd className="order-totals__grand">{money(totals.amountWithVat)}</dd>
-          <dt>KPI đơn hàng</dt>
-          <dd>{totals.kpi.toFixed(1)}%</dd>
-        </dl>
-      )}
       <TableColumnCustomizer {...table.customizerProps} />
     </div>
   );

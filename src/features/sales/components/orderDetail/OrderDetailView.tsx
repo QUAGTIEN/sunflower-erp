@@ -1,10 +1,14 @@
-import { useState, type ReactNode } from 'react';
-import { Printer } from 'lucide-react';
-import { IconButton } from '@/components/IconButton';
+import { Fragment, useState, type ReactNode } from 'react';
 import { PageBackButton } from '@/components/PageBackButton';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
 import { getPOQueueState } from '../../model/poWorkflow';
-import { ORDER_STEP_TRIGGERS, actorLabel, orderSteps, type OrderHistoryLog } from '../../model/orderDetail';
+import {
+  ORDER_STEP_TRIGGERS,
+  actorLabel,
+  orderSteps,
+  orderTotals,
+  type OrderHistoryLog
+} from '../../model/orderDetail';
 import { OrderItemsTable, type OrderLine } from './OrderItemsTable';
 import { OrderDesignPanel, type LineFileField, type LineNoteField } from './OrderDesignPanel';
 import { OrderProductionPanel } from './OrderProductionPanel';
@@ -19,12 +23,9 @@ export interface OrderDetailRecord {
   customerId?: string;
   customerName?: string;
   customerRank?: string;
-  customerPoCode?: string;
   customerSnapshot?: {
     customerCode?: string;
     companyName?: string;
-    contactPerson?: string;
-    phone?: string;
     address?: string;
     customerRank?: string;
   };
@@ -44,7 +45,7 @@ export interface OrderDetailRecord {
 interface OrderDetailViewProps {
   po: OrderDetailRecord;
   /** Live customer record, used only where the order's own snapshot has no value. */
-  customer?: { customerCode?: string; customerRank?: string; contactPerson?: string; phone?: string; address?: string };
+  customer?: { customerCode?: string; customerRank?: string; address?: string };
   saleName: string;
   supplierNames: Record<string, string>;
   canViewFinancials: boolean;
@@ -81,179 +82,202 @@ const ORDER_TABS: { id: OrderTab; label: string }[] = [
   { id: 'history', label: 'Lịch sử' }
 ];
 
-function InfoField({ label, value, wide = false }: { label: string; value: ReactNode; wide?: boolean }) {
-  const title = typeof value === 'string' ? value : undefined;
+const amount = (value: number) => Math.round(value).toLocaleString('vi-VN');
+
+function InfoField({ label, value, strong = false }: { label: string; value: ReactNode; strong?: boolean }) {
   return (
-    <div className={wide ? 'order-info__field order-info__field--wide' : 'order-info__field'}>
+    <div className="order-info__field">
       <dt>{label}</dt>
-      <dd title={title}>{value || <span className="order-muted">Chưa có</span>}</dd>
+      <dd className={strong ? 'is-strong' : undefined} title={typeof value === 'string' ? value : undefined}>
+        {value || <span className="order-muted">Chưa nhập</span>}
+      </dd>
     </div>
   );
 }
 
 /**
- * Order detail laid out like an accounting voucher (mockup C, D-PO1): general data on top, then the lines and
- * everything linked to the order in tabs. The queue step is read-only; it moves only through the workflow.
+ * Order detail laid out like the accounting voucher of mockup C (D-PO1): a command bar with the read-only queue,
+ * the general data, the lines and linked records in tabs, then the totals. The queue moves only through the flow.
  */
 export function OrderDetailView(props: OrderDetailViewProps) {
-  const { po, customer, canManage } = props;
+  const { po, customer, canManage, canViewFinancials } = props;
   // The open tab belongs to one order, so another order always opens on its lines.
   const [openTab, setOpenTab] = useState<{ orderId: string; tab: OrderTab }>({ orderId: po.id, tab: 'items' });
   const activeTab = openTab.orderId === po.id ? openTab.tab : 'items';
   const snapshot = po.customerSnapshot || {};
   const queueState = getPOQueueState(po);
   const steps = orderSteps(po);
-  const currentStep = steps.find(step => step.state === 'current');
   const items = po.items || [];
-  const contact = [snapshot.contactPerson || customer?.contactPerson, snapshot.phone || customer?.phone]
-    .filter(Boolean)
-    .join(' · ');
+  const totals = orderTotals(items);
+  const customerName = snapshot.companyName || po.customerName;
 
   return (
-    <div className="order-detail">
-      <div className="order-detail__toolbar">
+    <div className="order-detail" data-erp-table-layout="content">
+      <div className="order-commandbar">
         <PageBackButton onClick={props.onBack} />
-        <h1 className="order-detail__title">Đơn hàng {po.poCode}</h1>
+        <h1 className="order-commandbar__title">Đơn hàng bán</h1>
         <span className="order-status" style={{ color: queueState.color, background: queueState.background }}>
           {queueState.label}
         </span>
-        <div className="order-detail__actions">
-          <IconButton label="Xuất đơn hàng" icon={<Printer />} onClick={props.onPrint} />
-          {canManage && (
-            <>
-              <button type="button" className="btn btn-outline" onClick={props.onRepeat}>
-                Đặt lại từ đơn này
-              </button>
-              <button type="button" className="btn btn-primary" onClick={props.onEdit}>
-                Chỉnh sửa
-              </button>
-            </>
-          )}
-          {props.canDelete && (
-            <button type="button" className="btn btn-danger" onClick={props.onDelete}>
-              Xóa
+        <span className="order-commandbar__divider" aria-hidden="true" />
+        {canManage && (
+          <>
+            <button type="button" className="btn btn-outline" onClick={props.onEdit}>
+              Sửa
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={props.onRepeat}
+              title="Tạo đơn hàng mới từ đơn này"
+            >
+              Nhân bản
+            </button>
+          </>
+        )}
+        <button type="button" className="btn btn-outline" onClick={props.onPrint} title="Xuất đơn hàng gửi khách">
+          In
+        </button>
+        {props.canDelete && (
+          <button type="button" className="btn btn-outline order-commandbar__delete" onClick={props.onDelete}>
+            Xóa
+          </button>
+        )}
+        <ol className="order-progress" aria-label="Tiến độ đơn hàng">
+          <li className="order-progress__lead">Tiến độ:</li>
+          {steps.map((step, index) => (
+            <Fragment key={step.value}>
+              {index > 0 && (
+                <li className="order-progress__arrow" aria-hidden="true">
+                  →
+                </li>
+              )}
+              <li
+                className={`order-progress__step order-progress__step--${step.state}`}
+                aria-current={step.state === 'current' ? 'step' : undefined}
+                title={
+                  step.reachedAt
+                    ? `${formatDateTime(step.reachedAt, 'vi-VN')} · ${actorLabel(step.reachedBy) || 'Không rõ'}`
+                    : ORDER_STEP_TRIGGERS[step.value]
+                }
+              >
+                {step.label}
+              </li>
+            </Fragment>
+          ))}
+        </ol>
       </div>
 
-      <ol className="order-steps" aria-label="Tiến độ đơn hàng">
-        {steps.map((step, index) => (
-          <li
-            key={step.value}
-            className={`order-steps__item order-steps__item--${step.state}`}
-            title={
-              step.reachedAt
-                ? `${formatDateTime(step.reachedAt, 'vi-VN')} · ${actorLabel(step.reachedBy) || 'Không rõ'}`
-                : ORDER_STEP_TRIGGERS[step.value]
-            }
-          >
-            <span className="order-steps__index">{index + 1}</span>
-            <span className="order-steps__label">{step.label}</span>
-          </li>
-        ))}
-      </ol>
-      {currentStep && currentStep.value !== 'completed' && (
-        <p className="order-steps__hint">
-          Bước tiếp theo tự chuyển {ORDER_STEP_TRIGGERS[steps[steps.indexOf(currentStep) + 1].value].toLowerCase()}.
-        </p>
-      )}
-
-      <dl className="order-info">
+      <dl className="order-card order-info">
         <InfoField
           label="Khách hàng"
           value={
             props.onOpenCustomer ? (
-              <button type="button" className="order-link" onClick={props.onOpenCustomer}>
-                {snapshot.companyName || po.customerName}
+              <button type="button" className="order-link" onClick={props.onOpenCustomer} title={customerName}>
+                {customerName}
               </button>
             ) : (
-              snapshot.companyName || po.customerName
+              customerName
             )
           }
         />
-        <InfoField label="Số đơn hàng" value={po.poCode} />
+        <InfoField label="Số đơn hàng" value={po.poCode} strong />
         <InfoField label="Ngày đặt" value={formatDate(po.orderDate || po.createdAt, 'vi-VN', '')} />
         <InfoField label="Mã khách" value={snapshot.customerCode || customer?.customerCode} />
-        <InfoField label="PO của khách" value={po.customerPoCode} />
-        <InfoField label="Giao dự kiến" value={formatDate(po.expectedDeliveryDate, 'vi-VN', '')} />
-        <InfoField label="Người liên hệ" value={contact} />
-        <InfoField label="Sale phụ trách" value={props.saleName} />
         <InfoField label="Hạng khách" value={po.customerRank || snapshot.customerRank || customer?.customerRank} />
-        <InfoField label="Địa chỉ" value={snapshot.address || customer?.address} wide />
-        <InfoField label="Ghi chú" value={po.notes} />
+        <InfoField label="Giao dự kiến" value={formatDate(po.expectedDeliveryDate, 'vi-VN', '')} />
+        <InfoField label="Địa chỉ giao" value={snapshot.address || customer?.address} />
+        <InfoField label="Nhân viên bán" value={props.saleName} />
+        <InfoField label="Diễn giải" value={po.notes} />
       </dl>
 
-      <div className="content-tabs content-tabs--segmented" role="tablist" aria-label="Nội dung đơn hàng">
-        {ORDER_TABS.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            onClick={() => setOpenTab({ orderId: po.id, tab: tab.id })}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <section
-        className="order-detail__panel"
-        role="tabpanel"
-        aria-label={ORDER_TABS.find(tab => tab.id === activeTab)?.label}
-      >
-        {activeTab === 'items' && (
-          <OrderItemsTable
-            items={items}
-            supplierNames={props.supplierNames}
-            canViewFinancials={props.canViewFinancials}
-            canViewCosts={props.canViewCosts}
-            onPreviewImage={props.onPreviewImage}
-          />
-        )}
-        {activeTab === 'design' && (
-          <OrderDesignPanel
-            poId={po.id}
-            items={items}
-            canEditSaleBrief={props.canEditSaleBrief}
-            canEditDesignReply={props.canEditDesignReply}
-            onUpdateNotes={props.onUpdateLineNotes}
-            onUploadFiles={props.onUploadLineFiles}
-            onRemoveFile={props.onRemoveLineFile}
-            onPreviewImage={props.onPreviewImage}
-          />
-        )}
-        {activeTab === 'production' && <OrderProductionPanel poId={po.id} />}
-        {activeTab === 'delivery' && <OrderDeliveryPanel poId={po.id} />}
-        {activeTab === 'files' && (
-          <OrderFilesPanel
-            poCode={po.poCode || po.id}
-            links={po.links || {}}
-            items={items}
-            onPreviewImage={props.onPreviewImage}
-          />
-        )}
-        {activeTab === 'notes' && (
-          <OrderNotesPanel
-            tasks={po.internalChecklist || []}
-            draft={props.checklistDraft}
-            onDraftChange={props.onChecklistDraftChange}
-            onAdd={props.onAddChecklistItem}
-            onToggle={props.onToggleChecklistItem}
-            onRemove={props.onRemoveChecklistItem}
-          />
-        )}
-        {activeTab === 'history' && (
-          <OrderHistoryPanel
-            logs={po.historyLogs || []}
-            createdBy={po.createdBy}
-            createdAt={po.createdAt}
-            updatedBy={po.updatedBy}
-            updatedAt={po.updatedAt}
-          />
-        )}
+      <section className="order-card order-tabs">
+        <div className="content-tabs order-tabs__bar" role="tablist" aria-label="Nội dung đơn hàng">
+          {ORDER_TABS.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setOpenTab({ orderId: po.id, tab: tab.id })}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div
+          className="order-tabs__panel"
+          role="tabpanel"
+          aria-label={ORDER_TABS.find(tab => tab.id === activeTab)?.label}
+        >
+          {activeTab === 'items' && (
+            <OrderItemsTable
+              items={items}
+              supplierNames={props.supplierNames}
+              canViewFinancials={canViewFinancials}
+              canViewCosts={props.canViewCosts}
+              onPreviewImage={props.onPreviewImage}
+            />
+          )}
+          {activeTab === 'design' && (
+            <OrderDesignPanel
+              poId={po.id}
+              items={items}
+              canEditSaleBrief={props.canEditSaleBrief}
+              canEditDesignReply={props.canEditDesignReply}
+              onUpdateNotes={props.onUpdateLineNotes}
+              onUploadFiles={props.onUploadLineFiles}
+              onRemoveFile={props.onRemoveLineFile}
+              onPreviewImage={props.onPreviewImage}
+            />
+          )}
+          {activeTab === 'production' && <OrderProductionPanel poId={po.id} />}
+          {activeTab === 'delivery' && <OrderDeliveryPanel poId={po.id} />}
+          {activeTab === 'files' && (
+            <OrderFilesPanel
+              poCode={po.poCode || po.id}
+              links={po.links || {}}
+              items={items}
+              onPreviewImage={props.onPreviewImage}
+            />
+          )}
+          {activeTab === 'notes' && (
+            <OrderNotesPanel
+              tasks={po.internalChecklist || []}
+              draft={props.checklistDraft}
+              onDraftChange={props.onChecklistDraftChange}
+              onAdd={props.onAddChecklistItem}
+              onToggle={props.onToggleChecklistItem}
+              onRemove={props.onRemoveChecklistItem}
+            />
+          )}
+          {activeTab === 'history' && <OrderHistoryPanel logs={po.historyLogs || []} />}
+        </div>
       </section>
+
+      <div className="order-footer">
+        <p className="order-audit-line">
+          Người lập: {actorLabel(po.createdBy) || 'Không rõ'}
+          {po.createdAt ? ` · ${formatDateTime(po.createdAt, 'vi-VN')}` : ''} · Người sửa:{' '}
+          {po.updatedBy
+            ? `${actorLabel(po.updatedBy)}${po.updatedAt ? ` · ${formatDateTime(po.updatedAt, 'vi-VN')}` : ''}`
+            : 'chưa có'}
+        </p>
+        {canViewFinancials && items.length > 0 && (
+          <dl className="order-card order-totals">
+            <dt>Tổng tiền hàng</dt>
+            <dd>{amount(totals.grossAmount)}</dd>
+            <dt>Tiền chiết khấu</dt>
+            <dd>{amount(totals.discountAmount)}</dd>
+            <dt>Tiền thuế GTGT</dt>
+            <dd>{amount(totals.vatAmount)}</dd>
+            <dt className="order-totals__grand">Tổng tiền thanh toán</dt>
+            <dd className="order-totals__grand">{amount(totals.amountWithVat)}</dd>
+            <dt>KPI đơn</dt>
+            <dd>{totals.kpi.toFixed(1)} %</dd>
+          </dl>
+        )}
+      </div>
     </div>
   );
 }

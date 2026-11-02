@@ -133,32 +133,53 @@ const renderDetail = (props = {}) => {
   );
 };
 
-test('the detail reads like a voucher: header, read-only steps, general data and tabs without counts', () => {
+test('the detail reads like the voucher of mockup C: command bar with progress, fields, tabs, grid and totals', () => {
   const html = renderDetail();
-  assert.ok(html.includes('Đơn hàng PO-202609-0002'));
+  assert.ok(html.includes('>Đơn hàng bán</h1>'));
   assert.ok(html.includes('>Chờ thiết kế</span>'));
-  assert.match(html, /aria-label="Xuất đơn hàng"/);
-  for (const label of ['Đặt lại từ đơn này', 'Chỉnh sửa']) assert.ok(html.includes(`>${label}</button>`), label);
+  for (const label of ['Sửa', 'Nhân bản', 'In']) assert.ok(html.includes(`>${label}</button>`), label);
   assert.ok(!html.includes('>Xóa</button>'), 'only admins see Xóa');
   assert.ok(renderDetail({ canDelete: true }).includes('>Xóa</button>'));
-  for (const field of ['Khách hàng', 'Số đơn hàng', 'Ngày đặt', 'Mã khách', 'PO của khách', 'Giao dự kiến'])
-    assert.ok(html.includes(`<dt>${field}</dt>`), field);
+  assert.ok(html.includes('data-erp-table-layout="content"'), 'tables follow their content height, never the viewport');
+  const progress = [...html.matchAll(/class="order-progress__step[^"]*"[^>]*>([^<]+)</g)].map(match => match[1]);
+  assert.equal(progress.length, 7);
+  assert.match(html, /order-progress__step--current" aria-current="step"[^>]*>Chờ thiết kế</);
+  const fields = [...html.matchAll(/<dt>([^<]+)<\/dt>/g)].map(match => match[1]).slice(0, 9);
+  assert.deepEqual(fields, [
+    'Khách hàng',
+    'Số đơn hàng',
+    'Ngày đặt',
+    'Mã khách',
+    'Hạng khách',
+    'Giao dự kiến',
+    'Địa chỉ giao',
+    'Nhân viên bán',
+    'Diễn giải'
+  ]);
   assert.ok(html.includes('KH001'));
-  assert.equal((html.match(/class="order-steps__item/g) || []).length, 7);
-  assert.ok(html.includes('Bước tiếp theo tự chuyển khi khách duyệt mẫu thiết kế.'));
   const tabs = [...html.matchAll(/role="tab"[^>]*>([^<]+)</g)].map(match => match[1]);
   assert.deepEqual(tabs, ['Hàng tiền', 'Thiết kế', 'Sản xuất', 'Giao hàng', 'Tệp và ảnh mẫu', 'Trao đổi', 'Lịch sử']);
+  assert.doesNotMatch(html, /content-tabs--segmented/, 'underlined tabs as in mockup C');
   assert.doesNotMatch(html, /Cập nhật nhanh|<select/, 'D-PO1: no manual status and no inline discount editor');
-  assert.ok(html.includes('10%'));
-  assert.ok(html.includes('Tổng thanh toán'));
-  assert.ok(html.includes('97.200 đ'));
+  assert.doesNotMatch(html, /has-dynamic-columns|erp-primary-data-table/, 'no fixed 150px list columns');
+  for (const header of ['% CK', 'Tiền CK', '% thuế', 'Tiền thuế']) assert.ok(html.includes(`>${header}</th>`), header);
+  assert.ok(html.includes('<tfoot>') && html.includes('>Cộng</span></td>'));
+  assert.ok(html.includes('Tổng tiền thanh toán'));
+  assert.ok(html.includes('>97.200</dd>'));
+  assert.ok(html.includes('Người lập: Khánh Ly (Sale)'));
+});
+
+test('mixed units are never added up in the Cộng row', () => {
+  const html = renderDetail({ po: po({ items: [line(), line({ itemId: 'i2', unit: 'cuộn', quantity: 5 })] }) });
+  assert.match(html, /<tfoot>[\s\S]*?<td class="order-number"><span class="erp-table-cell-text"><\/span><\/td>/);
+  assert.ok(!html.includes('1.005'));
 });
 
 test('without sale financials the amounts stay hidden', () => {
   const html = renderDetail({ canViewFinancials: false, canManage: false });
   assert.ok(!html.includes('97.200'));
-  assert.ok(!html.includes('Tổng thanh toán'));
-  assert.ok(!html.includes('Chỉnh sửa'));
+  assert.ok(!html.includes('Tổng tiền thanh toán'));
+  assert.ok(!html.includes('>Sửa</button>'));
 });
 
 test('production and delivery tabs list only this order, read-only, for every role that sees the order', () => {

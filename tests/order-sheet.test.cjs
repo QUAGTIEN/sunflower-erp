@@ -90,7 +90,7 @@ test('the order page exports the order sheet from the detail header and the row 
   assert.match(page, /onPrint=\{\(\) => setPrintPO\(selectedPO\)\}/);
   assert.match(
     readSource('src/features/sales/components/orderDetail/OrderDetailView.tsx'),
-    /<IconButton label="Xuất đơn hàng" icon=\{<Printer \/>\} onClick=\{props\.onPrint\} \/>/
+    /onClick=\{props\.onPrint\}[^>]*>\s*In\s*</
   );
   assert.match(page, /label: 'Xuất đơn hàng', onSelect: \(\) => setPrintPO\(po\)/);
   assert.match(page, /<PrintPreviewDialog[\s\S]{0,200}html=\{orderSheetHtml\(printPO\)\}/);
