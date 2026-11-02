@@ -5,4 +5,4 @@ export const canReadPartnerSummary = (a: WarehouseActor) =>
   canUseLedger(a) ||
   (a.active === true &&
     ((a.role === 'sale' && a.allowedPages?.some(p => ['crm', 'sales'].includes(p)) === true) ||
-      (a.role === 'purchaser' && a.allowedPages?.some(p => ['suppliers', 'purchase'].includes(p)) === true)));
+      (a.role === 'accountant' && a.allowedPages?.some(p => ['suppliers', 'purchase'].includes(p)) === true)));

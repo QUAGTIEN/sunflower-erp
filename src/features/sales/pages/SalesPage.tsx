@@ -135,7 +135,6 @@ export const Sales: React.FC<SalesProps> = ({
   const { t } = useLanguage();
   const isFull = currentUser.role === 'admin' || currentUser.role === 'accountant';
   const isSaleOnly = currentUser.role === 'sale' || currentUser.role === 'designer';
-  const isPurchaseOnly = currentUser.role === 'purchaser';
   const canViewSaleFinancials = isFull || isSaleOnly;
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [printPO, setPrintPO] = useState<PrintableOrder | null>(null);
@@ -1780,7 +1779,7 @@ export const Sales: React.FC<SalesProps> = ({
                                     colSpan={13}
                                     style={{ padding: '16px', borderBottom: '1px solid var(--color-border-light)' }}
                                   >
-                                    {(isFull || isPurchaseOnly) && (
+                                    {isFull && (
                                       <div className="po-commercial-summary">
                                         <div>
                                           <span>{t('Nhà Cung Cấp')}</span>

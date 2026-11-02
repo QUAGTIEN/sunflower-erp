@@ -1015,8 +1015,7 @@ export default function POFormFullScreen({
   // Departments for tasks mapping
   const departments = [
     { value: 'designer', label: t('Thiết Kế (DESIGN)') },
-    { value: 'producer', label: t('Sản Xuất (FACTORY)') },
-    { value: 'purchaser', label: t('Mua Hàng (PURCHASE)') },
+    { value: 'producer', label: t('Kỹ Thuật (FACTORY)') },
     { value: 'accountant', label: t('Kế Toán (ACCOUNTING)') },
     { value: 'sale', label: t('Kinh Doanh (SALES)') },
     { value: 'admin', label: t('Ban Giám Đốc (ADMIN)') }

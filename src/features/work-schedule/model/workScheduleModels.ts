@@ -339,7 +339,7 @@ export const WORK_SCHEDULE_DEPARTMENT_LABELS: Record<string, string> = {
   sale: 'Sale',
   designer: 'Thiết kế',
   purchaser: 'Mua hàng',
-  producer: 'Sản xuất',
+  producer: 'Kỹ thuật',
   accountant: 'Kế toán'
 };
 

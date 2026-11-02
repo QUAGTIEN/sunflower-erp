@@ -21,6 +21,7 @@ import { mutateItemCatalog } from '@/features/catalog/api/itemCatalogService';
 import { CatalogCodeFields } from '@/features/catalog/components/CatalogCodeFields';
 import {
   CATALOG_KINDS,
+  canManageDieCatalog,
   canManageItemCatalog,
   catalogCsvTemplate,
   parseCatalogCsv,
@@ -615,7 +616,7 @@ export function Inventory({ currentUser, onRefresh, tabRequest }: InventoryProps
       )}
 
       {tab === 'dies' ? (
-        <DieCatalogWorkspace canManage={canManageCatalog && isFirebaseRuntimeEnabled} />
+        <DieCatalogWorkspace canManage={canManageDieCatalog(currentUser) && isFirebaseRuntimeEnabled} />
       ) : tab === 'catalog' && activeStock ? (
         <StockDetails
           key={`${activeStock.warehouseId}-${activeStock.id}`}

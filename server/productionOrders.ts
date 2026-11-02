@@ -6,6 +6,7 @@ import {
   assertPOAccess,
   assertTransition,
   canDraftProduction,
+  canRunProduction,
   commandPoIds,
   completedProduction,
   lineKey,
@@ -123,9 +124,12 @@ async function readCommands(transaction: Transaction, firestore: Firestore, poId
 
 /** Production orders draw lines from one or more POs of one or more customers; PO writes serialize allocations. */
 export async function manageProductionOrder(actor: ProductionActor, body: Record<string, unknown>) {
-  if (!canDraftProduction(actor)) throw new AdminApiError(403, 'Bạn không có quyền lập lệnh sản xuất.');
-  const { firestore } = getFirebaseAdminServices();
+  if (!canRunProduction(actor)) throw new AdminApiError(403, 'Bạn không có quyền với lệnh sản xuất.');
   const action = String(body.action);
+  // Saving and deleting are checked per order in assertTransition; Kỹ thuật only runs orders.
+  if ((action === 'catalog' || action === 'create') && !canDraftProduction(actor))
+    throw new AdminApiError(403, 'Bạn không có quyền lập lệnh sản xuất.');
+  const { firestore } = getFirebaseAdminServices();
   if (action === 'catalog') return loadCatalog(firestore, actor, body);
   const id = identifier(body.id);
   const drafting = action === 'create' || action === 'save';

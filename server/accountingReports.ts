@@ -41,7 +41,7 @@ export async function loadPartnerSummary(actor: WarehouseActor) {
             customers.some(
               c => c.id === r.partnerId && !c.deleted && (!c.assignedSaleId || c.assignedSaleId === actor.uid)
             )) ||
-          (actor.role === 'purchaser' && r.side === 'ap' && suppliers.some(s => s.id === r.partnerId && !s.deleted))
+          (actor.role === 'accountant' && r.side === 'ap' && suppliers.some(s => s.id === r.partnerId && !s.deleted))
       )
     };
   });

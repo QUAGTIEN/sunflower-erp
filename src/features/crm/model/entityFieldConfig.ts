@@ -17,7 +17,7 @@ export type EntityCustomFieldType =
   | 'email'
   | 'url';
 
-export type EntityFieldRole = 'admin' | 'sale' | 'designer' | 'purchaser' | 'producer' | 'accountant';
+export type EntityFieldRole = 'admin' | 'sale' | 'designer' | 'producer' | 'accountant';
 export type EntityCustomFieldValue = string | number | boolean | string[] | null;
 export type EntityCustomFieldValues = Record<string, EntityCustomFieldValue>;
 
@@ -114,8 +114,7 @@ export const ENTITY_FIELD_ROLES: Array<{ id: EntityFieldRole; label: string }> =
   { id: 'admin', label: 'Giám đốc/Admin' },
   { id: 'sale', label: 'Sale' },
   { id: 'designer', label: 'Thiết kế' },
-  { id: 'purchaser', label: 'Mua hàng' },
-  { id: 'producer', label: 'Sản xuất' },
+  { id: 'producer', label: 'Kỹ thuật' },
   { id: 'accountant', label: 'Kế toán' }
 ];
 

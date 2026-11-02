@@ -1,32 +1,7 @@
 import type { DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import type { DocumentData, DocumentSnapshot } from 'firebase-admin/firestore';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
-
-export const USER_ROLES = ['admin', 'sale', 'designer', 'purchaser', 'producer', 'accountant'] as const;
-
-export type UserRole = (typeof USER_ROLES)[number];
-
-export const ERP_PAGE_IDS = [
-  'dashboard',
-  'chat',
-  'work_schedule',
-  'attendance',
-  'crm',
-  'leads',
-  'customer_data',
-  'commercial_map',
-  'sales',
-  'sales_management',
-  'design',
-  'purchase',
-  'suppliers',
-  'inventory',
-  'production',
-  'delivery',
-  'accounting',
-  'users',
-  'recycle_bin'
-] as const;
+import { ERP_PAGE_IDS, ROLE_PAGES, USER_ROLES, type UserRole } from '../src/shared/types/user.js';
 
 const ERP_PAGE_ID_SET = new Set<string>(ERP_PAGE_IDS);
 const USER_ROLE_SET = new Set<string>(USER_ROLES);
@@ -96,7 +71,7 @@ const requiredRole = (body: Record<string, unknown>): UserRole => {
   return role as UserRole;
 };
 
-const requiredAllowedPages = (body: Record<string, unknown>): string[] => {
+const requiredAllowedPages = (body: Record<string, unknown>, role: UserRole): string[] => {
   const value = body.allowedPages;
   if (!Array.isArray(value) || value.some(pageId => typeof pageId !== 'string')) {
     throw new AdminApiError(400, 'Danh sách quyền truy cập không hợp lệ.', 'validation/allowed-pages');
@@ -105,6 +80,10 @@ const requiredAllowedPages = (body: Record<string, unknown>): string[] => {
   const uniquePages = [...new Set(value.map(pageId => pageId.trim()))];
   if (uniquePages.some(pageId => !ERP_PAGE_ID_SET.has(pageId))) {
     throw new AdminApiError(400, 'Danh sách có trang không được hệ thống hỗ trợ.', 'validation/allowed-pages');
+  }
+  // D-PQ1: an account can only be given pages of its own role.
+  if (uniquePages.some(pageId => !ROLE_PAGES[role].includes(pageId))) {
+    throw new AdminApiError(400, 'Có trang không thuộc chức năng của vai trò này.', 'validation/allowed-pages');
   }
   return uniquePages;
 };
@@ -118,22 +97,28 @@ const requiredEmail = (body: Record<string, unknown>): string => {
   return email;
 };
 
-export const validateCreateUserBody = (body: Record<string, unknown>) => ({
-  email: requiredEmail(body),
-  password: requiredString(body, 'password', 'Mật khẩu tạm', 8),
-  displayName: requiredString(body, 'displayName', 'Họ và tên', 2),
-  role: requiredRole(body),
-  active: requiredBoolean(body, 'active', 'Trạng thái'),
-  allowedPages: requiredAllowedPages(body)
-});
+export const validateCreateUserBody = (body: Record<string, unknown>) => {
+  const role = requiredRole(body);
+  return {
+    email: requiredEmail(body),
+    password: requiredString(body, 'password', 'Mật khẩu tạm', 8),
+    displayName: requiredString(body, 'displayName', 'Họ và tên', 2),
+    role,
+    active: requiredBoolean(body, 'active', 'Trạng thái'),
+    allowedPages: requiredAllowedPages(body, role)
+  };
+};
 
-export const validateUpdateUserBody = (body: Record<string, unknown>) => ({
-  uid: requiredString(body, 'uid', 'UID'),
-  displayName: requiredString(body, 'displayName', 'Họ và tên', 2),
-  role: requiredRole(body),
-  active: requiredBoolean(body, 'active', 'Trạng thái'),
-  allowedPages: requiredAllowedPages(body)
-});
+export const validateUpdateUserBody = (body: Record<string, unknown>) => {
+  const role = requiredRole(body);
+  return {
+    uid: requiredString(body, 'uid', 'UID'),
+    displayName: requiredString(body, 'displayName', 'Họ và tên', 2),
+    role,
+    active: requiredBoolean(body, 'active', 'Trạng thái'),
+    allowedPages: requiredAllowedPages(body, role)
+  };
+};
 
 export const validateSetActiveBody = (body: Record<string, unknown>) => ({
   uid: requiredString(body, 'uid', 'UID'),

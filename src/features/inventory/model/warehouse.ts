@@ -10,14 +10,12 @@ export interface WarehouseActor {
 export const canReadWarehouse = (a: WarehouseActor) =>
   a.active === true &&
   (a.role === 'admin' ||
-    (a.role === 'accountant' && a.allowedPages?.includes('accounting')) ||
-    (a.role === 'purchaser' && a.allowedPages?.some(page => ['inventory', 'purchase'].includes(page))) ||
-    (a.role === 'producer' && a.allowedPages?.includes('production'))) === true;
+    (a.role === 'accountant' && a.allowedPages?.some(page => ['accounting', 'inventory'].includes(page))) ||
+    (a.role === 'producer' && a.allowedPages?.some(page => ['inventory', 'production'].includes(page)))) === true;
 export const canPostWarehouse = (a: WarehouseActor) =>
   a.active === true &&
   (a.role === 'admin' ||
-    (a.role === 'accountant' && a.allowedPages?.includes('accounting')) ||
-    (a.role === 'purchaser' && a.allowedPages?.includes('inventory'))) === true;
+    (a.role === 'accountant' && a.allowedPages?.some(page => ['accounting', 'inventory'].includes(page)))) === true;
 export class WarehouseValidationError extends Error {
   constructor(message: string) {
     super(message);

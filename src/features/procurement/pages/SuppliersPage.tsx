@@ -191,7 +191,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     };
   }, []);
 
-  const purchasers = useMemo(() => users.filter(user => user.role === 'purchaser'), [users]);
+  const purchasers = useMemo(() => users.filter(user => user.role === 'accountant'), [users]);
   const selectedSupplier = suppliers.find(supplier => supplier.id === selectedSupplierId) || null;
   const categories = useMemo(
     () => Array.from(new Set(suppliers.flatMap(supplier => supplier.categories))).sort(),
@@ -247,7 +247,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
     setEditingSupplierId('');
     setForm({
       ...EMPTY_FORM,
-      assignedPurchaserId: currentUser.role === 'purchaser' ? currentUser.uid : ''
+      assignedPurchaserId: currentUser.role === 'accountant' ? currentUser.uid : ''
     });
     setShowForm(true);
   };

@@ -1,5 +1,6 @@
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
+import { isUserRole } from '../src/shared/types/user.js';
 
 /** Verify the token and the current server-side account, never a client-supplied role. */
 export async function requireActiveErpCaller(request: Request) {
@@ -22,6 +23,8 @@ export async function requireActiveErpCaller(request: Request) {
   const profile = profileSnapshot.data();
   if (profile?.active !== true || profile.uid !== uid || String(profile.email).toLowerCase() !== email?.toLowerCase())
     throw new AdminApiError(403, 'Hồ sơ tài khoản không hợp lệ hoặc đã khóa.');
+  if (!isUserRole(profile.role))
+    throw new AdminApiError(403, 'Vai trò của tài khoản không còn được hỗ trợ. Vui lòng liên hệ Admin.');
   return {
     uid,
     displayName: String(profile.displayName || email),

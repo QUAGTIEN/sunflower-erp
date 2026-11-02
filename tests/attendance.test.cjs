@@ -485,7 +485,7 @@ test('the shared caller verifier rejects revoked tokens, disabled Auth accounts 
 
 test('all active roles can open attendance (Bảng công) without granting production to Sale', () => {
   const access = loader()('src/app/navigation/accessControl.ts');
-  for (const role of ['admin', 'sale', 'designer', 'purchaser', 'producer', 'accountant']) {
+  for (const role of ['admin', 'sale', 'designer', 'producer', 'accountant']) {
     assert.ok(access.getDefaultPagesForRole(role).includes('attendance'));
     assert.equal(access.canAccessPage({ ...worker, role, allowedPages: [] }, 'attendance'), true);
   }

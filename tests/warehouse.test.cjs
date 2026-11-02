@@ -8,7 +8,7 @@ const { createLoader: loader } = require('./helpers/loadTs.cjs');
 const model = loader()('src/features/inventory/model/warehouse.ts');
 const admin = { uid: 'admin1', displayName: 'Admin', role: 'admin', active: true, allowedPages: [] };
 const accountant = { ...admin, uid: 'accountant1', role: 'accountant', allowedPages: ['accounting'] };
-const purchaser = { ...admin, uid: 'purchaser1', role: 'purchaser', allowedPages: ['inventory'] };
+const stockKeeper = { ...accountant, uid: 'stock1', allowedPages: ['inventory'] };
 const producer = { ...admin, uid: 'producer1', role: 'producer', allowedPages: ['production'] };
 const item = {
   id: 'paper',
@@ -149,9 +149,9 @@ function backend(extra = {}) {
   return { store, manage, request, reverse, balance, retries: () => retries };
 }
 
-test('warehouse permission matrix separates readers, posters, inactive and inherited accountant access', async () => {
-  for (const actor of [admin, purchaser, accountant]) assert.equal(model.canPostWarehouse(actor), true);
-  for (const actor of [producer, { ...purchaser, allowedPages: ['purchase'] }]) {
+test('warehouse permission matrix: Kế toán posts, Kỹ thuật only reads, removed roles reach nothing', async () => {
+  for (const actor of [admin, stockKeeper, accountant]) assert.equal(model.canPostWarehouse(actor), true);
+  for (const actor of [producer, { ...producer, allowedPages: ['inventory'] }]) {
     assert.equal(model.canReadWarehouse(actor), true);
     assert.equal(model.canPostWarehouse(actor), false);
     await assert.rejects(backend().manage({ action: 'post' }, actor), error => error.status === 403);
@@ -159,12 +159,15 @@ test('warehouse permission matrix separates readers, posters, inactive and inher
   for (const actor of [
     { ...admin, active: false },
     { ...admin, role: 'sale', allowedPages: ['inventory'] },
-    { ...accountant, allowedPages: [] }
+    { ...accountant, allowedPages: [] },
+    { ...admin, uid: 'old-purchaser', role: 'purchaser', allowedPages: ['inventory', 'purchase'] }
   ])
     await assert.rejects(backend().manage({ action: 'load' }, actor), error => error.status === 403);
   const access = loader()('src/app/navigation/accessControl.ts');
-  assert.equal(access.canAccessPage(accountant, 'inventory'), true);
-  assert.equal(access.canAccessPage({ ...accountant, active: false }, 'inventory'), false);
+  assert.equal(access.canAccessPage(stockKeeper, 'inventory'), true);
+  assert.equal(access.canAccessPage(accountant, 'inventory'), false, 'D-PQ1: no page is granted implicitly');
+  assert.equal(access.canAccessPage({ ...producer, allowedPages: ['inventory'] }, 'inventory'), true);
+  assert.equal(access.canAccessPage({ ...stockKeeper, role: 'purchaser' }, 'inventory'), false);
 });
 test('partial and complete receiving updates source, request, PO, and preserves money and legacy data', async () => {
   const b = backend();
@@ -285,7 +288,7 @@ test('negative stock requires both explicit override and reason, also on reversa
   await assert.rejects(b.manage(b.request('production_issue', 5, { allowNegative: true })), /xuất vượt tồn/);
   const issue = await b.manage(
     b.request('production_issue', 5, { allowNegative: true, negativeReason: 'Hàng thực nhận chưa nhập sổ' }),
-    purchaser
+    stockKeeper
   );
   assert.equal(b.balance().quantity, -5);
   assert.equal(b.store.get(`warehouse_vouchers/${issue.id}`).negativeReason, 'Hàng thực nhận chưa nhập sổ');

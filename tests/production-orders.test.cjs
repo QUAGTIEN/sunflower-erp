@@ -26,7 +26,8 @@ const accountant = {
   displayName: 'Kế toán',
   role: 'accountant',
   active: true,
-  allowedPages: ['accounting']
+  // D-PQ1: no page is implied by another; production must be ticked on the account.
+  allowedPages: ['accounting', 'production']
 };
 const po = () => ({
   id: 'po1',
@@ -196,7 +197,7 @@ test('legacy commands require explicit reconciliation, not a guessed first-item 
 });
 test('create stores authoritative PO snapshot, audit, scope, and leaves inventory untouched', async () => {
   const b = backend();
-  await b.manage(draft(), producer);
+  await b.manage(draft(), accountant);
   assert.equal(b.order().status, 'released', 'saving makes the order effective; there is no approval step');
   assert.equal(b.order().lines[0].productName, 'Tem cuộn');
   assert.equal(b.order().inventoryPostingMode, 'actual_issue');
@@ -238,13 +239,14 @@ test('a command ID cannot be overwritten via a different PO', async () => {
   await assert.rejects(b.manage(draft({ poId: 'po2', requestId: 'request2' })), error => error.status === 409);
   assert.equal(b.order().poId, 'po1');
 });
-test('only active production managers can create and change LSX, including drafts previously owned by Sale', async () => {
+test('D-PQ1: only Kế toán and Admin draw up LSX, Kỹ thuật runs them, Sale and removed roles reach nothing', async () => {
   for (const actor of [
     sale,
     { ...sale, allowedPages: ['sales', 'production'] },
-    { ...producer, active: false },
-    { ...producer, allowedPages: [] },
-    { ...producer, role: 'purchaser' }
+    { ...accountant, active: false },
+    { ...accountant, allowedPages: ['accounting'] },
+    producer,
+    { ...accountant, role: 'purchaser' }
   ]) {
     const b = backend();
     await assert.rejects(b.manage(draft(), actor), error => error.status === 403);
@@ -252,7 +254,7 @@ test('only active production managers can create and change LSX, including draft
     assert.equal(b.store.get('pos/po1').productionPlanLocked, undefined);
   }
   const b = backend();
-  await b.manage(draft(), producer);
+  await b.manage(draft(), accountant);
   b.order().createdById = sale.uid;
   const before = structuredClone(b.order());
   for (const action of ['save', 'start', 'complete', 'cancel']) {
@@ -262,14 +264,17 @@ test('only active production managers can create and change LSX, including draft
     );
     assert.throws(() => model.assertTransition(sale, b.order(), action), /không có quyền/);
   }
+  for (const action of ['save', 'cancel']) {
+    await assert.rejects(b.action(action, 'command1', draftFields(), producer), /không có quyền/i);
+    assert.throws(() => model.assertTransition(producer, b.order(), action), /không có quyền/i);
+  }
   assert.deepEqual(b.order(), before);
   assert.equal(b.order().operatorName, producer.displayName);
   await b.action('start', 'command1', {}, producer);
   assert.equal(b.order().status, 'producing');
   for (const action of ['submit', 'return', 'release'])
-    assert.throws(() => model.assertTransition(producer, b.order(), action), /không có quyền/i);
+    assert.throws(() => model.assertTransition(accountant, b.order(), action), /không có quyền/i);
 });
-
 test('a saved order stays editable until production starts; a started order cannot change', async () => {
   const b = backend();
   await b.manage(draft());
@@ -668,7 +673,7 @@ test('workspace renders all accessible orders across POs without a browser or re
     '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
     '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
   })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
-  const props = { pos: [po()], currentUser: producer, users: [producer], commands: [], onRefresh() {} };
+  const props = { pos: [po()], currentUser: accountant, users: [producer], commands: [], onRefresh() {} };
   assert.match(renderToStaticMarkup(React.createElement(Component, props)), /Chưa có lệnh phù hợp/);
   const commands = [
     { id: 'one', productionOrderVersion: 2, poId: 'po1', status: 'draft', lsxCode: 'LSX-ONE', lines: [] },
@@ -678,6 +683,11 @@ test('workspace renders all accessible orders across POs without a browser or re
   assert.ok(html.includes('LSX-ONE'));
   assert.ok(html.includes('SECRET'));
   assert.match(html, /Lập lệnh sản xuất/);
+  const technician = renderToStaticMarkup(
+    React.createElement(Component, { ...props, currentUser: producer, commands })
+  );
+  assert.ok(technician.includes('LSX-ONE'), 'Kỹ thuật sees the orders it runs');
+  assert.doesNotMatch(technician, /Lập lệnh sản xuất/, 'only Kế toán and Admin draw up orders');
 });
 
 test('legacy-only lists count the displayed records and keep detail tables at content height', () => {

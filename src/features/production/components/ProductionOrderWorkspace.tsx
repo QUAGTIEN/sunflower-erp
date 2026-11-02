@@ -17,6 +17,7 @@ import {
 } from '../api/productionOrderService';
 import {
   canDraftProduction,
+  canRunProduction,
   canEditProductionOrder,
   DEFAULT_PRINT_TEMPLATE,
   hasProductionAccess,
@@ -201,6 +202,7 @@ export function ProductionOrderWorkspace({
     };
   }, [draft, busy]);
   const canCreate = canDraftProduction(currentUser);
+  const canRun = canRunProduction(currentUser);
   const visiblePOs = pos.filter(po => !po.deleted);
   const accessibleCommands = commands.filter(command => !command.deleted);
   const canChange = (command: CommandRecord) =>
@@ -526,13 +528,15 @@ export function ProductionOrderWorkspace({
                   <button className="btn btn-danger" disabled={busy} onClick={() => void remove(selected)}>
                     Xóa
                   </button>
-                  <button className="btn btn-primary" disabled={busy} onClick={() => transition('start')}>
-                    Bắt đầu sản xuất
-                  </button>
                 </>
               )}
+              {canRun && OPEN_PRODUCTION_STATUSES.includes(selected.status) && (
+                <button className="btn btn-primary" disabled={busy} onClick={() => transition('start')}>
+                  Bắt đầu sản xuất
+                </button>
+              )}
               {selected.status === 'completed' &&
-                canCreate &&
+                canRun &&
                 selected.lines.some(line => line.quantity - (line.goodQuantity ?? 0) > 1e-8) && (
                   <>
                     <button
@@ -657,7 +661,7 @@ export function ProductionOrderWorkspace({
                 order={selected}
                 actions={
                   MATERIAL_SHORTAGE_STATUSES.includes(selected.status) &&
-                  canCreate && (
+                  canRun && (
                     <button
                       type="button"
                       className="btn btn-outline"
@@ -686,7 +690,7 @@ export function ProductionOrderWorkspace({
                 currentUser={currentUser}
                 onRefresh={onRefresh}
               />
-              {selected.status === 'producing' && canCreate && (
+              {selected.status === 'producing' && canRun && (
                 <form
                   className="lsx-section"
                   onSubmit={event => {

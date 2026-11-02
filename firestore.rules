@@ -26,10 +26,12 @@ service cloud.firestore {
       ).data;
     }
 
+    // D-PQ1: an account still carrying a removed role (purchaser) reaches nothing until an admin deletes it.
     function isActive() {
       return isBootstrapAdmin()
         || (hasUserProfile()
-          && userProfile().active == true);
+          && userProfile().active == true
+          && isValidRole(userProfile().role));
     }
 
     function isAdmin() {
@@ -38,12 +40,27 @@ service cloud.firestore {
           && userProfile().role == 'admin');
     }
 
+    // D-PQ1: mirrors ROLE_PAGES in src/shared/types/user.ts; a ticked page outside the role grants nothing.
+    function rolePages(role) {
+      return role == 'sale'
+        ? ['dashboard', 'chat', 'work_schedule', 'attendance', 'customer_data', 'leads', 'crm', 'sales', 'commercial_map']
+        : role == 'designer'
+          ? ['dashboard', 'chat', 'work_schedule', 'attendance', 'design']
+          : role == 'producer'
+            ? ['dashboard', 'chat', 'work_schedule', 'attendance', 'production', 'inventory', 'delivery']
+            : role == 'accountant'
+              ? ['dashboard', 'chat', 'work_schedule', 'attendance', 'production', 'inventory', 'purchase', 'suppliers',
+                 'delivery', 'accounting']
+              : [];
+    }
+
     function hasPage(pageId) {
       return isAdmin()
         || (isActive()
           && userProfile().keys().hasAll(['allowedPages'])
           && userProfile().allowedPages is list
-          && pageId in userProfile().allowedPages);
+          && pageId in userProfile().allowedPages
+          && pageId in rolePages(userProfile().role));
     }
 
     function canUseCrm() {
@@ -70,8 +87,9 @@ service cloud.firestore {
       return isAdmin() || (hasPage('production') && userProfile().role == 'producer');
     }
 
+    // D-PQ1: Kỹ thuật only views stock, so the inventory page alone no longer opens purchasing.
     function canUsePurchase() {
-      return hasPage('purchase') || hasPage('inventory');
+      return hasPage('purchase');
     }
 
     function canUseInventory() {
@@ -91,7 +109,6 @@ service cloud.firestore {
         'admin',
         'sale',
         'designer',
-        'purchaser',
         'producer',
         'accountant'
       ];
@@ -133,8 +150,8 @@ service cloud.firestore {
     // Catalog mutations use the authenticated API (uniqueness, revision and source validation).
     function canManageItemCatalog() {
       return isAdmin() || (isActive() && (
-        (userProfile().role == 'purchaser' && (hasPage('inventory') || hasPage('purchase')))
-        || (userProfile().role == 'accountant' && hasPage('accounting'))
+        userProfile().role == 'accountant'
+          && (hasPage('accounting') || hasPage('purchase') || hasPage('inventory'))
       ));
     }
 
@@ -382,9 +399,8 @@ service cloud.firestore {
 
     function canReadWarehouse() {
       return isAdmin() || (isActive() && (
-        (userProfile().role == 'accountant' && hasPage('accounting'))
-        || (userProfile().role == 'purchaser' && (hasPage('inventory') || hasPage('purchase')))
-        || (userProfile().role == 'producer' && hasPage('production'))
+        (userProfile().role == 'accountant' && (hasPage('accounting') || hasPage('inventory')))
+        || (userProfile().role == 'producer' && (hasPage('inventory') || hasPage('production')))
       ));
     }
     match /warehouse_balances/{documentId} {

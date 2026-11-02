@@ -5,7 +5,7 @@ import {
 } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { DEFAULT_USERS } from '@/data/seeds/erpSeedData';
-import type { UserProfile } from '@/shared/types';
+import { isUserRole, type UserProfile } from '@/shared/types';
 import {
   authenticateFirebase,
   firebaseAuth,
@@ -146,6 +146,10 @@ export const authService = {
       throw new Error('Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ Giám đốc.');
     }
 
+    if (!isUserRole(user.role)) {
+      throw new Error('Vai trò của tài khoản không còn được hỗ trợ. Vui lòng liên hệ Admin.');
+    }
+
     if (firebaseAuthMode === 'local') {
       const expectedPassword =
         user.role === 'admin'
@@ -154,11 +158,9 @@ export const authService = {
             ? 'sale123'
             : user.role === 'designer'
               ? 'design123'
-              : user.role === 'purchaser'
-                ? 'purchase123'
-                : user.role === 'producer'
-                  ? 'produce123'
-                  : 'account123';
+              : user.role === 'producer'
+                ? 'produce123'
+                : 'account123';
 
       if (password !== expectedPassword && password !== '123456') {
         throw new Error('Mật khẩu không đúng. Vui lòng thử lại.');
@@ -204,7 +206,7 @@ export const authService = {
           setFirebaseBackendState('ready');
           const profile = await getOrCreateFirebaseUserProfile(firebaseUser);
 
-          if (!active || !profile || profile.active === false) {
+          if (!active || !profile || profile.active === false || !isUserRole(profile.role)) {
             currentUser = null;
             localStorage.removeItem('erp_current_user');
             callback(null);

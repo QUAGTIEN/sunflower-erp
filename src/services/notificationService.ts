@@ -93,7 +93,6 @@ export const buildWorkflowNotificationCandidates = ({
   const candidates: NotificationCandidate[] = [];
   const adminIds = getRoleUserIds(users, 'admin');
   const designerIds = getRoleUserIds(users, 'designer');
-  const purchaserIds = getRoleUserIds(users, 'purchaser');
   const producerIds = getRoleUserIds(users, 'producer');
   const accountantIds = getRoleUserIds(users, 'accountant');
 
@@ -163,7 +162,7 @@ export const buildWorkflowNotificationCandidates = ({
 
   procurementRequests.forEach(request => {
     if (request.deleted || !['new', 'reviewing', 'quoting', 'supplier_selected'].includes(request.status)) return;
-    const recipients = request.assignedPurchaserId ? [request.assignedPurchaserId] : purchaserIds;
+    const recipients = request.assignedPurchaserId ? [request.assignedPurchaserId] : accountantIds;
     addForRecipients(candidates, [...adminIds, ...recipients], {
       module: 'purchase',
       eventType: 'workflow_procurement_request',
@@ -209,13 +208,13 @@ export const buildWorkflowNotificationCandidates = ({
       createdAt: getRecordCreatedAt(item),
       createdById: ''
     };
-    addForRecipients(candidates, [...adminIds, ...purchaserIds], {
+    addForRecipients(candidates, [...adminIds, ...accountantIds], {
       ...sharedFields,
       module: 'purchase',
       eventType: 'workflow_material_purchase_required',
       eventKey: `purchase:low-stock:${itemId}:${quantity}:${minimum}`
     });
-    addForRecipients(candidates, [...adminIds, ...purchaserIds], {
+    addForRecipients(candidates, [...adminIds, ...accountantIds], {
       ...sharedFields,
       module: 'inventory',
       eventType: 'workflow_inventory_low_stock',

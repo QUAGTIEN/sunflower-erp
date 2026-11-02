@@ -197,7 +197,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
     });
   }, [currentUser, pos]);
 
-  const purchasers = useMemo(() => users.filter(user => user.role === 'purchaser'), [users]);
+  const purchasers = useMemo(() => users.filter(user => user.role === 'accountant'), [users]);
   const months = useMemo(
     () =>
       Array.from(
@@ -305,7 +305,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
     setUnitPrice(request.selectedUnitPrice || recommended?.lastUnitPrice || 0);
     setExpectedReceiveDate(request.requiredDate?.slice(0, 10) || '');
     setAssignedPurchaserId(
-      request.assignedPurchaserId || (currentUser.role === 'purchaser' ? currentUser.uid : purchasers[0]?.uid || '')
+      request.assignedPurchaserId || (currentUser.role === 'accountant' ? currentUser.uid : purchasers[0]?.uid || '')
     );
     setSourcingType(request.sourcingType);
   };

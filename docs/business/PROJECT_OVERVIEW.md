@@ -49,17 +49,22 @@ Ba nguyên tắc dữ liệu xuyên suốt:
 
 ## 3. Nhóm người dùng và quyền mặc định
 
-| Vai trò              | Trách nhiệm chính                                                    | Phân hệ mặc định                                                                         |
-| -------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **Admin / Giám đốc** | Theo dõi toàn hệ thống, quản lý Sale, tài khoản, cấu hình và dữ liệu | Toàn bộ các phân hệ                                                                      |
-| **Sale**             | Tìm dữ liệu, chăm sóc tiềm năng, quản lý khách hàng và tạo PO        | Tổng quan, Chat, Công việc, Thương mại, Dữ liệu thô, Tiềm năng, Khách hàng, Tạo đơn hàng |
-| **Thiết kế**         | Tiếp nhận yêu cầu, thực hiện thiết kế và theo dõi khách duyệt        | Tổng quan, Chat, Công việc, Thiết kế                                                     |
-| **Mua hàng**         | Xử lý yêu cầu mua, chọn nhà cung cấp và quản lý vật tư               | Tổng quan, Chat, Công việc, Mua hàng, Nhà cung cấp, Vật liệu                             |
-| **Sản xuất**         | Nhận lệnh sản xuất, quản lý lịch máy và tiến độ                      | Tổng quan, Chat, Công việc, Sản xuất                                                     |
-| **Kế toán**          | Công nợ, thu chi, báo cáo, ghi sổ kho, lập nháp LSX                  | Tổng quan, Chat, Công việc, Kế toán, Sản xuất, Vật liệu                                  |
+Quyết định **D-PQ1** (02/11/2026): còn 5 vai trò, mỗi vai trò chỉ thấy các phân hệ thuộc chức năng của mình.
 
-Mọi vai trò đều xem được bảng công của mình; chỉ Admin và Kế toán chấm công. Kế toán có trang Kế toán được kế thừa quyền vào Vật liệu và Sản xuất mà không cần
-sửa hồ sơ tài khoản. Sale luôn bị chặn khỏi Sản xuất. Quyền chi tiết: `src/app/navigation/accessControl.ts`.
+| Vai trò (khóa)              | Trách nhiệm chính                                         | Phân hệ được cấp (ngoài Tổng quan, Chat, Công việc, Chấm công)      |
+| --------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Admin** (`admin`)         | Toàn quyền, quản lý Sale, tài khoản, cấu hình, thùng rác  | Toàn bộ các phân hệ                                                  |
+| **Sale** (`sale`)           | Dữ liệu thô, tiềm năng, khách hàng, đơn hàng              | Dữ liệu thô, Tiềm năng, Khách hàng, Đơn hàng, Thương mại             |
+| **Thiết kế** (`designer`)   | Tiếp nhận và thực hiện thiết kế                           | Thiết kế (Yêu cầu thiết kế, Kho mẫu)                                 |
+| **Kỹ thuật** (`producer`)   | Chạy và nghiệm thu LSX, toàn quyền máy và dao, giao hàng  | Sản xuất (LSX, máy), Kho vật tư (xem, toàn quyền dao), Giao hàng     |
+| **Kế toán** (`accountant`)  | Kế toán, mua hàng, kho NVL, lập/sửa/xóa LSX như Admin     | Sản xuất, Kho vật tư, Mua hàng, Nhà cung cấp, Giao hàng, Kế toán     |
+
+- Khóa `producer` giữ nguyên trong dữ liệu, chỉ đổi tên hiển thị thành Kỹ thuật. Vai trò Mua hàng (`purchaser`) đã bỏ:
+  tài khoản còn mang vai trò này không vào được trang nào và mọi API trả 403; Admin xóa các tài khoản đó.
+- Admin tick trang cho từng tài khoản, chỉ trong danh sách của vai trò (`ROLE_PAGES` tại `src/shared/types/user.ts`).
+  Máy chủ từ chối trang ngoài vai trò; `firestore.rules` (`rolePages`) chỉ tính trang vừa được tick vừa thuộc vai trò.
+  Không còn quyền ngầm (Kế toán có Kế toán không còn tự vào Kho/Sản xuất).
+- Chỉ Admin và Kế toán chấm công cho người khác; mọi vai trò xem bảng công của mình.
 
 Admin có thể thay đổi danh sách trang được phép truy cập của từng tài khoản. Một tài khoản bị vô hiệu hóa không thể tiếp tục sử dụng luồng công việc.
 

@@ -57,12 +57,18 @@ export interface CatalogLink {
   revision: number;
   updatedAt: string;
 }
+/** D-PQ1: purchasing belongs to Kế toán, so the item catalog follows any of its purchasing or accounting pages. */
 export const canManageItemCatalog = (actor: CatalogActor) =>
   actor.active === true &&
   (actor.role === 'admin' ||
-    (actor.role === 'purchaser' &&
-      actor.allowedPages?.some(page => ['inventory', 'purchase'].includes(page)) === true) ||
-    (actor.role === 'accountant' && actor.allowedPages?.includes('accounting') === true));
+    (actor.role === 'accountant' &&
+      actor.allowedPages?.some(page => ['accounting', 'purchase', 'inventory'].includes(page)) === true));
+/** D-PQ1: Kỹ thuật has full control of the die list besides the catalog managers. */
+export const canManageDieCatalog = (actor: CatalogActor) =>
+  canManageItemCatalog(actor) ||
+  (actor.active === true &&
+    actor.role === 'producer' &&
+    actor.allowedPages?.some(page => ['inventory', 'production'].includes(page)) === true);
 export const normalizeCatalogCode = (value: string) => value.normalize('NFKC').trim().toLocaleUpperCase('vi-VN');
 export const normalizeUnit = (value: string) =>
   value

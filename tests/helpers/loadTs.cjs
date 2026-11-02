@@ -15,7 +15,7 @@ const compilerOptions = {
 
 function resolveCandidate(base) {
   // `server/` imports use `.js` suffixes that point at `.ts` sources.
-  const candidates = [base.replace(/\.js$/, '.ts'), `${base}.ts`, `${base}.tsx`, base];
+  const candidates = [base.replace(/\.js$/, '.ts'), `${base}.ts`, `${base}.tsx`, base, path.join(base, 'index.ts')];
   return candidates.find(candidate => fs.existsSync(candidate) && fs.statSync(candidate).isFile());
 }
 

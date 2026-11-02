@@ -22,6 +22,7 @@ import {
   NOTIFICATION_MODULE_LABELS
 } from '@/app/config/appConfig';
 import { canAccessPage, getDefaultPagesForRole } from '@/app/navigation/accessControl';
+import { USER_ROLES, USER_ROLE_LABELS } from '@/shared/types';
 import {
   SIDEBAR_MENU,
   findActiveMenuItem,
@@ -1571,12 +1572,11 @@ function AppShell() {
                       width: '115px'
                     }}
                   >
-                    <option value="admin">{t('Giám Đốc')}</option>
-                    <option value="sale">{t('Nhân Viên Sale')}</option>
-                    <option value="designer">{t('Thiết Kế')}</option>
-                    <option value="purchaser">{t('Mua Vật Tư')}</option>
-                    <option value="producer">{t('Sản Xuất')}</option>
-                    <option value="accountant">{t('Kế Toán')}</option>
+                    {USER_ROLES.map(role => (
+                      <option key={role} value={role}>
+                        {t(USER_ROLE_LABELS[role])}
+                      </option>
+                    ))}
                   </select>
                 </div>
               )}

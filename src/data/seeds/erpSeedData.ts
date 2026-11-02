@@ -49,15 +49,6 @@ export const DEFAULT_USERS: UserProfile[] = [
     allowedPages: ['dashboard', 'chat', 'design']
   },
   {
-    uid: 'u-purchaser',
-    email: 'purchase@sunflower.com',
-    displayName: 'Mua Hàng Phạm Đức',
-    role: 'purchaser',
-    active: true,
-    createdAt: '2026-05-01',
-    allowedPages: ['dashboard', 'chat', 'purchase', 'suppliers', 'inventory']
-  },
-  {
     uid: 'u-producer',
     email: 'produce@sunflower.com',
     displayName: 'Quản Đốc Vũ Thành',
@@ -754,8 +745,8 @@ export const DEFAULT_PURCHASE_ORDERS: any[] = [
     status: 'confirmed',
     expectedReceiveDate: '2026-06-08T00:00:00Z',
     actualReceiveDate: '',
-    assignedPurchaserId: 'u-purchaser',
-    assignedPurchaserName: 'Mua Hàng Phạm Đức',
+    assignedPurchaserId: 'u-accountant',
+    assignedPurchaserName: 'Kế Toán Trần Thu',
     createdBy: 'Giám Đốc Lê Minh (ADMIN)',
     createdAt: '2026-06-03T09:00:00Z'
   },
@@ -779,8 +770,8 @@ export const DEFAULT_PURCHASE_ORDERS: any[] = [
     status: 'ordered',
     expectedReceiveDate: '2026-06-05T00:00:00Z',
     actualReceiveDate: '',
-    assignedPurchaserId: 'u-purchaser',
-    assignedPurchaserName: 'Mua Hàng Phạm Đức',
+    assignedPurchaserId: 'u-accountant',
+    assignedPurchaserName: 'Kế Toán Trần Thu',
     createdBy: 'Giám Đốc Lê Minh (ADMIN)',
     createdAt: '2026-05-18T09:00:00Z'
   },
@@ -804,8 +795,8 @@ export const DEFAULT_PURCHASE_ORDERS: any[] = [
     status: 'ordered',
     expectedReceiveDate: '2026-06-05T00:00:00Z',
     actualReceiveDate: '',
-    assignedPurchaserId: 'u-purchaser',
-    assignedPurchaserName: 'Mua Hàng Phạm Đức',
+    assignedPurchaserId: 'u-accountant',
+    assignedPurchaserName: 'Kế Toán Trần Thu',
     createdBy: 'Giám Đốc Lê Minh (ADMIN)',
     createdAt: '2026-05-18T09:00:00Z'
   },
@@ -829,8 +820,8 @@ export const DEFAULT_PURCHASE_ORDERS: any[] = [
     status: 'ordered',
     expectedReceiveDate: '2026-06-05T00:00:00Z',
     actualReceiveDate: '',
-    assignedPurchaserId: 'u-purchaser',
-    assignedPurchaserName: 'Mua Hàng Phạm Đức',
+    assignedPurchaserId: 'u-accountant',
+    assignedPurchaserName: 'Kế Toán Trần Thu',
     createdBy: 'Giám Đốc Lê Minh (ADMIN)',
     createdAt: '2026-05-18T09:00:00Z'
   },
@@ -854,8 +845,8 @@ export const DEFAULT_PURCHASE_ORDERS: any[] = [
     status: 'ordered',
     expectedReceiveDate: '2026-06-05T00:00:00Z',
     actualReceiveDate: '',
-    assignedPurchaserId: 'u-purchaser',
-    assignedPurchaserName: 'Mua Hàng Phạm Đức',
+    assignedPurchaserId: 'u-accountant',
+    assignedPurchaserName: 'Kế Toán Trần Thu',
     createdBy: 'Giám Đốc Lê Minh (ADMIN)',
     createdAt: '2026-05-18T09:00:00Z'
   },
@@ -879,8 +870,8 @@ export const DEFAULT_PURCHASE_ORDERS: any[] = [
     status: 'ordered',
     expectedReceiveDate: '2026-05-19T00:00:00Z',
     actualReceiveDate: '',
-    assignedPurchaserId: 'u-purchaser',
-    assignedPurchaserName: 'Mua Hàng Phạm Đức',
+    assignedPurchaserId: 'u-accountant',
+    assignedPurchaserName: 'Kế Toán Trần Thu',
     createdBy: 'Giám Đốc Lê Minh (ADMIN)',
     createdAt: '2026-05-18T09:00:00Z'
   }
@@ -978,7 +969,7 @@ export const DEFAULT_CHANNELS: any[] = [
     id: 'all',
     name: 'Kênh Chung',
     desc: 'Thảo luận chung toàn công ty',
-    roles: ['admin', 'sale', 'designer', 'purchaser', 'producer', 'accountant'],
+    roles: ['admin', 'sale', 'designer', 'producer', 'accountant'],
     members: [],
     createdBy: 'u-admin',
     createdAt: '2026-05-01T00:00:00Z'
@@ -1023,7 +1014,7 @@ export const DEFAULT_CHANNELS: any[] = [
     id: 'purchase',
     name: 'Kênh Mua Hàng',
     desc: 'Trao đổi đặt hàng nguyên vật tư',
-    roles: ['admin', 'purchaser'],
+    roles: ['admin', 'accountant'],
     members: [],
     createdBy: 'u-admin',
     createdAt: '2026-05-01T00:00:00Z'

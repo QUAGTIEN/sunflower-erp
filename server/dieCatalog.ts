@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { AdminApiError } from './adminUsers.js';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
 import {
-  canManageItemCatalog,
+  canManageDieCatalog,
   formatCatalogCode,
   type CatalogActor
 } from '../src/features/catalog/model/itemCatalog.js';
@@ -22,7 +22,7 @@ export async function manageDie(
   actor: CatalogActor & { uid: string; displayName: string },
   body: Record<string, unknown>
 ) {
-  if (!canManageItemCatalog(actor)) throw new AdminApiError(403, 'Bạn không có quyền quản lý danh mục dao.');
+  if (!canManageDieCatalog(actor)) throw new AdminApiError(403, 'Bạn không có quyền quản lý danh mục dao.');
   const action = String(body.action);
   const input = validateDieInput(body.die as Record<string, unknown>);
   const requestId = requestIdOf(body.requestId);

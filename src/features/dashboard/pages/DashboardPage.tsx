@@ -1628,8 +1628,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </>
       )}
 
-      {/* PURCHASER VIEW */}
-      {user.role === 'purchaser' && (
+      {/* D-PQ1: purchasing belongs to Kế toán */}
+      {user.role === 'accountant' && (
         <>
           <div className="metrics-grid">
             <div className="metric-card">

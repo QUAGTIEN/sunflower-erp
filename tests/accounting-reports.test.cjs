@@ -13,7 +13,8 @@ const access = loader()('src/features/accounting/model/reportAccess.ts');
 const admin = { uid: 'a', displayName: 'Admin', active: true, role: 'admin', allowedPages: [] };
 const accountant = { ...admin, role: 'accountant', allowedPages: ['accounting'] };
 const sale = { ...admin, uid: 'sale1', role: 'sale', allowedPages: ['crm'] };
-const purchaser = { ...admin, role: 'purchaser', allowedPages: ['purchase'] };
+// D-PQ1: purchasing belongs to accountants; one with only the purchase page sees supplier debt summaries.
+const purchaser = { ...admin, role: 'accountant', allowedPages: ['purchase'] };
 const line = (id, gross = 100) => ({
   id,
   gross,
@@ -347,6 +348,7 @@ test('shared summaries hide other sales customers and wrong debt side and never 
   assert.ok(!r.documents && !r.entries);
   assert.equal((await b.server.loadPartnerSummary(purchaser)).partners[0].side, 'ap');
   await assert.rejects(b.server.loadPartnerSummary({ ...admin, role: 'designer' }), e => e.status === 403);
+  await assert.rejects(b.server.loadPartnerSummary({ ...purchaser, role: 'purchaser' }), e => e.status === 403);
 });
 test('finished order report converts base counters per row; transit is not customer receipt', async () => {
   const b = reportBackend(),

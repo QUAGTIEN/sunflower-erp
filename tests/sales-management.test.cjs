@@ -16,7 +16,9 @@ test('sales management is a standalone admin module', () => {
   assert.match(appShell, /case 'sales_management'/);
   assert.match(appShell, /<SalesManagementPage/);
   assert.match(read('src/app/navigation/sidebarMenu.ts'), /page: 'sales_management',\s*label: 'Quản lý Sale'/);
-  assert.match(accessControl, /pageId === 'sales_management'.*user\.role === 'admin'/);
+  assert.match(accessControl, /if \(user\.role === 'admin'\)/);
+  const roles = read('src/shared/types/user.ts');
+  assert.equal(roles.match(/'sales_management'/g).length, 1, 'only the admin page list (ERP_PAGE_IDS) names it');
   assert.doesNotMatch(rawWorkspace, /\['management', 'Quản lý nhân viên'\]/);
 });
 

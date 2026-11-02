@@ -14,10 +14,11 @@ const accountant = {
   active: true,
   allowedPages: ['accounting']
 };
+// D-PQ1: purchasing staff are accountants who were only given the stock page.
 const purchaser = {
   uid: 'pur1',
   displayName: 'Mua hàng',
-  role: 'purchaser',
+  role: 'accountant',
   active: true,
   allowedPages: ['inventory']
 };
@@ -376,7 +377,7 @@ test('manual frozen PO lines and identical codes of two customers can link separ
   assert.notEqual(b.links()[0].catalogItemId, b.links()[1].catalogItemId);
   assert.deepEqual(b.store.get('pos/po1'), frozen);
 });
-test('only authorized active admin, purchasing and accounting accounts can write catalog', async () => {
+test('only active admins and accountants with a purchasing or accounting page can write catalog', async () => {
   for (const actor of [accountant, purchaser, admin]) {
     const b = backend();
     await b.create(input(), {}, actor);
@@ -388,7 +389,8 @@ test('only authorized active admin, purchasing and accounting accounts can write
     { ...accountant, allowedPages: undefined },
     { ...purchaser, allowedPages: [] },
     { ...admin, role: 'sale', allowedPages: ['inventory', 'accounting'] },
-    { ...admin, role: 'producer', allowedPages: ['inventory'] }
+    { ...admin, role: 'producer', allowedPages: ['inventory'] },
+    { ...purchaser, role: 'purchaser' }
   ]) {
     const b = backend();
     await assert.rejects(b.create(input(), {}, actor), error => error.status === 403);

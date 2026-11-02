@@ -218,12 +218,12 @@ export function lineSnapshot(item: Record<string, unknown>, index: number, quant
     sourceFingerprint: JSON.stringify(stable({ ...data, orderedQuantity: numeric(item.quantity) }))
   };
 }
+/** D-PQ1: production belongs to Kỹ thuật (producer) and Kế toán; the page must also be ticked on the account. */
+const PRODUCTION_ROLES = ['admin', 'producer', 'accountant'];
 export const hasProductionAccess = (actor: ProductionActor, page: 'sales' | 'production') =>
   actor.active &&
-  (page !== 'production' || actor.role !== 'sale') &&
-  (actor.role === 'admin' ||
-    actor.allowedPages?.includes(page) === true ||
-    (page === 'production' && actor.role === 'accountant' && actor.allowedPages?.includes('accounting') === true));
+  (page !== 'production' || PRODUCTION_ROLES.includes(actor.role)) &&
+  (actor.role === 'admin' || actor.allowedPages?.includes(page) === true);
 export function productionQuantityLabel(command: CommandRecord) {
   if (command.productionOrderVersion !== 2) {
     const value = Number(command.qtyToProduce ?? command.quantity ?? 0);
@@ -233,11 +233,15 @@ export function productionQuantityLabel(command: CommandRecord) {
   for (const line of command.lines || []) totals.set(line.unit, (totals.get(line.unit) || 0) + line.quantity);
   return [...totals].map(([unit, value]) => `${value.toLocaleString('vi-VN')} ${unit}`).join(' · ');
 }
+/** D-PQ1: Kỹ thuật has full control of the machine list. */
 export const canManageProduction = (actor: ProductionActor) =>
   hasProductionAccess(actor, 'production') && ['admin', 'producer'].includes(actor.role);
+/** D-PQ1: only Kế toán and Admin draw up, edit and delete production orders; they act alike there. */
 export const canDraftProduction = (actor: ProductionActor) =>
-  canManageProduction(actor) || (hasProductionAccess(actor, 'production') && actor.role === 'accountant');
-/** In production orders accountants act like admins: any of them may edit or delete an order before it starts. */
+  hasProductionAccess(actor, 'production') && ['admin', 'accountant'].includes(actor.role);
+/** Kỹ thuật runs orders on the floor (start, completion, material requests) alongside Kế toán and Admin. */
+export const canRunProduction = (actor: ProductionActor) => hasProductionAccess(actor, 'production');
+const RUN_ACTIONS = ['start', 'complete', 'request_materials', 'request_material_shortage'];
 export const canEditProductionOrder = (actor: ProductionActor, order: Pick<ProductionOrder, 'status'>) =>
   OPEN_PRODUCTION_STATUSES.includes(order.status) && canDraftProduction(actor);
 /** PO statuses that still accept new or changed production orders. */
@@ -253,7 +257,7 @@ export const PLANNABLE_PO_STATUSES = [
   'supplier_confirmed'
 ];
 export function assertPOAccess(actor: ProductionActor, po: ProductionPO) {
-  if (!canDraftProduction(actor)) fail('Bạn không có quyền lập lệnh sản xuất.');
+  if (!canRunProduction(actor)) fail('Bạn không có quyền với lệnh sản xuất.');
   if (po.deleted || !Array.isArray(po.items) || !po.items.length) fail('Đơn hàng không tồn tại hoặc chưa có mặt hàng.');
   if (!PLANNABLE_PO_STATUSES.includes(String(po.status)))
     fail('Đơn hàng đã chuyển giai đoạn, không thể lập / phát hành thêm LSX.');
@@ -422,7 +426,8 @@ export const validateProductionDraft = (
   excludedId = ''
 ) => validateProductionOrderDraft([po], commands, raw, excludedId);
 export function assertTransition(actor: ProductionActor, order: ProductionOrder, action: string) {
-  if (!canDraftProduction(actor)) fail('Bạn không có quyền lập lệnh sản xuất.');
+  if (RUN_ACTIONS.includes(action) ? !canRunProduction(actor) : !canDraftProduction(actor))
+    fail('Bạn không có quyền thực hiện thao tác này trên lệnh sản xuất.');
   const open = OPEN_PRODUCTION_STATUSES.includes(order.status);
   const permitted =
     action === 'save' || action === 'start' || action === 'cancel'

@@ -23,7 +23,7 @@ Kế hoạch chính thức: 7 lượt, theo `ACCOUNTING_SPEC.md`. Yêu cầu tr�
 | D01b | Thêm khổ NVL và ưu tiên theo dòng ở LSX, không sửa kỹ thuật PO | Khổ vật liệu đầu vào khác chiều rộng con tem; không tự suy số liệu |
 | D01c | Cấp kho, thừa/thiếu, người cấp và chữ ký để trống trên bản in | Chưa có chứng từ cấp/hoàn kho thực tế ở lượt 2; không bịa dữ liệu mẫu |
 | D05b-2 | ~~Kế toán chỉ lập, sửa/gửi duyệt nháp của mình~~ — thay bởi D-LSX3 (02/11/2026): trong LSX kế toán như Admin (lập, sửa, xóa, bắt đầu, nghiệm thu mọi lệnh); vẫn không quản lý máy | Người dùng chốt bỏ bước duyệt và cho kế toán quyền như Admin ở LSX (`docs/modules/PRODUCTION_ORDERS.md`) |
-| D05c | Quyền Sản xuất kế thừa từ Accounting chỉ áp dụng vai trò accountant, không sửa users cũ và không mở quyền ghi client rules | Cho hồ sơ hiện hữu dùng được, không vô tình cấp quản lý kho/máy/lệnh cũ |
+| D05c | ~~Quyền Sản xuất kế thừa từ Accounting~~ — bỏ theo D-PQ1 (02/11/2026): trang phải được tick rõ. Trước đây: quyền Sản xuất kế thừa từ Accounting chỉ áp dụng vai trò accountant, không sửa users cũ và không mở quyền ghi client rules | Cho hồ sơ hiện hữu dùng được, không vô tình cấp quản lý kho/máy/lệnh cũ |
 | D02g | Máy chủ lấy liên kết PO trước; kế thừa sản phẩm khách chỉ khi đúng ID, phiên bản, kỹ thuật và ĐVT | Tái dùng danh mục lượt 1, không ghép nhầm dòng nhập tay hoặc snapshot cũ |
 | D02h | Mã nội bộ/quy đổi được chụp trên lệnh; thay đổi trước khi bắt đầu sản xuất phải chỉnh sửa và lưu lại; lệnh đã chạy dùng snapshot (D-LSX3 thay mốc phát hành bằng mốc bắt đầu) | Không thay ý nghĩa phiếu lịch sử hoặc nội dung đã chạy |
 
@@ -33,7 +33,7 @@ Kế hoạch chính thức: 7 lượt, theo `ACCOUNTING_SPEC.md`. Yêu cầu tr�
 |---|---|
 | D02f-3 / D03-3 | Một kho NVL chung; chưa quản lý lô/cuộn/vị trí. Không chuyển tồn cũ tự động; đầu kỳ thật chốt ở lượt 7 |
 | D04-3 | Cảnh báo xuất âm, cho người có quyền ghi sổ xác nhận kèm lý do; không ghi lùi/ngày tương lai |
-| D05b-3 | Admin, purchaser có Inventory, accountant có Accounting ghi sổ; chỉ Admin đảo; Producer chỉ xem |
+| D05b-3 | Admin và Kế toán có Accounting hoặc Kho vật tư ghi sổ (D-PQ1 bỏ vai trò purchaser); chỉ Admin đảo; Kỹ thuật (producer) chỉ xem |
 | D06-3 | Nhập mua NVL chỉ ghi số lượng, không tự tạo hóa đơn phải trả; công nợ nối ở lượt 5 |
 
 Chi tiết triển khai tại `WAREHOUSE.md`: cấp/hoàn thực tế, ánh xạ rõ từng dòng, snapshot, biên nhận chống trùng, ngưỡng theo số dư ĐVT cơ sở. Chưa đặt giữ chỗ NVL từ lượng dự kiến hoặc khóa chất lượng. Các lựa chọn về tiền/kỳ, thành phẩm/giao hàng và chuyển đổi thật dưới đây còn cần chốt ở lượt tương ứng.
@@ -86,10 +86,16 @@ Người dùng đồng ý code/push phạm vi lượt 6. Sau khi push `22de146`,
 | Mã | Lựa chọn |
 |---|---|
 | D10a-6 | Báo trước 3 ngày, bộ lọc chỉnh 0–365; tuổi nợ quá hạn 1–30/31–60/61–90/trên 90; chưa có lịch tự gửi cảnh báo |
-| D10b-6 | Báo cáo tổng hợp đầy đủ chỉ Admin/Kế toán Accounting; tóm tắt AR khách của Sale theo phân công CRM, AP tại NCC của Purchaser; không mở quyền trang/ghi sổ tiền |
+| D10b-6 | Báo cáo tổng hợp đầy đủ chỉ Admin/Kế toán Accounting; tóm tắt AR khách của Sale theo phân công CRM, AP tại NCC của Kế toán có Mua hàng/Nhà cung cấp (D-PQ1, trước là Purchaser); không mở quyền trang/ghi sổ tiền |
 | D10c-6 | Báo cáo tiền theo ngày ghi sổ, đảo tác động ngày đảo; ứng trước và tiền vào/ra tách phân bổ. Hàng/kho ở báo cáo này là số hiện tại, không bị lọc theo kỳ tiền |
 | D10d-6 | Không cộng hóa đơn cũ chưa chuyển đổi với nợ mới/đầu kỳ; giữ riêng cho lượt 7 đối soát. Không tự ghi lùi theo openingAsOf |
 
 | D10e-UI | 25/10/2026 — người dùng chọn bỏ hẳn khối công nợ ngoài Kế toán: không còn bảng "Công nợ & cảnh báo" ở Dashboard, dòng "Công nợ theo sổ mới / Tải lại công nợ" và số nợ đầu trang chi tiết ở Khách hàng và Nhà cung cấp. Giữ cột "Công nợ" trong bảng khách/NCC theo phạm vi D10b-6; xem đầy đủ tại Kế toán |
 
 Ngưỡng thành phẩm/hàng mua dùng cùng nhóm ghi kho lượt 3 và quy tắc `< ngưỡng`; null khác 0. Không thay hạn nợ, điều khoản thương mại, dung sai giao, khóa kỳ hoặc quyền đảo đã chốt. D09 ngày cắt/đầu kỳ thật vẫn chưa chốt.
+
+## Phân quyền 5 vai trò — người dùng chốt ngày 02/11/2026
+
+| Mã | Quyết định |
+|---|---|
+| D-PQ1 | Còn 5 vai trò: Admin, Sale, Thiết kế, Kỹ thuật (`producer`), Kế toán. Bỏ vai trò Mua hàng; mua hàng, NCC, kho NVL thuộc Kế toán. Mỗi vai trò chỉ được tick trang thuộc chức năng của mình, không xem chéo, không quyền ngầm. LSX: Kế toán = Admin; Kỹ thuật chạy/nghiệm thu, toàn quyền máy và dao, xem toàn bộ kho. Giao hàng: Kế toán và Kỹ thuật (sẽ làm lại sau). Tài khoản vai trò cũ bị chặn và do Admin xóa. Chi tiết: `docs/business/PROJECT_OVERVIEW.md` mục 3 |

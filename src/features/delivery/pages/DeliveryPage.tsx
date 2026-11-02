@@ -127,6 +127,8 @@ const toDateInputValue = (value: unknown): string => {
 
 export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh }) => {
   const { t } = useLanguage();
+  // D-PQ1: deliveries are planned by Kỹ thuật and Kế toán until the delivery flow is reworked.
+  const canPlanDelivery = ['admin', 'producer', 'accountant'].includes(currentUser.role);
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [showAddTripModal, setShowAddTripModal] = useState(false);
   const [showEditTripModal, setShowEditTripModal] = useState(false);
@@ -824,7 +826,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
         ))}
       </div>
 
-      {(currentUser.role === 'admin' || currentUser.role === 'producer' || currentUser.role === 'sale') && (
+      {canPlanDelivery && (
         <div className="erp-tab-actionbar">
           <button className="btn btn-primary" onClick={handleOpenAddTrip}>
             Lập chuyến giao hàng
@@ -1276,7 +1278,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
               <h2>Danh mục xe và tài xế</h2>
               <p>Quản lý tải trọng, trạng thái sẵn sàng và tuyến phù hợp của từng xe.</p>
             </div>
-            {(currentUser.role === 'admin' || currentUser.role === 'producer') && (
+            {canPlanDelivery && (
               <button type="button" className="btn btn-primary" onClick={() => setShowVehicleModal(true)}>
                 Thêm xe
               </button>
@@ -1319,7 +1321,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                         onChange={event =>
                           updateVehicleStatus(vehicle, event.target.value as DeliveryVehicle['status'])
                         }
-                        disabled={currentUser.role !== 'admin' && currentUser.role !== 'producer'}
+                        disabled={!canPlanDelivery}
                       >
                         <option value="ready">Sẵn sàng</option>
                         <option value="running">Đang chạy</option>

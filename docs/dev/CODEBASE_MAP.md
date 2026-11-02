@@ -20,7 +20,7 @@
     khi collection chưa có snapshot đầu tiên, trang hiện `PageLoadingFallback` thay vì bảng trống. Collection
     session: `users`, `messages`, `channels`, `notifications`;
   - truyền dữ liệu và callback xuống các trang.
-- `src/app/navigation/accessControl.ts`: `getDefaultPagesForRole`, `canAccessPage` (gồm quyền kế thừa).
+- `src/app/navigation/accessControl.ts`: `getDefaultPagesForRole`, `canAccessPage` (trang phải thuộc `ROLE_PAGES` của vai trò và được tick). Danh sách vai trò, trang và `ROLE_PAGES` dùng chung UI/API ở `src/shared/types/user.ts`; `firestore.rules` có bản sao `rolePages`.
 - `src/app/config/appConfig.ts`: nhãn trang cho audit, module thông báo, logo.
 
 ## Phân hệ

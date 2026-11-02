@@ -12,9 +12,10 @@
   dòng và mã nội bộ / NVL chưa đổi (đổi thì chỉnh sửa và lưu lại lệnh), máy đang hoạt động đủ số màu, người chạy máy
   có quyền Sản xuất, có ngày cần và vật tư dự kiến, máy không chạy lệnh khác.
 - Mặt hàng của đơn hàng chỉ bị khóa (`productionPlanFrozen`) khi đã có lệnh **bắt đầu** (`startedAt`).
-- Trong LSX, **Kế toán và Admin như nhau**: kế toán (đang hoạt động, có quyền Accounting hoặc Production) lập, sửa,
-  xóa, bắt đầu, nghiệm thu mọi lệnh như Admin / producer (`canDraftProduction`, `canEditProductionOrder`). Quản lý
-  máy vẫn chỉ Admin / producer (`canManageProduction`).
+- Trong LSX, **Kế toán và Admin như nhau**: kế toán (đang hoạt động, được tick Sản xuất) lập, sửa, xóa, bắt đầu,
+  nghiệm thu mọi lệnh (`canDraftProduction`, `canEditProductionOrder`). Theo D-PQ1, Kỹ thuật (`producer`) chỉ xem,
+  bắt đầu, nghiệm thu và đề nghị NVL (`canRunProduction`), không lập/sửa/xóa lệnh; Kỹ thuật toàn quyền danh sách máy
+  (`canManageProduction`) và danh sách dao (`canManageDieCatalog`).
 - Ưu tiên bốn mức như tiến độ Thiết kế (`PRODUCTION_PRIORITIES`): `urgent` Cực gấp, `high` Gấp, `normal` Bình thường,
   `low` Thong thả. Giá trị lạ lưu thành Bình thường; ưu tiên dòng chỉ nhận bốn mức này.
 - Mọi lệnh (cũ và mới) xuất cùng **một phiếu lệnh sản xuất đen trắng** (`productionPrint.ts`), A4 ngang theo kiểu
@@ -89,8 +90,8 @@ dòng sản xuất của chính PO đó đủ sản lượng đạt. `action: ca
 ## Quyền và dữ liệu
 
 - Sale không truy cập trang Sản xuất và không được gọi API tạo / sửa / xóa LSX, kể cả nháp do Sale lập trước đây. Dữ liệu những lệnh này vẫn giữ nguyên để Admin / nhân sự Sản xuất tiếp tục xử lý.
-- Admin / nhân sự có vai trò `producer` **và** quyền Sản xuất, cùng Kế toán đang hoạt động có quyền Accounting hoặc Production (D-LSX3), được lập, sửa, xóa, bắt đầu và nghiệm thu mọi LSX. Người chạy máy phải đang hoạt động và có quyền Sản xuất.
-- Kế toán không quản lý máy. Accounting được kế thừa quyền vào Sản xuất cho hồ sơ cũ mà không sửa users; Sale tiếp tục bị chặn. Mở danh sách máy bằng Kế toán không khởi tạo máy mặc định trong Firestore.
+- Admin và Kế toán được tick Sản xuất lập, sửa, xóa, bắt đầu và nghiệm thu mọi LSX (D-LSX3); Kỹ thuật được tick Sản xuất bắt đầu, nghiệm thu và đề nghị NVL (D-PQ1). Người chạy máy phải đang hoạt động và có quyền Sản xuất.
+- Kế toán không quản lý máy. Không còn quyền Sản xuất kế thừa từ Accounting (D-PQ1); Sale tiếp tục bị chặn. Mở danh sách máy bằng Kế toán không khởi tạo máy mặc định trong Firestore.
 - Các LSX cũ nằm cùng danh sách tại **Sản xuất → Lệnh sản xuất**, mở chi tiết để báo cáo hoàn thành hoặc bàn giao theo quyền cũ. Không tự đoán phân bổ theo dòng PO; PO có lệnh cũ cần đối soát trước khi lập lệnh mới.
 - Đã bỏ cơ chế trừ giấy / mực bằng hệ số cố định khi hoàn thành lệnh cũ. Lệnh cũ hoàn thành được đánh dấu cần đối soát, không tự đưa toàn PO sang chờ giao.
 - Lệnh đã lập giữ chỗ số lượng nhưng vẫn cho phép bộ phận thiết kế cập nhật PO. Khi bắt đầu sản xuất, máy chủ kiểm tra lại nguồn dữ liệu; nếu đã đổi phải chỉnh sửa và lưu lại lệnh. Từ khi có lệnh bắt đầu, cấm sửa mặt hàng của PO. Xóa toàn bộ lệnh chưa chạy sẽ mở lại phạm vi kế hoạch.
