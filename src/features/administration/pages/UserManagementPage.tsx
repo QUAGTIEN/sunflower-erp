@@ -30,6 +30,7 @@ import {
   type AccountStatus
 } from '../model/accountAdministration';
 import { AccountActivityDialog } from '../components/AccountActivityDialog';
+import { AccountPasswordCell } from '../components/AccountPasswordCell';
 import { AccountFormDialog, type AccountFormValues } from '../components/AccountFormDialog';
 import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
 import './AdministrationLists.css';
@@ -49,6 +50,7 @@ type AccountForm = { mode: 'create' } | { mode: 'edit'; account: UserProfile };
 const ACCOUNT_COLUMNS: TableColumnOption[] = [
   { id: 'name', label: 'Họ và tên', required: true },
   { id: 'email', label: 'Email' },
+  { id: 'password', label: 'Mật khẩu' },
   { id: 'role', label: 'Vai trò' },
   { id: 'status', label: 'Trạng thái' },
   { id: 'createdAt', label: 'Ngày khởi tạo' },
@@ -272,6 +274,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, directory
                   >
                     <th key="name">Họ và tên</th>
                     <th key="email">Email</th>
+                    <th key="password">Mật khẩu</th>
                     <th key="role">Vai trò</th>
                     <th key="status">Trạng thái</th>
                     <th key="createdAt">Ngày khởi tạo</th>
@@ -291,6 +294,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, directory
                         </td>
                         <td key="email" title={account.email}>
                           {account.email}
+                        </td>
+                        <td key="password">
+                          {isUserRole(account.role) ? (
+                            <AccountPasswordCell uid={account.uid} displayName={account.displayName} />
+                          ) : (
+                            '—'
+                          )}
                         </td>
                         <td key="role">
                           <span className={isUserRole(account.role) ? undefined : 'account-legacy-role'}>

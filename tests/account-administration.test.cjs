@@ -58,18 +58,24 @@ test('password resets reject short passwords, the admin themself and accounts wi
 
 test('the existing account endpoint carries reset_password, so no new Vercel function is added', async () => {
   const received = [];
+  const adminCaller = { ...caller, profile: { displayName: 'Giám đốc', role: 'admin' } };
   const manage = loader({
     '../../server/adminUsers.js': {
       AdminApiError: Error,
       apiErrorResponse: error => Response.json({ error: error.message }, { status: 500 }),
       jsonResponse: payload => Response.json(payload),
       readJsonBody: async request => request.json(),
-      requireAdmin: async () => caller,
+      requireAdmin: async () => adminCaller,
       validateResetPasswordBody: body => ({ uid: body.uid, password: body.password }),
       resetManagedUserPassword: async (actor, input) => {
         received.push([actor, input]);
         return { uid: input.uid };
       }
+    },
+    '../../server/passwordVault.js': {
+      storeAccountPassword: async () => true,
+      deleteAccountPassword: async () => undefined,
+      revealAccountPassword: async () => ({})
     }
   })('api/users/manage.ts');
   const request = new Request('https://example.test', {
@@ -77,8 +83,8 @@ test('the existing account endpoint carries reset_password, so no new Vercel fun
     body: JSON.stringify({ action: 'reset_password', uid: 'worker', password: 'mat-khau-moi' })
   });
   const response = await manage.POST(request);
-  assert.deepEqual(await response.json(), { uid: 'worker' });
-  assert.deepEqual(received, [[caller, { uid: 'worker', password: 'mat-khau-moi' }]]);
+  assert.deepEqual(await response.json(), { uid: 'worker', passwordStored: true });
+  assert.deepEqual(received, [[adminCaller, { uid: 'worker', password: 'mat-khau-moi' }]]);
 });
 
 test('account history keeps sign-ins and important actions; screen openings are no longer recorded', () => {

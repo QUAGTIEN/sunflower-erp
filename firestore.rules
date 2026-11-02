@@ -118,6 +118,10 @@ service cloud.firestore {
       allow read: if isActive();
       allow write: if false;
     }
+    // D-BM2: sealed copies of staff passwords; only the server (key held outside Firestore) reads or writes them.
+    match /account_secrets/{userId} {
+      allow read, write: if false;
+    }
 
     // Catalog mutations use the authenticated API (uniqueness, revision and source validation).
     function canManageItemCatalog() {

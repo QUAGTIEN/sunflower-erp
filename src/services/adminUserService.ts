@@ -69,6 +69,10 @@ export const adminUserService = {
     return postAdminRequest(USERS_API, { action: 'delete', uid });
   },
 
+  revealPassword(uid: string): Promise<{ uid: string; password: string; updatedAt: string }> {
+    return postAdminRequest(USERS_API, { action: 'reveal_password', uid });
+  },
+
   syncDirectory(): Promise<{ synced: number; removed: number }> {
     return postAdminRequest(USERS_API, { action: 'sync_directory' });
   },

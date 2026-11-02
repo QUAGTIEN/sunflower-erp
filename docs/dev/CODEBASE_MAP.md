@@ -58,7 +58,7 @@
 | `/api/accounting/reports` | `server/accountingReports.ts`                        | Báo cáo, chỉ đọc                                    |
 | `/api/attendance/manage`  | `server/attendance.ts`                               | Chấm công (chỉ Admin/Kế toán ghi)                   |
 | `/api/fields/manage`      | `server/fieldConfiguration.ts`                       | Cấu hình trường, chỉ Admin                          |
-| `/api/users/manage`       | `server/adminUsers.ts`                               | Tài khoản Firebase Auth, chỉ Admin (`requireAdmin`); `action`: bootstrap, create, update, set_active, delete, reset_password, sync_directory, recycle_restore, recycle_purge (`server/recycleBin.ts`) |
+| `/api/users/manage`       | `server/adminUsers.ts`                               | Tài khoản Firebase Auth, chỉ Admin (`requireAdmin`); `action`: change_own_password (mọi tài khoản đang hoạt động), bootstrap, create, update, set_active, delete, reset_password, reveal_password (`server/passwordVault.ts`), sync_directory, recycle_restore, recycle_purge (`server/recycleBin.ts`) |
 
 Dùng chung: `server/erpCaller.ts` (xác thực), `server/firebaseAdmin.ts` (khởi tạo Admin SDK),
 `server/financeSourceGuard.ts` (chặn đảo kho khi đã vào sổ tiền), `AdminApiError`/`jsonResponse` trong `adminUsers.ts`.

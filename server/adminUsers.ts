@@ -6,6 +6,7 @@ import {
   ROLE_PAGES,
   USER_DIRECTORY_COLLECTION,
   USER_ROLES,
+  isUserRole,
   toUserDirectoryEntry,
   type UserRole
 } from '../src/shared/types/user.js';
@@ -134,6 +135,10 @@ export const validateSetActiveBody = (body: Record<string, unknown>) => ({
 
 export const validateDeleteUserBody = (body: Record<string, unknown>) => ({
   uid: requiredString(body, 'uid', 'UID')
+});
+
+export const validateOwnPasswordBody = (body: Record<string, unknown>) => ({
+  password: requiredString(body, 'password', 'Mật khẩu mới', 8)
 });
 
 export const validateResetPasswordBody = (body: Record<string, unknown>) => ({
@@ -498,6 +503,45 @@ export const syncUserDirectory = async (): Promise<{ synced: number; removed: nu
     await batch.commit();
   }
   return { synced: profiles.size, removed: stale.length };
+};
+
+/** The browser re-enters the current password right before asking, so the token proves a fresh sign-in. */
+const RECENT_SIGN_IN_SECONDS = 5 * 60;
+
+/**
+ * Any active account changes its own password. Every other session of the account ends; the caller signs in again
+ * with the new password. The plain password is returned only to the API handler, which seals it (D-BM2).
+ */
+export const changeOwnPassword = async (
+  request: Request,
+  input: ReturnType<typeof validateOwnPasswordBody>
+): Promise<{ uid: string; displayName: string; password: string }> => {
+  const { auth, firestore } = getFirebaseAdminServices();
+  let decodedToken: DecodedIdToken;
+  try {
+    decodedToken = await auth.verifyIdToken(bearerTokenFromRequest(request), true);
+  } catch (error) {
+    if (error instanceof AdminApiError) throw error;
+    throw new AdminApiError(401, 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.', 'auth/invalid-token');
+  }
+  if (Date.now() / 1000 - decodedToken.auth_time > RECENT_SIGN_IN_SECONDS) {
+    throw new AdminApiError(401, 'Vui lòng nhập lại mật khẩu hiện tại rồi thử lại.', 'auth/requires-recent-login');
+  }
+
+  const profileReference = firestore.collection('users').doc(decodedToken.uid);
+  const profile = profileFromSnapshot(await profileReference.get());
+  if (!profile || !profile.active || !isUserRole(profile.role)) {
+    throw new AdminApiError(403, 'Hồ sơ tài khoản không hợp lệ hoặc đã khóa.', 'auth/profile-invalid');
+  }
+
+  try {
+    await auth.updateUser(decodedToken.uid, { password: input.password });
+    await auth.revokeRefreshTokens(decodedToken.uid);
+    await profileReference.update({ updatedAt: new Date().toISOString(), updatedBy: profile.email });
+  } catch (error) {
+    throw mapFirebaseError(error);
+  }
+  return { uid: decodedToken.uid, displayName: profile.displayName, password: input.password };
 };
 
 export const deleteManagedUser = async (

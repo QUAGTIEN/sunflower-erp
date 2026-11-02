@@ -1,4 +1,5 @@
-import React, { lazy, useCallback, useState, useEffect, useLayoutEffect, useRef, useTransition } from 'react';
+import React, { lazy, Suspense, useCallback, useState, useEffect, useLayoutEffect, useRef, useTransition } from 'react';
+import { IconButton } from '@/components/IconButton';
 import { KeepAlivePage } from './KeepAlivePage';
 import { rememberPage, SUBSCRIPTION_LINGER_MS } from './navigation/pageKeepAlive';
 import { PageLoadingFallback, PageProgressBar } from '@/components/LoadingStates';
@@ -41,7 +42,7 @@ import type { ProcurementRequestRecord } from '@/features/procurement/model/purc
 import type { UserNotificationRecord } from '@/domain/notificationModels';
 import { markAllNotificationsRead, markNotificationRead } from '@/services/notificationService';
 import { synchronizeProvinceData } from '@/features/crm/api/provinceDataSynchronization';
-import { Bell, CheckCheck, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Bell, CheckCheck, KeyRound, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 const loadSalesManagementModule = () => import('@/features/sales-management');
 const loadCrmModule = () => import('@/features/crm');
@@ -75,6 +76,9 @@ const Delivery = lazy(() => loadDeliveryModule().then(module => ({ default: modu
 const Accounting = lazy(() => loadAccountingModule().then(module => ({ default: module.Accounting })));
 const RecycleBin = lazy(() => loadAdministrationModule().then(module => ({ default: module.RecycleBin })));
 const UserManagement = lazy(() => loadAdministrationModule().then(module => ({ default: module.UserManagement })));
+const ChangePasswordDialog = lazy(() =>
+  loadAdministrationModule().then(module => ({ default: module.ChangePasswordDialog }))
+);
 const ChatPage = lazy(() => loadChatModule().then(module => ({ default: module.ChatPage })));
 const CommercialMap = lazy(() => loadCommercialMapModule().then(module => ({ default: module.CommercialMap })));
 const WorkSchedule = lazy(() => loadWorkScheduleModule().then(module => ({ default: module.WorkSchedule })));
@@ -229,6 +233,7 @@ function AppShell() {
   // Real-time synchronization states
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [accountProfiles, setAccountProfiles] = useState<UserProfile[]>([]);
+  const [changingPassword, setChangingPassword] = useState(false);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [leadCandidates, setLeadCandidates] = useState<LeadCandidateRecord[]>([]);
@@ -1580,6 +1585,13 @@ function AppShell() {
                 </div>
               )}
 
+              {isFirebaseRuntimeEnabled && (
+                <IconButton
+                  label="Đổi mật khẩu"
+                  icon={<KeyRound size={16} />}
+                  onClick={() => setChangingPassword(true)}
+                />
+              )}
               <div className="header-user-badge">
                 <span style={{ fontWeight: 600 }}>{user.displayName}</span>
               </div>
@@ -1611,6 +1623,11 @@ function AppShell() {
                 />
               ))}
           </main>
+          {changingPassword && (
+            <Suspense fallback={null}>
+              <ChangePasswordDialog onClose={() => setChangingPassword(false)} />
+            </Suspense>
+          )}
         </div>
       </PageContextProvider>
     </TableColumnLayoutContext.Provider>

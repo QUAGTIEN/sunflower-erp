@@ -279,3 +279,18 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.account-password-cell {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+}
+
+.account-password-cell__value {
+  overflow: hidden;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

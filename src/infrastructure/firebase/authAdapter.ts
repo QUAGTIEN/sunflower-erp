@@ -1,5 +1,7 @@
 import {
+  EmailAuthProvider,
   onAuthStateChanged as onFirebaseAuthStateChanged,
+  reauthenticateWithCredential,
   signOut as signOutFirebase,
   type User as FirebaseUser
 } from 'firebase/auth';
@@ -218,6 +220,37 @@ export const authService = {
 
   getCurrentUser(): UserProfile | null {
     return currentUser;
+  },
+
+  /**
+   * Re-checks the current password with Firebase, then lets the server set the new one (so its sealed copy for
+   * admins stays in step, D-BM2). The server ends every session of the account, so this tab signs straight back in.
+   */
+  async changeOwnPassword(currentPassword: string, newPassword: string): Promise<void> {
+    const firebaseUser = firebaseAuth?.currentUser;
+    if (!isFirebaseRuntimeEnabled || !firebaseUser?.email) {
+      throw new Error('Đổi mật khẩu cần đăng nhập bằng tài khoản Firebase.');
+    }
+    try {
+      await reauthenticateWithCredential(
+        firebaseUser,
+        EmailAuthProvider.credential(firebaseUser.email, currentPassword)
+      );
+    } catch (error) {
+      const code = getFirebaseErrorCode(error);
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+        throw new Error('Mật khẩu hiện tại không đúng.', { cause: error });
+      }
+      throw new Error('Không xác nhận được mật khẩu hiện tại. Vui lòng thử lại.', { cause: error });
+    }
+    const response = await fetch('/api/users/manage', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${await firebaseUser.getIdToken(true)}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'change_own_password', password: newPassword })
+    });
+    const payload = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) throw new Error(payload.error || 'Không đổi được mật khẩu. Vui lòng thử lại.');
+    await authenticateFirebase(firebaseUser.email, newPassword);
   },
 
   async getIdToken(forceRefresh = false): Promise<string> {

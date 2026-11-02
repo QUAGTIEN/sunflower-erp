@@ -321,8 +321,15 @@ Chi tiết: `docs/accounting/`.
 - Danh sách dùng bảng chuẩn (tìm kiếm, lọc vai trò/trạng thái, tùy chỉnh cột, phân trang); thao tác dòng gom vào menu
   ba chấm: Lịch sử, Chỉnh sửa, Đặt lại mật khẩu, Khóa/Mở khóa, Xóa. Ngày khởi tạo hiển thị `dd/mm/yyyy`. Form tài khoản
   chia ô tick trang theo nhóm và tên giống menu bên trái, chỉ hiện trang thuộc vai trò đã chọn.
-- Không hiển thị mật khẩu (Firebase chỉ giữ bản băm, ERP không lưu mật khẩu). Admin **đặt lại mật khẩu** bằng mật khẩu
-  mới tự nhập (tối thiểu 8 ký tự) rồi giao cho nhân viên; mọi phiên đăng nhập cũ của tài khoản bị đăng xuất.
+- Mật khẩu (D-BM2, 02/11/2026, người dùng chọn sau khi được giải thích rủi ro):
+  - Mọi tài khoản tự **đổi mật khẩu** bằng nút chìa khóa trên thanh trên cùng (nhập mật khẩu hiện tại, mật khẩu mới
+    tối thiểu 8 ký tự); các thiết bị khác của tài khoản bị đăng xuất.
+  - Admin **đặt lại mật khẩu** khi nhân viên quên, và **xem mật khẩu**: cột Mật khẩu hiện `••••••••`, bấm con mắt thì
+    máy chủ giải mã và trả về, tự ẩn sau 30 giây, mỗi lần xem ghi `audit_events` (`password_revealed`).
+  - Firebase chỉ giữ bản băm; mỗi mật khẩu ERP đặt (Admin tạo/đặt lại, nhân viên tự đổi) được máy chủ lưu thêm bản
+    mã hóa AES-256-GCM tại `account_secrets/{uid}` (trình duyệt không đọc được). Khóa là biến môi trường máy chủ
+    `ACCOUNT_PASSWORD_KEY` (32 byte, base64, **không** đặt tiền tố `VITE_`). Thiếu khóa thì đổi mật khẩu vẫn chạy
+    nhưng không lưu bản sao, và Admin không xem được. Mật khẩu đặt trước khi có chức năng phải đặt lại một lần.
 - Bảo mật tài khoản (D-BM1, 02/11/2026):
   - Mọi tài khoản, kể cả Admin đầu tiên, cần hồ sơ `users/{uid}` đang hoạt động do máy chủ tạo; trình duyệt không tạo
     hay sửa hồ sơ. Email khởi tạo `admin@sunflower.com` chỉ được máy chủ tạo hồ sơ Admin khi hệ thống **chưa có Admin
