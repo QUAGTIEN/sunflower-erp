@@ -166,3 +166,31 @@
     width: 100%;
   }
 }
+
+.reset-password-dialog {
+  max-width: 440px;
+}
+
+.reset-password-dialog__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.reset-password-dialog__account {
+  overflow: hidden;
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reset-password-dialog__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reset-password-dialog__field input {
+  min-width: 0;
+  flex: 1;
+}

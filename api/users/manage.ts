@@ -6,10 +6,12 @@ import {
   jsonResponse,
   readJsonBody,
   requireAdmin,
+  resetManagedUserPassword,
   setManagedUserActive,
   updateManagedUser,
   validateCreateUserBody,
   validateDeleteUserBody,
+  validateResetPasswordBody,
   validateSetActiveBody,
   validateUpdateUserBody
 } from '../../server/adminUsers.js';
@@ -28,6 +30,8 @@ export async function POST(request: Request): Promise<Response> {
         return jsonResponse(await setManagedUserActive(caller, validateSetActiveBody(body)));
       case 'delete':
         return jsonResponse(await deleteManagedUser(caller, validateDeleteUserBody(body)));
+      case 'reset_password':
+        return jsonResponse(await resetManagedUserPassword(caller, validateResetPasswordBody(body)));
       default:
         throw new AdminApiError(400, 'Thao tác tài khoản không hợp lệ.', 'users/invalid-action');
     }

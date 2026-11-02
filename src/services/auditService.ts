@@ -41,6 +41,12 @@ export interface UserPresence {
   updatedAt: string;
 }
 
+/**
+ * Account history shows sign-ins and important actions only. Screen openings are no longer recorded; older
+ * `navigation` events stay in Firestore but are hidden.
+ */
+export const isImportantAuditEvent = (event: Pick<AuditEvent, 'category'>) => event.category !== 'navigation';
+
 const SESSION_STORAGE_KEY = 'sunflower_audit_session_id';
 const MAX_AUDIT_EVENTS = 250;
 
@@ -114,19 +120,6 @@ export const auditService = {
 
   updatePresenceSafely(actor: UserProfile, status: UserPresence['status'], pageId = ''): void {
     void this.updatePresence(actor, status, pageId).catch(error => logFailure('presence', error));
-  },
-
-  recordNavigation(actor: UserProfile, pageId: string, pageLabel: string): void {
-    this.recordSafely(actor, {
-      category: 'navigation',
-      module: 'system',
-      action: 'page_opened',
-      summary: `Mở màn hình ${pageLabel}`,
-      targetType: 'page',
-      targetId: pageId,
-      targetLabel: pageLabel,
-      pageId
-    });
   },
 
   async getUserEvents(userId: string): Promise<AuditEvent[]> {

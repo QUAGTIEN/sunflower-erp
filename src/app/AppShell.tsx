@@ -14,13 +14,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { PageContextProvider } from '@/context/PageContext';
 import { TableColumnLayoutContext, useTableColumnLayoutManager } from '@/context/TableColumnLayoutContext';
 import type { AppPageContext } from '@/context/PageContextState';
-import {
-  APP_LOGO_PATH,
-  AUDIT_PAGE_LABELS,
-  formatNotificationTime,
-  getInitials,
-  NOTIFICATION_MODULE_LABELS
-} from '@/app/config/appConfig';
+import { APP_LOGO_PATH, formatNotificationTime, getInitials, NOTIFICATION_MODULE_LABELS } from '@/app/config/appConfig';
 import { canAccessPage, getDefaultPagesForRole } from '@/app/navigation/accessControl';
 import { USER_ROLES, USER_ROLE_LABELS } from '@/shared/types';
 import {
@@ -414,11 +408,6 @@ function AppShell() {
     });
     return () => unsubAuth();
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    auditService.recordNavigation(user, activePage, AUDIT_PAGE_LABELS[activePage] || activePage);
-  }, [activePage, user]);
 
   useEffect(() => {
     if (!user) return;

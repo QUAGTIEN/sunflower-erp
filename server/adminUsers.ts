@@ -129,6 +129,11 @@ export const validateDeleteUserBody = (body: Record<string, unknown>) => ({
   uid: requiredString(body, 'uid', 'UID')
 });
 
+export const validateResetPasswordBody = (body: Record<string, unknown>) => ({
+  uid: requiredString(body, 'uid', 'UID'),
+  password: requiredString(body, 'password', 'Mật khẩu mới', 8)
+});
+
 const bearerTokenFromRequest = (request: Request): string => {
   const authorization = request.headers.get('authorization') ?? '';
   const match = authorization.match(/^Bearer\s+(.+)$/i);
@@ -381,6 +386,35 @@ export const setManagedUserActive = async (
     }
 
     return input;
+  } catch (error) {
+    throw mapFirebaseError(error);
+  }
+};
+
+/**
+ * Admins hand staff a new password instead of reading the old one: Firebase keeps only a hash, and the ERP never
+ * stores passwords in Firestore or logs. Every open session of the account ends so the old password stops working.
+ */
+export const resetManagedUserPassword = async (
+  caller: AdminCaller,
+  input: ReturnType<typeof validateResetPasswordBody>
+): Promise<{ uid: string }> => {
+  if (input.uid === caller.uid) {
+    throw new AdminApiError(400, 'Bạn không thể tự đặt lại mật khẩu của mình tại đây.', 'user/self-protection');
+  }
+
+  const { auth, firestore } = getFirebaseAdminServices();
+  try {
+    const profileReference = firestore.collection('users').doc(input.uid);
+    const profileSnapshot = await profileReference.get();
+    if (!profileSnapshot.exists) {
+      throw new AdminApiError(404, 'Không tìm thấy hồ sơ phân quyền của tài khoản.', 'user/profile-not-found');
+    }
+
+    await auth.updateUser(input.uid, { password: input.password });
+    await auth.revokeRefreshTokens(input.uid);
+    await profileReference.update({ updatedAt: new Date().toISOString(), updatedBy: caller.email });
+    return { uid: input.uid };
   } catch (error) {
     throw mapFirebaseError(error);
   }

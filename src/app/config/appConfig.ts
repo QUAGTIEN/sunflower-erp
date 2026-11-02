@@ -16,29 +16,6 @@ export const PAGE_NOTIFICATION_MODULES: Partial<Record<string, NotificationModul
   accounting: 'accounting'
 };
 
-export const AUDIT_PAGE_LABELS: Record<string, string> = {
-  dashboard: 'Tổng quan',
-  chat: 'Kênh trao đổi',
-  crm: 'Khách hàng hợp tác',
-  leads: 'Khách hàng tiềm năng',
-  customer_data: 'Dữ liệu thô',
-  commercial_map: 'Thương mại',
-  work_schedule: 'Công việc',
-  attendance: 'Chấm công',
-  sales: 'Đơn hàng',
-  sales_management: 'Quản lý Sale',
-  design: 'Yêu cầu thiết kế',
-  design_library: 'Kho mẫu thiết kế',
-  purchase: 'Mua hàng',
-  suppliers: 'Nhà cung cấp',
-  inventory: 'Kho vật tư',
-  production: 'Lệnh sản xuất',
-  delivery: 'Kế hoạch giao hàng',
-  accounting: 'Kế toán',
-  users: 'Quản lý tài khoản',
-  recycle_bin: 'Thùng rác'
-};
-
 export const NOTIFICATION_MODULE_LABELS: Record<NotificationModule, string> = {
   dashboard: 'Tổng quan',
   customer_data: 'Dữ liệu thô',

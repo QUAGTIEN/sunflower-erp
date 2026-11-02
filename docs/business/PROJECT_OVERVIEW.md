@@ -318,6 +318,10 @@ Chi tiết: `docs/accounting/`.
 
 - Tạo và quản lý người dùng Firebase.
 - Gán vai trò, bật/tắt tài khoản và cấp quyền trang.
+- Không hiển thị mật khẩu (Firebase chỉ giữ bản băm, ERP không lưu mật khẩu). Admin **đặt lại mật khẩu** bằng mật khẩu
+  mới tự nhập (tối thiểu 8 ký tự) rồi giao cho nhân viên; mọi phiên đăng nhập cũ của tài khoản bị đăng xuất.
+- Lịch sử tài khoản chỉ gồm đăng nhập/đăng xuất và thao tác quan trọng (tạo, sửa, xóa, khóa, đặt lại mật khẩu,
+  nghiệp vụ). Hệ thống không còn ghi sự kiện mở màn hình; sự kiện `navigation` cũ vẫn nằm trong `audit_events` nhưng bị ẩn.
 
 **Cấu hình:**
 

@@ -67,5 +67,9 @@ export const adminUserService = {
 
   delete(uid: string): Promise<{ uid: string }> {
     return postAdminRequest(USERS_API, { action: 'delete', uid });
+  },
+
+  resetPassword(uid: string, password: string): Promise<{ uid: string }> {
+    return postAdminRequest(USERS_API, { action: 'reset_password', uid, password });
   }
 };

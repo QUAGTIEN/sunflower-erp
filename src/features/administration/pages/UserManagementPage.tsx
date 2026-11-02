@@ -5,11 +5,12 @@ import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { adminUserService } from '@/services/adminUserService';
 import { useLanguage } from '@/context/LanguageContext';
-import { Activity, Clock3, History, Search, Trash2, Pencil, X } from 'lucide-react';
+import { Activity, Clock3, History, KeyRound, Search, Trash2, Pencil, X } from 'lucide-react';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
-import { auditService, type AuditEvent, type UserPresence } from '@/services/auditService';
+import { auditService, isImportantAuditEvent, type AuditEvent, type UserPresence } from '@/services/auditService';
 import { getDefaultPagesForRole } from '@/app/navigation/accessControl';
 import { ROLE_PAGES, USER_ROLES, USER_ROLE_LABELS, isUserRole, type UserRole } from '@/shared/types';
+import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
 import './UserManagement.css';
 
 interface UserManagementProps {
@@ -35,6 +36,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
   const [role, setRole] = useState<UserRole>('sale');
   const [active, setActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordAccount, setPasswordAccount] = useState<UserProfile | null>(null);
   const [activityUser, setActivityUser] = useState<UserProfile | null>(null);
   const [activityEvents, setActivityEvents] = useState<AuditEvent[]>([]);
   const [activityPresence, setActivityPresence] = useState<UserPresence | null>(null);
@@ -203,6 +205,28 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     );
   };
 
+  const handleResetPassword = async (account: UserProfile, password: string) => {
+    setIsSubmitting(true);
+    try {
+      await adminUserService.resetPassword(account.uid, password);
+      auditService.recordSafely(currentUser, {
+        category: 'administration',
+        module: 'account',
+        action: 'password_reset',
+        summary: `Đặt lại mật khẩu tài khoản ${account.displayName}`,
+        targetType: 'user',
+        targetId: account.uid,
+        targetLabel: account.displayName
+      });
+      setPasswordAccount(null);
+      showSuccessToast('Đã đặt lại mật khẩu');
+    } catch (error) {
+      showErrorToast(error instanceof Error ? error.message : t('Không thể đặt lại mật khẩu.'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleToggleStatus = async (user: UserProfile) => {
     return runMutationAction(
       'UserManagementPage.tsx:handleToggleStatus',
@@ -321,6 +345,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     const end = activityPeriod === 'custom' && activityTo ? new Date(`${activityTo}T23:59:59.999`) : undefined;
     const keyword = activityQuery.trim().toLocaleLowerCase('vi-VN');
     return activityEvents.filter(event => {
+      if (!isImportantAuditEvent(event)) return false;
       const occurredAt = new Date(event.occurredAt);
       if (start && occurredAt < start) return false;
       if (end && occurredAt > end) return false;
@@ -436,7 +461,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                         <button
                           className="btn btn-sm btn-outline btn-symbol-sm"
                           onClick={() => void openActivityHistory(u)}
-                          title="Lịch sử hoạt động"
+                          title="Lịch sử đăng nhập và thao tác"
                         >
                           <History size={14} />
                         </button>
@@ -451,6 +476,17 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                         )}
                         {!isSelf && (
                           <>
+                            {isUserRole(u.role) && (
+                              <button
+                                className="btn btn-sm btn-outline btn-symbol-sm"
+                                onClick={() => setPasswordAccount(u)}
+                                title={t('Đặt lại mật khẩu')}
+                                aria-label={t('Đặt lại mật khẩu')}
+                                disabled={isSubmitting}
+                              >
+                                <KeyRound size={14} />
+                              </button>
+                            )}
                             <button
                               className={`btn btn-sm ${u.active ? 'btn-danger' : 'btn-outline'}`}
                               onClick={() => handleToggleStatus(u)}
@@ -477,6 +513,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
           </table>
         </div>
       </div>
+
+      {passwordAccount && (
+        <ResetPasswordDialog
+          account={passwordAccount}
+          busy={isSubmitting}
+          onCancel={() => setPasswordAccount(null)}
+          onSubmit={password => void handleResetPassword(passwordAccount, password)}
+        />
+      )}
 
       {/* ADD USER MODAL */}
       {showAddModal && (
@@ -785,7 +830,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
             <div className="modal-header">
               <div>
                 <div className="user-activity-modal__title">
-                  <Activity size={19} /> Giám sát hoạt động
+                  <Activity size={19} /> Lịch sử đăng nhập và thao tác
                 </div>
                 <div className="user-activity-modal__subtitle">
                   {activityUser.displayName} · {activityUser.email}
@@ -815,7 +860,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 </div>
                 <div>
                   <strong>{visibleActivityEvents.length}</strong>
-                  <span> hoạt động phù hợp</span>
+                  <span> sự kiện phù hợp</span>
                 </div>
               </section>
 
@@ -852,7 +897,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
                 <div className="user-activity-empty user-activity-empty--error">{activityError}</div>
               ) : Object.keys(groupedActivityEvents).length === 0 ? (
                 <div className="user-activity-empty">
-                  <Clock3 size={20} /> Chưa có hoạt động phù hợp trong khoảng thời gian này.
+                  <Clock3 size={20} /> Chưa có đăng nhập hoặc thao tác quan trọng trong khoảng thời gian này.
                 </div>
               ) : (
                 <div className="user-activity-timeline">
