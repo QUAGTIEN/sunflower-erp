@@ -8,7 +8,6 @@ import {
 } from '@/shared/feedback/mutationFeedback';
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { useLanguage } from '@/context/LanguageContext';
 import { DonutChart } from '@/components/VisualCharts';
 import { assertManualFinancialTransition } from '@/features/sales/api/poWorkflowService';
 import { calculatePOItemFinancials } from '@/domain/poFinancials';
@@ -269,8 +268,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onNavigateWorkGroup,
   onOpenPO
 }) => {
-  const { t } = useLanguage();
-
   // Filter out deleted documents
   const activePOsList = (pos || []).filter(po => !po.deleted);
   const activeDesignRequests = (designRequests || []).filter(
@@ -414,14 +411,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Category filters mapping for clicking
   const getCategoryPOs = (category: POQueueStatus) => filteredPOs.filter(po => isPOInQueue(po, category));
 
-  const categoryLabels = Object.fromEntries(PO_QUEUE_STATES.map(state => [state.value, t(state.label)])) as Record<
+  const categoryLabels = Object.fromEntries(PO_QUEUE_STATES.map(state => [state.value, state.label])) as Record<
     POQueueStatus,
     string
   >;
 
   const poQueueChartData = PO_QUEUE_STATES.filter(state => state.value !== 'completed').map(state => ({
     status: state.value,
-    label: t(state.label),
+    label: state.label,
     color: state.color,
     value: filteredPOs.filter(po => isPOInQueue(po, state.value)).length
   }));
@@ -460,7 +457,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return runMutationAction(
       'DashboardPage.tsx:handleDeleteReminder',
       async () => {
-        if (await confirmDelete(t('Bạn có chắc chắn muốn xóa nhắc nhở này?'))) {
+        if (await confirmDelete('Bạn có chắc chắn muốn xóa nhắc nhở này?')) {
           try {
             await requireConfirmedMutation(dbService.deleteDocument('reminders', remId));
             setReminders(prev => prev.filter(r => r.id !== remId));
@@ -619,11 +616,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const getSaleTaskState = (endAt: string, priority: WorkScheduleRecord['priority']) => {
     const dueAt = new Date(endAt).getTime();
-    if (Number.isFinite(dueAt) && dueAt < saleTodayStart) return { label: t('Quá hạn'), tone: 'danger' };
-    if (Number.isFinite(dueAt) && dueAt <= saleTodayEnd) return { label: t('Hôm nay'), tone: 'warning' };
-    if (priority === 'urgent') return { label: t('Khẩn cấp'), tone: 'danger' };
-    if (priority === 'high') return { label: t('Ưu tiên'), tone: 'warning' };
-    return { label: t('Đang xử lý'), tone: 'info' };
+    if (Number.isFinite(dueAt) && dueAt < saleTodayStart) return { label: 'Quá hạn', tone: 'danger' };
+    if (Number.isFinite(dueAt) && dueAt <= saleTodayEnd) return { label: 'Hôm nay', tone: 'warning' };
+    if (priority === 'urgent') return { label: 'Khẩn cấp', tone: 'danger' };
+    if (priority === 'high') return { label: 'Ưu tiên', tone: 'warning' };
+    return { label: 'Đang xử lý', tone: 'info' };
   };
 
   // DRILL-DOWN SUB-VIEW RENDERING
@@ -643,10 +640,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }}
           />
           <div>
-            <h1 className="page-title">{t('Chi tiết tiến độ đơn hàng')}</h1>
+            <h1 className="page-title">Chi tiết tiến độ đơn hàng</h1>
             <p className="page-subtitle">
-              {t('Phân nhóm:')} <strong>{categoryLabels[selectedProgressCategory]}</strong> ({categoryPOs.length}{' '}
-              {t('đơn hàng')})
+              Phân nhóm: <strong>{categoryLabels[selectedProgressCategory]}</strong> ({categoryPOs.length} đơn hàng)
             </p>
           </div>
         </div>
@@ -657,14 +653,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <thead>
                 <tr>
                   <th style={{ width: '40px' }}></th>
-                  <th>{t('Mã đơn hàng')}</th>
-                  <th>{t('Tên Khách Hàng')}</th>
-                  <th>{t('Ngày Đặt')}</th>
-                  <th>{t('Hạn Giao Hàng')}</th>
-                  <th style={{ textAlign: 'right' }}>{t('Tổng Tiền (gồm VAT)')}</th>
-                  <th>{t('Trạng Thái Hiện Tại')}</th>
-                  <th>{t('Người Phụ Trách')}</th>
-                  <th>{t('Thao Tác')}</th>
+                  <th>Mã đơn hàng</th>
+                  <th>Tên Khách Hàng</th>
+                  <th>Ngày Đặt</th>
+                  <th>Hạn Giao Hàng</th>
+                  <th style={{ textAlign: 'right' }}>Tổng Tiền (gồm VAT)</th>
+                  <th>Trạng Thái Hiện Tại</th>
+                  <th>Người Phụ Trách</th>
+                  <th>Thao Tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -692,9 +688,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           {(po.netAmount || po.totalAmount || 0).toLocaleString()} đ
                         </td>
                         <td>
-                          <span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span>
+                          <span className={`badge ${getPOBadgeClass(po)}`}>{getPOQueueLabel(po)}</span>
                         </td>
-                        <td>{po.createdBy || t('Không rõ')}</td>
+                        <td>{po.createdBy || 'Không rõ'}</td>
                         <td>
                           <button
                             type="button"
@@ -704,7 +700,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               onOpenPO(po.id);
                             }}
                           >
-                            {t('Mở đơn hàng')}
+                            Mở đơn hàng
                           </button>
                         </td>
                       </tr>
@@ -737,7 +733,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   }}
                                 >
                                   <Sliders size={16} />
-                                  <span>{t('Danh Sách Sản Phẩm & Quy Cách')}</span>
+                                  <span>Danh Sách Sản Phẩm & Quy Cách</span>
                                 </h4>
 
                                 <div className="po-inline-grid-container" style={{ marginBottom: '14px' }}>
@@ -819,9 +815,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                                     }}
                                                   />
                                                 ))}
-                                                {images.length === 0 && (
-                                                  <span className="po-empty-value">{t('Chưa có')}</span>
-                                                )}
+                                                {images.length === 0 && <span className="po-empty-value">Chưa có</span>}
                                               </div>
                                             </td>
                                           </tr>
@@ -845,7 +839,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     }}
                                   >
                                     <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                                      {t('Cập nhật nhanh trạng thái đơn hàng:')}
+                                      Cập nhật nhanh trạng thái đơn hàng:
                                     </span>
                                     <select
                                       value={getPOQueueStatus(po)}
@@ -890,9 +884,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     }}
                                   >
                                     <Bell size={14} />
-                                    <span>
-                                      {t('Lời Nhắc Nhở Đơn Hàng')} ({poReminders.length})
-                                    </span>
+                                    <span>Lời Nhắc Nhở Đơn Hàng ({poReminders.length})</span>
                                   </h4>
 
                                   <div
@@ -957,7 +949,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                           padding: '6px 0'
                                         }}
                                       >
-                                        {t('Chưa có lời nhắc nhở nào cho đơn này.')}
+                                        Chưa có lời nhắc nhở nào cho đơn này.
                                       </span>
                                     )}
                                   </div>
@@ -965,7 +957,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                   <div style={{ display: 'flex', gap: '6px' }}>
                                     <input
                                       type="text"
-                                      placeholder={t('Nội dung nhắc...')}
+                                      placeholder="Nội dung nhắc..."
                                       value={newReminderText}
                                       onChange={e => setNewReminderText(e.target.value)}
                                       style={{
@@ -1020,7 +1012,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     }}
                                   >
                                     <Clock size={14} />
-                                    <span>{t('Nhật Ký & Timeline Tiến Độ')}</span>
+                                    <span>Nhật Ký & Timeline Tiến Độ</span>
                                   </h4>
 
                                   <div className="timeline" style={{ maxHeight: '180px', overflowY: 'auto' }}>
@@ -1035,7 +1027,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                             className="timeline-title"
                                             style={{ fontSize: '12px', fontWeight: 700 }}
                                           >
-                                            {t(getPOHistoryStatusLabel(log.status))}
+                                            {getPOHistoryStatusLabel(log.status)}
                                           </span>
                                           <span
                                             className="timeline-date"
@@ -1045,7 +1037,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                               display: 'block'
                                             }}
                                           >
-                                            {formatDateTime(log.updatedAt)} - {t('Nhân sự:')} {log.updatedBy}
+                                            {formatDateTime(log.updatedAt)} - Nhân sự: {log.updatedBy}
                                           </span>
                                           {log.note && (
                                             <span
@@ -1138,30 +1130,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const adminRevenueContent = (
     <section className="customer-overview-panel dashboard-revenue-panel" aria-labelledby="dashboard-revenue-title">
       <header className="customer-overview-panel__header">
-        <h3 id="dashboard-revenue-title">{t('Doanh thu')}</h3>
-        <small>{t('Giá trị chưa bao gồm VAT')}</small>
+        <h3 id="dashboard-revenue-title">Doanh thu</h3>
+        <small>Giá trị chưa bao gồm VAT</small>
       </header>
       <div className="dashboard-revenue-metrics">
         <article>
-          <span>{t('Doanh thu tổng')}</span>
+          <span>Doanh thu tổng</span>
           <strong>{revenueMetrics.gross.toLocaleString('vi-VN')} đ</strong>
         </article>
         <article>
-          <span>{t('Sau chiết khấu')}</span>
+          <span>Sau chiết khấu</span>
           <strong>{revenueMetrics.net.toLocaleString('vi-VN')} đ</strong>
         </article>
         <article>
-          <span>{t('Khách hàng mới')}</span>
+          <span>Khách hàng mới</span>
           <strong>{newCustomerRevenue.toLocaleString('vi-VN')} đ</strong>
         </article>
         <article>
-          <span>{t('Chiết khấu phải trả')}</span>
+          <span>Chiết khấu phải trả</span>
           <strong>{payableDiscount.toLocaleString('vi-VN')} đ</strong>
         </article>
       </div>
       <div className="dashboard-revenue-chart-heading">
-        <span>{t('Giá trị đơn hàng 6 tháng gần nhất')}</span>
-        <small>{t('Tổng cột = trước chiết khấu')}</small>
+        <span>Giá trị đơn hàng 6 tháng gần nhất</span>
+        <small>Tổng cột = trước chiết khấu</small>
       </div>
       <RevenueTrendChart data={revenueTrendData} />
     </section>
@@ -1170,14 +1162,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const adminQueueContent = (
     <section className="customer-overview-panel dashboard-po-queue-panel" aria-labelledby="dashboard-po-queue-title">
       <header className="customer-overview-panel__header">
-        <h3 id="dashboard-po-queue-title">{t('Hàng đợi xử lý đơn hàng')}</h3>
+        <h3 id="dashboard-po-queue-title">Hàng đợi xử lý đơn hàng</h3>
       </header>
       <div className="dashboard-po-queue-content">
         <div className="dashboard-po-queue-chart">
           <DonutChart data={poQueueChartData} />
           <span className="dashboard-po-queue-total">
             <strong>{activePOs.length}</strong>
-            <small>{t('đang xử lý')}</small>
+            <small>đang xử lý</small>
           </span>
         </div>
         <div className="dashboard-po-queue-actions">
@@ -1186,10 +1178,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               key={state.status}
               type="button"
               onClick={() => setSelectedProgressCategory(state.status)}
-              title={t('Xem danh sách đơn hàng chi tiết')}
+              title="Xem danh sách đơn hàng chi tiết"
               style={{ borderLeftColor: state.color }}
             >
-              <span>{t(state.label)}</span>
+              <span>{state.label}</span>
               <strong style={{ color: state.color }}>{state.value}</strong>
             </button>
           ))}
@@ -1201,7 +1193,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const adminTasksContent = (
     <section className="customer-overview-panel dashboard-task-panel" aria-labelledby="dashboard-task-title">
       <header className="customer-overview-panel__header">
-        <h3 id="dashboard-task-title">{t('Việc cần xử lý')}</h3>
+        <h3 id="dashboard-task-title">Việc cần xử lý</h3>
       </header>
       <div className="dashboard-task-list">
         {workGroupSummaries.map((summary, index) => (
@@ -1210,19 +1202,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <ClipboardList size={17} aria-hidden="true" />
             </span>
             <strong title={summary.group.name}>{summary.group.name}</strong>
-            <span className="dashboard-task-list__count">
-              {summary.tasks.length} {t('việc')}
-            </span>
+            <span className="dashboard-task-list__count">{summary.tasks.length} việc</span>
             <span className={`dashboard-task-list__priority is-${summary.priority}`}>
-              {t(WORK_SCHEDULE_PRIORITY_LABELS[summary.priority])}
+              {WORK_SCHEDULE_PRIORITY_LABELS[summary.priority]}
             </span>
-            <time>{summary.nearestDue ? `${t('Hạn')}: ${formatDate(summary.nearestDue)}` : t('Chưa có việc')}</time>
+            <time>{summary.nearestDue ? `Hạn: ${formatDate(summary.nearestDue)}` : 'Chưa có việc'}</time>
             <button
               type="button"
               className="btn btn-sm btn-outline"
               onClick={() => onNavigateWorkGroup(summary.group.id)}
             >
-              {t('Xem')}
+              Xem
             </button>
           </article>
         ))}
@@ -1233,16 +1223,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // STANDARD DASHBOARD VIEW
   return (
     <div className="dashboard-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Tổng quan')}>
+      <PageContextHeader section="Tổng quan">
         {/* TIME RANGE & DATE FILTERS */}
         <div className="dashboard-overview-toolbar">
-          {user.role === 'admin' && <h2>{t('Tổng quan khách hàng')}</h2>}
+          {user.role === 'admin' && <h2>Tổng quan khách hàng</h2>}
           {user.role === 'sale' && (
             <div className="sale-dashboard__heading">
-              <h2>{t('Tổng quan công việc')}</h2>
-              <p>
-                {t('Xin chào')}, {user.displayName}
-              </p>
+              <h2>Tổng quan công việc</h2>
+              <p>Xin chào, {user.displayName}</p>
             </div>
           )}
           <div className="dashboard-overview-toolbar__actions">
@@ -1262,14 +1250,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   style={{ padding: '4px 10px', fontSize: '12px', borderRadius: 0, border: 'none' }}
                   onClick={() => setFilterMode('month')}
                 >
-                  {t('Theo Tháng')}
+                  Theo Tháng
                 </button>
                 <button
                   className={`btn btn-sm ${filterMode === 'range' ? 'btn-primary' : 'btn-outline'}`}
                   style={{ padding: '4px 10px', fontSize: '12px', borderRadius: 0, border: 'none' }}
                   onClick={() => setFilterMode('range')}
                 >
-                  {t('Khoảng Ngày')}
+                  Khoảng Ngày
                 </button>
               </div>
 
@@ -1287,10 +1275,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         backgroundColor: '#fff'
                       }}
                     >
-                      <option value="all">{t('Tất cả tháng')}</option>
+                      <option value="all">Tất cả tháng</option>
                       {Array.from({ length: 12 }, (_, i) => (
                         <option key={i + 1} value={(i + 1).toString()}>
-                          {t('Tháng')} {i + 1}
+                          Tháng {i + 1}
                         </option>
                       ))}
                     </select>
@@ -1326,7 +1314,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       fontSize: '12.5px'
                     }}
                   />
-                  <span style={{ fontSize: '12px', fontWeight: 600 }}>{t('đến')}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>đến</span>
                   <input
                     type="date"
                     value={endDate}
@@ -1347,7 +1335,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 className="btn btn-primary sale-dashboard__create-button"
                 onClick={() => onNavigate('sales')}
               >
-                {t('Tạo đơn hàng mới')}
+                Tạo đơn hàng mới
               </button>
             )}
           </div>
@@ -1373,29 +1361,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* SALE VIEW */}
       {user.role === 'sale' && (
         <div className="sale-dashboard">
-          <section className="sale-dashboard__metrics" aria-label={t('Chỉ số công việc của Sale')}>
+          <section className="sale-dashboard__metrics" aria-label="Chỉ số công việc của Sale">
             <article className="sale-dashboard__metric is-primary">
-              <span>{t('Việc cần xử lý')}</span>
+              <span>Việc cần xử lý</span>
               <strong>{saleTodayTaskCount}</strong>
-              <small>{t('Trong hôm nay')}</small>
+              <small>Trong hôm nay</small>
             </article>
             <article className="sale-dashboard__metric is-danger">
-              <span>{t('Lịch quá hạn')}</span>
+              <span>Lịch quá hạn</span>
               <strong>{saleOverdueTaskCount}</strong>
-              <small>{t('Cần xử lý ngay')}</small>
+              <small>Cần xử lý ngay</small>
             </article>
             <article className="sale-dashboard__metric is-success">
-              <span>{t('Tiềm năng mới')}</span>
+              <span>Tiềm năng mới</span>
               <strong>{saleNewLeads.length}</strong>
-              <small>{t('Trong kỳ đã chọn')}</small>
+              <small>Trong kỳ đã chọn</small>
             </article>
             <article className="sale-dashboard__metric is-violet">
-              <span>{t('Khách hàng của tôi')}</span>
+              <span>Khách hàng của tôi</span>
               <strong>{saleCustomers.length}</strong>
-              <small>{t('Đang chăm sóc')}</small>
+              <small>Đang chăm sóc</small>
             </article>
             <article className="sale-dashboard__metric is-warning">
-              <span>{t('Đơn hàng trong kỳ')}</span>
+              <span>Đơn hàng trong kỳ</span>
               <strong>{salePOs.length}</strong>
               <small>
                 {salePOs
@@ -1412,53 +1400,53 @@ export const Dashboard: React.FC<DashboardProps> = ({
               aria-labelledby="sale-priority-tasks-title"
             >
               <header className="sale-dashboard__panel-header">
-                <h2 id="sale-priority-tasks-title">{t('Công việc ưu tiên hôm nay')}</h2>
+                <h2 id="sale-priority-tasks-title">Công việc ưu tiên hôm nay</h2>
                 <button
                   type="button"
                   className="sale-dashboard__text-action"
                   onClick={() => onNavigate('work_schedule')}
                 >
-                  {t('Xem tất cả')}
+                  Xem tất cả
                 </button>
               </header>
               <div className="sale-dashboard__task-table">
                 <div className="sale-dashboard__task-head" aria-hidden="true">
-                  <span>{t('Công việc')}</span>
-                  <span>{t('Liên quan')}</span>
-                  <span>{t('Thời gian')}</span>
-                  <span>{t('Trạng thái')}</span>
+                  <span>Công việc</span>
+                  <span>Liên quan</span>
+                  <span>Thời gian</span>
+                  <span>Trạng thái</span>
                 </div>
                 {salePriorityTasks.map(task => {
                   const state = getSaleTaskState(task.endAt, task.priority);
                   return (
                     <article key={task.id} className="sale-dashboard__task-row">
-                      <strong title={task.title}>{task.title || t('Công việc chưa đặt tên')}</strong>
+                      <strong title={task.title}>{task.title || 'Công việc chưa đặt tên'}</strong>
                       <span title={task.referenceLabel || task.groupName}>
-                        {task.referenceLabel || task.groupName || t('Công việc cá nhân')}
+                        {task.referenceLabel || task.groupName || 'Công việc cá nhân'}
                       </span>
-                      <time>{task.endAt ? formatDateTime(task.endAt) : t('Chưa đặt hạn')}</time>
+                      <time>{task.endAt ? formatDateTime(task.endAt) : 'Chưa đặt hạn'}</time>
                       <span className={`sale-dashboard__status is-${state.tone}`}>{state.label}</span>
                     </article>
                   );
                 })}
                 {!salePriorityTasks.length && (
-                  <p className="sale-dashboard__empty">{t('Không có công việc đang chờ xử lý.')}</p>
+                  <p className="sale-dashboard__empty">Không có công việc đang chờ xử lý.</p>
                 )}
               </div>
             </section>
 
             <section className="sale-dashboard__panel sale-dashboard__funnel" aria-labelledby="sale-funnel-title">
               <header className="sale-dashboard__panel-header">
-                <h2 id="sale-funnel-title">{t('Phễu khách hàng của tôi')}</h2>
+                <h2 id="sale-funnel-title">Phễu khách hàng của tôi</h2>
                 <button type="button" className="sale-dashboard__text-action" onClick={() => onNavigate('leads')}>
-                  {t('Xem chi tiết')}
+                  Xem chi tiết
                 </button>
               </header>
               <div className="sale-dashboard__funnel-content">
                 <div className="sale-dashboard__funnel-rows">
                   {saleFunnelRows.map(row => (
                     <div key={row.id} className="sale-dashboard__funnel-row">
-                      <span>{t(row.label)}</span>
+                      <span>{row.label}</span>
                       <div>
                         <i
                           style={{
@@ -1475,12 +1463,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div className="sale-dashboard__donut" style={{ background: saleFunnelBackground }}>
                     <span>
                       <strong>{saleFunnelTotal}</strong>
-                      <small>{t('Hồ sơ phụ trách')}</small>
+                      <small>Hồ sơ phụ trách</small>
                     </span>
                   </div>
-                  <p>
-                    {salePriorityLeadCount} {t('cần ưu tiên')}
-                  </p>
+                  <p>{salePriorityLeadCount} cần ưu tiên</p>
                 </div>
               </div>
             </section>
@@ -1488,8 +1474,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <section className="sale-dashboard__panel sale-dashboard__orders" aria-labelledby="sale-orders-title">
             <header className="sale-dashboard__panel-header sale-dashboard__orders-header">
-              <h2 id="sale-orders-title">{t('Theo dõi đơn hàng gần đây')}</h2>
-              <div className="sale-dashboard__filters" role="group" aria-label={t('Lọc tiến độ đơn hàng')}>
+              <h2 id="sale-orders-title">Theo dõi đơn hàng gần đây</h2>
+              <div className="sale-dashboard__filters" role="group" aria-label="Lọc tiến độ đơn hàng">
                 {(
                   [
                     ['all', 'Tất cả'],
@@ -1505,7 +1491,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     aria-pressed={salePoFilter === value}
                     onClick={() => setSalePoFilter(value)}
                   >
-                    {t(label)}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -1514,12 +1500,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <table>
                 <thead>
                   <tr>
-                    <th>{t('Mã đơn hàng')}</th>
-                    <th>{t('Khách hàng')}</th>
-                    <th>{t('Ngày đặt')}</th>
-                    <th className="is-number">{t('Trị giá')}</th>
-                    <th>{t('Tiến độ')}</th>
-                    <th>{t('Cập nhật')}</th>
+                    <th>Mã đơn hàng</th>
+                    <th>Khách hàng</th>
+                    <th>Ngày đặt</th>
+                    <th className="is-number">Trị giá</th>
+                    <th>Tiến độ</th>
+                    <th>Cập nhật</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1536,7 +1522,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         {Number(po.netAmount || po.totalAmount || 0).toLocaleString('vi-VN')} đ
                       </td>
                       <td>
-                        <span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span>
+                        <span className={`badge ${getPOBadgeClass(po)}`}>{getPOQueueLabel(po)}</span>
                       </td>
                       <td>{formatDateTime(po.updatedAt || po.orderDate || po.createdAt)}</td>
                     </tr>
@@ -1544,7 +1530,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   {!recentSalePOs.length && (
                     <tr>
                       <td colSpan={6} className="sale-dashboard__table-empty">
-                        {t('Không có đơn hàng phù hợp trong kỳ đã chọn.')}
+                        Không có đơn hàng phù hợp trong kỳ đã chọn.
                       </td>
                     </tr>
                   )}
@@ -1560,26 +1546,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <>
           <div className="metrics-grid">
             <div className="metric-card">
-              <span className="metric-title">{t('Yêu Cầu Chờ Thiết Kế')}</span>
+              <span className="metric-title">Yêu Cầu Chờ Thiết Kế</span>
               <span className="metric-value" style={{ color: 'var(--color-danger)' }}>
-                {activeDesignRequests.filter(request => request.workStatus !== 'completed').length} {t('yêu cầu')}
+                {activeDesignRequests.filter(request => request.workStatus !== 'completed').length} yêu cầu
               </span>
-              <span className="metric-sub">{t('Mỗi mặt hàng là một yêu cầu độc lập')}</span>
+              <span className="metric-sub">Mỗi mặt hàng là một yêu cầu độc lập</span>
             </div>
             <div className="metric-card">
-              <span className="metric-title">{t('Mẫu Đang Chờ Khách Duyệt')}</span>
+              <span className="metric-title">Mẫu Đang Chờ Khách Duyệt</span>
               <span className="metric-value" style={{ color: 'var(--color-warning)' }}>
-                {activeDesignRequests.filter(request => request.approvalStatus === 'waiting_client').length}{' '}
-                {t('yêu cầu')}
+                {activeDesignRequests.filter(request => request.approvalStatus === 'waiting_client').length} yêu cầu
               </span>
-              <span className="metric-sub">{t('Đang chờ khách duyệt layout/màu')}</span>
+              <span className="metric-sub">Đang chờ khách duyệt layout/màu</span>
             </div>
             <div className="metric-card">
-              <span className="metric-title">{t('Mẫu Đã Duyệt Chốt')}</span>
+              <span className="metric-title">Mẫu Đã Duyệt Chốt</span>
               <span className="metric-value" style={{ color: 'var(--color-success)' }}>
-                {activeDesignRequests.filter(request => request.approvalStatus === 'approved').length} {t('yêu cầu')}
+                {activeDesignRequests.filter(request => request.approvalStatus === 'approved').length} yêu cầu
               </span>
-              <span className="metric-sub">{t('Đã bàn giao để mua hàng/sản xuất')}</span>
+              <span className="metric-sub">Đã bàn giao để mua hàng/sản xuất</span>
             </div>
           </div>
 
@@ -1588,10 +1573,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className="card-header"
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
-              <span className="card-title">{t('Nhiệm Vụ Thiết Kế Chờ Xử Lý')}</span>
+              <span className="card-title">Nhiệm Vụ Thiết Kế Chờ Xử Lý</span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button className="btn btn-sm btn-primary" onClick={() => onNavigate('design')}>
-                  {t('Vào trang thiết kế')}
+                  Vào trang thiết kế
                 </button>
               </div>
             </div>
@@ -1599,10 +1584,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <table>
                 <thead>
                   <tr>
-                    <th>{t('Mã đơn hàng')}</th>
-                    <th>{t('Sản Phẩm')}</th>
-                    <th>{t('Quy Cách/Kích Thước')}</th>
-                    <th>{t('Ghi Chú Yêu Cầu')}</th>
+                    <th>Mã đơn hàng</th>
+                    <th>Sản Phẩm</th>
+                    <th>Quy Cách/Kích Thước</th>
+                    <th>Ghi Chú Yêu Cầu</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1611,14 +1596,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     .map(request => (
                       <tr key={request.id}>
                         <td style={{ fontWeight: 600 }}>{request.customerReferenceCode || request.poCode}</td>
-                        <td>{request.productName || t('Chưa đặt tên')}</td>
+                        <td>{request.productName || 'Chưa đặt tên'}</td>
                         <td>
                           {request.size || '—'}
                           {request.material ? ` (${request.material})` : ''}
                         </td>
-                        <td style={{ color: 'var(--color-text-muted)' }}>
-                          {request.designBrief || t('Chưa có ghi chú')}
-                        </td>
+                        <td style={{ color: 'var(--color-text-muted)' }}>{request.designBrief || 'Chưa có ghi chú'}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -1633,45 +1616,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <>
           <div className="metrics-grid">
             <div className="metric-card">
-              <span className="metric-title">{t('Vật Tư Cảnh Báo Sắp Thiếu')}</span>
+              <span className="metric-title">Vật Tư Cảnh Báo Sắp Thiếu</span>
               <span className="metric-value" style={{ color: 'var(--color-danger)' }}>
                 {lowStockMaterials.length} loại
               </span>
-              <span className="metric-sub">{t('Dưới định mức tồn kho tối thiểu')}</span>
+              <span className="metric-sub">Dưới định mức tồn kho tối thiểu</span>
             </div>
             <div className="metric-card">
-              <span className="metric-title">{t('Đơn Mua Hàng Đã Gửi NCC')}</span>
+              <span className="metric-title">Đơn Mua Hàng Đã Gửi NCC</span>
               <span className="metric-value">
                 {filteredPurchaseOrders.filter(pur => pur.status === 'ordered' || pur.status === 'confirmed').length}{' '}
-                {t('đơn')}
+                đơn
               </span>
-              <span className="metric-sub">{t('Chờ NCC giao hàng/xác nhận')}</span>
+              <span className="metric-sub">Chờ NCC giao hàng/xác nhận</span>
             </div>
             <div className="metric-card">
-              <span className="metric-title">{t('Đơn Mua Chờ Nhập Kho')}</span>
+              <span className="metric-title">Đơn Mua Chờ Nhập Kho</span>
               <span className="metric-value" style={{ color: 'var(--color-warning)' }}>
-                {filteredPurchaseOrders.filter(pur => pur.status === 'shipping').length} {t('đơn')}
+                {filteredPurchaseOrders.filter(pur => pur.status === 'shipping').length} đơn
               </span>
-              <span className="metric-sub">{t('Đang trên đường vận chuyển')}</span>
+              <span className="metric-sub">Đang trên đường vận chuyển</span>
             </div>
           </div>
 
           <div className="details-grid">
             <div className="card">
               <div className="card-header">
-                <span className="card-title">{t('Cảnh Báo Tồn Kho Thấp')}</span>
+                <span className="card-title">Cảnh Báo Tồn Kho Thấp</span>
                 <button className="btn btn-sm btn-outline" onClick={() => onNavigate('inventory')}>
-                  {t('Vào Kho')}
+                  Vào Kho
                 </button>
               </div>
               <div className="table-container">
                 <table>
                   <thead>
                     <tr>
-                      <th>{t('Tên Vật Tư')}</th>
-                      <th>{t('Hiện Có')}</th>
-                      <th>{t('Ngưỡng Cảnh Báo')}</th>
-                      <th>{t('Đơn Vị')}</th>
+                      <th>Tên Vật Tư</th>
+                      <th>Hiện Có</th>
+                      <th>Ngưỡng Cảnh Báo</th>
+                      <th>Đơn Vị</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1693,7 +1676,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 className="card-header"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
-                <span className="card-title">{t('Đơn Mua Hàng Gần Đây')}</span>
+                <span className="card-title">Đơn Mua Hàng Gần Đây</span>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"
@@ -1701,10 +1684,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     style={{ fontSize: '11px' }}
                     onClick={() => setSelectedProgressCategory('waiting_delivery')}
                   >
-                    {t('Theo dõi hàng theo đơn hàng')}
+                    Theo dõi hàng theo đơn hàng
                   </button>
                   <button className="btn btn-sm btn-primary" onClick={() => onNavigate('purchase')}>
-                    {t('Mua Vật Tư')}
+                    Mua Vật Tư
                   </button>
                 </div>
               </div>
@@ -1712,10 +1695,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <table>
                   <thead>
                     <tr>
-                      <th>{t('Mã Đơn Mua')}</th>
-                      <th>{t('Nhà Cung Cấp')}</th>
-                      <th>{t('Tổng Giá Trị')}</th>
-                      <th>{t('Trạng Thái')}</th>
+                      <th>Mã Đơn Mua</th>
+                      <th>Nhà Cung Cấp</th>
+                      <th>Tổng Giá Trị</th>
+                      <th>Trạng Thái</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1744,25 +1727,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <>
           <div className="metrics-grid">
             <div className="metric-card">
-              <span className="metric-title">{t('LSX Đang Sản Xuất')}</span>
+              <span className="metric-title">LSX Đang Sản Xuất</span>
               <span className="metric-value" style={{ color: 'var(--color-info)' }}>
                 {filteredProductionCommands.filter(cmd => cmd.status === 'producing').length} lệnh
               </span>
-              <span className="metric-sub">{t('Đang chạy trên các máy in')}</span>
+              <span className="metric-sub">Đang chạy trên các máy in</span>
             </div>
             <div className="metric-card">
-              <span className="metric-title">{t('Đơn Chờ Sản Xuất')}</span>
+              <span className="metric-title">Đơn Chờ Sản Xuất</span>
               <span className="metric-value" style={{ color: 'var(--color-warning)' }}>
-                {filteredPOs.filter(po => isPOInQueue(po, 'waiting_production')).length} {t('đơn')}
+                {filteredPOs.filter(po => isPOInQueue(po, 'waiting_production')).length} đơn
               </span>
-              <span className="metric-sub">{t('Đã duyệt layout, đủ vật tư')}</span>
+              <span className="metric-sub">Đã duyệt layout, đủ vật tư</span>
             </div>
             <div className="metric-card">
-              <span className="metric-title">{t('LSX Đã Hoàn Thành')}</span>
+              <span className="metric-title">LSX Đã Hoàn Thành</span>
               <span className="metric-value">
                 {filteredProductionCommands.filter(cmd => cmd.status === 'completed').length} lệnh
               </span>
-              <span className="metric-sub">{t('Đã hoàn thành bàn giao QC')}</span>
+              <span className="metric-sub">Đã hoàn thành bàn giao QC</span>
             </div>
           </div>
 
@@ -1771,7 +1754,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className="card-header"
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
             >
-              <span className="card-title">{t('Tiến Độ Lệnh Sản Xuất Hiện Tại')}</span>
+              <span className="card-title">Tiến Độ Lệnh Sản Xuất Hiện Tại</span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   type="button"
@@ -1779,10 +1762,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   style={{ fontSize: '11px' }}
                   onClick={() => setSelectedProgressCategory('waiting_production')}
                 >
-                  {t('Theo dõi hàng theo đơn hàng')}
+                  Theo dõi hàng theo đơn hàng
                 </button>
                 <button className="btn btn-sm btn-primary" onClick={() => onNavigate('production')}>
-                  {t('Vào Xưởng')}
+                  Vào Xưởng
                 </button>
               </div>
             </div>
@@ -1790,12 +1773,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <table>
                 <thead>
                   <tr>
-                    <th>{t('Mã LSX')}</th>
-                    <th>{t('Sản Phẩm')}</th>
-                    <th>{t('Máy In')}</th>
-                    <th>{t('Ca Làm')}</th>
-                    <th>{t('SL Yêu Cầu')}</th>
-                    <th>{t('Trạng Thái')}</th>
+                    <th>Mã LSX</th>
+                    <th>Sản Phẩm</th>
+                    <th>Máy In</th>
+                    <th>Ca Làm</th>
+                    <th>SL Yêu Cầu</th>
+                    <th>Trạng Thái</th>
                   </tr>
                 </thead>
                 <tbody>

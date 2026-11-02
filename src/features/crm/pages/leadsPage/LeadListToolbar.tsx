@@ -1,7 +1,6 @@
 import React from 'react';
 import { Search, Settings2, X, Plus } from 'lucide-react';
 import { DataFilterButton } from '@/components/DataWorkspaceFilters';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface LeadListToolbarProps {
   searchTerm: string;
@@ -29,7 +28,6 @@ export const LeadListToolbar: React.FC<LeadListToolbarProps> = ({
   clearFilters,
   openCreateForm
 }) => {
-  const { t } = useLanguage();
   return (
     <section className="lead-page-navigation__tools lead-candidate-toolbar">
       <div className="lead-search">
@@ -40,7 +38,7 @@ export const LeadListToolbar: React.FC<LeadListToolbarProps> = ({
             setSearchTerm(event.target.value);
             setLeadCurrentPage(1);
           }}
-          placeholder={t('Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn...')}
+          placeholder="Tìm công ty, liên hệ, SĐT, địa chỉ, nhu cầu, nhãn..."
         />
       </div>
       <DataFilterButton
@@ -52,8 +50,8 @@ export const LeadListToolbar: React.FC<LeadListToolbarProps> = ({
         <button
           type="button"
           className="lead-candidate-column-button"
-          aria-label={t('Tùy chỉnh cột')}
-          title={t('Tùy chỉnh cột')}
+          aria-label="Tùy chỉnh cột"
+          title="Tùy chỉnh cột"
           onClick={() => setShowColumnCustomizer(true)}
         >
           <Settings2 size={16} />
@@ -65,7 +63,7 @@ export const LeadListToolbar: React.FC<LeadListToolbarProps> = ({
         </button>
       )}
       <button type="button" className="btn btn-primary" onClick={openCreateForm}>
-        <Plus size={16} /> {t('Thêm Lead')}
+        <Plus size={16} /> Thêm Lead
       </button>
     </section>
   );

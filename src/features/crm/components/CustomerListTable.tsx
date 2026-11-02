@@ -20,7 +20,6 @@ import { canManageCustomerProducts } from '@/features/crm/model/customerProductC
 import { formatEntityCustomFieldValue } from '@/features/crm/model/entityFieldConfig';
 import type { SupportRequestTarget } from '@/components/SupportRequestDialog';
 import type { WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
-import { useLanguage } from '@/context/LanguageContext';
 import type { CustomerListFilterInputs } from '@/features/crm/hooks/useCustomerListFilters';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { ErpDocument } from '@/shared/types';
@@ -83,13 +82,11 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
   onRequestSupport: setSupportTarget,
   onShowProductEditor: setShowProductEditor
 }) => {
-  const { t } = useLanguage();
-
   const renderCustomerText = (value?: string | number) => {
-    const displayValue = value === undefined || value === null || value === '' ? t('Chưa cập nhật') : String(value);
+    const displayValue = value === undefined || value === null || value === '' ? 'Chưa cập nhật' : String(value);
     return (
       <span
-        className={displayValue === t('Chưa cập nhật') ? 'crm-text-muted crm-table-text' : 'crm-table-text'}
+        className={displayValue === 'Chưa cập nhật' ? 'crm-text-muted crm-table-text' : 'crm-table-text'}
         title={displayValue}
       >
         {displayValue}
@@ -116,110 +113,108 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                   STT
                 </th>
                 <th key="company" data-system-field="companyName">
-                  {t('Khách hàng')}
+                  Khách hàng
                 </th>
                 {visibleCustomerColumnIds.has('customerCode') && (
                   <th key="customerCode" data-system-field="customerCode">
-                    {t('Mã KH')}
+                    Mã KH
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('rank') && (
                   <th key="rank" data-system-field="customerRank">
-                    {t('Phân loại')}
+                    Phân loại
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('taxCode') && (
                   <th key="taxCode" data-system-field="taxCode">
-                    {t('Mã số thuế')}
+                    Mã số thuế
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('assignedSale') && (
                   <th key="assignedSale" data-system-field="assignedSaleId">
-                    {t('Sale phụ trách')}
+                    Sale phụ trách
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('province') && (
                   <th key="province" data-system-field="province">
-                    {t('Tỉnh / thành')}
+                    Tỉnh / thành
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('ward') && (
                   <th key="ward" data-system-field="ward">
-                    {t('Phường / xã')}
+                    Phường / xã
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('industrialPark') && (
                   <th key="industrialPark" data-system-field="industrialPark">
-                    {t('Khu công nghiệp')}
+                    Khu công nghiệp
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('address') && (
                   <th key="address" data-system-field="address">
-                    {t('Địa chỉ chi tiết / giao hàng')}
+                    Địa chỉ chi tiết / giao hàng
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('contactPerson') && (
                   <th key="contactPerson" data-system-field="contactPerson">
-                    {t('Người liên hệ')}
+                    Người liên hệ
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('phone') && (
                   <th key="phone" data-system-field="phone">
-                    {t('SĐT')}
+                    SĐT
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('procurementPhone') && (
                   <th key="procurementPhone" data-system-field="procurementPhone">
-                    {t('SĐT thu mua')}
+                    SĐT thu mua
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('warehousePhone') && (
                   <th key="warehousePhone" data-system-field="warehousePhone">
-                    {t('SĐT nhận hàng / kho')}
+                    SĐT nhận hàng / kho
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('email') && (
                   <th key="email" data-system-field="email">
-                    {t('Mail')}
+                    Mail
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('discountType') && (
                   <th key="discountType" data-system-field="discountType">
-                    {t('Hình thức chiết khấu')}
+                    Hình thức chiết khấu
                   </th>
                 )}
-                {visibleCustomerColumnIds.has('discountValue') && (
-                  <th key="discountValue">{t('Chiết khấu mặc định')}</th>
-                )}
+                {visibleCustomerColumnIds.has('discountValue') && <th key="discountValue">Chiết khấu mặc định</th>}
                 {visibleCustomerColumnIds.has('debtLimit') && (
                   <th key="debtLimit" data-system-field="debtLimit">
-                    {t('Hạn mức công nợ')}
+                    Hạn mức công nợ
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('paymentTerms') && (
                   <th key="paymentTerms" data-system-field="paymentTerms">
-                    {t('Điều khoản thanh toán')}
+                    Điều khoản thanh toán
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('bankAccount') && (
                   <th key="bankAccount" data-system-field="bankAccount">
-                    {t('Tài khoản ngân hàng')}
+                    Tài khoản ngân hàng
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('note') && (
                   <th key="note" data-system-field="note">
-                    {t('Ghi chú yêu cầu riêng')}
+                    Ghi chú yêu cầu riêng
                   </th>
                 )}
                 {visibleCustomerColumnIds.has('businessResult') && (
                   <th key="businessResult" data-system-field="businessResult">
-                    {t('Kết quả kinh doanh')}
+                    Kết quả kinh doanh
                   </th>
                 )}
                 {visibleCustomerCustomFields.map(definition => (
                   <th key={`custom:${definition.id}`}>{definition.name}</th>
                 ))}
-                <th key="actions">{t('Thao tác')}</th>
+                <th key="actions">Thao tác</th>
               </ReorderableTableCells>
             </tr>
           </thead>
@@ -229,7 +224,7 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
               const orderValue = getCustomerOrderValue(customer.id);
               const isNew = isNewCustomer(customer);
               const saleName =
-                users.find(user => user.uid === customer.assignedSaleId)?.displayName || t('Chưa phân công');
+                users.find(user => user.uid === customer.assignedSaleId)?.displayName || 'Chưa phân công';
               return (
                 <React.Fragment key={customer.id}>
                   <tr onClick={() => openCustomerDetail(customer)}>
@@ -240,11 +235,11 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                       <td key="company">
                         <div
                           className="crm-customer-identity"
-                          title={`${customer.companyName} · ${customer.contactPerson || t('Chưa có người liên hệ')}`}
+                          title={`${customer.companyName} · ${customer.contactPerson || 'Chưa có người liên hệ'}`}
                         >
                           <strong className="erp-company-name">{customer.companyName}</strong>
                           {isNew && (
-                            <span className="crm-new-customer-badge" title={t('Khách hàng mới trong 7 ngày đầu')}>
+                            <span className="crm-new-customer-badge" title="Khách hàng mới trong 7 ngày đầu">
                               <span aria-hidden="true" />
                               NEW
                             </span>
@@ -262,12 +257,12 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                             className="crm-customer-segment"
                             title={
                               customer.discountType === 'amount'
-                                ? `${t('CK')} ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ`
-                                : `${t('Chiết khấu')} ${Number(customer.discountRate || 0)}%`
+                                ? `CK ${Number(customer.discountAmount || 0).toLocaleString('vi-VN')} đ`
+                                : `Chiết khấu ${Number(customer.discountRate || 0)}%`
                             }
                           >
                             <span className={`customer-rank-text ${customer.customerRank ? 'has-rank' : ''}`}>
-                              {customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}
+                              {customer.customerRank ? `Hạng ${customer.customerRank}` : 'Chưa xếp hạng'}
                             </span>
                           </div>
                         </td>
@@ -275,7 +270,7 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                       {visibleCustomerColumnIds.has('taxCode') && (
                         <td key="taxCode">
                           <span className={customer.taxCode ? 'crm-tax-code' : 'crm-text-muted'}>
-                            {customer.taxCode || t('Chưa cập nhật')}
+                            {customer.taxCode || 'Chưa cập nhật'}
                           </span>
                         </td>
                       )}
@@ -383,14 +378,14 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                             className={customer.email ? 'crm-contact-value crm-email-value' : 'crm-text-muted'}
                             title={customer.email || undefined}
                           >
-                            {customer.email || t('Chưa cập nhật')}
+                            {customer.email || 'Chưa cập nhật'}
                           </span>
                         </td>
                       )}
                       {visibleCustomerColumnIds.has('discountType') && (
                         <td key="discountType">
                           {renderCustomerText(
-                            customer.discountType === 'amount' ? t('Theo tiền chênh') : t('Theo phần trăm')
+                            customer.discountType === 'amount' ? 'Theo tiền chênh' : 'Theo phần trăm'
                           )}
                         </td>
                       )}
@@ -420,11 +415,9 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                           {customerOrders.length ? (
                             <div
                               className="crm-business-result"
-                              title={`${customerOrders.length} ${t('đơn')} · ${orderValue.toLocaleString('vi-VN')} đ`}
+                              title={`${customerOrders.length} đơn · ${orderValue.toLocaleString('vi-VN')} đ`}
                             >
-                              <strong>
-                                {customerOrders.length} {t('đơn')}
-                              </strong>
+                              <strong>{customerOrders.length} đơn</strong>
                               <span className="crm-business-result__value">
                                 · {orderValue.toLocaleString('vi-VN')} đ
                               </span>
@@ -432,10 +425,10 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                           ) : (
                             <div
                               className="crm-business-result is-empty"
-                              title={t('Khách hàng mới, chưa có đơn hàng. Cần tạo đơn hàng.')}
+                              title="Khách hàng mới, chưa có đơn hàng. Cần tạo đơn hàng."
                             >
-                              <strong>0 {t('đơn')}</strong>
-                              <span>· {t('Chưa có đơn hàng')}</span>
+                              <strong>0 đơn</strong>
+                              <span>· Chưa có đơn hàng</span>
                             </div>
                           )}
                         </td>
@@ -447,12 +440,12 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                       ))}
                       <td key="actions">
                         <RowActionMenu
-                          label={`${t('Thao tác')} ${customer.companyName}`}
+                          label={`Thao tác ${customer.companyName}`}
                           actions={[
                             ...(canManageCustomerProducts(currentUser, customer)
                               ? [
                                   {
-                                    label: t('Tạo mã sản phẩm'),
+                                    label: 'Tạo mã sản phẩm',
                                     icon: <PackagePlus size={14} />,
                                     onSelect: () => {
                                       openCustomerDetail(customer);
@@ -464,21 +457,21 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                             ...(currentUser.role === 'admin' || currentUser.role === 'sale'
                               ? [
                                   {
-                                    label: t('Tạo đơn hàng'),
+                                    label: 'Tạo đơn hàng',
                                     icon: <ClipboardPlus size={14} />,
                                     onSelect: () => onPreparedOrderCreated?.(customer.id)
                                   }
                                 ]
                               : []),
                             {
-                              label: t('Chi tiết'),
+                              label: 'Chi tiết',
                               icon: <Eye size={14} />,
                               onSelect: () => openCustomerDetail(customer)
                             },
                             ...(currentUser.role === 'admin'
                               ? [
                                   {
-                                    label: t('Giao việc'),
+                                    label: 'Giao việc',
                                     icon: <ClipboardCheck size={14} />,
                                     onSelect: () =>
                                       setAssignmentTarget({
@@ -492,7 +485,7 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                             ...(currentUser.role === 'sale'
                               ? [
                                   {
-                                    label: t('Yêu cầu hỗ trợ'),
+                                    label: 'Yêu cầu hỗ trợ',
                                     icon: <LifeBuoy size={14} />,
                                     onSelect: () =>
                                       setSupportTarget({
@@ -506,7 +499,7 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                             ...(currentUser.role === 'admin' || currentUser.role === 'sale'
                               ? [
                                   {
-                                    label: t('Chỉnh sửa'),
+                                    label: 'Chỉnh sửa',
                                     icon: <Pencil size={14} />,
                                     onSelect: () => openEditModal(customer)
                                   },
@@ -536,10 +529,10 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
       {filteredCustomers.length > 0 && (
         <footer className="crm-customer-pagination">
           <span>
-            {t('Tổng số')}: <strong>{filteredCustomers.length}</strong> {t('bản ghi')}
+            Tổng số: <strong>{filteredCustomers.length}</strong> bản ghi
           </span>
           <label>
-            {t('Hiển thị')}{' '}
+            Hiển thị{' '}
             <select
               value={customerPageSize}
               onChange={event => {
@@ -547,9 +540,9 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
                 setCustomerPage(1);
               }}
             >
-              <option value={25}>25 {t('dòng')}</option>
-              <option value={50}>50 {t('dòng')}</option>
-              <option value={100}>100 {t('dòng')}</option>
+              <option value={25}>25 dòng</option>
+              <option value={50}>50 dòng</option>
+              <option value={100}>100 dòng</option>
             </select>
           </label>
           <div>
@@ -557,7 +550,7 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
               type="button"
               onClick={() => setCustomerPage(page => Math.max(1, page - 1))}
               disabled={safeCustomerPage === 1}
-              aria-label={t('Trang trước')}
+              aria-label="Trang trước"
             >
               <ChevronLeft size={15} />
             </button>
@@ -568,7 +561,7 @@ export const CustomerListTable: React.FC<CustomerListTableProps> = ({
               type="button"
               onClick={() => setCustomerPage(page => Math.min(customerTotalPages, page + 1))}
               disabled={safeCustomerPage === customerTotalPages}
-              aria-label={t('Trang sau')}
+              aria-label="Trang sau"
             >
               <ChevronRight size={15} />
             </button>

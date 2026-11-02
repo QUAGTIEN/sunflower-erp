@@ -2,7 +2,6 @@ import type { CustomerProductRecord } from '@/features/crm/model/crmModels';
 import React from 'react';
 import { Search, X } from 'lucide-react';
 import { formatDate } from '@/shared/utils/dateFormatting';
-import { useLanguage } from '@/context/LanguageContext';
 
 /** A line from one of the customer's earlier POs, offered for reuse. */
 export interface PastOrderProduct {
@@ -37,7 +36,6 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
   getProductSize,
   filteredHistory
 }) => {
-  const { t } = useLanguage();
   return (
     <div className="modal-overlay" style={{ zIndex: 1200 }}>
       <div className="modal-content" style={{ maxWidth: '750px', width: '90%' }}>
@@ -52,7 +50,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
             }}
           >
             <Search size={18} />
-            <span>{t('TÌM KIẾM MÃ HÀNG NHẬP NHANH')}</span>
+            <span>TÌM KIẾM MÃ HÀNG NHẬP NHANH</span>
           </span>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setSearchPopupOpen(false)}>
             <X size={16} />
@@ -62,7 +60,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
           <div className="form-group" style={{ margin: 0 }}>
             <input
               type="text"
-              placeholder={t('Nhập mã hàng hoặc tên hàng cần tìm...')}
+              placeholder="Nhập mã hàng hoặc tên hàng cần tìm..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               style={{
@@ -103,7 +101,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
                   color: 'var(--color-primary)'
                 }}
               >
-                {t('Sản phẩm của khách hàng')}
+                Sản phẩm của khách hàng
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
                 {filteredCatalog.map(prod => (
@@ -135,7 +133,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
                       <div style={{ fontWeight: 600 }}>
                         {Number(prod.currentPrice) > 0
                           ? `${Number(prod.currentPrice).toLocaleString('vi-VN')} đ`
-                          : t('Chưa có giá')}
+                          : 'Chưa có giá'}
                       </div>
                       <div style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>{getProductSize(prod)}</div>
                     </div>
@@ -151,7 +149,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
                       fontSize: '12px'
                     }}
                   >
-                    {t('Không có sản phẩm nào khớp.')}
+                    Không có sản phẩm nào khớp.
                   </div>
                 )}
               </div>
@@ -176,7 +174,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
                   color: 'var(--color-success-dark)'
                 }}
               >
-                {t('Lịch Sử Đã Đặt Đơn Hàng Cũ (History)')}
+                Lịch Sử Đã Đặt Đơn Hàng Cũ (History)
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
                 {filteredHistory.map((prod, pIdx) => (
@@ -196,7 +194,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
                       <div style={{ fontWeight: 'bold', fontSize: '13px' }}>{prod.productCode}</div>
                       <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{prod.productName}</div>
                       <div style={{ fontSize: '10px', color: 'var(--color-primary)', fontStyle: 'italic' }}>
-                        {t('Từ đơn:')} {prod.poCode} ({formatDate(prod.orderDate, t('vi-VN'))})
+                        Từ đơn: {prod.poCode} ({formatDate(prod.orderDate, 'vi-VN')})
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', fontSize: '12px' }}>
@@ -215,7 +213,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
                       fontSize: '12px'
                     }}
                   >
-                    {t('Không có lịch sử cũ nào khớp.')}
+                    Không có lịch sử cũ nào khớp.
                   </div>
                 )}
               </div>
@@ -224,7 +222,7 @@ export const POLegacyProductSearchDialog: React.FC<POLegacyProductSearchDialogPr
         </div>
         <div className="modal-footer">
           <button type="button" className="btn btn-outline" onClick={() => setSearchPopupOpen(false)}>
-            {t('Đóng')}
+            Đóng
           </button>
         </div>
       </div>

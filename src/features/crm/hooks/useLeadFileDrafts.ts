@@ -1,7 +1,6 @@
 import type { UserProfile } from '@/shared/types/user';
 import type React from 'react';
 import { useState } from 'react';
-import { useLanguage } from '@/context/LanguageContext';
 import { type LeadFileRecord } from '@/features/crm/model/crmModels';
 
 export interface LeadFileDraftInputs {
@@ -10,7 +9,6 @@ export interface LeadFileDraftInputs {
 
 /** Unsaved files and share links attached to the lead form; they are written with the lead on save. */
 export const useLeadFileDrafts = ({ currentUser }: LeadFileDraftInputs) => {
-  const { t } = useLanguage();
   const [uploadingFiles, setUploadingFiles] = useState<LeadFileRecord[]>([]);
   const [attachmentLinkName, setAttachmentLinkName] = useState('');
   const [attachmentLinkUrl, setAttachmentLinkUrl] = useState('');
@@ -19,7 +17,7 @@ export const useLeadFileDrafts = ({ currentUser }: LeadFileDraftInputs) => {
     const files = Array.from(event.target.files || []);
     const oversizedFile = files.find(file => file.size > 900_000);
     if (oversizedFile) {
-      window.alert(t('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.'));
+      window.alert('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.');
       event.target.value = '';
       return;
     }
@@ -54,7 +52,7 @@ export const useLeadFileDrafts = ({ currentUser }: LeadFileDraftInputs) => {
     const name = attachmentLinkName.trim();
     const url = attachmentLinkUrl.trim();
     if (!name || !/^https?:\/\//i.test(url)) {
-      window.alert(t('Nhập tên tệp và đường dẫn chia sẻ bắt đầu bằng http:// hoặc https://.'));
+      window.alert('Nhập tên tệp và đường dẫn chia sẻ bắt đầu bằng http:// hoặc https://.');
       return;
     }
     setUploadingFiles(previous => [

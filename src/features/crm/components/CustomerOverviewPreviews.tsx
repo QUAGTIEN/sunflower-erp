@@ -1,7 +1,6 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
 import { RowActionMenu } from '@/components/RowActionMenu';
-import { useLanguage } from '@/context/LanguageContext';
 import type { CustomerRepositoryFolder } from '@/features/crm/model/crmModels';
 import { canManageCustomerProducts } from '@/features/crm/model/customerProductCatalog';
 import type { CustomerHistoryTab, RepositoryPreviewItem } from '@/features/crm/model/customerWorkspace';
@@ -40,23 +39,21 @@ export const CustomerOverviewPreviews: React.FC<CustomerOverviewPreviewsProps> =
   onUploadFolderChange: setSelectedFolderForUpload,
   onUploadOpenChange: setRepositoryUploadOpen
 }) => {
-  const { t } = useLanguage();
-
   return (
     <>
       <section className="card customer-catalog-preview">
         <div className="customer-detail-card-heading">
-          <h2>{t('Sản phẩm của khách hàng')}</h2>
+          <h2>Sản phẩm của khách hàng</h2>
           {canManageCustomerProducts(currentUser, selectedCustomer) && (
             <button type="button" className="btn btn-primary" onClick={() => setShowProductEditor(true)}>
-              {t('Tạo mã sản phẩm')}
+              Tạo mã sản phẩm
             </button>
           )}
         </div>
-        <div className="customer-catalog-preview__table" role="table" aria-label={t('Sản phẩm của khách hàng')}>
+        <div className="customer-catalog-preview__table" role="table" aria-label="Sản phẩm của khách hàng">
           <div className="customer-catalog-preview__row customer-catalog-preview__head" role="row">
-            <span role="columnheader">{t('Mã sản phẩm')}</span>
-            <span role="columnheader">{t('Tên sản phẩm')}</span>
+            <span role="columnheader">Mã sản phẩm</span>
+            <span role="columnheader">Tên sản phẩm</span>
           </div>
           {selectedCustomerProducts.slice(0, 4).map(product => (
             <div key={product.key} className="customer-catalog-preview__row" role="row">
@@ -69,19 +66,19 @@ export const CustomerOverviewPreviews: React.FC<CustomerOverviewPreviewsProps> =
             </div>
           ))}
         </div>
-        {selectedCustomerProducts.length === 0 && <p className="customer-detail-empty">{t('Chưa có mã sản phẩm.')}</p>}
+        {selectedCustomerProducts.length === 0 && <p className="customer-detail-empty">Chưa có mã sản phẩm.</p>}
         <button
           type="button"
           className="customer-detail-text-button customer-detail-card-link"
-          aria-label={t('Xem chi tiết toàn bộ sản phẩm của khách hàng')}
+          aria-label="Xem chi tiết toàn bộ sản phẩm của khách hàng"
           onClick={() => setCustomerHistoryTab('products')}
         >
-          {t('Xem chi tiết')} ({selectedCustomerProducts.length})
+          Xem chi tiết ({selectedCustomerProducts.length})
         </button>
       </section>
       <section className="card customer-repository-preview">
         <div className="customer-detail-card-heading">
-          <h2>{t('Kho lưu trữ khách hàng')}</h2>
+          <h2>Kho lưu trữ khách hàng</h2>
           {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
             <button
               type="button"
@@ -91,18 +88,18 @@ export const CustomerOverviewPreviews: React.FC<CustomerOverviewPreviewsProps> =
                 setCustomerHistoryTab('files');
               }}
             >
-              {t('Thêm tệp')}
+              Thêm tệp
             </button>
           )}
         </div>
-        <div className="content-tabs customer-repository-preview__tabs" aria-label={t('Thư mục tài liệu')}>
+        <div className="content-tabs customer-repository-preview__tabs" aria-label="Thư mục tài liệu">
           <button
             type="button"
             className={!repositoryPreviewFolder ? 'is-active' : ''}
             aria-pressed={!repositoryPreviewFolder}
             onClick={() => setRepositoryPreviewFolder('')}
           >
-            {t('Tất cả')}
+            Tất cả
           </button>
           {customerRepositoryFolders.map(folder => (
             <button
@@ -135,14 +132,14 @@ export const CustomerOverviewPreviews: React.FC<CustomerOverviewPreviewsProps> =
                   <strong title={file.name}>{file.name}</strong>
                 )}
                 <small>
-                  {customerRepositoryFolders.find(folder => folder.id === file.folderId)?.name || t('Tài liệu')} ·{' '}
+                  {customerRepositoryFolders.find(folder => folder.id === file.folderId)?.name || 'Tài liệu'} ·{' '}
                   {formatDate(file.date)}
                 </small>
               </div>
               <RowActionMenu
                 actions={[
                   {
-                    label: t('Quản lý tài liệu'),
+                    label: 'Quản lý tài liệu',
                     onSelect: () => {
                       setActiveRepositoryFolderId(file.folderId);
                       setSelectedFolderForUpload(file.folderId);
@@ -153,14 +150,14 @@ export const CustomerOverviewPreviews: React.FC<CustomerOverviewPreviewsProps> =
               />
             </div>
           ))}
-          {visibleRepositoryPreview.length === 0 && <p className="customer-detail-empty">{t('Chưa có tài liệu.')}</p>}
+          {visibleRepositoryPreview.length === 0 && <p className="customer-detail-empty">Chưa có tài liệu.</p>}
         </div>
         <button
           type="button"
           className="customer-detail-text-button customer-detail-card-link"
           onClick={() => setCustomerHistoryTab('files')}
         >
-          {t('Xem tất cả tệp')} ({repositoryPreviewItems.length})
+          Xem tất cả tệp ({repositoryPreviewItems.length})
         </button>
       </section>
     </>

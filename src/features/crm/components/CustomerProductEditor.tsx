@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { useLanguage } from '@/context/LanguageContext';
 import type { UserProfile } from '@/shared/types';
 import type { CustomerProductRecord, CustomerRecord } from '../model/crmModels';
 import {
@@ -95,7 +94,6 @@ export function CustomerProductEditor({
   onClose,
   onCreated
 }: Props) {
-  const { t } = useLanguage();
   const [draft, setDraft] = useState<CustomerProductInput>({
     productCode: '',
     productName: '',
@@ -168,7 +166,7 @@ export function CustomerProductEditor({
   };
   const close = () => {
     if (isSaving || isUploading) return;
-    if (!dirty || window.confirm(t('Thông tin sản phẩm chưa được lưu. Bạn có muốn rời trang?'))) onClose();
+    if (!dirty || window.confirm('Thông tin sản phẩm chưa được lưu. Bạn có muốn rời trang?')) onClose();
   };
   const updateSpec = (id: string, value: ProductSpecField['value']) =>
     setDraft(previous => ({
@@ -193,7 +191,7 @@ export function CustomerProductEditor({
       );
       setDraft(previous => ({ ...previous, files: [...previous.files, ...attachments] }));
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : t('Không thể đọc tệp.'));
+      setError(failure instanceof Error ? failure.message : 'Không thể đọc tệp.');
     } finally {
       setIsUploading(false);
     }
@@ -211,7 +209,7 @@ export function CustomerProductEditor({
       setLinkName('');
       setLinkUrl('');
     } catch {
-      setError(t('Vui lòng nhập đường dẫn http/https hợp lệ.'));
+      setError('Vui lòng nhập đường dẫn http/https hợp lệ.');
     }
   };
   const submit = async (event: FormEvent) => {
@@ -221,7 +219,7 @@ export function CustomerProductEditor({
         event.preventDefault();
         if (isSaving || isUploading || !permitted) return;
         if (linkName || linkUrl) {
-          setError(t('Hãy thêm hoặc xóa đường dẫn đang nhập trước khi lưu.'));
+          setError('Hãy thêm hoặc xóa đường dẫn đang nhập trước khi lưu.');
           return;
         }
         setIsSaving(true);
@@ -236,7 +234,7 @@ export function CustomerProductEditor({
           setError(
             failure instanceof Error && !('code' in failure)
               ? failure.message
-              : t('Không thể lưu mã sản phẩm. Vui lòng kiểm tra quyền truy cập và kết nối rồi thử lại.')
+              : 'Không thể lưu mã sản phẩm. Vui lòng kiểm tra quyền truy cập và kết nối rồi thử lại.'
           );
         } finally {
           setIsSaving(false);
@@ -255,7 +253,7 @@ export function CustomerProductEditor({
           key={field.id}
         >
           <legend>
-            {t(field.label)}
+            {field.label}
             {field.required ? ' *' : ''}
           </legend>
           <div className="customer-product-editor__choices">
@@ -269,7 +267,7 @@ export function CustomerProductEditor({
                   required={field.required}
                   onChange={() => updateSpec(field.id, option)}
                 />
-                <span>{t(option)}</span>
+                <span>{option}</span>
               </label>
             ))}
             {value && !field.required && (
@@ -277,9 +275,9 @@ export function CustomerProductEditor({
                 type="button"
                 className="customer-product-editor__clear"
                 onClick={() => updateSpec(field.id, '')}
-                aria-label={`${t('Bỏ chọn')}: ${t(field.label)}`}
+                aria-label={`Bỏ chọn: ${field.label}`}
               >
-                {t('Bỏ chọn')}
+                Bỏ chọn
               </button>
             )}
           </div>
@@ -288,7 +286,7 @@ export function CustomerProductEditor({
     if (field.type === 'checkboxes')
       return (
         <div className={`customer-product-editor__field customer-product-editor__field--${field.id}`} key={field.id}>
-          <span>{t(field.label)}</span>
+          <span>{field.label}</span>
           <div className="customer-product-editor__choices">
             {field.options?.map(option => (
               <label
@@ -306,7 +304,7 @@ export function CustomerProductEditor({
                     );
                   }}
                 />
-                {t(option)}
+                {option}
               </label>
             ))}
           </div>
@@ -315,7 +313,7 @@ export function CustomerProductEditor({
     return (
       <label className={`customer-product-editor__field customer-product-editor__field--${field.id}`} key={field.id}>
         <span>
-          {t(field.label)}
+          {field.label}
           {field.required ? ' *' : ''}
         </span>
         <input
@@ -332,29 +330,29 @@ export function CustomerProductEditor({
 
   return (
     <div className="customer-product-editor">
-      <PageContextHeader section={t('Khách hàng')} current={t('Tạo mã sản phẩm')} />
+      <PageContextHeader section="Khách hàng" current="Tạo mã sản phẩm" />
       <header className="card customer-product-editor__header">
         <PageBackButton onClick={close} />
         <div>
-          <h1>{t('Tạo mã sản phẩm')}</h1>
+          <h1>Tạo mã sản phẩm</h1>
           <span>
             {customer.companyName} · {customer.customerCode}
           </span>
         </div>
       </header>
       {!permitted ? (
-        <div role="alert">{t('Bạn không có quyền tạo sản phẩm cho khách hàng này.')}</div>
+        <div role="alert">Bạn không có quyền tạo sản phẩm cho khách hàng này.</div>
       ) : (
         <form onSubmit={submit}>
           <fieldset disabled={isSaving || isUploading} className="customer-product-editor__body">
             <section className="card customer-product-editor__section customer-product-editor__general-section">
               <h2>
                 <FileText aria-hidden="true" />
-                {t('Thông tin chung')}
+                Thông tin chung
               </h2>
               <div className="customer-product-editor__grid customer-product-editor__general">
                 <label>
-                  <span>{t('Mã sản phẩm')} *</span>
+                  <span>Mã sản phẩm *</span>
                   <input
                     autoFocus
                     maxLength={100}
@@ -364,7 +362,7 @@ export function CustomerProductEditor({
                   />
                 </label>
                 <label>
-                  <span>{t('Tên sản phẩm')} *</span>
+                  <span>Tên sản phẩm *</span>
                   <input
                     maxLength={250}
                     required
@@ -373,7 +371,7 @@ export function CustomerProductEditor({
                   />
                 </label>
                 <label>
-                  <span>{t('Loại sản phẩm')} *</span>
+                  <span>Loại sản phẩm *</span>
                   <select
                     value={draft.productType}
                     onChange={event => {
@@ -382,7 +380,7 @@ export function CustomerProductEditor({
                         draft.fields.some(field =>
                           Array.isArray(field.value) ? field.value.length > 0 : Boolean(field.value)
                         ) &&
-                        !window.confirm(t('Đổi loại sản phẩm sẽ xóa các thông số đang nhập. Bạn có muốn tiếp tục?'))
+                        !window.confirm('Đổi loại sản phẩm sẽ xóa các thông số đang nhập. Bạn có muốn tiếp tục?')
                       )
                         return;
                       patch({ productType: next, fields: getProductSpecFields(next) });
@@ -390,13 +388,13 @@ export function CustomerProductEditor({
                   >
                     {types.map(type => (
                       <option key={type.id} value={type.id}>
-                        {t(type.name)}
+                        {type.name}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  <span>{t('Đơn vị tính')} *</span>
+                  <span>Đơn vị tính *</span>
                   <input
                     required
                     maxLength={40}
@@ -406,7 +404,7 @@ export function CustomerProductEditor({
                 </label>
                 {!isLabel && (
                   <label className="customer-product-editor__wide">
-                    <span>{t('Chất liệu')}</span>
+                    <span>Chất liệu</span>
                     <input
                       maxLength={250}
                       value={draft.material}
@@ -417,7 +415,7 @@ export function CustomerProductEditor({
               </div>
             </section>
             <div
-              aria-label={t('Thông số kỹ thuật')}
+              aria-label="Thông số kỹ thuật"
               className={`customer-product-editor__spec-groups ${isLabel ? (isRoll ? 'is-label is-roll' : 'is-label is-sheet') : ''}`}
             >
               {groups.map((group, index) => {
@@ -430,7 +428,7 @@ export function CustomerProductEditor({
                     <h3>
                       <Icon aria-hidden="true" />
                       <span>
-                        {index + 1}. {t(group.title)}
+                        {index + 1}. {group.title}
                       </span>
                     </h3>
                     <div className="customer-product-editor__grid">
@@ -438,7 +436,7 @@ export function CustomerProductEditor({
                         <>
                           {group.fields.filter(field => field.id !== 'paperType').map(renderSpec)}
                           <label>
-                            <span>{t('Chất liệu')}</span>
+                            <span>Chất liệu</span>
                             <input
                               maxLength={250}
                               value={draft.material}
@@ -457,41 +455,39 @@ export function CustomerProductEditor({
               <section className="customer-product-editor__spec-group customer-product-editor__spec-group--attachments">
                 <h3>
                   <Paperclip aria-hidden="true" />
-                  <span>
-                    {groups.length + 1}. {t('Tệp đính kèm và ghi chú')}
-                  </span>
+                  <span>{groups.length + 1}. Tệp đính kèm và ghi chú</span>
                 </h3>
                 <div className="customer-product-editor__grid customer-product-editor__attachments">
                   <label>
-                    <span>{t('File thiết kế')}</span>
+                    <span>File thiết kế</span>
                     <span className="customer-product-editor__upload">
                       <input
-                        aria-label={t('Chọn tệp thiết kế')}
+                        aria-label="Chọn tệp thiết kế"
                         type="file"
                         multiple
                         accept="image/*,.pdf"
                         onChange={event => void upload(event, 'design')}
                       />
                       <Upload aria-hidden="true" />
-                      <span>{t('Chọn tệp')}</span>
+                      <span>Chọn tệp</span>
                     </span>
                   </label>
                   <label>
-                    <span>{t('Ảnh chiều tem ra')}</span>
+                    <span>Ảnh chiều tem ra</span>
                     <span className="customer-product-editor__upload">
                       <input
-                        aria-label={t('Chọn ảnh chiều tem ra')}
+                        aria-label="Chọn ảnh chiều tem ra"
                         type="file"
                         multiple
                         accept="image/*"
                         onChange={event => void upload(event, 'direction')}
                       />
                       <Upload aria-hidden="true" />
-                      <span>{t('Chọn ảnh')}</span>
+                      <span>Chọn ảnh</span>
                     </span>
                   </label>
                   <label className="customer-product-editor__wide">
-                    <span>{t('Ghi chú')}</span>
+                    <span>Ghi chú</span>
                     <textarea
                       maxLength={2000}
                       rows={2}
@@ -500,18 +496,18 @@ export function CustomerProductEditor({
                     />
                   </label>
                   <details className="customer-product-editor__links customer-product-editor__wide">
-                    <summary>{t('Thêm đường dẫn')}</summary>
+                    <summary>Thêm đường dẫn</summary>
                     <div className="customer-product-editor__grid">
                       <label>
-                        <span>{t('Tên tệp liên kết')}</span>
+                        <span>Tên tệp liên kết</span>
                         <input value={linkName} onChange={event => setLinkName(event.target.value)} />
                       </label>
                       <label>
-                        <span>{t('Đường dẫn Drive / OneDrive')}</span>
+                        <span>Đường dẫn Drive / OneDrive</span>
                         <input type="url" value={linkUrl} onChange={event => setLinkUrl(event.target.value)} />
                       </label>
                       <button type="button" className="btn btn-outline" onClick={addLink} disabled={!linkUrl.trim()}>
-                        {t('Thêm đường dẫn')}
+                        Thêm đường dẫn
                       </button>
                     </div>
                   </details>
@@ -537,7 +533,7 @@ export function CustomerProductEditor({
                             className="btn btn-outline btn-sm"
                             onClick={() => patch({ files: draft.files.filter(item => item.id !== file.id) })}
                           >
-                            {t('Xóa')}
+                            Xóa
                           </button>
                         </li>
                       ))}
@@ -547,10 +543,10 @@ export function CustomerProductEditor({
               </section>
             </div>
             <details className="card customer-product-editor__section">
-              <summary>{t('Giá và nhà cung cấp')}</summary>
+              <summary>Giá và nhà cung cấp</summary>
               <div className="customer-product-editor__grid">
                 <label>
-                  <span>{t('Giá bán tham khảo (đ)')}</span>
+                  <span>Giá bán tham khảo (đ)</span>
                   <input
                     type="number"
                     min={0}
@@ -559,7 +555,7 @@ export function CustomerProductEditor({
                   />
                 </label>
                 <label>
-                  <span>{t('VAT (%)')}</span>
+                  <span>VAT (%)</span>
                   <input
                     type="number"
                     min={0}
@@ -569,7 +565,7 @@ export function CustomerProductEditor({
                   />
                 </label>
                 <label>
-                  <span>{t('Nhà cung cấp')}</span>
+                  <span>Nhà cung cấp</span>
                   <select
                     value={draft.supplierId}
                     onChange={event =>
@@ -579,7 +575,7 @@ export function CustomerProductEditor({
                       })
                     }
                   >
-                    <option value="">{t('Chưa chọn')}</option>
+                    <option value="">Chưa chọn</option>
                     {suppliers
                       .filter(supplier => !supplier.deleted)
                       .map(supplier => (
@@ -590,7 +586,7 @@ export function CustomerProductEditor({
                   </select>
                 </label>
                 <label>
-                  <span>{t('Giá mua tham khảo (đ)')}</span>
+                  <span>Giá mua tham khảo (đ)</span>
                   <input
                     type="number"
                     min={0}
@@ -599,7 +595,7 @@ export function CustomerProductEditor({
                   />
                 </label>
                 <label>
-                  <span>{t('Thời gian chuẩn bị (ngày)')}</span>
+                  <span>Thời gian chuẩn bị (ngày)</span>
                   <input
                     type="number"
                     min={0}
@@ -612,14 +608,14 @@ export function CustomerProductEditor({
           </fieldset>
           <footer className="customer-product-editor__footer">
             <span role={error ? 'alert' : 'status'} className={error ? 'customer-product-editor__error' : ''}>
-              {error || (isUploading ? t('Đang xử lý tệp...') : '')}
+              {error || (isUploading ? 'Đang xử lý tệp...' : '')}
             </span>
             <button type="button" className="btn btn-outline" disabled={isSaving || isUploading} onClick={close}>
-              {t('Hủy')}
+              Hủy
             </button>
             <button type="submit" className="btn btn-primary" disabled={isSaving || isUploading}>
               <Save aria-hidden="true" />
-              {isSaving ? t('Đang lưu...') : t('Lưu mã sản phẩm')}
+              {isSaving ? 'Đang lưu...' : 'Lưu mã sản phẩm'}
             </button>
           </footer>
         </form>

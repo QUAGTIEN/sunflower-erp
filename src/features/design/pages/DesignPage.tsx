@@ -33,7 +33,6 @@ import {
   UserRound,
   XCircle
 } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
 import { PageBackButton } from '@/components/PageBackButton';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
 import {
@@ -116,7 +115,6 @@ const compressPreviewImage = (file: File): Promise<string> =>
   });
 
 export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, currentUser, onRefresh }) => {
-  const { t } = useLanguage();
   const [designs, setDesigns] = useState<DesignRecord[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState('');
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<number | null>(null);
@@ -161,7 +159,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
       lockedEndIds: ['actions']
     }
   );
-  const designColumnLabels = Object.fromEntries(DESIGN_LIST_COLUMNS.map(column => [column.id, t(column.label)]));
+  const designColumnLabels = Object.fromEntries(DESIGN_LIST_COLUMNS.map(column => [column.id, column.label]));
   const [statusNote, setStatusNote] = useState('');
   const [nextWorkStatus, setNextWorkStatus] = useState<DesignWorkStatus>('unreviewed');
   const [showVersionModal, setShowVersionModal] = useState(false);
@@ -621,7 +619,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
     <div className="design-request-view">
       {!selectedRequest && (
         <>
-          <PageContextHeader section={t('Thiết kế')} current={t('Danh sách yêu cầu thiết kế')} />
+          <PageContextHeader section="Thiết kế" current="Danh sách yêu cầu thiết kế" />
 
           <div className="card design-request-list-card">
             <div className="design-request-toolbar">
@@ -630,7 +628,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                 <input
                   value={searchTerm}
                   onChange={event => setSearchTerm(event.target.value)}
-                  placeholder={t('Tìm mã yêu cầu, mã đơn hàng, mã hàng hoặc sản phẩm...')}
+                  placeholder="Tìm mã yêu cầu, mã đơn hàng, mã hàng hoặc sản phẩm..."
                 />
               </div>
               <DataFilterButton
@@ -643,8 +641,8 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                   type="button"
                   className="data-filter-button"
                   onClick={() => setShowDesignColumnCustomizer(true)}
-                  title={t('Tùy chỉnh cột')}
-                  aria-label={t('Tùy chỉnh cột')}
+                  title="Tùy chỉnh cột"
+                  aria-label="Tùy chỉnh cột"
                 >
                   <Settings2 size={16} />
                 </button>
@@ -655,20 +653,20 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
               chips={[
                 ...statusFilters.map(value => ({
                   id: `status:${value}`,
-                  label: t(DESIGN_WORK_STATUSES.find(status => status.value === value)?.label || value),
+                  label: DESIGN_WORK_STATUSES.find(status => status.value === value)?.label || value,
                   onRemove: () => setStatusFilters(current => current.filter(item => item !== value))
                 })),
                 ...designerFilters.map(value => ({
                   id: `designer:${value}`,
                   label:
                     value === 'unassigned'
-                      ? t('Chưa phân công')
+                      ? 'Chưa phân công'
                       : users.find(user => user.uid === value)?.displayName || value,
                   onRemove: () => setDesignerFilters(current => current.filter(item => item !== value))
                 })),
                 ...priorityFilters.map(value => ({
                   id: `priority:${value}`,
-                  label: t(PRIORITY_LABELS[value] || value),
+                  label: PRIORITY_LABELS[value] || value,
                   onRemove: () => setPriorityFilters(current => current.filter(item => item !== value))
                 }))
               ]}
@@ -688,16 +686,14 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                       getHeaderProps={getDesignHeaderProps}
                       labels={designColumnLabels}
                     >
-                      <th key="request">{t('Mã yêu cầu')}</th>
-                      {designVisibleColumnSet.has('po') && <th key="po">{t('Mã đơn hàng')}</th>}
-                      {designVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng cần thiết kế')}</th>}
-                      {designVisibleColumnSet.has('specification') && (
-                        <th key="specification">{t('Quy cách / Chất liệu')}</th>
-                      )}
-                      {designVisibleColumnSet.has('dueDate') && <th key="dueDate">{t('Hạn xử lý')}</th>}
-                      {designVisibleColumnSet.has('designer') && <th key="designer">{t('Người phụ trách')}</th>}
-                      {designVisibleColumnSet.has('status') && <th key="status">{t('Tiến độ thiết kế')}</th>}
-                      <th key="actions">{t('Thao Tác')}</th>
+                      <th key="request">Mã yêu cầu</th>
+                      {designVisibleColumnSet.has('po') && <th key="po">Mã đơn hàng</th>}
+                      {designVisibleColumnSet.has('product') && <th key="product">Mặt hàng cần thiết kế</th>}
+                      {designVisibleColumnSet.has('specification') && <th key="specification">Quy cách / Chất liệu</th>}
+                      {designVisibleColumnSet.has('dueDate') && <th key="dueDate">Hạn xử lý</th>}
+                      {designVisibleColumnSet.has('designer') && <th key="designer">Người phụ trách</th>}
+                      {designVisibleColumnSet.has('status') && <th key="status">Tiến độ thiết kế</th>}
+                      <th key="actions">Thao Tác</th>
                     </ReorderableTableCells>
                   </tr>
                 </thead>
@@ -713,7 +709,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                           <td key="request">
                             <strong className="design-request-code">{request.requestCode}</strong>
                             <span className={`design-priority design-priority--${request.priority || 'normal'}`}>
-                              {t(PRIORITY_LABELS[request.priority] || 'Bình thường')}
+                              {PRIORITY_LABELS[request.priority] || 'Bình thường'}
                             </span>
                           </td>
                           {designVisibleColumnSet.has('po') && (
@@ -724,10 +720,8 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                           )}
                           {designVisibleColumnSet.has('product') && (
                             <td key="product">
-                              <strong>{request.productName || t('Chưa đặt tên')}</strong>
-                              <span className="design-secondary-text">
-                                {request.productCode || t('Chưa có mã hàng')}
-                              </span>
+                              <strong>{request.productName || 'Chưa đặt tên'}</strong>
+                              <span className="design-secondary-text">{request.productCode || 'Chưa có mã hàng'}</span>
                             </td>
                           )}
                           {designVisibleColumnSet.has('specification') && (
@@ -744,24 +738,24 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                               <span className="design-secondary-text">
                                 {ageDays === null
                                   ? '—'
-                                  : `${ageDays} ${t(request.workStatus === 'completed' ? 'ngày xử lý' : 'ngày chờ')}`}
+                                  : `${ageDays} ${request.workStatus === 'completed' ? 'ngày xử lý' : 'ngày chờ'}`}
                               </span>
                             </td>
                           )}
                           {designVisibleColumnSet.has('designer') && (
-                            <td key="designer">{designer?.displayName || t('Chưa phân công')}</td>
+                            <td key="designer">{designer?.displayName || 'Chưa phân công'}</td>
                           )}
                           {designVisibleColumnSet.has('status') && (
                             <td key="status">
                               <span className="design-progress-text" style={{ color: status.color }}>
-                                {t(status.label)}
+                                {status.label}
                               </span>
                             </td>
                           )}
                           <td key="actions">
                             <RowActionMenu
-                              label={`${t('Thao tác')} ${request.requestCode}`}
-                              actions={[{ label: t('Mở công việc'), onSelect: () => openRequest(request) }]}
+                              label={`Thao tác ${request.requestCode}`}
+                              actions={[{ label: 'Mở công việc', onSelect: () => openRequest(request) }]}
                             />
                           </td>
                         </ReorderableTableCells>
@@ -785,8 +779,8 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
       />
       <DataFilterPanel
         open={showDesignFilters}
-        title={t('Lọc danh sách thiết kế')}
-        description={t('Lọc theo tiến độ, người phụ trách và mức độ ưu tiên.')}
+        title="Lọc danh sách thiết kế"
+        description="Lọc theo tiến độ, người phụ trách và mức độ ưu tiên."
         activeCount={designActiveFilterCount}
         onClose={() => setShowDesignFilters(false)}
         onReset={() => {
@@ -795,17 +789,17 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
           setPriorityFilters([]);
         }}
       >
-        <DataFilterSection title={t('Tiến độ thiết kế')} selectedCount={statusFilters.length} defaultExpanded>
+        <DataFilterSection title="Tiến độ thiết kế" selectedCount={statusFilters.length} defaultExpanded>
           <DataFilterCheckboxGroup
-            options={DESIGN_WORK_STATUSES.map(status => ({ value: status.value, label: t(status.label) }))}
+            options={DESIGN_WORK_STATUSES.map(status => ({ value: status.value, label: status.label }))}
             selectedValues={statusFilters}
             onChange={values => setStatusFilters(values as DesignWorkStatus[])}
           />
         </DataFilterSection>
-        <DataFilterSection title={t('Người phụ trách')} selectedCount={designerFilters.length}>
+        <DataFilterSection title="Người phụ trách" selectedCount={designerFilters.length}>
           <DataFilterCheckboxGroup
             options={[
-              { value: 'unassigned', label: t('Chưa phân công') },
+              { value: 'unassigned', label: 'Chưa phân công' },
               ...users
                 .filter(user => user.role === 'designer')
                 .map(user => ({ value: user.uid, label: user.displayName }))
@@ -815,9 +809,9 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
             searchable
           />
         </DataFilterSection>
-        <DataFilterSection title={t('Mức độ ưu tiên')} selectedCount={priorityFilters.length}>
+        <DataFilterSection title="Mức độ ưu tiên" selectedCount={priorityFilters.length}>
           <DataFilterCheckboxGroup
-            options={Object.entries(PRIORITY_LABELS).map(([value, label]) => ({ value, label: t(label) }))}
+            options={Object.entries(PRIORITY_LABELS).map(([value, label]) => ({ value, label: label }))}
             selectedValues={priorityFilters}
             onChange={setPriorityFilters}
           />
@@ -829,13 +823,13 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
           <header className="design-task-page-header">
             <PageBackButton onClick={closeRequest} />
             <div>
-              <span>{t('CHI TIẾT CÔNG VIỆC THIẾT KẾ')}</span>
+              <span>CHI TIẾT CÔNG VIỆC THIẾT KẾ</span>
               <h1>
-                {selectedRequest.requestCode} · {selectedRequest.productName || t('Chưa đặt tên')}
+                {selectedRequest.requestCode} · {selectedRequest.productName || 'Chưa đặt tên'}
               </h1>
               <p>
                 {selectedRequest.customerReferenceCode || selectedRequest.poCode} ·{' '}
-                {selectedRequest.productCode || t('Chưa có mã hàng')}
+                {selectedRequest.productCode || 'Chưa có mã hàng'}
               </p>
             </div>
             <span
@@ -846,7 +840,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                 borderColor: getDesignWorkStatusDefinition(selectedRequest.workStatus).color
               }}
             >
-              {t(getDesignWorkStatusDefinition(selectedRequest.workStatus).label)}
+              {getDesignWorkStatusDefinition(selectedRequest.workStatus).label}
             </span>
           </header>
 
@@ -860,40 +854,40 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
             <div className="design-task-brief">
               <div className="design-section-title">
                 <ListChecks size={17} />
-                <span>{t('Thông tin bàn giao từ Sale')}</span>
+                <span>Thông tin bàn giao từ Sale</span>
               </div>
               <dl className="design-brief-grid">
                 <div>
-                  <dt>{t('Mã đơn hàng')}</dt>
+                  <dt>Mã đơn hàng</dt>
                   <dd>{selectedRequest.customerReferenceCode || selectedRequest.poCode}</dd>
                 </div>
                 <div>
-                  <dt>{t('Mã hàng')}</dt>
+                  <dt>Mã hàng</dt>
                   <dd>{selectedRequest.productCode || '—'}</dd>
                 </div>
                 <div>
-                  <dt>{t('Tên hàng')}</dt>
+                  <dt>Tên hàng</dt>
                   <dd>{selectedRequest.productName || '—'}</dd>
                 </div>
                 <div>
-                  <dt>{t('Quy cách')}</dt>
+                  <dt>Quy cách</dt>
                   <dd>{selectedRequest.size || '—'}</dd>
                 </div>
                 <div>
-                  <dt>{t('Chất liệu')}</dt>
+                  <dt>Chất liệu</dt>
                   <dd>{selectedRequest.material || '—'}</dd>
                 </div>
                 <div>
-                  <dt>{t('Hạn hoàn thành')}</dt>
+                  <dt>Hạn hoàn thành</dt>
                   <dd>{formatDate(selectedRequest.dueDate)}</dd>
                 </div>
               </dl>
               <div className="design-brief-note">
-                <strong>{t('Yêu cầu và ghi chú thiết kế')}</strong>
-                <p>{selectedRequest.designBrief || t('Sale chưa cung cấp ghi chú riêng.')}</p>
+                <strong>Yêu cầu và ghi chú thiết kế</strong>
+                <p>{selectedRequest.designBrief || 'Sale chưa cung cấp ghi chú riêng.'}</p>
               </div>
               <div className="design-reference-gallery">
-                <strong>{t('Artwork và hình ảnh tham khảo')}</strong>
+                <strong>Artwork và hình ảnh tham khảo</strong>
                 <div>
                   {(selectedRequest.referenceImages || []).map((imageUrl: string, index: number) => (
                     <a
@@ -902,13 +896,13 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                       rel="noopener noreferrer"
                       key={`${imageUrl.slice(0, 40)}-${index}`}
                     >
-                      <img src={imageUrl} alt={`${t('Ảnh tham khảo')} ${index + 1}`} />
+                      <img src={imageUrl} alt={`Ảnh tham khảo ${index + 1}`} />
                     </a>
                   ))}
                   {(selectedRequest.referenceImages || []).length === 0 && (
                     <span className="design-reference-empty">
                       <ImageIcon size={24} />
-                      {t('Chưa có artwork hoặc hình ảnh tham khảo.')}
+                      Chưa có artwork hoặc hình ảnh tham khảo.
                     </span>
                   )}
                 </div>
@@ -918,9 +912,9 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
             <aside className="design-progress-card design-task-progress">
               <div className="design-section-title">
                 <Clock3 size={17} />
-                <span>{t('Cập nhật tiến độ nội bộ')}</span>
+                <span>Cập nhật tiến độ nội bộ</span>
               </div>
-              <label>{t('Trạng thái công việc của Designer')}</label>
+              <label>Trạng thái công việc của Designer</label>
               <select
                 value={nextWorkStatus}
                 onChange={event => setNextWorkStatus(event.target.value as DesignWorkStatus)}
@@ -928,21 +922,21 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
               >
                 {DESIGN_WORK_STATUSES.map(status => (
                   <option key={status.value} value={status.value}>
-                    {t(status.label)}
+                    {status.label}
                   </option>
                 ))}
               </select>
-              <label>{t('Ghi chú cập nhật / thông tin cần bổ sung')}</label>
+              <label>Ghi chú cập nhật / thông tin cần bổ sung</label>
               <textarea
                 rows={4}
                 value={statusNote}
                 onChange={event => setStatusNote(event.target.value)}
-                placeholder={t('Mô tả tiến độ hoặc ghi rõ nội dung đang thiếu...')}
+                placeholder="Mô tả tiến độ hoặc ghi rõ nội dung đang thiếu..."
                 disabled={currentUser.role === 'sale'}
               />
               {currentUser.role !== 'sale' && (
                 <button className="btn btn-primary" onClick={handleUpdateWorkStatus} disabled={isSaving}>
-                  {isSaving ? t('Đang lưu...') : t('Lưu tiến độ thiết kế')}
+                  {isSaving ? 'Đang lưu...' : 'Lưu tiến độ thiết kế'}
                 </button>
               )}
             </aside>
@@ -953,11 +947,11 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
               <div className="design-version-header">
                 <div className="design-section-title">
                   <FileArchive size={17} />
-                  <span>{t('Phiên bản thiết kế')}</span>
+                  <span>Phiên bản thiết kế</span>
                 </div>
                 {(currentUser.role === 'admin' || currentUser.role === 'designer') && (
                   <button className="btn btn-sm btn-primary" onClick={() => setShowVersionModal(true)}>
-                    <Plus size={14} /> {t('Thêm phiên bản')}
+                    <Plus size={14} /> Thêm phiên bản
                   </button>
                 )}
               </div>
@@ -971,11 +965,11 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                   >
                     <strong>v{version.versionNumber}</strong>
                     <span>{formatDate(version.createdAt)}</span>
-                    <small>{version.comment || t('Không có ghi chú')}</small>
+                    <small>{version.comment || 'Không có ghi chú'}</small>
                   </button>
                 ))}
                 {selectedDesignVersions.length === 0 && (
-                  <div className="design-version-empty">{t('Chưa có phiên bản thiết kế nào.')}</div>
+                  <div className="design-version-empty">Chưa có phiên bản thiết kế nào.</div>
                 )}
               </div>
             </div>
@@ -989,16 +983,14 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                     ) : (
                       <span>
                         <ImageIcon size={28} />
-                        {t('Không có ảnh xem trước')}
+                        Không có ảnh xem trước
                       </span>
                     )}
                   </div>
                   <div className="design-version-preview__meta">
                     <div>
-                      <strong>
-                        {t('Phiên bản')} v{selectedVersion.versionNumber}
-                      </strong>
-                      <span>{selectedVersion.comment || t('Không có ghi chú')}</span>
+                      <strong>Phiên bản v{selectedVersion.versionNumber}</strong>
+                      <span>{selectedVersion.comment || 'Không có ghi chú'}</span>
                     </div>
                     <div className="design-source-links">
                       {selectedVersion.aiLink && (
@@ -1011,9 +1003,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                           File Corel
                         </a>
                       )}
-                      {!selectedVersion.aiLink && !selectedVersion.corelLink && (
-                        <span>{t('Chưa có file thiết kế gốc')}</span>
-                      )}
+                      {!selectedVersion.aiLink && !selectedVersion.corelLink && <span>Chưa có file thiết kế gốc</span>}
                     </div>
                     {selectedVersion.feedbackFromClient && (
                       <p className="design-client-feedback">{selectedVersion.feedbackFromClient}</p>
@@ -1023,7 +1013,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
               ) : (
                 <div className="design-version-empty design-version-empty--large">
                   <ImageIcon size={30} />
-                  {t('Chưa có bản thiết kế để xem trước.')}
+                  Chưa có bản thiết kế để xem trước.
                 </div>
               )}
 
@@ -1031,11 +1021,11 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                 selectedDesign?.status === 'client_pending' &&
                 selectedVersion && (
                   <div className="design-approval-panel">
-                    <strong>{t('Cập nhật phản hồi của khách hàng')}</strong>
+                    <strong>Cập nhật phản hồi của khách hàng</strong>
                     <textarea
                       value={feedbackText}
                       onChange={event => setFeedbackText(event.target.value)}
-                      placeholder={t('Nhập nội dung khách hàng yêu cầu sửa...')}
+                      placeholder="Nhập nội dung khách hàng yêu cầu sửa..."
                     />
                     <div>
                       <button
@@ -1043,14 +1033,14 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                         onClick={() => handleClientFeedback(true)}
                         disabled={isSaving}
                       >
-                        <CheckCircle2 size={15} /> {t('Khách đã duyệt')}
+                        <CheckCircle2 size={15} /> Khách đã duyệt
                       </button>
                       <button
                         className="btn btn-danger"
                         onClick={() => handleClientFeedback(false)}
                         disabled={isSaving}
                       >
-                        <XCircle size={15} /> {t('Yêu cầu Designer sửa')}
+                        <XCircle size={15} /> Yêu cầu Designer sửa
                       </button>
                     </div>
                   </div>
@@ -1061,15 +1051,15 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
           <section className="design-task-panel design-history-card">
             <div className="design-section-title">
               <UserRound size={17} />
-              <span>{t('Lịch sử xử lý công việc')}</span>
+              <span>Lịch sử xử lý công việc</span>
             </div>
             <div className="design-history-list">
               {[...(selectedRequest.history || [])].reverse().map((entry: DesignRequestHistory, index: number) => (
                 <div key={`${entry.updatedAt || 'history'}-${index}`}>
                   <span className="design-history-dot" />
-                  <strong>{entry.updatedBy || t('Hệ thống')}</strong>
+                  <strong>{entry.updatedBy || 'Hệ thống'}</strong>
                   <time>{formatDateTime(entry.updatedAt)}</time>
-                  <p>{entry.note || t(getDesignWorkStatusDefinition(entry.workStatus).label)}</p>
+                  <p>{entry.note || getDesignWorkStatusDefinition(entry.workStatus).label}</p>
                 </div>
               ))}
             </div>
@@ -1081,21 +1071,17 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
         <div className="modal-overlay design-version-overlay">
           <div className="modal-content design-version-modal">
             <div className="modal-header">
-              <span>
-                {t('THÊM PHIÊN BẢN THIẾT KẾ')} · {selectedRequest.requestCode}
-              </span>
+              <span>THÊM PHIÊN BẢN THIẾT KẾ · {selectedRequest.requestCode}</span>
               <button className="btn btn-sm btn-outline" onClick={resetVersionForm}>
-                {t('Đóng')}
+                Đóng
               </button>
             </div>
             <form onSubmit={handleAddVersion}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>{t('Ảnh xem trước bản thiết kế')} *</label>
+                  <label>Ảnh xem trước bản thiết kế *</label>
                   <input type="file" accept="image/*" onChange={handlePreviewFile} required />
-                  {previewImage && (
-                    <img className="design-upload-preview" src={previewImage} alt={t('Ảnh xem trước')} />
-                  )}
+                  {previewImage && <img className="design-upload-preview" src={previewImage} alt="Ảnh xem trước" />}
                 </div>
                 <div className="form-grid">
                   <div className="form-group">
@@ -1118,16 +1104,16 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                   </div>
                 </div>
                 <div className="form-group">
-                  <label>{t('Ghi chú phiên bản')} *</label>
+                  <label>Ghi chú phiên bản *</label>
                   <textarea value={versionComment} onChange={event => setVersionComment(event.target.value)} required />
                 </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={resetVersionForm}>
-                  {t('Hủy')}
+                  Hủy
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                  {isSaving ? t('Đang lưu...') : t('Hoàn thành và gửi Sale')}
+                  {isSaving ? 'Đang lưu...' : 'Hoàn thành và gửi Sale'}
                 </button>
               </div>
             </form>

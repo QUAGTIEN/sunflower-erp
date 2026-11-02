@@ -7,12 +7,11 @@ interface Props {
   products: CustomerProductRecord[];
   single: boolean;
   initialIds: string[];
-  t: (key: string) => string;
   onClose: () => void;
   onConfirm: (ids: string[]) => void;
 }
 
-export function CustomerProductPicker({ companyName, products, single, initialIds, t, onClose, onConfirm }: Props) {
+export function CustomerProductPicker({ companyName, products, single, initialIds, onClose, onConfirm }: Props) {
   const [query, setQuery] = useState('');
   const [type, setType] = useState('');
   const [selected, setSelected] = useState(initialIds);
@@ -33,7 +32,7 @@ export function CustomerProductPicker({ companyName, products, single, initialId
   const types = [...new Set(products.map(product => product.productType))];
   const allSelected = visible.length > 0 && visible.every(product => selected.includes(product.id));
   const typeLabel = (value: string) =>
-    t(CUSTOMER_PRODUCT_TYPES.find(item => item.id === value)?.name || value || 'Chưa phân loại');
+    CUSTOMER_PRODUCT_TYPES.find(item => item.id === value)?.name || value || 'Chưa phân loại';
 
   useEffect(() => {
     if (selectAll.current)
@@ -87,25 +86,25 @@ export function CustomerProductPicker({ companyName, products, single, initialId
       >
         <header>
           <div>
-            <h2 id="po-catalog-picker-title">{t('Chọn mã sản phẩm')}</h2>
+            <h2 id="po-catalog-picker-title">Chọn mã sản phẩm</h2>
             <span>
-              {companyName} · {products.length} {t('mã sản phẩm')}
+              {companyName} · {products.length} mã sản phẩm
             </span>
           </div>
           <button type="button" className="btn btn-outline" onClick={onClose}>
-            {t('Đóng')}
+            Đóng
           </button>
         </header>
         <div className="po-catalog-picker__filters">
           <input
             ref={search}
-            aria-label={t('Tìm mã hoặc tên sản phẩm')}
-            placeholder={t('Tìm mã hoặc tên sản phẩm...')}
+            aria-label="Tìm mã hoặc tên sản phẩm"
+            placeholder="Tìm mã hoặc tên sản phẩm..."
             value={query}
             onChange={event => setQuery(event.target.value)}
           />
-          <select aria-label={t('Loại sản phẩm')} value={type} onChange={event => setType(event.target.value)}>
-            <option value="">{t('Tất cả loại sản phẩm')}</option>
+          <select aria-label="Loại sản phẩm" value={type} onChange={event => setType(event.target.value)}>
+            <option value="">Tất cả loại sản phẩm</option>
             {types.map(value => (
               <option key={value} value={value}>
                 {typeLabel(value)}
@@ -122,7 +121,7 @@ export function CustomerProductPicker({ companyName, products, single, initialId
                     <input
                       ref={selectAll}
                       type="checkbox"
-                      aria-label={t('Chọn tất cả sản phẩm đang hiển thị')}
+                      aria-label="Chọn tất cả sản phẩm đang hiển thị"
                       checked={allSelected}
                       disabled={!visible.length}
                       onChange={() =>
@@ -135,12 +134,12 @@ export function CustomerProductPicker({ companyName, products, single, initialId
                     />
                   )}
                 </th>
-                <th>{t('Mã sản phẩm')}</th>
-                <th>{t('Tên sản phẩm')}</th>
-                <th>{t('Loại sản phẩm')}</th>
-                <th>{t('Quy cách / Chất liệu')}</th>
-                <th className="po-catalog-picker__unit">{t('ĐVT')}</th>
-                <th>{t('Đơn giá tham khảo')}</th>
+                <th>Mã sản phẩm</th>
+                <th>Tên sản phẩm</th>
+                <th>Loại sản phẩm</th>
+                <th>Quy cách / Chất liệu</th>
+                <th className="po-catalog-picker__unit">ĐVT</th>
+                <th>Đơn giá tham khảo</th>
               </tr>
             </thead>
             <tbody>
@@ -150,7 +149,7 @@ export function CustomerProductPicker({ companyName, products, single, initialId
                     <input
                       type={single ? 'radio' : 'checkbox'}
                       name="po-catalog-selection"
-                      aria-label={`${t('Chọn')}: ${product.productCode} — ${product.productName}`}
+                      aria-label={`Chọn: ${product.productCode} — ${product.productName}`}
                       checked={selected.includes(product.id)}
                       onChange={() => toggle(product.id)}
                     />
@@ -167,18 +166,16 @@ export function CustomerProductPicker({ companyName, products, single, initialId
               ))}
               {!visible.length && (
                 <tr>
-                  <td colSpan={7}>{t('Không có sản phẩm phù hợp.')}</td>
+                  <td colSpan={7}>Không có sản phẩm phù hợp.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
         <footer>
-          <span>
-            {t('Đã chọn')} {selected.length} {t('sản phẩm')}
-          </span>
+          <span>Đã chọn {selected.length} sản phẩm</span>
           <button type="button" className="btn btn-outline" onClick={onClose}>
-            {t('Hủy')}
+            Hủy
           </button>
           <button
             type="button"
@@ -186,7 +183,7 @@ export function CustomerProductPicker({ companyName, products, single, initialId
             disabled={!selected.length}
             onClick={() => onConfirm(selected)}
           >
-            {single ? t('Chọn mã sản phẩm') : t('Thêm vào đơn hàng')}
+            {single ? 'Chọn mã sản phẩm' : 'Thêm vào đơn hàng'}
           </button>
         </footer>
       </div>

@@ -13,7 +13,6 @@ import type { LeadRecord } from '@/features/crm/model/crmModels';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import type { WorkAssignmentTarget } from '@/components/WorkAssignmentDialog';
 import type { SupportRequestTarget } from '@/components/SupportRequestDialog';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface LeadListTableProps {
   filteredLeads: LeadRecord[];
@@ -86,7 +85,6 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
   },
   paging: { safeLeadCurrentPage, leadPageSize, setLeadPageSize, setLeadCurrentPage, leadTotalPages }
 }) => {
-  const { t } = useLanguage();
   return (
     <section className="lead-table-card">
       <div className="lead-table-result">
@@ -109,11 +107,11 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
                   STT
                 </th>
                 <th key="company" data-system-field="companyName">
-                  {t('Doanh nghiệp')}
+                  Doanh nghiệp
                 </th>
                 {visibleLeadColumnIds.has('taxCode') && (
                   <th key="taxCode" data-system-field="taxCode">
-                    {t('Mã số thuế')}
+                    Mã số thuế
                   </th>
                 )}
                 {visibleLeadColumnIds.has('website') && (
@@ -123,62 +121,62 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
                 )}
                 {visibleLeadColumnIds.has('businessSector') && (
                   <th key="businessSector" data-system-field="businessSector">
-                    {t('Lĩnh vực hoạt động')}
+                    Lĩnh vực hoạt động
                   </th>
                 )}
                 {visibleLeadColumnIds.has('address') && (
                   <th key="address" data-system-field="address">
-                    {t('Địa chỉ doanh nghiệp')}
+                    Địa chỉ doanh nghiệp
                   </th>
                 )}
                 {visibleLeadColumnIds.has('companySize') && (
                   <th key="companySize" data-system-field="companySize">
-                    {t('Quy mô')}
+                    Quy mô
                   </th>
                 )}
                 {visibleLeadColumnIds.has('source') && (
                   <th key="source" data-system-field="source">
-                    {t('Khu vực')}
+                    Khu vực
                   </th>
                 )}
                 {visibleLeadColumnIds.has('sourceValue') && (
                   <th key="sourceValue" data-system-field="sourceValue">
-                    {t('Nguồn tìm kiếm')}
+                    Nguồn tìm kiếm
                   </th>
                 )}
                 {visibleLeadColumnIds.has('province') && (
                   <th key="province" data-system-field="province">
-                    {t('Tỉnh/thành')}
+                    Tỉnh/thành
                   </th>
                 )}
                 {visibleLeadColumnIds.has('ward') && (
                   <th key="ward" data-system-field="ward">
-                    {t('Phường/xã')}
+                    Phường/xã
                   </th>
                 )}
                 {visibleLeadColumnIds.has('industrialPark') && (
                   <th key="industrialPark" data-system-field="industrialPark">
-                    {t('Khu công nghiệp')}
+                    Khu công nghiệp
                   </th>
                 )}
                 {visibleLeadColumnIds.has('contact') && (
                   <th key="contact" data-system-field="contact">
-                    {t('Liên hệ')}
+                    Liên hệ
                   </th>
                 )}
                 {visibleLeadColumnIds.has('contactPerson') && (
                   <th key="contactPerson" data-system-field="contactPerson">
-                    {t('Người liên hệ')}
+                    Người liên hệ
                   </th>
                 )}
                 {visibleLeadColumnIds.has('contactPosition') && (
                   <th key="contactPosition" data-system-field="contactPosition">
-                    {t('Chức vụ')}
+                    Chức vụ
                   </th>
                 )}
                 {visibleLeadColumnIds.has('phone') && (
                   <th key="phone" data-system-field="phone">
-                    {t('Điện thoại')}
+                    Điện thoại
                   </th>
                 )}
                 {visibleLeadColumnIds.has('email') && (
@@ -188,37 +186,37 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
                 )}
                 {visibleLeadColumnIds.has('expectedProducts') && (
                   <th key="expectedProducts" data-system-field="expectedProducts">
-                    {t('Sản phẩm / nhu cầu quan tâm')}
+                    Sản phẩm / nhu cầu quan tâm
                   </th>
                 )}
                 {visibleLeadColumnIds.has('potentialValue') && (
                   <th key="potentialValue" data-system-field="potentialValue">
-                    {t('Giá trị tiềm năng')}
+                    Giá trị tiềm năng
                   </th>
                 )}
                 {visibleLeadColumnIds.has('stage') && (
                   <th key="stage" data-system-field="stage">
-                    {t('Giai đoạn xử lý')}
+                    Giai đoạn xử lý
                   </th>
                 )}
                 {visibleLeadColumnIds.has('note') && (
                   <th key="note" data-system-field="note">
-                    {t('Ghi chú')}
+                    Ghi chú
                   </th>
                 )}
                 {visibleLeadColumnIds.has('assignedSale') && (
                   <th key="assignedSale" data-system-field="assignedSaleId">
-                    {t('Sale phụ trách')}
+                    Sale phụ trách
                   </th>
                 )}
                 {visibleLeadColumnIds.has('discoveredBy') && (
                   <th key="discoveredBy" data-system-field="discoveredById">
-                    {t('Sale tìm được Lead')}
+                    Sale tìm được Lead
                   </th>
                 )}
                 {visibleLeadColumnIds.has('nextFollowUpAt') && (
                   <th key="nextFollowUpAt" data-system-field="nextFollowUpAt">
-                    {t('Chăm sóc tiếp')}
+                    Chăm sóc tiếp
                   </th>
                 )}
                 {visibleLeadInsightItems.map(entry => (
@@ -227,7 +225,7 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
                 {visibleLeadCustomFields.map(definition => (
                   <th key={`custom:${definition.id}`}>{definition.name}</th>
                 ))}
-                <th key="actions">{t('Thao tác')}</th>
+                <th key="actions">Thao tác</th>
               </ReorderableTableCells>
             </tr>
           </thead>
@@ -344,17 +342,17 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
                   ))}
                   <td key="actions">
                     <RowActionMenu
-                      label={`${t('Thao tác')} ${lead.companyName}`}
+                      label={`Thao tác ${lead.companyName}`}
                       actions={[
                         {
-                          label: t('Hẹn lịch'),
+                          label: 'Hẹn lịch',
                           icon: <CalendarClock size={14} />,
                           onSelect: () => openScheduleForm(lead)
                         },
                         ...(currentUser.role === 'admin'
                           ? [
                               {
-                                label: t('Giao việc'),
+                                label: 'Giao việc',
                                 icon: <ClipboardCheck size={14} />,
                                 onSelect: () =>
                                   setAssignmentTarget({ id: lead.id, label: lead.companyName, module: 'leads' })
@@ -364,7 +362,7 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
                         ...(currentUser.role === 'sale'
                           ? [
                               {
-                                label: t('Yêu cầu hỗ trợ'),
+                                label: 'Yêu cầu hỗ trợ',
                                 icon: <LifeBuoy size={14} />,
                                 onSelect: () =>
                                   setSupportTarget({ id: lead.id, label: lead.companyName, module: 'leads' })
@@ -372,7 +370,7 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
                             ]
                           : []),
                         {
-                          label: returningLeadId === lead.id ? t('Đang chuyển...') : t('Chuyển về Dữ liệu thô'),
+                          label: returningLeadId === lead.id ? 'Đang chuyển...' : 'Chuyển về Dữ liệu thô',
                           icon: <Undo2 size={14} />,
                           onSelect: () => void handleReturnLeadToRawData(lead),
                           disabled:
@@ -382,7 +380,7 @@ export const LeadListTable: React.FC<LeadListTableProps> = ({
                             (currentUser.role !== 'admin' && lead.assignedSaleId !== currentUser.uid)
                         },
                         {
-                          label: t('Xóa Lead'),
+                          label: 'Xóa Lead',
                           icon: <Trash2 size={14} />,
                           onSelect: () => void handleDeleteLead(lead),
                           danger: true,

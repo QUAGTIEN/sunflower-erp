@@ -8,7 +8,6 @@ import {
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
-import { useLanguage } from '@/context/LanguageContext';
 import { getPOQueueLabel } from '@/features/sales/model/poWorkflow';
 import { Download, FileText, Paperclip, Plus, Search, Send, Settings2, X } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
@@ -72,7 +71,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   users,
   channels
 }) => {
-  const { t } = useLanguage();
   const [activeChannelId, setActiveChannelId] = useState<string>('all');
   const [messageText, setMessageText] = useState('');
   const [channelSearch, setChannelSearch] = useState('');
@@ -201,7 +199,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
     const availableSlots = CHAT_ATTACHMENT_MAX_FILES - pendingAttachments.length;
     if (availableSlots <= 0) {
-      setAttachmentError(t(`Mỗi tin nhắn chỉ được đính kèm tối đa ${CHAT_ATTACHMENT_MAX_FILES} tệp.`));
+      setAttachmentError(`Mỗi tin nhắn chỉ được đính kèm tối đa ${CHAT_ATTACHMENT_MAX_FILES} tệp.`);
       return;
     }
 
@@ -211,9 +209,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       .slice(0, availableSlots);
 
     if (oversizedFiles.length > 0) {
-      setAttachmentError(t('Mỗi tệp đính kèm phải nhỏ hơn hoặc bằng 10 MB.'));
+      setAttachmentError('Mỗi tệp đính kèm phải nhỏ hơn hoặc bằng 10 MB.');
     } else if (selectedFiles.length > availableSlots) {
-      setAttachmentError(t(`Mỗi tin nhắn chỉ được đính kèm tối đa ${CHAT_ATTACHMENT_MAX_FILES} tệp.`));
+      setAttachmentError(`Mỗi tin nhắn chỉ được đính kèm tối đa ${CHAT_ATTACHMENT_MAX_FILES} tệp.`);
     } else {
       setAttachmentError('');
     }
@@ -229,7 +227,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   };
 
   const handleRecallMessage = async (message: { id: string; attachments?: ChatAttachmentRecord[] }) => {
-    if (window.confirm(t('Bạn có chắc chắn muốn thu hồi tin nhắn này?'))) {
+    if (window.confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?')) {
       await dbService.updateDocument('messages', message.id, { recalled: true });
       await deleteChatAttachments(message.attachments || []);
     }
@@ -244,7 +242,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       'ChatPage.tsx:handleDeleteMessage',
       async () => {
         if (currentUser.role !== 'admin') return;
-        if (!(await confirmDelete(t('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.')))) return;
+        if (!(await confirmDelete('Xóa vĩnh viễn tin nhắn này? Thao tác không thể khôi phục.'))) return;
 
         try {
           await requireConfirmedMutation(dbService.deleteDocument('messages', message.id));
@@ -264,7 +262,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         } catch (error) {
           showErrorToast();
           console.error('[Chat] Could not delete message.', error);
-          window.alert(t('Không thể xóa tin nhắn. Vui lòng thử lại.'));
+          window.alert('Không thể xóa tin nhắn. Vui lòng thử lại.');
         }
       },
       message
@@ -372,7 +370,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               replyTo: {
                 id: replyingTo.id,
                 senderName: replyingTo.senderName,
-                text: replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')
+                text: replyingTo.messageText || (replyingTo.attachments?.length ? 'Tệp đính kèm' : '')
               }
             }
           : {})
@@ -387,7 +385,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     } catch (error) {
       await deleteChatAttachments(uploadedAttachments);
       console.error('[Chat] Could not send attachments.', error);
-      setAttachmentError(error instanceof Error ? error.message : t('Không thể gửi tệp đính kèm. Vui lòng thử lại.'));
+      setAttachmentError(error instanceof Error ? error.message : 'Không thể gửi tệp đính kèm. Vui lòng thử lại.');
     } finally {
       setIsSendingMessage(false);
     }
@@ -413,14 +411,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           if (!po) return null;
           return (
             <div key={po.id} className="chat-task-card">
-              <span className="chat-task-card-title">
-                {t('Đơn Hàng')} {poCode}
-              </span>
+              <span className="chat-task-card-title">Đơn Hàng {poCode}</span>
               <span className="chat-task-card-desc">
-                {po.customerName} - {po.items?.[0]?.productName || t('Tem Nhãn')} ({t(getPOQueueLabel(po))})
+                {po.customerName} - {po.items?.[0]?.productName || 'Tem Nhãn'} ({getPOQueueLabel(po)})
               </span>
               <button type="button" className="chat-task-card-btn" onClick={() => onNavigateToPO(po.id)}>
-                {t('Xem Chi Tiết Đơn Hàng')} →
+                Xem Chi Tiết Đơn Hàng →
               </button>
             </div>
           );
@@ -432,14 +428,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           if (!lsx) return null;
           return (
             <div key={lsx.id} className="chat-task-card">
-              <span className="chat-task-card-title">
-                {t('Lệnh Sản Xuất')} {lsxCode}
-              </span>
+              <span className="chat-task-card-title">Lệnh Sản Xuất {lsxCode}</span>
               <span className="chat-task-card-desc">
-                {lsx.productName} — {productionQuantityLabel(lsx)} ({t(lsx.status)})
+                {lsx.productName} — {productionQuantityLabel(lsx)} ({lsx.status})
               </span>
               <button type="button" className="chat-task-card-btn" onClick={() => onNavigateToLSX(lsx.id)}>
-                {t('Xem Lệnh Sản Xuất')} →
+                Xem Lệnh Sản Xuất →
               </button>
             </div>
           );
@@ -462,7 +456,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               href={attachment.url}
               target="_blank"
               rel="noreferrer"
-              title={t('Mở ảnh')}
+              title="Mở ảnh"
             >
               <img src={attachment.url} alt={attachment.name} loading="lazy" />
               <span>{attachment.name}</span>
@@ -475,7 +469,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               target="_blank"
               rel="noreferrer"
               download={attachment.name}
-              title={t('Mở hoặc tải tệp')}
+              title="Mở hoặc tải tệp"
             >
               <FileText size={22} aria-hidden="true" />
               <span className="chat-file-attachment__details">
@@ -527,7 +521,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   return (
     <div className="chat-page-view">
       <div className="chat-workspace">
-        <aside className="chat-sidebar" aria-label={t('Danh sách kênh')}>
+        <aside className="chat-sidebar" aria-label="Danh sách kênh">
           <div className="chat-sidebar__toolbar">
             <label className="chat-sidebar__search">
               <Search size={14} aria-hidden="true" />
@@ -535,12 +529,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 type="search"
                 value={channelSearch}
                 onChange={event => setChannelSearch(event.target.value)}
-                placeholder={t('Tìm kênh')}
-                aria-label={t('Tìm kênh')}
+                placeholder="Tìm kênh"
+                aria-label="Tìm kênh"
               />
             </label>
             <IconButton
-              label={t('Tạo kênh mới')}
+              label="Tạo kênh mới"
               icon={<Plus />}
               onClick={() => {
                 setNewChannelName('');
@@ -550,7 +544,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               }}
             />
           </div>
-          <div className="chat-sidebar__heading">{t('Kênh thảo luận')}</div>
+          <div className="chat-sidebar__heading">Kênh thảo luận</div>
           <nav className="chat-sidebar__channels">
             {visibleChannels.map(ch => {
               const count = getUnreadCount(ch.id);
@@ -573,30 +567,30 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                   </span>
                   <span className="chat-channel__name">{ch.name}</span>
                   {count > 0 && (
-                    <span className="chat-channel__badge" aria-label={`${count} ${t('tin chưa đọc')}`}>
+                    <span className="chat-channel__badge" aria-label={`${count} tin chưa đọc`}>
                       {count}
                     </span>
                   )}
                 </button>
               );
             })}
-            {visibleChannels.length === 0 && <p className="chat-sidebar__empty">{t('Không tìm thấy kênh phù hợp.')}</p>}
+            {visibleChannels.length === 0 && <p className="chat-sidebar__empty">Không tìm thấy kênh phù hợp.</p>}
           </nav>
         </aside>
 
-        <section className="chat-panel" aria-label={activeChannel ? `# ${activeChannel.name}` : t('Kênh chat')}>
+        <section className="chat-panel" aria-label={activeChannel ? `# ${activeChannel.name}` : 'Kênh chat'}>
           <header className="chat-panel__header">
             <div className="chat-panel__title">
               <h2 title={activeChannel?.name}># {activeChannel?.name}</h2>
               <p title={activeChannel?.desc}>
                 {activeChannel?.desc}
                 {activeChannelMemberCount > 0 &&
-                  `${activeChannel?.desc ? ' · ' : ''}${activeChannelMemberCount} ${t('thành viên')}`}
+                  `${activeChannel?.desc ? ' · ' : ''}${activeChannelMemberCount} thành viên`}
               </p>
             </div>
             {canEditActiveChannel && (
               <IconButton
-                label={t('Sửa kênh')}
+                label="Sửa kênh"
                 icon={<Settings2 />}
                 onClick={() => {
                   setEditChannelName(activeChannel.name);
@@ -621,16 +615,16 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                   <div className="chat-post__body">
                     <div className="chat-post__meta">
                       <strong>{msg.senderName}</strong>
-                      {roleLabel && <span>{t(roleLabel)}</span>}
+                      {roleLabel && <span>{roleLabel}</span>}
                       <time dateTime={msg.createdAt}>{formatTime(msg.createdAt)}</time>
                       {!msg.recalled && (
                         <span className="chat-post__actions">
                           <button type="button" onClick={() => setReplyingTo(msg)}>
-                            {t('Trả lời')}
+                            Trả lời
                           </button>
                           {(isMe || currentUser.role === 'admin') && (
                             <button type="button" className="is-danger" onClick={() => void handleRecallMessage(msg)}>
-                              {t('Thu hồi')}
+                              Thu hồi
                             </button>
                           )}
                           {currentUser.role === 'admin' && (
@@ -638,21 +632,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                               type="button"
                               className="is-danger"
                               onClick={() => void handleDeleteMessage(msg)}
-                              title={t('Xóa vĩnh viễn tin nhắn')}
+                              title="Xóa vĩnh viễn tin nhắn"
                             >
-                              {t('Xóa')}
+                              Xóa
                             </button>
                           )}
                         </span>
                       )}
                     </div>
                     {msg.recalled ? (
-                      <p className="chat-post__recalled">{t('Tin nhắn đã bị thu hồi')}</p>
+                      <p className="chat-post__recalled">Tin nhắn đã bị thu hồi</p>
                     ) : (
                       <div className="chat-post__content">
                         {msg.replyTo && (
                           <blockquote className="chat-post__quote">
-                            <strong>@{msg.replyTo.senderName}:</strong> {msg.replyTo.text || t('Tệp đính kèm')}
+                            <strong>@{msg.replyTo.senderName}:</strong> {msg.replyTo.text || 'Tệp đính kèm'}
                           </blockquote>
                         )}
                         {msg.messageText ? renderMessageContent(msg.messageText) : null}
@@ -665,9 +659,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             })}
             <div ref={messagesEndRef} />
             {channelMessages.length === 0 && (
-              <p className="chat-panel__empty">
-                {t('Chưa có tin nhắn nào trong kênh này. Hãy bắt đầu cuộc hội thoại!')}
-              </p>
+              <p className="chat-panel__empty">Chưa có tin nhắn nào trong kênh này. Hãy bắt đầu cuộc hội thoại!</p>
             )}
           </div>
 
@@ -675,7 +667,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             {showSuggestions && filteredSuggestions.length > 0 && (
               <div className="chat-suggestions-popup">
                 <div className="chat-suggestion-header">
-                  {suggestionType === 'member' ? t('Gợi ý tag nhân viên') : t('Gợi ý mã liên kết')}
+                  {suggestionType === 'member' ? 'Gợi ý tag nhân viên' : 'Gợi ý mã liên kết'}
                 </div>
                 {filteredSuggestions.map((item: any) => (
                   <div key={item.id} className="chat-suggestion-item" onClick={() => handleSelectSuggestion(item)}>
@@ -683,7 +675,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                       {suggestionType === 'member' ? `@${item.displayName}` : item.code}
                     </span>
                     <span className="chat-suggestion-item-sub">
-                      {suggestionType === 'member' ? t(item.role.toUpperCase()) : item.label}
+                      {suggestionType === 'member' ? item.role.toUpperCase() : item.label}
                     </span>
                   </div>
                 ))}
@@ -692,16 +684,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             {replyingTo && (
               <div className="chat-composer__reply">
                 <span>
-                  <strong>
-                    {t('Trả lời')} {replyingTo.senderName}:
-                  </strong>{' '}
-                  {replyingTo.messageText || (replyingTo.attachments?.length ? t('Tệp đính kèm') : '')}
+                  <strong>Trả lời {replyingTo.senderName}:</strong>{' '}
+                  {replyingTo.messageText || (replyingTo.attachments?.length ? 'Tệp đính kèm' : '')}
                 </span>
-                <IconButton label={t('Bỏ trả lời')} icon={<X />} onClick={() => setReplyingTo(null)} />
+                <IconButton label="Bỏ trả lời" icon={<X />} onClick={() => setReplyingTo(null)} />
               </div>
             )}
             {pendingAttachments.length > 0 && (
-              <div className="chat-pending-attachments" aria-label={t('Tệp đang chờ gửi')}>
+              <div className="chat-pending-attachments" aria-label="Tệp đang chờ gửi">
                 {pendingAttachments.map(attachment => (
                   <div key={attachment.id} className="chat-pending-attachment">
                     {attachment.previewUrl ? (
@@ -716,8 +706,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                     <button
                       type="button"
                       onClick={() => removePendingAttachment(attachment.id)}
-                      aria-label={`${t('Bỏ tệp')} ${attachment.file.name}`}
-                      title={t('Bỏ tệp')}
+                      aria-label={`Bỏ tệp ${attachment.file.name}`}
+                      title="Bỏ tệp"
                     >
                       <X size={14} aria-hidden="true" />
                     </button>
@@ -740,7 +730,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 onChange={handleAttachmentSelection}
               />
               <IconButton
-                label={t('Đính kèm ảnh hoặc tệp')}
+                label="Đính kèm ảnh hoặc tệp"
                 icon={<Paperclip />}
                 onClick={() => attachmentInputRef.current?.click()}
                 disabled={isSendingMessage || pendingAttachments.length >= CHAT_ATTACHMENT_MAX_FILES}
@@ -748,8 +738,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               <input
                 type="text"
                 className="chat-composer__input"
-                placeholder={t('Nhập nội dung... (Gõ @ để tag nhân viên, # để gọi đơn hàng/LSX)')}
-                aria-label={t('Nội dung tin nhắn')}
+                placeholder="Nhập nội dung... (Gõ @ để tag nhân viên, # để gọi đơn hàng/LSX)"
+                aria-label="Nội dung tin nhắn"
                 value={messageText}
                 onChange={e => setMessageText(e.target.value)}
                 disabled={isSendingMessage}
@@ -760,7 +750,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                 disabled={isSendingMessage || (!messageText.trim() && pendingAttachments.length === 0)}
               >
                 <Send size={14} aria-hidden="true" />
-                {isSendingMessage ? t('Đang gửi...') : t('Gửi')}
+                {isSendingMessage ? 'Đang gửi...' : 'Gửi'}
               </button>
             </form>
           </div>
@@ -772,34 +762,34 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
             <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('TẠO KÊNH THẢO LUẬN MỚI')}</span>
+              <span style={{ fontWeight: 700, fontSize: '16px' }}>TẠO KÊNH THẢO LUẬN MỚI</span>
               <button className="btn btn-sm btn-outline" onClick={() => setShowCreateModal(false)}>
-                {t('Đóng')}
+                Đóng
               </button>
             </div>
             <form onSubmit={handleCreateChannelSubmit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div className="form-group">
-                  <label>{t('Tên Kênh *')}</label>
+                  <label>Tên Kênh *</label>
                   <input
                     type="text"
                     value={newChannelName}
                     onChange={e => setNewChannelName(e.target.value)}
-                    placeholder={t('Ví dụ: Thảo luận đơn hàng Aqua...')}
+                    placeholder="Ví dụ: Thảo luận đơn hàng Aqua..."
                     required
                   />
                 </div>
                 <div className="form-group">
-                  <label>{t('Mô Tả Kênh')}</label>
+                  <label>Mô Tả Kênh</label>
                   <input
                     type="text"
                     value={newChannelDesc}
                     onChange={e => setNewChannelDesc(e.target.value)}
-                    placeholder={t('Mô tả mục đích kênh chat...')}
+                    placeholder="Mô tả mục đích kênh chat..."
                   />
                 </div>
                 <div className="form-group">
-                  <label style={{ fontWeight: 600 }}>{t('Thành Viên Tham Gia')}</label>
+                  <label style={{ fontWeight: 600 }}>Thành Viên Tham Gia</label>
                   <div
                     style={{
                       maxHeight: '180px',
@@ -826,7 +816,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                             onChange={() => handleToggleMember(u.uid, false)}
                           />
                           <span style={{ fontSize: '13px' }}>
-                            {u.displayName} ({t(u.role.toUpperCase())})
+                            {u.displayName} ({u.role.toUpperCase()})
                           </span>
                         </label>
                       ))}
@@ -835,10 +825,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>
-                  {t('Hủy')}
+                  Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {t('Tạo Kênh')}
+                  Tạo Kênh
                 </button>
               </div>
             </form>
@@ -851,15 +841,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }}>
             <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHỈNH SỬA THÔNG TIN KÊNH')}</span>
+              <span style={{ fontWeight: 700, fontSize: '16px' }}>CHỈNH SỬA THÔNG TIN KÊNH</span>
               <button className="btn btn-sm btn-outline" onClick={() => setShowEditModal(false)}>
-                {t('Đóng')}
+                Đóng
               </button>
             </div>
             <form onSubmit={handleEditChannelSubmit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div className="form-group">
-                  <label>{t('Tên Kênh *')}</label>
+                  <label>Tên Kênh *</label>
                   <input
                     type="text"
                     value={editChannelName}
@@ -868,11 +858,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                   />
                 </div>
                 <div className="form-group">
-                  <label>{t('Mô Tả Kênh')}</label>
+                  <label>Mô Tả Kênh</label>
                   <input type="text" value={editChannelDesc} onChange={e => setEditChannelDesc(e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label style={{ fontWeight: 600 }}>{t('Thành Viên Kênh')}</label>
+                  <label style={{ fontWeight: 600 }}>Thành Viên Kênh</label>
                   <div
                     style={{
                       maxHeight: '180px',
@@ -899,7 +889,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
                             onChange={() => handleToggleMember(u.uid, true)}
                           />
                           <span style={{ fontSize: '13px' }}>
-                            {u.displayName} ({t(u.role.toUpperCase())})
+                            {u.displayName} ({u.role.toUpperCase()})
                           </span>
                         </label>
                       ))}
@@ -908,10 +898,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>
-                  {t('Hủy')}
+                  Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {t('Lưu Thay Đổi')}
+                  Lưu Thay Đổi
                 </button>
               </div>
             </form>

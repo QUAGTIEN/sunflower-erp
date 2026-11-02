@@ -1,6 +1,5 @@
 import React from 'react';
 import { Download } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface POImagePreviewDialogProps {
   setPreviewImage: React.Dispatch<React.SetStateAction<string | null>>;
@@ -9,7 +8,6 @@ interface POImagePreviewDialogProps {
 
 /** Full-screen preview of a PO item image with download. */
 export const POImagePreviewDialog: React.FC<POImagePreviewDialogProps> = ({ setPreviewImage, previewImage }) => {
-  const { t } = useLanguage();
   return (
     <div
       className="modal-overlay"
@@ -73,7 +71,7 @@ export const POImagePreviewDialog: React.FC<POImagePreviewDialogProps> = ({ setP
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}
           >
             <Download size={14} />
-            <span>{t('Tải Ảnh Về')}</span>
+            <span>Tải Ảnh Về</span>
           </a>
         </div>
       </div>

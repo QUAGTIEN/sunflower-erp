@@ -242,7 +242,6 @@ test('the full-page form has technical groups, optional price, and a pinned save
     'lucide-react': require('lucide-react'),
     '@/components/PageBackButton': { PageBackButton: () => React.createElement('button', { type: 'button' }, 'Back') },
     '@/components/PageContextHeader': { PageContextHeader: () => null },
-    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) },
     '../model/customerProductCatalog': model,
     '../api/customerProductService': {
       createCustomerProduct: () => {

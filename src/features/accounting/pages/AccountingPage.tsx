@@ -2,7 +2,6 @@ import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@
 import React, { useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { useLanguage } from '@/context/LanguageContext';
 import { RowActionMenu } from '@/components/RowActionMenu';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
@@ -23,7 +22,6 @@ interface AccountingProps {
   users: UserProfile[];
 }
 export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefresh }) => {
-  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<'invoices' | 'costing' | 'catalog' | 'reports'>('invoices');
   const changeTab = (tab: typeof activeTab) => {
     if (confirmAppNavigation()) setActiveTab(tab);
@@ -114,7 +112,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
     printWindow.document.write(`
       <html>
         <head>
-          <title>${t('In Phiếu SX')} - ${po.poCode}</title>
+          <title>In Phiếu SX - ${po.poCode}</title>
           <style>
             body { font-family: sans-serif; padding: 30px; line-height: 1.6; color: #333; }
             .header { text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 20px; }
@@ -220,7 +218,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
           className={activeTab === 'costing' ? 'active' : ''}
           onClick={() => changeTab('costing')}
         >
-          {t('Báo Cáo Lãi Gộp Đơn Hàng')}
+          Báo Cáo Lãi Gộp Đơn Hàng
         </button>
         {canManageItemCatalog(currentUser) && (
           <button
@@ -250,23 +248,23 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="card">
             <div className="card-header">
-              <span className="card-title">{t('Báo Cáo Lãi Gộp Đơn Hàng')}</span>
+              <span className="card-title">Báo Cáo Lãi Gộp Đơn Hàng</span>
             </div>
             <div className="table-container accounting-costing-table-wrap erp-primary-data-table">
               <table className="accounting-costing-table" data-resize-key="accounting-costing">
                 <thead>
                   <tr>
-                    <th>{t('Mã đơn hàng')}</th>
-                    <th>{t('Khách Hàng')}</th>
-                    <th>{t('Doanh Thu')}</th>
-                    <th>{t('Chi Phí NVL')}</th>
-                    <th>{t('Nhân Công')}</th>
-                    <th>{t('Vận Chuyển')}</th>
-                    <th>{t('Chi Phí Khác')}</th>
-                    <th>{t('Tổng Chi Phí')}</th>
-                    <th>{t('Lãi Gộp')}</th>
-                    <th>{t('Tỷ Suất (%)')}</th>
-                    <th>{t('Thao Tác')}</th>
+                    <th>Mã đơn hàng</th>
+                    <th>Khách Hàng</th>
+                    <th>Doanh Thu</th>
+                    <th>Chi Phí NVL</th>
+                    <th>Nhân Công</th>
+                    <th>Vận Chuyển</th>
+                    <th>Chi Phí Khác</th>
+                    <th>Tổng Chi Phí</th>
+                    <th>Lãi Gộp</th>
+                    <th>Tỷ Suất (%)</th>
+                    <th>Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -297,15 +295,15 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                           <span
                             style={{ color: c.marginPercent > 30 ? 'var(--color-success)' : 'var(--color-warning)' }}
                           >
-                            {c.marginPercent.toFixed(1)}%{isEstimated ? ` (${t('Dự kiến')})` : ''}
+                            {c.marginPercent.toFixed(1)}%{isEstimated ? ` (Dự kiến)` : ''}
                           </span>
                         </td>
                         <td>
                           <RowActionMenu
                             label={`Thao tác ${po.poCode}`}
                             actions={[
-                              { label: t('Sửa Chi Phí'), onSelect: () => handleOpenCostModal(po) },
-                              { label: t('In Phiếu'), onSelect: () => printWorkOrder(po) }
+                              { label: 'Sửa Chi Phí', onSelect: () => handleOpenCostModal(po) },
+                              { label: 'In Phiếu', onSelect: () => printWorkOrder(po) }
                             ]}
                           />
                         </td>
@@ -314,7 +312,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
                   })}
                   {!pos.length && (
                     <tr>
-                      <td colSpan={11}>{t('Chưa có đơn hàng phù hợp.')}</td>
+                      <td colSpan={11}>Chưa có đơn hàng phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -332,7 +330,7 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
             <div className="modal-header">
               <span style={{ fontWeight: 700 }}>CẬP NHẬT CHI PHÍ SẢN XUẤT ĐƠN HÀNG</span>
               <button className="btn btn-sm btn-outline" onClick={() => setCustomCostModalPo(null)}>
-                {t('Đóng')}
+                Đóng
               </button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -369,10 +367,10 @@ export const Accounting: React.FC<AccountingProps> = ({ pos, currentUser, onRefr
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-outline" onClick={() => setCustomCostModalPo(null)}>
-                {t('Hủy')}
+                Hủy
               </button>
               <button type="button" className="btn btn-primary" onClick={handleSaveCustomCost}>
-                {t('Cập Nhật')}
+                Cập Nhật
               </button>
             </div>
           </div>

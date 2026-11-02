@@ -1,6 +1,5 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface PageBackButtonProps {
   onClick: () => void;
@@ -13,8 +12,7 @@ interface PageBackButtonProps {
 
 /** Nút quay lại chuẩn: chỉ có icon, đặt đầu header, cùng một kiểu ở mọi phân hệ. */
 export const PageBackButton: React.FC<PageBackButtonProps> = ({ onClick, label, title, className = '', disabled }) => {
-  const { t } = useLanguage();
-  const buttonLabel = title || label || t('Quay lại');
+  const buttonLabel = title || label || 'Quay lại';
 
   return (
     <button

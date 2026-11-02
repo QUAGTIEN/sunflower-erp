@@ -1940,28 +1940,6 @@ tr:hover td {
   background: #94a3b8;
 }
 
-/* Globe Language Toggle Button */
-.lang-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  font-size: 12.5px;
-  font-weight: 600;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-sm);
-  background-color: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: var(--transition-fast);
-}
-
-.lang-toggle-btn:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background-color: var(--color-primary-light);
-}
-
 .mobile-menu-btn {
   display: none;
 }

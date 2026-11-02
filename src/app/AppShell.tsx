@@ -11,7 +11,6 @@ import {
 } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
 import { Dashboard } from '@/features/dashboard';
-import { useLanguage } from '@/context/LanguageContext';
 import { PageContextProvider } from '@/context/PageContext';
 import { TableColumnLayoutContext, useTableColumnLayoutManager } from '@/context/TableColumnLayoutContext';
 import type { AppPageContext } from '@/context/PageContextState';
@@ -192,7 +191,6 @@ function AppShell() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     return localStorage.getItem('erp_sidebar_collapsed') === 'true';
   });
-  const { t, language, setLanguage } = useLanguage();
 
   useEffect(() => {
     document.documentElement.dataset.theme = 'light';
@@ -1137,37 +1135,36 @@ function AppShell() {
         <div className="login-hero-panel">
           <div className="login-hero-overlay">
             <div className="login-hero-content">
-              <div className="login-hero-badge">{t('SUNFLOWER LABEL ERP')}</div>
-              <h1 className="login-hero-title">{t('SUNFLOWER LABEL ERP')}</h1>
-              <p className="login-hero-sub">{t('Hệ thống quản trị sản xuất tem nhãn chuyên nghiệp')}</p>
+              <div className="login-hero-badge">SUNFLOWER LABEL ERP</div>
+              <h1 className="login-hero-title">SUNFLOWER LABEL ERP</h1>
+              <p className="login-hero-sub">Hệ thống quản trị sản xuất tem nhãn chuyên nghiệp</p>
               <div className="login-hero-divider"></div>
               <p className="login-hero-desc">
-                {t(
-                  'Giải pháp ERP toàn diện giúp tối ưu quy trình sản xuất tem nhãn từ nhận đơn hàng đến giao hàng và quản lý công nợ hiệu quả.'
-                )}
+                Giải pháp ERP toàn diện giúp tối ưu quy trình sản xuất tem nhãn từ nhận đơn hàng đến giao hàng và quản
+                lý công nợ hiệu quả.
               </p>
               <div className="login-hero-flow">
                 <span>Đơn hàng</span>
                 <span className="flow-arrow">→</span>
-                <span>{t('Thiết kế')}</span>
+                <span>Thiết kế</span>
                 <span className="flow-arrow">→</span>
-                <span>{t('Sản xuất')}</span>
+                <span>Sản xuất</span>
                 <span className="flow-arrow">→</span>
                 <span>QC</span>
                 <span className="flow-arrow">→</span>
-                <span>{t('Giao hàng')}</span>
+                <span>Giao hàng</span>
                 <span className="flow-arrow">→</span>
-                <span>{t('Thu công nợ')}</span>
+                <span>Thu công nợ</span>
               </div>
               <div className="login-hero-modules">
-                <div className="hero-module">{t('Quản lý đơn hàng')}</div>
-                <div className="hero-module">{t('Thiết kế & Duyệt mẫu')}</div>
-                <div className="hero-module">{t('Theo dõi Sản xuất')}</div>
-                <div className="hero-module">{t('Quản lý Nguyên vật liệu')}</div>
-                <div className="hero-module">{t('Kiểm soát Chất lượng')}</div>
-                <div className="hero-module">{t('Giao nhận & Giao hàng')}</div>
-                <div className="hero-module">{t('Công nợ Khách hàng')}</div>
-                <div className="hero-module">{t('Báo cáo & Phân tích')}</div>
+                <div className="hero-module">Quản lý đơn hàng</div>
+                <div className="hero-module">Thiết kế & Duyệt mẫu</div>
+                <div className="hero-module">Theo dõi Sản xuất</div>
+                <div className="hero-module">Quản lý Nguyên vật liệu</div>
+                <div className="hero-module">Kiểm soát Chất lượng</div>
+                <div className="hero-module">Giao nhận & Giao hàng</div>
+                <div className="hero-module">Công nợ Khách hàng</div>
+                <div className="hero-module">Báo cáo & Phân tích</div>
               </div>
             </div>
           </div>
@@ -1185,17 +1182,17 @@ function AppShell() {
                 alt="Sunflower"
                 style={{ width: '260px', maxWidth: '100%', height: 'auto', marginBottom: '18px', objectFit: 'contain' }}
               />
-              <h2 className="login-card-title">{t('Chào mừng trở lại')}</h2>
-              <p className="login-card-subtitle">{t('Đăng nhập để tiếp tục làm việc')}</p>
+              <h2 className="login-card-title">Chào mừng trở lại</h2>
+              <p className="login-card-subtitle">Đăng nhập để tiếp tục làm việc</p>
             </div>
 
             <form onSubmit={handleLogin} className="login-form">
               <div className="form-group">
-                <label className="login-label">{t('Tên đăng nhập')}</label>
+                <label className="login-label">Tên đăng nhập</label>
                 <div className="input-wrapper">
                   <input
                     type="text"
-                    placeholder={t('Nhập tên đăng nhập hoặc email')}
+                    placeholder="Nhập tên đăng nhập hoặc email"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
                     required
@@ -1205,11 +1202,11 @@ function AppShell() {
               </div>
 
               <div className="form-group">
-                <label className="login-label">{t('Mật khẩu')}</label>
+                <label className="login-label">Mật khẩu</label>
                 <div className="input-wrapper password-input-wrapper">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder={t('Nhập mật khẩu')}
+                    placeholder="Nhập mật khẩu"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
@@ -1257,36 +1254,18 @@ function AppShell() {
               <div className="login-options">
                 <label className="remember-me">
                   <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
-                  <span>{t('Ghi nhớ đăng nhập')}</span>
+                  <span>Ghi nhớ đăng nhập</span>
                 </label>
               </div>
 
               {errorMsg && <div className="login-error-alert">{errorMsg}</div>}
 
               <button type="submit" className="login-btn-submit">
-                {t('Đăng Nhập Hệ Thống')}
+                Đăng Nhập Hệ Thống
               </button>
             </form>
 
             <div className="login-card-footer">
-              <button className="lang-toggle-btn" onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}>
-                <svg
-                  viewBox="0 0 24 24"
-                  width="14"
-                  height="14"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px' }}
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-                <span>{language === 'vi' ? 'English' : 'Tiếng Việt'}</span>
-              </button>
               <div className="login-footer-brand">
                 <span>SUNFLOWER LABEL ERP v1.0</span>
                 <span>© 2026 Sunflower Printing Solutions</span>
@@ -1323,11 +1302,11 @@ function AppShell() {
         className={`sidebar-item${isActive ? ' active' : ''}`}
         aria-current={isActive ? 'page' : undefined}
         onClick={() => openMenuItem(menuItem)}
-        title={t(menuItem.title)}
+        title={menuItem.title}
       >
         <div className={`sidebar-item-content${menuItem.danger ? ' sidebar-item-content-danger' : ''}`}>
           {!nested && <ItemIcon size={16} />}
-          <span className="sidebar-item-label">{menuItem.translateLabel ? t(menuItem.label) : menuItem.label}</span>
+          <span className="sidebar-item-label">{menuItem.translateLabel ? menuItem.label : menuItem.label}</span>
         </div>
         {menuItem.id === 'chat' && unreadChannelCount > 0 && (
           <span className="sidebar-badge">{unreadChannelCount}</span>
@@ -1392,7 +1371,7 @@ function AppShell() {
                 }}
               >
                 <LogOut size={16} />
-                <span>{t('Đăng Xuất')}</span>
+                <span>Đăng Xuất</span>
               </button>
             </div>
           </aside>
@@ -1442,43 +1421,19 @@ function AppShell() {
                 <span>Menu</span>
               </button>
               <div className="header-page-context" aria-label="Vị trí hiện tại">
-                <span className="header-page-context__section">{t(pageContext.section)}</span>
+                <span className="header-page-context__section">{pageContext.section}</span>
                 {pageContext.current && (
                   <>
                     <span className="header-page-context__separator" aria-hidden="true">
                       ›
                     </span>
-                    <span className="header-page-context__current">{t(pageContext.current)}</span>
+                    <span className="header-page-context__current">{pageContext.current}</span>
                   </>
                 )}
               </div>
             </div>
 
             <div className="header-actions">
-              {/* Globe Language Toggle */}
-              <button
-                className="lang-toggle-btn"
-                onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
-                title={language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="15"
-                  height="15"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ display: 'inline-block', verticalAlign: 'middle' }}
-                >
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-                <span>{language === 'vi' ? 'EN' : 'VI'}</span>
-              </button>
-
               <div className="header-notification-center" ref={notificationCenterRef}>
                 <button
                   type="button"
@@ -1563,7 +1518,7 @@ function AppShell() {
                       display: 'inline-block'
                     }}
                   >
-                    {t('Chuyển nhanh vai trò:')}
+                    Chuyển nhanh vai trò:
                   </span>
                   <select
                     value={user.role}
@@ -1578,7 +1533,7 @@ function AppShell() {
                   >
                     {USER_ROLES.map(role => (
                       <option key={role} value={role}>
-                        {t(USER_ROLE_LABELS[role])}
+                        {USER_ROLE_LABELS[role]}
                       </option>
                     ))}
                   </select>

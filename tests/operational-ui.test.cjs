@@ -65,7 +65,6 @@ function screen(file, name, props, initial = {}, stubs = {}) {
   };
   const Component = loader({
     react,
-    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) },
     '@/infrastructure/firebase/erpDataGateway': { dbService: { getCollection: async () => [] } },
     '@/shared/feedback/mutationFeedback': {
       runMutationAction: (_name, action) => action(),

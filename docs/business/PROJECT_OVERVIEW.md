@@ -435,7 +435,7 @@ qua; dòng có mã và tên thành mã sản phẩm của khách; chỉ dòng c�
 - Ghi nhận lịch sử thay đổi và người thực hiện.
 - Thông báo theo phân hệ.
 - Xóa mềm và khôi phục qua Thùng rác đối với dữ liệu được hỗ trợ.
-- Giao diện tiếng Việt, có cơ chế ngôn ngữ dùng chung và sử dụng phông Inter.
+- Giao diện chỉ dùng tiếng Việt (đã bỏ chuyển đổi EN và `LanguageContext`; chữ viết thẳng trong code), phông Inter.
 
 ## 8. Kiến trúc kỹ thuật
 

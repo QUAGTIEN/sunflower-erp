@@ -33,7 +33,6 @@ import {
   Star,
   X
 } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
 import { PageBackButton } from '@/components/PageBackButton';
 import {
   getSourcingTypeLabel,
@@ -133,7 +132,6 @@ const SUPPLIER_LIST_COLUMNS: TableColumnOption[] = [
 ];
 
 export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUser, users }) => {
-  const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
   const finance = usePartnerDebt(currentUser);
   const [searchTerm, setSearchTerm] = useState('');
@@ -179,7 +177,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
       layoutId: 'suppliers',
       lockedStartIds: ['supplier']
     });
-  const supplierColumnLabels = Object.fromEntries(SUPPLIER_LIST_COLUMNS.map(column => [column.id, t(column.label)]));
+  const supplierColumnLabels = Object.fromEntries(SUPPLIER_LIST_COLUMNS.map(column => [column.id, column.label]));
   const supplierActiveFilterCount = categoryFilters.length + monthFilters.length;
 
   useEffect(() => {
@@ -459,11 +457,11 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
             <h1>{selectedSupplier.supplierName}</h1>
             <p>
               {selectedSupplier.supplierCode || selectedSupplier.id} ·{' '}
-              {selectedSupplier.categories.join(', ') || t('Chưa phân loại')}
+              {selectedSupplier.categories.join(', ') || 'Chưa phân loại'}
             </p>
           </div>
           <button type="button" className="btn btn-primary" onClick={() => openEditForm(selectedSupplier)}>
-            <Pencil size={15} /> {t('Chỉnh sửa')}
+            <Pencil size={15} /> Chỉnh sửa
           </button>
         </div>
 
@@ -471,47 +469,47 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
           <div>
             <ReceiptText size={18} />
             <strong>{supplierOrders.length}</strong>
-            <span>{t('Đơn mua')}</span>
+            <span>Đơn mua</span>
           </div>
           <div>
             <Building2 size={18} />
             <strong>{supplierSpend.toLocaleString('vi-VN')} đ</strong>
-            <span>{t('Tổng giá trị mua')}</span>
+            <span>Tổng giá trị mua</span>
           </div>
           <div>
             <CalendarDays size={18} />
             <strong>{formatDate(asText(supplierOrders[0]?.createdAt), 'vi-VN', '—')}</strong>
-            <span>{t('Lần mua gần nhất')}</span>
+            <span>Lần mua gần nhất</span>
           </div>
           <div>
             <Star size={18} />
             <strong>{selectedSupplier.rating || '—'}/5</strong>
-            <span>{t('Đánh giá')}</span>
+            <span>Đánh giá</span>
           </div>
           <div>
             <FileText size={18} />
             <strong>{supplierDebt?.toLocaleString('vi-VN') ?? '—'} đ</strong>
-            <span>{t('Công nợ sổ mới')}</span>
+            <span>Công nợ sổ mới</span>
           </div>
         </div>
 
         <div className="supplier-detail-grid">
           <section className="purchase-panel">
-            <h2>{t('Thông tin doanh nghiệp')}</h2>
+            <h2>Thông tin doanh nghiệp</h2>
             <div className="supplier-info-grid">
               <div>
                 <Building2 size={15} />
-                <span>{t('Mã số thuế')}</span>
+                <span>Mã số thuế</span>
                 <strong>{selectedSupplier.taxCode || '—'}</strong>
               </div>
               <div>
                 <MapPin size={15} />
-                <span>{t('Địa chỉ')}</span>
+                <span>Địa chỉ</span>
                 <strong>{selectedSupplier.address || '—'}</strong>
               </div>
               <div>
                 <Phone size={15} />
-                <span>{t('Điện thoại')}</span>
+                <span>Điện thoại</span>
                 <strong>{selectedSupplier.phone || '—'}</strong>
               </div>
               <div>
@@ -521,12 +519,12 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
               </div>
               <div>
                 <ReceiptText size={15} />
-                <span>{t('Điều khoản thanh toán')}</span>
+                <span>Điều khoản thanh toán</span>
                 <strong>{selectedSupplier.paymentTerms || '—'}</strong>
               </div>
               <div>
                 <Building2 size={15} />
-                <span>{t('Tài khoản ngân hàng')}</span>
+                <span>Tài khoản ngân hàng</span>
                 <strong>
                   {[selectedSupplier.bankName, selectedSupplier.bankAccount].filter(Boolean).join(' · ') || '—'}
                 </strong>
@@ -534,21 +532,21 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
             </div>
             {selectedSupplier.note && (
               <div className="supplier-note">
-                <strong>{t('Ghi chú')}</strong>
+                <strong>Ghi chú</strong>
                 <p>{selectedSupplier.note}</p>
               </div>
             )}
           </section>
 
           <section className="purchase-panel">
-            <h2>{t('Người liên hệ')}</h2>
+            <h2>Người liên hệ</h2>
             <div className="supplier-contact-list">
               {selectedSupplier.contacts.map(contact => (
                 <div key={contact.id}>
                   <strong>
-                    {contact.name || '—'} {contact.primary && <span>{t('Chính')}</span>}
+                    {contact.name || '—'} {contact.primary && <span>Chính</span>}
                   </strong>
-                  <small>{contact.role || t('Chưa có chức danh')}</small>
+                  <small>{contact.role || 'Chưa có chức danh'}</small>
                   <small>{[contact.phone, contact.email].filter(Boolean).join(' · ') || '—'}</small>
                 </div>
               ))}
@@ -557,18 +555,18 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
               <input
                 value={contactDraft.name}
                 onChange={event => setContactDraft(previous => ({ ...previous, name: event.target.value }))}
-                placeholder={t('Tên liên hệ')}
+                placeholder="Tên liên hệ"
                 required
               />
               <input
                 value={contactDraft.role}
                 onChange={event => setContactDraft(previous => ({ ...previous, role: event.target.value }))}
-                placeholder={t('Chức vụ')}
+                placeholder="Chức vụ"
               />
               <input
                 value={contactDraft.phone}
                 onChange={event => setContactDraft(previous => ({ ...previous, phone: event.target.value }))}
-                placeholder={t('Số điện thoại')}
+                placeholder="Số điện thoại"
               />
               <input
                 value={contactDraft.email}
@@ -576,7 +574,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                 placeholder="Email"
               />
               <button className="btn btn-outline" type="submit">
-                <Plus size={14} /> {t('Thêm liên hệ')}
+                <Plus size={14} /> Thêm liên hệ
               </button>
             </form>
           </section>
@@ -584,9 +582,9 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
 
         <section className="purchase-panel">
           <div className="panel-heading-row">
-            <h2>{t('Lịch sử đơn mua')}</h2>
+            <h2>Lịch sử đơn mua</h2>
             <select value={historyMonth} onChange={event => setHistoryMonth(event.target.value)}>
-              <option value="all">{t('Tất cả tháng')}</option>
+              <option value="all">Tất cả tháng</option>
               {months.map(month => (
                 <option key={month} value={month}>
                   {month}
@@ -598,11 +596,11 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
             <table className="purchase-table">
               <thead>
                 <tr>
-                  <th>{t('Mã đơn mua')}</th>
-                  <th>{t('Đơn hàng khách hàng')}</th>
-                  <th>{t('Mặt hàng')}</th>
-                  <th>{t('Giá trị')}</th>
-                  <th>{t('Ngày đặt')}</th>
+                  <th>Mã đơn mua</th>
+                  <th>Đơn hàng khách hàng</th>
+                  <th>Mặt hàng</th>
+                  <th>Giá trị</th>
+                  <th>Ngày đặt</th>
                 </tr>
               </thead>
               <tbody>
@@ -630,9 +628,9 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
         <div className="supplier-detail-grid">
           <section className="purchase-panel">
             <div className="panel-heading-row">
-              <h2>{t('Hợp đồng và tài liệu')}</h2>
+              <h2>Hợp đồng và tài liệu</h2>
               <label className="btn btn-outline supplier-upload">
-                <Paperclip size={14} /> {t('Tải tài liệu')}
+                <Paperclip size={14} /> Tải tài liệu
                 <input type="file" onChange={handleUploadDocument} />
               </label>
             </div>
@@ -647,40 +645,38 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
               {selectedSupplier.contracts.map((contract, index) => (
                 <div key={asText(contract.id) || String(index)}>
                   <FileText size={15} />
-                  <span>{asText(contract.contractNo) || `${t('Hợp đồng')} ${index + 1}`}</span>
+                  <span>{asText(contract.contractNo) || `Hợp đồng ${index + 1}`}</span>
                   <small>{formatDate(asText(contract.signDate))}</small>
                 </div>
               ))}
               {selectedSupplier.documents.length === 0 && selectedSupplier.contracts.length === 0 && (
-                <p className="purchase-empty">{t('Chưa có tài liệu.')}</p>
+                <p className="purchase-empty">Chưa có tài liệu.</p>
               )}
             </div>
           </section>
 
           <section className="purchase-panel">
-            <h2>{t('Nhật ký làm việc')}</h2>
+            <h2>Nhật ký làm việc</h2>
             <form className="supplier-activity-form" onSubmit={handleAddActivity}>
               <textarea
                 rows={3}
                 value={activityNote}
                 onChange={event => setActivityNote(event.target.value)}
-                placeholder={t('Ghi lại cuộc gọi, báo giá, đánh giá chất lượng...')}
+                placeholder="Ghi lại cuộc gọi, báo giá, đánh giá chất lượng..."
               />
               <button className="btn btn-primary" type="submit">
-                <MessageSquarePlus size={14} /> {t('Lưu nhật ký')}
+                <MessageSquarePlus size={14} /> Lưu nhật ký
               </button>
             </form>
             <div className="supplier-activity-list">
               {selectedSupplier.activities.map(activity => (
                 <div key={activity.id}>
-                  <strong>{activity.createdByName || t('Hệ thống')}</strong>
+                  <strong>{activity.createdByName || 'Hệ thống'}</strong>
                   <small>{formatDateTime(activity.occurredAt)}</small>
                   <p>{activity.note}</p>
                 </div>
               ))}
-              {selectedSupplier.activities.length === 0 && (
-                <p className="purchase-empty">{t('Chưa có nhật ký làm việc.')}</p>
-              )}
+              {selectedSupplier.activities.length === 0 && <p className="purchase-empty">Chưa có nhật ký làm việc.</p>}
             </div>
           </section>
         </div>
@@ -695,7 +691,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
       <div className="modal-overlay">
         <div className="modal-content supplier-form-modal">
           <div className="modal-header">
-            <strong>{editingSupplierId ? t('CHỈNH SỬA NHÀ CUNG CẤP') : t('THÊM NHÀ CUNG CẤP')}</strong>
+            <strong>{editingSupplierId ? 'CHỈNH SỬA NHÀ CUNG CẤP' : 'THÊM NHÀ CUNG CẤP'}</strong>
             <button type="button" className="btn btn-outline btn-symbol-sm" onClick={() => setShowForm(false)}>
               <X size={15} />
             </button>
@@ -703,7 +699,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
           <form onSubmit={handleSaveSupplier}>
             <div className="modal-body supplier-form-grid">
               <div className="form-group supplier-form-wide">
-                <label>{t('Tên nhà cung cấp *')}</label>
+                <label>Tên nhà cung cấp *</label>
                 <input
                   value={form.supplierName}
                   onChange={event => updateForm('supplierName', event.target.value)}
@@ -711,23 +707,23 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                 />
               </div>
               <div className="form-group">
-                <label>{t('Mã NCC')}</label>
+                <label>Mã NCC</label>
                 <input
                   value={form.supplierCode}
                   onChange={event => updateForm('supplierCode', event.target.value)}
-                  placeholder={t('Tự động nếu để trống')}
+                  placeholder="Tự động nếu để trống"
                 />
               </div>
               <div className="form-group">
-                <label>{t('Mã số thuế')}</label>
+                <label>Mã số thuế</label>
                 <input value={form.taxCode} onChange={event => updateForm('taxCode', event.target.value)} />
               </div>
               <div className="form-group">
-                <label>{t('Người liên hệ chính')}</label>
+                <label>Người liên hệ chính</label>
                 <input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} />
               </div>
               <div className="form-group">
-                <label>{t('Điện thoại')}</label>
+                <label>Điện thoại</label>
                 <input value={form.phone} onChange={event => updateForm('phone', event.target.value)} />
               </div>
               <div className="form-group">
@@ -735,7 +731,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                 <input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} />
               </div>
               <div className="form-group">
-                <label htmlFor="supplier-province">{t('Tỉnh / thành')}</label>
+                <label htmlFor="supplier-province">Tỉnh / thành</label>
                 <SearchableProvinceSelect
                   inputId="supplier-province"
                   value={form.province}
@@ -743,19 +739,19 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                 />
               </div>
               <div className="form-group supplier-form-wide">
-                <label>{t('Địa chỉ')}</label>
+                <label>Địa chỉ</label>
                 <input value={form.address} onChange={event => updateForm('address', event.target.value)} />
               </div>
               <div className="form-group supplier-form-wide">
-                <label>{t('Nhóm hàng / năng lực cung cấp')}</label>
+                <label>Nhóm hàng / năng lực cung cấp</label>
                 <input
                   value={form.categoriesText}
                   onChange={event => updateForm('categoriesText', event.target.value)}
-                  placeholder={t('Ví dụ: decal giấy, mực in, gia công flexo')}
+                  placeholder="Ví dụ: decal giấy, mực in, gia công flexo"
                 />
               </div>
               <div className="form-group supplier-form-wide">
-                <label>{t('Loại hình cung ứng')}</label>
+                <label>Loại hình cung ứng</label>
                 <div className="supplier-checkboxes">
                   {(['finished_good', 'raw_material', 'subcontract'] as SourcingType[]).map(type => (
                     <label key={type}>
@@ -770,24 +766,24 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                 </div>
               </div>
               <div className="form-group">
-                <label>{t('Điều khoản thanh toán')}</label>
+                <label>Điều khoản thanh toán</label>
                 <input value={form.paymentTerms} onChange={event => updateForm('paymentTerms', event.target.value)} />
               </div>
               <div className="form-group">
-                <label>{t('Ngân hàng')}</label>
+                <label>Ngân hàng</label>
                 <input value={form.bankName} onChange={event => updateForm('bankName', event.target.value)} />
               </div>
               <div className="form-group">
-                <label>{t('Số tài khoản')}</label>
+                <label>Số tài khoản</label>
                 <input value={form.bankAccount} onChange={event => updateForm('bankAccount', event.target.value)} />
               </div>
               <div className="form-group">
-                <label>{t('Mua hàng phụ trách')}</label>
+                <label>Mua hàng phụ trách</label>
                 <select
                   value={form.assignedPurchaserId}
                   onChange={event => updateForm('assignedPurchaserId', event.target.value)}
                 >
-                  <option value="">{t('Chưa phân công')}</option>
+                  <option value="">Chưa phân công</option>
                   {purchasers.map(user => (
                     <option key={user.uid} value={user.uid}>
                       {user.displayName}
@@ -796,7 +792,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                 </select>
               </div>
               <div className="form-group">
-                <label>{t('Đánh giá (0-5)')}</label>
+                <label>Đánh giá (0-5)</label>
                 <input
                   type="number"
                   min="0"
@@ -807,16 +803,16 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                 />
               </div>
               <div className="form-group supplier-form-wide">
-                <label>{t('Ghi chú nội bộ')}</label>
+                <label>Ghi chú nội bộ</label>
                 <textarea rows={3} value={form.note} onChange={event => updateForm('note', event.target.value)} />
               </div>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-outline" onClick={() => setShowForm(false)}>
-                {t('Hủy')}
+                Hủy
               </button>
               <button type="submit" className="btn btn-primary">
-                {t('Lưu nhà cung cấp')}
+                Lưu nhà cung cấp
               </button>
             </div>
           </form>
@@ -827,7 +823,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
 
   return (
     <div className="suppliers-page">
-      <PageContextHeader section={t('Nhà cung cấp')} current={t('Danh sách nhà cung cấp')} />
+      <PageContextHeader section="Nhà cung cấp" current="Danh sách nhà cung cấp" />
 
       <section className="supplier-toolbar">
         <div className="purchase-search">
@@ -835,7 +831,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
           <input
             value={searchTerm}
             onChange={event => setSearchTerm(event.target.value)}
-            placeholder={t('Tìm NCC, MST, liên hệ, mặt hàng, mã đơn hàng hoặc đơn mua...')}
+            placeholder="Tìm NCC, MST, liên hệ, mặt hàng, mã đơn hàng hoặc đơn mua..."
           />
         </div>
         <DataFilterButton
@@ -848,14 +844,14 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
             type="button"
             className="data-filter-button"
             onClick={() => setShowSupplierColumnCustomizer(true)}
-            title={t('Tùy chỉnh cột')}
-            aria-label={t('Tùy chỉnh cột')}
+            title="Tùy chỉnh cột"
+            aria-label="Tùy chỉnh cột"
           >
             <Settings2 size={16} />
           </button>
         )}
         <button type="button" className="btn btn-primary" onClick={openCreateForm}>
-          <Plus size={16} /> {t('Thêm NCC')}
+          <Plus size={16} /> Thêm NCC
         </button>
       </section>
 
@@ -888,14 +884,14 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
                   getHeaderProps={getSupplierHeaderProps}
                   labels={supplierColumnLabels}
                 >
-                  <th key="supplier">{t('Nhà cung cấp')}</th>
-                  {supplierVisibleColumnSet.has('contact') && <th key="contact">{t('Liên hệ')}</th>}
-                  {supplierVisibleColumnSet.has('categories') && <th key="categories">{t('Nhóm hàng')}</th>}
-                  {supplierVisibleColumnSet.has('orderCount') && <th key="orderCount">{t('Số đơn')}</th>}
-                  {supplierVisibleColumnSet.has('totalSpend') && <th key="totalSpend">{t('Tổng mua')}</th>}
-                  {supplierVisibleColumnSet.has('latestOrder') && <th key="latestOrder">{t('Lần mua gần nhất')}</th>}
-                  {supplierVisibleColumnSet.has('debt') && <th key="debt">{t('Công nợ')}</th>}
-                  {supplierVisibleColumnSet.has('rating') && <th key="rating">{t('Đánh giá')}</th>}
+                  <th key="supplier">Nhà cung cấp</th>
+                  {supplierVisibleColumnSet.has('contact') && <th key="contact">Liên hệ</th>}
+                  {supplierVisibleColumnSet.has('categories') && <th key="categories">Nhóm hàng</th>}
+                  {supplierVisibleColumnSet.has('orderCount') && <th key="orderCount">Số đơn</th>}
+                  {supplierVisibleColumnSet.has('totalSpend') && <th key="totalSpend">Tổng mua</th>}
+                  {supplierVisibleColumnSet.has('latestOrder') && <th key="latestOrder">Lần mua gần nhất</th>}
+                  {supplierVisibleColumnSet.has('debt') && <th key="debt">Công nợ</th>}
+                  {supplierVisibleColumnSet.has('rating') && <th key="rating">Đánh giá</th>}
                 </ReorderableTableCells>
               </tr>
             </thead>
@@ -960,8 +956,8 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
       />
       <DataFilterPanel
         open={showSupplierFilters}
-        title={t('Lọc danh sách nhà cung cấp')}
-        description={t('Lọc theo nhóm hàng và tháng phát sinh đơn mua.')}
+        title="Lọc danh sách nhà cung cấp"
+        description="Lọc theo nhóm hàng và tháng phát sinh đơn mua."
         activeCount={supplierActiveFilterCount}
         onClose={() => setShowSupplierFilters(false)}
         onReset={() => {
@@ -969,7 +965,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
           setMonthFilters([]);
         }}
       >
-        <DataFilterSection title={t('Nhóm hàng')} selectedCount={categoryFilters.length} defaultExpanded>
+        <DataFilterSection title="Nhóm hàng" selectedCount={categoryFilters.length} defaultExpanded>
           <DataFilterCheckboxGroup
             options={categories.map(category => ({ value: category, label: category }))}
             selectedValues={categoryFilters}
@@ -977,7 +973,7 @@ export const Suppliers: React.FC<SuppliersProps> = ({ purchaseOrders, currentUse
             searchable
           />
         </DataFilterSection>
-        <DataFilterSection title={t('Tháng phát sinh đơn mua')} selectedCount={monthFilters.length}>
+        <DataFilterSection title="Tháng phát sinh đơn mua" selectedCount={monthFilters.length}>
           <DataFilterCheckboxGroup
             options={months.map(month => ({ value: month, label: month }))}
             selectedValues={monthFilters}

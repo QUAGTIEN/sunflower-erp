@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { DOCUMENT_CODE_PREFIXES } from '@/shared/utils/documentCodes';
-import { useLanguage } from '@/context/LanguageContext';
 import { getPODeliveryStage, getPOQueueUpdate, isPOInQueue } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
@@ -126,7 +125,6 @@ const toDateInputValue = (value: unknown): string => {
 };
 
 export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh }) => {
-  const { t } = useLanguage();
   // D-PQ1: deliveries are planned by Kỹ thuật and Kế toán until the delivery flow is reworked.
   const canPlanDelivery = ['admin', 'producer', 'accountant'].includes(currentUser.role);
   const [deliveries, setDeliveries] = useState<any[]>([]);
@@ -694,7 +692,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
     return runMutationAction(
       'DeliveryPage.tsx:handleDeleteTrip',
       async () => {
-        if (await confirmDelete(t('Bạn có chắc chắn muốn xóa chuyến xe giao hàng này?'))) {
+        if (await confirmDelete('Bạn có chắc chắn muốn xóa chuyến xe giao hàng này?')) {
           const trip = deliveries.find(d => d.id === tripId);
           await requireConfirmedMutation(dbService.deleteDocument('deliveries', tripId));
 
@@ -1472,9 +1470,9 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '860px' }}>
             <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('LẬP CHUYẾN XE GIAO HÀNG MỚI')}</span>
+              <span style={{ fontWeight: 700, fontSize: '16px' }}>LẬP CHUYẾN XE GIAO HÀNG MỚI</span>
               <button className="btn btn-sm btn-outline" onClick={() => setShowAddTripModal(false)}>
-                {t('Đóng')}
+                Đóng
               </button>
             </div>
             <form onSubmit={handleCreateTrip}>
@@ -1484,7 +1482,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                   style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '10px' }}
                 >
                   <div className="form-group">
-                    <label>{t('Khu Vực Tuyến Đường Giao Hàng *')}</label>
+                    <label>Khu Vực Tuyến Đường Giao Hàng *</label>
                     <select value={region} onChange={e => setRegion(e.target.value)}>
                       {DELIVERY_REGIONS.map(regionName => (
                         <option value={regionName} key={regionName}>
@@ -1494,7 +1492,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>{t('Ngày Giao Hàng Dự Kiến *')}</label>
+                    <label>Ngày Giao Hàng Dự Kiến *</label>
                     <input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} required />
                   </div>
                   <div className="form-group">
@@ -1567,7 +1565,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                 </div>
 
                 <h3 style={{ fontSize: '13px', marginTop: '16px', marginBottom: '8px', color: 'var(--color-primary)' }}>
-                  {t('Chọn Các Đơn Hàng Sẵn Sàng Giao (QC Đã Duyệt)')} "{t(region)}":
+                  Chọn Các Đơn Hàng Sẵn Sàng Giao (QC Đã Duyệt) "{region}":
                 </h3>
 
                 <div
@@ -1622,7 +1620,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                         fontStyle: 'italic'
                       }}
                     >
-                      {t('Không có lịch giao hàng sắp tới cho tuyến này.')}
+                      Không có lịch giao hàng sắp tới cho tuyến này.
                     </div>
                   )}
                 </div>
@@ -1656,10 +1654,10 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={() => setShowAddTripModal(false)}>
-                  {t('Hủy')}
+                  Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {t('Lưu Chuyến Xe')}
+                  Lưu Chuyến Xe
                 </button>
               </div>
             </form>
@@ -1672,9 +1670,9 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '860px' }}>
             <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHỈNH SỬA CHUYẾN XE GIAO HÀNG')}</span>
+              <span style={{ fontWeight: 700, fontSize: '16px' }}>CHỈNH SỬA CHUYẾN XE GIAO HÀNG</span>
               <button className="btn btn-sm btn-outline" onClick={() => setShowEditTripModal(false)}>
-                {t('Đóng')}
+                Đóng
               </button>
             </div>
             <form onSubmit={handleEditTripSubmit}>
@@ -1684,7 +1682,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                   style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '10px' }}
                 >
                   <div className="form-group">
-                    <label>{t('Khu Vực Tuyến Đường Giao Hàng *')}</label>
+                    <label>Khu Vực Tuyến Đường Giao Hàng *</label>
                     <select value={editRegion} onChange={e => setEditRegion(e.target.value)}>
                       {DELIVERY_REGIONS.map(regionName => (
                         <option value={regionName} key={regionName}>
@@ -1694,7 +1692,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>{t('Ngày Giao Hàng Dự Kiến *')}</label>
+                    <label>Ngày Giao Hàng Dự Kiến *</label>
                     <input
                       type="date"
                       value={editDeliveryDate}
@@ -1785,7 +1783,7 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
                 </div>
 
                 <h3 style={{ fontSize: '13px', marginTop: '16px', marginBottom: '8px', color: 'var(--color-primary)' }}>
-                  {t('Chọn Các Đơn Hàng Sẵn Sàng Giao (QC Đã Duyệt)')} "{t(editRegion)}":
+                  Chọn Các Đơn Hàng Sẵn Sàng Giao (QC Đã Duyệt) "{editRegion}":
                 </h3>
 
                 <div
@@ -1857,10 +1855,10 @@ export const Delivery: React.FC<DeliveryProps> = ({ pos, currentUser, onRefresh 
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={() => setShowEditTripModal(false)}>
-                  {t('Hủy')}
+                  Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {t('Cập Nhật Chuyến')}
+                  Cập Nhật Chuyến
                 </button>
               </div>
             </form>

@@ -2,7 +2,6 @@ import React from 'react';
 import { Trash2 } from 'lucide-react';
 import { PageBackButton } from '@/components/PageBackButton';
 import { PhoneCallCell } from '@/components/PhoneCallCell';
-import { useLanguage } from '@/context/LanguageContext';
 import { customerCallHistoryKeys, customerCallSubjectKey } from '@/features/crm/model/callHistory';
 import type { CustomerRecord, LeadRecord } from '@/features/crm/model/crmModels';
 import type { CustomerHistoryTab } from '@/features/crm/model/customerWorkspace';
@@ -36,8 +35,6 @@ export const CustomerDetailHeader: React.FC<CustomerDetailHeaderProps> = ({
   onEditCustomer: openEditModal,
   onDeleteCustomer: handleDeleteCustomer
 }) => {
-  const { t } = useLanguage();
-
   return (
     <div className="customer-detail-header">
       <PageBackButton
@@ -62,7 +59,7 @@ export const CustomerDetailHeader: React.FC<CustomerDetailHeaderProps> = ({
           aria-controls="customer-company-information"
           onClick={() => setIsCompanyInfoExpanded(value => !value)}
         >
-          {t('Thông tin doanh nghiệp')}
+          Thông tin doanh nghiệp
         </button>
         {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
           <>
@@ -83,14 +80,14 @@ export const CustomerDetailHeader: React.FC<CustomerDetailHeaderProps> = ({
               }
             />
             <button type="button" className="btn btn-primary" onClick={() => openEditModal(selectedCustomer)}>
-              {t('Chỉnh sửa hồ sơ')}
+              Chỉnh sửa hồ sơ
             </button>
             <button
               type="button"
               className="btn btn-outline btn-symbol-sm crm-detail-delete"
               onClick={() => handleDeleteCustomer(selectedCustomer.id)}
-              title={t('Xóa khách hàng')}
-              aria-label={t('Xóa khách hàng')}
+              title="Xóa khách hàng"
+              aria-label="Xóa khách hàng"
             >
               <Trash2 size={18} aria-hidden="true" />
             </button>

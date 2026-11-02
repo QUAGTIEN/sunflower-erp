@@ -8,7 +8,6 @@ import {
 } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { useLanguage } from '@/context/LanguageContext';
 import { FloatingChat } from '@/components/FloatingChat';
 import POFormFullScreen from '@/features/sales/components/POFormFullScreen';
 import { PageBackButton } from '@/components/PageBackButton';
@@ -133,7 +132,6 @@ export const Sales: React.FC<SalesProps> = ({
   messages,
   users
 }) => {
-  const { t } = useLanguage();
   const isFull = currentUser.role === 'admin' || currentUser.role === 'accountant';
   const isSaleOnly = currentUser.role === 'sale' || currentUser.role === 'designer';
   // Only admins move orders to the recycle bin (formerly enforced by a shared confirmation password).
@@ -187,7 +185,7 @@ export const Sales: React.FC<SalesProps> = ({
     lockedStartIds: ['customer'],
     lockedEndIds: ['actions']
   });
-  const salesColumnLabels = Object.fromEntries(SALES_CUSTOMER_COLUMNS.map(column => [column.id, t(column.label)]));
+  const salesColumnLabels = Object.fromEntries(SALES_CUSTOMER_COLUMNS.map(column => [column.id, column.label]));
 
   // Auto-select PO when initialSelectedPoId changes
   useEffect(() => {
@@ -387,7 +385,7 @@ export const Sales: React.FC<SalesProps> = ({
         } catch (err) {
           showErrorToast();
           console.error(err);
-          alert(t('Lỗi khi tải file lên.'));
+          alert('Lỗi khi tải file lên.');
         }
       },
       itemIdx,
@@ -400,7 +398,7 @@ export const Sales: React.FC<SalesProps> = ({
       'SalesPage.tsx:handleRemoveItemFile',
       async () => {
         if (!selectedPO) return;
-        if (!(await confirmDelete(t('Bạn có chắc chắn muốn xóa tệp này khỏi đơn hàng?')))) return;
+        if (!(await confirmDelete('Bạn có chắc chắn muốn xóa tệp này khỏi đơn hàng?'))) return;
 
         const updatedItems = selectedPO.items.map((item: any, idx: number) => {
           if (idx === itemIdx) {
@@ -515,7 +513,7 @@ export const Sales: React.FC<SalesProps> = ({
       'SalesPage.tsx:handleRemoveChecklistItem',
       async () => {
         if (!selectedPO) return;
-        if (!(await confirmDelete(t('Bạn có chắc chắn muốn xóa mục công việc này?')))) return;
+        if (!(await confirmDelete('Bạn có chắc chắn muốn xóa mục công việc này?'))) return;
 
         const updatedChecklist = (selectedPO.internalChecklist || []).filter((item: any) => item.id !== taskId);
 
@@ -571,7 +569,7 @@ export const Sales: React.FC<SalesProps> = ({
       'SalesPage.tsx:handleDeletePO',
       async () => {
         if (!canDeletePO) return;
-        if (!(await confirmDelete(t('Đưa đơn hàng này vào Thùng rác?')))) return;
+        if (!(await confirmDelete('Đưa đơn hàng này vào Thùng rác?'))) return;
         await requireConfirmedMutation(
           dbService.updateDocument('pos', poId, {
             ...deletionFields(currentUser),
@@ -603,7 +601,7 @@ export const Sales: React.FC<SalesProps> = ({
               status: selectedPO.status,
               updatedBy: currentUser.displayName,
               updatedAt: new Date().toISOString(),
-              note: `${t('Chỉnh sửa thông số đơn hàng')} (Tổng trị giá: ${subtotal.toLocaleString()} đ)`
+              note: `Chỉnh sửa thông số đơn hàng (Tổng trị giá: ${subtotal.toLocaleString()} đ)`
             }
           ];
 
@@ -650,7 +648,7 @@ export const Sales: React.FC<SalesProps> = ({
         } else {
           // Creating new PO
           const latestCustomer = (await dbService.getDocument('customers', poData.customerId)) as CustomerRecord | null;
-          if (!latestCustomer) throw new Error(t('Không tìm thấy khách hàng. Vui lòng chọn lại.'));
+          if (!latestCustomer) throw new Error('Không tìm thấy khách hàng. Vui lòng chọn lại.');
           const catalogCustomer = {
             ...latestCustomer,
             products: (latestCustomer.products || []).map(normalizeCustomerProduct)
@@ -1030,18 +1028,18 @@ export const Sales: React.FC<SalesProps> = ({
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <PageContextHeader
-        section={t('Đơn hàng')}
+        section="Đơn hàng"
         current={
           !selectedPO
             ? selectedOrderCustomer?.companyName ||
-              (activeListView === 'waiting-customers' ? t('Khách hàng chờ lên đơn') : t('Khách hàng có đơn hàng'))
+              (activeListView === 'waiting-customers' ? 'Khách hàng chờ lên đơn' : 'Khách hàng có đơn hàng')
             : undefined
         }
       />
 
       {!selectedPO && (
         <>
-          <div className="sales-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách đơn hàng')}>
+          <div className="sales-list-tabs content-tabs" role="tablist" aria-label="Chọn danh sách đơn hàng">
             <button
               type="button"
               className={`sales-list-tab ${activeListView === 'orders' ? 'is-active' : ''}`}
@@ -1054,7 +1052,7 @@ export const Sales: React.FC<SalesProps> = ({
               aria-selected={activeListView === 'orders'}
             >
               <FileText size={16} />
-              <span>{t('Khách hàng có đơn hàng')}</span>
+              <span>Khách hàng có đơn hàng</span>
             </button>
             <button
               type="button"
@@ -1068,7 +1066,7 @@ export const Sales: React.FC<SalesProps> = ({
               aria-selected={activeListView === 'waiting-customers'}
             >
               <Check size={16} />
-              <span>{t('Khách hàng chờ lên đơn')}</span>
+              <span>Khách hàng chờ lên đơn</span>
             </button>
           </div>
 
@@ -1089,7 +1087,7 @@ export const Sales: React.FC<SalesProps> = ({
                 </div>
                 {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                   <button className="btn btn-primary" onClick={() => handleOpenCreatePO(selectedOrderCustomer.id)}>
-                    {t('Tạo đơn hàng mới')}
+                    Tạo đơn hàng mới
                   </button>
                 )}
               </div>
@@ -1101,9 +1099,9 @@ export const Sales: React.FC<SalesProps> = ({
                 placeholder={
                   activeListView === 'orders'
                     ? selectedOrderCustomer
-                      ? t('Nhập mã đơn hàng, số PO khách, tên sản phẩm hoặc người tạo...')
-                      : t('Tìm mã khách hàng, công ty, người liên hệ...')
-                    : t('Tìm mã khách hàng, công ty, người liên hệ...')
+                      ? 'Nhập mã đơn hàng, số PO khách, tên sản phẩm hoặc người tạo...'
+                      : 'Tìm mã khách hàng, công ty, người liên hệ...'
+                    : 'Tìm mã khách hàng, công ty, người liên hệ...'
                 }
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -1123,8 +1121,8 @@ export const Sales: React.FC<SalesProps> = ({
                       type="button"
                       className="data-filter-button"
                       onClick={() => setShowSalesColumnCustomizer(true)}
-                      title={t('Tùy chỉnh cột')}
-                      aria-label={t('Tùy chỉnh cột')}
+                      title="Tùy chỉnh cột"
+                      aria-label="Tùy chỉnh cột"
                     >
                       <Settings2 size={16} />
                     </button>
@@ -1138,14 +1136,14 @@ export const Sales: React.FC<SalesProps> = ({
                 chips={[
                   ...salesStatusFilters.map(value => ({
                     id: `status:${value}`,
-                    label: t(PO_QUEUE_STATES.find(status => status.value === value)?.label || value),
+                    label: PO_QUEUE_STATES.find(status => status.value === value)?.label || value,
                     onRemove: () => setSalesStatusFilters(current => current.filter(item => item !== value))
                   })),
                   ...salesOwnerFilters.map(value => ({
                     id: `owner:${value}`,
                     label:
                       value === 'unassigned'
-                        ? t('Chưa phân công')
+                        ? 'Chưa phân công'
                         : users.find(user => user.uid === value)?.displayName || value,
                     onRemove: () => setSalesOwnerFilters(current => current.filter(item => item !== value))
                   }))
@@ -1163,16 +1161,16 @@ export const Sales: React.FC<SalesProps> = ({
                   <table data-resize-key="sales-po-list">
                     <thead>
                       <tr>
-                        <th>{t('Mã đơn hàng')}</th>
-                        <th>{t('Ngày tạo')}</th>
-                        <th>{t('Sản phẩm')}</th>
-                        <th>{t('Tổng số lượng')}</th>
-                        <th>{t('Thành tiền')}</th>
-                        <th>{t('Ngày giao dự kiến')}</th>
-                        <th>{t('Trạng thái')}</th>
-                        <th>{t('Người tạo')}</th>
-                        <th>{t('Cập nhật gần nhất')}</th>
-                        <th>{t('Thao tác')}</th>
+                        <th>Mã đơn hàng</th>
+                        <th>Ngày tạo</th>
+                        <th>Sản phẩm</th>
+                        <th>Tổng số lượng</th>
+                        <th>Thành tiền</th>
+                        <th>Ngày giao dự kiến</th>
+                        <th>Trạng thái</th>
+                        <th>Người tạo</th>
+                        <th>Cập nhật gần nhất</th>
+                        <th>Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1194,7 +1192,7 @@ export const Sales: React.FC<SalesProps> = ({
                                 <span className="sales-table-secondary">({po.customerPoCode})</span>
                               )}
                             </td>
-                            <td>{formatDate(po.orderDate || po.createdAt, t('vi-VN'))}</td>
+                            <td>{formatDate(po.orderDate || po.createdAt, 'vi-VN')}</td>
                             <td
                               title={items
                                 .map((item: any) => item.productName)
@@ -1205,22 +1203,22 @@ export const Sales: React.FC<SalesProps> = ({
                             </td>
                             <td>{totalQuantity.toLocaleString('vi-VN')}</td>
                             <td>{Number(po.netAmount || po.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
-                            <td>{formatDate(po.expectedDeliveryDate, t('vi-VN'))}</td>
+                            <td>{formatDate(po.expectedDeliveryDate, 'vi-VN')}</td>
                             <td>
                               <span className={`sales-status-label sales-status-label--${getPOQueueStatus(po)}`}>
-                                {t(getPOQueueLabel(po))}
+                                {getPOQueueLabel(po)}
                               </span>
                             </td>
                             <td>{po.createdBy || '—'}</td>
-                            <td>{formatDateTime(po.updatedAt || po.createdAt, t('vi-VN'), '—')}</td>
+                            <td>{formatDateTime(po.updatedAt || po.createdAt, 'vi-VN', '—')}</td>
                             <td>
                               <RowActionMenu
-                                label={`${t('Thao tác')} ${po.poCode}`}
+                                label={`Thao tác ${po.poCode}`}
                                 actions={[
-                                  { label: t('Chi tiết'), onSelect: () => setSelectedPO(po) },
-                                  { label: t('Xuất đơn hàng'), onSelect: () => setPrintPO(po) },
+                                  { label: 'Chi tiết', onSelect: () => setSelectedPO(po) },
+                                  { label: 'Xuất đơn hàng', onSelect: () => setPrintPO(po) },
                                   ...(currentUser.role === 'admin' || currentUser.role === 'sale'
-                                    ? [{ label: t('Đặt lại'), onSelect: () => handleOpenRepeatOrder(po) }]
+                                    ? [{ label: 'Đặt lại', onSelect: () => handleOpenRepeatOrder(po) }]
                                     : [])
                                 ]}
                               />
@@ -1246,18 +1244,18 @@ export const Sales: React.FC<SalesProps> = ({
                           labels={salesColumnLabels}
                         >
                           <th key="customer" data-system-field="companyName">
-                            {t('Khách hàng')}
+                            Khách hàng
                           </th>
-                          {salesVisibleColumnSet.has('code') && <th key="code">{t('Mã KH')}</th>}
-                          {salesVisibleColumnSet.has('contact') && <th key="contact">{t('Người liên hệ')}</th>}
-                          {salesVisibleColumnSet.has('phone') && <th key="phone">{t('Số điện thoại')}</th>}
-                          {salesVisibleColumnSet.has('email') && <th key="email">{t('Email')}</th>}
-                          {salesVisibleColumnSet.has('sale') && <th key="sale">{t('Sale phụ trách')}</th>}
-                          {salesVisibleColumnSet.has('count') && <th key="count">{t('Số đơn hàng')}</th>}
-                          {salesVisibleColumnSet.has('latest') && <th key="latest">{t('Đơn hàng gần nhất')}</th>}
-                          {salesVisibleColumnSet.has('value') && <th key="value">{t('Tổng giá trị')}</th>}
-                          {salesVisibleColumnSet.has('status') && <th key="status">{t('Trạng thái gần nhất')}</th>}
-                          <th key="actions">{t('Thao tác')}</th>
+                          {salesVisibleColumnSet.has('code') && <th key="code">Mã KH</th>}
+                          {salesVisibleColumnSet.has('contact') && <th key="contact">Người liên hệ</th>}
+                          {salesVisibleColumnSet.has('phone') && <th key="phone">Số điện thoại</th>}
+                          {salesVisibleColumnSet.has('email') && <th key="email">Email</th>}
+                          {salesVisibleColumnSet.has('sale') && <th key="sale">Sale phụ trách</th>}
+                          {salesVisibleColumnSet.has('count') && <th key="count">Số đơn hàng</th>}
+                          {salesVisibleColumnSet.has('latest') && <th key="latest">Đơn hàng gần nhất</th>}
+                          {salesVisibleColumnSet.has('value') && <th key="value">Tổng giá trị</th>}
+                          {salesVisibleColumnSet.has('status') && <th key="status">Trạng thái gần nhất</th>}
+                          <th key="actions">Thao tác</th>
                         </ReorderableTableCells>
                       </tr>
                     </thead>
@@ -1294,7 +1292,7 @@ export const Sales: React.FC<SalesProps> = ({
                               )}
                               {salesVisibleColumnSet.has('contact') && (
                                 <td key="contact">
-                                  <strong>{customer.contactPerson || t('Chưa cập nhật')}</strong>
+                                  <strong>{customer.contactPerson || 'Chưa cập nhật'}</strong>
                                 </td>
                               )}
                               {salesVisibleColumnSet.has('phone') && (
@@ -1326,11 +1324,11 @@ export const Sales: React.FC<SalesProps> = ({
                                 </td>
                               )}
                               {salesVisibleColumnSet.has('email') && (
-                                <td key="email">{customer.email || t('Chưa cập nhật')}</td>
+                                <td key="email">{customer.email || 'Chưa cập nhật'}</td>
                               )}
                               {salesVisibleColumnSet.has('sale') && (
                                 <td key="sale">
-                                  {assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}
+                                  {assignedSale?.displayName || customer.createdBy || 'Chưa phân công'}
                                 </td>
                               )}
                               {salesVisibleColumnSet.has('count') && (
@@ -1338,7 +1336,7 @@ export const Sales: React.FC<SalesProps> = ({
                               )}
                               {salesVisibleColumnSet.has('latest') && (
                                 <td key="latest">
-                                  {latestPO ? formatDate(latestPO.orderDate || latestPO.createdAt, t('vi-VN')) : '—'}
+                                  {latestPO ? formatDate(latestPO.orderDate || latestPO.createdAt, 'vi-VN') : '—'}
                                 </td>
                               )}
                               {salesVisibleColumnSet.has('value') && (
@@ -1350,19 +1348,19 @@ export const Sales: React.FC<SalesProps> = ({
                                     <span
                                       className={`sales-status-label sales-status-label--${getPOQueueStatus(latestPO)}`}
                                     >
-                                      {t(getPOQueueLabel(latestPO))}
+                                      {getPOQueueLabel(latestPO)}
                                     </span>
                                   ) : (
-                                    t('Chưa có đơn hàng')
+                                    'Chưa có đơn hàng'
                                   )}
                                 </td>
                               )}
                               <td key="actions">
                                 <RowActionMenu
-                                  label={`${t('Thao tác')} ${customer.companyName}`}
+                                  label={`Thao tác ${customer.companyName}`}
                                   actions={[
                                     {
-                                      label: t('Xem đơn hàng'),
+                                      label: 'Xem đơn hàng',
                                       onSelect: () => {
                                         setSelectedOrderCustomerId(customer.id);
                                         setSearchTerm('');
@@ -1384,15 +1382,15 @@ export const Sales: React.FC<SalesProps> = ({
                 <table data-resize-key="sales-waiting-customers-v2">
                   <thead>
                     <tr>
-                      <th>{t('Mã khách hàng')}</th>
-                      <th>{t('Công ty')}</th>
-                      <th>{t('Người liên hệ')}</th>
-                      <th>{t('Số điện thoại')}</th>
-                      <th>{t('Sale phụ trách')}</th>
-                      <th>{t('Ngày tạo')}</th>
-                      <th>{t('Số ngày chờ')}</th>
-                      <th>{t('Hạng khách hàng')}</th>
-                      <th>{t('Thao tác')}</th>
+                      <th>Mã khách hàng</th>
+                      <th>Công ty</th>
+                      <th>Người liên hệ</th>
+                      <th>Số điện thoại</th>
+                      <th>Sale phụ trách</th>
+                      <th>Ngày tạo</th>
+                      <th>Số ngày chờ</th>
+                      <th>Hạng khách hàng</th>
+                      <th>Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1410,15 +1408,13 @@ export const Sales: React.FC<SalesProps> = ({
                             <span className="waiting-customer-code">{getCustomerCode(customer)}</span>
                           </td>
                           <td>
-                            <strong className="waiting-customer-name">
-                              {customer.companyName || t('Chưa cung cấp')}
-                            </strong>
+                            <strong className="waiting-customer-name">{customer.companyName || 'Chưa cung cấp'}</strong>
                             {customer.pendingOrderDraft && (
                               <span className="prepared-order-badge">Đã chuẩn bị thông tin đơn</span>
                             )}
                           </td>
                           <td>
-                            <span>{customer.contactPerson || t('Chưa cung cấp')}</span>
+                            <span>{customer.contactPerson || 'Chưa cung cấp'}</span>
                             {customer.email && <span className="waiting-customer-secondary">{customer.email}</span>}
                           </td>
                           <td>
@@ -1446,31 +1442,31 @@ export const Sales: React.FC<SalesProps> = ({
                               onOpenDetails={() => onOpenCustomerDetails?.(customer.id)}
                             />
                           </td>
-                          <td>{assignedSale?.displayName || customer.createdBy || t('Chưa phân công')}</td>
-                          <td>{hasValidCreatedDate ? formatDate(createdDate, t('vi-VN')) : '—'}</td>
+                          <td>{assignedSale?.displayName || customer.createdBy || 'Chưa phân công'}</td>
+                          <td>{hasValidCreatedDate ? formatDate(createdDate, 'vi-VN') : '—'}</td>
                           <td>
                             {waitingDays === null ? (
                               '—'
                             ) : (
                               <span className={`waiting-days-text ${waitingDays >= 7 ? 'is-overdue' : ''}`}>
-                                {waitingDays} {t('ngày')}
+                                {waitingDays} ngày
                               </span>
                             )}
                           </td>
                           <td>
                             <span className={`customer-rank-badge ${customer.customerRank ? 'has-rank' : ''}`}>
-                              {customer.customerRank ? `${t('Hạng')} ${customer.customerRank}` : t('Chưa xếp hạng')}
+                              {customer.customerRank ? `Hạng ${customer.customerRank}` : 'Chưa xếp hạng'}
                             </span>
                           </td>
                           <td>
                             {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                               <RowActionMenu
-                                label={`${t('Thao tác')} ${customer.companyName}`}
+                                label={`Thao tác ${customer.companyName}`}
                                 actions={[
                                   {
                                     label: customer.pendingOrderDraft
                                       ? 'Phân công & phát hành đơn hàng'
-                                      : t('Tạo đơn hàng'),
+                                      : 'Tạo đơn hàng',
                                     onSelect: () => handleOpenCreatePO(customer.id)
                                   }
                                 ]}
@@ -1502,11 +1498,11 @@ export const Sales: React.FC<SalesProps> = ({
             <div className="card-header app-detail-header">
               <PageBackButton onClick={() => setSelectedPO(null)} />
               <span className="card-title" style={{ fontSize: '18px', color: 'var(--color-primary)' }}>
-                {t('CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG')}: {selectedPO.poCode} - {selectedPO.customerName}
+                CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG: {selectedPO.poCode} - {selectedPO.customerName}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button type="button" className="btn btn-sm btn-outline" onClick={() => setPrintPO(selectedPO)}>
-                  {t('Xuất đơn hàng')}
+                  Xuất đơn hàng
                 </button>
                 {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                   <>
@@ -1521,7 +1517,7 @@ export const Sales: React.FC<SalesProps> = ({
                     <button
                       className="btn btn-sm btn-primary btn-symbol-sm"
                       onClick={() => handleOpenEditModal(selectedPO)}
-                      title={t('Sửa')}
+                      title="Sửa"
                     >
                       <Pencil size={14} />
                     </button>
@@ -1529,7 +1525,7 @@ export const Sales: React.FC<SalesProps> = ({
                       <button
                         className="btn btn-sm btn-danger btn-symbol-sm"
                         onClick={() => handleDeletePO(selectedPO.id)}
-                        title={t('Xóa')}
+                        title="Xóa"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -1540,13 +1536,13 @@ export const Sales: React.FC<SalesProps> = ({
             </div>
 
             <div className="po-detail-meta-bar">
-              <span>{t('Hạng Khách Hàng')}</span>
+              <span>Hạng Khách Hàng</span>
               <strong className="po-customer-rank-badge">
                 {selectedPO.customerRank ||
                   customers.find(customer => customer.id === selectedPO.customerId)?.customerRank ||
-                  t('Chưa xếp hạng')}
+                  'Chưa xếp hạng'}
               </strong>
-              <span className="po-kpi-definition">{t('KPI đơn hàng là tỷ lệ giá trị còn lại sau chiết khấu.')}</span>
+              <span className="po-kpi-definition">KPI đơn hàng là tỷ lệ giá trị còn lại sau chiết khấu.</span>
             </div>
 
             {/* Status changer for authorized roles */}
@@ -1562,7 +1558,7 @@ export const Sales: React.FC<SalesProps> = ({
                   border: '1px solid var(--color-border)'
                 }}
               >
-                <span style={{ fontWeight: 600 }}>{t('Cập nhật nhanh tiến độ đơn hàng:')}</span>
+                <span style={{ fontWeight: 600 }}>Cập nhật nhanh tiến độ đơn hàng:</span>
                 <select
                   value={getPOQueueStatus(selectedPO)}
                   onChange={e => updatePOStatus(selectedPO.id, e.target.value as POQueueStatus)}
@@ -1570,12 +1566,12 @@ export const Sales: React.FC<SalesProps> = ({
                 >
                   {PO_QUEUE_STATES.map(state => (
                     <option key={state.value} value={state.value}>
-                      {t(state.label)}
+                      {state.label}
                     </option>
                   ))}
                 </select>
                 <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                  {t('* Sẽ tự động ghi lại nhật ký xử lý đơn')}
+                  * Sẽ tự động ghi lại nhật ký xử lý đơn
                 </span>
               </div>
             )}
@@ -1594,7 +1590,7 @@ export const Sales: React.FC<SalesProps> = ({
                       className={`timeline-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}`}
                     >
                       <div className="step-bubble">{isCompleted ? <Check size={12} strokeWidth={3} /> : idx + 1}</div>
-                      <span className="step-label">{t(state.label)}</span>
+                      <span className="step-label">{state.label}</span>
                     </div>
                   );
                 })}
@@ -1609,25 +1605,25 @@ export const Sales: React.FC<SalesProps> = ({
                   style={{ border: '1px solid var(--color-border-light)', padding: '16px', borderRadius: '4px' }}
                 >
                   <h3 style={{ marginBottom: '12px', color: 'var(--color-primary)' }}>
-                    {t('Chi Tiết Các Mặt Hàng Trong Đơn Hàng:')}
+                    Chi Tiết Các Mặt Hàng Trong Đơn Hàng:
                   </h3>
                   <div className="po-inline-grid-container">
                     <table className="po-inline-grid po-items-overview-table po-sale-items-table">
                       <thead>
                         <tr>
                           <th>STT</th>
-                          <th>{t('Mã hàng')}</th>
-                          <th>{t('Tên hàng')}</th>
-                          <th>{t('Quy cách / Chất liệu')}</th>
-                          <th>{t('ĐVT')}</th>
-                          <th>{t('Số lượng')}</th>
-                          <th>{t('Đơn giá')}</th>
-                          <th>{t('Nhà cung cấp')}</th>
-                          <th>{t('Thuế (%)')}</th>
-                          <th>{t('Chiết khấu')}</th>
-                          <th>{t('Thành tiền (gồm VAT)')}</th>
-                          <th>{t('KPI đơn hàng')}</th>
-                          <th>{t('File liên quan')}</th>
+                          <th>Mã hàng</th>
+                          <th>Tên hàng</th>
+                          <th>Quy cách / Chất liệu</th>
+                          <th>ĐVT</th>
+                          <th>Số lượng</th>
+                          <th>Đơn giá</th>
+                          <th>Nhà cung cấp</th>
+                          <th>Thuế (%)</th>
+                          <th>Chiết khấu</th>
+                          <th>Thành tiền (gồm VAT)</th>
+                          <th>KPI đơn hàng</th>
+                          <th>File liên quan</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1638,7 +1634,7 @@ export const Sales: React.FC<SalesProps> = ({
                           const supplierLabel =
                             item.supplierName ||
                             suppliers.find(supplier => supplier.id === item.supplierId)?.supplierName ||
-                            t('Chưa chọn');
+                            'Chưa chọn';
                           const itemId = item.itemId || `${idx}`;
                           const layoutImages = Array.from(
                             new Set(
@@ -1666,10 +1662,10 @@ export const Sales: React.FC<SalesProps> = ({
                                         setExpandedItemIds([...expandedItemIds, itemId]);
                                       }
                                     }}
-                                    title={expandedItemIds.includes(itemId) ? t('Ẩn chi tiết') : t('Mở chi tiết')}
+                                    title={expandedItemIds.includes(itemId) ? 'Ẩn chi tiết' : 'Mở chi tiết'}
                                     aria-expanded={expandedItemIds.includes(itemId)}
                                   >
-                                    {expandedItemIds.includes(itemId) ? t('Ẩn') : t('Xem')}
+                                    {expandedItemIds.includes(itemId) ? 'Ẩn' : 'Xem'}
                                   </button>
                                 </td>
                                 <td style={{ fontWeight: 600 }}>{item.productCode || 'N/A'}</td>
@@ -1699,11 +1695,9 @@ export const Sales: React.FC<SalesProps> = ({
                                       <select
                                         value={financials.discountType}
                                         title={
-                                          financials.discountType === 'amount'
-                                            ? t('Tiền chênh (VNĐ)')
-                                            : t('Theo phần trăm')
+                                          financials.discountType === 'amount' ? 'Tiền chênh (VNĐ)' : 'Theo phần trăm'
                                         }
-                                        aria-label={t('Hình thức chiết khấu')}
+                                        aria-label="Hình thức chiết khấu"
                                         onChange={e =>
                                           handleUpdateItemDiscount(idx, {
                                             discountType: e.target.value === 'amount' ? 'amount' : 'percent'
@@ -1712,7 +1706,7 @@ export const Sales: React.FC<SalesProps> = ({
                                         className="po-discount-mode"
                                       >
                                         <option value="percent">%</option>
-                                        <option value="amount">{t('Tiền chênh')}</option>
+                                        <option value="amount">Tiền chênh</option>
                                       </select>
                                       <input
                                         type="number"
@@ -1754,7 +1748,7 @@ export const Sales: React.FC<SalesProps> = ({
                                     : '—'}
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
-                                  <span className="po-kpi-badge" title={t('Tỷ lệ giá trị còn lại sau chiết khấu')}>
+                                  <span className="po-kpi-badge" title="Tỷ lệ giá trị còn lại sau chiết khấu">
                                     {canViewSaleFinancials ? `${financials.kpiPo.toFixed(1)}%` : '—'}
                                   </span>
                                 </td>
@@ -1764,13 +1758,11 @@ export const Sales: React.FC<SalesProps> = ({
                                       <img
                                         key={`${imageIndex}-${image.slice(0, 24)}`}
                                         src={image}
-                                        alt={`${t('Layout')} ${imageIndex + 1}`}
+                                        alt={`Layout ${imageIndex + 1}`}
                                         onClick={() => setPreviewImage(image)}
                                       />
                                     ))}
-                                    {layoutImages.length === 0 && (
-                                      <span className="po-empty-value">{t('Chưa có')}</span>
-                                    )}
+                                    {layoutImages.length === 0 && <span className="po-empty-value">Chưa có</span>}
                                   </div>
                                 </td>
                               </tr>
@@ -1783,20 +1775,20 @@ export const Sales: React.FC<SalesProps> = ({
                                     {isFull && (
                                       <div className="po-commercial-summary">
                                         <div>
-                                          <span>{t('Nhà Cung Cấp')}</span>
-                                          <strong>{item.supplierName || t('Chưa phân bổ')}</strong>
+                                          <span>Nhà Cung Cấp</span>
+                                          <strong>{item.supplierName || 'Chưa phân bổ'}</strong>
                                         </div>
                                         <div>
-                                          <span>{t('Đơn Giá Mua')}</span>
+                                          <span>Đơn Giá Mua</span>
                                           <strong>{(Number(item.purchasePrice) || 0).toLocaleString()} đ</strong>
                                         </div>
                                         <div>
-                                          <span>{t('Thành Tiền Mua')}</span>
+                                          <span>Thành Tiền Mua</span>
                                           <strong>{Math.round(buyingTotal).toLocaleString()} đ</strong>
                                         </div>
                                         {isFull && (
                                           <div>
-                                            <span>{t('Lợi Nhuận Gộp')}</span>
+                                            <span>Lợi Nhuận Gộp</span>
                                             <strong className={profit >= 0 ? 'is-positive' : 'is-negative'}>
                                               {Math.round(profit).toLocaleString()} đ
                                             </strong>
@@ -1823,7 +1815,7 @@ export const Sales: React.FC<SalesProps> = ({
                                             fontWeight: 'bold'
                                           }}
                                         >
-                                          <span>📝</span> {t('Yêu Cầu & Tài Liệu Của Sale')}
+                                          <span>📝</span> Yêu Cầu & Tài Liệu Của Sale
                                         </h4>
                                         <div className="form-group" style={{ marginBottom: '12px' }}>
                                           <label
@@ -1834,7 +1826,7 @@ export const Sales: React.FC<SalesProps> = ({
                                               fontSize: '12.5px'
                                             }}
                                           >
-                                            {t('Yêu cầu thiết kế / Ghi chú:')}
+                                            Yêu cầu thiết kế / Ghi chú:
                                           </label>
                                           {currentUser.role === 'admin' || currentUser.role === 'sale' ? (
                                             <textarea
@@ -1849,7 +1841,7 @@ export const Sales: React.FC<SalesProps> = ({
                                               }}
                                               value={item.saleNotes || ''}
                                               onChange={e => handleUpdateItemNotes(idx, 'saleNotes', e.target.value)}
-                                              placeholder={t('Nhập ghi chú yêu cầu thiết kế...')}
+                                              placeholder="Nhập ghi chú yêu cầu thiết kế..."
                                             />
                                           ) : (
                                             <div
@@ -1862,7 +1854,7 @@ export const Sales: React.FC<SalesProps> = ({
                                                 fontSize: '13px'
                                               }}
                                             >
-                                              {item.saleNotes || t('Không có ghi chú')}
+                                              {item.saleNotes || 'Không có ghi chú'}
                                             </div>
                                           )}
                                         </div>
@@ -1876,7 +1868,7 @@ export const Sales: React.FC<SalesProps> = ({
                                               fontSize: '12.5px'
                                             }}
                                           >
-                                            {t('Layout Sale Tải Lên (Hình ảnh/File):')}
+                                            Layout Sale Tải Lên (Hình ảnh/File):
                                           </label>
                                           {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                                             <input
@@ -1937,7 +1929,7 @@ export const Sales: React.FC<SalesProps> = ({
                                                   fontStyle: 'italic'
                                                 }}
                                               >
-                                                {t('Chưa tải lên file/hình ảnh')}
+                                                Chưa tải lên file/hình ảnh
                                               </span>
                                             )}
                                           </div>
@@ -1953,7 +1945,7 @@ export const Sales: React.FC<SalesProps> = ({
                                                 fontSize: '12.5px'
                                               }}
                                             >
-                                              {t('Hình ảnh Layout Thiết kế cũ:')}
+                                              Hình ảnh Layout Thiết kế cũ:
                                             </label>
                                             <img
                                               src={item.previewImage}
@@ -1985,7 +1977,7 @@ export const Sales: React.FC<SalesProps> = ({
                                             fontWeight: 'bold'
                                           }}
                                         >
-                                          <span>🎨</span> {t('Phản Hồi & File Thiết Kế Hoàn Thiện')}
+                                          <span>🎨</span> Phản Hồi & File Thiết Kế Hoàn Thiện
                                         </h4>
                                         <div className="form-group" style={{ marginBottom: '12px' }}>
                                           <label
@@ -1996,7 +1988,7 @@ export const Sales: React.FC<SalesProps> = ({
                                               fontSize: '12.5px'
                                             }}
                                           >
-                                            {t('Trả yêu cầu TK / Ghi chú Thiết kế:')}
+                                            Trả yêu cầu TK / Ghi chú Thiết kế:
                                           </label>
                                           {currentUser.role === 'admin' || currentUser.role === 'designer' ? (
                                             <textarea
@@ -2011,7 +2003,7 @@ export const Sales: React.FC<SalesProps> = ({
                                               }}
                                               value={item.designNotes || ''}
                                               onChange={e => handleUpdateItemNotes(idx, 'designNotes', e.target.value)}
-                                              placeholder={t('Nhập phản hồi từ bộ phận thiết kế...')}
+                                              placeholder="Nhập phản hồi từ bộ phận thiết kế..."
                                             />
                                           ) : (
                                             <div
@@ -2024,7 +2016,7 @@ export const Sales: React.FC<SalesProps> = ({
                                                 fontSize: '13px'
                                               }}
                                             >
-                                              {item.designNotes || t('Chưa có phản hồi thiết kế')}
+                                              {item.designNotes || 'Chưa có phản hồi thiết kế'}
                                             </div>
                                           )}
                                         </div>
@@ -2038,7 +2030,7 @@ export const Sales: React.FC<SalesProps> = ({
                                               fontSize: '12.5px'
                                             }}
                                           >
-                                            {t('File Thiết Kế Up (Hoàn thiện):')}
+                                            File Thiết Kế Up (Hoàn thiện):
                                           </label>
                                           {(currentUser.role === 'admin' || currentUser.role === 'designer') && (
                                             <input
@@ -2101,7 +2093,7 @@ export const Sales: React.FC<SalesProps> = ({
                                                   fontStyle: 'italic'
                                                 }}
                                               >
-                                                {t('Chưa có file thiết kế hoàn chỉnh')}
+                                                Chưa có file thiết kế hoàn chỉnh
                                               </span>
                                             )}
                                           </div>
@@ -2127,7 +2119,7 @@ export const Sales: React.FC<SalesProps> = ({
                       fontWeight: 600
                     }}
                   >
-                    <span>{t('Tổng giá trị đơn hàng (gồm VAT):')}</span>
+                    <span>Tổng giá trị đơn hàng (gồm VAT):</span>
                     <span className="po-order-total-value">
                       {Math.round(selectedPOTotalWithVat).toLocaleString()} đ
                     </span>
@@ -2136,9 +2128,7 @@ export const Sales: React.FC<SalesProps> = ({
 
                 {/* File link manager */}
                 <div style={{ border: '1px solid var(--color-border-light)', padding: '16px', borderRadius: '4px' }}>
-                  <h3 style={{ marginBottom: '12px', color: 'var(--color-primary)' }}>
-                    {t('Tài Liệu Đính Kèm Đơn Hàng:')}
-                  </h3>
+                  <h3 style={{ marginBottom: '12px', color: 'var(--color-primary)' }}>Tài Liệu Đính Kèm Đơn Hàng:</h3>
                   <div
                     style={{
                       display: 'grid',
@@ -2151,12 +2141,12 @@ export const Sales: React.FC<SalesProps> = ({
                       const isImage = value.startsWith('data:image/');
 
                       const labels: { [key: string]: string } = {
-                        pdfLink: t('PDF Đơn Hàng'),
-                        excelLink: t('Excel Báo Giá'),
-                        aiLink: t('Thiết Kế Gốc AI'),
-                        corelLink: t('Thiết Kế Corel (.cdr)'),
-                        contractLink: t('Hợp Đồng'),
-                        quoteLink: t('Bản Báo Giá')
+                        pdfLink: 'PDF Đơn Hàng',
+                        excelLink: 'Excel Báo Giá',
+                        aiLink: 'Thiết Kế Gốc AI',
+                        corelLink: 'Thiết Kế Corel (.cdr)',
+                        contractLink: 'Hợp Đồng',
+                        quoteLink: 'Bản Báo Giá'
                       };
                       const label = labels[key] || key;
 
@@ -2186,7 +2176,7 @@ export const Sales: React.FC<SalesProps> = ({
                                 border: '1px solid var(--color-border)'
                               }}
                               onClick={() => setPreviewImage(value)}
-                              title={t('Click để phóng to')}
+                              title="Click để phóng to"
                             />
                           ) : (
                             <span
@@ -2216,7 +2206,7 @@ export const Sales: React.FC<SalesProps> = ({
                               {label}
                             </div>
                             <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>
-                              {isImage ? t('Hình ảnh (Base64)') : t('Tài liệu đính kèm')}
+                              {isImage ? 'Hình ảnh (Base64)' : 'Tài liệu đính kèm'}
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -2227,7 +2217,7 @@ export const Sales: React.FC<SalesProps> = ({
                                 style={{ padding: '2px 8px', fontSize: '10px' }}
                                 onClick={() => setPreviewImage(value)}
                               >
-                                {t('Xem')}
+                                Xem
                               </button>
                             )}
                             <a
@@ -2241,7 +2231,7 @@ export const Sales: React.FC<SalesProps> = ({
                                 textAlign: 'center'
                               }}
                             >
-                              {t('Tải về')}
+                              Tải về
                             </a>
                           </div>
                         </div>
@@ -2249,7 +2239,7 @@ export const Sales: React.FC<SalesProps> = ({
                     })}
                     {!Object.values(selectedPO.links || {}).some(Boolean) && (
                       <span className="text-muted" style={{ gridColumn: 'span 2' }}>
-                        {t('Chưa có tài liệu đính kèm nào được tải lên.')}
+                        Chưa có tài liệu đính kèm nào được tải lên.
                       </span>
                     )}
                   </div>
@@ -2267,7 +2257,7 @@ export const Sales: React.FC<SalesProps> = ({
                   }}
                 >
                   <h3 style={{ marginBottom: '12px', textAlign: 'left', color: 'var(--color-primary)' }}>
-                    {t('Hình Ảnh Nhãn Mẫu')}
+                    Hình Ảnh Nhãn Mẫu
                   </h3>
                   {selectedPO.items[0]?.previewImage ? (
                     <img
@@ -2289,14 +2279,14 @@ export const Sales: React.FC<SalesProps> = ({
                         border: '1px dashed var(--color-border)'
                       }}
                     >
-                      {t('Không có ảnh mẫu Base64 nào được upload.')}
+                      Không có ảnh mẫu Base64 nào được upload.
                     </div>
                   )}
                 </div>
 
                 <div style={{ border: '1px solid var(--color-border-light)', padding: '16px', borderRadius: '4px' }}>
                   <h3 style={{ marginBottom: '12px', color: 'var(--color-primary)' }}>
-                    ✅ {t('MỤC PHẢN HỒI & TIẾN ĐỘ NỘI BỘ')}
+                    ✅ MỤC PHẢN HỒI & TIẾN ĐỘ NỘI BỘ
                   </h3>
 
                   {/* Add checklist item */}
@@ -2313,13 +2303,13 @@ export const Sales: React.FC<SalesProps> = ({
                       }}
                       value={newChecklistText}
                       onChange={e => setNewChecklistText(e.target.value)}
-                      placeholder={t('Thêm phản hồi/tiến độ...')}
+                      placeholder="Thêm phản hồi/tiến độ..."
                       onKeyDown={e => {
                         if (e.key === 'Enter') handleAddChecklistItem();
                       }}
                     />
                     <button type="button" className="btn btn-sm btn-primary" onClick={handleAddChecklistItem}>
-                      {t('Thêm')}
+                      Thêm
                     </button>
                   </div>
 
@@ -2386,7 +2376,7 @@ export const Sales: React.FC<SalesProps> = ({
                               cursor: 'pointer',
                               fontSize: '12px'
                             }}
-                            title={t('Xóa')}
+                            title="Xóa"
                           >
                             ×
                           </button>
@@ -2395,22 +2385,22 @@ export const Sales: React.FC<SalesProps> = ({
                     ))}
                     {(!selectedPO.internalChecklist || selectedPO.internalChecklist.length === 0) && (
                       <span style={{ fontSize: '12.5px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                        {t('Chưa có phản hồi/tiến độ công việc nào.')}
+                        Chưa có phản hồi/tiến độ công việc nào.
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div style={{ border: '1px solid var(--color-border-light)', padding: '16px', borderRadius: '4px' }}>
-                  <h3 style={{ marginBottom: '12px', color: 'var(--color-primary)' }}>{t('LỊCH SỬ TRẠNG THÁI')}</h3>
+                  <h3 style={{ marginBottom: '12px', color: 'var(--color-primary)' }}>LỊCH SỬ TRẠNG THÁI</h3>
                   <div className="timeline" style={{ maxHeight: '200px', overflowY: 'auto' }}>
                     {(selectedPO.historyLogs || []).map((log: any, idx: number) => (
                       <div key={idx} className="timeline-item">
                         <div className="timeline-marker"></div>
                         <div className="timeline-content">
-                          <span className="timeline-title">{t(getPOHistoryStatusLabel(log.status))}</span>
+                          <span className="timeline-title">{getPOHistoryStatusLabel(log.status)}</span>
                           <span className="timeline-date">
-                            {formatDateTime(log.updatedAt, t('vi-VN'))} - {t('Nhân Sự Thực Hiện')}: {log.updatedBy}
+                            {formatDateTime(log.updatedAt, 'vi-VN')} - Nhân Sự Thực Hiện: {log.updatedBy}
                           </span>
                           <span style={{ fontSize: '12px' }}>{log.note}</span>
                         </div>
@@ -2431,12 +2421,12 @@ export const Sales: React.FC<SalesProps> = ({
                   }}
                 >
                   <div>
-                    <strong>{t('Tạo bởi:')}</strong> {selectedPO.createdBy || t('Không xác định')}{' '}
-                    {selectedPO.createdAt && `(${formatDateTime(selectedPO.createdAt, t('vi-VN'))})`}
+                    <strong>Tạo bởi:</strong> {selectedPO.createdBy || 'Không xác định'}{' '}
+                    {selectedPO.createdAt && `(${formatDateTime(selectedPO.createdAt, 'vi-VN')})`}
                   </div>
                   <div>
-                    <strong>{t('Cập nhật bởi:')}</strong> {selectedPO.updatedBy || t('Chưa cập nhật')}{' '}
-                    {selectedPO.updatedAt && `(${formatDateTime(selectedPO.updatedAt, t('vi-VN'))})`}
+                    <strong>Cập nhật bởi:</strong> {selectedPO.updatedBy || 'Chưa cập nhật'}{' '}
+                    {selectedPO.updatedAt && `(${formatDateTime(selectedPO.updatedAt, 'vi-VN')})`}
                   </div>
                 </div>
               </div>
@@ -2464,7 +2454,6 @@ export const Sales: React.FC<SalesProps> = ({
           suppliers={suppliers}
           users={users}
           currentUser={currentUser}
-          t={t}
           onOpenCustomerDetails={onOpenCustomerDetails}
         />
       )}
@@ -2489,8 +2478,8 @@ export const Sales: React.FC<SalesProps> = ({
       />
       <DataFilterPanel
         open={showSalesFilters && activeListView === 'orders'}
-        title={t('Lọc danh sách tạo đơn hàng')}
-        description={t('Lọc khách hàng theo trạng thái đơn hàng gần nhất và Sale phụ trách.')}
+        title="Lọc danh sách tạo đơn hàng"
+        description="Lọc khách hàng theo trạng thái đơn hàng gần nhất và Sale phụ trách."
         activeCount={salesActiveFilterCount}
         onClose={() => setShowSalesFilters(false)}
         onReset={() => {
@@ -2500,20 +2489,20 @@ export const Sales: React.FC<SalesProps> = ({
       >
         <>
           <DataFilterSection
-            title={t('Trạng thái đơn hàng gần nhất')}
+            title="Trạng thái đơn hàng gần nhất"
             selectedCount={salesStatusFilters.length}
             defaultExpanded
           >
             <DataFilterCheckboxGroup
-              options={PO_QUEUE_STATES.map(status => ({ value: status.value, label: t(status.label) }))}
+              options={PO_QUEUE_STATES.map(status => ({ value: status.value, label: status.label }))}
               selectedValues={salesStatusFilters}
               onChange={setSalesStatusFilters}
             />
           </DataFilterSection>
-          <DataFilterSection title={t('Sale phụ trách')} selectedCount={salesOwnerFilters.length}>
+          <DataFilterSection title="Sale phụ trách" selectedCount={salesOwnerFilters.length}>
             <DataFilterCheckboxGroup
               options={[
-                { value: 'unassigned', label: t('Chưa phân công') },
+                { value: 'unassigned', label: 'Chưa phân công' },
                 ...users
                   .filter(user => user.role === 'sale')
                   .map(user => ({ value: user.uid, label: user.displayName }))
@@ -2556,7 +2545,7 @@ export const Sales: React.FC<SalesProps> = ({
                 }}
                 className="btn btn-primary"
               >
-                {t('Tải Ảnh Về')}
+                Tải Ảnh Về
               </a>
             </div>
           </div>
@@ -2564,8 +2553,8 @@ export const Sales: React.FC<SalesProps> = ({
       )}
       {printPO && (
         <PrintPreviewDialog
-          title={`${t('Xem bản in đơn hàng')} — ${String(printPO.poCode || '')}`}
-          frameTitle={t('Đơn đặt hàng')}
+          title={`Xem bản in đơn hàng — ${String(printPO.poCode || '')}`}
+          frameTitle="Đơn đặt hàng"
           html={orderSheetHtml(printPO)}
           onClose={() => setPrintPO(null)}
         />

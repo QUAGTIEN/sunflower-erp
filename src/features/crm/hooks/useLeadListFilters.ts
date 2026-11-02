@@ -44,7 +44,6 @@ export interface LeadListFilterInputs {
   accessibleLeads: LeadRecord[];
   filterDefinitions: LeadFilterDefinition[];
   visibleFilterDefinitions: LeadFilterDefinition[];
-  t: (key: string) => string;
   inlineSystemFieldConfiguration: ReturnType<typeof useSystemFieldConfiguration>;
   customProfileDefinitions: LeadProfileFieldDefinition[];
   users: UserProfile[];
@@ -64,7 +63,6 @@ export const useLeadListFilters = ({
   accessibleLeads,
   filterDefinitions,
   visibleFilterDefinitions,
-  t,
   inlineSystemFieldConfiguration,
   customProfileDefinitions,
   users,
@@ -146,11 +144,11 @@ export const useLeadListFilters = ({
 
   const advancedFilterFields = useMemo<AdvancedFilterField<LeadRecord>[]>(() => {
     const groups = {
-      company: t('Thông tin doanh nghiệp'),
-      contact: t('Liên hệ và nguồn dữ liệu'),
-      needs: t('Nhu cầu sơ bộ'),
-      assignment: t('Phụ trách và lịch hẹn'),
-      additional: t('Thông tin bổ sung')
+      company: 'Thông tin doanh nghiệp',
+      contact: 'Liên hệ và nguồn dữ liệu',
+      needs: 'Nhu cầu sơ bộ',
+      assignment: 'Phụ trách và lịch hẹn',
+      additional: 'Thông tin bổ sung'
     };
     const systemField = (
       id: string,
@@ -163,7 +161,7 @@ export const useLeadListFilters = ({
       const configuration = inlineSystemFieldConfiguration.fields.find(field => field.key === id);
       return configuration?.removed
         ? null
-        : { id: `system:${id}`, label: configuration?.label || t(fallbackLabel), group, kind, getValues, options };
+        : { id: `system:${id}`, label: configuration?.label || fallbackLabel, group, kind, getValues, options };
     };
     const configuredClassificationFields: AdvancedFilterField<LeadRecord>[] = filterDefinitions
       .filter(definition => definition.active)
@@ -278,7 +276,6 @@ export const useLeadListFilters = ({
     customProfileDefinitions,
     filterDefinitions,
     inlineSystemFieldConfiguration.fields,
-    t,
     users
   ]);
 

@@ -9,7 +9,6 @@ import { SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
 import {
   isActiveLeadRecord,
   type CustomerRecord,
@@ -131,7 +130,6 @@ export const Leads: React.FC<LeadsProps> = ({
   onInitialLeadOpened,
   initialInsightFilterId = ''
 }) => {
-  const { t } = useLanguage();
   const { definitions: customFieldDefinitions, allDefinitions: allCustomFieldDefinitions } = useEntityFieldDefinitions(
     'leads',
     currentUser.role
@@ -345,7 +343,6 @@ export const Leads: React.FC<LeadsProps> = ({
     accessibleLeads,
     filterDefinitions,
     visibleFilterDefinitions,
-    t,
     inlineSystemFieldConfiguration,
     customProfileDefinitions,
     users,
@@ -708,7 +705,7 @@ export const Leads: React.FC<LeadsProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
     if (file.size > 900_000) {
-      window.alert(t('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.'));
+      window.alert('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.');
       event.target.value = '';
       return;
     }
@@ -727,7 +724,7 @@ export const Leads: React.FC<LeadsProps> = ({
         if (!name) return;
         const folders = getCustomerRepositoryFolders(selectedLead);
         if (folders.some(folder => folder.name.trim().toLocaleLowerCase('vi-VN') === name.toLocaleLowerCase('vi-VN'))) {
-          window.alert(t('Thư mục này đã tồn tại.'));
+          window.alert('Thư mục này đã tồn tại.');
           return;
         }
         const now = new Date().toISOString();
@@ -776,7 +773,7 @@ export const Leads: React.FC<LeadsProps> = ({
               folder.name.trim().toLocaleLowerCase('vi-VN') === name.toLocaleLowerCase('vi-VN')
           )
         ) {
-          window.alert(t('Tên thư mục này đã tồn tại.'));
+          window.alert('Tên thư mục này đã tồn tại.');
           return;
         }
         const now = new Date().toISOString();
@@ -814,11 +811,11 @@ export const Leads: React.FC<LeadsProps> = ({
         if (!selectedLead || !activeLeadRepositoryFolder) return;
         const link = leadRepositoryFileLink.trim();
         if ((!leadRepositoryFile && !link) || !leadRepositoryFileName.trim()) {
-          window.alert(t('Vui lòng nhập tên và chọn tệp hoặc đường dẫn chia sẻ.'));
+          window.alert('Vui lòng nhập tên và chọn tệp hoặc đường dẫn chia sẻ.');
           return;
         }
         if (link && !/^https?:\/\//i.test(link)) {
-          window.alert(t('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.'));
+          window.alert('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.');
           return;
         }
         const now = new Date().toISOString();
@@ -857,7 +854,7 @@ export const Leads: React.FC<LeadsProps> = ({
       'LeadsPage.tsx:handleDeleteLeadRepositoryFile',
       async () => {
         if (!selectedLead || (currentUser.role !== 'admin' && currentUser.role !== 'sale')) return;
-        if (!(await confirmDelete(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?')))) return;
+        if (!(await confirmDelete('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) return;
         await requireConfirmedMutation(
           dbService.updateDocument('leads', selectedLead.id, {
             files: (selectedLead.files || []).filter(file => file.id !== fileId),
@@ -882,14 +879,14 @@ export const Leads: React.FC<LeadsProps> = ({
         const folder = folders.find(item => item.id === folderId);
         if (!folder) return;
         if ((selectedLead.files || []).some(file => resolveCustomerFileFolderId(file, folders) === folderId)) {
-          window.alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
+          window.alert('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.');
           return;
         }
         if (folders.length === 1) {
-          window.alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
+          window.alert('Kho lưu trữ phải có ít nhất một thư mục.');
           return;
         }
-        if (!(await confirmDelete(`${t('Xóa thư mục')} “${folder.name}”?`))) return;
+        if (!(await confirmDelete(`Xóa thư mục “${folder.name}”?`))) return;
         const nextFolders = folders.filter(item => item.id !== folderId);
         await requireConfirmedMutation(
           dbService.updateDocument('leads', selectedLead.id, {
@@ -1628,16 +1625,16 @@ export const Leads: React.FC<LeadsProps> = ({
   function renderLeadRepository() {
     if (!selectedLead) return null;
     return (
-      <section className="lead-panel lead-panel--wide customer-file-repository-card" aria-label={t('File liên quan')}>
+      <section className="lead-panel lead-panel--wide customer-file-repository-card" aria-label="File liên quan">
         <div className="card-header customer-file-repository-header">
           <div>
-            <span className="card-title">{t('File liên quan')}</span>
-            <small>{t('File thiết kế, báo giá và tài liệu sẽ được giữ nguyên khi chuyển thành khách hàng.')}</small>
+            <span className="card-title">File liên quan</span>
+            <small>File thiết kế, báo giá và tài liệu sẽ được giữ nguyên khi chuyển thành khách hàng.</small>
           </div>
         </div>
 
         <div className="customer-drive-layout">
-          <aside className="customer-drive-sidebar" aria-label={t('Danh sách thư mục file liên quan')}>
+          <aside className="customer-drive-sidebar" aria-label="Danh sách thư mục file liên quan">
             {currentUser.role === 'admin' && (
               <div className="customer-drive-new-folder">
                 <input
@@ -1650,8 +1647,8 @@ export const Leads: React.FC<LeadsProps> = ({
                       void handleAddLeadRepositoryFolder();
                     }
                   }}
-                  placeholder={t('Tên thư mục mới')}
-                  aria-label={t('Tên thư mục mới')}
+                  placeholder="Tên thư mục mới"
+                  aria-label="Tên thư mục mới"
                 />
                 <button
                   type="button"
@@ -1659,7 +1656,7 @@ export const Leads: React.FC<LeadsProps> = ({
                   onClick={() => void handleAddLeadRepositoryFolder()}
                   disabled={!newLeadFolderName.trim()}
                 >
-                  {t('Tạo thư mục')}
+                  Tạo thư mục
                 </button>
               </div>
             )}
@@ -1684,13 +1681,13 @@ export const Leads: React.FC<LeadsProps> = ({
                             if (event.key === 'Enter') void handleRenameLeadRepositoryFolder(folder.id);
                             if (event.key === 'Escape') setRenamingLeadFolderId('');
                           }}
-                          aria-label={t('Tên thư mục')}
+                          aria-label="Tên thư mục"
                         />
                         <button type="button" onClick={() => void handleRenameLeadRepositoryFolder(folder.id)}>
-                          {t('Lưu')}
+                          Lưu
                         </button>
                         <button type="button" onClick={() => setRenamingLeadFolderId('')}>
-                          {t('Hủy')}
+                          Hủy
                         </button>
                       </div>
                     ) : (
@@ -1712,10 +1709,10 @@ export const Leads: React.FC<LeadsProps> = ({
                                 setLeadFolderNameDraft(folder.name);
                               }}
                             >
-                              {t('Đổi tên')}
+                              Đổi tên
                             </button>
                             <button type="button" onClick={() => void handleDeleteLeadRepositoryFolder(folder.id)}>
-                              {t('Xóa')}
+                              Xóa
                             </button>
                           </div>
                         )}
@@ -1729,29 +1726,29 @@ export const Leads: React.FC<LeadsProps> = ({
 
           <div className="customer-drive-content">
             <div className="customer-drive-path">
-              <span>{t('File liên quan')}</span>
-              <strong>/ {activeLeadRepositoryFolder?.name || t('Chưa chọn thư mục')}</strong>
+              <span>File liên quan</span>
+              <strong>/ {activeLeadRepositoryFolder?.name || 'Chưa chọn thư mục'}</strong>
             </div>
 
             {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeLeadRepositoryFolder && (
               <details className="customer-drive-upload-panel">
-                <summary>{t('Thêm tài liệu vào thư mục này')}</summary>
+                <summary>Thêm tài liệu vào thư mục này</summary>
                 <form onSubmit={event => void handleUploadLeadRepositoryFile(event)}>
                   <label>
-                    <span>{t('Tên tài liệu')} *</span>
+                    <span>Tên tài liệu *</span>
                     <input
                       value={leadRepositoryFileName}
                       onChange={event => setLeadRepositoryFileName(event.target.value)}
                       required
-                      placeholder={t('Ví dụ: File thiết kế nhãn chai')}
+                      placeholder="Ví dụ: File thiết kế nhãn chai"
                     />
                   </label>
                   <label>
-                    <span>{t('Chọn tệp dưới 900 KB')}</span>
+                    <span>Chọn tệp dưới 900 KB</span>
                     <input type="file" onChange={handleLeadRepositoryFileChange} />
                   </label>
                   <label>
-                    <span>{t('Hoặc đường dẫn Drive/OneDrive')}</span>
+                    <span>Hoặc đường dẫn Drive/OneDrive</span>
                     <input
                       type="url"
                       value={leadRepositoryFileLink}
@@ -1760,7 +1757,7 @@ export const Leads: React.FC<LeadsProps> = ({
                     />
                   </label>
                   <button type="submit" className="btn btn-primary">
-                    {t('Lưu tài liệu')}
+                    Lưu tài liệu
                   </button>
                 </form>
               </details>
@@ -1770,11 +1767,11 @@ export const Leads: React.FC<LeadsProps> = ({
               <table>
                 <thead>
                   <tr>
-                    <th>{t('Tên tài liệu')}</th>
-                    <th>{t('Loại')}</th>
-                    <th>{t('Ngày cập nhật')}</th>
-                    <th>{t('Người cập nhật')}</th>
-                    <th>{t('Thao tác')}</th>
+                    <th>Tên tài liệu</th>
+                    <th>Loại</th>
+                    <th>Ngày cập nhật</th>
+                    <th>Người cập nhật</th>
+                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1786,7 +1783,7 @@ export const Leads: React.FC<LeadsProps> = ({
                         <td>
                           <strong title={file.name}>{file.name}</strong>
                         </td>
-                        <td>{isImage ? t('Hình ảnh') : file.url ? t('Đường dẫn') : t('Tệp tài liệu')}</td>
+                        <td>{isImage ? 'Hình ảnh' : file.url ? 'Đường dẫn' : 'Tệp tài liệu'}</td>
                         <td>{formatDateTime(file.createdAt)}</td>
                         <td>
                           {file.createdBy || users.find(user => user.uid === file.createdById)?.displayName || '—'}
@@ -1795,18 +1792,18 @@ export const Leads: React.FC<LeadsProps> = ({
                           <div className="customer-drive-file-actions">
                             {file.url ? (
                               <a href={file.url} target="_blank" rel="noreferrer">
-                                {t('Mở liên kết')}
+                                Mở liên kết
                               </a>
                             ) : (
                               source && (
                                 <a href={source} download={file.name}>
-                                  {t('Tải xuống')}
+                                  Tải xuống
                                 </a>
                               )
                             )}
                             {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                               <button type="button" onClick={() => void handleDeleteLeadRepositoryFile(file.id)}>
-                                {t('Xóa')}
+                                Xóa
                               </button>
                             )}
                           </div>
@@ -1817,7 +1814,7 @@ export const Leads: React.FC<LeadsProps> = ({
                   {activeLeadRepositoryFiles.length === 0 && (
                     <tr>
                       <td colSpan={5} className="lead-file-repository-empty">
-                        {t('Chưa có tài liệu trong thư mục này.')}
+                        Chưa có tài liệu trong thư mục này.
                       </td>
                     </tr>
                   )}
@@ -1961,21 +1958,17 @@ export const Leads: React.FC<LeadsProps> = ({
             }}
           />
           <footer className="lead-form-page__footer lead-form-page__footer--fixed">
-            <span>{t('Các thay đổi chỉ được ghi nhận khi bấm Lưu.')}</span>
+            <span>Các thay đổi chỉ được ghi nhận khi bấm Lưu.</span>
             <div>
               <button type="button" className="btn btn-outline" onClick={closeLeadForm}>
-                {t('Hủy')}
+                Hủy
               </button>
               <button
                 type="submit"
                 className="btn btn-primary"
                 disabled={Boolean(taxCodeConflict || candidateTaxCodeConflict) || !normalizeTaxCode(form.taxCode)}
               >
-                {editingLeadId
-                  ? t('Cập nhật Lead')
-                  : convertingCandidateId
-                    ? t('Lưu Lead & hoàn tất tiếp cận')
-                    : t('Lưu Lead')}
+                {editingLeadId ? 'Cập nhật Lead' : convertingCandidateId ? 'Lưu Lead & hoàn tất tiếp cận' : 'Lưu Lead'}
               </button>
             </div>
           </footer>
@@ -1987,7 +1980,7 @@ export const Leads: React.FC<LeadsProps> = ({
   return (
     <SystemFieldSurface table="leads" className="leads-page">
       <PageContextHeader
-        section={t('Tiềm năng')}
+        section="Tiềm năng"
         current={workspaceTab === 'overview' ? 'Tổng quan' : 'Danh sách KH tiềm năng'}
       />
 

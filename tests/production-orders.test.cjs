@@ -446,7 +446,6 @@ function interactive(file, name, props, stubs = {}) {
   const Component = loader({
     react: fakeReact,
     '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
-    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) },
     ...stubs
   })(file)[name];
   return () => {
@@ -463,8 +462,7 @@ test('Sale cannot open production, even with an old explicit page grant; other p
   assert.equal(canAccessPage(producer, 'production'), true);
   assert.equal(canAccessPage({ ...admin, allowedPages: undefined }, 'production'), true);
   const Component = loader({
-    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
-    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} }
   })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const html = renderToStaticMarkup(
     React.createElement(Component, {
@@ -670,8 +668,7 @@ test('machine list combines catalog, active LSX, operator and deadline while ret
 });
 test('workspace renders all accessible orders across POs without a browser or real database', () => {
   const Component = loader({
-    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
-    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} }
   })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const props = { pos: [po()], currentUser: accountant, users: [producer], commands: [], onRefresh() {} };
   assert.match(renderToStaticMarkup(React.createElement(Component, props)), /Chưa có lệnh phù hợp/);
@@ -692,8 +689,7 @@ test('workspace renders all accessible orders across POs without a browser or re
 
 test('legacy-only lists count the displayed records and keep detail tables at content height', () => {
   const Component = loader({
-    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
-    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} }
   })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const props = { pos: [po()], currentUser: producer, users: [producer], onRefresh() {} };
   const legacy = { id: 'old', poId: 'po1', lsxCode: 'LSX-OLD', status: 'producing', productName: 'Tem cũ' };
@@ -1177,8 +1173,7 @@ test('the order detail offers Xuất, Chỉnh sửa and Xóa until production st
   const b = backend();
   await b.manage(draft(), accountant);
   const Component = loader({
-    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
-    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} }
   })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const html = order =>
     renderToStaticMarkup(
@@ -1474,8 +1469,7 @@ test('completed LSX with shortfall shows shortfall actions and request_materials
   assert.equal([...b.store.keys()].filter(key => key.startsWith('invoices/')).length, 0);
 
   const Component = loader({
-    '@/infrastructure/firebase/erpDataGateway': { dbService: {} },
-    '@/context/LanguageContext': { useLanguage: () => ({ t: value => value }) }
+    '@/infrastructure/firebase/erpDataGateway': { dbService: {} }
   })('src/features/production/components/ProductionOrderWorkspace.tsx').ProductionOrderWorkspace;
   const html = renderToStaticMarkup(
     React.createElement(Component, {

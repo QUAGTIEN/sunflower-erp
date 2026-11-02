@@ -1,5 +1,4 @@
 import React from 'react';
-import { useLanguage } from '@/context/LanguageContext';
 import type { CustomerContractDraft } from '@/features/crm/model/customerWorkspace';
 
 // Contracts are stored inline as Data URLs, so they must stay well below Firestore's 1 MB document limit.
@@ -18,16 +17,12 @@ export const CustomerContractDialog: React.FC<CustomerContractDialogProps> = ({
   onSubmit,
   onClose
 }) => {
-  const { t } = useLanguage();
-
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_CONTRACT_FILE_BYTES) {
       alert(
-        t(
-          'Tệp lớn hơn 900 KB. Vui lòng lưu hợp đồng trên Drive/OneDrive và thêm dưới dạng đường dẫn trong kho tài liệu.'
-        )
+        'Tệp lớn hơn 900 KB. Vui lòng lưu hợp đồng trên Drive/OneDrive và thêm dưới dạng đường dẫn trong kho tài liệu.'
       );
       event.target.value = '';
       return;
@@ -43,15 +38,15 @@ export const CustomerContractDialog: React.FC<CustomerContractDialogProps> = ({
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('THÊM HỢP ĐỒNG KHÁCH HÀNG MỚI')}</span>
+          <span style={{ fontWeight: 700, fontSize: '16px' }}>THÊM HỢP ĐỒNG KHÁCH HÀNG MỚI</span>
           <button className="btn btn-sm btn-outline" onClick={onClose}>
-            {t('Đóng')}
+            Đóng
           </button>
         </div>
         <form onSubmit={onSubmit}>
           <div className="modal-body">
             <div className="form-group">
-              <label>{t('Số Hợp Đồng / Ký Hiệu')} *</label>
+              <label>Số Hợp Đồng / Ký Hiệu *</label>
               <input
                 type="text"
                 value={draft.contractNo}
@@ -65,7 +60,7 @@ export const CustomerContractDialog: React.FC<CustomerContractDialogProps> = ({
               style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}
             >
               <div className="form-group">
-                <label>{t('Ngày Ký Kết')}</label>
+                <label>Ngày Ký Kết</label>
                 <input
                   type="date"
                   value={draft.signDate}
@@ -74,7 +69,7 @@ export const CustomerContractDialog: React.FC<CustomerContractDialogProps> = ({
                 />
               </div>
               <div className="form-group">
-                <label>{t('Hạn Hiệu Lực')}</label>
+                <label>Hạn Hiệu Lực</label>
                 <input
                   type="date"
                   value={draft.expiryDate}
@@ -88,7 +83,7 @@ export const CustomerContractDialog: React.FC<CustomerContractDialogProps> = ({
               style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}
             >
               <div className="form-group">
-                <label>{t('Giá Trị Hợp Đồng (đ)')}</label>
+                <label>Giá Trị Hợp Đồng (đ)</label>
                 <input
                   type="number"
                   min="0"
@@ -98,7 +93,7 @@ export const CustomerContractDialog: React.FC<CustomerContractDialogProps> = ({
                 />
               </div>
               <div className="form-group">
-                <label>{t('Tải File Bản Cứng Hợp Đồng (.pdf, .jpg)')}</label>
+                <label>Tải File Bản Cứng Hợp Đồng (.pdf, .jpg)</label>
                 <input
                   type="file"
                   accept="application/pdf,image/*"
@@ -111,10 +106,10 @@ export const CustomerContractDialog: React.FC<CustomerContractDialogProps> = ({
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-outline" onClick={onClose}>
-              {t('Hủy')}
+              Hủy
             </button>
             <button type="submit" className="btn btn-primary">
-              {t('Lưu Hợp Đồng')}
+              Lưu Hợp Đồng
             </button>
           </div>
         </form>

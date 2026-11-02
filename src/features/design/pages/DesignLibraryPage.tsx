@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { Archive, CheckCircle2, FolderOpen } from 'lucide-react';
 import { ApprovedDesignLibrary } from '@/features/design/components/ApprovedDesignLibrary';
-import { useLanguage } from '@/context/LanguageContext';
 import { DesignPOLike, DesignRecord, DesignVersion } from '@/features/design/model/designWorkflow';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import '@/components/CustomerHistory.css';
@@ -14,7 +13,6 @@ interface DesignLibraryProps {
 }
 
 export const DesignLibrary: React.FC<DesignLibraryProps> = ({ pos, currentUser }) => {
-  const { t } = useLanguage();
   const [designs, setDesigns] = useState<DesignRecord[]>([]);
 
   useEffect(() => dbService.subscribeCollection('designs', data => setDesigns(data as DesignRecord[])), []);
@@ -32,28 +30,28 @@ export const DesignLibrary: React.FC<DesignLibraryProps> = ({ pos, currentUser }
 
   return (
     <div className="design-library-view">
-      <PageContextHeader section={t('Kho mẫu')} current={t('Danh sách mẫu thiết kế')} />
+      <PageContextHeader section="Kho mẫu" current="Danh sách mẫu thiết kế" />
 
       <div className="design-library-metrics">
         <div className="design-metric-card">
           <CheckCircle2 size={20} />
           <div>
             <strong>{approvedCount}</strong>
-            <span>{t('Mẫu đã được khách hàng duyệt')}</span>
+            <span>Mẫu đã được khách hàng duyệt</span>
           </div>
         </div>
         <div className="design-metric-card">
           <Archive size={20} />
           <div>
             <strong>{versionCount}</strong>
-            <span>{t('Phiên bản đang được lưu trữ')}</span>
+            <span>Phiên bản đang được lưu trữ</span>
           </div>
         </div>
         <div className="design-metric-card">
           <FolderOpen size={20} />
           <div>
             <strong>{sourceFileCount}</strong>
-            <span>{t('Phiên bản có file thiết kế gốc')}</span>
+            <span>Phiên bản có file thiết kế gốc</span>
           </div>
         </div>
       </div>

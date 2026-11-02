@@ -66,7 +66,6 @@ interface POFormFullScreenProps {
   suppliers: any[];
   users: any[];
   currentUser: any;
-  t: (key: string) => string;
   workflowMode?: 'standard' | 'customer_onboarding';
   onOpenCustomerDetails?: (customerId: string) => void;
 }
@@ -82,7 +81,6 @@ export default function POFormFullScreen({
   suppliers,
   users,
   currentUser,
-  t,
   workflowMode = 'standard',
   onOpenCustomerDetails
 }: POFormFullScreenProps) {
@@ -533,7 +531,7 @@ export default function POFormFullScreen({
     const currentImages = [...(currentItem.previewImages || [])];
 
     if (currentImages.length + files.length > 5) {
-      alert(t('Chỉ được tải lên tối đa 5 ảnh layout cho mỗi mặt hàng!'));
+      alert('Chỉ được tải lên tối đa 5 ảnh layout cho mỗi mặt hàng!');
       return;
     }
 
@@ -548,7 +546,7 @@ export default function POFormFullScreen({
       setPoItems(updated);
     } catch (error) {
       console.error('Failed to compress uploaded files:', error);
-      alert(t('Lỗi khi nén ảnh layout. Vui lòng thử lại.'));
+      alert('Lỗi khi nén ảnh layout. Vui lòng thử lại.');
     }
 
     // Clear input
@@ -827,21 +825,21 @@ export default function POFormFullScreen({
         if (isSaving) return;
         if (!customerId) {
           setShowOrderInfo(true);
-          alert(t('Vui lòng chọn khách hàng!'));
+          alert('Vui lòng chọn khách hàng!');
           return;
         }
         if (!expectedDeliveryDate || Number.isNaN(Date.parse(expectedDeliveryDate))) {
           setShowOrderInfo(true);
-          alert(t('Vui lòng chọn ngày giao hàng dự kiến hợp lệ!'));
+          alert('Vui lòng chọn ngày giao hàng dự kiến hợp lệ!');
           return;
         }
         if (!['A', 'B', 'C', 'D'].includes(customerRank)) {
           setShowOrderInfo(true);
-          alert(t('Vui lòng chọn hạng khách hàng A, B, C hoặc D!'));
+          alert('Vui lòng chọn hạng khách hàng A, B, C hoặc D!');
           return;
         }
         if (poItems.length === 0) {
-          alert(t('Vui lòng thêm ít nhất 1 mặt hàng vào đơn hàng!'));
+          alert('Vui lòng thêm ít nhất 1 mặt hàng vào đơn hàng!');
           return;
         }
 
@@ -855,29 +853,29 @@ export default function POFormFullScreen({
             orderItems[i].customerProductId &&
             !findCustomerProductForOrderItem(orderItems[i], customerCatalog)
           ) {
-            alert(t(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`));
+            alert(`Dòng ${i + 1}: Hãy chọn mã sản phẩm đã đăng ký trong hồ sơ khách hàng.`);
             return;
           }
           if (workflowMode === 'customer_onboarding' && !productCode) {
-            alert(t(`Dòng ${i + 1}: Vui lòng nhập mã hàng để lưu vào hồ sơ khách hàng!`));
+            alert(`Dòng ${i + 1}: Vui lòng nhập mã hàng để lưu vào hồ sơ khách hàng!`);
             return;
           }
           const normalizedProductCode = productCode.toLocaleUpperCase('vi-VN');
           if (workflowMode === 'customer_onboarding' && preparedProductCodes.has(normalizedProductCode)) {
-            alert(t(`Dòng ${i + 1}: Mã hàng ${productCode} đang bị trùng trong danh sách!`));
+            alert(`Dòng ${i + 1}: Mã hàng ${productCode} đang bị trùng trong danh sách!`);
             return;
           }
           if (normalizedProductCode) preparedProductCodes.add(normalizedProductCode);
           if (!String(orderItems[i].productName || '').trim()) {
-            alert(t(`Dòng ${i + 1}: Vui lòng nhập tên hàng!`));
+            alert(`Dòng ${i + 1}: Vui lòng nhập tên hàng!`);
             return;
           }
           if (!String(orderItems[i].unit || '').trim()) {
-            alert(t(`Dòng ${i + 1}: Vui lòng nhập đơn vị tính!`));
+            alert(`Dòng ${i + 1}: Vui lòng nhập đơn vị tính!`);
             return;
           }
           if (!Number.isFinite(Number(orderItems[i].quantity)) || Number(orderItems[i].quantity) <= 0) {
-            alert(t(`Dòng ${i + 1}: Số lượng phải lớn hơn 0!`));
+            alert(`Dòng ${i + 1}: Số lượng phải lớn hơn 0!`);
             return;
           }
           if (templatePo && (!orderItems[i].price || Number(orderItems[i].price) <= 0)) {
@@ -905,7 +903,7 @@ export default function POFormFullScreen({
 
         const customerObj = customers.find(c => c.id === customerId);
         if (!customerObj) {
-          alert(t('Không tìm thấy hồ sơ khách hàng. Vui lòng tải lại trang và chọn lại khách hàng.'));
+          alert('Không tìm thấy hồ sơ khách hàng. Vui lòng tải lại trang và chọn lại khách hàng.');
           return;
         }
 
@@ -988,7 +986,7 @@ export default function POFormFullScreen({
   const footerTotals = calculateFooter();
   const quantitiesByUnit = new Map<string, number>();
   orderItems.forEach(item => {
-    const unit = String(item.unit || t('Chưa có ĐVT'));
+    const unit = String(item.unit || 'Chưa có ĐVT');
     quantitiesByUnit.set(unit, (quantitiesByUnit.get(unit) || 0) + (Number(item.quantity) || 0));
   });
   const attachmentCount = [pdfFile, excelFile, aiFile, corelFile, contractFile, quoteFile].filter(Boolean).length;
@@ -1014,11 +1012,11 @@ export default function POFormFullScreen({
 
   // Departments for tasks mapping
   const departments = [
-    { value: 'designer', label: t('Thiết Kế (DESIGN)') },
-    { value: 'producer', label: t('Kỹ Thuật (FACTORY)') },
-    { value: 'accountant', label: t('Kế Toán (ACCOUNTING)') },
-    { value: 'sale', label: t('Kinh Doanh (SALES)') },
-    { value: 'admin', label: t('Ban Giám Đốc (ADMIN)') }
+    { value: 'designer', label: 'Thiết Kế (DESIGN)' },
+    { value: 'producer', label: 'Kỹ Thuật (FACTORY)' },
+    { value: 'accountant', label: 'Kế Toán (ACCOUNTING)' },
+    { value: 'sale', label: 'Kinh Doanh (SALES)' },
+    { value: 'admin', label: 'Ban Giám Đốc (ADMIN)' }
   ];
 
   const orderAttachments = (
@@ -1034,10 +1032,10 @@ export default function POFormFullScreen({
         >
           <span>
             <Paperclip size={15} />
-            {t('Tệp đơn hàng & thiết kế')}
+            Tệp đơn hàng & thiết kế
             {attachmentCount > 0 && <small>{attachmentCount}</small>}
           </span>
-          <span className="po-section-action">{showAttachments ? t('Thu gọn') : t('Mở rộng')}</span>
+          <span className="po-section-action">{showAttachments ? 'Thu gọn' : 'Mở rộng'}</span>
         </button>
 
         {showAttachments && (
@@ -1059,14 +1057,14 @@ export default function POFormFullScreen({
                 }}
               >
                 <Folder size={14} />
-                <span>{t('Chọn từ kho tệp khách hàng')}</span>
+                <span>Chọn từ kho tệp khách hàng</span>
               </button>
             )}
 
             <div className="po-attachment-fields">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
-                  {t('File PDF Đơn Hàng')}
+                  File PDF Đơn Hàng
                 </label>
                 <input
                   type="file"
@@ -1076,13 +1074,13 @@ export default function POFormFullScreen({
                 />
                 {pdfFile && (
                   <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
-                    ✓ {t('Đã tải lên')}
+                    ✓ Đã tải lên
                   </span>
                 )}
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
-                  {t('Bản Báo Giá Excel')}
+                  Bản Báo Giá Excel
                 </label>
                 <input
                   type="file"
@@ -1092,13 +1090,13 @@ export default function POFormFullScreen({
                 />
                 {excelFile && (
                   <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
-                    ✓ {t('Đã tải lên')}
+                    ✓ Đã tải lên
                   </span>
                 )}
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
-                  {t('File Thiết kế AI')}
+                  File Thiết kế AI
                 </label>
                 <input
                   type="file"
@@ -1108,13 +1106,13 @@ export default function POFormFullScreen({
                 />
                 {aiFile && (
                   <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
-                    ✓ {t('Đã tải lên')}
+                    ✓ Đã tải lên
                   </span>
                 )}
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
-                  {t('File Thiết kế Corel (.cdr)')}
+                  File Thiết kế Corel (.cdr)
                 </label>
                 <input
                   type="file"
@@ -1124,13 +1122,13 @@ export default function POFormFullScreen({
                 />
                 {corelFile && (
                   <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
-                    ✓ {t('Đã tải lên')}
+                    ✓ Đã tải lên
                   </span>
                 )}
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
-                  {t('File Hợp Đồng')}
+                  File Hợp Đồng
                 </label>
                 <input
                   type="file"
@@ -1140,13 +1138,13 @@ export default function POFormFullScreen({
                 />
                 {contractFile && (
                   <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
-                    ✓ {t('Đã tải lên')}
+                    ✓ Đã tải lên
                   </span>
                 )}
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: '11px', fontWeight: 600, marginBottom: '2px', display: 'block' }}>
-                  {t('Bản Báo Giá PDF')}
+                  Bản Báo Giá PDF
                 </label>
                 <input
                   type="file"
@@ -1156,7 +1154,7 @@ export default function POFormFullScreen({
                 />
                 {quoteFile && (
                   <span style={{ fontSize: '10px', color: 'var(--color-success)', display: 'block', marginTop: '2px' }}>
-                    ✓ {t('Đã tải lên')}
+                    ✓ Đã tải lên
                   </span>
                 )}
               </div>
@@ -1187,9 +1185,9 @@ export default function POFormFullScreen({
         aria-controls="po-assignment-content"
       >
         <span>
-          {t('Phân công công việc')} <small>{assignments.length}</small>
+          Phân công công việc <small>{assignments.length}</small>
         </span>
-        <span className="po-section-action">{showAssignments ? t('Thu gọn') : t('Mở rộng')}</span>
+        <span className="po-section-action">{showAssignments ? 'Thu gọn' : 'Mở rộng'}</span>
       </button>
 
       {showAssignments && (
@@ -1216,7 +1214,7 @@ export default function POFormFullScreen({
                 >
                   {/* Department Selector */}
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Bộ phận chịu trách nhiệm')}</label>
+                    <label style={{ fontSize: '11px', fontWeight: 600 }}>Bộ phận chịu trách nhiệm</label>
                     <select
                       value={assign.department}
                       onChange={e => handleUpdateAssignment(index, 'department', e.target.value)}
@@ -1245,7 +1243,7 @@ export default function POFormFullScreen({
                           marginBottom: '4px'
                         }}
                       >
-                        {t('Chọn Nhân Sự Phụ Trách')}
+                        Chọn Nhân Sự Phụ Trách
                       </label>
                       <div
                         style={{
@@ -1282,7 +1280,7 @@ export default function POFormFullScreen({
                         ))}
                         {deptUsers.length === 0 && (
                           <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
-                            {t('Không có nhân sự cho bộ phận này')}
+                            Không có nhân sự cho bộ phận này
                           </span>
                         )}
                       </div>
@@ -1291,11 +1289,11 @@ export default function POFormFullScreen({
 
                   {/* Task Description */}
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Nội dung công việc bàn giao')}</label>
+                    <label style={{ fontSize: '11px', fontWeight: 600 }}>Nội dung công việc bàn giao</label>
                     <textarea
                       value={assign.description}
                       onChange={e => handleUpdateAssignment(index, 'description', e.target.value)}
-                      placeholder={t('Ví dụ: Bế tem trắng, gửi mẫu layout duyệt, đặt mua mực màu đen...')}
+                      placeholder="Ví dụ: Bế tem trắng, gửi mẫu layout duyệt, đặt mua mực màu đen..."
                       rows={3}
                       style={{
                         width: '100%',
@@ -1309,7 +1307,7 @@ export default function POFormFullScreen({
 
                   {/* Due date */}
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Hạn hoàn thành')}</label>
+                    <label style={{ fontSize: '11px', fontWeight: 600 }}>Hạn hoàn thành</label>
                     <input
                       type="date"
                       value={assign.dueDate}
@@ -1326,7 +1324,7 @@ export default function POFormFullScreen({
 
                   {/* Priority Selector */}
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '11px', fontWeight: 600 }}>{t('Độ ưu tiên')}</label>
+                    <label style={{ fontSize: '11px', fontWeight: 600 }}>Độ ưu tiên</label>
                     <select
                       value={assign.priority}
                       onChange={e => handleUpdateAssignment(index, 'priority', e.target.value)}
@@ -1338,10 +1336,10 @@ export default function POFormFullScreen({
                         border: '1px solid var(--color-border)'
                       }}
                     >
-                      <option value="Cực gấp">{t('Cực gấp')}</option>
-                      <option value="Gấp">{t('Gấp')}</option>
-                      <option value="Bình thường">{t('Bình thường')}</option>
-                      <option value="Thong thả">{t('Thong thả')}</option>
+                      <option value="Cực gấp">Cực gấp</option>
+                      <option value="Gấp">Gấp</option>
+                      <option value="Bình thường">Bình thường</option>
+                      <option value="Thong thả">Thong thả</option>
                     </select>
                   </div>
 
@@ -1357,9 +1355,9 @@ export default function POFormFullScreen({
                         padding: '4px'
                       }}
                       onClick={() => handleRemoveAssignment(index)}
-                      title={t('Xóa phân công')}
+                      title="Xóa phân công"
                     >
-                      {t('Xóa phân công')}
+                      Xóa phân công
                     </button>
                   </div>
                 </div>
@@ -1378,7 +1376,7 @@ export default function POFormFullScreen({
                   fontSize: '12.5px'
                 }}
               >
-                {t('Chưa phân công công việc phòng ban nào cho đơn hàng này.')}
+                Chưa phân công công việc phòng ban nào cho đơn hàng này.
               </div>
             )}
           </div>
@@ -1390,7 +1388,7 @@ export default function POFormFullScreen({
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}
           >
             <Plus size={14} />
-            <span>{t('Thêm phân công phòng ban')}</span>
+            <span>Thêm phân công phòng ban</span>
           </button>
         </div>
       )}
@@ -1406,22 +1404,18 @@ export default function POFormFullScreen({
         aria-expanded={showOrderInfo}
         aria-controls="po-order-info-content"
       >
-        <span>{t('Thông tin đơn hàng')}</span>
-        <span className="po-section-action">{showOrderInfo ? t('Thu gọn') : t('Mở rộng')}</span>
+        <span>Thông tin đơn hàng</span>
+        <span className="po-section-action">{showOrderInfo ? 'Thu gọn' : 'Mở rộng'}</span>
       </button>
       {!showOrderInfo && (
         <div className="po-order-info-summary">
-          <strong title={currentCustomer?.companyName}>
-            {currentCustomer?.companyName || t('Chưa chọn khách hàng')}
-          </strong>
-          <span>
-            {t('Ngày giao')}: {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}
-          </span>
+          <strong title={currentCustomer?.companyName}>{currentCustomer?.companyName || 'Chưa chọn khách hàng'}</strong>
+          <span>Ngày giao: {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}</span>
         </div>
       )}
       <div id="po-order-info-content" className="po-order-info-fields" hidden={!showOrderInfo}>
         <div className="form-group">
-          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Khách hàng *')}</label>
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>Khách hàng *</label>
           <select
             value={customerId}
             onChange={e => {
@@ -1429,7 +1423,7 @@ export default function POFormFullScreen({
               if (
                 nextCustomerId !== customerId &&
                 poItems.length &&
-                !window.confirm(t('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong đơn hàng. Bạn có muốn tiếp tục?'))
+                !window.confirm('Đổi khách hàng sẽ bỏ các sản phẩm đang chọn trong đơn hàng. Bạn có muốn tiếp tục?')
               )
                 return;
               const nextCustomer = customers.find(customer => customer.id === nextCustomerId);
@@ -1444,46 +1438,46 @@ export default function POFormFullScreen({
             required
             style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
           >
-            <option value="">{t('Chọn khách hàng')}</option>
+            <option value="">Chọn khách hàng</option>
             {customers.map(c => (
               <option key={c.id} value={c.id}>
-                {c.companyName} ({t('CK')}: {c.discountRate}%)
+                {c.companyName} (CK: {c.discountRate}%)
               </option>
             ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Hạng khách hàng *')}</label>
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>Hạng khách hàng *</label>
           <select
             value={customerRank}
             onChange={e => setCustomerRank(e.target.value)}
             required
             style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
           >
-            <option value="">{t('-- Chọn hạng khách hàng --')}</option>
+            <option value="">-- Chọn hạng khách hàng --</option>
             {['A', 'B', 'C', 'D'].map(rank => (
               <option key={rank} value={rank}>
-                {t('Hạng')} {rank}
+                Hạng {rank}
               </option>
             ))}
           </select>
-          <span className="po-customer-rank-help">{t('Hạng được lưu vào hồ sơ khách hàng sau khi lưu đơn hàng.')}</span>
+          <span className="po-customer-rank-help">Hạng được lưu vào hồ sơ khách hàng sau khi lưu đơn hàng.</span>
         </div>
 
         <div className="form-group">
-          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Số PO khách')}</label>
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>Số PO khách</label>
           <input
             type="text"
             value={customerPoCode}
             onChange={e => setCustomerPoCode(e.target.value)}
-            placeholder={t('Ví dụ: VFT26-553...')}
+            placeholder="Ví dụ: VFT26-553..."
             style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)' }}
           />
         </div>
 
         <div className="form-group">
-          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ngày giao dự kiến *')}</label>
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>Ngày giao dự kiến *</label>
           <input
             type="date"
             value={expectedDeliveryDate}
@@ -1494,11 +1488,11 @@ export default function POFormFullScreen({
         </div>
 
         <div className="form-group">
-          <label style={{ fontWeight: 600, fontSize: '12px' }}>{t('Ghi chú đơn hàng')}</label>
+          <label style={{ fontWeight: 600, fontSize: '12px' }}>Ghi chú đơn hàng</label>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder={t('Chi tiết giao hàng, yêu cầu riêng...')}
+            placeholder="Chi tiết giao hàng, yêu cầu riêng..."
             rows={3}
             style={{
               width: '100%',
@@ -1512,7 +1506,7 @@ export default function POFormFullScreen({
 
         {draftRestored && (
           <button type="button" className="po-discard-draft" onClick={handleDiscardDraft}>
-            {t('Bỏ bản nháp')}
+            Bỏ bản nháp
           </button>
         )}
       </div>
@@ -1542,11 +1536,10 @@ export default function POFormFullScreen({
         <div className="prepared-order-banner" role="status">
           <CheckSquare size={18} />
           <div>
-            <strong>{t('Thông tin đơn đầu tiên đã được chuẩn bị từ CRM')}</strong>
+            <strong>Thông tin đơn đầu tiên đã được chuẩn bị từ CRM</strong>
             <span>
-              {t(
-                'Mặt hàng, giá, ngày giao và tệp liên quan đã được điền sẵn. Hãy bổ sung phân công phòng ban rồi lưu để phát hành đơn hàng.'
-              )}
+              Mặt hàng, giá, ngày giao và tệp liên quan đã được điền sẵn. Hãy bổ sung phân công phòng ban rồi lưu để
+              phát hành đơn hàng.
             </span>
           </div>
         </div>
@@ -1562,25 +1555,25 @@ export default function POFormFullScreen({
         {/* HEADER */}
         <div className="po-form-header">
           <div className="po-form-heading app-heading-with-back">
-            <PageBackButton title={t('Quay lại')} onClick={handleClose} disabled={isSaving} />
+            <PageBackButton title="Quay lại" onClick={handleClose} disabled={isSaving} />
             <div>
               <h2>
                 {isCustomerOnboarding
-                  ? t('Chuẩn bị đơn hàng đầu tiên')
+                  ? 'Chuẩn bị đơn hàng đầu tiên'
                   : po
-                    ? `${t('Chỉnh sửa đơn hàng')}: ${po.poCode}`
+                    ? `Chỉnh sửa đơn hàng: ${po.poCode}`
                     : templatePo
                       ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
-                      : t('Tạo đơn hàng khách hàng')}
+                      : 'Tạo đơn hàng khách hàng'}
               </h2>
               <p>
                 {isCustomerOnboarding
-                  ? t('Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại phân hệ Đơn hàng.')
+                  ? 'Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại phân hệ Đơn hàng.'
                   : po
-                    ? `${t('Mã đơn hàng nội bộ:')} ${po.poCode}`
+                    ? `Mã đơn hàng nội bộ: ${po.poCode}`
                     : templatePo
                       ? 'Kế thừa thông số và mẫu đã duyệt; giá, ngày giao và phân công cần kiểm tra lại.'
-                      : t('Khởi tạo tệp thông tin đơn hàng mới và phân công sản xuất')}
+                      : 'Khởi tạo tệp thông tin đơn hàng mới và phân công sản xuất'}
               </p>
             </div>
           </div>
@@ -1594,10 +1587,10 @@ export default function POFormFullScreen({
             >
               <span>
                 {isSaving
-                  ? t('Đang lưu...')
+                  ? 'Đang lưu...'
                   : isCustomerOnboarding
-                    ? t('Lưu khách hàng & chuẩn bị đơn hàng')
-                    : t('Lưu Đơn Hàng')}
+                    ? 'Lưu khách hàng & chuẩn bị đơn hàng'
+                    : 'Lưu Đơn Hàng'}
               </span>
             </button>
           </div>
@@ -1635,30 +1628,28 @@ export default function POFormFullScreen({
             <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
               <div className="po-items-card-header">
                 <div>
-                  <h3>
-                    {usesCatalogProducts ? t('Sản phẩm trong đơn hàng') : t('Danh sách mã hàng cần in và sản xuất')}
-                  </h3>
+                  <h3>{usesCatalogProducts ? 'Sản phẩm trong đơn hàng' : 'Danh sách mã hàng cần in và sản xuất'}</h3>
                   <span>
-                    {poItems.length} {t('mã hàng')} · {currentCustomer?.companyName || t('Chưa chọn khách hàng')}
+                    {poItems.length} mã hàng · {currentCustomer?.companyName || 'Chưa chọn khách hàng'}
                   </span>
                 </div>
                 <div className="po-items-card-actions">
-                  <div className="po-grid-zoom-control" role="group" aria-label={t('Thu phóng bảng mã hàng')}>
+                  <div className="po-grid-zoom-control" role="group" aria-label="Thu phóng bảng mã hàng">
                     <IconButton
-                      label={t('Thu nhỏ bảng')}
+                      label="Thu nhỏ bảng"
                       icon={<ZoomOut size={16} />}
                       disabled={tableZoom <= PO_GRID_MIN_ZOOM}
                       onClick={() => setTableZoom(current => Math.max(PO_GRID_MIN_ZOOM, current - PO_GRID_ZOOM_STEP))}
                     />
-                    <output aria-label={t('Tỷ lệ hiển thị bảng')}>{tableZoom}%</output>
+                    <output aria-label="Tỷ lệ hiển thị bảng">{tableZoom}%</output>
                     <IconButton
-                      label={t('Phóng to bảng')}
+                      label="Phóng to bảng"
                       icon={<ZoomIn size={16} />}
                       disabled={tableZoom >= PO_GRID_MAX_ZOOM}
                       onClick={() => setTableZoom(current => Math.min(PO_GRID_MAX_ZOOM, current + PO_GRID_ZOOM_STEP))}
                     />
                     <IconButton
-                      label={isTableFocusMode ? t('Thu gọn bảng') : t('Mở toàn màn hình')}
+                      label={isTableFocusMode ? 'Thu gọn bảng' : 'Mở toàn màn hình'}
                       icon={isTableFocusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
                       active={isTableFocusMode}
                       aria-pressed={isTableFocusMode}
@@ -1672,7 +1663,7 @@ export default function POFormFullScreen({
                       onClick={() => openSearchPopup(-1)}
                       disabled={!customerId || !catalogProducts.length || isSaving}
                     >
-                      {t('Chọn mã sản phẩm')}
+                      Chọn mã sản phẩm
                     </button>
                   )}
                   <button
@@ -1681,25 +1672,24 @@ export default function POFormFullScreen({
                     onClick={handleAddRow}
                     disabled={isSaving || (usesCatalogProducts && !customerId)}
                   >
-                    {usesCatalogProducts ? t('Thêm mã sản phẩm') : t('Thêm mã hàng')}
+                    {usesCatalogProducts ? 'Thêm mã sản phẩm' : 'Thêm mã hàng'}
                   </button>
                 </div>
               </div>
 
               {isTableFocusMode && (
-                <div className="po-order-context-summary" aria-label={t('Tóm tắt đơn hàng')}>
+                <div className="po-order-context-summary" aria-label="Tóm tắt đơn hàng">
                   <span>
-                    <strong>{t('Khách hàng')}:</strong> {currentCustomer?.companyName || t('Chưa chọn')}
+                    <strong>Khách hàng:</strong> {currentCustomer?.companyName || 'Chưa chọn'}
                   </span>
                   <span>
-                    <strong>{t('Hạng')}:</strong> {customerRank || '—'}
+                    <strong>Hạng:</strong> {customerRank || '—'}
                   </span>
                   <span>
-                    <strong>{t('Số PO khách')}:</strong> {customerPoCode || '—'}
+                    <strong>Số PO khách:</strong> {customerPoCode || '—'}
                   </span>
                   <span>
-                    <strong>{t('Ngày giao')}:</strong>{' '}
-                    {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}
+                    <strong>Ngày giao:</strong> {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}
                   </span>
                 </div>
               )}
@@ -1712,7 +1702,7 @@ export default function POFormFullScreen({
 
               {usesCatalogProducts && customerId && catalogProducts.length === 0 && (
                 <div className="po-catalog-empty" role="status">
-                  <span>{t('Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.')}</span>
+                  <span>Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.</span>
                   {onOpenCustomerDetails && (
                     <button
                       type="button"
@@ -1723,14 +1713,13 @@ export default function POFormFullScreen({
                         onOpenCustomerDetails(customerId);
                       }}
                     >
-                      {t('Mở hồ sơ khách hàng')}
+                      Mở hồ sơ khách hàng
                     </button>
                   )}
                 </div>
               )}
               <POItemsGrid
                 tableZoom={tableZoom}
-                t={t}
                 usesCatalogProducts={usesCatalogProducts}
                 orderItems={orderItems}
                 expandedItemIds={expandedItemIds}
@@ -1763,7 +1752,7 @@ export default function POFormFullScreen({
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{t('Số lượng theo ĐVT:')}</span>
+                    <span>Số lượng theo ĐVT:</span>
                     <strong style={{ fontSize: '14px' }}>
                       {[...quantitiesByUnit]
                         .map(([unit, quantity]) => `${quantity.toLocaleString('vi-VN')} ${unit}`)
@@ -1778,13 +1767,13 @@ export default function POFormFullScreen({
                       paddingBottom: '6px'
                     }}
                   >
-                    <span>{t('Tổng tiền chưa VAT:')}</span>
+                    <span>Tổng tiền chưa VAT:</span>
                     <span style={{ fontWeight: 600 }}>
                       {Math.round(footerTotals.totalBeforeVat).toLocaleString()} đ
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)' }}>
-                    <span>{t('Thuế GTGT (VAT):')}</span>
+                    <span>Thuế GTGT (VAT):</span>
                     <span>{Math.round(footerTotals.totalVat).toLocaleString()} đ</span>
                   </div>
                   <div
@@ -1797,7 +1786,7 @@ export default function POFormFullScreen({
                       paddingTop: '4px'
                     }}
                   >
-                    <span>{t('TỔNG CỘNG (GỒM VAT):')}</span>
+                    <span>TỔNG CỘNG (GỒM VAT):</span>
                     <span>{Math.round(footerTotals.totalAfterVat).toLocaleString()} đ</span>
                   </div>
                 </div>
@@ -1819,7 +1808,6 @@ export default function POFormFullScreen({
                 ? [findCustomerProductForOrderItem(poItems[searchRowIndex], catalogProducts)?.id || ''].filter(Boolean)
                 : []
             }
-            t={t}
             onClose={closeCatalogPicker}
             onConfirm={addCatalogProducts}
           />

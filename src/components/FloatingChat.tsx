@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { useLanguage } from '../context/LanguageContext';
 import { X } from 'lucide-react';
 import { formatTime } from '@/shared/utils/dateFormatting';
 
@@ -21,14 +20,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   messages,
   users
 }) => {
-  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleRecallMessage = async (msgId: string) => {
-    if (window.confirm(t('Bạn có chắc chắn muốn thu hồi tin nhắn này?'))) {
+    if (window.confirm('Bạn có chắc chắn muốn thu hồi tin nhắn này?')) {
       await dbService.updateDocument('messages', msgId, { recalled: true });
     }
   };
@@ -208,7 +206,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                           fontSize: '10px'
                         }}
                       >
-                        {t('Trả lời')}
+                        Trả lời
                       </button>
                       {(isMe || currentUser.role === 'admin') && (
                         <>
@@ -224,7 +222,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                               fontSize: '10px'
                             }}
                           >
-                            {t('Thu hồi')}
+                            Thu hồi
                           </button>
                         </>
                       )}
@@ -242,7 +240,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   }}
                 >
                   {msg.recalled ? (
-                    <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>{t('Tin nhắn đã bị thu hồi')}</span>
+                    <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>Tin nhắn đã bị thu hồi</span>
                   ) : (
                     <>
                       {msg.replyTo && (
@@ -283,7 +281,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                 fontSize: '12px'
               }}
             >
-              {t('Chưa có tin nhắn nào.')}
+              Chưa có tin nhắn nào.
             </div>
           )}
         </div>
@@ -292,7 +290,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
           {showSuggestions && filteredSuggestions.length > 0 && (
             <div className="chat-suggestions-popup" style={{ width: '260px', left: '5px' }}>
               <div className="chat-suggestion-header">
-                {suggestionType === 'member' ? t('Gợi ý tag nhân viên') : t('Gợi ý mã liên kết')}
+                {suggestionType === 'member' ? 'Gợi ý tag nhân viên' : 'Gợi ý mã liên kết'}
               </div>
               {filteredSuggestions.map((item: any) => (
                 <div key={item.id} className="chat-suggestion-item" onClick={() => handleSelectSuggestion(item)}>
@@ -300,7 +298,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                     {suggestionType === 'member' ? `@${item.displayName}` : item.code}
                   </span>
                   <span className="chat-suggestion-item-sub">
-                    {suggestionType === 'member' ? t(item.role.toUpperCase()) : item.label}
+                    {suggestionType === 'member' ? item.role.toUpperCase() : item.label}
                   </span>
                 </div>
               ))}
@@ -321,10 +319,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
               }}
             >
               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>
-                <strong>
-                  {t('Trả lời')} {replyingTo.senderName}:
-                </strong>{' '}
-                "{replyingTo.messageText}"
+                <strong>Trả lời {replyingTo.senderName}:</strong> "{replyingTo.messageText}"
               </div>
               <button
                 type="button"
@@ -346,13 +341,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
           <form onSubmit={handleSendMessage} className="floating-chat-input-area">
             <input
               type="text"
-              placeholder={t('Nhập tin nhắn... (Gõ @ hoặc #)')}
+              placeholder="Nhập tin nhắn... (Gõ @ hoặc #)"
               value={messageText}
               onChange={e => setMessageText(e.target.value)}
               required
             />
             <button type="submit" className="btn btn-primary btn-sm">
-              {t('Gửi')}
+              Gửi
             </button>
           </form>
         </div>

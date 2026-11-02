@@ -1,7 +1,6 @@
 import React from 'react';
 import { Folder, X, FileText } from 'lucide-react';
 import type { CustomerRecord } from '@/features/crm/model/crmModels';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface POFileRepositoryDialogProps {
   currentCustomer: CustomerRecord | undefined;
@@ -25,7 +24,6 @@ export const POFileRepositoryDialog: React.FC<POFileRepositoryDialogProps> = ({
   setContractFile,
   setQuoteFile
 }) => {
-  const { t } = useLanguage();
   return (
     <div className="modal-overlay" style={{ zIndex: 1200 }}>
       <div className="modal-content" style={{ maxWidth: '600px', width: '90%' }}>
@@ -40,9 +38,7 @@ export const POFileRepositoryDialog: React.FC<POFileRepositoryDialogProps> = ({
             }}
           >
             <Folder size={18} />
-            <span>
-              {t('KHO LƯU TRỮ TỆP KHÁCH HÀNG')}: {currentCustomer?.companyName || ''}
-            </span>
+            <span>KHO LƯU TRỮ TỆP KHÁCH HÀNG: {currentCustomer?.companyName || ''}</span>
           </span>
           <button type="button" className="btn btn-sm btn-outline" onClick={() => setShowRepoModal(false)}>
             <X size={16} />
@@ -53,14 +49,14 @@ export const POFileRepositoryDialog: React.FC<POFileRepositoryDialogProps> = ({
             if (!currentCustomer || !currentCustomer.files || currentCustomer.files.length === 0) {
               return (
                 <p className="text-center text-muted" style={{ padding: '20px' }}>
-                  {t('Kho lưu trữ của khách hàng này hiện tại chưa có tệp tin nào.')}
+                  Kho lưu trữ của khách hàng này hiện tại chưa có tệp tin nào.
                 </p>
               );
             }
 
             // Group files by folder
             const folderGroups = currentCustomer.files.reduce((acc: any, file: any) => {
-              const folderName = file.folder || t('Chưa phân mục');
+              const folderName = file.folder || 'Chưa phân mục';
               if (!acc[folderName]) acc[folderName] = [];
               acc[folderName].push(file);
               return acc;
@@ -69,7 +65,7 @@ export const POFileRepositoryDialog: React.FC<POFileRepositoryDialogProps> = ({
             return (
               <div>
                 <p style={{ fontSize: '12.5px', marginBottom: '12px', color: 'var(--color-text-muted)' }}>
-                  {t('Chọn một tệp từ kho lưu trữ để đính kèm vào phần tương ứng:')}
+                  Chọn một tệp từ kho lưu trữ để đính kèm vào phần tương ứng:
                 </p>
 
                 {Object.entries(folderGroups).map(([folderName, folderFiles]: any) => (
@@ -133,18 +129,18 @@ export const POFileRepositoryDialog: React.FC<POFileRepositoryDialogProps> = ({
                                 if (target === 'contract') setContractFile(file.base64);
                                 if (target === 'quote') setQuoteFile(file.base64);
 
-                                alert(t(`Đã đính kèm tệp "${file.name}" vào trường ${target.toUpperCase()}`));
+                                alert(`Đã đính kèm tệp "${file.name}" vào trường ${target.toUpperCase()}`);
                                 e.target.value = ''; // reset
                               }}
                               style={{ padding: '2px 6px', fontSize: '11.5px', width: '150px' }}
                             >
-                              <option value="">-- {t('Đính kèm vào')} --</option>
-                              <option value="pdf">{t('PDF Đơn Hàng')}</option>
-                              <option value="excel">{t('Bản Báo Giá Excel')}</option>
-                              <option value="ai">{t('File Thiết kế AI')}</option>
-                              <option value="corel">{t('File Thiết kế Corel')}</option>
-                              <option value="contract">{t('File Hợp Đồng')}</option>
-                              <option value="quote">{t('Bản Báo Giá PDF')}</option>
+                              <option value="">-- Đính kèm vào --</option>
+                              <option value="pdf">PDF Đơn Hàng</option>
+                              <option value="excel">Bản Báo Giá Excel</option>
+                              <option value="ai">File Thiết kế AI</option>
+                              <option value="corel">File Thiết kế Corel</option>
+                              <option value="contract">File Hợp Đồng</option>
+                              <option value="quote">Bản Báo Giá PDF</option>
                             </select>
                           </div>
                         </div>
@@ -158,7 +154,7 @@ export const POFileRepositoryDialog: React.FC<POFileRepositoryDialogProps> = ({
         </div>
         <div className="modal-footer">
           <button type="button" className="btn btn-outline" onClick={() => setShowRepoModal(false)}>
-            {t('Hoàn thành')}
+            Hoàn thành
           </button>
         </div>
       </div>

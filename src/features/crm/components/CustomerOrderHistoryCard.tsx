@@ -1,7 +1,6 @@
 import React from 'react';
 import { Copy, ImageOff } from 'lucide-react';
 import { RowActionMenu } from '@/components/RowActionMenu';
-import { useLanguage } from '@/context/LanguageContext';
 import {
   CUSTOMER_PRODUCT_TYPES,
   canManageCustomerProducts,
@@ -42,23 +41,21 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
   onPreviewImage: setPreviewImage,
   onShowProductEditor: setShowProductEditor
 }) => {
-  const { t } = useLanguage();
-
   return (
     <div
       className="card customer-order-history-card"
       hidden={!['overview', 'po', 'products'].includes(customerHistoryTab)}
     >
       <div className="customer-product-catalog-toolbar">
-        <h2>{customerHistoryTab === 'products' ? t('Sản phẩm của khách hàng') : t('Danh sách đơn hàng')}</h2>
+        <h2>{customerHistoryTab === 'products' ? 'Sản phẩm của khách hàng' : 'Danh sách đơn hàng'}</h2>
         {customerHistoryTab === 'overview' && (
           <button type="button" className="btn btn-outline" onClick={() => setCustomerHistoryTab('po')}>
-            {t('Xem tất cả')} ({getCustomerOrders(selectedCustomer.id).length})
+            Xem tất cả ({getCustomerOrders(selectedCustomer.id).length})
           </button>
         )}
         {customerHistoryTab === 'products' && canManageCustomerProducts(currentUser, selectedCustomer) && (
           <button type="button" className="btn btn-primary" onClick={() => setShowProductEditor(true)}>
-            {t('Tạo mã sản phẩm')}
+            Tạo mã sản phẩm
           </button>
         )}
       </div>
@@ -68,11 +65,11 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
           <table>
             <thead>
               <tr>
-                <th>{t('Mã đơn hàng')}</th>
-                <th>{t('Ngày đặt')}</th>
-                <th>{t('Trị giá (Net)')}</th>
-                <th>{t('Tiến độ')}</th>
-                <th>{t('Thao tác')}</th>
+                <th>Mã đơn hàng</th>
+                <th>Ngày đặt</th>
+                <th>Trị giá (Net)</th>
+                <th>Tiến độ</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +100,7 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
                     <td>{formatDate(po.orderDate)}</td>
                     <td>{Number(po.netAmount || po.totalAmount || 0).toLocaleString('vi-VN')} đ</td>
                     <td>
-                      <span className={`badge ${getPOBadgeClass(po)}`}>{t(getPOQueueLabel(po))}</span>
+                      <span className={`badge ${getPOBadgeClass(po)}`}>{getPOQueueLabel(po)}</span>
                     </td>
                     <td onClick={event => event.stopPropagation()}>
                       {(currentUser.role === 'admin' || currentUser.role === 'sale') && onRepeatOrder ? (
@@ -111,9 +108,9 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
                           type="button"
                           className="btn btn-sm btn-outline repeat-order-button"
                           onClick={() => onRepeatOrder(po.id)}
-                          title={t('Tạo đơn hàng mới từ đơn cũ')}
+                          title="Tạo đơn hàng mới từ đơn cũ"
                         >
-                          <Copy size={13} /> {t('Đặt lại')}
+                          <Copy size={13} /> Đặt lại
                         </button>
                       ) : (
                         '—'
@@ -123,7 +120,7 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
                 ))}
               {getCustomerOrders(selectedCustomer.id).length === 0 && (
                 <tr>
-                  <td colSpan={5}>{t('Chưa phát sinh đơn hàng.')}</td>
+                  <td colSpan={5}>Chưa phát sinh đơn hàng.</td>
                 </tr>
               )}
             </tbody>
@@ -134,17 +131,17 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
           <table className="customer-product-catalog-table">
             <thead>
               <tr>
-                <th>{t('Ảnh')}</th>
-                <th>{t('Mã hàng')}</th>
-                <th>{t('Tên sản phẩm')}</th>
-                <th>{t('Loại sản phẩm')}</th>
-                <th>{t('Chất liệu / NVL')}</th>
-                <th>{t('Quy cách')}</th>
-                <th className="customer-product-number">{t('Số đơn')}</th>
-                <th className="customer-product-number">{t('SL đã đặt')}</th>
-                <th>{t('Đơn hàng gần nhất')}</th>
-                <th>{t('Tệp')}</th>
-                <th aria-label={t('Thao tác')} />
+                <th>Ảnh</th>
+                <th>Mã hàng</th>
+                <th>Tên sản phẩm</th>
+                <th>Loại sản phẩm</th>
+                <th>Chất liệu / NVL</th>
+                <th>Quy cách</th>
+                <th className="customer-product-number">Số đơn</th>
+                <th className="customer-product-number">SL đã đặt</th>
+                <th>Đơn hàng gần nhất</th>
+                <th>Tệp</th>
+                <th aria-label="Thao tác" />
               </tr>
             </thead>
             <tbody>
@@ -160,16 +157,16 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
                 const canEdit = product.record && (currentUser.role === 'admin' || currentUser.role === 'sale');
                 const actions = [
                   ...(product.previewImage
-                    ? [{ label: t('Xem ảnh'), onSelect: () => setPreviewImage(product.previewImage) }]
+                    ? [{ label: 'Xem ảnh', onSelect: () => setPreviewImage(product.previewImage) }]
                     : []),
                   ...files.map((file, index) => {
                     const asset = typeof file === 'object' && file ? (file as Record<string, unknown>) : {};
                     return {
-                      label: `${t('Mở tệp')}: ${String(asset.name || asset.fileName || `${t('Tệp')} ${index + 1}`)}`,
+                      label: `Mở tệp: ${String(asset.name || asset.fileName || `Tệp ${index + 1}`)}`,
                       onSelect: () => openCustomerProductAsset(getProductAssetSource(file))
                     };
                   }),
-                  ...(canEdit ? [{ label: t('Chỉnh sửa'), onSelect: () => handleOpenEditProduct(product.record) }] : [])
+                  ...(canEdit ? [{ label: 'Chỉnh sửa', onSelect: () => handleOpenEditProduct(product.record) }] : [])
                 ];
                 return (
                   <tr key={product.key}>
@@ -178,14 +175,14 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
                         <button
                           type="button"
                           className="customer-product-thumb"
-                          title={t('Xem ảnh')}
+                          title="Xem ảnh"
                           onClick={() => setPreviewImage(product.previewImage)}
                         >
                           <img src={product.previewImage} alt={product.productName} />
                         </button>
                       ) : (
-                        <span className="customer-product-thumb is-empty" title={t('Chưa có ảnh')}>
-                          <ImageOff size={14} aria-label={t('Chưa có ảnh')} />
+                        <span className="customer-product-thumb is-empty" title="Chưa có ảnh">
+                          <ImageOff size={14} aria-label="Chưa có ảnh" />
                         </span>
                       )}
                     </td>
@@ -217,10 +214,10 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
                         '—'
                       )}
                     </td>
-                    <td>{product.assetCount ? `${product.assetCount} ${t('tệp')}` : '—'}</td>
+                    <td>{product.assetCount ? `${product.assetCount} tệp` : '—'}</td>
                     <td>
                       {actions.length > 0 && (
-                        <RowActionMenu label={`${t('Thao tác')} ${product.productName}`} actions={actions} />
+                        <RowActionMenu label={`Thao tác ${product.productName}`} actions={actions} />
                       )}
                     </td>
                   </tr>
@@ -228,7 +225,7 @@ export const CustomerOrderHistoryCard: React.FC<CustomerOrderHistoryCardProps> =
               })}
               {selectedCustomerProducts.length === 0 && (
                 <tr>
-                  <td colSpan={11}>{t('Chưa có mã sản phẩm.')}</td>
+                  <td colSpan={11}>Chưa có mã sản phẩm.</td>
                 </tr>
               )}
             </tbody>

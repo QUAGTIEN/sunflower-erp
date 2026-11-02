@@ -1,13 +1,11 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Info, X, CircleAlert } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
 import { dismissToast, getToastSnapshot, subscribeToToast } from '@/shared/feedback/mutationFeedback';
 import './MutationToast.css';
 
 export function MutationToast() {
   const toast = useSyncExternalStore(subscribeToToast, getToastSnapshot, () => null);
-  const { t } = useLanguage();
 
   useEffect(() => {
     if (!toast) return;
@@ -46,15 +44,15 @@ export function MutationToast() {
             )}
           </span>
           <div className="mutation-toast__content">
-            <strong>{t(toast.text)}</strong>
-            <p>{t(toast.detail)}</p>
+            <strong>{toast.text}</strong>
+            <p>{toast.detail}</p>
           </div>
           <button
             type="button"
             className="mutation-toast__close"
             onClick={dismissToast}
-            aria-label={t('Đóng thông báo')}
-            title={t('Đóng thông báo')}
+            aria-label="Đóng thông báo"
+            title="Đóng thông báo"
           >
             <X size={16} aria-hidden="true" />
           </button>

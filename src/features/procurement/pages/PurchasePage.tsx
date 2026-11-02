@@ -20,7 +20,6 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
-import { useLanguage } from '@/context/LanguageContext';
 import { formatDate } from '@/shared/utils/dateFormatting';
 import {
   buildSupplierRecommendations,
@@ -98,7 +97,6 @@ export const Purchase: React.FC<PurchaseProps> = ({
   onRefresh,
   users
 }) => {
-  const { t } = useLanguage();
   const [suppliers, setSuppliers] = useState<SupplierRecord[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sourcingFilters, setSourcingFilters] = useState<SourcingType[]>([]);
@@ -177,8 +175,8 @@ export const Purchase: React.FC<PurchaseProps> = ({
     lockedStartIds: ['order'],
     lockedEndIds: ['actions']
   });
-  const requestColumnLabels = Object.fromEntries(PURCHASE_REQUEST_COLUMNS.map(column => [column.id, t(column.label)]));
-  const orderColumnLabels = Object.fromEntries(PURCHASE_ORDER_COLUMNS.map(column => [column.id, t(column.label)]));
+  const requestColumnLabels = Object.fromEntries(PURCHASE_REQUEST_COLUMNS.map(column => [column.id, column.label]));
+  const orderColumnLabels = Object.fromEntries(PURCHASE_ORDER_COLUMNS.map(column => [column.id, column.label]));
   const purchaseActiveFilterCount = sourcingFilters.length + monthFilters.length;
 
   useEffect(() => {
@@ -443,11 +441,11 @@ export const Purchase: React.FC<PurchaseProps> = ({
   return (
     <div className="purchase-page" data-erp-table-text="single-line">
       <PageContextHeader
-        section={t('Mua hàng')}
-        current={activeListView === 'orders' ? t('Đơn mua đã phát hành') : t('Yêu cầu từ đơn hàng')}
+        section="Mua hàng"
+        current={activeListView === 'orders' ? 'Đơn mua đã phát hành' : 'Yêu cầu từ đơn hàng'}
       />
 
-      <div className="purchase-list-tabs content-tabs" role="tablist" aria-label={t('Chọn danh sách mua hàng')}>
+      <div className="purchase-list-tabs content-tabs" role="tablist" aria-label="Chọn danh sách mua hàng">
         <button
           type="button"
           className={`purchase-list-tab ${activeListView === 'requests' ? 'is-active' : ''}`}
@@ -458,7 +456,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
           role="tab"
           aria-selected={activeListView === 'requests'}
         >
-          <span>{t('Yêu cầu từ đơn hàng')}</span>
+          <span>Yêu cầu từ đơn hàng</span>
         </button>
         <button
           type="button"
@@ -470,7 +468,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
           role="tab"
           aria-selected={activeListView === 'orders'}
         >
-          <span>{t('Đơn mua đã phát hành')}</span>
+          <span>Đơn mua đã phát hành</span>
         </button>
       </div>
 
@@ -478,13 +476,13 @@ export const Purchase: React.FC<PurchaseProps> = ({
         <div className="purchase-toolbar">
           <div className="purchase-search">
             <input
-              aria-label={t('Tìm kiếm mua hàng')}
+              aria-label="Tìm kiếm mua hàng"
               value={searchTerm}
               onChange={event => setSearchTerm(event.target.value)}
               placeholder={
                 activeListView === 'requests'
-                  ? t('Tìm mã đơn hàng, khách hàng, mã hàng, vật liệu hoặc NCC...')
-                  : t('Tìm mã đơn mua, NCC, đơn hàng khách hàng hoặc mặt hàng...')
+                  ? 'Tìm mã đơn hàng, khách hàng, mã hàng, vật liệu hoặc NCC...'
+                  : 'Tìm mã đơn mua, NCC, đơn hàng khách hàng hoặc mặt hàng...'
               }
             />
           </div>
@@ -495,7 +493,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
           />
           {canEditColumns && (
             <IconButton
-              label={t('Tùy chỉnh cột')}
+              label="Tùy chỉnh cột"
               icon={<Settings2 />}
               onClick={() => setShowPurchaseColumnCustomizer(true)}
             />
@@ -531,19 +529,19 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     getHeaderProps={getRequestHeaderProps}
                     labels={requestColumnLabels}
                   >
-                    <th key="request">{t('Yêu cầu / đơn hàng')}</th>
-                    {requestVisibleColumnSet.has('customer') && <th key="customer">{t('Khách hàng')}</th>}
-                    {requestVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng')}</th>}
-                    {requestVisibleColumnSet.has('sourcing') && <th key="sourcing">{t('Phương án cung ứng')}</th>}
+                    <th key="request">Yêu cầu / đơn hàng</th>
+                    {requestVisibleColumnSet.has('customer') && <th key="customer">Khách hàng</th>}
+                    {requestVisibleColumnSet.has('product') && <th key="product">Mặt hàng</th>}
+                    {requestVisibleColumnSet.has('sourcing') && <th key="sourcing">Phương án cung ứng</th>}
                     {requestVisibleColumnSet.has('quantity') && (
                       <th key="quantity" className="erp-number-cell">
-                        {t('Số lượng')}
+                        Số lượng
                       </th>
                     )}
-                    {requestVisibleColumnSet.has('requiredDate') && <th key="requiredDate">{t('Ngày cần')}</th>}
-                    {requestVisibleColumnSet.has('purchaser') && <th key="purchaser">{t('Mua hàng phụ trách')}</th>}
-                    {requestVisibleColumnSet.has('supplier') && <th key="supplier">{t('NCC')}</th>}
-                    <th key="actions">{t('Thao tác')}</th>
+                    {requestVisibleColumnSet.has('requiredDate') && <th key="requiredDate">Ngày cần</th>}
+                    {requestVisibleColumnSet.has('purchaser') && <th key="purchaser">Mua hàng phụ trách</th>}
+                    {requestVisibleColumnSet.has('supplier') && <th key="supplier">NCC</th>}
+                    <th key="actions">Thao tác</th>
                   </ReorderableTableCells>
                 </tr>
               </thead>
@@ -605,25 +603,25 @@ export const Purchase: React.FC<PurchaseProps> = ({
                         </td>
                       )}
                       {requestVisibleColumnSet.has('purchaser') && (
-                        <td key="purchaser">{request.assignedPurchaserName || t('Chưa phân công')}</td>
+                        <td key="purchaser">{request.assignedPurchaserName || 'Chưa phân công'}</td>
                       )}
                       {requestVisibleColumnSet.has('supplier') && (
                         <td key="supplier">{request.selectedSupplierName || '—'}</td>
                       )}
                       <td key="actions">
                         <RowActionMenu
-                          label={`${t('Thao tác')} ${request.requestCode}`}
+                          label={`Thao tác ${request.requestCode}`}
                           actions={[
                             ...(request.status === 'new'
                               ? [
                                   {
-                                    label: t('Tiếp nhận'),
+                                    label: 'Tiếp nhận',
                                     onSelect: () => handleUpdateRequestStatus(request, 'reviewing')
                                   }
                                 ]
                               : []),
                             ...(ACTIVE_STATUSES.includes(request.status)
-                              ? [{ label: t('Chọn NCC'), onSelect: () => openRequest(request) }]
+                              ? [{ label: 'Chọn NCC', onSelect: () => openRequest(request) }]
                               : [])
                           ]}
                         />
@@ -644,17 +642,17 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     getHeaderProps={getOrderHeaderProps}
                     labels={orderColumnLabels}
                   >
-                    <th key="order">{t('Mã đơn mua')}</th>
-                    {orderVisibleColumnSet.has('supplier') && <th key="supplier">{t('Nhà cung cấp')}</th>}
-                    {orderVisibleColumnSet.has('po') && <th key="po">{t('Đơn hàng khách hàng')}</th>}
-                    {orderVisibleColumnSet.has('product') && <th key="product">{t('Mặt hàng')}</th>}
+                    <th key="order">Mã đơn mua</th>
+                    {orderVisibleColumnSet.has('supplier') && <th key="supplier">Nhà cung cấp</th>}
+                    {orderVisibleColumnSet.has('po') && <th key="po">Đơn hàng khách hàng</th>}
+                    {orderVisibleColumnSet.has('product') && <th key="product">Mặt hàng</th>}
                     {orderVisibleColumnSet.has('value') && (
                       <th key="value" className="erp-number-cell">
-                        {t('Giá trị')}
+                        Giá trị
                       </th>
                     )}
-                    {orderVisibleColumnSet.has('expectedDate') && <th key="expectedDate">{t('Ngày nhận dự kiến')}</th>}
-                    <th key="actions">{t('Thao tác')}</th>
+                    {orderVisibleColumnSet.has('expectedDate') && <th key="expectedDate">Ngày nhận dự kiến</th>}
+                    <th key="actions">Thao tác</th>
                   </ReorderableTableCells>
                 </tr>
               </thead>
@@ -688,21 +686,20 @@ export const Purchase: React.FC<PurchaseProps> = ({
                       <td key="actions">
                         {asText(order.status) !== 'received' ? (
                           <RowActionMenu
-                            label={`${t('Thao tác')} ${asText(order.purCode)}`}
+                            label={`Thao tác ${asText(order.purCode)}`}
                             actions={[
                               {
-                                label: t(
+                                label:
                                   asText(order.sourcingType) === 'raw_material'
                                     ? 'Nhập kho NVL'
-                                    : 'Nhập kho hàng mua / gia công'
-                                ),
+                                    : 'Nhập kho hàng mua / gia công',
                                 disabled: asText(order.status) === 'cancelled' || !canPostWarehouse(currentUser),
                                 onSelect: () => handleReceiveOrder(order)
                               },
                               ...(asText(order.sourcingType) !== 'raw_material'
                                 ? [
                                     {
-                                      label: t('NCC giao thẳng khách'),
+                                      label: 'NCC giao thẳng khách',
                                       disabled: !canPostWarehouse(currentUser) || asText(order.status) === 'cancelled',
                                       onSelect: () =>
                                         setGoodsOptions({ kind: 'supplier_dispatch', sourceId: asText(order.id) })
@@ -736,8 +733,8 @@ export const Purchase: React.FC<PurchaseProps> = ({
       />
       <DataFilterPanel
         open={showPurchaseFilters}
-        title={t('Lọc danh sách mua hàng')}
-        description={t('Lọc theo phương án cung ứng và tháng phát sinh.')}
+        title="Lọc danh sách mua hàng"
+        description="Lọc theo phương án cung ứng và tháng phát sinh."
         activeCount={purchaseActiveFilterCount}
         onClose={() => setShowPurchaseFilters(false)}
         onReset={() => {
@@ -745,14 +742,14 @@ export const Purchase: React.FC<PurchaseProps> = ({
           setMonthFilters([]);
         }}
       >
-        <DataFilterSection title={t('Phương án cung ứng')} selectedCount={sourcingFilters.length} defaultExpanded>
+        <DataFilterSection title="Phương án cung ứng" selectedCount={sourcingFilters.length} defaultExpanded>
           <DataFilterCheckboxGroup
             options={SOURCING_TYPES.map(type => ({ value: type, label: getSourcingTypeLabel(type) }))}
             selectedValues={sourcingFilters}
             onChange={values => setSourcingFilters(values as SourcingType[])}
           />
         </DataFilterSection>
-        <DataFilterSection title={t('Tháng phát sinh')} selectedCount={monthFilters.length}>
+        <DataFilterSection title="Tháng phát sinh" selectedCount={monthFilters.length}>
           <DataFilterCheckboxGroup
             options={months.map(month => ({ value: month, label: month }))}
             selectedValues={monthFilters}
@@ -766,34 +763,34 @@ export const Purchase: React.FC<PurchaseProps> = ({
           <div className="modal-content procurement-modal">
             <div className="modal-header">
               <div>
-                <strong>{t('CHỌN NHÀ CUNG CẤP')}</strong>
+                <strong>CHỌN NHÀ CUNG CẤP</strong>
                 <span>
                   {selectedRequest.requestCode} · {selectedRequest.poCode}
                 </span>
               </div>
               <button type="button" className="btn btn-outline" onClick={() => setSelectedRequestId('')}>
-                {t('Đóng')}
+                Đóng
               </button>
             </div>
             <form onSubmit={handleCreatePurchaseOrder}>
               <div className="modal-body">
                 <div className="procurement-context">
                   <div>
-                    <span>{t('Khách hàng')}</span>
+                    <span>Khách hàng</span>
                     <strong>{selectedRequest.customerName}</strong>
                   </div>
                   <div>
-                    <span>{t('Mặt hàng')}</span>
+                    <span>Mặt hàng</span>
                     <strong>{selectedRequest.productName}</strong>
                   </div>
                   <div>
-                    <span>{t('Quy cách')}</span>
+                    <span>Quy cách</span>
                     <strong>
                       {[selectedRequest.material, selectedRequest.size].filter(Boolean).join(' · ') || '—'}
                     </strong>
                   </div>
                   <div>
-                    <span>{t('Số lượng')}</span>
+                    <span>Số lượng</span>
                     <strong>
                       {selectedRequest.quantity.toLocaleString('vi-VN')} {selectedRequest.unit}
                     </strong>
@@ -802,8 +799,8 @@ export const Purchase: React.FC<PurchaseProps> = ({
 
                 <section className="recommendation-section">
                   <div className="panel-heading-row">
-                    <h3>{t('NCC được đề xuất từ lịch sử mua')}</h3>
-                    <small>{t('Điểm dựa trên mặt hàng tương tự, giá, số lần mua, giao đúng hạn và đánh giá.')}</small>
+                    <h3>NCC được đề xuất từ lịch sử mua</h3>
+                    <small>Điểm dựa trên mặt hàng tương tự, giá, số lần mua, giao đúng hạn và đánh giá.</small>
                   </div>
                   <div className="recommendation-grid">
                     {recommendations.map((recommendation, index) => (
@@ -818,9 +815,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                       >
                         <div>
                           <span>#{index + 1}</span>
-                          <strong>
-                            {recommendation.score} {t('điểm')}
-                          </strong>
+                          <strong>{recommendation.score} điểm</strong>
                         </div>
                         <h4>{recommendation.supplier.supplierName}</h4>
                         {recommendation.reasons.slice(0, 3).map(reason => (
@@ -830,7 +825,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     ))}
                     {recommendations.length === 0 && (
                       <div className="purchase-empty">
-                        {t('Chưa có NCC hoạt động. Hãy thêm NCC trong Danh sách nhà cung cấp.')}
+                        Chưa có NCC hoạt động. Hãy thêm NCC trong Danh sách nhà cung cấp.
                       </div>
                     )}
                   </div>
@@ -839,25 +834,23 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     <div className="supplier-supply-history">
                       <div className="supplier-supply-history__header">
                         <div>
-                          <strong>{t('Lịch sử cung ứng')}</strong>
+                          <strong>Lịch sử cung ứng</strong>
                           <span>{selectedSupplierName}</span>
                         </div>
-                        <span>
-                          {selectedSupplierHistory.length} {t('lần cung ứng')}
-                        </span>
+                        <span>{selectedSupplierHistory.length} lần cung ứng</span>
                       </div>
                       {selectedSupplierHistory.length > 0 ? (
                         <div className="table-container supplier-supply-history__table-wrap">
                           <table>
                             <thead>
                               <tr>
-                                <th>{t('Đơn mua')}</th>
-                                <th>{t('Ngày đặt')}</th>
-                                <th>{t('Mặt hàng')}</th>
-                                <th>{t('Số lượng')}</th>
-                                <th>{t('Đơn giá')}</th>
-                                <th>{t('Thành tiền')}</th>
-                                <th>{t('Ngày nhận')}</th>
+                                <th>Đơn mua</th>
+                                <th>Ngày đặt</th>
+                                <th>Mặt hàng</th>
+                                <th>Số lượng</th>
+                                <th>Đơn giá</th>
+                                <th>Thành tiền</th>
+                                <th>Ngày nhận</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -882,7 +875,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                           </table>
                         </div>
                       ) : (
-                        <p className="purchase-empty">{t('Nhà cung cấp này chưa có lần cung ứng nào trước đây.')}</p>
+                        <p className="purchase-empty">Nhà cung cấp này chưa có lần cung ứng nào trước đây.</p>
                       )}
                     </div>
                   )}
@@ -890,7 +883,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
 
                 <div className="procurement-form-grid">
                   <div className="form-group">
-                    <label>{t('Phương án cung ứng')}</label>
+                    <label>Phương án cung ứng</label>
                     <select
                       value={sourcingType}
                       onChange={event => setSourcingType(event.target.value as SourcingType)}
@@ -903,9 +896,9 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>{t('Nhà cung cấp *')}</label>
+                    <label>Nhà cung cấp *</label>
                     <select value={supplierId} onChange={event => setSupplierId(event.target.value)} required>
-                      <option value="">{t('Chọn nhà cung cấp')}</option>
+                      <option value="">Chọn nhà cung cấp</option>
                       {suppliers.map(supplier => (
                         <option key={supplier.id} value={supplier.id}>
                           {supplier.supplierName}
@@ -914,7 +907,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>{t('Đơn giá mua *')}</label>
+                    <label>Đơn giá mua *</label>
                     <input
                       type="number"
                       min="1"
@@ -924,7 +917,7 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     />
                   </div>
                   <div className="form-group">
-                    <label>{t('Ngày nhận dự kiến *')}</label>
+                    <label>Ngày nhận dự kiến *</label>
                     <input
                       type="date"
                       value={expectedReceiveDate}
@@ -933,9 +926,9 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     />
                   </div>
                   <div className="form-group">
-                    <label>{t('Nhân viên mua hàng')}</label>
+                    <label>Nhân viên mua hàng</label>
                     <select value={assignedPurchaserId} onChange={event => setAssignedPurchaserId(event.target.value)}>
-                      <option value="">{t('Chưa phân công')}</option>
+                      <option value="">Chưa phân công</option>
                       {purchasers.map(user => (
                         <option key={user.uid} value={user.uid}>
                           {user.displayName}
@@ -944,17 +937,17 @@ export const Purchase: React.FC<PurchaseProps> = ({
                     </select>
                   </div>
                   <div className="procurement-total">
-                    <span>{t('Tổng tiền dự kiến')}</span>
+                    <span>Tổng tiền dự kiến</span>
                     <strong>{(selectedRequest.quantity * unitPrice).toLocaleString('vi-VN')} đ</strong>
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={() => setSelectedRequestId('')}>
-                  {t('Hủy')}
+                  Hủy
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={isSaving || !supplierId}>
-                  {isSaving ? t('Đang lưu...') : t('Chọn NCC & tạo đơn mua')}
+                  {isSaving ? 'Đang lưu...' : 'Chọn NCC & tạo đơn mua'}
                 </button>
               </div>
             </form>

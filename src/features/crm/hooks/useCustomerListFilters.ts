@@ -47,7 +47,6 @@ export interface CustomerListFilterInputs {
   getCustomerOrderValue: (customerId: string) => number;
   getCustomerOutstandingDebt: (customerId: string) => number | undefined;
   today: Date;
-  t: (key: string) => string;
 }
 
 /**
@@ -68,8 +67,7 @@ export function useCustomerListFilters({
   getCustomerOrders,
   getCustomerOrderValue,
   getCustomerOutstandingDebt,
-  today,
-  t
+  today
 }: CustomerListFilterInputs) {
   const [searchTerm, setSearchTerm] = useState('');
   const [saleFilters, setSaleFilters] = useState<string[]>([]);
@@ -218,13 +216,13 @@ export function useCustomerListFilters({
   const poTimeFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.poTime, poTimeFilterDefinition);
   const productFilterCopy = configuredCustomerFilter(CUSTOMER_FILTER_IDS.product, productFilterDefinition);
   const advancedFilterGroups = {
-    company: t('Hồ sơ doanh nghiệp'),
-    classification: t('Địa bàn doanh nghiệp'),
-    contact: t('Liên hệ và nguồn dữ liệu'),
-    needs: t('Nhu cầu và sản phẩm'),
-    assignment: t('Phụ trách và lịch hẹn'),
-    additional: t('Điều khoản thương mại'),
-    result: t('Kết quả kinh doanh')
+    company: 'Hồ sơ doanh nghiệp',
+    classification: 'Địa bàn doanh nghiệp',
+    contact: 'Liên hệ và nguồn dữ liệu',
+    needs: 'Nhu cầu và sản phẩm',
+    assignment: 'Phụ trách và lịch hẹn',
+    additional: 'Điều khoản thương mại',
+    result: 'Kết quả kinh doanh'
   };
   const customerSystemAdvancedField = (
     id: string,
@@ -237,7 +235,7 @@ export function useCustomerListFilters({
     const configuration = inlineSystemFieldConfiguration.fields.find(field => field.key === id);
     return configuration?.removed
       ? null
-      : { id: `system:${id}`, label: configuration?.label || t(fallbackLabel), group, kind, getValues, options };
+      : { id: `system:${id}`, label: configuration?.label || fallbackLabel, group, kind, getValues, options };
   };
   const advancedFilterFields: AdvancedFilterField<CustomerRecord>[] = [
     customerSystemAdvancedField('companyName', 'Tên khách hàng', advancedFilterGroups.company, 'text', customer => [

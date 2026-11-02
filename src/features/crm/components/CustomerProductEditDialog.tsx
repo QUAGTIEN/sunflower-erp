@@ -1,5 +1,4 @@
 import React from 'react';
-import { useLanguage } from '@/context/LanguageContext';
 import type { ErpDocument } from '@/shared/types';
 
 interface SpecCustomRow {
@@ -106,26 +105,24 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
   onSubmit: handleEditProductSubmit,
   onClose
 }) => {
-  const { t } = useLanguage();
-
   return (
     <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: '600px' }}>
         <div className="modal-header">
-          <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHỈNH SỬA MÃ SẢN PHẨM KHÁCH HÀNG')}</span>
+          <span style={{ fontWeight: 700, fontSize: '16px' }}>CHỈNH SỬA MÃ SẢN PHẨM KHÁCH HÀNG</span>
           <button className="btn btn-sm btn-outline" onClick={onClose}>
-            {t('Đóng')}
+            Đóng
           </button>
         </div>
         <form onSubmit={handleEditProductSubmit}>
           <div className="modal-body" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
             <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="form-group">
-                <label>{t('Mã Sản Phẩm')} *</label>
+                <label>Mã Sản Phẩm *</label>
                 <input type="text" value={productCode} onChange={e => setProductCode(e.target.value)} required />
               </div>
               <div className="form-group">
-                <label>{t('Tên Hàng Hóa')} *</label>
+                <label>Tên Hàng Hóa *</label>
                 <input type="text" value={productName} onChange={e => setProductName(e.target.value)} required />
               </div>
             </div>
@@ -135,7 +132,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
               style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}
             >
               <div className="form-group">
-                <label>{t('Phân Loại Sản Phẩm')} *</label>
+                <label>Phân Loại Sản Phẩm *</label>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <select
                     value={productType}
@@ -144,7 +141,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                   >
                     {availableProductClassifications.map(c => (
                       <option key={c.id} value={c.id}>
-                        {t(c.name)}
+                        {c.name}
                       </option>
                     ))}
                   </select>
@@ -152,22 +149,22 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                     type="button"
                     className="btn btn-sm btn-outline"
                     onClick={triggerAddClassification}
-                    title={t('Thêm')}
+                    title="Thêm"
                   >
-                    {t('+')}
+                    +
                   </button>
                   <button
                     type="button"
                     className="btn btn-sm btn-outline"
                     onClick={() => triggerEditClassification(productType)}
-                    title={t('Sửa')}
+                    title="Sửa"
                   >
-                    {t('Sửa')}
+                    Sửa
                   </button>
                 </div>
               </div>
               <div className="form-group">
-                <label>{t('Đơn Giá Bán Hiện Tại (đ)')} *</label>
+                <label>Đơn Giá Bán Hiện Tại (đ) *</label>
                 <input
                   type="number"
                   min="0"
@@ -183,12 +180,12 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
               style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}
             >
               <div className="form-group">
-                <label>{t('Chất Liệu')}</label>
+                <label>Chất Liệu</label>
                 <input
                   type="text"
                   value={productMaterial}
                   onChange={e => setProductMaterial(e.target.value)}
-                  placeholder={t('VD: Decal Giấy Fasson AW0339F')}
+                  placeholder="VD: Decal Giấy Fasson AW0339F"
                   list="materials-suggest-crm-edit"
                 />
                 <datalist id="materials-suggest-crm-edit">
@@ -199,7 +196,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                 </datalist>
               </div>
               <div className="form-group">
-                <label>{t('Tải Ảnh Layout Thiết Kế Mẫu')}</label>
+                <label>Tải Ảnh Layout Thiết Kế Mẫu</label>
                 <input type="file" accept="image/*" onChange={handleProductLayoutChange} style={{ fontSize: '12px' }} />
                 {productLayoutBase64 && (
                   <img
@@ -216,7 +213,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
             <span
               style={{ display: 'block', borderBottom: '1px solid var(--color-border-light)', margin: '16px 0' }}
             ></span>
-            <h4 style={{ color: 'var(--color-primary)', marginBottom: '10px' }}>{t('MÔ TẢ THÔNG SỐ KỸ THUẬT')}</h4>
+            <h4 style={{ color: 'var(--color-primary)', marginBottom: '10px' }}>MÔ TẢ THÔNG SỐ KỸ THUẬT</h4>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '10px' }}>
               {specFields.map(field => {
@@ -239,7 +236,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                           width: '100%'
                         }}
                         onDoubleClick={() => handleStartEditLabel(field.id, field.label)}
-                        title={t('Nhấp đúp chuột để sửa tên')}
+                        title="Nhấp đúp chuột để sửa tên"
                       >
                         {isEditingLabel ? (
                           <input
@@ -274,7 +271,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                                 fontWeight: 'normal'
                               }}
                             >
-                              ({t('nhấn đúp để sửa')})
+                              (nhấn đúp để sửa)
                             </span>
                           </>
                         )}
@@ -292,7 +289,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                           padding: '2px 4px',
                           fontSize: '12px'
                         }}
-                        title={t('Xóa thông số này')}
+                        title="Xóa thông số này"
                       >
                         ❌
                       </button>
@@ -332,9 +329,9 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                           type="button"
                           className="btn btn-sm btn-outline"
                           onClick={triggerAddWindDirection}
-                          title={t('Thêm')}
+                          title="Thêm"
                         >
-                          {t('+')}
+                          +
                         </button>
                         <button
                           type="button"
@@ -343,9 +340,9 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                             const matched = windDirections.find(w => w.name === field.value);
                             if (matched) triggerEditWindDirection(matched.id);
                           }}
-                          title={t('Sửa')}
+                          title="Sửa"
                         >
-                          {t('Sửa')}
+                          Sửa
                         </button>
                       </div>
                     )}
@@ -368,9 +365,9 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                             type="button"
                             className="btn btn-sm btn-outline"
                             onClick={() => handleEditDropdownOptions(field.id)}
-                            title={t('Sửa danh sách lựa chọn')}
+                            title="Sửa danh sách lựa chọn"
                           >
-                            {t('Sửa mục')}
+                            Sửa mục
                           </button>
                         )}
                       </div>
@@ -483,10 +480,10 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
 
             <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'flex-start' }}>
               <button type="button" className="btn btn-sm btn-outline" onClick={handleAddField}>
-                + {t('Thêm Nhập Liệu')}
+                + Thêm Nhập Liệu
               </button>
               <button type="button" className="btn btn-sm btn-outline" onClick={handleAddSelectField}>
-                + {t('Thêm Dropdown')}
+                + Thêm Dropdown
               </button>
             </div>
 
@@ -501,7 +498,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                 }}
               >
                 <h5 style={{ color: 'var(--color-primary)', margin: 0, fontSize: '13.5px', fontWeight: 600 }}>
-                  {t('LỰA CHỌN & THÔNG SỐ BỔ SUNG')}
+                  LỰA CHỌN & THÔNG SỐ BỔ SUNG
                 </h5>
                 <button
                   type="button"
@@ -509,12 +506,12 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                   onClick={() => setSpecCustomRows([...specCustomRows, { key: '', value: '' }])}
                   style={{ fontSize: '11px', padding: '2px 8px' }}
                 >
-                  + {t('Thêm Dòng')}
+                  + Thêm Dòng
                 </button>
               </div>
               {specCustomRows.length === 0 ? (
                 <p style={{ fontSize: '11.5px', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: 0 }}>
-                  {t('Chưa có thông số bổ sung nào.')}
+                  Chưa có thông số bổ sung nào.
                 </p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -528,7 +525,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                           updated[idx].key = e.target.value;
                           setSpecCustomRows(updated);
                         }}
-                        placeholder={t('Tên thông số (VD: Độ bám dính)')}
+                        placeholder="Tên thông số (VD: Độ bám dính)"
                         style={{
                           flex: 1,
                           padding: '4px 8px',
@@ -546,7 +543,7 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
                           updated[idx].value = e.target.value;
                           setSpecCustomRows(updated);
                         }}
-                        placeholder={t('Giá trị (VD: Cao)')}
+                        placeholder="Giá trị (VD: Cao)"
                         style={{
                           flex: 1,
                           padding: '4px 8px',
@@ -579,10 +576,10 @@ export const CustomerProductEditDialog: React.FC<CustomerProductEditDialogProps>
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-outline" onClick={onClose}>
-              {t('Hủy')}
+              Hủy
             </button>
             <button type="submit" className="btn btn-primary">
-              {t('Lưu Thay Đổi')}
+              Lưu Thay Đổi
             </button>
           </div>
         </form>

@@ -11,7 +11,6 @@ import { Upload, SlidersHorizontal, Trash2 } from 'lucide-react';
 
 interface POItemsGridProps {
   tableZoom: number;
-  t: (key: string) => string;
   usesCatalogProducts: boolean;
   orderItems: ErpDocument[];
   expandedItemIds: string[];
@@ -29,7 +28,6 @@ interface POItemsGridProps {
 /** Editable PO line grid: product, specification, quantity, price and file columns. */
 export const POItemsGrid: React.FC<POItemsGridProps> = ({
   tableZoom,
-  t,
   usesCatalogProducts,
   orderItems,
   expandedItemIds,
@@ -48,18 +46,18 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
       <thead>
         <tr>
           <th style={{ width: '64px', textAlign: 'center' }}>STT</th>
-          <th style={{ width: '130px' }}>{t('Mã sản phẩm')}</th>
-          <th style={{ width: '180px' }}>{usesCatalogProducts ? t('Tên sản phẩm') : t('Tên hàng *')}</th>
-          <th style={{ width: '180px' }}>{t('Quy cách / Chất liệu')}</th>
-          <th style={{ width: '70px' }}>{t('ĐVT')}</th>
-          <th style={{ width: '80px' }}>{t('Số lượng')}</th>
-          <th style={{ width: '95px' }}>{t('Đơn giá')}</th>
-          <th style={{ width: '65px' }}>{t('Thuế (%)')}</th>
-          <th style={{ width: '190px' }}>{t('Chiết khấu')}</th>
-          <th style={{ width: '125px' }}>{t('Thành tiền (gồm VAT)')}</th>
-          <th style={{ width: '85px' }}>{t('KPI đơn hàng')}</th>
+          <th style={{ width: '130px' }}>Mã sản phẩm</th>
+          <th style={{ width: '180px' }}>{usesCatalogProducts ? 'Tên sản phẩm' : 'Tên hàng *'}</th>
+          <th style={{ width: '180px' }}>Quy cách / Chất liệu</th>
+          <th style={{ width: '70px' }}>ĐVT</th>
+          <th style={{ width: '80px' }}>Số lượng</th>
+          <th style={{ width: '95px' }}>Đơn giá</th>
+          <th style={{ width: '65px' }}>Thuế (%)</th>
+          <th style={{ width: '190px' }}>Chiết khấu</th>
+          <th style={{ width: '125px' }}>Thành tiền (gồm VAT)</th>
+          <th style={{ width: '85px' }}>KPI đơn hàng</th>
           <th style={{ width: usesCatalogProducts ? '180px' : '140px' }}>
-            {usesCatalogProducts ? t('Thao tác') : t('File liên quan')}
+            {usesCatalogProducts ? 'Thao tác' : 'File liên quan'}
           </th>
         </tr>
       </thead>
@@ -142,7 +140,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                   }}
                 >
                   <Upload size={10} />
-                  <span>+ {t('File')}</span>
+                  <span>+ File</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -165,7 +163,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                         type="button"
                         className={`po-detail-toggle ${isExpanded ? 'is-active' : ''}`}
                         onClick={() => toggleItemDetails(itemKey)}
-                        title={isExpanded ? t('Ẩn chi tiết') : t('Mở ngày giao và ghi chú')}
+                        title={isExpanded ? 'Ẩn chi tiết' : 'Mở ngày giao và ghi chú'}
                         aria-expanded={isExpanded}
                       >
                         <SlidersHorizontal size={14} />
@@ -174,7 +172,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                         type="button"
                         className="btn btn-sm btn-danger po-row-delete"
                         onClick={() => handleRemoveRow(index)}
-                        title={t('Xóa dòng')}
+                        title="Xóa dòng"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -193,7 +191,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                         className="po-grid-input"
                         value={item.productCode || ''}
                         onChange={event => handleUpdateRowField(index, 'productCode', event.target.value)}
-                        placeholder={t('Mã sản phẩm')}
+                        placeholder="Mã sản phẩm"
                         list={`product-codes-list-${index}`}
                       />
                       <datalist id={`product-codes-list-${index}`}>
@@ -205,7 +203,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                       </datalist>
                       {!usesCatalogProducts && (
                         <button type="button" className="btn btn-outline" onClick={() => openSearchPopup(index)}>
-                          {t('Chọn')}
+                          Chọn
                         </button>
                       )}
                     </div>
@@ -223,7 +221,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                         className="po-grid-input"
                         value={item.productName || ''}
                         onChange={event => handleUpdateRowField(index, 'productName', event.target.value)}
-                        placeholder={t('Tên sản phẩm')}
+                        placeholder="Tên sản phẩm"
                         list={`product-names-list-${index}`}
                       />
                       <datalist id={`product-names-list-${index}`}>
@@ -249,14 +247,14 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                           className="po-grid-input"
                           value={item.size || ''}
                           onChange={event => handleUpdateRowField(index, 'size', event.target.value)}
-                          placeholder={t('Quy cách')}
+                          placeholder="Quy cách"
                         />
                         <input
                           type="text"
                           className="po-grid-input"
                           value={item.material || ''}
                           onChange={event => handleUpdateRowField(index, 'material', event.target.value)}
-                          placeholder={t('Chất liệu')}
+                          placeholder="Chất liệu"
                           list={`materials-suggest-${index}`}
                         />
                       </div>
@@ -280,7 +278,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                       className="po-grid-input"
                       value={item.unit || ''}
                       onChange={event => handleUpdateRowField(index, 'unit', event.target.value)}
-                      placeholder={t('ĐVT')}
+                      placeholder="ĐVT"
                     />
                   )}
                 </td>
@@ -318,15 +316,15 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                     <select
                       className="po-grid-input po-discount-mode"
                       value={financials.discountType}
-                      title={financials.discountType === 'amount' ? t('Tiền chênh (VNĐ)') : t('Theo phần trăm')}
-                      aria-label={t('Hình thức chiết khấu')}
+                      title={financials.discountType === 'amount' ? 'Tiền chênh (VNĐ)' : 'Theo phần trăm'}
+                      aria-label="Hình thức chiết khấu"
                       onChange={e => {
                         const discountType = e.target.value === 'amount' ? 'amount' : 'percent';
                         handleUpdateRowField(index, 'discountType', discountType);
                       }}
                     >
                       <option value="percent">%</option>
-                      <option value="amount">{t('Tiền chênh')}</option>
+                      <option value="amount">Tiền chênh</option>
                     </select>
                     <input
                       type="number"
@@ -350,7 +348,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                 </td>
                 <td className="po-money-cell">{Math.round(financials.amountWithVat).toLocaleString()} đ</td>
                 <td style={{ textAlign: 'center' }}>
-                  <span className="po-kpi-badge" title={t('Tỷ lệ giá trị còn lại sau chiết khấu')}>
+                  <span className="po-kpi-badge" title="Tỷ lệ giá trị còn lại sau chiết khấu">
                     {financials.kpiPo.toFixed(1)}%
                   </span>
                 </td>
@@ -358,23 +356,23 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                   {usesCatalogProducts ? (
                     <div className="po-catalog-row-actions">
                       <button type="button" aria-expanded={isExpanded} onClick={() => toggleItemDetails(itemKey)}>
-                        {isExpanded ? t('Thu gọn') : t('Chi tiết')}
+                        {isExpanded ? 'Thu gọn' : 'Chi tiết'}
                       </button>
                       <button
                         type="button"
                         onClick={() => openSearchPopup(index)}
                         disabled={!catalogProducts.length || isSaving}
-                        aria-label={`${t('Đổi sản phẩm')}: ${item.productCode || index + 1}`}
+                        aria-label={`Đổi sản phẩm: ${item.productCode || index + 1}`}
                       >
-                        {t('Đổi')}
+                        Đổi
                       </button>
                       <button
                         type="button"
                         className="po-catalog-row-delete"
                         onClick={() => handleRemoveRow(index)}
-                        aria-label={`${t('Xóa dòng')}: ${item.productCode || index + 1}`}
+                        aria-label={`Xóa dòng: ${item.productCode || index + 1}`}
                       >
-                        {t('Xóa')}
+                        Xóa
                       </button>
                     </div>
                   ) : (
@@ -387,7 +385,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                   <td colSpan={12}>
                     {usesCatalogProducts && (
                       <section className="po-catalog-row-files">
-                        <h4>{t('Ảnh thiết kế / layout')}</h4>
+                        <h4>Ảnh thiết kế / layout</h4>
                         {rowAttachments}
                       </section>
                     )}
@@ -395,12 +393,12 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                       <div className="po-inherited-details">
                         {technicalSummary.length > 0 && (
                           <section>
-                            <h4>{t('Thông số kỹ thuật')}</h4>
+                            <h4>Thông số kỹ thuật</h4>
                             <dl>
                               {technicalSummary.map(field => (
                                 <div key={field.id}>
-                                  <dt>{t(field.label)}</dt>
-                                  <dd>{t(field.value)}</dd>
+                                  <dt>{field.label}</dt>
+                                  <dd>{field.value}</dd>
                                 </div>
                               ))}
                             </dl>
@@ -408,7 +406,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                         )}
                         {productAssets.length > 0 && (
                           <section>
-                            <h4>{t('Tệp của sản phẩm')}</h4>
+                            <h4>Tệp của sản phẩm</h4>
                             <div className="po-inherited-files">
                               {productAssets.map((file, fileIndex) => (
                                 <button
@@ -418,7 +416,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                                   onClick={() => openCustomerProductAsset(file.url)}
                                   title={file.name}
                                 >
-                                  {file.name || t('Xem tệp')}
+                                  {file.name || 'Xem tệp'}
                                 </button>
                               ))}
                             </div>
@@ -426,7 +424,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                         )}
                         {item.productNote && (
                           <section>
-                            <h4>{t('Ghi chú sản phẩm')}</h4>
+                            <h4>Ghi chú sản phẩm</h4>
                             <p>{item.productNote}</p>
                           </section>
                         )}
@@ -434,7 +432,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                     )}
                     <div className="po-item-detail-grid">
                       <div className="form-group">
-                        <label>{t('Ngày giao của mã hàng')}</label>
+                        <label>Ngày giao của mã hàng</label>
                         <input
                           type="date"
                           value={item.deliveryDate}
@@ -442,27 +440,26 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                         />
                       </div>
                       <div className="form-group po-item-note-field">
-                        <label>{t('Ghi chú dòng hàng')}</label>
+                        <label>Ghi chú dòng hàng</label>
                         <input
                           type="text"
                           value={item.note || ''}
                           onChange={e => handleUpdateRowField(index, 'note', e.target.value)}
-                          placeholder={t('Yêu cầu riêng cho mã hàng...')}
+                          placeholder="Yêu cầu riêng cho mã hàng..."
                         />
                       </div>
                       <div className="po-item-calculation">
                         <span>
-                          {t('Trước chiết khấu')}:{' '}
-                          <strong>{Math.round(financials.grossAmount).toLocaleString()} đ</strong>
+                          Trước chiết khấu: <strong>{Math.round(financials.grossAmount).toLocaleString()} đ</strong>
                         </span>
                         <span>
-                          {t('Chiết khấu')}: <strong>{Math.round(financials.discountAmount).toLocaleString()} đ</strong>
+                          Chiết khấu: <strong>{Math.round(financials.discountAmount).toLocaleString()} đ</strong>
                         </span>
                         <span>
-                          {t('Trước VAT')}: <strong>{Math.round(financials.amountBeforeVat).toLocaleString()} đ</strong>
+                          Trước VAT: <strong>{Math.round(financials.amountBeforeVat).toLocaleString()} đ</strong>
                         </span>
                         <span>
-                          {t('Sau VAT')}: <strong>{Math.round(financials.amountWithVat).toLocaleString()} đ</strong>
+                          Sau VAT: <strong>{Math.round(financials.amountWithVat).toLocaleString()} đ</strong>
                         </span>
                       </div>
                     </div>

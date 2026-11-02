@@ -1,6 +1,5 @@
 import type { EntityFieldDefinition } from '@/features/crm/model/entityFieldConfig';
 import type { UserProfile } from '@/shared/types/user';
-import { useLanguage } from '@/context/LanguageContext';
 import type { useSystemFieldConfiguration } from '@/hooks/useSystemFieldConfiguration';
 import { useState, useMemo } from 'react';
 import { useSharedTableColumns } from '@/hooks/useSharedTableColumns';
@@ -20,7 +19,6 @@ export const useLeadTableColumns = ({
   inlineSystemFieldConfiguration,
   customFieldDefinitions
 }: LeadTableColumnInputs) => {
-  const { t } = useLanguage();
   const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
   const {
     selectedIds: storedVisibleColumnIds,
@@ -34,16 +32,16 @@ export const useLeadTableColumns = ({
 
   const leadColumnOptions = useMemo<TableColumnOption[]>(() => {
     const sectionLabels: Record<string, string> = {
-      company: t('Thông tin doanh nghiệp'),
-      classification: t('Phân loại khách hàng'),
-      contact: t('Liên hệ và nhu cầu'),
-      needs: t('Liên hệ và nhu cầu'),
-      assignment: t('Phụ trách và lịch làm việc'),
-      additional: t('Trường thông tin bổ sung')
+      company: 'Thông tin doanh nghiệp',
+      classification: 'Phân loại khách hàng',
+      contact: 'Liên hệ và nhu cầu',
+      needs: 'Liên hệ và nhu cầu',
+      assignment: 'Phụ trách và lịch làm việc',
+      additional: 'Trường thông tin bổ sung'
     };
     const configuredField = (key: string, fallback: string) => {
       const field = inlineSystemFieldConfiguration.fields.find(item => item.key === key);
-      return field?.removed ? null : field?.label || t(fallback);
+      return field?.removed ? null : field?.label || fallback;
     };
     const systemColumn = (
       id: string,
@@ -56,10 +54,10 @@ export const useLeadTableColumns = ({
       return label ? { id, label, group, defaultVisible } : null;
     };
     return [
-      { id: 'index', label: 'STT', group: t('Điều khiển bảng'), required: true },
+      { id: 'index', label: 'STT', group: 'Điều khiển bảng', required: true },
       {
         id: 'company',
-        label: configuredField('companyName', 'Doanh nghiệp') || t('Doanh nghiệp'),
+        label: configuredField('companyName', 'Doanh nghiệp') || 'Doanh nghiệp',
         group: sectionLabels.company,
         required: true
       },
@@ -68,12 +66,12 @@ export const useLeadTableColumns = ({
       systemColumn('businessSector', 'businessSector', 'Lĩnh vực hoạt động', sectionLabels.company),
       systemColumn('address', 'address', 'Địa chỉ doanh nghiệp', sectionLabels.company),
       systemColumn('companySize', 'companySize', 'Quy mô', sectionLabels.classification),
-      { id: 'source', label: t('Khu vực'), group: sectionLabels.classification },
+      { id: 'source', label: 'Khu vực', group: sectionLabels.classification },
       systemColumn('sourceValue', 'source', 'Nguồn tìm kiếm', sectionLabels.classification),
       systemColumn('province', 'province', 'Tỉnh/thành', sectionLabels.classification),
       systemColumn('ward', 'ward', 'Phường/xã', sectionLabels.classification),
       systemColumn('industrialPark', 'industrialPark', 'Khu công nghiệp', sectionLabels.classification),
-      { id: 'contact', label: t('Liên hệ'), group: sectionLabels.contact },
+      { id: 'contact', label: 'Liên hệ', group: sectionLabels.contact },
       systemColumn('contactPerson', 'contactPerson', 'Người liên hệ', sectionLabels.contact),
       systemColumn('contactPosition', 'contactPosition', 'Chức vụ', sectionLabels.contact),
       systemColumn('phone', 'phone', 'Điện thoại', sectionLabels.contact),
@@ -89,7 +87,7 @@ export const useLeadTableColumns = ({
         group.items.map(entry => ({
           id: `insight:${entry.id}`,
           label: entry.label,
-          group: `${t('Phân loại khách hàng')} · ${group.label}`,
+          group: `Phân loại khách hàng · ${group.label}`,
           defaultVisible: false
         }))
       ),
@@ -101,9 +99,9 @@ export const useLeadTableColumns = ({
           group: sectionLabels[definition.section] || sectionLabels.additional,
           defaultVisible: definition.defaultVisible
         })),
-      { id: 'actions', label: t('Thao tác'), group: t('Điều khiển bảng'), required: true }
+      { id: 'actions', label: 'Thao tác', group: 'Điều khiển bảng', required: true }
     ].filter((column): column is TableColumnOption => Boolean(column));
-  }, [customFieldDefinitions, inlineSystemFieldConfiguration.fields, t]);
+  }, [customFieldDefinitions, inlineSystemFieldConfiguration.fields]);
   const visibleLeadColumnIds = useMemo(() => {
     const availableIds = new Set(leadColumnOptions.map(column => column.id));
     const requiredIds = leadColumnOptions.filter(column => column.required).map(column => column.id);

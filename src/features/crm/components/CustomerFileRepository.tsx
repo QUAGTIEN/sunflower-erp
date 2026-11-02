@@ -1,5 +1,4 @@
 import React from 'react';
-import { useLanguage } from '@/context/LanguageContext';
 import type { CustomerRepositoryFolder } from '@/features/crm/model/crmModels';
 import { resolveCustomerFileFolderId } from '@/features/crm/model/customerRepository';
 import { DOCUMENT_REPOSITORY_FOLDER_IDS } from '@/features/crm/model/customerWorkspace';
@@ -104,24 +103,22 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
     setPreviewImage
   }
 }) => {
-  const { t } = useLanguage();
-
   return (
     <section className="card customer-file-repository-card" hidden={hidden}>
       <div className="card-header customer-file-repository-header">
         <div>
-          <span className="card-title">{t('Kho lưu trữ khách hàng')}</span>
+          <span className="card-title">Kho lưu trữ khách hàng</span>
         </div>
         {(currentUser.role === 'admin' || currentUser.role === 'sale') &&
           activeRepositoryFolder?.id === 'contracts' && (
             <button type="button" className="btn btn-outline" onClick={() => setShowAddContractModal(true)}>
-              {t('Thêm hợp đồng')}
+              Thêm hợp đồng
             </button>
           )}
       </div>
 
       <div className="customer-drive-layout">
-        <aside className="customer-drive-sidebar" aria-label={t('Danh sách thư mục')}>
+        <aside className="customer-drive-sidebar" aria-label="Danh sách thư mục">
           {currentUser.role === 'admin' && (
             <div className="customer-drive-new-folder">
               <input
@@ -134,8 +131,8 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
                     void handleAddFolder();
                   }
                 }}
-                placeholder={t('Tên thư mục mới')}
-                aria-label={t('Tên thư mục mới')}
+                placeholder="Tên thư mục mới"
+                aria-label="Tên thư mục mới"
               />
               <button
                 type="button"
@@ -143,7 +140,7 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
                 onClick={() => void handleAddFolder()}
                 disabled={!newFolderName.trim()}
               >
-                {t('Tạo thư mục')}
+                Tạo thư mục
               </button>
             </div>
           )}
@@ -176,13 +173,13 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
                           if (event.key === 'Enter') void handleRenameRepoFolder(folder.id);
                           if (event.key === 'Escape') setRenamingFolderId('');
                         }}
-                        aria-label={t('Tên thư mục')}
+                        aria-label="Tên thư mục"
                       />
                       <button type="button" onClick={() => void handleRenameRepoFolder(folder.id)}>
-                        {t('Lưu')}
+                        Lưu
                       </button>
                       <button type="button" onClick={() => setRenamingFolderId('')}>
-                        {t('Hủy')}
+                        Hủy
                       </button>
                     </div>
                   ) : (
@@ -207,10 +204,10 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
                               setFolderNameDraft(folder.name);
                             }}
                           >
-                            {t('Đổi tên')}
+                            Đổi tên
                           </button>
                           <button type="button" onClick={() => void handleDeleteRepoFolder(folder.id)}>
-                            {t('Xóa')}
+                            Xóa
                           </button>
                         </div>
                       )}
@@ -224,8 +221,8 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
 
         <div className="customer-drive-content">
           <div className="customer-drive-path">
-            <span>{t('Kho lưu trữ khách hàng')}</span>
-            <strong>/ {activeRepositoryFolder?.name || t('Chưa chọn thư mục')}</strong>
+            <span>Kho lưu trữ khách hàng</span>
+            <strong>/ {activeRepositoryFolder?.name || 'Chưa chọn thư mục'}</strong>
           </div>
 
           {(currentUser.role === 'admin' || currentUser.role === 'sale') && activeRepositoryFolder && (
@@ -234,23 +231,23 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
               open={repositoryUploadOpen}
               onToggle={event => setRepositoryUploadOpen(event.currentTarget.open)}
             >
-              <summary>{t('Thêm tài liệu vào thư mục này')}</summary>
+              <summary>Thêm tài liệu vào thư mục này</summary>
               <form onSubmit={handleUploadRepoFile}>
                 <label>
-                  <span>{t('Tên tài liệu')} *</span>
+                  <span>Tên tài liệu *</span>
                   <input
                     value={repoUploadFileName}
                     onChange={event => setRepoUploadFileName(event.target.value)}
                     required
-                    placeholder={t('Ví dụ: Biên bản nghiệm thu tháng 8')}
+                    placeholder="Ví dụ: Biên bản nghiệm thu tháng 8"
                   />
                 </label>
                 <label>
-                  <span>{t('Chọn tệp dưới 900 KB')}</span>
+                  <span>Chọn tệp dưới 900 KB</span>
                   <input type="file" onChange={handleRepoFileChange} />
                 </label>
                 <label>
-                  <span>{t('Hoặc đường dẫn Drive/OneDrive')}</span>
+                  <span>Hoặc đường dẫn Drive/OneDrive</span>
                   <input
                     type="url"
                     value={repoUploadLink}
@@ -259,7 +256,7 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
                   />
                 </label>
                 <button type="submit" className="btn btn-primary">
-                  {t('Lưu tài liệu')}
+                  Lưu tài liệu
                 </button>
               </form>
             </details>
@@ -269,35 +266,33 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
             <table>
               <thead>
                 <tr>
-                  <th>{t('Tên tài liệu')}</th>
-                  <th>{t('Loại')}</th>
-                  <th>{t('Ngày cập nhật')}</th>
-                  <th>{t('Người cập nhật')}</th>
-                  <th>{t('Thao tác')}</th>
+                  <th>Tên tài liệu</th>
+                  <th>Loại</th>
+                  <th>Ngày cập nhật</th>
+                  <th>Người cập nhật</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {activeRepositoryContracts.map((contract: any) => (
                   <tr key={`contract-${contract.id}`}>
                     <td>
-                      <strong>{contract.contractNo || t('Hợp đồng chưa có số')}</strong>
-                      <small>
-                        {contract.expiryDate ? `${t('Hạn hiệu lực')}: ${formatDate(contract.expiryDate)}` : ''}
-                      </small>
+                      <strong>{contract.contractNo || 'Hợp đồng chưa có số'}</strong>
+                      <small>{contract.expiryDate ? `Hạn hiệu lực: ${formatDate(contract.expiryDate)}` : ''}</small>
                     </td>
-                    <td>{t('Hợp đồng')}</td>
+                    <td>Hợp đồng</td>
                     <td>{formatDate(contract.signDate || contract.createdAt)}</td>
                     <td>{contract.createdBy || selectedCustomer.createdBy || '—'}</td>
                     <td>
                       <div className="customer-drive-file-actions">
                         {contract.fileUrl && (
                           <a href={contract.fileUrl} download={`HopDong_${contract.contractNo || contract.id}`}>
-                            {t('Tải xuống')}
+                            Tải xuống
                           </a>
                         )}
                         {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                           <button type="button" onClick={() => void handleDeleteContract(contract.id)}>
-                            {t('Xóa')}
+                            Xóa
                           </button>
                         )}
                       </div>
@@ -307,15 +302,15 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
                 {activeRepositoryDocuments.map((documentRecord: any) => (
                   <tr key={`document-${documentRecord.id}`}>
                     <td>
-                      <strong>{documentRecord.name || t('Tài liệu chưa đặt tên')}</strong>
+                      <strong>{documentRecord.name || 'Tài liệu chưa đặt tên'}</strong>
                     </td>
-                    <td>{t('Văn bản')}</td>
+                    <td>Văn bản</td>
                     <td>{formatDate(documentRecord.createdAt)}</td>
                     <td>{documentRecord.createdBy || documentRecord.createdById || '—'}</td>
                     <td>
                       {documentRecord.url ? (
                         <a href={documentRecord.url} target="_blank" rel="noreferrer">
-                          {t('Mở tài liệu')}
+                          Mở tài liệu
                         </a>
                       ) : (
                         '—'
@@ -331,30 +326,30 @@ export const CustomerFileRepository: React.FC<CustomerFileRepositoryProps> = ({
                       <td>
                         <strong title={file.name}>{file.name}</strong>
                       </td>
-                      <td>{isImage ? t('Hình ảnh') : file.url ? t('Đường dẫn') : t('Tệp tài liệu')}</td>
+                      <td>{isImage ? 'Hình ảnh' : file.url ? 'Đường dẫn' : 'Tệp tài liệu'}</td>
                       <td>{formatDateTime(file.createdAt, 'vi-VN', '—')}</td>
                       <td>{file.createdBy || users.find(user => user.uid === file.createdById)?.displayName || '—'}</td>
                       <td>
                         <div className="customer-drive-file-actions">
                           {isImage && (
                             <button type="button" onClick={() => setPreviewImage(source)}>
-                              {t('Xem')}
+                              Xem
                             </button>
                           )}
                           {file.url ? (
                             <a href={file.url} target="_blank" rel="noreferrer">
-                              {t('Mở liên kết')}
+                              Mở liên kết
                             </a>
                           ) : (
                             source && (
                               <a href={source} download={file.name}>
-                                {t('Tải xuống')}
+                                Tải xuống
                               </a>
                             )
                           )}
                           {(currentUser.role === 'admin' || currentUser.role === 'sale') && (
                             <button type="button" onClick={() => void handleDeleteRepoFile(file.id)}>
-                              {t('Xóa')}
+                              Xóa
                             </button>
                           )}
                         </div>

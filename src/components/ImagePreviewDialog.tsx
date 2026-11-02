@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Download, X } from 'lucide-react';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface ImagePreviewDialogProps {
   /** Image URL or Data URL to show. */
@@ -12,7 +11,6 @@ interface ImagePreviewDialogProps {
 
 /** Full-size image preview with a download action. Clicking the backdrop closes it. */
 export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({ src, onClose, downloadPrefix = 'Preview' }) => {
-  const { t } = useLanguage();
   // Captured once so the file name stays stable across re-renders.
   const [openedAt] = useState(() => Date.now());
 
@@ -28,8 +26,8 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({ src, onC
           className="btn btn-sm btn-outline btn-symbol-sm"
           style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}
           onClick={onClose}
-          aria-label={t('Đóng')}
-          title={t('Đóng')}
+          aria-label="Đóng"
+          title="Đóng"
         >
           <X size={20} />
         </button>
@@ -46,7 +44,7 @@ export const ImagePreviewDialog: React.FC<ImagePreviewDialogProps> = ({ src, onC
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
           >
             <Download size={14} />
-            <span>{t('Tải Ảnh Về')}</span>
+            <span>Tải Ảnh Về</span>
           </a>
         </div>
       </div>

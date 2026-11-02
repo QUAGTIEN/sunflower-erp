@@ -12,7 +12,6 @@ import type { TaxCodeConflictRecord } from '@/features/crm/model/taxCodeUniquene
 import type { LeadCandidateRecord } from '@/features/crm/model/leadCandidateModels';
 import type { EntityCustomFieldValues } from '@/features/crm/model/entityFieldConfig';
 import type { UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { useLanguage } from '@/context/LanguageContext';
 
 interface LeadProfileFieldsProps {
   editingLead: LeadRecord | null;
@@ -80,19 +79,18 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
     setUploadingFiles
   }
 }) => {
-  const { t } = useLanguage();
   return (
     <div className="lead-form-page__content lead-standardized-form">
       <section className="lead-form-card">
         <div className="lead-form-card__heading">
           <Building2 size={18} />
           <div>
-            <h2>{t('Thông tin doanh nghiệp')}</h2>
+            <h2>Thông tin doanh nghiệp</h2>
           </div>
         </div>
         <div className="lead-form-grid">
           <div className="form-group lead-form-grid__wide">
-            <label data-system-label="companyName">{t('Tên doanh nghiệp *')}</label>
+            <label data-system-label="companyName">Tên doanh nghiệp *</label>
             <input
               autoFocus={!editingLead || leadDetailTab === 'profile'}
               required
@@ -101,7 +99,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             />
           </div>
           <div className="form-group">
-            <label data-system-label="taxCode">{t('Mã số thuế *')}</label>
+            <label data-system-label="taxCode">Mã số thuế *</label>
             <input
               required
               value={form.taxCode}
@@ -125,12 +123,12 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
                   ? `Mã số thuế này đang nằm trong Dữ liệu thô của doanh nghiệp “${candidateTaxCodeConflict.companyName}”.`
                   : taxCodeSaveError ||
                     (isTaxCodeLocked
-                      ? t('Mã số thuế là định danh duy nhất và không thể thay đổi sau khi tạo Lead.')
-                      : t('Mã số thuế được kiểm tra trên toàn bộ Lead và khách hàng.'))}
+                      ? 'Mã số thuế là định danh duy nhất và không thể thay đổi sau khi tạo Lead.'
+                      : 'Mã số thuế được kiểm tra trên toàn bộ Lead và khách hàng.')}
             </span>
           </div>
           <div className="form-group">
-            <label data-system-label="website">{t('Website')}</label>
+            <label data-system-label="website">Website</label>
             <input
               type="url"
               value={form.website}
@@ -146,7 +144,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             onChange={location => setForm(previous => ({ ...previous, ...location }))}
           />
           <div className="form-group lead-form-grid__wide">
-            <label data-system-label="address">{t('Địa chỉ doanh nghiệp')}</label>
+            <label data-system-label="address">Địa chỉ doanh nghiệp</label>
             <input value={form.address} onChange={event => updateForm('address', event.target.value)} />
           </div>
         </div>
@@ -159,7 +157,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <InlineEntityFieldManager
           table="leads"
           section="company"
-          sectionLabel={t('Thông tin doanh nghiệp')}
+          sectionLabel="Thông tin doanh nghiệp"
           definitions={profileFormCustomFieldDefinitions}
           currentUser={currentUser}
           systemConfiguration={inlineSystemFieldConfiguration}
@@ -179,24 +177,24 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <div className="lead-form-card__heading">
           <UserCheck size={18} />
           <div>
-            <h2>{t('Liên hệ và nguồn dữ liệu')}</h2>
+            <h2>Liên hệ và nguồn dữ liệu</h2>
           </div>
         </div>
         <div className="lead-form-grid">
           <div className="form-group">
-            <label data-system-label="contactPerson">{t('Người liên hệ')}</label>
+            <label data-system-label="contactPerson">Người liên hệ</label>
             <input value={form.contactPerson} onChange={event => updateForm('contactPerson', event.target.value)} />
           </div>
           <div className="form-group">
-            <label data-system-label="contactPosition">{t('Chức vụ')}</label>
+            <label data-system-label="contactPosition">Chức vụ</label>
             <input
               value={form.contactPosition}
               onChange={event => updateForm('contactPosition', event.target.value)}
-              placeholder={t('Ví dụ: Thu mua, Giám đốc...')}
+              placeholder="Ví dụ: Thu mua, Giám đốc..."
             />
           </div>
           <div className="form-group">
-            <label data-system-label="phone">{t('Điện thoại')}</label>
+            <label data-system-label="phone">Điện thoại</label>
             <input type="tel" value={form.phone} onChange={event => updateForm('phone', event.target.value)} />
           </div>
           <div className="form-group">
@@ -204,9 +202,9 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             <input type="email" value={form.email} onChange={event => updateForm('email', event.target.value)} />
           </div>
           <div className="form-group">
-            <label data-system-label="source">{t('Nguồn tìm kiếm')}</label>
+            <label data-system-label="source">Nguồn tìm kiếm</label>
             <select value={form.source} onChange={event => updateForm('source', event.target.value)}>
-              <option value="">{t('Chưa chọn')}</option>
+              <option value="">Chưa chọn</option>
               {form.source && !leadSourceOptions.includes(form.source) && (
                 <option value={form.source}>{form.source}</option>
               )}
@@ -218,7 +216,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             </select>
           </div>
           <div className="form-group">
-            <label data-system-label="sourceUrl">{t('Đường dẫn nguồn')}</label>
+            <label data-system-label="sourceUrl">Đường dẫn nguồn</label>
             <input
               type="url"
               value={form.sourceUrl}
@@ -236,7 +234,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <InlineEntityFieldManager
           table="leads"
           section="contact"
-          sectionLabel={t('Liên hệ và nguồn dữ liệu')}
+          sectionLabel="Liên hệ và nguồn dữ liệu"
           definitions={profileFormCustomFieldDefinitions}
           currentUser={currentUser}
           systemConfiguration={inlineSystemFieldConfiguration}
@@ -257,17 +255,17 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <div className="lead-form-card__heading">
           <Search size={18} />
           <div>
-            <h2>{t('Thông tin bổ sung')}</h2>
+            <h2>Thông tin bổ sung</h2>
           </div>
         </div>
         <div className="lead-form-grid">
           <div className="form-group lead-form-grid__wide">
-            <label data-system-label="note">{t('Ghi chú')}</label>
+            <label data-system-label="note">Ghi chú</label>
             <textarea
               rows={3}
               value={form.note}
               onChange={event => updateForm('note', event.target.value)}
-              placeholder={t('Thông tin cần lưu ý khi làm việc với khách hàng...')}
+              placeholder="Thông tin cần lưu ý khi làm việc với khách hàng..."
             />
           </div>
         </div>
@@ -280,7 +278,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <InlineEntityFieldManager
           table="leads"
           section="needs"
-          sectionLabel={t('Thông tin bổ sung')}
+          sectionLabel="Thông tin bổ sung"
           definitions={profileFormCustomFieldDefinitions}
           currentUser={currentUser}
           systemConfiguration={inlineSystemFieldConfiguration}
@@ -294,18 +292,18 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <div className="lead-form-card__heading">
           <CalendarClock size={18} />
           <div>
-            <h2>{t('Phụ trách và lịch hẹn')}</h2>
+            <h2>Phụ trách và lịch hẹn</h2>
           </div>
         </div>
         <div className="lead-form-grid">
           <div className={`form-group${currentUser.role === 'admin' ? '' : ' lead-form-grid__wide'}`}>
-            <label data-system-label="assignedSaleId">{t('Người phụ trách *')}</label>
+            <label data-system-label="assignedSaleId">Người phụ trách *</label>
             <select
               value={form.assignedSaleId}
               onChange={event => updateForm('assignedSaleId', event.target.value)}
               disabled={currentUser.role === 'sale'}
             >
-              <option value="">{t('-- Chưa phân công --')}</option>
+              <option value="">-- Chưa phân công --</option>
               {saleUsers.map(user => (
                 <option key={user.uid} value={user.uid}>
                   {user.displayName}
@@ -315,9 +313,9 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
           </div>
           {currentUser.role === 'admin' && (
             <div className="form-group">
-              <label data-system-label="discoveredById">{t('Sale tìm được Lead')}</label>
+              <label data-system-label="discoveredById">Sale tìm được Lead</label>
               <select value={form.discoveredById} onChange={event => updateForm('discoveredById', event.target.value)}>
-                <option value="">{t('-- Chưa xác định --')}</option>
+                <option value="">-- Chưa xác định --</option>
                 {saleUsers.map(user => (
                   <option key={user.uid} value={user.uid}>
                     {user.displayName}
@@ -327,7 +325,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             </div>
           )}
           <div className="form-group lead-form-grid__wide">
-            <label data-system-label="nextFollowUpAt">{t('Lịch hẹn xử lý')}</label>
+            <label data-system-label="nextFollowUpAt">Lịch hẹn xử lý</label>
             <input
               type="datetime-local"
               value={form.nextFollowUpAt}
@@ -344,7 +342,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <InlineEntityFieldManager
           table="leads"
           section="assignment"
-          sectionLabel={t('Phụ trách và lịch hẹn')}
+          sectionLabel="Phụ trách và lịch hẹn"
           definitions={profileFormCustomFieldDefinitions}
           currentUser={currentUser}
           systemConfiguration={inlineSystemFieldConfiguration}
@@ -361,40 +359,40 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <div className="lead-form-card__heading">
           <Paperclip size={18} />
           <div>
-            <h2>{t('File liên quan')}</h2>
+            <h2>File liên quan</h2>
           </div>
         </div>
         <div className="lead-attachments-card__upload-row">
           <div className="lead-attachments-card__toolbar">
             <label className="btn btn-outline lead-attachments-card__upload">
-              {t('Tải tệp lên')}
+              Tải tệp lên
               <input type="file" multiple onChange={handleLeadFilesChange} />
             </label>
-            <span>{t('Tệp dưới 900 KB; tệp lớn dùng đường dẫn Drive hoặc OneDrive.')}</span>
+            <span>Tệp dưới 900 KB; tệp lớn dùng đường dẫn Drive hoặc OneDrive.</span>
           </div>
           <label className="lead-attachments-card__dropzone">
-            <span>{t('Kéo thả tệp vào đây hoặc chọn từ máy')}</span>
+            <span>Kéo thả tệp vào đây hoặc chọn từ máy</span>
             <input type="file" multiple onChange={handleLeadFilesChange} />
           </label>
         </div>
         <details className="lead-attachments-card__link">
-          <summary>{t('Thêm đường dẫn Drive/OneDrive')}</summary>
+          <summary>Thêm đường dẫn Drive/OneDrive</summary>
           <div>
             <input
-              aria-label={t('Tên tài liệu')}
-              placeholder={t('Tên tài liệu')}
+              aria-label="Tên tài liệu"
+              placeholder="Tên tài liệu"
               value={attachmentLinkName}
               onChange={event => setAttachmentLinkName(event.target.value)}
             />
             <input
-              aria-label={t('Đường dẫn chia sẻ')}
+              aria-label="Đường dẫn chia sẻ"
               type="url"
               placeholder="https://..."
               value={attachmentLinkUrl}
               onChange={event => setAttachmentLinkUrl(event.target.value)}
             />
             <button type="button" className="btn btn-outline" onClick={handleAddAttachmentLink}>
-              {t('Thêm liên kết')}
+              Thêm liên kết
             </button>
           </div>
         </details>
@@ -403,12 +401,12 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             <table>
               <thead>
                 <tr>
-                  <th>{t('Tên tệp')}</th>
-                  <th>{t('Loại')}</th>
-                  <th>{t('Dung lượng')}</th>
-                  <th>{t('Ngày cập nhật')}</th>
-                  <th>{t('Người cập nhật')}</th>
-                  <th>{t('Thao tác')}</th>
+                  <th>Tên tệp</th>
+                  <th>Loại</th>
+                  <th>Dung lượng</th>
+                  <th>Ngày cập nhật</th>
+                  <th>Người cập nhật</th>
+                  <th>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -417,13 +415,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
                   return (
                     <tr key={file.id}>
                       <td title={file.name}>{file.name}</td>
-                      <td>
-                        {file.url
-                          ? t('Đường dẫn')
-                          : source.startsWith('data:image/')
-                            ? t('Hình ảnh')
-                            : t('Tệp tài liệu')}
-                      </td>
+                      <td>{file.url ? 'Đường dẫn' : source.startsWith('data:image/') ? 'Hình ảnh' : 'Tệp tài liệu'}</td>
                       <td>
                         {file.size
                           ? `${(file.size / 1024).toLocaleString('vi-VN', { maximumFractionDigits: 0 })} KB`
@@ -436,21 +428,21 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
                           {source &&
                             (file.url ? (
                               <a href={file.url} target="_blank" rel="noreferrer">
-                                {t('Mở liên kết')}
+                                Mở liên kết
                               </a>
                             ) : (
                               <a href={source} download={file.name}>
-                                {t('Tải xuống')}
+                                Tải xuống
                               </a>
                             ))}
                           <button
                             type="button"
                             onClick={async () => {
-                              if (await confirmDelete(t('Xóa tệp này khỏi hồ sơ?')))
+                              if (await confirmDelete('Xóa tệp này khỏi hồ sơ?'))
                                 setUploadingFiles(previous => previous.filter(item => item.id !== file.id));
                             }}
                           >
-                            {t('Xóa')}
+                            Xóa
                           </button>
                         </div>
                       </td>
@@ -461,22 +453,22 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             </table>
           </div>
         ) : (
-          <div className="lead-attachments-card__empty">{t('Chưa có tệp đính kèm.')}</div>
+          <div className="lead-attachments-card__empty">Chưa có tệp đính kèm.</div>
         )}
       </section>
 
-      <div className="lead-form-page__extension-label">{t('THÔNG TIN BỔ SUNG CHO TIỀM NĂNG')}</div>
+      <div className="lead-form-page__extension-label">THÔNG TIN BỔ SUNG CHO TIỀM NĂNG</div>
 
       <section className="lead-form-card">
         <div className="lead-form-card__heading">
           <Tags size={18} />
           <div>
-            <h2>{t('Đánh giá tiềm năng')}</h2>
+            <h2>Đánh giá tiềm năng</h2>
           </div>
         </div>
         <div className="lead-form-grid">
           <div className="form-group">
-            <label data-system-label="stage">{t('Giai đoạn xử lý')}</label>
+            <label data-system-label="stage">Giai đoạn xử lý</label>
             <select value={form.stage} onChange={event => updateForm('stage', event.target.value as LeadStage)}>
               {LEAD_STAGES.map(stage => (
                 <option key={stage.id} value={stage.id}>
@@ -486,7 +478,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             </select>
           </div>
           <div className="form-group">
-            <label data-system-label="potentialValue">{t('Giá trị tiềm năng (đ)')}</label>
+            <label data-system-label="potentialValue">Giá trị tiềm năng (đ)</label>
             <input
               type="number"
               min="0"
@@ -495,7 +487,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             />
           </div>
           <div className="form-group">
-            <label data-system-label="closingProbability">{t('Khả năng chốt (%)')}</label>
+            <label data-system-label="closingProbability">Khả năng chốt (%)</label>
             <input
               type="number"
               min="0"
@@ -505,7 +497,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
             />
           </div>
           <div className="form-group">
-            <label data-system-label="expectedCloseAt">{t('Dự kiến chốt')}</label>
+            <label data-system-label="expectedCloseAt">Dự kiến chốt</label>
             <input
               type="date"
               value={form.expectedCloseAt}
@@ -522,7 +514,7 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <InlineEntityFieldManager
           table="leads"
           section="classification"
-          sectionLabel={t('Đánh giá tiềm năng')}
+          sectionLabel="Đánh giá tiềm năng"
           definitions={profileFormCustomFieldDefinitions}
           currentUser={currentUser}
           systemConfiguration={inlineSystemFieldConfiguration}
@@ -539,23 +531,23 @@ export const LeadProfileFields: React.FC<LeadProfileFieldsProps> = ({
         <div className="lead-form-card__heading">
           <CalendarClock size={18} />
           <div>
-            <h2>{t('Kế hoạch chăm sóc')}</h2>
+            <h2>Kế hoạch chăm sóc</h2>
           </div>
         </div>
         <div className="lead-form-grid">
           <div className="form-group">
-            <label data-system-label="lastContactResult">{t('Kết quả liên hệ gần nhất')}</label>
+            <label data-system-label="lastContactResult">Kết quả liên hệ gần nhất</label>
             <input
               value={form.lastContactResult}
               onChange={event => updateForm('lastContactResult', event.target.value)}
             />
           </div>
           <div className="form-group">
-            <label data-system-label="nextGoal">{t('Mục tiêu tiếp theo')}</label>
+            <label data-system-label="nextGoal">Mục tiêu tiếp theo</label>
             <input value={form.nextGoal} onChange={event => updateForm('nextGoal', event.target.value)} />
           </div>
           <div className="form-group lead-form-grid__wide">
-            <label data-system-label="careNote">{t('Ghi chú chăm sóc')}</label>
+            <label data-system-label="careNote">Ghi chú chăm sóc</label>
             <textarea rows={3} value={form.careNote} onChange={event => updateForm('careNote', event.target.value)} />
           </div>
         </div>

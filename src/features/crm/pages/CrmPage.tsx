@@ -11,7 +11,6 @@ import { SystemFieldSurface } from '@/components/ConfiguredSystemFields';
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { auditService } from '@/services/auditService';
-import { useLanguage } from '@/context/LanguageContext';
 import { CustomerOverview } from '@/features/crm/components/CustomerOverview';
 import { CustomerProductDirectory } from '@/features/crm/components/CustomerProductDirectory';
 import { CustomerOnboardingItems } from '@/features/crm/components/CustomerOnboardingItems';
@@ -153,7 +152,6 @@ export const Crm: React.FC<CrmProps> = ({
   initialCustomerId = '',
   onInitialCustomerOpened
 }) => {
-  const { t } = useLanguage();
   const finance = usePartnerDebt(currentUser);
   const { definitions: customFieldDefinitions } = useEntityFieldDefinitions('customers', currentUser.role);
   const inlineSystemFieldConfiguration = useSystemFieldConfiguration('customers');
@@ -210,16 +208,16 @@ export const Crm: React.FC<CrmProps> = ({
 
   const customerColumnOptions = useMemo<TableColumnOption[]>(() => {
     const sectionLabels: Record<string, string> = {
-      company: t('Hồ sơ doanh nghiệp'),
-      classification: t('Địa bàn doanh nghiệp'),
-      contact: t('Liên hệ và giao nhận'),
-      additional: t('Điều khoản thương mại'),
-      assignment: t('Phụ trách'),
-      needs: t('Nguồn và nhu cầu')
+      company: 'Hồ sơ doanh nghiệp',
+      classification: 'Địa bàn doanh nghiệp',
+      contact: 'Liên hệ và giao nhận',
+      additional: 'Điều khoản thương mại',
+      assignment: 'Phụ trách',
+      needs: 'Nguồn và nhu cầu'
     };
     const configuredField = (key: string, fallback: string) => {
       const field = inlineSystemFieldConfiguration.fields.find(item => item.key === key);
-      return field?.removed ? null : field?.label || t(fallback);
+      return field?.removed ? null : field?.label || fallback;
     };
     const systemColumn = (
       id: string,
@@ -232,10 +230,10 @@ export const Crm: React.FC<CrmProps> = ({
       return label ? { id, label, group, defaultVisible } : null;
     };
     return [
-      { id: 'index', label: 'STT', group: t('Điều khiển bảng'), required: true },
+      { id: 'index', label: 'STT', group: 'Điều khiển bảng', required: true },
       {
         id: 'company',
-        label: configuredField('companyName', 'Khách hàng') || t('Khách hàng'),
+        label: configuredField('companyName', 'Khách hàng') || 'Khách hàng',
         group: sectionLabels.company,
         required: true
       },
@@ -253,23 +251,23 @@ export const Crm: React.FC<CrmProps> = ({
       systemColumn('warehousePhone', 'warehousePhone', 'SĐT nhận hàng / kho', sectionLabels.contact),
       systemColumn('email', 'email', 'Mail', sectionLabels.contact, true),
       systemColumn('discountType', 'discountType', 'Hình thức chiết khấu', sectionLabels.additional),
-      { id: 'discountValue', label: t('Chiết khấu mặc định'), group: sectionLabels.additional, defaultVisible: false },
+      { id: 'discountValue', label: 'Chiết khấu mặc định', group: sectionLabels.additional, defaultVisible: false },
       systemColumn('debtLimit', 'debtLimit', 'Hạn mức công nợ', sectionLabels.additional),
       systemColumn('paymentTerms', 'paymentTerms', 'Điều khoản thanh toán', sectionLabels.additional),
       systemColumn('bankAccount', 'bankAccount', 'Tài khoản ngân hàng', sectionLabels.additional),
       systemColumn('note', 'note', 'Ghi chú yêu cầu riêng', sectionLabels.additional),
-      { id: 'businessResult', label: t('Kết quả kinh doanh'), group: t('Kết quả kinh doanh') },
+      { id: 'businessResult', label: 'Kết quả kinh doanh', group: 'Kết quả kinh doanh' },
       ...customFieldDefinitions
         .filter(definition => definition.active)
         .map(definition => ({
           id: `custom:${definition.id}`,
           label: definition.name,
-          group: sectionLabels[definition.section] || t('Trường thông tin bổ sung'),
+          group: sectionLabels[definition.section] || 'Trường thông tin bổ sung',
           defaultVisible: definition.defaultVisible
         })),
-      { id: 'actions', label: t('Thao tác'), group: t('Điều khiển bảng'), required: true }
+      { id: 'actions', label: 'Thao tác', group: 'Điều khiển bảng', required: true }
     ].filter((column): column is TableColumnOption => Boolean(column));
-  }, [customFieldDefinitions, inlineSystemFieldConfiguration.fields, t]);
+  }, [customFieldDefinitions, inlineSystemFieldConfiguration.fields]);
   const visibleCustomerColumnIds = useMemo(() => {
     const availableIds = new Set(customerColumnOptions.map(column => column.id));
     const requiredIds = customerColumnOptions.filter(column => column.required).map(column => column.id);
@@ -342,7 +340,7 @@ export const Crm: React.FC<CrmProps> = ({
   };
 
   const handleDeleteField = async (fieldId: string) => {
-    if (await confirmDelete(t('Bạn có chắc chắn muốn xóa thông số này?'))) {
+    if (await confirmDelete('Bạn có chắc chắn muốn xóa thông số này?')) {
       setSpecFields(prev => prev.filter(f => f.id !== fieldId));
     }
   };
@@ -363,34 +361,34 @@ export const Crm: React.FC<CrmProps> = ({
     const newFieldId = createCustomSpecFieldId();
     const newField = {
       id: newFieldId,
-      label: t('Thông số mới'),
+      label: 'Thông số mới',
       value: '',
       type: 'text'
     };
     setSpecFields(prev => [...prev, newField]);
     setEditingLabelId(newFieldId);
-    setTempLabelText(t('Thông số mới'));
+    setTempLabelText('Thông số mới');
   };
 
   const handleAddSelectField = () => {
     const newFieldId = createCustomSpecFieldId();
     const newField = {
       id: newFieldId,
-      label: t('Thông số mới'),
-      value: t('Lựa chọn 1'),
+      label: 'Thông số mới',
+      value: 'Lựa chọn 1',
       type: 'select',
-      options: [t('Lựa chọn 1'), t('Lựa chọn 2')]
+      options: ['Lựa chọn 1', 'Lựa chọn 2']
     };
     setSpecFields(prev => [...prev, newField]);
     setEditingLabelId(newFieldId);
-    setTempLabelText(t('Thông số mới'));
+    setTempLabelText('Thông số mới');
   };
 
   const handleEditDropdownOptions = (fieldId: string) => {
     const field = specFields.find(f => f.id === fieldId);
     if (!field) return;
     const currentOpts = field.options || [];
-    const newOptsStr = prompt(t('Nhập danh sách lựa chọn (phân cách bằng dấu phẩy):'), currentOpts.join(', '));
+    const newOptsStr = prompt('Nhập danh sách lựa chọn (phân cách bằng dấu phẩy):', currentOpts.join(', '));
     if (newOptsStr !== null) {
       const newOpts = newOptsStr
         .split(',')
@@ -398,7 +396,7 @@ export const Crm: React.FC<CrmProps> = ({
         .filter(opt => opt.length > 0);
 
       if (newOpts.length === 0) {
-        alert(t('Danh sách lựa chọn không được trống.'));
+        alert('Danh sách lựa chọn không được trống.');
         return;
       }
 
@@ -811,13 +809,13 @@ export const Crm: React.FC<CrmProps> = ({
           currentUser.role
         );
         if (missingCustomFields.length > 0) {
-          alert(t(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`));
+          alert(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
           return;
         }
 
         const taxCodeConflict = findTaxCodeConflict(taxCode, leads, customers, onboardingSourceLead?.id || '');
         if (taxCodeConflict) {
-          alert(t(`Mã số thuế đã thuộc về ${taxCodeConflict.companyName}. Không thể tạo khách hàng trùng.`));
+          alert(`Mã số thuế đã thuộc về ${taxCodeConflict.companyName}. Không thể tạo khách hàng trùng.`);
           return;
         }
 
@@ -829,11 +827,11 @@ export const Crm: React.FC<CrmProps> = ({
           .filter((code, index, codes) => code && codes.indexOf(code) !== index);
 
         if (incomplete) {
-          alert(t('Vui lòng nhập đủ mã hàng và tên hàng, hoặc để trống cả dòng nếu chưa có mã sản phẩm.'));
+          alert('Vui lòng nhập đủ mã hàng và tên hàng, hoặc để trống cả dòng nếu chưa có mã sản phẩm.');
           return;
         }
         if (duplicateCodes.length > 0) {
-          alert(t(`Mã hàng bị trùng: ${Array.from(new Set(duplicateCodes)).join(', ')}`));
+          alert(`Mã hàng bị trùng: ${Array.from(new Set(duplicateCodes)).join(', ')}`);
           return;
         }
 
@@ -918,7 +916,7 @@ export const Crm: React.FC<CrmProps> = ({
           currentUser.role
         );
         if (missingCustomFields.length > 0) {
-          alert(t(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`));
+          alert(`Vui lòng nhập trường bắt buộc: ${missingCustomFields.map(field => field.name).join(', ')}.`);
           return;
         }
 
@@ -1012,7 +1010,7 @@ export const Crm: React.FC<CrmProps> = ({
             previous ? { ...previous, note: nextNote, noteHtml: nextNoteHtml, updatedBy, updatedAt } : previous
           );
           setCustomerNoteDraft(nextNoteHtml);
-          setCustomerNoteFeedback(t('Đã lưu ghi chú.'));
+          setCustomerNoteFeedback('Đã lưu ghi chú.');
           auditService.recordSafely(currentUser, {
             category: 'business',
             module: 'crm',
@@ -1027,7 +1025,7 @@ export const Crm: React.FC<CrmProps> = ({
           showSuccessToast('Đã lưu thành công');
         } catch {
           showErrorToast();
-          setCustomerNoteFeedback(t('Không thể lưu ghi chú. Vui lòng thử lại.'));
+          setCustomerNoteFeedback('Không thể lưu ghi chú. Vui lòng thử lại.');
         } finally {
           setIsSavingCustomerNote(false);
         }
@@ -1042,7 +1040,7 @@ export const Crm: React.FC<CrmProps> = ({
       'CrmPage.tsx:handleDeleteCustomer',
       async () => {
         if (currentUser.role === 'admin') {
-          if (!(await confirmDelete(t('Đưa khách hàng này vào Thùng rác?')))) return;
+          if (!(await confirmDelete('Đưa khách hàng này vào Thùng rác?'))) return;
           await requireConfirmedMutation(
             dbService.updateDocument('customers', id, {
               ...deletionFields(currentUser),
@@ -1057,7 +1055,7 @@ export const Crm: React.FC<CrmProps> = ({
           showSuccessToast('Đã xóa thành công');
         } else {
           if (
-            await confirmDelete(t('Bạn có muốn gửi yêu cầu xóa khách hàng này tới Admin phê duyệt?'), {
+            await confirmDelete('Bạn có muốn gửi yêu cầu xóa khách hàng này tới Admin phê duyệt?', {
               title: 'Xác nhận yêu cầu xóa',
               confirmLabel: 'Gửi yêu cầu'
             })
@@ -1111,11 +1109,11 @@ export const Crm: React.FC<CrmProps> = ({
         e.preventDefault();
         if (!selectedCustomer || !selectedProduct) return;
         if (!productCode.trim() || !productName.trim()) {
-          alert(t('Vui lòng nhập đầy đủ mã hàng và tên hàng.'));
+          alert('Vui lòng nhập đầy đủ mã hàng và tên hàng.');
           return;
         }
         if (hasDuplicateProductCode(productCode, selectedProduct.id)) {
-          alert(t(`Mã hàng ${productCode.trim()} đã tồn tại trong hồ sơ khách hàng.`));
+          alert(`Mã hàng ${productCode.trim()} đã tồn tại trong hồ sơ khách hàng.`);
           return;
         }
 
@@ -1236,9 +1234,7 @@ export const Crm: React.FC<CrmProps> = ({
             setSelectedCustomer((previous: CustomerRecord | null) => (previous ? { ...previous, products } : previous));
           } catch (error) {
             alert(
-              error instanceof Error && !('code' in error)
-                ? error.message
-                : t('Không thể lưu sản phẩm. Vui lòng thử lại.')
+              error instanceof Error && !('code' in error) ? error.message : 'Không thể lưu sản phẩm. Vui lòng thử lại.'
             );
             return;
           }
@@ -1248,7 +1244,7 @@ export const Crm: React.FC<CrmProps> = ({
             type: 'product_details',
             targetId: selectedCustomer.id,
             productId: selectedProduct.id,
-            fieldName: `${t('Sửa Sản phẩm')}: ${selectedProduct.productCode} - ${selectedProduct.productName}`,
+            fieldName: `Sửa Sản phẩm: ${selectedProduct.productCode} - ${selectedProduct.productName}`,
             originalData: selectedProduct,
             updatedData: updatedProduct,
             requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
@@ -1270,7 +1266,7 @@ export const Crm: React.FC<CrmProps> = ({
     return runMutationAction(
       'CrmPage.tsx:triggerAddClassification',
       async () => {
-        const name = prompt(t('Nhập tên phân loại sản phẩm mới:'));
+        const name = prompt('Nhập tên phân loại sản phẩm mới:');
         if (!name || !name.trim()) return;
         const cleanName = name.trim();
         const id = `class-${Math.random().toString(36).substr(2, 9)}`;
@@ -1286,7 +1282,7 @@ export const Crm: React.FC<CrmProps> = ({
     return runMutationAction(
       'CrmPage.tsx:triggerAddWindDirection',
       async () => {
-        const name = prompt(t('Nhập tên hướng tem ra mới:'));
+        const name = prompt('Nhập tên hướng tem ra mới:');
         if (!name || !name.trim()) return;
         const cleanName = name.trim();
         const id = `wind-${Math.random().toString(36).substr(2, 9)}`;
@@ -1311,7 +1307,7 @@ export const Crm: React.FC<CrmProps> = ({
           await dbService.addDocument('edit_requests', {
             type: 'product_classification',
             targetId: id,
-            fieldName: `${t('Sửa Phân loại sản phẩm')}: ${origClass.name}`,
+            fieldName: `Sửa Phân loại sản phẩm: ${origClass.name}`,
             originalData: { name: origClass.name },
             updatedData: { name: newName },
             requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
@@ -1339,7 +1335,7 @@ export const Crm: React.FC<CrmProps> = ({
           await dbService.addDocument('edit_requests', {
             type: 'wind_direction',
             targetId: id,
-            fieldName: `${t('Sửa Hướng tem ra')}: ${origWind.name}`,
+            fieldName: `Sửa Hướng tem ra: ${origWind.name}`,
             originalData: { name: origWind.name },
             updatedData: { name: newName },
             requestedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
@@ -1357,7 +1353,7 @@ export const Crm: React.FC<CrmProps> = ({
   const triggerEditClassification = async (id: string) => {
     const origClass = productClassifications.find(c => c.id === id);
     if (!origClass) return;
-    const name = prompt(t('Sửa tên phân loại sản phẩm:'), origClass.name);
+    const name = prompt('Sửa tên phân loại sản phẩm:', origClass.name);
     if (!name || !name.trim()) return;
     await handleEditClassification(id, name.trim());
   };
@@ -1365,7 +1361,7 @@ export const Crm: React.FC<CrmProps> = ({
   const triggerEditWindDirection = async (id: string) => {
     const origWind = windDirections.find(w => w.id === id);
     if (!origWind) return;
-    const name = prompt(t('Sửa tên hướng tem ra:'), origWind.name);
+    const name = prompt('Sửa tên hướng tem ra:', origWind.name);
     if (!name || !name.trim()) return;
     await handleEditWindDirection(id, name.trim());
   };
@@ -1396,7 +1392,7 @@ export const Crm: React.FC<CrmProps> = ({
               );
               approved = true;
             } else {
-              alert(t('Không tìm thấy thông tin khách hàng tương ứng.'));
+              alert('Không tìm thấy thông tin khách hàng tương ứng.');
             }
           } else if (req.type === 'product_classification') {
             await requireConfirmedMutation(
@@ -1422,7 +1418,7 @@ export const Crm: React.FC<CrmProps> = ({
         } catch (error) {
           showErrorToast();
           console.error(error);
-          alert(t('Có lỗi xảy ra khi phê duyệt.'));
+          alert('Có lỗi xảy ra khi phê duyệt.');
         }
       },
       req
@@ -1433,7 +1429,7 @@ export const Crm: React.FC<CrmProps> = ({
     return runMutationAction(
       'CrmPage.tsx:handleRejectRequest',
       async () => {
-        if (window.confirm(t('Bạn có chắc chắn muốn từ chối yêu cầu này?'))) {
+        if (window.confirm('Bạn có chắc chắn muốn từ chối yêu cầu này?')) {
           await requireConfirmedMutation(dbService.deleteDocument('edit_requests', req.id));
           setShowCompareModal(false);
           setSelectedEditRequest(null);
@@ -1450,7 +1446,7 @@ export const Crm: React.FC<CrmProps> = ({
       'CrmPage.tsx:handleApproveDeleteCustomer',
       async () => {
         if (
-          await confirmDelete(t('Bạn có chắc muốn phê duyệt xóa khách hàng này?'), {
+          await confirmDelete('Bạn có chắc muốn phê duyệt xóa khách hàng này?', {
             title: 'Xác nhận phê duyệt xóa',
             confirmLabel: 'Duyệt xóa'
           })
@@ -1474,7 +1470,7 @@ export const Crm: React.FC<CrmProps> = ({
     return runMutationAction(
       'CrmPage.tsx:handleRejectDeleteCustomer',
       async () => {
-        if (window.confirm(t('Từ chối yêu cầu xóa khách hàng này?'))) {
+        if (window.confirm('Từ chối yêu cầu xóa khách hàng này?')) {
           await requireConfirmedMutation(
             dbService.updateDocument('customers', cust.id, {
               deleteRequested: false,
@@ -1494,7 +1490,7 @@ export const Crm: React.FC<CrmProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 900_000) {
-      alert(t('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.'));
+      alert('Tệp lớn hơn 900 KB. Vui lòng lưu trên Google Drive hoặc OneDrive và dùng đường dẫn chia sẻ.');
       e.target.value = '';
       return;
     }
@@ -1520,7 +1516,7 @@ export const Crm: React.FC<CrmProps> = ({
           folder => folder.name.trim().toLocaleLowerCase('vi-VN') === folderNameTrim.toLocaleLowerCase('vi-VN')
         );
         if (folderExists) {
-          alert(t('Thư mục này đã tồn tại.'));
+          alert('Thư mục này đã tồn tại.');
           return;
         }
 
@@ -1575,7 +1571,7 @@ export const Crm: React.FC<CrmProps> = ({
               folder.name.trim().toLocaleLowerCase('vi-VN') === nextName.toLocaleLowerCase('vi-VN')
           )
         ) {
-          alert(t('Tên thư mục này đã tồn tại.'));
+          alert('Tên thư mục này đã tồn tại.');
           return;
         }
         const now = new Date().toISOString();
@@ -1616,18 +1612,18 @@ export const Crm: React.FC<CrmProps> = ({
         if (!selectedCustomer) return;
         const normalizedLink = repoUploadLink.trim();
         if (!selectedFolderForUpload || (!repoUploadFile && !normalizedLink) || !repoUploadFileName) {
-          alert(t('Vui lòng chọn thư mục, nhập tên và chọn tệp hoặc đường dẫn chia sẻ.'));
+          alert('Vui lòng chọn thư mục, nhập tên và chọn tệp hoặc đường dẫn chia sẻ.');
           return;
         }
         if (normalizedLink && !/^https?:\/\//i.test(normalizedLink)) {
-          alert(t('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.'));
+          alert('Đường dẫn chia sẻ phải bắt đầu bằng http:// hoặc https://.');
           return;
         }
 
         const folders = getCustomerRepositoryFolders(selectedCustomer);
         const selectedFolder = folders.find(folder => folder.id === selectedFolderForUpload && folder.active !== false);
         if (!selectedFolder) {
-          alert(t('Thư mục lưu trữ không còn tồn tại.'));
+          alert('Thư mục lưu trữ không còn tồn tại.');
           return;
         }
         const updatedFiles = (selectedCustomer.files || []).filter((file: any) => file.name !== '.placeholder');
@@ -1671,7 +1667,7 @@ export const Crm: React.FC<CrmProps> = ({
       'CrmPage.tsx:handleDeleteRepoFile',
       async () => {
         if (!selectedCustomer) return;
-        if (!(await confirmDelete(t('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?')))) {
+        if (!(await confirmDelete('Bạn có chắc chắn muốn xóa tệp này khỏi kho lưu trữ?'))) {
           return;
         }
         const updatedFiles = selectedCustomer.files || [];
@@ -1705,14 +1701,14 @@ export const Crm: React.FC<CrmProps> = ({
         );
         const containsContracts = folderId === 'contracts' && (selectedCustomer.contracts || []).length > 0;
         if (containsFiles || containsContracts) {
-          alert(t('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.'));
+          alert('Không thể xóa thư mục đang có tài liệu. Hãy chuyển hoặc xóa tài liệu bên trong trước.');
           return;
         }
         if (folders.length === 1) {
-          alert(t('Kho lưu trữ phải có ít nhất một thư mục.'));
+          alert('Kho lưu trữ phải có ít nhất một thư mục.');
           return;
         }
-        if (!(await confirmDelete(`${t('Xóa thư mục')} “${folder.name}”?`))) return;
+        if (!(await confirmDelete(`Xóa thư mục “${folder.name}”?`))) return;
         const nextFolders = folders.filter(item => item.id !== folderId);
 
         await requireConfirmedMutation(
@@ -1743,7 +1739,7 @@ export const Crm: React.FC<CrmProps> = ({
   }
 
   const handleEditProductTypeChange = (type: any) => {
-    if (window.confirm(t('Thay đổi loại sản phẩm sẽ reset các thông số kỹ thuật về mặc định. Bạn có muốn tiếp tục?'))) {
+    if (window.confirm('Thay đổi loại sản phẩm sẽ reset các thông số kỹ thuật về mặc định. Bạn có muốn tiếp tục?')) {
       setProductType(type);
       setSpecFields(loadSpecsToFields(type));
     }
@@ -1807,7 +1803,7 @@ export const Crm: React.FC<CrmProps> = ({
       'CrmPage.tsx:handleDeleteContract',
       async () => {
         if (!selectedCustomer) return;
-        if (await confirmDelete(t('Bạn có chắc chắn muốn xóa hợp đồng này?'))) {
+        if (await confirmDelete('Bạn có chắc chắn muốn xóa hợp đồng này?')) {
           const updatedContracts = (selectedCustomer.contracts || []).filter((c: any) => c.id !== contractId);
 
           await requireConfirmedMutation(
@@ -1844,13 +1840,13 @@ export const Crm: React.FC<CrmProps> = ({
   // Order frequency (orders per month)
   const calculateFrequency = (custId: string) => {
     const orders = getCustomerOrders(custId);
-    if (orders.length === 0) return `0 ${t('đơn/tháng')}`;
+    if (orders.length === 0) return `0 đơn/tháng`;
 
     // Calculate months between first order and now
     const dates = orders
       .map(order => parseValidDate(order.orderDate || order.createdAt)?.getTime())
       .filter((timestamp): timestamp is number => typeof timestamp === 'number');
-    if (dates.length === 0) return `0 ${t('đơn/tháng')}`;
+    if (dates.length === 0) return `0 đơn/tháng`;
     const minDate = new Date(Math.min(...dates));
     const now = new Date();
     const diffMonths = Math.max(
@@ -1858,7 +1854,7 @@ export const Crm: React.FC<CrmProps> = ({
       (now.getFullYear() - minDate.getFullYear()) * 12 + (now.getMonth() - minDate.getMonth())
     );
 
-    return `${(orders.length / diffMonths).toFixed(1)} ${t('đơn/tháng')}`;
+    return `${(orders.length / diffMonths).toFixed(1)} đơn/tháng`;
   };
 
   // Customer overview metrics and filters
@@ -1908,7 +1904,7 @@ export const Crm: React.FC<CrmProps> = ({
         ).trim()
       : '';
     const hasUnsavedNote = selectedCustomer && sanitizeCustomerNoteHtml(customerNoteDraft).trim() !== savedNoteHtml;
-    if (hasUnsavedNote && !window.confirm(t('Ghi chú chưa được lưu. Bạn có muốn rời khỏi trang?'))) return;
+    if (hasUnsavedNote && !window.confirm('Ghi chú chưa được lưu. Bạn có muốn rời khỏi trang?')) return;
     setSelectedCustomer(null);
     setCustomerNoteFeedback('');
   };
@@ -1942,21 +1938,21 @@ export const Crm: React.FC<CrmProps> = ({
           .filter((file: Record<string, unknown>) => file.name !== '.placeholder')
           .map((file: Record<string, unknown>) => ({
             id: `file-${file.id}`,
-            name: String(file.name || t('Tệp tài liệu')),
+            name: String(file.name || 'Tệp tài liệu'),
             folderId: resolveCustomerFileFolderId(file, customerRepositoryFolders),
             date: String(file.createdAt || ''),
             source: String(file.base64 || file.data || file.url || '')
           })),
         ...(selectedCustomer.contracts || []).map((contract: Record<string, unknown>) => ({
           id: `contract-${contract.id}`,
-          name: String(contract.contractNo || t('Hợp đồng chưa có số')),
+          name: String(contract.contractNo || 'Hợp đồng chưa có số'),
           folderId: 'contracts',
           date: String(contract.signDate || contract.createdAt || ''),
           source: String(contract.fileUrl || '')
         })),
         ...(selectedCustomer.documents || []).map((documentRecord: Record<string, unknown>) => ({
           id: `document-${documentRecord.id}`,
-          name: String(documentRecord.name || t('Tài liệu chưa đặt tên')),
+          name: String(documentRecord.name || 'Tài liệu chưa đặt tên'),
           folderId: DOCUMENT_REPOSITORY_FOLDER_IDS[String(documentRecord.category)] || 'other',
           date: String(documentRecord.createdAt || ''),
           source: String(documentRecord.url || '')
@@ -1996,8 +1992,7 @@ export const Crm: React.FC<CrmProps> = ({
     getCustomerOrders,
     getCustomerOrderValue,
     getCustomerOutstandingDebt,
-    today,
-    t
+    today
   });
   const {
     searchTerm,
@@ -2075,15 +2070,15 @@ export const Crm: React.FC<CrmProps> = ({
   const renderProductCommercialFields = () => (
     <div className="product-commercial-fields">
       <div className="form-group">
-        <label>{t('Đơn Vị Tính')}</label>
+        <label>Đơn Vị Tính</label>
         <input
           value={productUnit}
           onChange={event => setProductUnit(event.target.value)}
-          placeholder={t('cái, cuộn, tờ...')}
+          placeholder="cái, cuộn, tờ..."
         />
       </div>
       <div className="form-group">
-        <label>{t('Thuế VAT (%)')}</label>
+        <label>Thuế VAT (%)</label>
         <input
           type="number"
           min="0"
@@ -2093,9 +2088,9 @@ export const Crm: React.FC<CrmProps> = ({
         />
       </div>
       <div className="form-group">
-        <label>{t('Nhà Cung Cấp Thường Dùng')}</label>
+        <label>Nhà Cung Cấp Thường Dùng</label>
         <select value={productSupplierId} onChange={event => setProductSupplierId(event.target.value)}>
-          <option value="">{t('-- Chọn nhà cung cấp --')}</option>
+          <option value="">-- Chọn nhà cung cấp --</option>
           {suppliers
             .filter(supplier => !supplier.deleted)
             .map(supplier => (
@@ -2106,7 +2101,7 @@ export const Crm: React.FC<CrmProps> = ({
         </select>
       </div>
       <div className="form-group">
-        <label>{t('Giá Mua Tham Khảo (đ)')}</label>
+        <label>Giá Mua Tham Khảo (đ)</label>
         <input
           type="number"
           min="0"
@@ -2115,17 +2110,17 @@ export const Crm: React.FC<CrmProps> = ({
         />
       </div>
       <div className="form-group">
-        <label>{t('Chiết Khấu Sản Phẩm')}</label>
+        <label>Chiết Khấu Sản Phẩm</label>
         <select
           value={productDiscountType}
           onChange={event => setProductDiscountType(event.target.value as PODiscountType)}
         >
-          <option value="percent">{t('Theo phần trăm (%)')}</option>
-          <option value="amount">{t('Theo tiền chênh (đ)')}</option>
+          <option value="percent">Theo phần trăm (%)</option>
+          <option value="amount">Theo tiền chênh (đ)</option>
         </select>
       </div>
       <div className="form-group">
-        <label>{productDiscountType === 'amount' ? t('Tiền Chênh (đ)') : t('Tỷ Lệ Chiết Khấu (%)')}</label>
+        <label>{productDiscountType === 'amount' ? 'Tiền Chênh (đ)' : 'Tỷ Lệ Chiết Khấu (%)'}</label>
         {productDiscountType === 'amount' ? (
           <input
             type="number"
@@ -2144,7 +2139,7 @@ export const Crm: React.FC<CrmProps> = ({
         )}
       </div>
       <div className="form-group">
-        <label>{t('Thời Gian Chuẩn Bị (ngày)')}</label>
+        <label>Thời Gian Chuẩn Bị (ngày)</label>
         <input
           type="number"
           min="0"
@@ -2211,11 +2206,11 @@ export const Crm: React.FC<CrmProps> = ({
     <div className="customer-contact-editor">
       <div className="customer-contact-editor__header">
         <div>
-          <strong>{t('Đầu mối liên hệ bổ sung')}</strong>
-          <span>{t('Lưu riêng người phụ trách mua hàng, kho, kế toán hoặc đầu mối khác.')}</span>
+          <strong>Đầu mối liên hệ bổ sung</strong>
+          <span>Lưu riêng người phụ trách mua hàng, kho, kế toán hoặc đầu mối khác.</span>
         </div>
         <button type="button" className="btn btn-sm btn-outline" onClick={addContactRow}>
-          <Plus size={14} /> {t('Thêm liên hệ')}
+          <Plus size={14} /> Thêm liên hệ
         </button>
       </div>
       {additionalContacts.map(contact => (
@@ -2225,19 +2220,19 @@ export const Crm: React.FC<CrmProps> = ({
               .filter(([role]) => role !== 'primary')
               .map(([role, label]) => (
                 <option key={role} value={role}>
-                  {t(label)}
+                  {label}
                 </option>
               ))}
           </select>
           <input
             value={contact.name}
             onChange={event => updateContactRow(contact.id, 'name', event.target.value)}
-            placeholder={t('Họ tên')}
+            placeholder="Họ tên"
           />
           <input
             value={contact.phone}
             onChange={event => updateContactRow(contact.id, 'phone', event.target.value)}
-            placeholder={t('Số điện thoại')}
+            placeholder="Số điện thoại"
           />
           <input
             value={contact.email}
@@ -2710,15 +2705,15 @@ export const Crm: React.FC<CrmProps> = ({
   return (
     <SystemFieldSurface table="customers" className={`crm-view ${selectedCustomer ? 'crm-view--detail' : ''}`}>
       <PageContextHeader
-        section={t('Khách hàng')}
+        section="Khách hàng"
         current={
           selectedCustomer
-            ? t('Chi tiết khách hàng')
+            ? 'Chi tiết khách hàng'
             : filterType === 'overview'
               ? 'Tổng quan'
               : filterType === 'products'
                 ? 'Mã sản phẩm'
-                : t('Tất cả')
+                : 'Tất cả'
         }
       />
 
@@ -2750,7 +2745,7 @@ export const Crm: React.FC<CrmProps> = ({
                 }}
               >
                 <AlertCircle size={20} />
-                {t('BẢNG ĐIỀU HÀNH PHÊ DUYỆT (ADMIN APPROVALS)')}
+                BẢNG ĐIỀU HÀNH PHÊ DUYỆT (ADMIN APPROVALS)
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -2771,10 +2766,8 @@ export const Crm: React.FC<CrmProps> = ({
                   }}
                 >
                   <div>
-                    <span style={{ fontWeight: 'bold', color: 'var(--color-danger)' }}>
-                      [${t('YÊU CẦU XÓA KHÁCH HÀNG')}]{' '}
-                    </span>
-                    <strong>{cust.companyName}</strong> - {t('Yêu cầu bởi:')} {cust.deleteRequestedBy || 'Sale'}
+                    <span style={{ fontWeight: 'bold', color: 'var(--color-danger)' }}>[$YÊU CẦU XÓA KHÁCH HÀNG] </span>
+                    <strong>{cust.companyName}</strong> - Yêu cầu bởi: {cust.deleteRequestedBy || 'Sale'}
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
@@ -2782,14 +2775,14 @@ export const Crm: React.FC<CrmProps> = ({
                       className="btn btn-sm btn-danger"
                       onClick={() => handleApproveDeleteCustomer(cust)}
                     >
-                      {t('Duyệt Xóa')}
+                      Duyệt Xóa
                     </button>
                     <button
                       type="button"
                       className="btn btn-sm btn-outline"
                       onClick={() => handleRejectDeleteCustomer(cust)}
                     >
-                      {t('Hủy Yêu Cầu')}
+                      Hủy Yêu Cầu
                     </button>
                   </div>
                 </div>
@@ -2812,10 +2805,8 @@ export const Crm: React.FC<CrmProps> = ({
                   }}
                 >
                   <div>
-                    <span style={{ fontWeight: 'bold', color: 'var(--color-warning)' }}>
-                      [${t('YÊU CẦU CHỈNH SỬA')}]{' '}
-                    </span>
-                    <strong>{req.fieldName}</strong> - {t('Yêu cầu bởi:')} {req.requestedBy} (
+                    <span style={{ fontWeight: 'bold', color: 'var(--color-warning)' }}>[$YÊU CẦU CHỈNH SỬA] </span>
+                    <strong>{req.fieldName}</strong> - Yêu cầu bởi: {req.requestedBy} (
                     {formatDateTime(req.requestedAt, 'vi-VN', '')})
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
@@ -2827,10 +2818,10 @@ export const Crm: React.FC<CrmProps> = ({
                         setShowCompareModal(true);
                       }}
                     >
-                      {t('Xem So Sánh (Diff)')}
+                      Xem So Sánh (Diff)
                     </button>
                     <button type="button" className="btn btn-sm btn-success" onClick={() => handleApproveRequest(req)}>
-                      {t('Duyệt')}
+                      Duyệt
                     </button>
                     <button
                       type="button"
@@ -2838,7 +2829,7 @@ export const Crm: React.FC<CrmProps> = ({
                       style={{ color: 'red', borderColor: 'red' }}
                       onClick={() => handleRejectRequest(req)}
                     >
-                      {t('Từ Chối')}
+                      Từ Chối
                     </button>
                   </div>
                 </div>
@@ -2853,7 +2844,7 @@ export const Crm: React.FC<CrmProps> = ({
             <div
               className="crm-list-tabs content-tabs content-tabs--commandbar"
               role="tablist"
-              aria-label={t('Chọn nhóm khách hàng')}
+              aria-label="Chọn nhóm khách hàng"
             >
               <button
                 type="button"
@@ -2874,7 +2865,7 @@ export const Crm: React.FC<CrmProps> = ({
                 role="tab"
                 aria-selected={filterType === 'all'}
               >
-                <span>{t('Tất cả')}</span>
+                <span>Tất cả</span>
               </button>
               <button
                 type="button"
@@ -2905,7 +2896,7 @@ export const Crm: React.FC<CrmProps> = ({
                     <Search size={16} />
                     <input
                       type="text"
-                      placeholder={t('Tìm công ty, mã KH, liên hệ, SĐT, MST...')}
+                      placeholder="Tìm công ty, mã KH, liên hệ, SĐT, MST..."
                       value={searchTerm}
                       onChange={event => {
                         setSearchTerm(event.target.value);
@@ -2922,8 +2913,8 @@ export const Crm: React.FC<CrmProps> = ({
                     <button
                       type="button"
                       className="lead-candidate-column-button"
-                      aria-label={t('Tùy chỉnh cột')}
-                      title={t('Tùy chỉnh cột')}
+                      aria-label="Tùy chỉnh cột"
+                      title="Tùy chỉnh cột"
                       onClick={() => setShowColumnCustomizer(true)}
                     >
                       <Settings2 size={16} />
@@ -2931,7 +2922,7 @@ export const Crm: React.FC<CrmProps> = ({
                   )}
                   {(searchTerm || activeFilterCount > 0) && (
                     <button type="button" className="btn btn-outline crm-reset-filters" onClick={resetCrmListFilters}>
-                      <X size={14} /> {t('Đặt lại')}
+                      <X size={14} /> Đặt lại
                     </button>
                   )}
                 </>
@@ -2940,10 +2931,10 @@ export const Crm: React.FC<CrmProps> = ({
                 <button
                   className="btn btn-primary crm-add-customer"
                   onClick={() => openAddModal()}
-                  title={t('Thêm Khách Hàng Mới')}
+                  title="Thêm Khách Hàng Mới"
                 >
                   <Plus size={18} />
-                  <span>{t('Thêm khách hàng')}</span>
+                  <span>Thêm khách hàng</span>
                 </button>
               )}
             </div>
@@ -3177,24 +3168,24 @@ export const Crm: React.FC<CrmProps> = ({
             <div className="customer-onboarding-header">
               <div>
                 <span className="customer-onboarding-step">HỒ SƠ KHÁCH HÀNG</span>
-                <h2>{t('CHỈNH SỬA HỒ SƠ KHÁCH HÀNG')}</h2>
-                <p>{t('Cập nhật hồ sơ trên cùng cấu trúc với màn hình thêm khách hàng.')}</p>
+                <h2>CHỈNH SỬA HỒ SƠ KHÁCH HÀNG</h2>
+                <p>Cập nhật hồ sơ trên cùng cấu trúc với màn hình thêm khách hàng.</p>
               </div>
               <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>
-                {t('Đóng / Hủy')}
+                Đóng / Hủy
               </button>
             </div>
             <form className="customer-onboarding-form" onSubmit={handleEditCustomer}>
               <div className="modal-body customer-onboarding-body">{renderCustomerOnboardingTables(false)}</div>
               <div className="modal-footer customer-onboarding-footer">
                 <div className="customer-onboarding-footer-note">
-                  {t('Các thay đổi chỉ được ghi nhận khi bấm Lưu thay đổi.')}
+                  Các thay đổi chỉ được ghi nhận khi bấm Lưu thay đổi.
                 </div>
                 <button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>
-                  {t('Hủy')}
+                  Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {t('Lưu thay đổi')}
+                  Lưu thay đổi
                 </button>
               </div>
             </form>
