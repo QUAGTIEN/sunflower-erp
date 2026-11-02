@@ -28,16 +28,14 @@ import {
   DataFilterPanel,
   DataFilterSection
 } from '@/components/DataWorkspaceFilters';
-import { assertManualFinancialTransition } from '@/features/sales/api/poWorkflowService';
 import { syncDesignRequestsForPO } from '@/features/design/api/designRequestService';
 import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/procurementService';
 import { DesignRecord, DesignVersion } from '@/features/design/model/designWorkflow';
-import { calculatePOItemFinancials, PODiscountType, withCalculatedPOFinancials } from '@/domain/poFinancials';
+import { calculatePOItemFinancials, withCalculatedPOFinancials } from '@/domain/poFinancials';
 import {
   getPOHistoryStatusLabel,
   getPOQueueLabel,
   getPOQueueStatus,
-  getPOQueueUpdate,
   PO_QUEUE_STATES,
   POQueueStatus
 } from '@/features/sales/model/poWorkflow';
@@ -238,64 +236,6 @@ export const Sales: React.FC<SalesProps> = ({
 
   const [expandedItemIds, setExpandedItemIds] = useState<string[]>([]);
   const [newChecklistText, setNewChecklistText] = useState('');
-
-  const handleUpdateItemDiscount = async (
-    itemIdx: number,
-    update: { discountType?: PODiscountType; discountRate?: number; discountAmount?: number }
-  ) => {
-    return runMutationAction(
-      'SalesPage.tsx:handleUpdateItemDiscount',
-      async () => {
-        if (!selectedPO) return;
-
-        const updatedItems = selectedPO.items.map((item: any, idx: number) => {
-          if (idx === itemIdx) {
-            return withCalculatedPOFinancials({ ...item, ...update });
-          }
-          return item;
-        });
-
-        let totalBeforeVat = 0;
-        let totalAfterVat = 0;
-        let discountAmount = 0;
-
-        updatedItems.forEach((item: any) => {
-          const financials = calculatePOItemFinancials(item);
-          totalBeforeVat += financials.amountBeforeVat;
-          totalAfterVat += financials.amountWithVat;
-          discountAmount += financials.discountAmount;
-        });
-
-        const updatedPO = {
-          ...selectedPO,
-          items: updatedItems,
-          totalAmount: Math.round(totalBeforeVat),
-          discountAmount: Math.round(discountAmount),
-          netAmount: Math.round(totalAfterVat),
-          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-          updatedAt: new Date().toISOString()
-        };
-
-        await requireConfirmedMutation(
-          dbService.updateDocument('pos', selectedPO.id, {
-            items: updatedItems,
-            totalAmount: updatedPO.totalAmount,
-            discountAmount: updatedPO.discountAmount,
-            netAmount: updatedPO.netAmount,
-            updatedBy: updatedPO.updatedBy,
-            updatedAt: updatedPO.updatedAt
-          })
-        );
-
-        setSelectedPO(updatedPO);
-        onRefresh();
-
-        showSuccessToast('Đã lưu thành công');
-      },
-      itemIdx,
-      { busy: false }
-    );
-  };
 
   const handleUpdateItemNotes = async (itemIdx: number, fieldName: 'saleNotes' | 'designNotes', value: string) => {
     return runMutationAction(
@@ -840,51 +780,6 @@ export const Sales: React.FC<SalesProps> = ({
         showSuccessToast(poData.id ? 'Đã lưu thành công' : 'Đã thêm thành công');
       },
       poData
-    );
-  };
-
-  const updatePOStatus = async (poId: string, newStatus: POQueueStatus) => {
-    return runMutationAction(
-      'SalesPage.tsx:updatePOStatus',
-      async () => {
-        assertManualFinancialTransition(newStatus);
-        const po = pos.find(p => p.id === poId);
-        if (!po) return;
-
-        const updatedLogs = [
-          ...(po.historyLogs || []),
-          {
-            status: newStatus,
-            updatedBy: currentUser.displayName,
-            updatedAt: new Date().toISOString(),
-            note: `Cập nhật hàng đợi đơn hàng sang: ${getPOQueueLabel(newStatus)}`
-          }
-        ];
-
-        const queueExtras =
-          newStatus === 'waiting_delivery' ? { deliveryStage: po.deliveryStage || 'customer_outbound' } : {};
-
-        await requireConfirmedMutation(
-          dbService.updateDocument('pos', poId, {
-            ...getPOQueueUpdate(newStatus, queueExtras),
-            historyLogs: updatedLogs
-          })
-        );
-
-        setSelectedPO((prev: any) =>
-          prev
-            ? {
-                ...prev,
-                ...getPOQueueUpdate(newStatus, queueExtras),
-                historyLogs: updatedLogs
-              }
-            : null
-        );
-        onRefresh();
-
-        showSuccessToast('Đã lưu thành công');
-      },
-      poId
     );
   };
 
@@ -1545,37 +1440,6 @@ export const Sales: React.FC<SalesProps> = ({
               <span className="po-kpi-definition">KPI đơn hàng là tỷ lệ giá trị còn lại sau chiết khấu.</span>
             </div>
 
-            {/* Status changer for authorized roles */}
-            {(currentUser.role === 'admin' || currentUser.role === 'sale' || currentUser.role === 'producer') && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  backgroundColor: '#f8fafc',
-                  padding: '12px',
-                  borderRadius: '4px',
-                  border: '1px solid var(--color-border)'
-                }}
-              >
-                <span style={{ fontWeight: 600 }}>Cập nhật nhanh tiến độ đơn hàng:</span>
-                <select
-                  value={getPOQueueStatus(selectedPO)}
-                  onChange={e => updatePOStatus(selectedPO.id, e.target.value as POQueueStatus)}
-                  style={{ width: '220px' }}
-                >
-                  {PO_QUEUE_STATES.map(state => (
-                    <option key={state.value} value={state.value}>
-                      {state.label}
-                    </option>
-                  ))}
-                </select>
-                <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                  * Sẽ tự động ghi lại nhật ký xử lý đơn
-                </span>
-              </div>
-            )}
-
             {/* HORIZONTAL TIMELINE DISPLAY (QUEUE STATES) */}
             <div style={{ overflowX: 'auto', paddingBottom: '10px' }}>
               <div className="order-progress-timeline" style={{ minWidth: '760px' }}>
@@ -1690,57 +1554,11 @@ export const Sales: React.FC<SalesProps> = ({
                                   {canViewSaleFinancials ? `${financials.vatRate}%` : '—'}
                                 </td>
                                 <td>
-                                  {currentUser.role === 'admin' || currentUser.role === 'sale' ? (
-                                    <div className="po-discount-editor po-discount-editor-readonly">
-                                      <select
-                                        value={financials.discountType}
-                                        title={
-                                          financials.discountType === 'amount' ? 'Tiền chênh (VNĐ)' : 'Theo phần trăm'
-                                        }
-                                        aria-label="Hình thức chiết khấu"
-                                        onChange={e =>
-                                          handleUpdateItemDiscount(idx, {
-                                            discountType: e.target.value === 'amount' ? 'amount' : 'percent'
-                                          })
-                                        }
-                                        className="po-discount-mode"
-                                      >
-                                        <option value="percent">%</option>
-                                        <option value="amount">Tiền chênh</option>
-                                      </select>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max={
-                                          financials.discountType === 'percent'
-                                            ? 100
-                                            : financials.grossAmount || undefined
-                                        }
-                                        value={
-                                          financials.discountType === 'amount'
-                                            ? financials.discountAmount
-                                            : financials.discountRate
-                                        }
-                                        onChange={e =>
-                                          handleUpdateItemDiscount(
-                                            idx,
-                                            financials.discountType === 'amount'
-                                              ? { discountAmount: Number(e.target.value) }
-                                              : { discountRate: Number(e.target.value) }
-                                          )
-                                        }
-                                        className="po-discount-input"
-                                      />
-                                    </div>
-                                  ) : canViewSaleFinancials ? (
-                                    financials.discountType === 'amount' ? (
-                                      `${Math.round(financials.discountAmount).toLocaleString()} đ`
-                                    ) : (
-                                      `${financials.discountRate}%`
-                                    )
-                                  ) : (
-                                    '—'
-                                  )}
+                                  {canViewSaleFinancials
+                                    ? financials.discountType === 'amount'
+                                      ? `${Math.round(financials.discountAmount).toLocaleString()} đ`
+                                      : `${financials.discountRate}%`
+                                    : '—'}
                                 </td>
                                 <td className="po-money-cell">
                                   {canViewSaleFinancials

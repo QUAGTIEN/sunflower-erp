@@ -102,3 +102,4 @@ Ngưỡng thành phẩm/hàng mua dùng cùng nhóm ghi kho lượt 3 và quy t�
 | D-TR1 | Thùng rác chỉ Admin dùng; khôi phục/xóa vĩnh viễn qua máy chủ, không xóa vĩnh viễn bản ghi đã vào sổ tiền/hàng, hóa đơn cũ chỉ đọc; xóa mềm ghi người và thời gian xóa |
 | D-BM1 | Bỏ quyền ngầm của email khởi tạo (chỉ dùng khi chưa có Admin thật); hồ sơ `users` riêng tư (chính chủ + Admin), đồng nghiệp xem qua `user_directory`; production luôn đăng nhập Firebase, bỏ mật khẩu demo |
 | D-BM2 | Nhân viên tự đổi mật khẩu; Admin xem được mật khẩu nhân viên (người dùng chọn sau khi được giải thích rủi ro): lưu bản mã hóa AES-256-GCM phía máy chủ, xem theo yêu cầu, tự ẩn, ghi lịch sử mỗi lần xem |
+| D-PO1 | 03/11/2026: màn chi tiết đơn hàng không còn chọn tay trạng thái (bỏ "Cập nhật nhanh tiến độ"); hàng đợi PO chỉ chuyển theo thiết kế, LSX, giao hàng và sổ kế toán. Chiết khấu từng dòng chỉ sửa trong form Sửa đơn. Sale xem được LSX và chuyến giao của đơn; quyền xem KPI/giá giữ nguyên |
