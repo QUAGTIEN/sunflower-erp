@@ -136,6 +136,8 @@ export const Sales: React.FC<SalesProps> = ({
   const { t } = useLanguage();
   const isFull = currentUser.role === 'admin' || currentUser.role === 'accountant';
   const isSaleOnly = currentUser.role === 'sale' || currentUser.role === 'designer';
+  // Only admins move orders to the recycle bin (formerly enforced by a shared confirmation password).
+  const canDeletePO = currentUser.role === 'admin';
   const canViewSaleFinancials = isFull || isSaleOnly;
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [printPO, setPrintPO] = useState<PrintableOrder | null>(null);
@@ -568,22 +570,18 @@ export const Sales: React.FC<SalesProps> = ({
     return runMutationAction(
       'SalesPage.tsx:handleDeletePO',
       async () => {
+        if (!canDeletePO) return;
         if (!(await confirmDelete(t('Đưa đơn hàng này vào Thùng rác?')))) return;
-        const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
-        if (password === 'admin123' || password === '123456') {
-          await requireConfirmedMutation(
-            dbService.updateDocument('pos', poId, {
-              ...deletionFields(currentUser),
-              updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-              updatedAt: new Date().toISOString()
-            })
-          );
-          setSelectedPO(null);
-          onRefresh();
-          showSuccessToast('Đã xóa thành công');
-        } else if (password !== null) {
-          alert(t('Mật khẩu không chính xác. Xóa thất bại.'));
-        }
+        await requireConfirmedMutation(
+          dbService.updateDocument('pos', poId, {
+            ...deletionFields(currentUser),
+            updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+            updatedAt: new Date().toISOString()
+          })
+        );
+        setSelectedPO(null);
+        onRefresh();
+        showSuccessToast('Đã xóa thành công');
       },
       poId
     );
@@ -1527,13 +1525,15 @@ export const Sales: React.FC<SalesProps> = ({
                     >
                       <Pencil size={14} />
                     </button>
-                    <button
-                      className="btn btn-sm btn-danger btn-symbol-sm"
-                      onClick={() => handleDeletePO(selectedPO.id)}
-                      title={t('Xóa')}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {canDeletePO && (
+                      <button
+                        className="btn btn-sm btn-danger btn-symbol-sm"
+                        onClick={() => handleDeletePO(selectedPO.id)}
+                        title={t('Xóa')}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </>
                 )}
               </div>

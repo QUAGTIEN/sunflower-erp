@@ -1043,23 +1043,18 @@ export const Crm: React.FC<CrmProps> = ({
       async () => {
         if (currentUser.role === 'admin') {
           if (!(await confirmDelete(t('Đưa khách hàng này vào Thùng rác?')))) return;
-          const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (Giám Đốc/Admin):'));
-          if (password === 'admin123' || password === '123456') {
-            await requireConfirmedMutation(
-              dbService.updateDocument('customers', id, {
-                ...deletionFields(currentUser),
-                deleteRequested: false,
-                deleteRequestedAt: '',
-                updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
-                updatedAt: new Date().toISOString()
-              })
-            );
-            setSelectedCustomer(null);
-            onRefresh();
-            showSuccessToast('Đã xóa thành công');
-          } else if (password !== null) {
-            alert(t('Mật khẩu không chính xác. Xóa thất bại.'));
-          }
+          await requireConfirmedMutation(
+            dbService.updateDocument('customers', id, {
+              ...deletionFields(currentUser),
+              deleteRequested: false,
+              deleteRequestedAt: '',
+              updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+              updatedAt: new Date().toISOString()
+            })
+          );
+          setSelectedCustomer(null);
+          onRefresh();
+          showSuccessToast('Đã xóa thành công');
         } else {
           if (
             await confirmDelete(t('Bạn có muốn gửi yêu cầu xóa khách hàng này tới Admin phê duyệt?'), {

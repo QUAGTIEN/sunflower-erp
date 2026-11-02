@@ -58,6 +58,8 @@ export const Production: React.FC<ProductionProps> = ({
   users
 }) => {
   const { t } = useLanguage();
+  // Only admins move legacy orders to the recycle bin (formerly enforced by a shared confirmation password).
+  const canDeleteLsx = currentUser.role === 'admin';
   const [showEditLsxModal, setShowEditLsxModal] = useState(false);
   const [selectedLsx, setSelectedLsx] = useState<any | null>(null);
 
@@ -200,11 +202,7 @@ export const Production: React.FC<ProductionProps> = ({
     return runMutationAction(
       'ProductionPage.tsx:handleDeleteLsx',
       async () => {
-        const password = window.prompt(t('Nhập mật khẩu xác nhận xóa (admin123 hoặc 123456):'));
-        if (password !== 'admin123' && password !== '123456') {
-          alert(t('Mật khẩu không chính xác! Không thể xóa.'));
-          return;
-        }
+        if (!canDeleteLsx) return;
         if (await confirmDelete(t('Bạn có chắc chắn muốn xóa lệnh sản xuất này?'))) {
           const lsx = productionCommands.find(l => l.id === lsxId);
           await requireConfirmedMutation(
@@ -638,13 +636,15 @@ export const Production: React.FC<ProductionProps> = ({
                     >
                       {t('Sửa')}
                     </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => handleDeleteLsx(selectedLsx.id)}
-                      title={t('Xóa')}
-                    >
-                      {t('Xóa')}
-                    </button>
+                    {canDeleteLsx && (
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDeleteLsx(selectedLsx.id)}
+                        title={t('Xóa')}
+                      >
+                        {t('Xóa')}
+                      </button>
+                    )}
                   </>
                 )}
                 <button className="btn btn-sm btn-outline" onClick={() => setSelectedLsx(null)}>

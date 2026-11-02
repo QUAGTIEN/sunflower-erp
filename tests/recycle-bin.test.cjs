@@ -222,3 +222,24 @@ test('soft deletes stamp who deleted and when; the bin page never writes Firesto
   assert.match(page, /<RowActionMenu/);
   assert.match(page, /<DataTablePagination/);
 });
+
+test('deletes no longer ask for a shared password written in the code; only admins see them', () => {
+  for (const file of [
+    'src/features/crm/pages/CrmPage.tsx',
+    'src/features/sales/pages/SalesPage.tsx',
+    'src/features/production/pages/ProductionPage.tsx'
+  ]) {
+    const source = readSource(file);
+    assert.doesNotMatch(source, /admin123|'123456'|mật khẩu xác nhận xóa/i, file);
+  }
+  const sales = readSource('src/features/sales/pages/SalesPage.tsx');
+  assert.match(sales, /const canDeletePO = currentUser\.role === 'admin';/);
+  assert.match(sales, /\{canDeletePO && \(\s*<button[^>]*\s*className="btn btn-sm btn-danger btn-symbol-sm"/);
+  const production = readSource('src/features/production/pages/ProductionPage.tsx');
+  assert.match(production, /const canDeleteLsx = currentUser\.role === 'admin';/);
+  assert.match(production, /\{canDeleteLsx && \(\s*<button/);
+  assert.match(
+    readSource('src/features/crm/pages/CrmPage.tsx'),
+    /if \(currentUser\.role === 'admin'\) \{\s*if \(!\(await confirmDelete/
+  );
+});
