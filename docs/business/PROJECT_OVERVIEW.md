@@ -318,6 +318,9 @@ Chi tiết: `docs/accounting/`.
 
 - Tạo và quản lý người dùng Firebase.
 - Gán vai trò, bật/tắt tài khoản và cấp quyền trang.
+- Danh sách dùng bảng chuẩn (tìm kiếm, lọc vai trò/trạng thái, tùy chỉnh cột, phân trang); thao tác dòng gom vào menu
+  ba chấm: Lịch sử, Chỉnh sửa, Đặt lại mật khẩu, Khóa/Mở khóa, Xóa. Ngày khởi tạo hiển thị `dd/mm/yyyy`. Form tài khoản
+  chia ô tick trang theo nhóm và tên giống menu bên trái, chỉ hiện trang thuộc vai trò đã chọn.
 - Không hiển thị mật khẩu (Firebase chỉ giữ bản băm, ERP không lưu mật khẩu). Admin **đặt lại mật khẩu** bằng mật khẩu
   mới tự nhập (tối thiểu 8 ký tự) rồi giao cho nhân viên; mọi phiên đăng nhập cũ của tài khoản bị đăng xuất.
 - Lịch sử tài khoản chỉ gồm đăng nhập/đăng xuất và thao tác quan trọng (tạo, sửa, xóa, khóa, đặt lại mật khẩu,

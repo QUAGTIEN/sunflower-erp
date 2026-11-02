@@ -2,15 +2,6 @@
   max-width: 920px;
 }
 
-.user-activity-modal__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-primary);
-  font-size: 17px;
-  font-weight: 700;
-}
-
 .user-activity-modal__subtitle {
   margin-top: 4px;
   color: var(--color-text-muted);
@@ -167,13 +158,152 @@
   }
 }
 
-.reset-password-dialog {
-  max-width: 440px;
+.account-page {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
 }
 
-.reset-password-dialog__title {
+.account-workspace {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.account-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The shared search rule makes inputs full width; here the search grows beside the filter button. */
+.account-toolbar > input[type='search'] {
+  width: auto;
+  min-width: 220px;
+  max-width: 520px;
+  flex: 1 1 320px;
+}
+
+.account-toolbar > .btn-primary {
+  margin-left: auto;
+}
+
+.account-list-frame {
+  min-width: 0;
+}
+
+.account-table-empty {
+  padding: 24px 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.account-legacy-role {
+  color: #b42336;
+  font-weight: 600;
+}
+
+.account-dialog-title {
   font-size: 16px;
   font-weight: 700;
+}
+
+.account-activity-heading {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.account-activity-heading .user-activity-modal__subtitle {
+  margin-top: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-form-dialog {
+  max-width: 720px;
+}
+
+.account-form .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account-field-error {
+  display: block;
+  margin-top: 4px;
+  color: #b42336;
+}
+
+.account-password-field,
+.reset-password-dialog__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-password-field input,
+.reset-password-dialog__field input {
+  min-width: 0;
+  flex: 1;
+}
+
+.account-pages {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+}
+
+.account-pages legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.account-pages__group {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.account-pages__group-label {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  text-transform: uppercase;
+}
+
+.account-pages__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.account-pages__option {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.account-pages__option input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+
+.reset-password-dialog {
+  max-width: 440px;
 }
 
 .reset-password-dialog__account {
@@ -184,13 +314,10 @@
   white-space: nowrap;
 }
 
-.reset-password-dialog__field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.reset-password-dialog__field input {
-  min-width: 0;
-  flex: 1;
+@media (max-width: 700px) {
+  .account-form .form-grid,
+  .account-pages__group,
+  .account-pages__options {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

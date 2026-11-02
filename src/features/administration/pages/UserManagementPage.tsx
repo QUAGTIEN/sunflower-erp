@@ -1,15 +1,34 @@
-import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
-import { showErrorToast, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
-import { dbService, type UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { adminUserService } from '@/services/adminUserService';
-import { useLanguage } from '@/context/LanguageContext';
-import { Activity, Clock3, History, KeyRound, Search, Trash2, Pencil, X } from 'lucide-react';
-import { formatDateTime } from '@/shared/utils/dateFormatting';
-import { auditService, isImportantAuditEvent, type AuditEvent, type UserPresence } from '@/services/auditService';
+import { DataTablePagination } from '@/components/DataTablePagination';
+import {
+  DataFilterButton,
+  DataFilterCheckboxGroup,
+  DataFilterChipBar,
+  DataFilterPanel,
+  DataFilterSection
+} from '@/components/DataWorkspaceFilters';
+import { ReorderableTableCells } from '@/components/ReorderableTableColumns';
+import { RowActionMenu, type RowActionMenuItem } from '@/components/RowActionMenu';
+import { TableColumnCustomizer, TableColumnsButton, type TableColumnOption } from '@/components/TableColumnCustomizer';
+import { useDataTablePagination } from '@/hooks/useDataTablePagination';
+import { useStandardTableColumns } from '@/hooks/useStandardTableColumns';
 import { getDefaultPagesForRole } from '@/app/navigation/accessControl';
-import { ROLE_PAGES, USER_ROLES, USER_ROLE_LABELS, isUserRole, type UserRole } from '@/shared/types';
+import { adminUserService } from '@/services/adminUserService';
+import { auditService } from '@/services/auditService';
+import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
+import { showErrorToast, showSuccessToast } from '@/shared/feedback/mutationFeedback';
+import { ROLE_PAGES, USER_ROLES, USER_ROLE_LABELS, isUserRole, type UserProfile } from '@/shared/types';
+import {
+  ACCOUNT_STATUS_LABELS,
+  accountRoleLabel,
+  accountStatus,
+  filterAccounts,
+  formatAccountDate,
+  type AccountStatus
+} from '../model/accountAdministration';
+import { AccountActivityDialog } from '../components/AccountActivityDialog';
+import { AccountFormDialog, type AccountFormValues } from '../components/AccountFormDialog';
 import { ResetPasswordDialog } from '../components/ResetPasswordDialog';
 import './UserManagement.css';
 
@@ -19,920 +38,327 @@ interface UserManagementProps {
   onRefresh: () => void;
 }
 
+type AccountForm = { mode: 'create' } | { mode: 'edit'; account: UserProfile };
+
+const ACCOUNT_COLUMNS: TableColumnOption[] = [
+  { id: 'name', label: 'Họ và tên', required: true },
+  { id: 'email', label: 'Email' },
+  { id: 'role', label: 'Vai trò' },
+  { id: 'status', label: 'Trạng thái' },
+  { id: 'createdAt', label: 'Ngày khởi tạo' },
+  { id: 'actions', label: 'Thao tác', required: true }
+];
+const LOCKED_START = ['name'];
+const LOCKED_END = ['actions'];
+const ROLE_FILTER_OPTIONS = USER_ROLES.map(role => ({ value: role, label: USER_ROLE_LABELS[role] }));
+const STATUS_FILTER_OPTIONS = Object.entries(ACCOUNT_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+
+const NEW_ACCOUNT: AccountFormValues = {
+  displayName: '',
+  email: '',
+  password: '',
+  role: 'sale',
+  active: true,
+  allowedPages: getDefaultPagesForRole('sale')
+};
+
+const formValuesOf = (account: UserProfile): AccountFormValues => ({
+  displayName: account.displayName,
+  email: account.email,
+  password: '',
+  role: account.role,
+  active: account.active,
+  // Ticks saved before D-PQ1 may name pages outside the role; the server would reject them.
+  allowedPages: (account.allowedPages || getDefaultPagesForRole(account.role)).filter(page =>
+    ROLE_PAGES[account.role].includes(page)
+  )
+});
+
+const errorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
+
 export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUser, onRefresh }) => {
-  const { t } = useLanguage();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-
-  // Modals state
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-
-  // Form fields
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
-  const [temporaryPassword, setTemporaryPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('sale');
-  const [active, setActive] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [roleFilters, setRoleFilters] = useState<string[]>([]);
+  const [statusFilters, setStatusFilters] = useState<AccountStatus[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [form, setForm] = useState<AccountForm | null>(null);
   const [passwordAccount, setPasswordAccount] = useState<UserProfile | null>(null);
-  const [activityUser, setActivityUser] = useState<UserProfile | null>(null);
-  const [activityEvents, setActivityEvents] = useState<AuditEvent[]>([]);
-  const [activityPresence, setActivityPresence] = useState<UserPresence | null>(null);
-  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
-  const [activityError, setActivityError] = useState('');
-  const [activityQuery, setActivityQuery] = useState('');
-  const [activityPeriod, setActivityPeriod] = useState<'today' | '7d' | '30d' | 'all' | 'custom'>('7d');
-  const [activityFrom, setActivityFrom] = useState('');
-  const [activityTo, setActivityTo] = useState('');
-
-  // D-PQ1: accounts still carrying a removed role can only be locked or deleted.
-  const getRoleLabel = (accountRole: string) =>
-    isUserRole(accountRole) ? t(USER_ROLE_LABELS[accountRole]) : t('Vai trò cũ – cần xóa');
-  const roleOptions = USER_ROLES.map(option => (
-    <option key={option} value={option}>
-      {t(USER_ROLE_LABELS[option])}
-    </option>
-  ));
-
-  const [allowedPages, setAllowedPages] = useState<string[]>([]);
-
-  const ALL_PAGES = [
-    { id: 'dashboard', label: t('Bảng Điều Khiển') },
-    { id: 'chat', label: t('Kênh Trao Đổi') },
-    { id: 'work_schedule', label: t('Lịch Làm Việc') },
-    { id: 'attendance', label: t('Chấm Công') },
-    { id: 'crm', label: t('Khách Hàng Hợp Tác') },
-    { id: 'leads', label: t('Khách Hàng Tiềm Năng') },
-    { id: 'customer_data', label: t('Dữ Liệu Khách Hàng') },
-    { id: 'commercial_map', label: t('Bản Đồ Thương Mại') },
-    { id: 'sales', label: t('Đơn hàng') },
-    { id: 'sales_management', label: t('Quản Lý Sale') },
-    { id: 'design', label: t('Quản Lý Thiết Kế') },
-    { id: 'purchase', label: t('Mua Hàng NCC') },
-    { id: 'suppliers', label: t('Danh Sách Nhà Cung Cấp') },
-    { id: 'inventory', label: t('Kho vật tư') },
-    { id: 'production', label: t('Lệnh Sản Xuất') },
-    { id: 'delivery', label: t('Phiếu Giao Hàng') },
-    { id: 'accounting', label: t('Quản Lý Kế Toán') },
-    { id: 'users', label: t('Quản Lý Tài Khoản') },
-    { id: 'recycle_bin', label: t('Kho Rác Hệ Thống') }
-  ];
-  const rolePages = ALL_PAGES.filter(page => ROLE_PAGES[role].includes(page.id));
-
-  const openAddModal = () => {
-    setDisplayName('');
-    setEmail('');
-    setTemporaryPassword('');
-    setRole('sale');
-    setActive(true);
-    setAllowedPages(getDefaultPagesForRole('sale'));
-    setShowAddModal(true);
+  const [activityAccount, setActivityAccount] = useState<UserProfile | null>(null);
+  const [busy, setBusy] = useState(false);
+  const table = useStandardTableColumns({
+    layoutId: 'account-list',
+    columns: ACCOUNT_COLUMNS,
+    lockedStartIds: LOCKED_START,
+    lockedEndIds: LOCKED_END
+  });
+  const visibleAccounts = filterAccounts(users, { keyword: search, roles: roleFilters, statuses: statusFilters });
+  const pagination = useDataTablePagination(visibleAccounts);
+  const activeFilterCount = roleFilters.length + statusFilters.length;
+  const resetFilters = () => {
+    setRoleFilters([]);
+    setStatusFilters([]);
   };
 
-  const openEditModal = (user: UserProfile) => {
-    setSelectedUser(user);
-    setDisplayName(user.displayName);
-    setRole(user.role);
-    setActive(user.active);
-    // Ticks saved before D-PQ1 may name pages outside the role; the server would reject them.
-    setAllowedPages(
-      (user.allowedPages || getDefaultPagesForRole(user.role)).filter(page => ROLE_PAGES[user.role].includes(page))
-    );
-    setShowEditModal(true);
-  };
+  const recordAccountEvent = (action: string, summary: string, account: Pick<UserProfile, 'uid' | 'displayName'>) =>
+    auditService.recordSafely(currentUser, {
+      category: 'administration',
+      module: 'account',
+      action,
+      summary,
+      targetType: 'user',
+      targetId: account.uid || undefined,
+      targetLabel: account.displayName
+    });
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    return runMutationAction(
-      'UserManagementPage.tsx:handleAddUser',
-      async () => {
-        e.preventDefault();
-        if (!displayName || !email || temporaryPassword.length < 8) return;
-
-        const emailTrim = email.trim().toLowerCase();
-
-        // Check if email already exists
-        const exists = users.some(u => u.email.toLowerCase() === emailTrim);
-        if (exists) {
-          alert(t('Email này đã được đăng ký trên hệ thống.'));
-          return;
-        }
-
-        setIsSubmitting(true);
-        try {
-          await adminUserService.create({
-            displayName: displayName.trim(),
-            email: emailTrim,
-            password: temporaryPassword,
-            role,
-            active,
-            allowedPages
-          });
-          auditService.recordSafely(currentUser, {
-            category: 'administration',
-            module: 'account',
-            action: 'account_created',
-            summary: `Tạo tài khoản ${displayName.trim()}`,
-            targetType: 'user',
-            targetLabel: displayName.trim()
-          });
-          setShowAddModal(false);
-          onRefresh();
-
-          showSuccessToast('Đã thêm thành công');
-        } catch (error) {
-          showErrorToast();
-          alert(error instanceof Error ? error.message : t('Không thể tạo tài khoản.'));
-        } finally {
-          setIsSubmitting(false);
-        }
-      },
-      e
-    );
-  };
-
-  const handleEditUser = async (e: React.FormEvent) => {
-    return runMutationAction(
-      'UserManagementPage.tsx:handleEditUser',
-      async () => {
-        e.preventDefault();
-        if (!selectedUser) return;
-
-        // Prevent deactivating oneself
-        if (selectedUser.uid === currentUser.uid && !active) {
-          alert(t('Bạn không thể tự vô hiệu hóa tài khoản của chính mình.'));
-          return;
-        }
-
-        // Prevent changing ones own role
-        if (selectedUser.uid === currentUser.uid && role !== 'admin') {
-          alert(t('Bạn không thể tự thay đổi vai trò Admin của chính mình.'));
-          return;
-        }
-
-        setIsSubmitting(true);
-        try {
-          await adminUserService.update({
-            uid: selectedUser.uid,
-            displayName: displayName.trim(),
-            role,
-            active,
-            allowedPages
-          });
-          auditService.recordSafely(currentUser, {
-            category: 'administration',
-            module: 'account',
-            action: 'account_updated',
-            summary: `Cập nhật tài khoản ${selectedUser.displayName}`,
-            targetType: 'user',
-            targetId: selectedUser.uid,
-            targetLabel: selectedUser.displayName
-          });
-          setShowEditModal(false);
-          setSelectedUser(null);
-          onRefresh();
-
-          showSuccessToast('Đã lưu thành công');
-        } catch (error) {
-          showErrorToast();
-          alert(error instanceof Error ? error.message : t('Không thể cập nhật tài khoản.'));
-        } finally {
-          setIsSubmitting(false);
-        }
-      },
-      e
-    );
-  };
-
-  const handleResetPassword = async (account: UserProfile, password: string) => {
-    setIsSubmitting(true);
+  /** One request at a time; the API message (already user-facing) is shown when the server refuses. */
+  const runAccountAction = async (action: () => Promise<void>, fallbackError: string) => {
+    if (busy) return;
+    setBusy(true);
     try {
+      await action();
+    } catch (error) {
+      showErrorToast(errorMessage(error, fallbackError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveAccount = (values: AccountFormValues) => {
+    if (!form) return;
+    if (form.mode === 'create' && users.some(account => account.email.toLowerCase() === values.email)) {
+      showErrorToast('Email này đã có tài khoản trên hệ thống.');
+      return;
+    }
+    const fields = {
+      displayName: values.displayName,
+      role: values.role,
+      active: values.active,
+      allowedPages: values.allowedPages
+    };
+    return runAccountAction(async () => {
+      if (form.mode === 'create') {
+        const created = await adminUserService.create({ ...fields, email: values.email, password: values.password });
+        recordAccountEvent('account_created', `Tạo tài khoản ${values.displayName}`, created);
+        showSuccessToast('Đã thêm thành công');
+      } else {
+        await adminUserService.update({ ...fields, uid: form.account.uid });
+        recordAccountEvent('account_updated', `Cập nhật tài khoản ${form.account.displayName}`, form.account);
+        showSuccessToast('Đã lưu thành công');
+      }
+      setForm(null);
+      onRefresh();
+    }, 'Không thể lưu tài khoản.');
+  };
+
+  const resetPassword = (account: UserProfile, password: string) =>
+    runAccountAction(async () => {
       await adminUserService.resetPassword(account.uid, password);
-      auditService.recordSafely(currentUser, {
-        category: 'administration',
-        module: 'account',
-        action: 'password_reset',
-        summary: `Đặt lại mật khẩu tài khoản ${account.displayName}`,
-        targetType: 'user',
-        targetId: account.uid,
-        targetLabel: account.displayName
-      });
+      recordAccountEvent('password_reset', `Đặt lại mật khẩu tài khoản ${account.displayName}`, account);
       setPasswordAccount(null);
       showSuccessToast('Đã đặt lại mật khẩu');
-    } catch (error) {
-      showErrorToast(error instanceof Error ? error.message : t('Không thể đặt lại mật khẩu.'));
-    } finally {
-      setIsSubmitting(false);
-    }
+    }, 'Không thể đặt lại mật khẩu.');
+
+  const toggleActive = async (account: UserProfile) => {
+    const locking = account.active;
+    if (
+      locking &&
+      !(await confirmDelete(`Khóa tài khoản ${account.displayName}? Nhân viên bị đăng xuất và không đăng nhập được.`, {
+        title: 'Khóa tài khoản',
+        confirmLabel: 'Khóa'
+      }))
+    )
+      return;
+    await runAccountAction(async () => {
+      await adminUserService.setActive(account.uid, !locking);
+      const verb = locking ? 'Khóa' : 'Mở khóa';
+      recordAccountEvent(
+        locking ? 'account_locked' : 'account_activated',
+        `${verb} tài khoản ${account.displayName}`,
+        account
+      );
+      showSuccessToast(locking ? 'Đã khóa tài khoản' : 'Đã mở khóa tài khoản');
+      onRefresh();
+    }, 'Không thể đổi trạng thái tài khoản.');
   };
 
-  const handleToggleStatus = async (user: UserProfile) => {
-    return runMutationAction(
-      'UserManagementPage.tsx:handleToggleStatus',
-      async () => {
-        if (user.uid === currentUser.uid) {
-          alert(t('Bạn không thể tự khóa tài khoản của chính mình.'));
-          return;
-        }
-
-        if (window.confirm(t(`Bạn có chắc chắn muốn thay đổi trạng thái tài khoản ${user.displayName}?`))) {
-          setIsSubmitting(true);
-          try {
-            await adminUserService.setActive(user.uid, !user.active);
-            auditService.recordSafely(currentUser, {
-              category: 'administration',
-              module: 'account',
-              action: user.active ? 'account_locked' : 'account_activated',
-              summary: `${user.active ? 'Khóa' : 'Kích hoạt'} tài khoản ${user.displayName}`,
-              targetType: 'user',
-              targetId: user.uid,
-              targetLabel: user.displayName
-            });
-            onRefresh();
-
-            showSuccessToast('Đã lưu thành công');
-          } catch (error) {
-            alert(error instanceof Error ? error.message : t('Không thể thay đổi trạng thái tài khoản.'));
-          } finally {
-            setIsSubmitting(false);
-          }
-        }
-      },
-      user
-    );
+  const deleteAccount = async (account: UserProfile) => {
+    if (!(await confirmDelete(`Xóa vĩnh viễn tài khoản ${account.displayName} (${account.email})?`))) return;
+    await runAccountAction(async () => {
+      await adminUserService.delete(account.uid);
+      recordAccountEvent('account_deleted', `Xóa tài khoản ${account.displayName}`, account);
+      showSuccessToast('Đã xóa thành công');
+      onRefresh();
+    }, 'Không thể xóa tài khoản.');
   };
 
-  const handleDeleteUser = async (userToDelete: UserProfile) => {
-    return runMutationAction(
-      'UserManagementPage.tsx:handleDeleteUser',
-      async () => {
-        if (userToDelete.uid === currentUser.uid) {
-          alert(t('Bạn không thể tự xóa tài khoản của chính mình.'));
-          return;
-        }
-
-        if (await confirmDelete(t('Bạn có chắc chắn muốn xóa vĩnh viễn tài khoản người dùng này?'))) {
-          setIsSubmitting(true);
-          try {
-            await adminUserService.delete(userToDelete.uid);
-            auditService.recordSafely(currentUser, {
-              category: 'administration',
-              module: 'account',
-              action: 'account_deleted',
-              summary: `Xóa tài khoản ${userToDelete.displayName}`,
-              targetType: 'user',
-              targetId: userToDelete.uid,
-              targetLabel: userToDelete.displayName
-            });
-            onRefresh();
-
-            showSuccessToast('Đã xóa thành công');
-          } catch (error) {
-            alert(error instanceof Error ? error.message : t('Không thể xóa tài khoản.'));
-          } finally {
-            setIsSubmitting(false);
-          }
-        }
-      },
-      userToDelete
-    );
+  /** Accounts with a removed role can only be locked or deleted (D-PQ1); nobody acts on their own account here. */
+  const rowActions = (account: UserProfile): RowActionMenuItem[] => {
+    const isSelf = account.uid === currentUser.uid;
+    const supported = isUserRole(account.role);
+    return [
+      { label: 'Lịch sử', onSelect: () => setActivityAccount(account) },
+      ...(supported ? [{ label: 'Chỉnh sửa', onSelect: () => setForm({ mode: 'edit', account }) }] : []),
+      ...(supported && !isSelf ? [{ label: 'Đặt lại mật khẩu', onSelect: () => setPasswordAccount(account) }] : []),
+      ...(!isSelf
+        ? [
+            {
+              label: account.active ? 'Khóa tài khoản' : 'Mở khóa tài khoản',
+              onSelect: () => void toggleActive(account)
+            },
+            { label: 'Xóa', onSelect: () => void deleteAccount(account), danger: true }
+          ]
+        : [])
+    ].map(action => ({ ...action, disabled: busy }));
   };
-
-  // Search and filter logic
-  const filteredUsers = users.filter(u => {
-    const matchesSearch =
-      u.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  const openActivityHistory = async (account: UserProfile) => {
-    setActivityUser(account);
-    setActivityEvents([]);
-    setActivityPresence(null);
-    setActivityQuery('');
-    setActivityPeriod('7d');
-    setActivityFrom('');
-    setActivityTo('');
-    setActivityError('');
-    setIsLoadingActivity(true);
-    try {
-      const [events, presence] = await Promise.all([
-        auditService.getUserEvents(account.uid),
-        dbService.getDocument('user_presence', account.uid) as Promise<UserPresence | null>
-      ]);
-      setActivityEvents(events);
-      setActivityPresence(presence);
-    } catch (error) {
-      setActivityError(error instanceof Error ? error.message : 'Không thể tải lịch sử hoạt động.');
-    } finally {
-      setIsLoadingActivity(false);
-    }
-  };
-
-  const visibleActivityEvents = useMemo(() => {
-    const now = new Date();
-    const startByPeriod: Record<string, Date | undefined> = {
-      today: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-      '7d': new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-      '30d': new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-      all: undefined,
-      custom: activityFrom ? new Date(`${activityFrom}T00:00:00`) : undefined
-    };
-    const start = startByPeriod[activityPeriod];
-    const end = activityPeriod === 'custom' && activityTo ? new Date(`${activityTo}T23:59:59.999`) : undefined;
-    const keyword = activityQuery.trim().toLocaleLowerCase('vi-VN');
-    return activityEvents.filter(event => {
-      if (!isImportantAuditEvent(event)) return false;
-      const occurredAt = new Date(event.occurredAt);
-      if (start && occurredAt < start) return false;
-      if (end && occurredAt > end) return false;
-      if (!keyword) return true;
-      return [
-        event.summary,
-        event.action,
-        event.module,
-        event.targetLabel,
-        ...(event.changes || []).map(change => `${change.label} ${change.before || ''} ${change.after || ''}`)
-      ]
-        .join(' ')
-        .toLocaleLowerCase('vi-VN')
-        .includes(keyword);
-    });
-  }, [activityEvents, activityFrom, activityPeriod, activityQuery, activityTo]);
-
-  const groupedActivityEvents = useMemo(
-    () =>
-      visibleActivityEvents.reduce<Record<string, AuditEvent[]>>((groups, event) => {
-        const key = new Date(event.occurredAt).toLocaleDateString('vi-VN', {
-          weekday: 'long',
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        });
-        (groups[key] ||= []).push(event);
-        return groups;
-      }, {}),
-    [visibleActivityEvents]
-  );
 
   return (
-    <div className="users-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <PageContextHeader section={t('Tài khoản')} current={t('Danh sách người dùng')} />
-
-      <div className="card">
-        <div
-          style={{
-            display: 'flex',
-            gap: '12px',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}
-        >
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <input
-              type="text"
-              placeholder={t('Tìm theo tên hoặc email...')}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              style={{ maxWidth: '300px' }}
-            />
-            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{ width: '180px' }}>
-              <option value="all">{t('Tất Cả Vai Trò')}</option>
-              {roleOptions}
-            </select>
-            <button
-              className="btn btn-outline"
-              onClick={() => {
-                setSearchTerm('');
-                setRoleFilter('all');
-              }}
-            >
-              {t('Đặt Lại')}
-            </button>
-          </div>
-          <button className="btn btn-primary" onClick={openAddModal}>
-            {t('Thêm người dùng')}
+    <div className="users-view account-page">
+      <PageContextHeader section="Tài khoản" current="Danh sách người dùng" />
+      <section className="card account-workspace" data-erp-table-text="single-line">
+        <div className="account-toolbar">
+          <input
+            type="search"
+            aria-label="Tìm tài khoản"
+            placeholder="Tìm theo họ tên hoặc email…"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+          />
+          <DataFilterButton activeCount={activeFilterCount} open={showFilters} onClick={() => setShowFilters(true)} />
+          {table.canEditColumns && <TableColumnsButton onClick={table.openCustomizer} />}
+          <button type="button" className="btn btn-primary" onClick={() => setForm({ mode: 'create' })} disabled={busy}>
+            Thêm người dùng
           </button>
         </div>
-
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>{t('Họ Và Tên')}</th>
-                <th>{t('Địa Chỉ Email')}</th>
-                <th>{t('Vai Trò Phòng Ban')}</th>
-                <th>{t('Trạng Thái')}</th>
-                <th>{t('Ngày Khởi Tạo')}</th>
-                <th>{t('Thao Tác')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map(u => {
-                const isSelf = u.uid === currentUser.uid;
-                return (
-                  <tr key={u.uid}>
-                    <td style={{ fontWeight: 600 }}>
-                      {u.displayName}{' '}
-                      {isSelf && <span style={{ color: 'var(--color-primary)', fontSize: '11px' }}>(Bạn)</span>}
-                    </td>
-                    <td>{u.email}</td>
-                    <td>
-                      <span className="badge badge-outline">{getRoleLabel(u.role)}</span>
-                    </td>
-                    <td>
-                      {u.active ? (
-                        <span style={{ color: 'var(--color-success)', fontWeight: 'bold', fontSize: '13px' }}>
-                          {t('Đang hoạt động')}
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--color-danger)', fontWeight: 'bold', fontSize: '13px' }}>
-                          {t('Bị vô hiệu hóa')}
-                        </span>
-                      )}
-                    </td>
-                    <td>{u.createdAt || 'N/A'}</td>
-                    <td>
-                      <div className="btn-group">
-                        <button
-                          className="btn btn-sm btn-outline btn-symbol-sm"
-                          onClick={() => void openActivityHistory(u)}
-                          title="Lịch sử đăng nhập và thao tác"
-                        >
-                          <History size={14} />
-                        </button>
-                        {isUserRole(u.role) && (
-                          <button
-                            className="btn btn-sm btn-outline btn-symbol-sm"
-                            onClick={() => openEditModal(u)}
-                            title={t('Sửa')}
+        <DataFilterChipBar
+          chips={[
+            ...roleFilters.map(value => ({
+              id: `role:${value}`,
+              label: accountRoleLabel(value),
+              onRemove: () => setRoleFilters(roleFilters.filter(item => item !== value))
+            })),
+            ...statusFilters.map(value => ({
+              id: `status:${value}`,
+              label: ACCOUNT_STATUS_LABELS[value],
+              onRemove: () => setStatusFilters(statusFilters.filter(item => item !== value))
+            }))
+          ]}
+          onClear={resetFilters}
+        />
+        <div className="account-list-frame">
+          <div className="table-container erp-primary-data-table">
+            <table className="account-list has-dynamic-columns" data-resize-key="account-list">
+              <thead>
+                <tr>
+                  <ReorderableTableCells
+                    order={table.orderedColumnIds}
+                    getHeaderProps={table.getHeaderProps}
+                    labels={table.labels}
+                  >
+                    <th key="name">Họ và tên</th>
+                    <th key="email">Email</th>
+                    <th key="role">Vai trò</th>
+                    <th key="status">Trạng thái</th>
+                    <th key="createdAt">Ngày khởi tạo</th>
+                    <th key="actions" aria-label="Thao tác" />
+                  </ReorderableTableCells>
+                </tr>
+              </thead>
+              <tbody>
+                {pagination.rows.map(account => {
+                  const status = accountStatus(account);
+                  const name = account.uid === currentUser.uid ? `${account.displayName} (Bạn)` : account.displayName;
+                  return (
+                    <tr key={account.uid}>
+                      <ReorderableTableCells order={table.orderedColumnIds} expandOverflowText={false}>
+                        <td key="name" title={name}>
+                          <strong>{name}</strong>
+                        </td>
+                        <td key="email" title={account.email}>
+                          {account.email}
+                        </td>
+                        <td key="role">
+                          <span className={isUserRole(account.role) ? undefined : 'account-legacy-role'}>
+                            {accountRoleLabel(account.role)}
+                          </span>
+                        </td>
+                        <td key="status">
+                          <span
+                            className={`erp-status-text erp-status-text--${status === 'active' ? 'success' : 'danger'}`}
                           >
-                            <Pencil size={14} />
-                          </button>
-                        )}
-                        {!isSelf && (
-                          <>
-                            {isUserRole(u.role) && (
-                              <button
-                                className="btn btn-sm btn-outline btn-symbol-sm"
-                                onClick={() => setPasswordAccount(u)}
-                                title={t('Đặt lại mật khẩu')}
-                                aria-label={t('Đặt lại mật khẩu')}
-                                disabled={isSubmitting}
-                              >
-                                <KeyRound size={14} />
-                              </button>
-                            )}
-                            <button
-                              className={`btn btn-sm ${u.active ? 'btn-danger' : 'btn-outline'}`}
-                              onClick={() => handleToggleStatus(u)}
-                              disabled={isSubmitting}
-                            >
-                              {u.active ? t('Khóa Tài Khoản') : t('Kích Hoạt')}
-                            </button>
-                            <button
-                              className="btn btn-sm btn-danger btn-symbol-sm"
-                              onClick={() => handleDeleteUser(u)}
-                              title={t('Xóa')}
-                              disabled={isSubmitting}
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </>
-                        )}
-                      </div>
+                            {ACCOUNT_STATUS_LABELS[status]}
+                          </span>
+                        </td>
+                        <td key="createdAt">{formatAccountDate(account.createdAt)}</td>
+                        <td key="actions">
+                          <RowActionMenu label={`Thao tác ${account.displayName}`} actions={rowActions(account)} />
+                        </td>
+                      </ReorderableTableCells>
+                    </tr>
+                  );
+                })}
+                {!visibleAccounts.length && (
+                  <tr>
+                    <td className="account-table-empty" colSpan={table.orderedColumnIds.length}>
+                      {users.length ? 'Không có tài khoản phù hợp từ khóa hoặc bộ lọc.' : 'Chưa có tài khoản nào.'}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <DataTablePagination {...pagination.paginationProps} />
         </div>
-      </div>
+      </section>
+      <TableColumnCustomizer {...table.customizerProps} />
+      <DataFilterPanel
+        open={showFilters}
+        title="Lọc tài khoản"
+        description="Lọc theo vai trò và trạng thái."
+        activeCount={activeFilterCount}
+        onClose={() => setShowFilters(false)}
+        onReset={resetFilters}
+      >
+        <DataFilterSection title="Vai trò" selectedCount={roleFilters.length} defaultExpanded>
+          <DataFilterCheckboxGroup
+            options={ROLE_FILTER_OPTIONS}
+            selectedValues={roleFilters}
+            onChange={setRoleFilters}
+          />
+        </DataFilterSection>
+        <DataFilterSection title="Trạng thái" selectedCount={statusFilters.length} defaultExpanded>
+          <DataFilterCheckboxGroup
+            options={STATUS_FILTER_OPTIONS}
+            selectedValues={statusFilters}
+            onChange={values => setStatusFilters(values as AccountStatus[])}
+          />
+        </DataFilterSection>
+      </DataFilterPanel>
 
+      {form && (
+        <AccountFormDialog
+          key={form.mode === 'edit' ? form.account.uid : 'new'}
+          mode={form.mode}
+          initialValues={form.mode === 'edit' ? formValuesOf(form.account) : NEW_ACCOUNT}
+          isSelf={form.mode === 'edit' && form.account.uid === currentUser.uid}
+          busy={busy}
+          onCancel={() => setForm(null)}
+          onSubmit={values => void saveAccount(values)}
+        />
+      )}
       {passwordAccount && (
         <ResetPasswordDialog
           account={passwordAccount}
-          busy={isSubmitting}
+          busy={busy}
           onCancel={() => setPasswordAccount(null)}
-          onSubmit={password => void handleResetPassword(passwordAccount, password)}
+          onSubmit={password => void resetPassword(passwordAccount, password)}
         />
       )}
-
-      {/* ADD USER MODAL */}
-      {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('THÊM NGƯỜI DÙNG MỚI')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowAddModal(false)}>
-                {t('Đóng')}
-              </button>
-            </div>
-            <form onSubmit={handleAddUser}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>{t('Họ Và Tên Nhân Sự *')}</label>
-                  <input
-                    type="text"
-                    placeholder={t('Nhập họ và tên đầy đủ...')}
-                    value={displayName}
-                    onChange={e => setDisplayName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>{t('Địa Chỉ Email Văn Phòng *')}</label>
-                  <input
-                    type="email"
-                    placeholder={t('ví dụ: user@sunflower.com')}
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>{t('Mật Khẩu Tạm Thời *')}</label>
-                  <input
-                    type="password"
-                    placeholder={t('Tối thiểu 8 ký tự')}
-                    value={temporaryPassword}
-                    onChange={e => setTemporaryPassword(e.target.value)}
-                    minLength={8}
-                    autoComplete="new-password"
-                    required
-                  />
-                  <small style={{ color: 'var(--color-text-muted)' }}>
-                    {t('Mật khẩu chỉ dùng để tạo tài khoản Firebase Authentication và không được lưu trong Firestore.')}
-                  </small>
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>{t('Vai Trò Phòng Ban *')}</label>
-                    <select
-                      value={role}
-                      onChange={e => {
-                        const newRole = e.target.value as UserProfile['role'];
-                        setRole(newRole);
-                        setAllowedPages(getDefaultPagesForRole(newRole));
-                      }}
-                    >
-                      {roleOptions}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Trạng Thái Ban Đầu')}</label>
-                    <select value={active ? 'true' : 'false'} onChange={e => setActive(e.target.value === 'true')}>
-                      <option value="true">{t('Đang hoạt động')}</option>
-                      <option value="false">{t('Tạm khóa')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
-                    {t('Trang Được Phép Truy Cập')}
-                  </label>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '8px',
-                      padding: '10px',
-                      backgroundColor: 'var(--color-bg-light)',
-                      borderRadius: '4px',
-                      border: '1px solid var(--color-border)'
-                    }}
-                  >
-                    {rolePages.map(page => (
-                      <label
-                        key={page.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          cursor: 'pointer',
-                          fontSize: '13px'
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={allowedPages.includes(page.id)}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setAllowedPages([...allowedPages, page.id]);
-                            } else {
-                              setAllowedPages(allowedPages.filter(id => id !== page.id));
-                            }
-                          }}
-                        />
-                        {page.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    backgroundColor: 'var(--color-bg-light)',
-                    padding: '12px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--color-border)',
-                    marginTop: '8px'
-                  }}
-                >
-                  <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{t('Tài khoản thật trên Firebase:')}</span>
-                  <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                    {t(
-                      'Khi lưu, hệ thống sẽ đồng thời tạo người dùng trong Firebase Authentication và hồ sơ phân quyền trong Firestore.'
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setShowAddModal(false)}
-                  disabled={isSubmitting}
-                >
-                  {t('Hủy')}
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  {isSubmitting ? t('Đang tạo...') : t('Lưu Tài Khoản')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT USER MODAL */}
-      {showEditModal && selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <span style={{ fontWeight: 700, fontSize: '16px' }}>{t('CHỈNH SỬA THÔNG TIN TÀI KHOẢN')}</span>
-              <button className="btn btn-sm btn-outline" onClick={() => setShowEditModal(false)}>
-                {t('Đóng')}
-              </button>
-            </div>
-            <form onSubmit={handleEditUser}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>{t('Địa Chỉ Email (Không thể thay đổi)')}</label>
-                  <input
-                    type="text"
-                    value={selectedUser.email}
-                    disabled
-                    style={{ backgroundColor: 'var(--color-bg-light)' }}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>{t('Họ Và Tên Nhân Sự *')}</label>
-                  <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} required />
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>{t('Vai Trò Phòng Ban *')}</label>
-                    <select
-                      value={role}
-                      onChange={e => {
-                        const newRole = e.target.value as UserProfile['role'];
-                        setRole(newRole);
-                        setAllowedPages(getDefaultPagesForRole(newRole));
-                      }}
-                      disabled={selectedUser.uid === currentUser.uid} // Admin can't change their own role
-                    >
-                      {roleOptions}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>{t('Trạng Thái Hoạt Động')}</label>
-                    <select
-                      value={active ? 'true' : 'false'}
-                      onChange={e => setActive(e.target.value === 'true')}
-                      disabled={selectedUser.uid === currentUser.uid} // Admin can't lock themselves
-                    >
-                      <option value="true">{t('Đang hoạt động')}</option>
-                      <option value="false">{t('Vô hiệu hóa (Khóa)')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>
-                    {t('Trang Được Phép Truy Cập')}
-                  </label>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '8px',
-                      padding: '10px',
-                      backgroundColor: 'var(--color-bg-light)',
-                      borderRadius: '4px',
-                      border: '1px solid var(--color-border)'
-                    }}
-                  >
-                    {rolePages.map(page => (
-                      <label
-                        key={page.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          cursor: 'pointer',
-                          fontSize: '13px'
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={allowedPages.includes(page.id)}
-                          onChange={e => {
-                            if (e.target.checked) {
-                              setAllowedPages([...allowedPages, page.id]);
-                            } else {
-                              setAllowedPages(allowedPages.filter(id => id !== page.id));
-                            }
-                          }}
-                        />
-                        {page.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    backgroundColor: 'var(--color-bg-light)',
-                    padding: '12px',
-                    borderRadius: '4px',
-                    border: '1px solid var(--color-border)',
-                    marginTop: '8px'
-                  }}
-                >
-                  <span style={{ fontSize: '12.5px', fontWeight: 600 }}>{t('Thông tin bảo mật:')}</span>
-                  <div style={{ marginTop: '6px', fontSize: '12px' }}>
-                    {t(
-                      'Thay đổi vai trò, quyền truy cập hoặc trạng thái sẽ được đồng bộ qua API quản trị. Mật khẩu Firebase của nhân sự không bị thay đổi tại màn hình này.'
-                    )}
-                  </div>
-                </div>
-
-                {/* Audit trail */}
-                <div
-                  style={{
-                    marginTop: '12px',
-                    fontSize: '11px',
-                    color: 'var(--color-text-muted)',
-                    borderTop: '1px solid var(--color-border-light)',
-                    paddingTop: '8px'
-                  }}
-                >
-                  <div>
-                    {t('Tạo bởi:')} {selectedUser.createdBy || t('Không xác định')}{' '}
-                    {selectedUser.createdAt && `(${selectedUser.createdAt})`}
-                  </div>
-                  {selectedUser.updatedBy && (
-                    <div>
-                      {t('Cập nhật bởi:')} {selectedUser.updatedBy} (
-                      {formatDateTime(selectedUser.updatedAt, t('vi-VN'), '')})
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setShowEditModal(false)}
-                  disabled={isSubmitting}
-                >
-                  {t('Hủy')}
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                  {isSubmitting ? t('Đang lưu...') : t('Lưu Thay Đổi')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {activityUser && (
-        <div className="modal-overlay">
-          <div className="modal-content user-activity-modal">
-            <div className="modal-header">
-              <div>
-                <div className="user-activity-modal__title">
-                  <Activity size={19} /> Lịch sử đăng nhập và thao tác
-                </div>
-                <div className="user-activity-modal__subtitle">
-                  {activityUser.displayName} · {activityUser.email}
-                </div>
-              </div>
-              <button
-                className="btn btn-sm btn-outline btn-symbol-sm"
-                onClick={() => setActivityUser(null)}
-                title="Đóng"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="modal-body user-activity-modal__body">
-              <section className="user-activity-summary">
-                <div>
-                  <span
-                    className={`user-activity-status user-activity-status--${activityPresence?.status === 'online' ? 'online' : 'offline'}`}
-                  >
-                    {activityPresence?.status === 'online' ? 'Đang hoạt động' : 'Không trực tuyến'}
-                  </span>
-                  <p>
-                    {activityPresence?.lastSeenAt
-                      ? `Hoạt động gần nhất: ${formatDateTime(activityPresence.lastSeenAt, 'vi-VN', 'Chưa có dữ liệu')}`
-                      : 'Chưa ghi nhận phiên hoạt động.'}
-                  </p>
-                </div>
-                <div>
-                  <strong>{visibleActivityEvents.length}</strong>
-                  <span> sự kiện phù hợp</span>
-                </div>
-              </section>
-
-              <section className="user-activity-filters">
-                <div className="user-activity-search">
-                  <Search size={16} />
-                  <input
-                    value={activityQuery}
-                    onChange={event => setActivityQuery(event.target.value)}
-                    placeholder="Tìm thao tác, khách hàng, Lead..."
-                  />
-                </div>
-                <select
-                  value={activityPeriod}
-                  onChange={event => setActivityPeriod(event.target.value as typeof activityPeriod)}
-                >
-                  <option value="today">Hôm nay</option>
-                  <option value="7d">7 ngày gần đây</option>
-                  <option value="30d">30 ngày gần đây</option>
-                  <option value="all">Tất cả (tối đa 250)</option>
-                  <option value="custom">Tùy chọn khoảng thời gian</option>
-                </select>
-                {activityPeriod === 'custom' && (
-                  <>
-                    <input type="date" value={activityFrom} onChange={event => setActivityFrom(event.target.value)} />
-                    <input type="date" value={activityTo} onChange={event => setActivityTo(event.target.value)} />
-                  </>
-                )}
-              </section>
-
-              {isLoadingActivity ? (
-                <div className="user-activity-empty">Đang tải lịch sử hoạt động...</div>
-              ) : activityError ? (
-                <div className="user-activity-empty user-activity-empty--error">{activityError}</div>
-              ) : Object.keys(groupedActivityEvents).length === 0 ? (
-                <div className="user-activity-empty">
-                  <Clock3 size={20} /> Chưa có đăng nhập hoặc thao tác quan trọng trong khoảng thời gian này.
-                </div>
-              ) : (
-                <div className="user-activity-timeline">
-                  {Object.entries(groupedActivityEvents).map(([dateLabel, events]) => (
-                    <section key={dateLabel} className="user-activity-day">
-                      <h3>{dateLabel}</h3>
-                      {events.map(event => (
-                        <article key={event.id} className="user-activity-event">
-                          <time>
-                            {new Date(event.occurredAt).toLocaleTimeString('vi-VN', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              second: '2-digit'
-                            })}
-                          </time>
-                          <div>
-                            <strong>{event.summary}</strong>
-                            {event.targetLabel && (
-                              <span className="user-activity-event__target">{event.targetLabel}</span>
-                            )}
-                            {(event.changes || []).map(change => (
-                              <p key={change.field}>
-                                {change.label}: <b>{change.before || '—'}</b> → <b>{change.after || '—'}</b>
-                              </p>
-                            ))}
-                          </div>
-                        </article>
-                      ))}
-                    </section>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+      {activityAccount && (
+        <AccountActivityDialog
+          key={activityAccount.uid}
+          account={activityAccount}
+          onClose={() => setActivityAccount(null)}
+        />
       )}
     </div>
   );

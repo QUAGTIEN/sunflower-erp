@@ -22,7 +22,7 @@ export function ResetPasswordDialog({ account, busy, onCancel, onSubmit }: Reset
     <div className="modal-overlay">
       <div className="modal-content reset-password-dialog" role="dialog" aria-label="Đặt lại mật khẩu">
         <div className="modal-header">
-          <span className="reset-password-dialog__title">Đặt lại mật khẩu</span>
+          <span className="account-dialog-title">Đặt lại mật khẩu</span>
         </div>
         <form
           onSubmit={event => {
