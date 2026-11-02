@@ -222,6 +222,12 @@ Chức năng chính:
 - **Xuất đơn hàng** (chi tiết đơn hoặc menu dòng): phiếu "Đơn đặt hàng" A4 ngang gửi khách gồm thông tin khách theo ảnh
   chụp lúc tạo đơn, từng mặt hàng (đơn giá, chiết khấu, VAT, ngày giao), tổng tiền, số tiền bằng chữ và ô ký; lưu PDF
   qua hộp thoại in của trình duyệt. Bản nội bộ (giá mua, NCC, lãi) chưa làm.
+- **Chi tiết đơn hàng** (mẫu C, kiểu chứng từ, 03/11/2026 — `components/orderDetail/`): thanh công cụ (quay lại,
+  số đơn, trạng thái, Xuất, Đặt lại, Chỉnh sửa, Xóa cho Admin); tiến độ 7 bước **chỉ xem**, bước tiếp theo ghi rõ khi
+  nào tự chuyển (D-PO1); lưới thông tin chung lấy từ ảnh chụp khách lúc tạo đơn; các tab Hàng tiền (bảng chuẩn, tổng
+  tiền hàng, chiết khấu, thuế, tổng thanh toán, KPI; giá mua và lãi gộp ẩn mặc định, chỉ Admin/Kế toán), Thiết kế (yêu
+  cầu thiết kế, ghi chú và layout của Sale, phản hồi và file của Thiết kế), Sản xuất (LSX của đơn), Giao hàng (chuyến
+  có chở đơn), Tệp và ảnh mẫu, Trao đổi, Lịch sử. LSX và chuyến giao chỉ tải khi mở tab, Sale xem được, chỉ đọc.
 
 Các trạng thái hàng đợi chuẩn:
 

@@ -1,4 +1,5 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
+import { TRIP_STATUS_LABELS } from '../model/deliveryTrips';
 import { requireConfirmedMutation, showSuccessToast, runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
@@ -70,16 +71,6 @@ const VEHICLE_STATUS_LABELS: Record<string, string> = {
   running: 'Đang chạy',
   maintenance: 'Bảo trì',
   inactive: 'Ngừng sử dụng'
-};
-
-const TRIP_STATUS_LABELS: Record<string, string> = {
-  planning: 'Đang lập kế hoạch',
-  approved: 'Đã duyệt chuyến',
-  loading: 'Đang bốc hàng',
-  delivering: 'Đang giao hàng',
-  completed: 'Hoàn thành',
-  failed: 'Giao thất bại',
-  postponed: 'Hoãn chuyến'
 };
 
 const ACTIVE_TRIP_STATUSES = ['planning', 'approved', 'loading', 'delivering'];

@@ -234,7 +234,11 @@ test('deletes no longer ask for a shared password written in the code; only admi
   }
   const sales = readSource('src/features/sales/pages/SalesPage.tsx');
   assert.match(sales, /const canDeletePO = currentUser\.role === 'admin';/);
-  assert.match(sales, /\{canDeletePO && \(\s*<button[^>]*\s*className="btn btn-sm btn-danger btn-symbol-sm"/);
+  assert.match(sales, /canDelete=\{canDeletePO\}/);
+  assert.match(
+    readSource('src/features/sales/components/orderDetail/OrderDetailView.tsx'),
+    /\{props\.canDelete && \(\s*<button type="button" className="btn btn-danger"/
+  );
   const production = readSource('src/features/production/pages/ProductionPage.tsx');
   assert.match(production, /const canDeleteLsx = currentUser\.role === 'admin';/);
   assert.match(production, /\{canDeleteLsx && \(\s*<button/);
