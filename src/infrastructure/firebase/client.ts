@@ -24,8 +24,12 @@ export const isFirebaseConfigured = Boolean(
   firebaseConfig.projectId &&
   firebaseConfig.authDomain
 );
+/**
+ * The local demo mode (browser storage, no real sign-in) exists only in development. A production bundle always
+ * signs in through Firebase, so a missing or mistyped VITE_FIREBASE_AUTH_MODE can never ship an open demo login.
+ */
 export const firebaseAuthMode =
-  import.meta.env.VITE_FIREBASE_AUTH_MODE === 'email-password' ? 'email-password' : 'local';
+  import.meta.env.PROD || import.meta.env.VITE_FIREBASE_AUTH_MODE === 'email-password' ? 'email-password' : 'local';
 export const isFirebaseRuntimeEnabled = isFirebaseConfigured && firebaseAuthMode === 'email-password';
 
 let firebaseDatabase: ReturnType<typeof getFirestore> | null = null;

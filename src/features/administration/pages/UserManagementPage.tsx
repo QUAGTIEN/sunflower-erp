@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PageContextHeader } from '@/components/PageContextHeader';
 import { DataTablePagination } from '@/components/DataTablePagination';
 import {
@@ -14,6 +14,7 @@ import { TableColumnCustomizer, TableColumnsButton, type TableColumnOption } fro
 import { useDataTablePagination } from '@/hooks/useDataTablePagination';
 import { useStandardTableColumns } from '@/hooks/useStandardTableColumns';
 import { getDefaultPagesForRole } from '@/app/navigation/accessControl';
+import { isFirebaseRuntimeEnabled } from '@/infrastructure/firebase/erpDataGateway';
 import { adminUserService } from '@/services/adminUserService';
 import { auditService } from '@/services/auditService';
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
@@ -25,6 +26,7 @@ import {
   accountStatus,
   filterAccounts,
   formatAccountDate,
+  isDirectoryInStep,
   type AccountStatus
 } from '../model/accountAdministration';
 import { AccountActivityDialog } from '../components/AccountActivityDialog';
@@ -34,7 +36,10 @@ import './AdministrationLists.css';
 import './UserManagement.css';
 
 interface UserManagementProps {
+  /** Private profiles (login email, page grants), loaded for admins only. */
   users: UserProfile[];
+  /** Public directory colleagues see; kept in step with the profiles by the server. */
+  directory: UserProfile[];
   currentUser: UserProfile;
   onRefresh: () => void;
 }
@@ -77,7 +82,7 @@ const formValuesOf = (account: UserProfile): AccountFormValues => ({
 
 const errorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
 
-export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUser, onRefresh }) => {
+export const UserManagement: React.FC<UserManagementProps> = ({ users, directory, currentUser, onRefresh }) => {
   const [search, setSearch] = useState('');
   const [roleFilters, setRoleFilters] = useState<string[]>([]);
   const [statusFilters, setStatusFilters] = useState<AccountStatus[]>([]);
@@ -92,6 +97,16 @@ export const UserManagement: React.FC<UserManagementProps> = ({ users, currentUs
     lockedStartIds: LOCKED_START,
     lockedEndIds: LOCKED_END
   });
+  const directorySyncRequested = useRef(false);
+  const directoryOutOfStep = isFirebaseRuntimeEnabled && users.length > 0 && !isDirectoryInStep(users, directory);
+  // Accounts created before the public directory existed get their entry the first time an admin opens this screen.
+  useEffect(() => {
+    if (!directoryOutOfStep || directorySyncRequested.current) return;
+    directorySyncRequested.current = true;
+    adminUserService.syncDirectory().catch(() => {
+      directorySyncRequested.current = false;
+    });
+  }, [directoryOutOfStep]);
   const visibleAccounts = filterAccounts(users, { keyword: search, roles: roleFilters, statuses: statusFilters });
   const pagination = useDataTablePagination(visibleAccounts);
   const activeFilterCount = roleFilters.length + statusFilters.length;

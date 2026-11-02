@@ -16,7 +16,7 @@ import { TableColumnLayoutContext, useTableColumnLayoutManager } from '@/context
 import type { AppPageContext } from '@/context/PageContextState';
 import { APP_LOGO_PATH, formatNotificationTime, getInitials, NOTIFICATION_MODULE_LABELS } from '@/app/config/appConfig';
 import { canAccessPage, getDefaultPagesForRole } from '@/app/navigation/accessControl';
-import { USER_ROLES, USER_ROLE_LABELS } from '@/shared/types';
+import { USER_DIRECTORY_COLLECTION, USER_ROLES, USER_ROLE_LABELS, type UserDirectoryEntry } from '@/shared/types';
 import {
   SIDEBAR_MENU,
   findActiveMenuItem,
@@ -228,6 +228,7 @@ function AppShell() {
 
   // Real-time synchronization states
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [accountProfiles, setAccountProfiles] = useState<UserProfile[]>([]);
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [leadCandidates, setLeadCandidates] = useState<LeadCandidateRecord[]>([]);
@@ -436,7 +437,15 @@ function AppShell() {
   useEffect(() => {
     if (!user) return;
 
-    const unsubUsers = dbService.subscribeCollection('users', data => setUsers(data as UserProfile[]));
+    // Colleagues come from the public directory; only admins load the private profiles (login email, page grants).
+    const unsubUsers = dbService.subscribeCollection(
+      isFirebaseRuntimeEnabled ? USER_DIRECTORY_COLLECTION : 'users',
+      data => setUsers((data as UserDirectoryEntry[]).map(entry => ({ ...entry, email: '', createdAt: '' })))
+    );
+    const unsubProfiles =
+      user.role === 'admin'
+        ? dbService.subscribeCollection('users', data => setAccountProfiles(data as UserProfile[]))
+        : () => undefined;
     const unsubMessages = dbService.subscribeCollection(
       'messages',
       data => {
@@ -476,6 +485,7 @@ function AppShell() {
 
     return () => {
       unsubUsers();
+      unsubProfiles();
       unsubMessages();
       unsubChannels();
       unsubNotifications();
@@ -1081,7 +1091,7 @@ function AppShell() {
           setTimeout(() => setActivePage('dashboard'), 0);
           return null;
         }
-        return <UserManagement users={users} currentUser={user} onRefresh={refreshData} />;
+        return <UserManagement users={accountProfiles} directory={users} currentUser={user} onRefresh={refreshData} />;
       default:
         return (
           <Dashboard

@@ -66,3 +66,21 @@ export const ROLE_PAGES: Record<UserRole, readonly string[]> = {
   producer: [...COMMON_PAGES, 'production', 'inventory', 'delivery'],
   accountant: [...COMMON_PAGES, 'production', 'inventory', 'purchase', 'suppliers', 'delivery', 'accounting']
 };
+
+/**
+ * Colleagues see each other only through this public directory; the login email and page grants stay in the
+ * private `users` profile, readable by the account itself and admins.
+ */
+export const USER_DIRECTORY_COLLECTION = 'user_directory';
+export type UserDirectoryEntry = Pick<UserProfile, 'uid' | 'displayName' | 'role' | 'active'> & { updatedAt: string };
+
+export const toUserDirectoryEntry = (
+  profile: Pick<UserProfile, 'uid' | 'displayName' | 'role' | 'active'>,
+  updatedAt: string
+): UserDirectoryEntry => ({
+  uid: profile.uid,
+  displayName: profile.displayName,
+  role: profile.role,
+  active: profile.active,
+  updatedAt
+});

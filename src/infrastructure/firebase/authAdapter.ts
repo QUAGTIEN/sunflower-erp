@@ -3,7 +3,7 @@ import {
   signOut as signOutFirebase,
   type User as FirebaseUser
 } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { DEFAULT_USERS } from '@/data/seeds/erpSeedData';
 import { isUserRole, type UserProfile } from '@/shared/types';
 import {
@@ -21,6 +21,21 @@ import { dbService } from './firestoreAdapter';
 
 const FIREBASE_BOOTSTRAP_ADMIN_EMAIL = 'admin@sunflower.com';
 
+/**
+ * Only the server may create profiles. It does so for the bootstrap email solely while the system has no
+ * administrator yet; otherwise it refuses and the login ends with "no profile".
+ */
+const bootstrapFirstAdmin = async (firebaseUser: FirebaseUser): Promise<UserProfile | null> => {
+  const response = await fetch('/api/users/manage', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'bootstrap' })
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  const payload = (await response.json().catch(() => null)) as { user?: UserProfile } | null;
+  return payload?.user?.uid === firebaseUser.uid ? payload.user : null;
+};
+
 const getOrCreateFirebaseUserProfile = async (firebaseUser: FirebaseUser): Promise<UserProfile | null> => {
   if (!firebaseUser.email) return null;
 
@@ -35,27 +50,7 @@ const getOrCreateFirebaseUserProfile = async (firebaseUser: FirebaseUser): Promi
   }
 
   if (normalizedEmail !== FIREBASE_BOOTSTRAP_ADMIN_EMAIL) return null;
-
-  // The first real Auth administrator may still have an older Firestore-only
-  // profile such as users/u-admin. Copy only its harmless presentation fields
-  // into the canonical users/{firebaseAuthUid} document.
-  const usersSnapshot = await getDocs(collection(database, 'users'));
-  const legacyAdmin = usersSnapshot.docs
-    .map(userDocument => userDocument.data() as UserProfile)
-    .find(profile => profile.email?.toLowerCase() === normalizedEmail && profile.role === 'admin');
-  const adminTemplate = legacyAdmin ?? DEFAULT_USERS.find(user => user.role === 'admin');
-  if (!adminTemplate) return null;
-
-  const adminProfile: UserProfile = {
-    ...adminTemplate,
-    uid: firebaseUser.uid,
-    email: firebaseUser.email,
-    createdAt: new Date().toISOString(),
-    createdBy: 'firebase-bootstrap'
-  };
-
-  await setDoc(doc(database, 'users', firebaseUser.uid), adminProfile);
-  return adminProfile;
+  return bootstrapFirstAdmin(firebaseUser);
 };
 
 // ----------------------------------------------------
@@ -150,23 +145,7 @@ export const authService = {
       throw new Error('Vai trò của tài khoản không còn được hỗ trợ. Vui lòng liên hệ Admin.');
     }
 
-    if (firebaseAuthMode === 'local') {
-      const expectedPassword =
-        user.role === 'admin'
-          ? 'admin123'
-          : user.role === 'sale'
-            ? 'sale123'
-            : user.role === 'designer'
-              ? 'design123'
-              : user.role === 'producer'
-                ? 'produce123'
-                : 'account123';
-
-      if (password !== expectedPassword && password !== '123456') {
-        throw new Error('Mật khẩu không đúng. Vui lòng thử lại.');
-      }
-    }
-
+    // The local demo (development builds only, see client.ts) has no passwords; real accounts use Firebase.
     currentUser = user;
     localStorage.setItem('erp_current_user', JSON.stringify(user));
     if (authStateListener) authStateListener(user);

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { UserProfile } from '@/shared/types';
+import { USER_DIRECTORY_COLLECTION, type UserProfile } from '@/shared/types';
+import { isFirebaseRuntimeEnabled } from '@/infrastructure/firebase/erpDataGateway';
 import { useLiveCollections, type LiveQuery } from '@/hooks/useLiveCollections';
 import {
   buildAttendanceWorkspace,
@@ -29,7 +30,9 @@ export function attendanceQueries(
     { name: 'sheets', collection: 'attendance_sheets', filter: sheetFilter },
     { name: 'calendars', collection: 'attendance_calendars' }
   ];
-  if (recorder) queries.push({ name: 'users', collection: 'users' });
+  // Recorders list colleagues from the public directory; private profiles stay with admins (users rules).
+  if (recorder)
+    queries.push({ name: 'users', collection: isFirebaseRuntimeEnabled ? USER_DIRECTORY_COLLECTION : 'users' });
   return queries;
 }
 

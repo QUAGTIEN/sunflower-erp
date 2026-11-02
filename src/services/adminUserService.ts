@@ -69,6 +69,10 @@ export const adminUserService = {
     return postAdminRequest(USERS_API, { action: 'delete', uid });
   },
 
+  syncDirectory(): Promise<{ synced: number; removed: number }> {
+    return postAdminRequest(USERS_API, { action: 'sync_directory' });
+  },
+
   resetPassword(uid: string, password: string): Promise<{ uid: string }> {
     return postAdminRequest(USERS_API, { action: 'reset_password', uid, password });
   },

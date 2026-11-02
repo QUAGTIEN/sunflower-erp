@@ -6,13 +6,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Emergency bootstrap for the first administrator. This also lets the
-    // existing admin create their users/{uid} profile if it does not exist yet.
-    function isBootstrapAdmin() {
-      return signedIn()
-        && request.auth.token.email == 'admin@sunflower.com';
-    }
-
     function hasUserProfile() {
       return signedIn()
         && exists(
@@ -27,17 +20,16 @@ service cloud.firestore {
     }
 
     // D-PQ1: an account still carrying a removed role (purchaser) reaches nothing until an admin deletes it.
+    // Every account, including the first administrator, needs an active profile created by the server.
     function isActive() {
-      return isBootstrapAdmin()
-        || (hasUserProfile()
-          && userProfile().active == true
-          && isValidRole(userProfile().role));
+      return hasUserProfile()
+        && userProfile().active == true
+        && isValidRole(userProfile().role);
     }
 
     function isAdmin() {
-      return isBootstrapAdmin()
-        || (isActive()
-          && userProfile().role == 'admin');
+      return isActive()
+        && userProfile().role == 'admin';
     }
 
     // D-PQ1: mirrors ROLE_PAGES in src/shared/types/user.ts; a ticked page outside the role grants nothing.
@@ -114,37 +106,17 @@ service cloud.firestore {
       ];
     }
 
-    function isValidUserProfile(data) {
-      return data.keys().hasAll([
-          'uid',
-          'email',
-          'displayName',
-          'role',
-          'active',
-          'allowedPages'
-        ])
-        && data.uid is string
-        && data.email is string
-        && data.displayName is string
-        && isValidRole(data.role)
-        && data.active is bool
-        && data.allowedPages is list;
-    }
-
-    // Profile administration is server-only. Firebase Admin SDK bypasses these
-    // client rules after the API has verified the caller's ID token and role.
-    // The single exception lets the first real administrator create their own
-    // canonical users/{authUid} profile during initial bootstrap.
+    // Profiles hold the login email and page grants, are written only by the server, and are private: an account
+    // reads its own (even when locked, so sign-in can explain why) and admins read all. Colleagues see each other
+    // through user_directory (name, role, status), which the server keeps in step with every profile change.
     match /users/{userId} {
+      allow get: if signedIn() && userId == request.auth.uid;
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /user_directory/{userId} {
       allow read: if isActive();
-      allow create: if isBootstrapAdmin()
-        && userId == request.auth.uid
-        && userId == request.resource.data.uid
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role == 'admin'
-        && request.resource.data.active == true
-        && isValidUserProfile(request.resource.data);
-      allow update, delete: if false;
+      allow write: if false;
     }
 
     // Catalog mutations use the authenticated API (uniqueness, revision and source validation).

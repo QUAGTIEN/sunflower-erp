@@ -1,7 +1,14 @@
 import type { DecodedIdToken, UserRecord } from 'firebase-admin/auth';
 import type { DocumentData, DocumentSnapshot } from 'firebase-admin/firestore';
 import { getFirebaseAdminServices } from './firebaseAdmin.js';
-import { ERP_PAGE_IDS, ROLE_PAGES, USER_ROLES, type UserRole } from '../src/shared/types/user.js';
+import {
+  ERP_PAGE_IDS,
+  ROLE_PAGES,
+  USER_DIRECTORY_COLLECTION,
+  USER_ROLES,
+  toUserDirectoryEntry,
+  type UserRole
+} from '../src/shared/types/user.js';
 
 const ERP_PAGE_ID_SET = new Set<string>(ERP_PAGE_IDS);
 const USER_ROLE_SET = new Set<string>(USER_ROLES);
@@ -150,9 +157,32 @@ const profileFromSnapshot = (snapshot: DocumentSnapshot<DocumentData>): ErpUserP
   return data as ErpUserProfile;
 };
 
+/** An admin profile counts only when it is the canonical users/{uid} document of a Firebase Auth account. */
+const hasCanonicalAdmin = async (): Promise<boolean> => {
+  const { auth, firestore } = getFirebaseAdminServices();
+  const admins = await firestore.collection('users').where('role', '==', 'admin').get();
+  for (const document of admins.docs) {
+    const uid = document.data().uid;
+    if (typeof uid !== 'string' || uid !== document.id) continue;
+    if (
+      await auth.getUser(uid).then(
+        () => true,
+        () => false
+      )
+    )
+      return true;
+  }
+  return false;
+};
+
+/**
+ * One-time setup of the very first administrator. Once any real admin profile exists the bootstrap email is an
+ * ordinary account: it needs its own active admin profile like everyone else, so recreating that email elsewhere
+ * never grants admin rights.
+ */
 const bootstrapAdminProfile = async (decodedToken: DecodedIdToken, authUser: UserRecord): Promise<ErpUserProfile> => {
   const email = authUser.email?.toLowerCase();
-  if (email !== BOOTSTRAP_ADMIN_EMAIL) {
+  if (email !== BOOTSTRAP_ADMIN_EMAIL || (await hasCanonicalAdmin())) {
     throw new AdminApiError(403, 'Tài khoản không có quyền quản trị.', 'auth/admin-required');
   }
 
@@ -181,7 +211,10 @@ const bootstrapAdminProfile = async (decodedToken: DecodedIdToken, authUser: Use
     updatedBy: 'firebase-admin-bootstrap'
   };
 
-  await firestore.collection('users').doc(decodedToken.uid).set(profile);
+  const batch = firestore.batch();
+  batch.set(firestore.collection('users').doc(decodedToken.uid), profile);
+  batch.set(firestore.collection(USER_DIRECTORY_COLLECTION).doc(decodedToken.uid), toUserDirectoryEntry(profile, now));
+  await batch.commit();
   return profile;
 };
 
@@ -284,7 +317,13 @@ export const createManagedUser = async (
     };
 
     try {
-      await firestore.collection('users').doc(authUser.uid).create(profile);
+      const batch = firestore.batch();
+      batch.create(firestore.collection('users').doc(authUser.uid), profile);
+      batch.set(
+        firestore.collection(USER_DIRECTORY_COLLECTION).doc(authUser.uid),
+        toUserDirectoryEntry(profile, profile.createdAt)
+      );
+      await batch.commit();
     } catch (firestoreError) {
       await auth.deleteUser(authUser.uid).catch(() => undefined);
       throw firestoreError;
@@ -328,7 +367,13 @@ export const updateManagedUser = async (
     };
 
     try {
-      await profileReference.update(updatedFields);
+      const batch = firestore.batch();
+      batch.update(profileReference, updatedFields);
+      batch.set(
+        firestore.collection(USER_DIRECTORY_COLLECTION).doc(input.uid),
+        toUserDirectoryEntry({ ...input }, updatedFields.updatedAt)
+      );
+      await batch.commit();
     } catch (firestoreError) {
       await auth
         .updateUser(input.uid, {
@@ -371,11 +416,14 @@ export const setManagedUserActive = async (
 
     await auth.updateUser(input.uid, { disabled: !input.active });
     try {
-      await profileReference.update({
-        active: input.active,
-        updatedAt: new Date().toISOString(),
-        updatedBy: caller.email
-      });
+      const updatedAt = new Date().toISOString();
+      const batch = firestore.batch();
+      batch.update(profileReference, { active: input.active, updatedAt, updatedBy: caller.email });
+      batch.set(
+        firestore.collection(USER_DIRECTORY_COLLECTION).doc(input.uid),
+        toUserDirectoryEntry({ ...(profileSnapshot.data() as ErpUserProfile), active: input.active }, updatedAt)
+      );
+      await batch.commit();
     } catch (firestoreError) {
       await auth.updateUser(input.uid, { disabled: previousAuthUser.disabled }).catch(() => undefined);
       throw firestoreError;
@@ -420,6 +468,38 @@ export const resetManagedUserPassword = async (
   }
 };
 
+/**
+ * Rebuilds the public directory from the private profiles: fills entries for accounts created before the directory
+ * existed and removes entries whose profile is gone. Idempotent, so an admin screen may call it whenever they differ.
+ */
+export const syncUserDirectory = async (): Promise<{ synced: number; removed: number }> => {
+  const { firestore } = getFirebaseAdminServices();
+  const [profiles, entries] = await Promise.all([
+    firestore.collection('users').get(),
+    firestore.collection(USER_DIRECTORY_COLLECTION).get()
+  ]);
+  const now = new Date().toISOString();
+  const profileIds = new Set(profiles.docs.map(document => document.id));
+  const stale = entries.docs.filter(document => !profileIds.has(document.id));
+  const writes = [
+    ...profiles.docs.map(
+      document => (batch: ReturnType<typeof firestore.batch>) =>
+        batch.set(
+          firestore.collection(USER_DIRECTORY_COLLECTION).doc(document.id),
+          toUserDirectoryEntry({ ...(document.data() as ErpUserProfile), uid: document.id }, now)
+        )
+    ),
+    ...stale.map(document => (batch: ReturnType<typeof firestore.batch>) => batch.delete(document.ref))
+  ];
+  // Firestore batches hold at most 500 writes.
+  for (let start = 0; start < writes.length; start += 400) {
+    const batch = firestore.batch();
+    writes.slice(start, start + 400).forEach(write => write(batch));
+    await batch.commit();
+  }
+  return { synced: profiles.size, removed: stale.length };
+};
+
 export const deleteManagedUser = async (
   caller: AdminCaller,
   input: ReturnType<typeof validateDeleteUserBody>
@@ -448,7 +528,10 @@ export const deleteManagedUser = async (
   }
 
   if (profileSnapshot.exists) {
-    await profileReference.delete();
+    const batch = firestore.batch();
+    batch.delete(profileReference);
+    batch.delete(firestore.collection(USER_DIRECTORY_COLLECTION).doc(input.uid));
+    await batch.commit();
   }
 
   if (authenticationExists) {

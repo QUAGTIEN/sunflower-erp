@@ -8,6 +8,7 @@ import {
   requireAdmin,
   resetManagedUserPassword,
   setManagedUserActive,
+  syncUserDirectory,
   updateManagedUser,
   validateCreateUserBody,
   validateDeleteUserBody,
@@ -23,6 +24,9 @@ export async function POST(request: Request): Promise<Response> {
     const caller = await requireAdmin(request);
     const body = await readJsonBody(request);
     switch (body.action) {
+      // The first administrator's profile is created inside requireAdmin; this only returns it to the client.
+      case 'bootstrap':
+        return jsonResponse({ user: caller.profile });
       case 'create':
         return jsonResponse({ user: await createManagedUser(caller, validateCreateUserBody(body)) }, 201);
       case 'update':
@@ -31,6 +35,8 @@ export async function POST(request: Request): Promise<Response> {
         return jsonResponse(await setManagedUserActive(caller, validateSetActiveBody(body)));
       case 'delete':
         return jsonResponse(await deleteManagedUser(caller, validateDeleteUserBody(body)));
+      case 'sync_directory':
+        return jsonResponse(await syncUserDirectory());
       case 'reset_password':
         return jsonResponse(await resetManagedUserPassword(caller, validateResetPasswordBody(body)));
       // D-TR1: the recycle bin is admin-only, so it shares the admin account endpoint instead of a new function.

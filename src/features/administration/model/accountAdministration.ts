@@ -1,5 +1,7 @@
 import { ROLE_PAGES, USER_ROLE_LABELS, isUserRole, type UserProfile, type UserRole } from '@/shared/types';
 
+type DirectoryFields = Pick<UserProfile, 'uid' | 'displayName' | 'role' | 'active'>;
+
 export interface AccountPageOption {
   id: string;
   label: string;
@@ -91,5 +93,19 @@ export const filterAccounts = (accounts: UserProfile[], filters: AccountFilters)
       (!filters.roles.length || filters.roles.includes(account.role)) &&
       (!filters.statuses.length || filters.statuses.includes(accountStatus(account))) &&
       `${account.displayName} ${account.email}`.toLocaleLowerCase('vi-VN').includes(keyword)
+  );
+};
+
+/** True when the public directory lists exactly the profiles, with the same name, role and status. */
+export const isDirectoryInStep = (profiles: DirectoryFields[], directory: DirectoryFields[]) => {
+  const entries = new Map(directory.map(entry => [entry.uid, entry]));
+  return (
+    entries.size === profiles.length &&
+    profiles.every(profile => {
+      const entry = entries.get(profile.uid);
+      return (
+        entry?.displayName === profile.displayName && entry.role === profile.role && entry.active === profile.active
+      );
+    })
   );
 };

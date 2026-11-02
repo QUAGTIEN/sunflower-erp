@@ -982,8 +982,8 @@ test('rules retain every pre-existing collection guard while adding financial re
     current = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
   const matches = [...old.matchAll(/match \/([a-z_]+)\//g)].map(m => m[1]);
   for (const name of matches) assert.ok(current.includes('match /' + name + '/'), 'Missing existing rules ' + name);
-  for (const fn of ['isValidRole', 'isValidUserProfile', 'canManageItemCatalog'])
-    assert.ok(current.includes('function ' + fn + '('));
+  // isValidUserProfile went away when profile writes became server-only (no client bootstrap).
+  for (const fn of ['isValidRole', 'canManageItemCatalog']) assert.ok(current.includes('function ' + fn + '('));
   assert.match(current, /financeLinked/);
 });
 

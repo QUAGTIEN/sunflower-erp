@@ -323,6 +323,16 @@ Chi tiết: `docs/accounting/`.
   chia ô tick trang theo nhóm và tên giống menu bên trái, chỉ hiện trang thuộc vai trò đã chọn.
 - Không hiển thị mật khẩu (Firebase chỉ giữ bản băm, ERP không lưu mật khẩu). Admin **đặt lại mật khẩu** bằng mật khẩu
   mới tự nhập (tối thiểu 8 ký tự) rồi giao cho nhân viên; mọi phiên đăng nhập cũ của tài khoản bị đăng xuất.
+- Bảo mật tài khoản (D-BM1, 02/11/2026):
+  - Mọi tài khoản, kể cả Admin đầu tiên, cần hồ sơ `users/{uid}` đang hoạt động do máy chủ tạo; trình duyệt không tạo
+    hay sửa hồ sơ. Email khởi tạo `admin@sunflower.com` chỉ được máy chủ tạo hồ sơ Admin khi hệ thống **chưa có Admin
+    thật nào**; sau đó nó là tài khoản thường, không còn quyền ngầm trong rules.
+  - Hồ sơ `users` (email đăng nhập, trang được cấp) chỉ chính chủ và Admin đọc được. Đồng nghiệp xem nhau qua danh bạ
+    công khai `user_directory` (tên, vai trò, trạng thái) do máy chủ ghi cùng lúc với hồ sơ; Admin mở màn Tài khoản
+    sẽ tự đồng bộ danh bạ cho tài khoản cũ (`action: sync_directory`).
+  - Bản build production luôn đăng nhập qua Firebase; chế độ demo cục bộ chỉ có khi chạy dev và không có mật khẩu mẫu.
+  - Việc của người vận hành trong Firebase Console: tắt "Enable create (sign-up)" và "Enable delete" ở
+    Authentication → Settings → User actions.
 - Lịch sử tài khoản chỉ gồm đăng nhập/đăng xuất và thao tác quan trọng (tạo, sửa, xóa, khóa, đặt lại mật khẩu,
   nghiệp vụ). Hệ thống không còn ghi sự kiện mở màn hình; sự kiện `navigation` cũ vẫn nằm trong `audit_events` nhưng bị ẩn.
 
