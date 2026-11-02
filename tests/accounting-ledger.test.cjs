@@ -923,16 +923,15 @@ test('rules and queue handlers close all legacy financial write paths; no auto i
     rules,
     /function canUseLedger\(\) \{\s*return isAdmin\(\)\s*\|\| \(isActive\(\) && userProfile\(\)\.role == 'accountant' && hasPage\('accounting'\)\);/
   );
-  const dashboard = fs.readFileSync(path.join(root, 'src/features/dashboard/pages/DashboardPage.tsx'), 'utf8');
-  assert.match(dashboard, /assertManualFinancialTransition/);
-  assert.doesNotMatch(dashboard, /ensureReceivableInvoice/);
-  // The order detail no longer changes the queue by hand: steps move only through design, LSX, delivery and ledger.
-  const sales = fs.readFileSync(path.join(root, 'src/features/sales/pages/SalesPage.tsx'), 'utf8');
-  assert.doesNotMatch(sales, /updatePOStatus|Cập nhật nhanh tiến độ|ensureReceivableInvoice/);
-  const service = loader()('src/features/sales/api/poWorkflowService.ts');
-  for (const status of ['waiting_receivable', 'waiting_discount', 'invoiced', 'debt_collected'])
-    assert.throws(() => service.assertManualFinancialTransition(status), /Kế toán/);
-  assert.doesNotThrow(() => service.assertManualFinancialTransition('waiting_production'));
+  // D-PO1: no screen changes the order queue by hand; steps move only through design, LSX, delivery and the ledger.
+  for (const f of ['src/features/sales/pages/SalesPage.tsx', 'src/features/dashboard/pages/DashboardPage.tsx']) {
+    const s = fs.readFileSync(path.join(root, f), 'utf8');
+    assert.doesNotMatch(
+      s,
+      /Cập nhật nhanh|getPOQueueUpdate|handleUpdateStatus|updatePOStatus|ensureReceivableInvoice/,
+      f
+    );
+  }
 });
 
 test('offsetting active adjustments still block reversal of the original document', async () => {

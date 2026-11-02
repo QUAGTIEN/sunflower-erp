@@ -9,7 +9,6 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
 import { DonutChart } from '@/components/VisualCharts';
-import { assertManualFinancialTransition } from '@/features/sales/api/poWorkflowService';
 import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { DesignRequest } from '@/features/design/model/designWorkflow';
 import { formatDate, formatDateTime } from '@/shared/utils/dateFormatting';
@@ -24,7 +23,6 @@ import {
   getPOHistoryStatusLabel,
   getPOQueueLabel,
   getPOQueueStatus,
-  getPOQueueUpdate,
   isPOCompleted,
   isPOInQueue,
   PO_QUEUE_STATES,
@@ -491,46 +489,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   };
 
-  const handleUpdateStatus = async (poId: string, status: POQueueStatus) => {
-    return runMutationAction(
-      'DashboardPage.tsx:handleUpdateStatus',
-      async () => {
-        try {
-          assertManualFinancialTransition(status);
-          const targetPo = pos.find(p => p.id === poId);
-          if (!targetPo) return;
-
-          const updatedLogs = [
-            ...targetPo.historyLogs,
-            {
-              status,
-              updatedBy: user.displayName,
-              updatedAt: new Date().toISOString(),
-              note: `Thay đổi hàng đợi từ Bảng Điều Khiển sang: ${getPOQueueLabel(status)}`
-            }
-          ];
-
-          await requireConfirmedMutation(
-            dbService.updateDocument('pos', poId, {
-              ...getPOQueueUpdate(
-                status,
-                status === 'waiting_delivery' ? { deliveryStage: targetPo.deliveryStage || 'customer_outbound' } : {}
-              ),
-              updatedBy: `${user.displayName} (${user.role.toUpperCase()})`,
-              updatedAt: new Date().toISOString(),
-              historyLogs: updatedLogs
-            })
-          );
-          showSuccessToast('Đã lưu thành công');
-        } catch (err) {
-          showErrorToast();
-          console.error(err);
-        }
-      },
-      poId
-    );
-  };
-
   const workGroupSummaries = useMemo(() => {
     const activeStatuses = new Set([
       'not_started',
@@ -824,41 +782,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     </tbody>
                                   </table>
                                 </div>
-
-                                {/* Quick transition status */}
-                                {(user.role === 'admin' || user.role === 'sale' || user.role === 'producer') && (
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '10px',
-                                      backgroundColor: 'white',
-                                      padding: '10px 14px',
-                                      borderRadius: '6px',
-                                      border: '1px solid var(--color-border-light)'
-                                    }}
-                                  >
-                                    <span style={{ fontSize: '13px', fontWeight: 600 }}>
-                                      Cập nhật nhanh trạng thái đơn hàng:
-                                    </span>
-                                    <select
-                                      value={getPOQueueStatus(po)}
-                                      onChange={e => handleUpdateStatus(po.id, e.target.value as POQueueStatus)}
-                                      style={{
-                                        padding: '4px 8px',
-                                        fontSize: '13px',
-                                        borderRadius: '4px',
-                                        border: '1px solid var(--color-border)'
-                                      }}
-                                    >
-                                      {PO_QUEUE_STATES.map(state => (
-                                        <option key={state.value} value={state.value}>
-                                          {state.label}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )}
                               </div>
 
                               {/* Right: Vertical Timeline & Reminders */}
