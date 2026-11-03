@@ -40,15 +40,7 @@ const po = (overrides = {}) => ({
   ...overrides
 });
 
-test('order totals, steps and actor names come from the order itself', () => {
-  const totals = model.orderTotals([line(), line({ itemId: 'i2', discountRate: 0 })]);
-  assert.deepEqual(
-    [totals.grossAmount, totals.discountAmount, totals.amountBeforeVat, Math.round(totals.vatAmount)],
-    [200000, 10000, 190000, 15200]
-  );
-  assert.equal(totals.kpi.toFixed(1), '95.0');
-  assert.equal(model.orderTotals([]).kpi, 0);
-
+test('order steps and actor names come from the order itself', () => {
   const steps = model.orderSteps(
     po({
       status: 'waiting_delivery',
@@ -69,15 +61,9 @@ test('order totals, steps and actor names come from the order itself', () => {
     Object.keys(model.ORDER_STEP_TRIGGERS),
     steps.map(step => step.value)
   );
-
   assert.equal(model.actorLabel('Khánh Ly (SALE)'), 'Khánh Ly (Sale)');
   assert.equal(model.actorLabel('Lê Minh (PRODUCER)'), 'Lê Minh (Kỹ thuật)');
   assert.equal(model.actorLabel('Không vai trò'), 'Không vai trò');
-  assert.deepEqual(model.lineImages({ previewImage: 'a', saleLayouts: ['a', 'b'], designLayouts: ['c', ''] }), [
-    'a',
-    'b',
-    'c'
-  ]);
 });
 
 test('an order finds its own trips among stops of shared trips, newest first', () => {
@@ -100,86 +86,86 @@ test('an order finds its own trips among stops of shared trips, newest first', (
   );
 });
 
-const renderDetail = (props = {}) => {
-  const { OrderDetailView } = loader()('src/features/sales/components/orderDetail/OrderDetailView.tsx');
+test('view mode shows the read-only progress, the status and only the actions the role allows', () => {
+  const parts = loader()('src/features/sales/components/orderDetail/OrderViewParts.tsx');
+  const progress = renderToStaticMarkup(React.createElement(parts.OrderProgressPanel, { po: po() }));
+  assert.equal((progress.match(/class="order-progress-panel__step /g) || []).length, 7);
+  assert.match(progress, /order-progress-panel__step--current" aria-current="step"/);
+  assert.ok(progress.includes('Khi khách duyệt mẫu thiết kế'), 'pending steps say what moves the order');
+  assert.doesNotMatch(progress, /<select|<button/, 'D-PO1: the queue is never changed by hand');
+  assert.ok(renderToStaticMarkup(React.createElement(parts.OrderStatusBadge, { po: po() })).includes('Chờ thiết kế'));
+
   const noop = () => {};
-  return renderToStaticMarkup(
-    React.createElement(OrderDetailView, {
-      po: po(),
-      saleName: 'Khánh Ly',
-      supplierNames: {},
-      canViewFinancials: true,
-      canViewCosts: false,
-      canManage: true,
-      canDelete: false,
-      canEditSaleBrief: true,
-      canEditDesignReply: false,
-      checklistDraft: '',
-      onBack: noop,
-      onPrint: noop,
-      onRepeat: noop,
-      onEdit: noop,
-      onDelete: noop,
-      onPreviewImage: noop,
-      onUpdateLineNotes: noop,
-      onUploadLineFiles: noop,
-      onRemoveLineFile: noop,
-      onChecklistDraftChange: noop,
-      onAddChecklistItem: noop,
-      onToggleChecklistItem: noop,
-      onRemoveChecklistItem: noop,
-      ...props
-    })
+  const actions = props =>
+    renderToStaticMarkup(
+      React.createElement(parts.OrderViewActions, {
+        canManage: false,
+        canDelete: false,
+        onPrint: noop,
+        onRepeat: noop,
+        onEdit: noop,
+        onDelete: noop,
+        ...props
+      })
+    );
+  const labels = html => [...html.matchAll(/>([^<>]+)<\/button>/g)].map(match => match[1]);
+  assert.deepEqual(labels(actions()), ['In']);
+  assert.deepEqual(labels(actions({ canManage: true })), ['In', 'Nhân bản', 'Sửa']);
+  assert.deepEqual(labels(actions({ canManage: true, canDelete: true })), ['In', 'Nhân bản', 'Xóa', 'Sửa']);
+  const audit = renderToStaticMarkup(
+    React.createElement(parts.OrderAuditLine, { createdBy: 'Khánh Ly (SALE)', createdAt: '2026-09-11T02:38:09.000Z' })
   );
-};
-
-test('the detail reads like the voucher of mockup C: command bar with progress, fields, tabs, grid and totals', () => {
-  const html = renderDetail();
-  assert.ok(html.includes('>Đơn hàng bán</h1>'));
-  assert.ok(html.includes('>Chờ thiết kế</span>'));
-  for (const label of ['Sửa', 'Nhân bản', 'In']) assert.ok(html.includes(`>${label}</button>`), label);
-  assert.ok(!html.includes('>Xóa</button>'), 'only admins see Xóa');
-  assert.ok(renderDetail({ canDelete: true }).includes('>Xóa</button>'));
-  assert.ok(html.includes('data-erp-table-layout="content"'), 'tables follow their content height, never the viewport');
-  const progress = [...html.matchAll(/class="order-progress__step[^"]*"[^>]*>([^<]+)</g)].map(match => match[1]);
-  assert.equal(progress.length, 7);
-  assert.match(html, /order-progress__step--current" aria-current="step"[^>]*>Chờ thiết kế</);
-  const fields = [...html.matchAll(/<dt>([^<]+)<\/dt>/g)].map(match => match[1]).slice(0, 9);
-  assert.deepEqual(fields, [
-    'Khách hàng',
-    'Số đơn hàng',
-    'Ngày đặt',
-    'Mã khách',
-    'Hạng khách',
-    'Giao dự kiến',
-    'Địa chỉ giao',
-    'Nhân viên bán',
-    'Diễn giải'
-  ]);
-  assert.ok(html.includes('KH001'));
-  const tabs = [...html.matchAll(/role="tab"[^>]*>([^<]+)</g)].map(match => match[1]);
-  assert.deepEqual(tabs, ['Hàng tiền', 'Thiết kế', 'Sản xuất', 'Giao hàng', 'Tệp và ảnh mẫu', 'Trao đổi', 'Lịch sử']);
-  assert.doesNotMatch(html, /content-tabs--segmented/, 'underlined tabs as in mockup C');
-  assert.doesNotMatch(html, /Cập nhật nhanh|<select/, 'D-PO1: no manual status and no inline discount editor');
-  assert.doesNotMatch(html, /has-dynamic-columns|erp-primary-data-table/, 'no fixed 150px list columns');
-  for (const header of ['% CK', 'Tiền CK', '% thuế', 'Tiền thuế']) assert.ok(html.includes(`>${header}</th>`), header);
-  assert.ok(html.includes('<tfoot>') && html.includes('>Cộng</span></td>'));
-  assert.ok(html.includes('Tổng tiền thanh toán'));
-  assert.ok(html.includes('>97.200</dd>'));
-  assert.ok(html.includes('Người lập: Khánh Ly (Sale)'));
+  assert.ok(audit.includes('Người lập: Khánh Ly (Sale)') && audit.includes('Người sửa: chưa có'));
 });
 
-test('mixed units are never added up in the Cộng row', () => {
-  const html = renderDetail({ po: po({ items: [line(), line({ itemId: 'i2', unit: 'cuộn', quantity: 5 })] }) });
-  assert.match(html, /<tfoot>[\s\S]*?<td class="order-number"><span class="erp-table-cell-text"><\/span><\/td>/);
-  assert.ok(!html.includes('1.005'));
+test('the order lines grid locks every input in view mode but keeps details and pictures', () => {
+  const { POItemsGrid } = loader()('src/features/sales/components/poForm/POItemsGrid.tsx');
+  const noop = () => {};
+  const render = readOnly =>
+    renderToStaticMarkup(
+      React.createElement(POItemsGrid, {
+        tableZoom: 100,
+        usesCatalogProducts: true,
+        orderItems: [{ id: 'i1', itemId: 'i1', productCode: 'TEM', unit: 'cái', quantity: 1000, price: 100 }],
+        expandedItemIds: [],
+        setPreviewImage: noop,
+        deleteRowImage: noop,
+        handleRowFileChange: async () => {},
+        toggleItemDetails: noop,
+        handleRemoveRow: noop,
+        handleUpdateRowField: noop,
+        catalogProducts: [],
+        openSearchPopup: noop,
+        isSaving: false,
+        readOnly
+      })
+    );
+  const view = render(true);
+  const controls = view.match(/<(input|select|textarea)\b[^>]*>/g) || [];
+  assert.ok(controls.length > 0);
+  assert.ok(
+    controls.every(control => control.includes('disabled=""')),
+    'no editable control in view mode'
+  );
+  assert.ok(view.includes('>Chi tiết</button>'), 'line details still open');
+  assert.doesNotMatch(view, />Đổi<|>Xóa</);
+  const edit = render(false);
+  assert.ok(edit.includes('>Đổi</button>') && edit.includes('>Xóa</button>'));
+  assert.ok((edit.match(/<(input|select|textarea)\b[^>]*>/g) || []).some(control => !control.includes('disabled=""')));
 });
 
-test('without sale financials the amounts stay hidden', () => {
-  const html = renderDetail({ canViewFinancials: false, canManage: false });
-  assert.ok(!html.includes('97.200'));
-  assert.ok(!html.includes('Tổng tiền thanh toán'));
-  assert.ok(!html.includes('>Sửa</button>'));
+test('the order form serves both modes: same layout, view toolbar and linked tabs only when read-only', () => {
+  const form = readSource('src/features/sales/components/POFormFullScreen.tsx');
+  assert.equal(
+    (form.match(/className="[^"]*po-readonly-fieldset"[^>]*disabled=\{readOnly\}|disabled=\{readOnly\}\s*>/g) || [])
+      .length >= 3,
+    true
+  );
+  assert.match(form, /\{readOnly \? \(\s*viewActions\s*\) : \(/);
+  assert.match(form, /\{readOnly && viewSidebar\}/);
+  assert.match(form, /\[\{ id: 'items', label: 'Sản phẩm' \}, \.\.\.viewTabs\]/);
+  assert.match(form, /readOnly=\{readOnly\}/);
+  assert.match(form, /usesCatalogProducts && !readOnly && \(/, 'no product picker in view mode');
 });
 
 test('production and delivery tabs list only this order, read-only, for every role that sees the order', () => {
@@ -209,11 +195,12 @@ test('production and delivery tabs list only this order, read-only, for every ro
   assert.doesNotMatch(production + delivery, /<button|<input/);
 });
 
-test('the order page hands the detail to OrderDetailView and keeps money and costs behind the existing rules', () => {
+test('the order page opens an order in the form read-only and returns there after editing', () => {
   const page = readSource('src/features/sales/pages/SalesPage.tsx');
-  assert.match(
-    page,
-    /<OrderDetailView[\s\S]*canViewFinancials=\{canViewSaleFinancials\}[\s\S]*canViewCosts=\{isFull\}/
-  );
-  assert.doesNotMatch(page, /CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG|MỤC PHẢN HỒI|Base64 nào/);
+  assert.match(page, /<POFormFullScreen\s+key=\{`view-\$\{viewPO\.id\}/);
+  assert.match(page, /isOpen\s+readOnly\s+po=\{viewPO\}/);
+  for (const tab of ['Thiết kế', 'Sản xuất', 'Giao hàng', 'Trao đổi', 'Lịch sử'])
+    assert.ok(page.includes(`label: '${tab}'`), tab);
+  assert.match(page, /if \(showEditModal\) \{\s*setShowEditModal\(false\);\s*return;\s*\}/);
+  assert.doesNotMatch(page, /OrderDetailView|CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG|MỤC PHẢN HỒI|Base64 nào/);
 });

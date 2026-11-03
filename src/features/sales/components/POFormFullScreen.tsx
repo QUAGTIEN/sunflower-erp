@@ -1,6 +1,6 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { runMutationAction } from '@/shared/feedback/mutationFeedback';
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { Plus, Folder, CheckSquare, History, Paperclip, Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
@@ -68,6 +68,15 @@ interface POFormFullScreenProps {
   currentUser: any;
   workflowMode?: 'standard' | 'customer_onboarding';
   onOpenCustomerDetails?: (customerId: string) => void;
+  /**
+   * D-PO1: an existing order opens in this same voucher, read-only. The view supplies its own toolbar actions,
+   * the queue status, a sidebar panel (progress) and tabs for linked records; "Sửa" reopens it editable.
+   */
+  readOnly?: boolean;
+  viewStatus?: ReactNode;
+  viewActions?: ReactNode;
+  viewSidebar?: ReactNode;
+  viewTabs?: { id: string; label: string; content: ReactNode }[];
 }
 
 export default function POFormFullScreen({
@@ -82,8 +91,14 @@ export default function POFormFullScreen({
   users,
   currentUser,
   workflowMode = 'standard',
-  onOpenCustomerDetails
+  onOpenCustomerDetails,
+  readOnly = false,
+  viewStatus,
+  viewActions,
+  viewSidebar,
+  viewTabs = []
 }: POFormFullScreenProps) {
+  const [viewTab, setViewTab] = useState('items');
   const [customerId, setCustomerId] = useState('');
   const [customerRank, setCustomerRank] = useState('');
   const [customerPoCode, setCustomerPoCode] = useState('');
@@ -1039,7 +1054,11 @@ export default function POFormFullScreen({
         </button>
 
         {showAttachments && (
-          <div id="po-attachment-content" className="po-attachment-content">
+          <fieldset
+            id="po-attachment-content"
+            className="po-attachment-content po-readonly-fieldset"
+            disabled={readOnly}
+          >
             {customerId && (
               <button
                 type="button"
@@ -1159,7 +1178,7 @@ export default function POFormFullScreen({
                 )}
               </div>
             </div>
-          </div>
+          </fieldset>
         )}
       </div>
     </>
@@ -1191,7 +1210,12 @@ export default function POFormFullScreen({
       </button>
 
       {showAssignments && (
-        <div id="po-assignment-content" className="po-assignment-content" style={{ padding: '16px' }}>
+        <fieldset
+          id="po-assignment-content"
+          className="po-assignment-content po-readonly-fieldset"
+          style={{ padding: '16px' }}
+          disabled={readOnly}
+        >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '14px' }}>
             {assignments.map((assign, index) => {
               // Users that match the role of the department
@@ -1390,7 +1414,7 @@ export default function POFormFullScreen({
             <Plus size={14} />
             <span>Thêm phân công phòng ban</span>
           </button>
-        </div>
+        </fieldset>
       )}
     </div>
   );
@@ -1413,7 +1437,12 @@ export default function POFormFullScreen({
           <span>Ngày giao: {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}</span>
         </div>
       )}
-      <div id="po-order-info-content" className="po-order-info-fields" hidden={!showOrderInfo}>
+      <fieldset
+        id="po-order-info-content"
+        className="po-order-info-fields po-readonly-fieldset"
+        hidden={!showOrderInfo}
+        disabled={readOnly}
+      >
         <div className="form-group">
           <label style={{ fontWeight: 600, fontSize: '12px' }}>Khách hàng *</label>
           <select
@@ -1509,7 +1538,7 @@ export default function POFormFullScreen({
             Bỏ bản nháp
           </button>
         )}
-      </div>
+      </fieldset>
     </section>
   );
 
@@ -1558,14 +1587,17 @@ export default function POFormFullScreen({
             <PageBackButton title="Quay lại" onClick={handleClose} disabled={isSaving} />
             <div>
               <h2>
-                {isCustomerOnboarding
-                  ? 'Chuẩn bị đơn hàng đầu tiên'
-                  : po
-                    ? `Chỉnh sửa đơn hàng: ${po.poCode}`
-                    : templatePo
-                      ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
-                      : 'Tạo đơn hàng khách hàng'}
+                {readOnly && po
+                  ? `Đơn hàng ${po.poCode}`
+                  : isCustomerOnboarding
+                    ? 'Chuẩn bị đơn hàng đầu tiên'
+                    : po
+                      ? `Chỉnh sửa đơn hàng: ${po.poCode}`
+                      : templatePo
+                        ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
+                        : 'Tạo đơn hàng khách hàng'}
               </h2>
+              {readOnly && viewStatus}
               <p>
                 {isCustomerOnboarding
                   ? 'Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại phân hệ Đơn hàng.'
@@ -1578,21 +1610,25 @@ export default function POFormFullScreen({
             </div>
           </div>
           <div className="po-form-header-actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleSubmit}
-              disabled={isSaving}
-              aria-busy={isSaving}
-            >
-              <span>
-                {isSaving
-                  ? 'Đang lưu...'
-                  : isCustomerOnboarding
-                    ? 'Lưu khách hàng & chuẩn bị đơn hàng'
-                    : 'Lưu Đơn Hàng'}
-              </span>
-            </button>
+            {readOnly ? (
+              viewActions
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSubmit}
+                disabled={isSaving}
+                aria-busy={isSaving}
+              >
+                <span>
+                  {isSaving
+                    ? 'Đang lưu...'
+                    : isCustomerOnboarding
+                      ? 'Lưu khách hàng & chuẩn bị đơn hàng'
+                      : 'Lưu Đơn Hàng'}
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1607,6 +1643,7 @@ export default function POFormFullScreen({
           className="po-form-body-container"
         >
           <aside className="po-order-sidebar">
+            {readOnly && viewSidebar}
             {orderInfo}
             {orderAttachments}
             {usesCatalogProducts && orderAssignments}
@@ -1623,9 +1660,32 @@ export default function POFormFullScreen({
               gap: '20px'
             }}
           >
-            {statusNotices}
+            {!readOnly && statusNotices}
+            {readOnly && viewTabs.length > 0 && (
+              <div className="content-tabs po-view-tabs" role="tablist" aria-label="Nội dung đơn hàng">
+                {[{ id: 'items', label: 'Sản phẩm' }, ...viewTabs].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={viewTab === tab.id}
+                    onClick={() => setViewTab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {readOnly && viewTab !== 'items' && (
+              <div className="po-view-panel" role="tabpanel">
+                {viewTabs.find(tab => tab.id === viewTab)?.content}
+              </div>
+            )}
             {/* INLINE EDITING EXCEL-LIKE GRID */}
-            <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
+            <div
+              className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}
+              hidden={readOnly && viewTab !== 'items'}
+            >
               <div className="po-items-card-header">
                 <div>
                   <h3>{usesCatalogProducts ? 'Sản phẩm trong đơn hàng' : 'Danh sách mã hàng cần in và sản xuất'}</h3>
@@ -1656,7 +1716,7 @@ export default function POFormFullScreen({
                       onClick={() => setIsTableFocusMode(current => !current)}
                     />
                   </div>
-                  {usesCatalogProducts && (
+                  {usesCatalogProducts && !readOnly && (
                     <button
                       type="button"
                       className="btn btn-outline"
@@ -1666,14 +1726,16 @@ export default function POFormFullScreen({
                       Chọn mã sản phẩm
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={handleAddRow}
-                    disabled={isSaving || (usesCatalogProducts && !customerId)}
-                  >
-                    {usesCatalogProducts ? 'Thêm mã sản phẩm' : 'Thêm mã hàng'}
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={handleAddRow}
+                      disabled={isSaving || (usesCatalogProducts && !customerId)}
+                    >
+                      {usesCatalogProducts ? 'Thêm mã sản phẩm' : 'Thêm mã hàng'}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1700,7 +1762,7 @@ export default function POFormFullScreen({
                 </div>
               )}
 
-              {usesCatalogProducts && customerId && catalogProducts.length === 0 && (
+              {usesCatalogProducts && !readOnly && customerId && catalogProducts.length === 0 && (
                 <div className="po-catalog-empty" role="status">
                   <span>Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.</span>
                   {onOpenCustomerDetails && (
@@ -1732,6 +1794,7 @@ export default function POFormFullScreen({
                 catalogProducts={catalogProducts}
                 openSearchPopup={openSearchPopup}
                 isSaving={isSaving}
+                readOnly={readOnly}
               />
 
               {/* FOOTER ACTIONS */}

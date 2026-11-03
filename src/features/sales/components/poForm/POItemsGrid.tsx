@@ -23,6 +23,8 @@ interface POItemsGridProps {
   catalogProducts: CustomerProductRecord[];
   openSearchPopup: (rowIndex: number) => void;
   isSaving: boolean;
+  /** View mode of the order voucher: inputs locked, row edit buttons hidden, details and pictures still open. */
+  readOnly?: boolean;
 }
 
 /** Editable PO line grid: product, specification, quantity, price and file columns. */
@@ -39,7 +41,8 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
   handleUpdateRowField,
   catalogProducts,
   openSearchPopup,
-  isSaving
+  isSaving,
+  readOnly = false
 }) => (
   <div className="po-inline-grid-container">
     <table className="po-inline-grid po-items-overview-table" style={{ zoom: tableZoom / 100 }}>
@@ -96,28 +99,30 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                         }}
                         onClick={() => setPreviewImage(img)}
                       />
-                      <button
-                        type="button"
-                        onClick={() => deleteRowImage(index, imgIdx)}
-                        style={{
-                          position: 'absolute',
-                          top: '-4px',
-                          right: '-4px',
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '12px',
-                          height: '12px',
-                          fontSize: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        ×
-                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => deleteRowImage(index, imgIdx)}
+                          style={{
+                            position: 'absolute',
+                            top: '-4px',
+                            right: '-4px',
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '12px',
+                            height: '12px',
+                            fontSize: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -142,6 +147,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                   <Upload size={10} />
                   <span>+ File</span>
                   <input
+                    disabled={readOnly}
                     type="file"
                     accept="image/*"
                     multiple
@@ -168,14 +174,16 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                       >
                         <SlidersHorizontal size={14} />
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-danger po-row-delete"
-                        onClick={() => handleRemoveRow(index)}
-                        title="Xóa dòng"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger po-row-delete"
+                          onClick={() => handleRemoveRow(index)}
+                          title="Xóa dòng"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </td>
@@ -187,6 +195,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                   ) : (
                     <div className="po-product-code-control">
                       <input
+                        disabled={readOnly}
                         type="text"
                         className="po-grid-input"
                         value={item.productCode || ''}
@@ -201,7 +210,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                           </option>
                         ))}
                       </datalist>
-                      {!usesCatalogProducts && (
+                      {!usesCatalogProducts && !readOnly && (
                         <button type="button" className="btn btn-outline" onClick={() => openSearchPopup(index)}>
                           Chọn
                         </button>
@@ -217,6 +226,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                   ) : (
                     <>
                       <input
+                        disabled={readOnly}
                         type="text"
                         className="po-grid-input"
                         value={item.productName || ''}
@@ -243,6 +253,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                     <>
                       <div className="po-item-spec-cell">
                         <input
+                          disabled={readOnly}
                           type="text"
                           className="po-grid-input"
                           value={item.size || ''}
@@ -250,6 +261,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                           placeholder="Quy cách"
                         />
                         <input
+                          disabled={readOnly}
                           type="text"
                           className="po-grid-input"
                           value={item.material || ''}
@@ -274,6 +286,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                     </span>
                   ) : (
                     <input
+                      disabled={readOnly}
                       type="text"
                       className="po-grid-input"
                       value={item.unit || ''}
@@ -284,6 +297,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                 </td>
                 <td>
                   <input
+                    disabled={readOnly}
                     type="number"
                     className="po-grid-input"
                     value={item.quantity}
@@ -293,6 +307,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                 </td>
                 <td>
                   <input
+                    disabled={readOnly}
                     type="number"
                     className="po-grid-input"
                     value={item.price}
@@ -303,6 +318,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                 </td>
                 <td>
                   <input
+                    disabled={readOnly}
                     type="number"
                     className="po-grid-input"
                     value={item.vatRate}
@@ -314,6 +330,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                 <td>
                   <div className="po-discount-editor">
                     <select
+                      disabled={readOnly}
                       className="po-grid-input po-discount-mode"
                       value={financials.discountType}
                       title={financials.discountType === 'amount' ? 'Tiền chênh (VNĐ)' : 'Theo phần trăm'}
@@ -327,6 +344,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                       <option value="amount">Tiền chênh</option>
                     </select>
                     <input
+                      disabled={readOnly}
                       type="number"
                       className="po-grid-input po-discount-value"
                       value={financials.discountType === 'amount' ? item.discountAmount || 0 : item.discountRate || 0}
@@ -358,22 +376,26 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                       <button type="button" aria-expanded={isExpanded} onClick={() => toggleItemDetails(itemKey)}>
                         {isExpanded ? 'Thu gọn' : 'Chi tiết'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => openSearchPopup(index)}
-                        disabled={!catalogProducts.length || isSaving}
-                        aria-label={`Đổi sản phẩm: ${item.productCode || index + 1}`}
-                      >
-                        Đổi
-                      </button>
-                      <button
-                        type="button"
-                        className="po-catalog-row-delete"
-                        onClick={() => handleRemoveRow(index)}
-                        aria-label={`Xóa dòng: ${item.productCode || index + 1}`}
-                      >
-                        Xóa
-                      </button>
+                      {!readOnly && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openSearchPopup(index)}
+                            disabled={!catalogProducts.length || isSaving}
+                            aria-label={`Đổi sản phẩm: ${item.productCode || index + 1}`}
+                          >
+                            Đổi
+                          </button>
+                          <button
+                            type="button"
+                            className="po-catalog-row-delete"
+                            onClick={() => handleRemoveRow(index)}
+                            aria-label={`Xóa dòng: ${item.productCode || index + 1}`}
+                          >
+                            Xóa
+                          </button>
+                        </>
+                      )}
                     </div>
                   ) : (
                     rowAttachments
@@ -434,6 +456,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                       <div className="form-group">
                         <label>Ngày giao của mã hàng</label>
                         <input
+                          disabled={readOnly}
                           type="date"
                           value={item.deliveryDate}
                           onChange={e => handleUpdateRowField(index, 'deliveryDate', e.target.value)}
@@ -442,6 +465,7 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                       <div className="form-group po-item-note-field">
                         <label>Ghi chú dòng hàng</label>
                         <input
+                          disabled={readOnly}
                           type="text"
                           value={item.note || ''}
                           onChange={e => handleUpdateRowField(index, 'note', e.target.value)}

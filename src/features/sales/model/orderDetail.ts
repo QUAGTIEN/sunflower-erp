@@ -1,30 +1,16 @@
-import { calculatePOItemFinancials } from '@/domain/poFinancials';
 import { USER_ROLE_LABELS, isUserRole } from '@/shared/types';
 import { PO_QUEUE_STATES, getPOQueueStatus, type POQueueStatus } from './poWorkflow';
 
-export interface OrderTotals {
-  grossAmount: number;
-  discountAmount: number;
-  amountBeforeVat: number;
-  vatAmount: number;
-  amountWithVat: number;
-  /** Share of the order value kept after discounts (100% = no discount). */
-  kpi: number;
+/** One order line as stored on the PO; only the fields the order views read are named. */
+export interface OrderLine extends Record<string, unknown> {
+  itemId?: string;
+  productCode?: string;
+  productName?: string;
+  saleNotes?: string;
+  designNotes?: string;
+  saleLayouts?: string[];
+  designLayouts?: string[];
 }
-
-export const orderTotals = (items: Record<string, unknown>[] = []): OrderTotals => {
-  const totals = items.map(calculatePOItemFinancials).reduce(
-    (sum, line) => ({
-      grossAmount: sum.grossAmount + line.grossAmount,
-      discountAmount: sum.discountAmount + line.discountAmount,
-      amountBeforeVat: sum.amountBeforeVat + line.amountBeforeVat,
-      vatAmount: sum.vatAmount + line.vatAmount,
-      amountWithVat: sum.amountWithVat + line.amountWithVat
-    }),
-    { grossAmount: 0, discountAmount: 0, amountBeforeVat: 0, vatAmount: 0, amountWithVat: 0 }
-  );
-  return { ...totals, kpi: totals.grossAmount > 0 ? (totals.amountBeforeVat / totals.grossAmount) * 100 : 0 };
-};
 
 /** What moves an order into each queue step; the detail page never changes the step by hand (D-PO1). */
 export const ORDER_STEP_TRIGGERS: Record<POQueueStatus, string> = {
@@ -76,26 +62,3 @@ export const actorLabel = (value: unknown) => {
   const role = match[2].toLowerCase();
   return isUserRole(role) ? `${match[1]} (${USER_ROLE_LABELS[role]})` : text;
 };
-
-export const ORDER_ATTACHMENT_LABELS: Record<string, string> = {
-  pdfLink: 'PDF đơn hàng',
-  excelLink: 'Excel báo giá',
-  aiLink: 'Thiết kế gốc (AI)',
-  corelLink: 'Thiết kế Corel (.cdr)',
-  contractLink: 'Hợp đồng',
-  quoteLink: 'Bản báo giá'
-};
-
-const imageList = (value: unknown) =>
-  Array.isArray(value) ? value.filter((image): image is string => typeof image === 'string' && image !== '') : [];
-
-/** Every label picture of one order line: previews, the sale's layouts and the designer's files, without repeats. */
-export const lineImages = (item: Record<string, unknown>) =>
-  Array.from(
-    new Set([
-      ...imageList(item.previewImages),
-      ...imageList([item.previewImage]),
-      ...imageList(item.saleLayouts),
-      ...imageList(item.designLayouts)
-    ])
-  );

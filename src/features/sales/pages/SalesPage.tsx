@@ -32,7 +32,16 @@ import { syncDesignRequestsForPO } from '@/features/design/api/designRequestServ
 import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/procurementService';
 import { DesignRecord, DesignVersion } from '@/features/design/model/designWorkflow';
 import { withCalculatedPOFinancials } from '@/domain/poFinancials';
-import { OrderDetailView } from '@/features/sales/components/orderDetail/OrderDetailView';
+import { OrderDesignPanel } from '@/features/sales/components/orderDetail/OrderDesignPanel';
+import { OrderDeliveryPanel } from '@/features/sales/components/orderDetail/OrderDeliveryPanel';
+import { OrderProductionPanel } from '@/features/sales/components/orderDetail/OrderProductionPanel';
+import { OrderHistoryPanel, OrderNotesPanel } from '@/features/sales/components/orderDetail/OrderRecordPanels';
+import {
+  OrderAuditLine,
+  OrderProgressPanel,
+  OrderStatusBadge,
+  OrderViewActions
+} from '@/features/sales/components/orderDetail/OrderViewParts';
 import { getPOQueueLabel, getPOQueueStatus, PO_QUEUE_STATES, POQueueStatus } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
@@ -125,11 +134,8 @@ export const Sales: React.FC<SalesProps> = ({
   messages,
   users
 }) => {
-  const isFull = currentUser.role === 'admin' || currentUser.role === 'accountant';
-  const isSaleOnly = currentUser.role === 'sale' || currentUser.role === 'designer';
   // Only admins move orders to the recycle bin (formerly enforced by a shared confirmation password).
   const canDeletePO = currentUser.role === 'admin';
-  const canViewSaleFinancials = isFull || isSaleOnly;
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [printPO, setPrintPO] = useState<PrintableOrder | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -578,7 +584,6 @@ export const Sales: React.FC<SalesProps> = ({
           );
 
           setShowEditModal(false);
-          setSelectedPO(null);
         } else {
           // Creating new PO
           const latestCustomer = (await dbService.getDocument('customers', poData.customerId)) as CustomerRecord | null;
@@ -910,13 +915,9 @@ export const Sales: React.FC<SalesProps> = ({
   const orderCustomerPagination = useDataTablePagination(orderCustomers);
   const waitingCustomerPagination = useDataTablePagination(waitingCustomers);
 
-  const selectedPOCustomer = selectedPO ? customers.find(customer => customer.id === selectedPO.customerId) : undefined;
-  // The order keeps the customer's assigned sale as captured when it was created.
-  const selectedPOSaleId = selectedPO?.customerSnapshot?.assignedSaleId || selectedPOCustomer?.assignedSaleId || '';
-  const selectedPOSaleName = users.find(user => user.uid === selectedPOSaleId)?.displayName || '';
-  const supplierNames = Object.fromEntries(
-    suppliers.map(supplier => [String(supplier.id), String(supplier.supplierName || '')])
-  );
+  // The view follows the live order list, so a save or another user's change shows at once.
+  const viewPO = selectedPO ? pos.find(po => po.id === selectedPO.id) || selectedPO : null;
+  const canManageOrder = currentUser.role === 'admin' || currentUser.role === 'sale';
 
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1385,37 +1386,81 @@ export const Sales: React.FC<SalesProps> = ({
       )}
 
       {/* PO DETAIL PANEL WITH QUEUE-BASED WORKFLOW */}
-      {selectedPO && (
-        <OrderDetailView
-          po={selectedPO}
-          customer={selectedPOCustomer}
-          saleName={selectedPOSaleName}
-          supplierNames={supplierNames}
-          canViewFinancials={canViewSaleFinancials}
-          canViewCosts={isFull}
-          canManage={currentUser.role === 'admin' || currentUser.role === 'sale'}
-          canDelete={canDeletePO}
-          canEditSaleBrief={currentUser.role === 'admin' || currentUser.role === 'sale'}
-          canEditDesignReply={currentUser.role === 'admin' || currentUser.role === 'designer'}
-          checklistDraft={newChecklistText}
-          onBack={() => setSelectedPO(null)}
-          onPrint={() => setPrintPO(selectedPO)}
-          onRepeat={() => handleOpenRepeatOrder(selectedPO)}
-          onEdit={() => handleOpenEditModal(selectedPO)}
-          onDelete={() => void handleDeletePO(selectedPO.id)}
-          onOpenCustomer={
-            onOpenCustomerDetails && selectedPO.customerId
-              ? () => onOpenCustomerDetails(selectedPO.customerId)
-              : undefined
+      {/* D-PO1: an existing order opens in the order form itself, read-only; "Sửa" unlocks the same voucher. */}
+      {viewPO && !showEditModal && !showAddModal && (
+        <POFormFullScreen
+          key={`view-${viewPO.id}-${viewPO.updatedAt || ''}`}
+          isOpen
+          readOnly
+          po={viewPO}
+          onClose={() => setSelectedPO(null)}
+          onSave={handleSavePO}
+          customers={customers}
+          suppliers={suppliers}
+          users={users}
+          currentUser={currentUser}
+          onOpenCustomerDetails={onOpenCustomerDetails}
+          viewStatus={<OrderStatusBadge po={viewPO} />}
+          viewActions={
+            <OrderViewActions
+              canManage={canManageOrder}
+              canDelete={canDeletePO}
+              onPrint={() => setPrintPO(viewPO)}
+              onRepeat={() => handleOpenRepeatOrder(viewPO)}
+              onEdit={() => handleOpenEditModal(viewPO)}
+              onDelete={() => void handleDeletePO(viewPO.id)}
+            />
           }
-          onPreviewImage={setPreviewImage}
-          onUpdateLineNotes={(itemIndex, field, value) => void handleUpdateItemNotes(itemIndex, field, value)}
-          onUploadLineFiles={(itemIndex, field, files) => void handleUploadItemFiles(itemIndex, field, files)}
-          onRemoveLineFile={(itemIndex, field, fileIndex) => void handleRemoveItemFile(itemIndex, field, fileIndex)}
-          onChecklistDraftChange={setNewChecklistText}
-          onAddChecklistItem={() => void handleAddChecklistItem()}
-          onToggleChecklistItem={taskId => void handleToggleChecklistItem(taskId)}
-          onRemoveChecklistItem={taskId => void handleRemoveChecklistItem(taskId)}
+          viewSidebar={<OrderProgressPanel po={viewPO} />}
+          viewTabs={[
+            {
+              id: 'design',
+              label: 'Thiết kế',
+              content: (
+                <OrderDesignPanel
+                  poId={viewPO.id}
+                  items={viewPO.items || []}
+                  canEditSaleBrief={canManageOrder}
+                  canEditDesignReply={currentUser.role === 'admin' || currentUser.role === 'designer'}
+                  onUpdateNotes={(itemIndex, field, value) => void handleUpdateItemNotes(itemIndex, field, value)}
+                  onUploadFiles={(itemIndex, field, files) => void handleUploadItemFiles(itemIndex, field, files)}
+                  onRemoveFile={(itemIndex, field, fileIndex) => void handleRemoveItemFile(itemIndex, field, fileIndex)}
+                  onPreviewImage={setPreviewImage}
+                />
+              )
+            },
+            { id: 'production', label: 'Sản xuất', content: <OrderProductionPanel poId={viewPO.id} /> },
+            { id: 'delivery', label: 'Giao hàng', content: <OrderDeliveryPanel poId={viewPO.id} /> },
+            {
+              id: 'notes',
+              label: 'Trao đổi',
+              content: (
+                <OrderNotesPanel
+                  tasks={viewPO.internalChecklist || []}
+                  draft={newChecklistText}
+                  onDraftChange={setNewChecklistText}
+                  onAdd={() => void handleAddChecklistItem()}
+                  onToggle={taskId => void handleToggleChecklistItem(taskId)}
+                  onRemove={taskId => void handleRemoveChecklistItem(taskId)}
+                />
+              )
+            },
+            {
+              id: 'history',
+              label: 'Lịch sử',
+              content: (
+                <>
+                  <OrderHistoryPanel logs={viewPO.historyLogs || []} />
+                  <OrderAuditLine
+                    createdBy={viewPO.createdBy}
+                    createdAt={viewPO.createdAt}
+                    updatedBy={viewPO.updatedBy}
+                    updatedAt={viewPO.updatedAt}
+                  />
+                </>
+              )
+            }
+          ]}
         />
       )}
 
@@ -1424,8 +1469,12 @@ export const Sales: React.FC<SalesProps> = ({
         <POFormFullScreen
           isOpen={showAddModal || showEditModal}
           onClose={() => {
+            // Leaving the editable voucher of an existing order returns to its read-only view.
+            if (showEditModal) {
+              setShowEditModal(false);
+              return;
+            }
             setShowAddModal(false);
-            setShowEditModal(false);
             setRepeatSourcePO(null);
             setInitialCustomerId('');
             setSelectedPO(null);

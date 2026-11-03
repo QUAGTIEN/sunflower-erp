@@ -236,8 +236,8 @@ test('deletes no longer ask for a shared password written in the code; only admi
   assert.match(sales, /const canDeletePO = currentUser\.role === 'admin';/);
   assert.match(sales, /canDelete=\{canDeletePO\}/);
   assert.match(
-    readSource('src/features/sales/components/orderDetail/OrderDetailView.tsx'),
-    /\{props\.canDelete && \(\s*<button\s+type="button"\s+className="btn btn-outline order-commandbar__delete"/
+    readSource('src/features/sales/components/orderDetail/OrderViewParts.tsx'),
+    /\{canDelete && \(\s*<button type="button" className="btn btn-outline" onClick=\{onDelete\}>/
   );
   const production = readSource('src/features/production/pages/ProductionPage.tsx');
   assert.match(production, /const canDeleteLsx = currentUser\.role === 'admin';/);

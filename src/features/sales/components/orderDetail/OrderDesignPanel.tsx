@@ -6,7 +6,7 @@ import {
   getDesignWorkStatusDefinition
 } from '@/features/design/model/designWorkflow';
 import { formatDate } from '@/shared/utils/dateFormatting';
-import type { OrderLine } from './OrderItemsTable';
+import type { OrderLine } from '../../model/orderDetail';
 
 export type LineNoteField = 'saleNotes' | 'designNotes';
 export type LineFileField = 'saleLayouts' | 'designLayouts';

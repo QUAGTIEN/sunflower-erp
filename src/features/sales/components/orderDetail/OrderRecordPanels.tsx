@@ -1,77 +1,7 @@
 import { X } from 'lucide-react';
 import { getPOHistoryStatusLabel } from '../../model/poWorkflow';
-import { ORDER_ATTACHMENT_LABELS, actorLabel, lineImages, type OrderHistoryLog } from '../../model/orderDetail';
+import { actorLabel, type OrderHistoryLog } from '../../model/orderDetail';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
-import type { OrderLine } from './OrderItemsTable';
-
-export function OrderFilesPanel({
-  poCode,
-  links,
-  items,
-  onPreviewImage
-}: {
-  poCode: string;
-  links: Record<string, unknown>;
-  items: OrderLine[];
-  onPreviewImage: (image: string) => void;
-}) {
-  const attachments = Object.entries(links).filter(
-    (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1] !== ''
-  );
-  const images = Array.from(new Set(items.flatMap(lineImages)));
-  return (
-    <div className="order-files">
-      <section className="order-subsection">
-        <h3>Tài liệu đính kèm</h3>
-        {attachments.length ? (
-          <ul className="order-attachments">
-            {attachments.map(([key, value]) => {
-              const label = ORDER_ATTACHMENT_LABELS[key] || key;
-              const isImage = value.startsWith('data:image/');
-              return (
-                <li key={key}>
-                  <span className="order-attachments__name" title={label}>
-                    {label}
-                  </span>
-                  {isImage && (
-                    <button type="button" className="btn btn-sm btn-outline" onClick={() => onPreviewImage(value)}>
-                      Xem
-                    </button>
-                  )}
-                  <a className="btn btn-sm btn-outline" href={value} download={`${label}_${poCode}`}>
-                    Tải về
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="order-muted">Chưa có tài liệu đính kèm.</p>
-        )}
-      </section>
-      <section className="order-subsection">
-        <h3>Ảnh nhãn mẫu</h3>
-        {images.length ? (
-          <div className="order-file-grid">
-            {images.map((image, index) => (
-              <span key={`${index}-${image.slice(-16)}`} className="order-file-tile">
-                <button
-                  type="button"
-                  aria-label={`Xem ảnh nhãn mẫu ${index + 1}`}
-                  onClick={() => onPreviewImage(image)}
-                >
-                  <img src={image} alt="" />
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="order-muted">Chưa có ảnh nhãn mẫu.</p>
-        )}
-      </section>
-    </div>
-  );
-}
 
 export interface ChecklistTask {
   id: string;

@@ -87,10 +87,10 @@ test('the order sheet prints the customer snapshot, every line, VAT totals and t
 
 test('the order page exports the order sheet from the detail header and the row menu', () => {
   const page = readSource('src/features/sales/pages/SalesPage.tsx');
-  assert.match(page, /onPrint=\{\(\) => setPrintPO\(selectedPO\)\}/);
+  assert.match(page, /onPrint=\{\(\) => setPrintPO\(viewPO\)\}/);
   assert.match(
-    readSource('src/features/sales/components/orderDetail/OrderDetailView.tsx'),
-    /onClick=\{props\.onPrint\}[^>]*>\s*In\s*</
+    readSource('src/features/sales/components/orderDetail/OrderViewParts.tsx'),
+    /onClick=\{onPrint\}[^>]*>\s*In\s*</
   );
   assert.match(page, /label: 'Xuất đơn hàng', onSelect: \(\) => setPrintPO\(po\)/);
   assert.match(page, /<PrintPreviewDialog[\s\S]{0,200}html=\{orderSheetHtml\(printPO\)\}/);
