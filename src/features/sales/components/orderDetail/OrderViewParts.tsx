@@ -1,6 +1,8 @@
+import { Printer } from 'lucide-react';
+import { IconButton } from '@/components/IconButton';
 import { formatDateTime } from '@/shared/utils/dateFormatting';
 import { getPOQueueState } from '../../model/poWorkflow';
-import { ORDER_STEP_TRIGGERS, actorLabel, orderSteps, type OrderHistoryLog } from '../../model/orderDetail';
+import { actorLabel, orderSteps, type OrderHistoryLog } from '../../model/orderDetail';
 import './OrderDetail.css';
 
 interface OrderStatusSource {
@@ -18,34 +20,30 @@ export function OrderStatusBadge({ po }: { po: OrderStatusSource }) {
 }
 
 /**
- * The seven queue steps, read-only (D-PO1): a reached step shows when and by whom, the others say what moves the
- * order there. Laid out like the other collapsible panels of the order form's sidebar.
+ * The seven queue steps on one line under the voucher header, read-only (D-PO1). When and by whom a step was
+ * reached stays in the tooltip so the strip carries no extra text.
  */
-export function OrderProgressPanel({ po }: { po: OrderStatusSource }) {
-  const steps = orderSteps(po);
+export function OrderProgressStrip({ po }: { po: OrderStatusSource }) {
   return (
-    <section className="order-progress-panel" aria-label="Tiến độ đơn hàng">
-      <h3>Tiến độ đơn hàng</h3>
+    <nav className="order-progress-strip" aria-label="Tiến độ đơn hàng">
+      <span className="order-progress-strip__label">Tiến độ</span>
       <ol>
-        {steps.map((step, index) => (
+        {orderSteps(po).map(step => (
           <li
             key={step.value}
-            className={`order-progress-panel__step order-progress-panel__step--${step.state}`}
+            className={`order-progress-strip__step order-progress-strip__step--${step.state}`}
             aria-current={step.state === 'current' ? 'step' : undefined}
+            title={
+              step.reachedAt
+                ? `${formatDateTime(step.reachedAt, 'vi-VN')} · ${actorLabel(step.reachedBy) || 'Không rõ'}`
+                : undefined
+            }
           >
-            <span className="order-progress-panel__index">{index + 1}</span>
-            <span className="order-progress-panel__text">
-              <strong>{step.label}</strong>
-              <small>
-                {step.reachedAt
-                  ? `${formatDateTime(step.reachedAt, 'vi-VN')} · ${actorLabel(step.reachedBy) || 'Không rõ'}`
-                  : ORDER_STEP_TRIGGERS[step.value]}
-              </small>
-            </span>
+            {step.label}
           </li>
         ))}
       </ol>
-    </section>
+    </nav>
   );
 }
 
@@ -62,14 +60,13 @@ interface OrderViewActionsProps {
 export function OrderViewActions({ canManage, canDelete, onPrint, onRepeat, onEdit, onDelete }: OrderViewActionsProps) {
   return (
     <>
-      <button type="button" className="btn btn-outline" onClick={onPrint} title="Xuất đơn hàng gửi khách">
-        In
-      </button>
+      <IconButton label="In đơn hàng" icon={<Printer size={16} />} onClick={onPrint} />
       {canManage && (
         <button type="button" className="btn btn-outline" onClick={onRepeat} title="Tạo đơn hàng mới từ đơn này">
           Nhân bản
         </button>
       )}
+      {canDelete && <span className="po-view-actions-divider" aria-hidden="true" />}
       {canDelete && (
         <button type="button" className="btn btn-outline" onClick={onDelete}>
           Xóa

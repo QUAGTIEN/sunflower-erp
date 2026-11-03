@@ -57,41 +57,17 @@ test('order steps and actor names come from the order itself', () => {
   );
   assert.equal(steps[1].reachedAt, '2026-09-12T02:00:00.000Z', 'legacy statuses map onto their queue step');
   assert.equal(steps[3].reachedAt, '');
-  assert.deepEqual(
-    Object.keys(model.ORDER_STEP_TRIGGERS),
-    steps.map(step => step.value)
-  );
   assert.equal(model.actorLabel('Khánh Ly (SALE)'), 'Khánh Ly (Sale)');
   assert.equal(model.actorLabel('Lê Minh (PRODUCER)'), 'Lê Minh (Kỹ thuật)');
   assert.equal(model.actorLabel('Không vai trò'), 'Không vai trò');
 });
 
-test('an order finds its own trips among stops of shared trips, newest first', () => {
-  const { tripsForOrder } = loader()('src/features/delivery/model/deliveryTrips.ts');
-  const found = tripsForOrder(
-    [
-      { id: 't1', deliveryDate: '2026-10-01', orders: [{ poId: 'po1', deliveredQty: 400 }] },
-      { id: 't2', deliveryDate: '2026-10-05', orders: [{ poId: 'other' }, { poId: 'po1', deliveredQty: 600 }] },
-      { id: 't3', deliveryDate: '2026-10-09', orders: [{ poId: 'other' }] },
-      { id: 't4', deliveryDate: '2026-10-10', deleted: true, orders: [{ poId: 'po1' }] }
-    ],
-    'po1'
-  );
-  assert.deepEqual(
-    found.map(({ trip, stop }) => [trip.id, stop.deliveredQty]),
-    [
-      ['t2', 600],
-      ['t1', 400]
-    ]
-  );
-});
-
 test('view mode shows the read-only progress, the status and only the actions the role allows', () => {
   const parts = loader()('src/features/sales/components/orderDetail/OrderViewParts.tsx');
-  const progress = renderToStaticMarkup(React.createElement(parts.OrderProgressPanel, { po: po() }));
-  assert.equal((progress.match(/class="order-progress-panel__step /g) || []).length, 7);
-  assert.match(progress, /order-progress-panel__step--current" aria-current="step"/);
-  assert.ok(progress.includes('Khi khách duyệt mẫu thiết kế'), 'pending steps say what moves the order');
+  const progress = renderToStaticMarkup(React.createElement(parts.OrderProgressStrip, { po: po() }));
+  assert.equal((progress.match(/class="order-progress-strip__step /g) || []).length, 7);
+  assert.match(progress, /order-progress-strip__step--current" aria-current="step" title="[^"]*Khánh Ly \(Sale\)"/);
+  assert.doesNotMatch(progress, /Khi khách duyệt/, 'pending steps carry no caption');
   assert.doesNotMatch(progress, /<select|<button/, 'D-PO1: the queue is never changed by hand');
   assert.ok(renderToStaticMarkup(React.createElement(parts.OrderStatusBadge, { po: po() })).includes('Chờ thiết kế'));
 
@@ -109,9 +85,10 @@ test('view mode shows the read-only progress, the status and only the actions th
       })
     );
   const labels = html => [...html.matchAll(/>([^<>]+)<\/button>/g)].map(match => match[1]);
-  assert.deepEqual(labels(actions()), ['In']);
-  assert.deepEqual(labels(actions({ canManage: true })), ['In', 'Nhân bản', 'Sửa']);
-  assert.deepEqual(labels(actions({ canManage: true, canDelete: true })), ['In', 'Nhân bản', 'Xóa', 'Sửa']);
+  assert.match(actions(), /aria-label="In đơn hàng"/, 'printing is an icon tool button');
+  assert.deepEqual(labels(actions()), []);
+  assert.deepEqual(labels(actions({ canManage: true })), ['Nhân bản', 'Sửa']);
+  assert.deepEqual(labels(actions({ canManage: true, canDelete: true })), ['Nhân bản', 'Xóa', 'Sửa']);
   const audit = renderToStaticMarkup(
     React.createElement(parts.OrderAuditLine, { createdBy: 'Khánh Ly (SALE)', createdAt: '2026-09-11T02:38:09.000Z' })
   );
@@ -154,7 +131,7 @@ test('the order lines grid locks every input in view mode but keeps details and 
   assert.ok((edit.match(/<(input|select|textarea)\b[^>]*>/g) || []).some(control => !control.includes('disabled=""')));
 });
 
-test('the order form serves both modes: same layout, view toolbar and linked tabs only when read-only', () => {
+test('the order form serves both modes: the view is a voucher with the same fields and grid, no tabs', () => {
   const form = readSource('src/features/sales/components/POFormFullScreen.tsx');
   assert.equal(
     (form.match(/className="[^"]*po-readonly-fieldset"[^>]*disabled=\{readOnly\}|disabled=\{readOnly\}\s*>/g) || [])
@@ -162,45 +139,46 @@ test('the order form serves both modes: same layout, view toolbar and linked tab
     true
   );
   assert.match(form, /\{readOnly \? \(\s*viewActions\s*\) : \(/);
-  assert.match(form, /\{readOnly && viewSidebar\}/);
-  assert.match(form, /\[\{ id: 'items', label: 'Sản phẩm' \}, \.\.\.viewTabs\]/);
+  assert.match(form, /\{readOnly \? \(\s*<div className="po-voucher-body">\s*\{viewProgress\}/);
+  assert.equal((form.match(/\{itemsCard\}/g) || []).length, 2, 'view and edit render the same product card');
+  assert.doesNotMatch(form, /viewTabs|viewSidebar|role="tablist"/);
   assert.match(form, /readOnly=\{readOnly\}/);
   assert.match(form, /usesCatalogProducts && !readOnly && \(/, 'no product picker in view mode');
 });
 
-test('production and delivery tabs list only this order, read-only, for every role that sees the order', () => {
-  const live = rows => ({ useLiveCollections: () => ({ snapshots: rows, loading: false, error: '' }) });
-  const { OrderProductionPanel } = loader({
-    '@/hooks/useLiveCollections': live({
-      commands: [
-        { id: 'a', lsxCode: 'LSX-A', productionOrderVersion: 2, status: 'producing', poIds: ['po1', 'po2'], lines: [] },
-        { id: 'b', cmdCode: 'OLD-B', poId: 'po1' },
-        { id: 'c', lsxCode: 'LSX-C', productionOrderVersion: 2, status: 'released', poIds: ['po9'], lines: [] },
-        { id: 'd', lsxCode: 'LSX-D', poId: 'po1', deleted: true }
-      ]
+test('the voucher header lists the order form fields and the totals of the lines', () => {
+  const view = loader()('src/features/sales/components/poForm/POVoucherView.tsx');
+  const info = renderToStaticMarkup(
+    React.createElement(view.POVoucherInfo, {
+      customerName: 'CÔNG TY CỔ PHẦN HÀ NỘI HƯNG YÊN',
+      customerRank: 'B',
+      customerPoCode: '',
+      expectedDeliveryDate: '2026-09-20',
+      createdAt: '2026-09-11T02:38:09.000Z',
+      notes: ''
     })
-  })('src/features/sales/components/orderDetail/OrderProductionPanel.tsx');
-  const production = renderToStaticMarkup(React.createElement(OrderProductionPanel, { poId: 'po1' }));
-  assert.ok(production.includes('LSX-A') && production.includes('Đang sản xuất'));
-  assert.ok(production.includes('OLD-B') && production.includes('Lệnh theo luồng cũ'));
-  assert.ok(!production.includes('LSX-C') && !production.includes('LSX-D'));
-
-  const { OrderDeliveryPanel } = loader({
-    '@/hooks/useLiveCollections': live({
-      trips: [{ id: 't1', delCode: 'GH-2610-0001', status: 'delivering', orders: [{ poId: 'po1', deliveredQty: 500 }] }]
+  );
+  for (const label of ['Khách hàng', 'Hạng khách hàng', 'Số PO khách', 'Ngày giao dự kiến', 'Ghi chú đơn hàng'])
+    assert.ok(info.includes(`>${label}<`), label);
+  assert.ok(info.includes('Hạng B') && info.includes('2026'));
+  assert.doesNotMatch(info, /<input|<select|<textarea/);
+  const summary = renderToStaticMarkup(
+    React.createElement(view.POVoucherSummary, {
+      quantitiesByUnit: new Map([['cái', 1000]]),
+      totalBeforeVat: 90000,
+      totalVat: 7200,
+      totalAfterVat: 97200
     })
-  })('src/features/sales/components/orderDetail/OrderDeliveryPanel.tsx');
-  const delivery = renderToStaticMarkup(React.createElement(OrderDeliveryPanel, { poId: 'po1' }));
-  assert.ok(delivery.includes('GH-2610-0001') && delivery.includes('Đang giao hàng') && delivery.includes('500'));
-  assert.doesNotMatch(production + delivery, /<button|<input/);
+  );
+  assert.ok(summary.includes('1.000 cái') && summary.includes('97.200 đ'));
 });
 
 test('the order page opens an order in the form read-only and returns there after editing', () => {
   const page = readSource('src/features/sales/pages/SalesPage.tsx');
   assert.match(page, /<POFormFullScreen\s+key=\{`view-\$\{viewPO\.id\}/);
   assert.match(page, /isOpen\s+readOnly\s+po=\{viewPO\}/);
-  for (const tab of ['Thiết kế', 'Sản xuất', 'Giao hàng', 'Trao đổi', 'Lịch sử'])
-    assert.ok(page.includes(`label: '${tab}'`), tab);
+  assert.match(page, /viewProgress=\{<OrderProgressStrip po=\{viewPO\} \/>\}/);
+  assert.doesNotMatch(page, /viewTabs|OrderDesignPanel|OrderNotesPanel/, 'D-PO1: the order view has no tabs');
   assert.match(page, /if \(showEditModal\) \{\s*setShowEditModal\(false\);\s*return;\s*\}/);
   assert.doesNotMatch(page, /OrderDetailView|CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG|MỤC PHẢN HỒI|Base64 nào/);
 });

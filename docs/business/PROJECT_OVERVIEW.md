@@ -222,11 +222,13 @@ Chức năng chính:
 - **Xuất đơn hàng** (chi tiết đơn hoặc menu dòng): phiếu "Đơn đặt hàng" A4 ngang gửi khách gồm thông tin khách theo ảnh
   chụp lúc tạo đơn, từng mặt hàng (đơn giá, chiết khấu, VAT, ngày giao), tổng tiền, số tiền bằng chữ và ô ký; lưu PDF
   qua hộp thoại in của trình duyệt. Bản nội bộ (giá mua, NCC, lãi) chưa làm.
-- **Một màn cho xem và sửa đơn** (03/11/2026, lấy form Tạo đơn hàng làm chuẩn): mở một đơn có sẵn là mở chính form
-  đơn hàng ở **chế độ xem** (`POFormFullScreen` với `readOnly`): mọi ô nhập bị khóa, thanh trên cùng có In, Nhân bản,
-  Xóa (chỉ Admin), Sửa; cột trái thêm **Tiến độ đơn hàng** 7 bước chỉ xem (D-PO1); bên phải có tab Sản phẩm (bảng mặt
-  hàng như khi tạo đơn), Thiết kế, Sản xuất, Giao hàng, Trao đổi, Lịch sử (`components/orderDetail/`). Bấm **Sửa** mở
-  khóa đúng bố cục đó; lưu hoặc quay lại thì trở về chế độ xem. LSX và chuyến giao chỉ tải khi mở tab, chỉ đọc.
+- **Một màn cho xem và sửa đơn** (03/11/2026): mở một đơn có sẵn là mở chính form đơn hàng ở **chế độ xem**
+  (`POFormFullScreen` với `readOnly`), trình bày kiểu chứng từ theo mẫu C: thanh xanh trên cùng có In (icon), Nhân bản,
+  Xóa (chỉ Admin), Sửa; dòng **Tiến độ** 7 bước chỉ xem (D-PO1, ngày và người chuyển bước ở tooltip); khối thông tin
+  (khách hàng, hạng, số PO khách, ngày giao dự kiến, ngày tạo, ghi chú); bảng sản phẩm giống hệt khi tạo đơn; người
+  lập/người sửa và khung tổng tiền; cuối trang là Tệp đơn hàng & thiết kế và Phân công công việc. Chi tiết đơn chỉ có
+  những gì form tạo đơn có, không còn tab Thiết kế, Sản xuất, Giao hàng, Trao đổi, Lịch sử. Bấm **Sửa** mở form sửa;
+  lưu hoặc quay lại thì trở về chế độ xem.
 
 Các trạng thái hàng đợi chuẩn:
 

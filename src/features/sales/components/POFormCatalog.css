@@ -4,6 +4,9 @@
   --po-sidebar-width: clamp(320px, 23vw, 380px);
   height: 100dvh;
 }
+.po-form-workspace :is(input, select, textarea) {
+  font-family: var(--font-sans);
+}
 .po-form-workspace .po-form-header {
   flex-wrap: wrap;
   background: var(--po-header-bg);

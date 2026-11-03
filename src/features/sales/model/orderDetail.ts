@@ -1,28 +1,6 @@
 import { USER_ROLE_LABELS, isUserRole } from '@/shared/types';
 import { PO_QUEUE_STATES, getPOQueueStatus, type POQueueStatus } from './poWorkflow';
 
-/** One order line as stored on the PO; only the fields the order views read are named. */
-export interface OrderLine extends Record<string, unknown> {
-  itemId?: string;
-  productCode?: string;
-  productName?: string;
-  saleNotes?: string;
-  designNotes?: string;
-  saleLayouts?: string[];
-  designLayouts?: string[];
-}
-
-/** What moves an order into each queue step; the detail page never changes the step by hand (D-PO1). */
-export const ORDER_STEP_TRIGGERS: Record<POQueueStatus, string> = {
-  waiting_design: 'Khi tạo đơn hàng',
-  waiting_production: 'Khi khách duyệt mẫu thiết kế',
-  waiting_delivery: 'Khi lệnh sản xuất hoàn thành',
-  waiting_invoice: 'Khi giao đủ hàng (POD)',
-  waiting_receivable: 'Khi Kế toán ghi hóa đơn',
-  waiting_discount: 'Khi thu đủ công nợ',
-  completed: 'Khi xử lý xong chiết khấu'
-};
-
 export interface OrderHistoryLog {
   status?: string;
   updatedAt?: string;
