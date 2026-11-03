@@ -226,8 +226,10 @@ Chức năng chính:
   (`POFormFullScreen` với `readOnly`), cùng bố cục với **Tạo đơn hàng**: cột trái Thông tin đơn hàng, Tệp đơn hàng &
   thiết kế, Phân công công việc; bên phải bảng sản phẩm và dải tổng tiền. Mọi ô bị khóa; thanh xanh trên cùng có nhãn
   trạng thái hàng đợi, In (icon), Nhân bản, Xóa (chỉ Admin), Sửa. Nút cạnh nút quay lại đóng/mở cột trái (cả khi tạo,
-  sửa và xem). Chi tiết đơn chỉ có những gì form tạo đơn có. Bấm **Sửa** mở form sửa; lưu hoặc quay lại thì trở về
-  chế độ xem.
+  sửa và xem). Ở chế độ xem, cột trái có thêm các mục đóng/mở: **Giá vốn & lợi nhuận** (NCC, giá mua, thành tiền
+  mua, lãi gộp từng dòng; chỉ Admin, Kế toán), **Ghi chú thiết kế** (yêu cầu và layout của Sale do Admin/Sale sửa,
+  phản hồi và file của Thiết kế do Admin/Thiết kế sửa; ghi chú lưu khi rời ô), **Trao đổi nội bộ** và **Lịch sử trạng
+  thái** (kèm người tạo, người cập nhật). Bấm **Sửa** mở form sửa; lưu hoặc quay lại thì trở về chế độ xem.
 
 Các trạng thái hàng đợi chuẩn:
 

@@ -82,11 +82,13 @@ interface POFormFullScreenProps {
   onOpenCustomerDetails?: (customerId: string) => void;
   /**
    * D-PO1: an existing order opens in this same form, read-only, with the exact layout of "Tạo đơn hàng". The
-   * view only supplies its toolbar actions and the queue status; "Sửa" reopens it editable.
+   * view supplies its toolbar actions, the queue status and extra collapsible blocks for the left column (design
+   * notes, internal notes, history, costs); "Sửa" reopens it editable.
    */
   readOnly?: boolean;
   viewStatus?: ReactNode;
   viewActions?: ReactNode;
+  viewSections?: ReactNode;
 }
 
 export default function POFormFullScreen({
@@ -104,7 +106,8 @@ export default function POFormFullScreen({
   onOpenCustomerDetails,
   readOnly = false,
   viewStatus,
-  viewActions
+  viewActions,
+  viewSections
 }: POFormFullScreenProps) {
   const [customerId, setCustomerId] = useState('');
   const [customerRank, setCustomerRank] = useState('');
@@ -178,7 +181,9 @@ export default function POFormFullScreen({
     // Wait until customer data is available before initializing a new form.
     if (!po && customers.length === 0) return;
 
-    const formKey = `${po ? `edit:${po.id}` : templatePo ? `repeat:${templatePo.id}` : initialCustomerId ? `customer:${initialCustomerId}` : 'new'}:${draftResetRevision}`;
+    // The read-only view follows live changes of the order; an open edit never reloads under the user.
+    const orderKey = readOnly ? `view:${po?.id}:${po?.updatedAt || ''}` : `edit:${po?.id}`;
+    const formKey = `${po ? orderKey : templatePo ? `repeat:${templatePo.id}` : initialCustomerId ? `customer:${initialCustomerId}` : 'new'}:${draftResetRevision}`;
     if (initializedFormKeyRef.current === formKey) return;
 
     initializedFormKeyRef.current = formKey;
@@ -367,7 +372,7 @@ export default function POFormFullScreen({
     }
 
     setDraftReady(true);
-  }, [po, templatePo, initialCustomerId, isOpen, customers, draftKey, draftResetRevision, workflowMode]);
+  }, [po, readOnly, templatePo, initialCustomerId, isOpen, customers, draftKey, draftResetRevision, workflowMode]);
 
   // Keep text, items and assignments safe when the modal is closed or the page
   // is refreshed. Large local file data is intentionally excluded.
@@ -1664,6 +1669,7 @@ export default function POFormFullScreen({
               {orderInfo}
               {orderAttachments}
               {usesCatalogProducts && orderAssignments}
+              {readOnly && viewSections}
             </aside>
           )}
 

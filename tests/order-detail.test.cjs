@@ -124,3 +124,58 @@ test('the order page opens an order in the form read-only and returns there afte
   assert.match(page, /if \(showEditModal\) \{\s*setShowEditModal\(false\);\s*return;\s*\}/);
   assert.doesNotMatch(page, /OrderDetailView|CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG|MỤC PHẢN HỒI|Base64 nào/);
 });
+
+test('view mode restores design notes, internal notes, history and costs as blocks of the left column', () => {
+  const sections = loader()('src/features/sales/components/orderDetail/OrderViewSections.tsx');
+  const { lineCost, actorLabel } = loader()('src/features/sales/model/orderDetail.ts');
+  assert.deepEqual(lineCost(line({ purchasePrice: 40 })), { purchasePrice: 40, buyingTotal: 40000, profit: 50000 });
+  assert.equal(actorLabel('Khánh Ly (SALE)'), 'Khánh Ly (Sale)');
+  assert.equal(actorLabel('Không vai trò'), 'Không vai trò');
+
+  const noop = () => {};
+  const blocks = [
+    React.createElement(sections.OrderCostSection, { items: [line()], supplierNames: {} }),
+    React.createElement(sections.OrderDesignNotesSection, {
+      items: [line()],
+      canEditSaleBrief: true,
+      canEditDesignReply: false,
+      onUpdateNotes: noop,
+      onUploadFiles: noop,
+      onRemoveFile: noop,
+      onPreviewImage: noop
+    }),
+    React.createElement(sections.OrderNotesSection, {
+      tasks: [],
+      draft: '',
+      onDraftChange: noop,
+      onAdd: noop,
+      onToggle: noop,
+      onRemove: noop
+    }),
+    React.createElement(sections.OrderHistorySection, { logs: po().historyLogs, createdBy: 'Khánh Ly (SALE)' })
+  ];
+  const titles = blocks.map(block => renderToStaticMarkup(block).match(/<span>([^<]+)<\/span>/)[1]);
+  assert.deepEqual(titles, ['Giá vốn &amp; lợi nhuận', 'Ghi chú thiết kế', 'Trao đổi nội bộ', 'Lịch sử trạng thái']);
+  for (const block of blocks) {
+    const html = renderToStaticMarkup(block);
+    assert.match(html, /class="po-collapse-trigger" aria-expanded="false"/, 'same collapsed card as the form');
+    assert.match(html, /class="po-attachments-card"/);
+  }
+
+  const page = readSource('src/features/sales/pages/SalesPage.tsx');
+  assert.match(page, /canViewOrderCosts = currentUser\.role === 'admin' \|\| currentUser\.role === 'accountant'/);
+  assert.match(page, /\{canViewOrderCosts && <OrderCostSection/);
+  assert.match(page, /canEditDesignReply=\{currentUser\.role === 'admin' \|\| currentUser\.role === 'designer'\}/);
+  assert.match(readSource('src/features/sales/components/POFormFullScreen.tsx'), /\{readOnly && viewSections\}/);
+});
+
+test('a design note is written once when the field loses focus, not on every key', () => {
+  const source = readSource('src/features/sales/components/orderDetail/OrderViewSections.tsx');
+  assert.match(source, /onChange=\{event => setDraft\(event\.target\.value\)\}/);
+  assert.match(source, /onBlur=\{\(\) => \{\s*if \(draft !== value\) onSave\(draft\);\s*\}\}/);
+  const form = readSource('src/features/sales/components/POFormFullScreen.tsx');
+  assert.match(
+    form,
+    /const orderKey = readOnly \? `view:\$\{po\?\.id\}:\$\{po\?\.updatedAt \|\| ''\}` : `edit:\$\{po\?\.id\}`/
+  );
+});

@@ -33,7 +33,14 @@ import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/
 import { DesignRecord, DesignVersion } from '@/features/design/model/designWorkflow';
 import { withCalculatedPOFinancials } from '@/domain/poFinancials';
 import { OrderStatusBadge, OrderViewActions } from '@/features/sales/components/orderDetail/OrderViewParts';
+import {
+  OrderCostSection,
+  OrderDesignNotesSection,
+  OrderHistorySection,
+  OrderNotesSection
+} from '@/features/sales/components/orderDetail/OrderViewSections';
 import { getPOQueueLabel, getPOQueueStatus, PO_QUEUE_STATES, POQueueStatus } from '@/features/sales/model/poWorkflow';
+import type { ChecklistTask, OrderLine } from '@/features/sales/model/orderDetail';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
 import { DOCUMENT_CODE_PREFIXES } from '@/shared/utils/documentCodes';
@@ -222,6 +229,253 @@ export const Sales: React.FC<SalesProps> = ({
     };
     fetchSuppliers();
   }, []);
+
+  // Modal lightbox preview image
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const [newChecklistText, setNewChecklistText] = useState('');
+
+  const handleUpdateItemNotes = async (itemIdx: number, fieldName: 'saleNotes' | 'designNotes', value: string) => {
+    return runMutationAction(
+      'SalesPage.tsx:handleUpdateItemNotes',
+      async () => {
+        if (!selectedPO) return;
+
+        const updatedItems = selectedPO.items.map((item: OrderLine, idx: number) => {
+          if (idx === itemIdx) {
+            return { ...item, [fieldName]: value };
+          }
+          return item;
+        });
+
+        const updatedPO = {
+          ...selectedPO,
+          items: updatedItems,
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          updatedAt: new Date().toISOString()
+        };
+
+        await requireConfirmedMutation(
+          dbService.updateDocument('pos', selectedPO.id, {
+            items: updatedItems,
+            updatedBy: updatedPO.updatedBy,
+            updatedAt: updatedPO.updatedAt
+          })
+        );
+
+        setSelectedPO(updatedPO);
+
+        showSuccessToast('Đã lưu thành công');
+      },
+      itemIdx,
+      { busy: false }
+    );
+  };
+
+  const handleUploadItemFiles = async (
+    itemIdx: number,
+    fieldName: 'saleLayouts' | 'designLayouts',
+    files: FileList | null
+  ) => {
+    return runMutationAction(
+      'SalesPage.tsx:handleUploadItemFiles',
+      async () => {
+        if (!selectedPO || !files) return;
+
+        const base64Promises = Array.from(files).map(file => {
+          return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+          });
+        });
+
+        try {
+          const base64Files = await Promise.all(base64Promises);
+
+          const updatedItems = selectedPO.items.map((item: OrderLine, idx: number) => {
+            if (idx === itemIdx) {
+              const currentFiles = item[fieldName] || [];
+              return { ...item, [fieldName]: [...currentFiles, ...base64Files] };
+            }
+            return item;
+          });
+
+          const updatedPO = {
+            ...selectedPO,
+            items: updatedItems,
+            updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+            updatedAt: new Date().toISOString()
+          };
+
+          await requireConfirmedMutation(
+            dbService.updateDocument('pos', selectedPO.id, {
+              items: updatedItems,
+              updatedBy: updatedPO.updatedBy,
+              updatedAt: updatedPO.updatedAt
+            })
+          );
+
+          setSelectedPO(updatedPO);
+
+          showSuccessToast('Đã lưu thành công');
+        } catch (err) {
+          showErrorToast();
+          console.error(err);
+          alert('Lỗi khi tải file lên.');
+        }
+      },
+      itemIdx,
+      { busy: false }
+    );
+  };
+
+  const handleRemoveItemFile = async (itemIdx: number, fieldName: 'saleLayouts' | 'designLayouts', fileIdx: number) => {
+    return runMutationAction(
+      'SalesPage.tsx:handleRemoveItemFile',
+      async () => {
+        if (!selectedPO) return;
+        if (!(await confirmDelete('Bạn có chắc chắn muốn xóa tệp này khỏi đơn hàng?'))) return;
+
+        const updatedItems = selectedPO.items.map((item: OrderLine, idx: number) => {
+          if (idx === itemIdx) {
+            const currentFiles = item[fieldName] || [];
+            return { ...item, [fieldName]: currentFiles.filter((_file: string, i: number) => i !== fileIdx) };
+          }
+          return item;
+        });
+
+        const updatedPO = {
+          ...selectedPO,
+          items: updatedItems,
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
+          updatedAt: new Date().toISOString()
+        };
+
+        await requireConfirmedMutation(
+          dbService.updateDocument('pos', selectedPO.id, {
+            items: updatedItems,
+            updatedBy: updatedPO.updatedBy,
+            updatedAt: updatedPO.updatedAt
+          })
+        );
+
+        setSelectedPO(updatedPO);
+
+        showSuccessToast('Đã xóa thành công');
+      },
+      itemIdx,
+      { busy: false }
+    );
+  };
+
+  const handleAddChecklistItem = async () => {
+    return runMutationAction(
+      'SalesPage.tsx:handleAddChecklistItem',
+      async () => {
+        if (!selectedPO || !newChecklistText.trim()) return;
+
+        const newItem = {
+          id: `task-${Math.random().toString(36).substr(2, 9)}`,
+          content: newChecklistText.trim(),
+          completed: false,
+          updatedAt: new Date().toISOString(),
+          updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+        };
+
+        const updatedChecklist = [...(selectedPO.internalChecklist || []), newItem];
+
+        const updatedPO = {
+          ...selectedPO,
+          internalChecklist: updatedChecklist
+        };
+
+        await requireConfirmedMutation(
+          dbService.updateDocument('pos', selectedPO.id, {
+            internalChecklist: updatedChecklist
+          })
+        );
+
+        setSelectedPO(updatedPO);
+        setNewChecklistText('');
+        onRefresh();
+
+        showSuccessToast('Đã thêm thành công');
+      },
+      undefined
+    );
+  };
+
+  const handleToggleChecklistItem = async (taskId: string) => {
+    return runMutationAction(
+      'SalesPage.tsx:handleToggleChecklistItem',
+      async () => {
+        if (!selectedPO) return;
+
+        const updatedChecklist = (selectedPO.internalChecklist || []).map((item: ChecklistTask) => {
+          if (item.id === taskId) {
+            return {
+              ...item,
+              completed: !item.completed,
+              updatedAt: new Date().toISOString(),
+              updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
+            };
+          }
+          return item;
+        });
+
+        const updatedPO = {
+          ...selectedPO,
+          internalChecklist: updatedChecklist
+        };
+
+        await requireConfirmedMutation(
+          dbService.updateDocument('pos', selectedPO.id, {
+            internalChecklist: updatedChecklist
+          })
+        );
+
+        setSelectedPO(updatedPO);
+        onRefresh();
+
+        showSuccessToast('Đã lưu thành công');
+      },
+      taskId,
+      { busy: false }
+    );
+  };
+
+  const handleRemoveChecklistItem = async (taskId: string) => {
+    return runMutationAction(
+      'SalesPage.tsx:handleRemoveChecklistItem',
+      async () => {
+        if (!selectedPO) return;
+        if (!(await confirmDelete('Bạn có chắc chắn muốn xóa mục công việc này?'))) return;
+
+        const updatedChecklist = (selectedPO.internalChecklist || []).filter(
+          (item: ChecklistTask) => item.id !== taskId
+        );
+
+        const updatedPO = {
+          ...selectedPO,
+          internalChecklist: updatedChecklist
+        };
+
+        await requireConfirmedMutation(
+          dbService.updateDocument('pos', selectedPO.id, {
+            internalChecklist: updatedChecklist
+          })
+        );
+
+        setSelectedPO(updatedPO);
+        onRefresh();
+
+        showSuccessToast('Đã xóa thành công');
+      },
+      taskId
+    );
+  };
 
   const handleOpenEditModal = (po: any) => {
     if (po.productionPlanFrozen) {
@@ -664,6 +918,11 @@ export const Sales: React.FC<SalesProps> = ({
   // The view follows the live order list, so a save or another user's change shows at once.
   const viewPO = selectedPO ? pos.find(po => po.id === selectedPO.id) || selectedPO : null;
   const canManageOrder = currentUser.role === 'admin' || currentUser.role === 'sale';
+  // Buying price and gross profit stay with admins and accountants, as on the old order detail.
+  const canViewOrderCosts = currentUser.role === 'admin' || currentUser.role === 'accountant';
+  const supplierNames = Object.fromEntries(
+    suppliers.map(supplier => [String(supplier.id), String(supplier.supplierName || '')])
+  );
 
   return (
     <div className="sales-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1135,7 +1394,7 @@ export const Sales: React.FC<SalesProps> = ({
       {/* D-PO1: an existing order opens in the order form itself, read-only; "Sửa" unlocks the same voucher. */}
       {viewPO && !showEditModal && !showAddModal && (
         <POFormFullScreen
-          key={`view-${viewPO.id}-${viewPO.updatedAt || ''}`}
+          key={`view-${viewPO.id}`}
           isOpen
           readOnly
           po={viewPO}
@@ -1156,6 +1415,35 @@ export const Sales: React.FC<SalesProps> = ({
               onEdit={() => handleOpenEditModal(viewPO)}
               onDelete={() => void handleDeletePO(viewPO.id)}
             />
+          }
+          viewSections={
+            <>
+              {canViewOrderCosts && <OrderCostSection items={viewPO.items || []} supplierNames={supplierNames} />}
+              <OrderDesignNotesSection
+                items={viewPO.items || []}
+                canEditSaleBrief={canManageOrder}
+                canEditDesignReply={currentUser.role === 'admin' || currentUser.role === 'designer'}
+                onUpdateNotes={(itemIndex, field, value) => void handleUpdateItemNotes(itemIndex, field, value)}
+                onUploadFiles={(itemIndex, field, files) => void handleUploadItemFiles(itemIndex, field, files)}
+                onRemoveFile={(itemIndex, field, fileIndex) => void handleRemoveItemFile(itemIndex, field, fileIndex)}
+                onPreviewImage={setPreviewImage}
+              />
+              <OrderNotesSection
+                tasks={viewPO.internalChecklist || []}
+                draft={newChecklistText}
+                onDraftChange={setNewChecklistText}
+                onAdd={() => void handleAddChecklistItem()}
+                onToggle={taskId => void handleToggleChecklistItem(taskId)}
+                onRemove={taskId => void handleRemoveChecklistItem(taskId)}
+              />
+              <OrderHistorySection
+                logs={viewPO.historyLogs || []}
+                createdBy={viewPO.createdBy}
+                createdAt={viewPO.createdAt}
+                updatedBy={viewPO.updatedBy}
+                updatedAt={viewPO.updatedAt}
+              />
+            </>
           }
         />
       )}
@@ -1244,6 +1532,42 @@ export const Sales: React.FC<SalesProps> = ({
         </>
       </DataFilterPanel>
 
+      {/* Image Preview Zoom Modal */}
+      {previewImage && (
+        <div className="modal-overlay" onClick={() => setPreviewImage(null)} style={{ zIndex: 1200 }}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: '90%', maxHeight: '90%', padding: '10px', position: 'relative' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="btn btn-sm btn-outline"
+              style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '1.2rem', zIndex: 10 }}
+              onClick={() => setPreviewImage(null)}
+            >
+              ×
+            </button>
+            <img
+              src={previewImage}
+              alt="Preview Zoom"
+              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+            />
+            <div style={{ textAlign: 'center', marginTop: '10px' }}>
+              <a
+                href={previewImage}
+                download
+                onClick={event => {
+                  event.currentTarget.download = `Preview_${Date.now()}.jpg`;
+                }}
+                className="btn btn-primary"
+              >
+                Tải Ảnh Về
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
       {printPO && (
         <PrintPreviewDialog
           title={`Xem bản in đơn hàng — ${String(printPO.poCode || '')}`}

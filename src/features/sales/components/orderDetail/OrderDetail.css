@@ -48,3 +48,239 @@
   cursor: default;
   opacity: 1;
 }
+
+/* Extra blocks of the left column in view mode (design notes, internal notes, history, costs). */
+.order-side-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.order-side-entry {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--erp-border-color);
+}
+
+.order-side-entry > strong {
+  overflow: hidden;
+  color: #172554;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-side-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-side-field label,
+.order-side-field__label {
+  color: var(--erp-table-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.order-side-field textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.order-side-field input[type='file'] {
+  max-width: 100%;
+  color: var(--erp-table-secondary-text);
+  font-size: 12px;
+}
+
+.order-side-values {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.order-side-values dt {
+  color: var(--erp-table-secondary-text);
+}
+
+.order-side-values dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--erp-table-text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-side-values dd.is-negative {
+  color: #b42336;
+}
+
+.order-side-values--total dt,
+.order-side-values--total dd {
+  color: #172554;
+  font-weight: 700;
+}
+
+.order-side-values--audit {
+  grid-template-columns: auto minmax(0, 1fr);
+  padding-top: 12px;
+  border-top: 1px solid var(--erp-border-color);
+  font-size: 12px;
+}
+
+.order-side-values--audit dd {
+  white-space: normal;
+}
+
+.order-muted {
+  color: var(--erp-table-secondary-text);
+}
+
+.order-readonly-text {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--erp-border-color);
+  border-radius: var(--erp-control-radius);
+  background: #f8fafc;
+  white-space: pre-wrap;
+}
+
+.order-file-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.order-file-tile {
+  position: relative;
+  display: inline-flex;
+}
+
+.order-file-tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.order-file-tile > button:first-child {
+  width: 80px;
+  height: 80px;
+  min-height: 80px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--erp-border-color);
+  background: #ffffff;
+  cursor: zoom-in;
+}
+
+.order-file-tile__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #f1b4bd;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #b42336;
+  cursor: pointer;
+}
+
+.order-note-composer {
+  display: flex;
+  gap: 8px;
+}
+
+.order-note-composer input {
+  min-width: 0;
+  flex: 1;
+}
+
+.order-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.order-checklist {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.order-checklist li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--erp-border-color);
+}
+
+.order-checklist label {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.order-checklist li.is-done label span {
+  color: #087a55;
+  text-decoration: line-through;
+}
+
+.order-icon-link {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #b42336;
+  cursor: pointer;
+}
+
+.order-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0 0 0 16px;
+  border-left: 2px solid var(--erp-border-color);
+  list-style: none;
+}
+
+.order-history li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
