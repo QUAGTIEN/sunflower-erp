@@ -91,8 +91,7 @@ function form(products = [], initial = {}) {
     // Dialogs split out of the form only render behind toggles these tests never open.
     './poForm/POImagePreviewDialog': { POImagePreviewDialog: 'POImagePreviewDialog' },
     './poForm/POFileRepositoryDialog': { POFileRepositoryDialog: 'POFileRepositoryDialog' },
-    './poForm/POLegacyProductSearchDialog': { POLegacyProductSearchDialog: 'POLegacyProductSearchDialog' },
-    './poForm/POVoucherView': { POVoucherInfo: 'POVoucherInfo', POVoucherSummary: 'POVoucherSummary' }
+    './poForm/POLegacyProductSearchDialog': { POLegacyProductSearchDialog: 'POLegacyProductSearchDialog' }
   };
   const globals = {
     window: { localStorage: { removeItem() {} } },

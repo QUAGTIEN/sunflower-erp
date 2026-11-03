@@ -1,7 +1,19 @@
 import { confirmDelete } from '@/shared/feedback/deleteConfirmation';
 import { runMutationAction } from '@/shared/feedback/mutationFeedback';
 import React, { useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
-import { Plus, Folder, CheckSquare, History, Paperclip, Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  Plus,
+  Folder,
+  CheckSquare,
+  History,
+  Paperclip,
+  Maximize2,
+  Minimize2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ZoomIn,
+  ZoomOut
+} from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { calculatePOItemFinancials, withCalculatedPOFinancials } from '@/domain/poFinancials';
@@ -26,7 +38,6 @@ import { POItemsGrid } from './poForm/POItemsGrid';
 import { POLegacyProductSearchDialog } from './poForm/POLegacyProductSearchDialog';
 import { POFileRepositoryDialog } from './poForm/POFileRepositoryDialog';
 import { POImagePreviewDialog } from './poForm/POImagePreviewDialog';
-import { POVoucherInfo, POVoucherSummary } from './poForm/POVoucherView';
 import './POFormCatalog.css';
 
 const PO_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -70,15 +81,12 @@ interface POFormFullScreenProps {
   workflowMode?: 'standard' | 'customer_onboarding';
   onOpenCustomerDetails?: (customerId: string) => void;
   /**
-   * D-PO1: an existing order opens read-only as a voucher (mẫu C) with the same fields and product grid as the
-   * form. The view supplies its toolbar actions, queue status, progress strip and audit line; "Sửa" reopens it
-   * editable.
+   * D-PO1: an existing order opens in this same form, read-only, with the exact layout of "Tạo đơn hàng". The
+   * view only supplies its toolbar actions and the queue status; "Sửa" reopens it editable.
    */
   readOnly?: boolean;
   viewStatus?: ReactNode;
   viewActions?: ReactNode;
-  viewProgress?: ReactNode;
-  viewAudit?: ReactNode;
 }
 
 export default function POFormFullScreen({
@@ -96,9 +104,7 @@ export default function POFormFullScreen({
   onOpenCustomerDetails,
   readOnly = false,
   viewStatus,
-  viewActions,
-  viewProgress,
-  viewAudit
+  viewActions
 }: POFormFullScreenProps) {
   const [customerId, setCustomerId] = useState('');
   const [customerRank, setCustomerRank] = useState('');
@@ -122,6 +128,7 @@ export default function POFormFullScreen({
   const [showAssignments, setShowAssignments] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [showOrderInfo, setShowOrderInfo] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedItemIds, setExpandedItemIds] = useState<string[]>([]);
   const [isTableFocusMode, setIsTableFocusMode] = useState(false);
   const [tableZoom, setTableZoom] = useState(PO_GRID_DEFAULT_ZOOM);
@@ -1577,190 +1584,24 @@ export default function POFormFullScreen({
     </>
   );
 
-  const itemsCard = (
-    <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
-      <div className="po-items-card-header">
-        <div>
-          <h3>{usesCatalogProducts ? 'Sản phẩm trong đơn hàng' : 'Danh sách mã hàng cần in và sản xuất'}</h3>
-          {!readOnly && (
-            <span>
-              {poItems.length} mã hàng · {currentCustomer?.companyName || 'Chưa chọn khách hàng'}
-            </span>
-          )}
-        </div>
-        <div className="po-items-card-actions">
-          <div className="po-grid-zoom-control" role="group" aria-label="Thu phóng bảng mã hàng">
-            <IconButton
-              label="Thu nhỏ bảng"
-              icon={<ZoomOut size={16} />}
-              disabled={tableZoom <= PO_GRID_MIN_ZOOM}
-              onClick={() => setTableZoom(current => Math.max(PO_GRID_MIN_ZOOM, current - PO_GRID_ZOOM_STEP))}
-            />
-            <output aria-label="Tỷ lệ hiển thị bảng">{tableZoom}%</output>
-            <IconButton
-              label="Phóng to bảng"
-              icon={<ZoomIn size={16} />}
-              disabled={tableZoom >= PO_GRID_MAX_ZOOM}
-              onClick={() => setTableZoom(current => Math.min(PO_GRID_MAX_ZOOM, current + PO_GRID_ZOOM_STEP))}
-            />
-            <IconButton
-              label={isTableFocusMode ? 'Thu gọn bảng' : 'Mở toàn màn hình'}
-              icon={isTableFocusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              active={isTableFocusMode}
-              aria-pressed={isTableFocusMode}
-              onClick={() => setIsTableFocusMode(current => !current)}
-            />
-          </div>
-          {usesCatalogProducts && !readOnly && (
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => openSearchPopup(-1)}
-              disabled={!customerId || !catalogProducts.length || isSaving}
-            >
-              Chọn mã sản phẩm
-            </button>
-          )}
-          {!readOnly && (
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={handleAddRow}
-              disabled={isSaving || (usesCatalogProducts && !customerId)}
-            >
-              {usesCatalogProducts ? 'Thêm mã sản phẩm' : 'Thêm mã hàng'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {isTableFocusMode && (
-        <div className="po-order-context-summary" aria-label="Tóm tắt đơn hàng">
-          <span>
-            <strong>Khách hàng:</strong> {currentCustomer?.companyName || 'Chưa chọn'}
-          </span>
-          <span>
-            <strong>Hạng:</strong> {customerRank || '—'}
-          </span>
-          <span>
-            <strong>Số PO khách:</strong> {customerPoCode || '—'}
-          </span>
-          <span>
-            <strong>Ngày giao:</strong> {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}
-          </span>
-        </div>
-      )}
-
-      {isTableFocusMode && saveError && (
-        <div className="po-save-error" role="alert">
-          {saveError}
-        </div>
-      )}
-
-      {usesCatalogProducts && !readOnly && customerId && catalogProducts.length === 0 && (
-        <div className="po-catalog-empty" role="status">
-          <span>Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.</span>
-          {onOpenCustomerDetails && (
-            <button
-              type="button"
-              className="btn btn-outline"
-              disabled={!customerId}
-              onClick={() => {
-                onClose();
-                onOpenCustomerDetails(customerId);
-              }}
-            >
-              Mở hồ sơ khách hàng
-            </button>
-          )}
-        </div>
-      )}
-      <POItemsGrid
-        tableZoom={tableZoom}
-        usesCatalogProducts={usesCatalogProducts}
-        orderItems={orderItems}
-        expandedItemIds={expandedItemIds}
-        setPreviewImage={setPreviewImage}
-        deleteRowImage={deleteRowImage}
-        handleRowFileChange={handleRowFileChange}
-        toggleItemDetails={toggleItemDetails}
-        handleRemoveRow={handleRemoveRow}
-        handleUpdateRowField={handleUpdateRowField}
-        catalogProducts={catalogProducts}
-        openSearchPopup={openSearchPopup}
-        isSaving={isSaving}
-        readOnly={readOnly}
-      />
-
-      {/* FOOTER ACTIONS */}
-      {!readOnly && (
-        <div className="po-items-footer">
-          {/* TOTAL SUMMARY CARD */}
-          <div
-            className="po-total-summary-card"
-            style={{
-              backgroundColor: '#f1f5f9',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              minWidth: '340px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-              fontSize: '13px'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Số lượng theo ĐVT:</span>
-              <strong style={{ fontSize: '14px' }}>
-                {[...quantitiesByUnit]
-                  .map(([unit, quantity]) => `${quantity.toLocaleString('vi-VN')} ${unit}`)
-                  .join(' · ') || '—'}
-              </strong>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                borderBottom: '1px solid #cbd5e1',
-                paddingBottom: '6px'
-              }}
-            >
-              <span>Tổng tiền chưa VAT:</span>
-              <span style={{ fontWeight: 600 }}>{Math.round(footerTotals.totalBeforeVat).toLocaleString()} đ</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)' }}>
-              <span>Thuế GTGT (VAT):</span>
-              <span>{Math.round(footerTotals.totalVat).toLocaleString()} đ</span>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                color: 'var(--color-primary-dark)',
-                fontSize: '15px',
-                fontWeight: 'bold',
-                paddingTop: '4px'
-              }}
-            >
-              <span>TỔNG CỘNG (GỒM VAT):</span>
-              <span>{Math.round(footerTotals.totalAfterVat).toLocaleString()} đ</span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="modal-overlay-fullscreen">
       <div
-        className={`modal-content-fullscreen po-form-workspace ${usesCatalogProducts ? 'po-form-workspace--catalog' : ''}`}
+        className={`modal-content-fullscreen po-form-workspace ${usesCatalogProducts ? 'po-form-workspace--catalog' : ''}${
+          readOnly ? ' po-form-workspace--readonly' : ''
+        }`}
       >
         {/* HEADER */}
         <div className="po-form-header">
           <div className="po-form-heading app-heading-with-back">
             <PageBackButton title="Quay lại" onClick={handleClose} disabled={isSaving} />
+            <IconButton
+              label={isSidebarOpen ? 'Ẩn thông tin đơn hàng' : 'Hiện thông tin đơn hàng'}
+              icon={isSidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+              aria-expanded={isSidebarOpen}
+              aria-controls="po-order-sidebar"
+              onClick={() => setIsSidebarOpen(current => !current)}
+            />
             <div className={readOnly ? 'po-form-title-row' : undefined}>
               <h2>
                 {readOnly && po
@@ -1808,67 +1649,211 @@ export default function POFormFullScreen({
           </div>
         </div>
 
-        {readOnly ? (
-          <div className="po-voucher-body">
-            {viewProgress}
-            <div className="po-voucher-page">
-              <POVoucherInfo
-                customerName={currentCustomer?.companyName || po?.customerName || ''}
-                customerRank={customerRank}
-                customerPoCode={customerPoCode}
-                expectedDeliveryDate={expectedDeliveryDate}
-                createdAt={po?.createdAt}
-                notes={notes}
-              />
-              {itemsCard}
-              <div className="po-voucher-foot">
-                {viewAudit}
-                <POVoucherSummary
-                  quantitiesByUnit={quantitiesByUnit}
-                  totalBeforeVat={footerTotals.totalBeforeVat}
-                  totalVat={footerTotals.totalVat}
-                  totalAfterVat={footerTotals.totalAfterVat}
-                />
-              </div>
-              {orderAttachments}
-              {orderAssignments}
-            </div>
-          </div>
-        ) : (
-          /* SCROLLABLE BODY */
-          <div
-            style={{
-              flex: 1,
-              display: 'grid',
-              gridTemplateColumns: '300px minmax(0, 1fr)',
-              overflowY: 'auto'
-            }}
-            className="po-form-body-container"
-          >
-            <aside className="po-order-sidebar">
+        {/* SCROLLABLE BODY */}
+        <div
+          style={{
+            flex: 1,
+            display: 'grid',
+            gridTemplateColumns: isSidebarOpen ? '300px minmax(0, 1fr)' : 'minmax(0, 1fr)',
+            overflowY: 'auto'
+          }}
+          className={`po-form-body-container${isSidebarOpen ? '' : ' is-sidebar-collapsed'}`}
+        >
+          {isSidebarOpen && (
+            <aside id="po-order-sidebar" className="po-order-sidebar">
               {orderInfo}
               {orderAttachments}
               {usesCatalogProducts && orderAssignments}
             </aside>
+          )}
 
-            {/* RIGHT GRID PANEL: Items Grid & Assignments */}
-            <div
-              className="po-order-main"
-              style={{
-                padding: '20px 24px',
-                overflowY: 'visible',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '20px'
-              }}
-            >
-              {statusNotices}
-              {itemsCard}
+          {/* RIGHT GRID PANEL: Items Grid & Assignments */}
+          <div
+            className="po-order-main"
+            style={{
+              padding: '20px 24px',
+              overflowY: 'visible',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}
+          >
+            {statusNotices}
+            {/* INLINE EDITING EXCEL-LIKE GRID */}
+            <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
+              <div className="po-items-card-header">
+                <div>
+                  <h3>{usesCatalogProducts ? 'Sản phẩm trong đơn hàng' : 'Danh sách mã hàng cần in và sản xuất'}</h3>
+                  <span>
+                    {poItems.length} mã hàng · {currentCustomer?.companyName || 'Chưa chọn khách hàng'}
+                  </span>
+                </div>
+                <div className="po-items-card-actions">
+                  <div className="po-grid-zoom-control" role="group" aria-label="Thu phóng bảng mã hàng">
+                    <IconButton
+                      label="Thu nhỏ bảng"
+                      icon={<ZoomOut size={16} />}
+                      disabled={tableZoom <= PO_GRID_MIN_ZOOM}
+                      onClick={() => setTableZoom(current => Math.max(PO_GRID_MIN_ZOOM, current - PO_GRID_ZOOM_STEP))}
+                    />
+                    <output aria-label="Tỷ lệ hiển thị bảng">{tableZoom}%</output>
+                    <IconButton
+                      label="Phóng to bảng"
+                      icon={<ZoomIn size={16} />}
+                      disabled={tableZoom >= PO_GRID_MAX_ZOOM}
+                      onClick={() => setTableZoom(current => Math.min(PO_GRID_MAX_ZOOM, current + PO_GRID_ZOOM_STEP))}
+                    />
+                    <IconButton
+                      label={isTableFocusMode ? 'Thu gọn bảng' : 'Mở toàn màn hình'}
+                      icon={isTableFocusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                      active={isTableFocusMode}
+                      aria-pressed={isTableFocusMode}
+                      onClick={() => setIsTableFocusMode(current => !current)}
+                    />
+                  </div>
+                  {usesCatalogProducts && !readOnly && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => openSearchPopup(-1)}
+                      disabled={!customerId || !catalogProducts.length || isSaving}
+                    >
+                      Chọn mã sản phẩm
+                    </button>
+                  )}
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={handleAddRow}
+                      disabled={isSaving || (usesCatalogProducts && !customerId)}
+                    >
+                      {usesCatalogProducts ? 'Thêm mã sản phẩm' : 'Thêm mã hàng'}
+                    </button>
+                  )}
+                </div>
+              </div>
 
-              {!usesCatalogProducts && orderAssignments}
+              {isTableFocusMode && (
+                <div className="po-order-context-summary" aria-label="Tóm tắt đơn hàng">
+                  <span>
+                    <strong>Khách hàng:</strong> {currentCustomer?.companyName || 'Chưa chọn'}
+                  </span>
+                  <span>
+                    <strong>Hạng:</strong> {customerRank || '—'}
+                  </span>
+                  <span>
+                    <strong>Số PO khách:</strong> {customerPoCode || '—'}
+                  </span>
+                  <span>
+                    <strong>Ngày giao:</strong> {expectedDeliveryDate ? formatDate(expectedDeliveryDate, 'vi-VN') : '—'}
+                  </span>
+                </div>
+              )}
+
+              {isTableFocusMode && saveError && (
+                <div className="po-save-error" role="alert">
+                  {saveError}
+                </div>
+              )}
+
+              {usesCatalogProducts && !readOnly && customerId && catalogProducts.length === 0 && (
+                <div className="po-catalog-empty" role="status">
+                  <span>Khách hàng chưa có mã sản phẩm. Bạn có thể thêm dòng nhập tay để lập đơn hàng.</span>
+                  {onOpenCustomerDetails && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      disabled={!customerId}
+                      onClick={() => {
+                        onClose();
+                        onOpenCustomerDetails(customerId);
+                      }}
+                    >
+                      Mở hồ sơ khách hàng
+                    </button>
+                  )}
+                </div>
+              )}
+              <POItemsGrid
+                tableZoom={tableZoom}
+                usesCatalogProducts={usesCatalogProducts}
+                orderItems={orderItems}
+                expandedItemIds={expandedItemIds}
+                setPreviewImage={setPreviewImage}
+                deleteRowImage={deleteRowImage}
+                handleRowFileChange={handleRowFileChange}
+                toggleItemDetails={toggleItemDetails}
+                handleRemoveRow={handleRemoveRow}
+                handleUpdateRowField={handleUpdateRowField}
+                catalogProducts={catalogProducts}
+                openSearchPopup={openSearchPopup}
+                isSaving={isSaving}
+                readOnly={readOnly}
+              />
+
+              {/* FOOTER ACTIONS */}
+              <div className="po-items-footer">
+                {/* TOTAL SUMMARY CARD */}
+                <div
+                  className="po-total-summary-card"
+                  style={{
+                    backgroundColor: '#f1f5f9',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    minWidth: '340px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    fontSize: '13px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Số lượng theo ĐVT:</span>
+                    <strong style={{ fontSize: '14px' }}>
+                      {[...quantitiesByUnit]
+                        .map(([unit, quantity]) => `${quantity.toLocaleString('vi-VN')} ${unit}`)
+                        .join(' · ') || '—'}
+                    </strong>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      borderBottom: '1px solid #cbd5e1',
+                      paddingBottom: '6px'
+                    }}
+                  >
+                    <span>Tổng tiền chưa VAT:</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {Math.round(footerTotals.totalBeforeVat).toLocaleString()} đ
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)' }}>
+                    <span>Thuế GTGT (VAT):</span>
+                    <span>{Math.round(footerTotals.totalVat).toLocaleString()} đ</span>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      color: 'var(--color-primary-dark)',
+                      fontSize: '15px',
+                      fontWeight: 'bold',
+                      paddingTop: '4px'
+                    }}
+                  >
+                    <span>TỔNG CỘNG (GỒM VAT):</span>
+                    <span>{Math.round(footerTotals.totalAfterVat).toLocaleString()} đ</span>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {!usesCatalogProducts && orderAssignments}
           </div>
-        )}
+        </div>
 
         {/* SEARCH MÃ HÀNG POPUP (Catalog & Past History) */}
         {searchPopupOpen && usesCatalogProducts && (

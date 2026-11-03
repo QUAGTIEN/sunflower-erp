@@ -32,12 +32,7 @@ import { syncDesignRequestsForPO } from '@/features/design/api/designRequestServ
 import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/procurementService';
 import { DesignRecord, DesignVersion } from '@/features/design/model/designWorkflow';
 import { withCalculatedPOFinancials } from '@/domain/poFinancials';
-import {
-  OrderAuditLine,
-  OrderProgressStrip,
-  OrderStatusBadge,
-  OrderViewActions
-} from '@/features/sales/components/orderDetail/OrderViewParts';
+import { OrderStatusBadge, OrderViewActions } from '@/features/sales/components/orderDetail/OrderViewParts';
 import { getPOQueueLabel, getPOQueueStatus, PO_QUEUE_STATES, POQueueStatus } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
@@ -1160,15 +1155,6 @@ export const Sales: React.FC<SalesProps> = ({
               onRepeat={() => handleOpenRepeatOrder(viewPO)}
               onEdit={() => handleOpenEditModal(viewPO)}
               onDelete={() => void handleDeletePO(viewPO.id)}
-            />
-          }
-          viewProgress={<OrderProgressStrip po={viewPO} />}
-          viewAudit={
-            <OrderAuditLine
-              createdBy={viewPO.createdBy}
-              createdAt={viewPO.createdAt}
-              updatedBy={viewPO.updatedBy}
-              updatedAt={viewPO.updatedAt}
             />
           }
         />

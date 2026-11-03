@@ -39,6 +39,18 @@
   outline: 2px solid #fff;
   outline-offset: 3px;
 }
+.po-form-workspace .po-form-header .erp-icon-button {
+  border-color: #b8c9ec;
+  background: transparent;
+  color: #ffffff;
+}
+.po-form-workspace .po-form-header .erp-icon-button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 12%);
+}
+.po-form-workspace .po-form-header .erp-icon-button:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
 .po-form-workspace .po-order-sidebar {
   display: flex;
   min-width: 0;
@@ -170,6 +182,9 @@
   gap: var(--erp-page-gap);
   padding: 12px;
   overflow: hidden;
+}
+.po-form-workspace--catalog .po-form-body-container.is-sidebar-collapsed {
+  grid-template-columns: minmax(0, 1fr) !important;
 }
 .po-form-workspace--catalog .po-order-sidebar {
   padding: 0;

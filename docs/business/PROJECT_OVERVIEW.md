@@ -223,12 +223,11 @@ Chức năng chính:
   chụp lúc tạo đơn, từng mặt hàng (đơn giá, chiết khấu, VAT, ngày giao), tổng tiền, số tiền bằng chữ và ô ký; lưu PDF
   qua hộp thoại in của trình duyệt. Bản nội bộ (giá mua, NCC, lãi) chưa làm.
 - **Một màn cho xem và sửa đơn** (03/11/2026): mở một đơn có sẵn là mở chính form đơn hàng ở **chế độ xem**
-  (`POFormFullScreen` với `readOnly`), trình bày kiểu chứng từ theo mẫu C: thanh xanh trên cùng có In (icon), Nhân bản,
-  Xóa (chỉ Admin), Sửa; dòng **Tiến độ** 7 bước chỉ xem (D-PO1, ngày và người chuyển bước ở tooltip); khối thông tin
-  (khách hàng, hạng, số PO khách, ngày giao dự kiến, ngày tạo, ghi chú); bảng sản phẩm giống hệt khi tạo đơn; người
-  lập/người sửa và khung tổng tiền; cuối trang là Tệp đơn hàng & thiết kế và Phân công công việc. Chi tiết đơn chỉ có
-  những gì form tạo đơn có, không còn tab Thiết kế, Sản xuất, Giao hàng, Trao đổi, Lịch sử. Bấm **Sửa** mở form sửa;
-  lưu hoặc quay lại thì trở về chế độ xem.
+  (`POFormFullScreen` với `readOnly`), cùng bố cục với **Tạo đơn hàng**: cột trái Thông tin đơn hàng, Tệp đơn hàng &
+  thiết kế, Phân công công việc; bên phải bảng sản phẩm và dải tổng tiền. Mọi ô bị khóa; thanh xanh trên cùng có nhãn
+  trạng thái hàng đợi, In (icon), Nhân bản, Xóa (chỉ Admin), Sửa. Nút cạnh nút quay lại đóng/mở cột trái (cả khi tạo,
+  sửa và xem). Chi tiết đơn chỉ có những gì form tạo đơn có. Bấm **Sửa** mở form sửa; lưu hoặc quay lại thì trở về
+  chế độ xem.
 
 Các trạng thái hàng đợi chuẩn:
 

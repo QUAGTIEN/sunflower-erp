@@ -1,13 +1,10 @@
 import { Printer } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
-import { formatDateTime } from '@/shared/utils/dateFormatting';
 import { getPOQueueState } from '../../model/poWorkflow';
-import { actorLabel, orderSteps, type OrderHistoryLog } from '../../model/orderDetail';
 import './OrderDetail.css';
 
 interface OrderStatusSource {
   status?: string;
-  historyLogs?: OrderHistoryLog[];
 }
 
 export function OrderStatusBadge({ po }: { po: OrderStatusSource }) {
@@ -16,34 +13,6 @@ export function OrderStatusBadge({ po }: { po: OrderStatusSource }) {
     <span className="order-status" style={{ color: state.color, background: state.background }}>
       {state.label}
     </span>
-  );
-}
-
-/**
- * The seven queue steps on one line under the voucher header, read-only (D-PO1). When and by whom a step was
- * reached stays in the tooltip so the strip carries no extra text.
- */
-export function OrderProgressStrip({ po }: { po: OrderStatusSource }) {
-  return (
-    <nav className="order-progress-strip" aria-label="Tiến độ đơn hàng">
-      <span className="order-progress-strip__label">Tiến độ</span>
-      <ol>
-        {orderSteps(po).map(step => (
-          <li
-            key={step.value}
-            className={`order-progress-strip__step order-progress-strip__step--${step.state}`}
-            aria-current={step.state === 'current' ? 'step' : undefined}
-            title={
-              step.reachedAt
-                ? `${formatDateTime(step.reachedAt, 'vi-VN')} · ${actorLabel(step.reachedBy) || 'Không rõ'}`
-                : undefined
-            }
-          >
-            {step.label}
-          </li>
-        ))}
-      </ol>
-    </nav>
   );
 }
 
@@ -78,25 +47,5 @@ export function OrderViewActions({ canManage, canDelete, onPrint, onRepeat, onEd
         </button>
       )}
     </>
-  );
-}
-
-export function OrderAuditLine({
-  createdBy,
-  createdAt,
-  updatedBy,
-  updatedAt
-}: {
-  createdBy?: string;
-  createdAt?: string;
-  updatedBy?: string;
-  updatedAt?: string;
-}) {
-  return (
-    <p className="order-audit-line">
-      Người lập: {actorLabel(createdBy) || 'Không rõ'}
-      {createdAt ? ` · ${formatDateTime(createdAt, 'vi-VN')}` : ''} · Người sửa:{' '}
-      {updatedBy ? `${actorLabel(updatedBy)}${updatedAt ? ` · ${formatDateTime(updatedAt, 'vi-VN')}` : ''}` : 'chưa có'}
-    </p>
   );
 }
