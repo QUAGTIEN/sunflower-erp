@@ -50,6 +50,7 @@ import {
   isDesignRequestOverdue,
   resolveDesignForRequest
 } from '@/features/design/model/designWorkflow';
+import { cleanSpecText } from '@/features/design/model/approvedDesigns';
 import { getPOQueueUpdate } from '@/features/sales/model/poWorkflow';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { syncDesignRequestsForPOs } from '@/features/design/api/designRequestService';
@@ -71,8 +72,12 @@ const PRIORITY_LABELS: Record<string, string> = {
   low: 'Thong thả'
 };
 
+// Saved layouts predate the priority column, so it is required to stay visible for them.
+const DESIGN_REQUIRED_COLUMN_IDS = ['request', 'priority', 'actions'];
+
 const DESIGN_LIST_COLUMNS: TableColumnOption[] = [
   { id: 'request', label: 'Mã yêu cầu', required: true, group: 'Thông tin yêu cầu' },
+  { id: 'priority', label: 'Mức ưu tiên', required: true, group: 'Thông tin yêu cầu' },
   { id: 'po', label: 'Mã đơn hàng', defaultVisible: true, group: 'Thông tin yêu cầu' },
   { id: 'product', label: 'Mặt hàng cần thiết kế', defaultVisible: true, group: 'Thông tin sản phẩm' },
   { id: 'specification', label: 'Quy cách / Chất liệu', defaultVisible: true, group: 'Thông tin sản phẩm' },
@@ -135,8 +140,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
   });
   const designVisibleColumns = Array.from(
     new Set([
-      'request',
-      'actions',
+      ...DESIGN_REQUIRED_COLUMN_IDS,
       ...(sharedDesignColumns ||
         DESIGN_LIST_COLUMNS.filter(column => column.required || column.defaultVisible).map(column => column.id))
     ])
@@ -145,7 +149,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
   const designActiveFilterCount = statusFilters.length + designerFilters.length + priorityFilters.length;
   const saveDesignVisibleColumns = (selectedIds: string[]) => {
     if (!canEditColumns) return;
-    const next = Array.from(new Set(['request', 'actions', ...selectedIds]));
+    const next = Array.from(new Set([...DESIGN_REQUIRED_COLUMN_IDS, ...selectedIds]));
     setDesignVisibleColumns(next);
     setShowDesignColumnCustomizer(false);
   };
@@ -155,7 +159,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
       selectedIds: designVisibleColumns,
       onOrderChange: saveDesignVisibleColumns,
       layoutId: 'design-requests',
-      lockedStartIds: ['request'],
+      lockedStartIds: ['request', 'priority'],
       lockedEndIds: ['actions']
     }
   );
@@ -687,13 +691,14 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                       labels={designColumnLabels}
                     >
                       <th key="request">Mã yêu cầu</th>
+                      <th key="priority">Mức ưu tiên</th>
                       {designVisibleColumnSet.has('po') && <th key="po">Mã đơn hàng</th>}
                       {designVisibleColumnSet.has('product') && <th key="product">Mặt hàng cần thiết kế</th>}
                       {designVisibleColumnSet.has('specification') && <th key="specification">Quy cách / Chất liệu</th>}
                       {designVisibleColumnSet.has('dueDate') && <th key="dueDate">Hạn xử lý</th>}
                       {designVisibleColumnSet.has('designer') && <th key="designer">Người phụ trách</th>}
                       {designVisibleColumnSet.has('status') && <th key="status">Tiến độ thiết kế</th>}
-                      <th key="actions">Thao Tác</th>
+                      <th key="actions">Thao tác</th>
                     </ReorderableTableCells>
                   </tr>
                 </thead>
@@ -708,7 +713,11 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                         <ReorderableTableCells order={orderedDesignColumnIds} expandOverflowText={false}>
                           <td key="request">
                             <strong className="design-request-code">{request.requestCode}</strong>
-                            <span className={`design-priority design-priority--${request.priority || 'normal'}`}>
+                          </td>
+                          <td key="priority">
+                            <span
+                              className={`design-priority-text design-priority-text--${request.priority || 'normal'}`}
+                            >
                               {PRIORITY_LABELS[request.priority] || 'Bình thường'}
                             </span>
                           </td>
@@ -726,8 +735,8 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                           )}
                           {designVisibleColumnSet.has('specification') && (
                             <td key="specification">
-                              <span>{request.size || '—'}</span>
-                              <span className="design-secondary-text">{request.material || '—'}</span>
+                              <span>{cleanSpecText(request.size) || '—'}</span>
+                              <span className="design-secondary-text">{cleanSpecText(request.material) || '—'}</span>
                             </td>
                           )}
                           {designVisibleColumnSet.has('dueDate') && (
@@ -871,7 +880,7 @@ export const Design: React.FC<DesignProps> = ({ pos, designRequests, users, curr
                 </div>
                 <div>
                   <dt>Quy cách</dt>
-                  <dd>{selectedRequest.size || '—'}</dd>
+                  <dd>{cleanSpecText(selectedRequest.size) || '—'}</dd>
                 </div>
                 <div>
                   <dt>Chất liệu</dt>

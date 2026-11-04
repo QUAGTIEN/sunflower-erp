@@ -254,8 +254,9 @@ Các trạng thái hàng đợi chuẩn:
 ### 4.11. Kho mẫu
 
 - Lưu các mẫu thiết kế đã hoàn thành/được duyệt để tra cứu lại.
-- Tìm mẫu theo PO, khách hàng hoặc thông tin mặt hàng.
-- Mở lại ảnh, tệp thiết kế và phiên bản liên quan phục vụ tái sử dụng.
+- Trình bày dạng bảng chuẩn: tìm kiếm theo PO, khách hàng hoặc thông tin mặt hàng; lọc theo khách hàng; tùy chỉnh cột;
+  phân trang. Vai trò Thiết kế thấy mã tham chiếu thay cho tên khách.
+- Mỗi dòng có ảnh mẫu (bấm để phóng to), phiên bản, ngày duyệt, liên kết file AI/Corel; thao tác ở menu "…".
 
 ### 4.12. Mua hàng
 
