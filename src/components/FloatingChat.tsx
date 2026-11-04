@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { dbService, UserProfile } from '@/infrastructure/firebase/erpDataGateway';
-import { X } from 'lucide-react';
+import { MessageCircle, X } from 'lucide-react';
 import { formatTime } from '@/shared/utils/dateFormatting';
 
 interface FloatingChatProps {
@@ -158,8 +158,14 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   if (!isOpen) {
     return (
       <div className="floating-chat-container">
-        <button className="floating-chat-bubble" onClick={() => setIsOpen(true)}>
-          <span>Chat {targetCode}</span>
+        <button
+          type="button"
+          className="floating-chat-bubble"
+          aria-label={`Chat ${targetCode}`}
+          title={`Chat ${targetCode}`}
+          onClick={() => setIsOpen(true)}
+        >
+          <MessageCircle size={20} />
           {unreadCount > 0 && <span className="floating-chat-badge">{unreadCount}</span>}
         </button>
       </div>

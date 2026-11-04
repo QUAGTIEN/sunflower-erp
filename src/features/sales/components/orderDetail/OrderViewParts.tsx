@@ -16,34 +16,20 @@ export function OrderStatusBadge({ po }: { po: OrderStatusSource }) {
   );
 }
 
-interface OrderViewActionsProps {
-  canManage: boolean;
+interface OrderHeaderActionsProps {
   canDelete: boolean;
   onPrint: () => void;
-  onRepeat: () => void;
-  onEdit: () => void;
   onDelete: () => void;
 }
 
-/** Toolbar of the order voucher in view mode; it takes the place of "Lưu Đơn Hàng" of the editable form. */
-export function OrderViewActions({ canManage, canDelete, onPrint, onRepeat, onEdit, onDelete }: OrderViewActionsProps) {
+/** Header tools of an open order; "Lưu" follows them in the form when the order is editable. */
+export function OrderHeaderActions({ canDelete, onPrint, onDelete }: OrderHeaderActionsProps) {
   return (
     <>
-      <IconButton label="In đơn hàng" icon={<Printer size={16} />} onClick={onPrint} />
-      {canManage && (
-        <button type="button" className="btn btn-outline" onClick={onRepeat} title="Tạo đơn hàng mới từ đơn này">
-          Nhân bản
-        </button>
-      )}
-      {canDelete && <span className="po-view-actions-divider" aria-hidden="true" />}
+      <IconButton label="Xuất phiếu đơn hàng" icon={<Printer size={16} />} onClick={onPrint} />
       {canDelete && (
         <button type="button" className="btn btn-outline" onClick={onDelete}>
           Xóa
-        </button>
-      )}
-      {canManage && (
-        <button type="button" className="btn btn-primary" onClick={onEdit}>
-          Sửa
         </button>
       )}
     </>

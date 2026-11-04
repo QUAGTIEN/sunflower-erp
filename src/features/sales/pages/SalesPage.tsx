@@ -32,7 +32,7 @@ import { syncDesignRequestsForPO } from '@/features/design/api/designRequestServ
 import { synchronizeProcurementRequestsForPO } from '@/features/procurement/api/procurementService';
 import { DesignRecord, DesignVersion } from '@/features/design/model/designWorkflow';
 import { withCalculatedPOFinancials } from '@/domain/poFinancials';
-import { OrderStatusBadge, OrderViewActions } from '@/features/sales/components/orderDetail/OrderViewParts';
+import { OrderHeaderActions, OrderStatusBadge } from '@/features/sales/components/orderDetail/OrderViewParts';
 import {
   OrderCostSection,
   OrderDesignNotesSection,
@@ -40,7 +40,7 @@ import {
   OrderNotesSection
 } from '@/features/sales/components/orderDetail/OrderViewSections';
 import { getPOQueueLabel, getPOQueueStatus, PO_QUEUE_STATES, POQueueStatus } from '@/features/sales/model/poWorkflow';
-import type { ChecklistTask, OrderLine } from '@/features/sales/model/orderDetail';
+import { withLiveLineNotes, type ChecklistTask, type OrderLine } from '@/features/sales/model/orderDetail';
 import { sortNewestFirst } from '@/shared/utils/recordOrdering';
 import { formatDate, formatDateTime, parseValidDate } from '@/shared/utils/dateFormatting';
 import { DOCUMENT_CODE_PREFIXES } from '@/shared/utils/documentCodes';
@@ -68,6 +68,9 @@ interface SalesProps {
 }
 
 type SalesListView = 'orders' | 'waiting-customers';
+
+const ORDER_FROZEN_MESSAGE =
+  'Đơn hàng đã có phân bổ sản xuất nên không sửa được. Hủy các lệnh nháp hoặc chưa chạy trước, hoặc xử lý điều chỉnh qua bộ phận sản xuất.';
 
 const SALES_CUSTOMER_COLUMNS: TableColumnOption[] = [
   { id: 'customer', label: 'Khách hàng', required: true, group: 'Thông tin khách hàng' },
@@ -137,7 +140,6 @@ export const Sales: React.FC<SalesProps> = ({
   const [selectedPO, setSelectedPO] = useState<any | null>(null);
   const [printPO, setPrintPO] = useState<PrintableOrder | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [repeatSourcePO, setRepeatSourcePO] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeListView, setActiveListView] = useState<SalesListView>('orders');
@@ -201,7 +203,6 @@ export const Sales: React.FC<SalesProps> = ({
     setSelectedPO(null);
     setRepeatSourcePO(sourcePO);
     setInitialCustomerId('');
-    setShowEditModal(false);
     setShowAddModal(true);
     onRepeatOrderOpened?.();
   }, [initialRepeatPoId, onRepeatOrderOpened, pos]);
@@ -213,7 +214,6 @@ export const Sales: React.FC<SalesProps> = ({
       setSelectedPO(null);
       setRepeatSourcePO(null);
       setInitialCustomerId(initialPreparedCustomerId);
-      setShowEditModal(false);
       setShowAddModal(true);
       onPreparedOrderOpened?.();
     }, 0);
@@ -239,9 +239,9 @@ export const Sales: React.FC<SalesProps> = ({
     return runMutationAction(
       'SalesPage.tsx:handleUpdateItemNotes',
       async () => {
-        if (!selectedPO) return;
+        if (!viewPO) return;
 
-        const updatedItems = selectedPO.items.map((item: OrderLine, idx: number) => {
+        const updatedItems = viewPO.items.map((item: OrderLine, idx: number) => {
           if (idx === itemIdx) {
             return { ...item, [fieldName]: value };
           }
@@ -249,14 +249,14 @@ export const Sales: React.FC<SalesProps> = ({
         });
 
         const updatedPO = {
-          ...selectedPO,
+          ...viewPO,
           items: updatedItems,
           updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
           updatedAt: new Date().toISOString()
         };
 
         await requireConfirmedMutation(
-          dbService.updateDocument('pos', selectedPO.id, {
+          dbService.updateDocument('pos', viewPO.id, {
             items: updatedItems,
             updatedBy: updatedPO.updatedBy,
             updatedAt: updatedPO.updatedAt
@@ -280,7 +280,7 @@ export const Sales: React.FC<SalesProps> = ({
     return runMutationAction(
       'SalesPage.tsx:handleUploadItemFiles',
       async () => {
-        if (!selectedPO || !files) return;
+        if (!viewPO || !files) return;
 
         const base64Promises = Array.from(files).map(file => {
           return new Promise<string>((resolve, reject) => {
@@ -294,7 +294,7 @@ export const Sales: React.FC<SalesProps> = ({
         try {
           const base64Files = await Promise.all(base64Promises);
 
-          const updatedItems = selectedPO.items.map((item: OrderLine, idx: number) => {
+          const updatedItems = viewPO.items.map((item: OrderLine, idx: number) => {
             if (idx === itemIdx) {
               const currentFiles = item[fieldName] || [];
               return { ...item, [fieldName]: [...currentFiles, ...base64Files] };
@@ -303,14 +303,14 @@ export const Sales: React.FC<SalesProps> = ({
           });
 
           const updatedPO = {
-            ...selectedPO,
+            ...viewPO,
             items: updatedItems,
             updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
             updatedAt: new Date().toISOString()
           };
 
           await requireConfirmedMutation(
-            dbService.updateDocument('pos', selectedPO.id, {
+            dbService.updateDocument('pos', viewPO.id, {
               items: updatedItems,
               updatedBy: updatedPO.updatedBy,
               updatedAt: updatedPO.updatedAt
@@ -335,10 +335,10 @@ export const Sales: React.FC<SalesProps> = ({
     return runMutationAction(
       'SalesPage.tsx:handleRemoveItemFile',
       async () => {
-        if (!selectedPO) return;
+        if (!viewPO) return;
         if (!(await confirmDelete('Bạn có chắc chắn muốn xóa tệp này khỏi đơn hàng?'))) return;
 
-        const updatedItems = selectedPO.items.map((item: OrderLine, idx: number) => {
+        const updatedItems = viewPO.items.map((item: OrderLine, idx: number) => {
           if (idx === itemIdx) {
             const currentFiles = item[fieldName] || [];
             return { ...item, [fieldName]: currentFiles.filter((_file: string, i: number) => i !== fileIdx) };
@@ -347,14 +347,14 @@ export const Sales: React.FC<SalesProps> = ({
         });
 
         const updatedPO = {
-          ...selectedPO,
+          ...viewPO,
           items: updatedItems,
           updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`,
           updatedAt: new Date().toISOString()
         };
 
         await requireConfirmedMutation(
-          dbService.updateDocument('pos', selectedPO.id, {
+          dbService.updateDocument('pos', viewPO.id, {
             items: updatedItems,
             updatedBy: updatedPO.updatedBy,
             updatedAt: updatedPO.updatedAt
@@ -374,7 +374,7 @@ export const Sales: React.FC<SalesProps> = ({
     return runMutationAction(
       'SalesPage.tsx:handleAddChecklistItem',
       async () => {
-        if (!selectedPO || !newChecklistText.trim()) return;
+        if (!viewPO || !newChecklistText.trim()) return;
 
         const newItem = {
           id: `task-${Math.random().toString(36).substr(2, 9)}`,
@@ -384,15 +384,15 @@ export const Sales: React.FC<SalesProps> = ({
           updatedBy: `${currentUser.displayName} (${currentUser.role.toUpperCase()})`
         };
 
-        const updatedChecklist = [...(selectedPO.internalChecklist || []), newItem];
+        const updatedChecklist = [...(viewPO.internalChecklist || []), newItem];
 
         const updatedPO = {
-          ...selectedPO,
+          ...viewPO,
           internalChecklist: updatedChecklist
         };
 
         await requireConfirmedMutation(
-          dbService.updateDocument('pos', selectedPO.id, {
+          dbService.updateDocument('pos', viewPO.id, {
             internalChecklist: updatedChecklist
           })
         );
@@ -411,9 +411,9 @@ export const Sales: React.FC<SalesProps> = ({
     return runMutationAction(
       'SalesPage.tsx:handleToggleChecklistItem',
       async () => {
-        if (!selectedPO) return;
+        if (!viewPO) return;
 
-        const updatedChecklist = (selectedPO.internalChecklist || []).map((item: ChecklistTask) => {
+        const updatedChecklist = (viewPO.internalChecklist || []).map((item: ChecklistTask) => {
           if (item.id === taskId) {
             return {
               ...item,
@@ -426,12 +426,12 @@ export const Sales: React.FC<SalesProps> = ({
         });
 
         const updatedPO = {
-          ...selectedPO,
+          ...viewPO,
           internalChecklist: updatedChecklist
         };
 
         await requireConfirmedMutation(
-          dbService.updateDocument('pos', selectedPO.id, {
+          dbService.updateDocument('pos', viewPO.id, {
             internalChecklist: updatedChecklist
           })
         );
@@ -450,20 +450,18 @@ export const Sales: React.FC<SalesProps> = ({
     return runMutationAction(
       'SalesPage.tsx:handleRemoveChecklistItem',
       async () => {
-        if (!selectedPO) return;
+        if (!viewPO) return;
         if (!(await confirmDelete('Bạn có chắc chắn muốn xóa mục công việc này?'))) return;
 
-        const updatedChecklist = (selectedPO.internalChecklist || []).filter(
-          (item: ChecklistTask) => item.id !== taskId
-        );
+        const updatedChecklist = (viewPO.internalChecklist || []).filter((item: ChecklistTask) => item.id !== taskId);
 
         const updatedPO = {
-          ...selectedPO,
+          ...viewPO,
           internalChecklist: updatedChecklist
         };
 
         await requireConfirmedMutation(
-          dbService.updateDocument('pos', selectedPO.id, {
+          dbService.updateDocument('pos', viewPO.id, {
             internalChecklist: updatedChecklist
           })
         );
@@ -477,22 +475,10 @@ export const Sales: React.FC<SalesProps> = ({
     );
   };
 
-  const handleOpenEditModal = (po: any) => {
-    if (po.productionPlanFrozen) {
-      showErrorToast(
-        'Đơn hàng đã có phân bổ sản xuất. Không sửa mặt hàng khi còn LSX; hủy các lệnh nháp / chưa chạy trước, hoặc xử lý điều chỉnh qua bộ phận sản xuất.'
-      );
-      return;
-    }
-    setSelectedPO(po);
-    setShowEditModal(true);
-  };
-
   const handleOpenRepeatOrder = (po: any) => {
     setRepeatSourcePO(po);
     setInitialCustomerId('');
     setSelectedPO(null);
-    setShowEditModal(false);
     setShowAddModal(true);
   };
 
@@ -500,7 +486,6 @@ export const Sales: React.FC<SalesProps> = ({
     setSelectedPO(null);
     setRepeatSourcePO(null);
     setInitialCustomerId(customerId);
-    setShowEditModal(false);
     setShowAddModal(true);
   };
 
@@ -534,11 +519,12 @@ export const Sales: React.FC<SalesProps> = ({
           const subtotal = poData.totalAmount;
           const discountAmount = poData.discountAmount;
           const netAmount = poData.netAmount;
+          const items = withLiveLineNotes(poData.items, viewPO.items || []);
 
           const updatedLogs = [
-            ...(selectedPO.historyLogs || []),
+            ...(viewPO.historyLogs || []),
             {
-              status: selectedPO.status,
+              status: viewPO.status,
               updatedBy: currentUser.displayName,
               updatedAt: new Date().toISOString(),
               note: `Chỉnh sửa thông số đơn hàng (Tổng trị giá: ${subtotal.toLocaleString()} đ)`
@@ -551,8 +537,8 @@ export const Sales: React.FC<SalesProps> = ({
               notes: poData.notes,
               customerPoCode: poData.customerPoCode,
               customerRank: poData.customerRank,
-              customerSnapshot: poData.customerSnapshot || selectedPO.customerSnapshot,
-              items: poData.items,
+              customerSnapshot: poData.customerSnapshot || viewPO.customerSnapshot,
+              items,
               assignments: poData.assignments || [],
               totalAmount: subtotal,
               discountAmount,
@@ -565,25 +551,23 @@ export const Sales: React.FC<SalesProps> = ({
           );
           await syncDesignRequestsForPO(
             {
-              ...selectedPO,
+              ...viewPO,
               ...poData,
               id: poData.id,
-              items: poData.items,
+              items,
               assignments: poData.assignments || []
             },
             currentUser
           );
           await synchronizeProcurementRequestsForPO(
             {
-              ...selectedPO,
+              ...viewPO,
               ...poData,
               id: poData.id,
-              items: poData.items
+              items
             },
             currentUser
           );
-
-          setShowEditModal(false);
         } else {
           // Creating new PO
           const latestCustomer = (await dbService.getDocument('customers', poData.customerId)) as CustomerRecord | null;
@@ -1391,12 +1375,13 @@ export const Sales: React.FC<SalesProps> = ({
       )}
 
       {/* PO DETAIL PANEL WITH QUEUE-BASED WORKFLOW */}
-      {/* D-PO1: an existing order opens in the order form itself, read-only; "Sửa" unlocks the same voucher. */}
-      {viewPO && !showEditModal && !showAddModal && (
+      {/* D-PO1: one page per order; opening it means editing it, unless the role or a production plan locks it. */}
+      {viewPO && !showAddModal && (
         <POFormFullScreen
-          key={`view-${viewPO.id}`}
+          key={`order-${viewPO.id}`}
           isOpen
-          readOnly
+          readOnly={!canManageOrder || Boolean(viewPO.productionPlanFrozen)}
+          lockedReason={canManageOrder && viewPO.productionPlanFrozen ? ORDER_FROZEN_MESSAGE : ''}
           po={viewPO}
           onClose={() => setSelectedPO(null)}
           onSave={handleSavePO}
@@ -1405,18 +1390,15 @@ export const Sales: React.FC<SalesProps> = ({
           users={users}
           currentUser={currentUser}
           onOpenCustomerDetails={onOpenCustomerDetails}
-          viewStatus={<OrderStatusBadge po={viewPO} />}
-          viewActions={
-            <OrderViewActions
-              canManage={canManageOrder}
+          headerStatus={<OrderStatusBadge po={viewPO} />}
+          headerActions={
+            <OrderHeaderActions
               canDelete={canDeletePO}
               onPrint={() => setPrintPO(viewPO)}
-              onRepeat={() => handleOpenRepeatOrder(viewPO)}
-              onEdit={() => handleOpenEditModal(viewPO)}
               onDelete={() => void handleDeletePO(viewPO.id)}
             />
           }
-          viewSections={
+          orderSections={
             <>
               {canViewOrderCosts && <OrderCostSection items={viewPO.items || []} supplierNames={supplierNames} />}
               <OrderDesignNotesSection
@@ -1448,24 +1430,19 @@ export const Sales: React.FC<SalesProps> = ({
         />
       )}
 
-      {/* FULLSCREEN PO FORM (CREATE & EDIT) */}
-      {(showAddModal || showEditModal) && (
+      {/* FULLSCREEN PO FORM (CREATE) */}
+      {showAddModal && (
         <POFormFullScreen
-          isOpen={showAddModal || showEditModal}
+          isOpen
           onClose={() => {
-            // Leaving the editable voucher of an existing order returns to its read-only view.
-            if (showEditModal) {
-              setShowEditModal(false);
-              return;
-            }
             setShowAddModal(false);
             setRepeatSourcePO(null);
             setInitialCustomerId('');
             setSelectedPO(null);
           }}
-          po={showEditModal ? selectedPO : null}
-          templatePo={showAddModal ? repeatSourcePO : null}
-          initialCustomerId={showAddModal ? initialCustomerId : ''}
+          po={null}
+          templatePo={repeatSourcePO}
+          initialCustomerId={initialCustomerId}
           onSave={handleSavePO}
           customers={customers}
           suppliers={suppliers}
@@ -1475,7 +1452,7 @@ export const Sales: React.FC<SalesProps> = ({
         />
       )}
 
-      {selectedPO && !showEditModal && (
+      {selectedPO && (
         <FloatingChat
           currentUser={currentUser}
           type="po"

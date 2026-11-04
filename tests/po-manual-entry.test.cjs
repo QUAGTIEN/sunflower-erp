@@ -81,6 +81,8 @@ function form(products = [], initial = {}) {
     '@/components/CustomerHistory.css': {},
     '@/components/PageBackButton': { PageBackButton: () => null },
     '@/components/IconButton': { IconButton: () => null },
+    '@/components/RowActionMenu': { RowActionMenu: () => null },
+    '@/shared/feedback/navigationGuard': { registerNavigationGuard: () => () => {} },
     './POFormCatalog.css': {},
     '@/shared/utils/dateFormatting': {
       formatDate: value => value,

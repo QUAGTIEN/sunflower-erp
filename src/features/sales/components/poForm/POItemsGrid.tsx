@@ -1,3 +1,4 @@
+import { RowActionMenu } from '@/components/RowActionMenu';
 import type { CustomerProductRecord } from '@/features/crm/model/crmModels';
 import React from 'react';
 import type { ErpDocument } from '@/shared/types';
@@ -55,11 +56,11 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
           <th style={{ width: '70px' }}>ĐVT</th>
           <th style={{ width: '80px' }}>Số lượng</th>
           <th style={{ width: '95px' }}>Đơn giá</th>
-          <th style={{ width: '65px' }}>Thuế (%)</th>
+          <th style={{ width: '80px' }}>Thuế (%)</th>
           <th style={{ width: '190px' }}>Chiết khấu</th>
-          <th style={{ width: '125px' }}>Thành tiền (gồm VAT)</th>
-          <th style={{ width: '85px' }}>KPI đơn hàng</th>
-          <th style={{ width: usesCatalogProducts ? '180px' : '140px' }}>
+          <th style={{ width: '160px' }}>Thành tiền (gồm VAT)</th>
+          <th style={{ width: '110px' }}>KPI đơn hàng</th>
+          <th style={{ width: usesCatalogProducts ? '84px' : '140px' }}>
             {usesCatalogProducts ? 'Thao tác' : 'File liên quan'}
           </th>
         </tr>
@@ -372,31 +373,22 @@ export const POItemsGrid: React.FC<POItemsGridProps> = ({
                 </td>
                 <td>
                   {usesCatalogProducts ? (
-                    <div className="po-catalog-row-actions">
-                      <button type="button" aria-expanded={isExpanded} onClick={() => toggleItemDetails(itemKey)}>
-                        {isExpanded ? 'Thu gọn' : 'Chi tiết'}
-                      </button>
-                      {!readOnly && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => openSearchPopup(index)}
-                            disabled={!catalogProducts.length || isSaving}
-                            aria-label={`Đổi sản phẩm: ${item.productCode || index + 1}`}
-                          >
-                            Đổi
-                          </button>
-                          <button
-                            type="button"
-                            className="po-catalog-row-delete"
-                            onClick={() => handleRemoveRow(index)}
-                            aria-label={`Xóa dòng: ${item.productCode || index + 1}`}
-                          >
-                            Xóa
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    <RowActionMenu
+                      label={`Thao tác dòng ${item.productCode || index + 1}`}
+                      actions={[
+                        { label: isExpanded ? 'Thu gọn' : 'Chi tiết', onSelect: () => toggleItemDetails(itemKey) },
+                        ...(readOnly
+                          ? []
+                          : [
+                              {
+                                label: 'Đổi sản phẩm',
+                                disabled: !catalogProducts.length || isSaving,
+                                onSelect: () => openSearchPopup(index)
+                              },
+                              { label: 'Xóa dòng', danger: true, onSelect: () => handleRemoveRow(index) }
+                            ])
+                      ]}
+                    />
                   ) : (
                     rowAttachments
                   )}

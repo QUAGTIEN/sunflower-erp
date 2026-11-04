@@ -2368,39 +2368,45 @@ tr:hover td {
 }
 
 .floating-chat-bubble {
-  background-color: var(--color-primary);
-  color: #ffffff;
-  padding: 10px 16px;
-  border-radius: 30px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  font-weight: 600;
-  font-size: 13px;
-  display: flex;
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
   align-items: center;
-  gap: 8px;
-  transition:
-    transform 0.2s ease,
-    background-color 0.2s ease;
+  justify-content: center;
+  padding: 0;
   border: none;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.2);
+  color: #ffffff;
+  cursor: pointer;
 }
 
 .floating-chat-bubble:hover {
-  transform: scale(1.05);
   background-color: #1d4ed8;
 }
 
+.floating-chat-bubble:focus-visible {
+  outline: 2px solid #93b4ed;
+  outline-offset: 2px;
+}
+
 .floating-chat-badge {
-  background-color: var(--color-danger);
-  color: #ffffff;
-  font-size: 11.5px;
-  font-weight: bold;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  position: absolute;
+  top: -4px;
+  right: -4px;
   display: flex;
+  min-width: 18px;
+  height: 18px;
   align-items: center;
   justify-content: center;
+  padding: 0 4px;
+  border-radius: 9px;
+  background-color: var(--color-danger);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .floating-chat-panel {

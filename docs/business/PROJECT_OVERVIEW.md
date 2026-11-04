@@ -222,14 +222,15 @@ Chức năng chính:
 - **Xuất đơn hàng** (chi tiết đơn hoặc menu dòng): phiếu "Đơn đặt hàng" A4 ngang gửi khách gồm thông tin khách theo ảnh
   chụp lúc tạo đơn, từng mặt hàng (đơn giá, chiết khấu, VAT, ngày giao), tổng tiền, số tiền bằng chữ và ô ký; lưu PDF
   qua hộp thoại in của trình duyệt. Bản nội bộ (giá mua, NCC, lãi) chưa làm.
-- **Một màn cho xem và sửa đơn** (03/11/2026): mở một đơn có sẵn là mở chính form đơn hàng ở **chế độ xem**
-  (`POFormFullScreen` với `readOnly`), cùng bố cục với **Tạo đơn hàng**: cột trái Thông tin đơn hàng, Tệp đơn hàng &
-  thiết kế, Phân công công việc; bên phải bảng sản phẩm và dải tổng tiền. Mọi ô bị khóa; thanh xanh trên cùng có nhãn
-  trạng thái hàng đợi, In (icon), Nhân bản, Xóa (chỉ Admin), Sửa. Nút cạnh nút quay lại đóng/mở cột trái (cả khi tạo,
-  sửa và xem). Ở chế độ xem, cột trái có thêm các mục đóng/mở: **Giá vốn & lợi nhuận** (NCC, giá mua, thành tiền
-  mua, lãi gộp từng dòng; chỉ Admin, Kế toán), **Ghi chú thiết kế** (yêu cầu và layout của Sale do Admin/Sale sửa,
-  phản hồi và file của Thiết kế do Admin/Thiết kế sửa; ghi chú lưu khi rời ô), **Trao đổi nội bộ** và **Lịch sử trạng
-  thái** (kèm người tạo, người cập nhật). Bấm **Sửa** mở form sửa; lưu hoặc quay lại thì trở về chế độ xem.
+- **Một trang cho mỗi đơn** (D-PO2, 04/11/2026): bấm vào đơn là mở `POFormFullScreen` sửa được luôn, cùng bố cục với
+  **Tạo đơn hàng**, không có màn xem riêng hay nút Sửa. Admin và Sale sửa được; Thiết kế, Kỹ thuật, Kế toán mở ra bị
+  khóa ô nhập; đơn đã có phân bổ sản xuất (`productionPlanFrozen`) cũng khóa và ghi rõ lý do. Thanh xanh có nhãn trạng
+  thái, Xuất phiếu (icon), Xóa (chỉ Admin), Lưu; rời trang khi còn thay đổi chưa lưu sẽ có cảnh báo. Nhân bản nằm ở mục
+  "Đặt lại" trong menu "…" của danh sách đơn; thao tác từng dòng sản phẩm cũng ở menu "…". Nút cạnh nút quay lại đóng/mở
+  cột trái. Cột trái có thêm các mục đóng/mở: **Giá vốn & lợi nhuận** (NCC, giá mua, thành tiền mua, lãi gộp từng dòng;
+  chỉ Admin, Kế toán), **Ghi chú thiết kế** (yêu cầu và layout của Sale do Admin/Sale sửa, phản hồi và file của Thiết kế
+  do Admin/Thiết kế sửa; ghi chú lưu riêng khi rời ô, bấm Lưu đơn không ghi đè), **Trao đổi nội bộ** và **Lịch sử trạng
+  thái** (kèm người tạo, người cập nhật).
 
 Các trạng thái hàng đợi chuẩn:
 

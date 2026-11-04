@@ -40,6 +40,26 @@ export const lineCost = (item: OrderLine) => {
   };
 };
 
+/**
+ * Design notes and layouts of a line are saved on their own from the order's left column, so the form's copy can be
+ * older: saving the form keeps what the order holds now. Lines without an id only match their own position and code.
+ */
+export const withLiveLineNotes = (items: OrderLine[], liveItems: OrderLine[]) =>
+  items.map((item, index) => {
+    const positional = liveItems[index];
+    const live =
+      liveItems.find(candidate => candidate.itemId && candidate.itemId === item.itemId) ||
+      (positional && !positional.itemId && positional.productCode === item.productCode ? positional : undefined);
+    if (!live) return item;
+    return {
+      ...item,
+      saleNotes: live.saleNotes,
+      designNotes: live.designNotes,
+      saleLayouts: live.saleLayouts,
+      designLayouts: live.designLayouts
+    };
+  });
+
 /** Older records store the actor as "Name (ROLE)"; show the Vietnamese role name instead of the code. */
 export const actorLabel = (value: unknown) => {
   const text = typeof value === 'string' ? value.trim() : '';

@@ -15,6 +15,7 @@ import {
   ZoomOut
 } from 'lucide-react';
 import { IconButton } from '@/components/IconButton';
+import { registerNavigationGuard } from '@/shared/feedback/navigationGuard';
 import { dbService } from '@/infrastructure/firebase/erpDataGateway';
 import { calculatePOItemFinancials, withCalculatedPOFinancials } from '@/domain/poFinancials';
 import {
@@ -40,6 +41,7 @@ import { POFileRepositoryDialog } from './poForm/POFileRepositoryDialog';
 import { POImagePreviewDialog } from './poForm/POImagePreviewDialog';
 import './POFormCatalog.css';
 
+const DISCARD_ORDER_EDITS_MESSAGE = 'Đơn hàng có thay đổi chưa lưu. Bạn có muốn bỏ các thay đổi này?';
 const PO_DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const PO_GRID_DEFAULT_ZOOM = 100;
 const PO_GRID_MIN_ZOOM = 75;
@@ -81,14 +83,15 @@ interface POFormFullScreenProps {
   workflowMode?: 'standard' | 'customer_onboarding';
   onOpenCustomerDetails?: (customerId: string) => void;
   /**
-   * D-PO1: an existing order opens in this same form, read-only, with the exact layout of "Tạo đơn hàng". The
-   * view supplies its toolbar actions, the queue status and extra collapsible blocks for the left column (design
-   * notes, internal notes, history, costs); "Sửa" reopens it editable.
+   * D-PO1: one page per order, in the layout of "Tạo đơn hàng": opening an order means editing it. `readOnly` locks
+   * the inputs for roles that may not edit and for orders already allocated to production (`lockedReason` says why).
+   * The page supplies the header status and actions and the extra blocks of the left column.
    */
   readOnly?: boolean;
-  viewStatus?: ReactNode;
-  viewActions?: ReactNode;
-  viewSections?: ReactNode;
+  lockedReason?: string;
+  headerStatus?: ReactNode;
+  headerActions?: ReactNode;
+  orderSections?: ReactNode;
 }
 
 export default function POFormFullScreen({
@@ -105,9 +108,10 @@ export default function POFormFullScreen({
   workflowMode = 'standard',
   onOpenCustomerDetails,
   readOnly = false,
-  viewStatus,
-  viewActions,
-  viewSections
+  lockedReason = '',
+  headerStatus,
+  headerActions,
+  orderSections
 }: POFormFullScreenProps) {
   const [customerId, setCustomerId] = useState('');
   const [customerRank, setCustomerRank] = useState('');
@@ -158,10 +162,46 @@ export default function POFormFullScreen({
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftResetRevision, setDraftResetRevision] = useState(0);
   const initializedFormKeyRef = useRef('');
+  const [formLoadRevision, setFormLoadRevision] = useState(0);
+  const [loadedRevision, setLoadedRevision] = useState(0);
+  // New arrays and changed texts are what the setters produce, so comparing by identity is enough and stays cheap
+  // even when lines carry Base64 images.
+  const editableValues: unknown[] = [
+    customerRank,
+    customerPoCode,
+    expectedDeliveryDate,
+    notes,
+    pdfFile,
+    excelFile,
+    aiFile,
+    corelFile,
+    contractFile,
+    quoteFile,
+    poItems,
+    assignments
+  ];
+  const [savedValues, setSavedValues] = useState(editableValues);
+  if (loadedRevision !== formLoadRevision) {
+    setLoadedRevision(formLoadRevision);
+    setSavedValues(editableValues);
+  }
+  const hasUnsavedOrderEdits =
+    Boolean(po) && !readOnly && editableValues.some((value, index) => value !== savedValues[index]);
   const draftKey =
     !po && workflowMode === 'standard' && currentUser?.uid
       ? `sunflower:po-draft:${currentUser.uid}:${templatePo?.id || initialCustomerId || 'new'}`
       : '';
+  useEffect(() => {
+    if (!hasUnsavedOrderEdits && !isSaving) return;
+    const unregister = registerNavigationGuard(() => !isSaving && window.confirm(DISCARD_ORDER_EDITS_MESSAGE), onClose);
+    const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => {
+      unregister();
+      window.removeEventListener('beforeunload', beforeUnload);
+    };
+  }, [hasUnsavedOrderEdits, isSaving, onClose]);
+
   const orderItems = useMemo(() => {
     if (!refreshCatalogProducts) return poItems;
     const products = getActiveCustomerProducts(customers.find(customer => customer.id === customerId));
@@ -187,6 +227,7 @@ export default function POFormFullScreen({
     if (initializedFormKeyRef.current === formKey) return;
 
     initializedFormKeyRef.current = formKey;
+    setFormLoadRevision(current => current + 1);
     setDraftReady(false);
     setDraftRestored(false);
     setSaveError('');
@@ -831,6 +872,7 @@ export default function POFormFullScreen({
       );
       if (!shouldClose) return;
     }
+    if (hasUnsavedOrderEdits && !window.confirm(DISCARD_ORDER_EDITS_MESSAGE)) return;
     setIsTableFocusMode(false);
     onClose();
   };
@@ -979,6 +1021,7 @@ export default function POFormFullScreen({
         setSaveError('');
         try {
           await onSave(poData);
+          setSavedValues(editableValues);
           if (draftKey) window.localStorage.removeItem(draftKey);
           setIsTableFocusMode(false);
         } catch (error) {
@@ -1607,19 +1650,17 @@ export default function POFormFullScreen({
               aria-controls="po-order-sidebar"
               onClick={() => setIsSidebarOpen(current => !current)}
             />
-            <div className={readOnly ? 'po-form-title-row' : undefined}>
+            <div className={headerStatus ? 'po-form-title-row' : undefined}>
               <h2>
-                {readOnly && po
-                  ? `Đơn hàng ${po.poCode}`
-                  : isCustomerOnboarding
-                    ? 'Chuẩn bị đơn hàng đầu tiên'
-                    : po
-                      ? `Chỉnh sửa đơn hàng: ${po.poCode}`
-                      : templatePo
-                        ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
-                        : 'Tạo đơn hàng khách hàng'}
+                {isCustomerOnboarding
+                  ? 'Chuẩn bị đơn hàng đầu tiên'
+                  : po
+                    ? `Đơn hàng ${po.poCode}`
+                    : templatePo
+                      ? `Tạo đơn đặt lại từ ${templatePo.poCode}`
+                      : 'Tạo đơn hàng khách hàng'}
               </h2>
-              {readOnly && viewStatus}
+              {headerStatus}
               <p>
                 {isCustomerOnboarding
                   ? 'Nhập thông tin thương mại và mặt hàng; phân công sẽ thực hiện tại phân hệ Đơn hàng.'
@@ -1632,9 +1673,8 @@ export default function POFormFullScreen({
             </div>
           </div>
           <div className="po-form-header-actions">
-            {readOnly ? (
-              viewActions
-            ) : (
+            {headerActions}
+            {!readOnly && (
               <button
                 type="button"
                 className="btn btn-primary"
@@ -1647,7 +1687,9 @@ export default function POFormFullScreen({
                     ? 'Đang lưu...'
                     : isCustomerOnboarding
                       ? 'Lưu khách hàng & chuẩn bị đơn hàng'
-                      : 'Lưu Đơn Hàng'}
+                      : po
+                        ? 'Lưu'
+                        : 'Lưu Đơn Hàng'}
                 </span>
               </button>
             )}
@@ -1669,7 +1711,7 @@ export default function POFormFullScreen({
               {orderInfo}
               {orderAttachments}
               {usesCatalogProducts && orderAssignments}
-              {readOnly && viewSections}
+              {po && orderSections}
             </aside>
           )}
 
@@ -1685,6 +1727,11 @@ export default function POFormFullScreen({
             }}
           >
             {statusNotices}
+            {lockedReason && (
+              <div className="po-locked-notice" role="status">
+                {lockedReason}
+              </div>
+            )}
             {/* INLINE EDITING EXCEL-LIKE GRID */}
             <div className={`po-items-card ${isTableFocusMode ? 'is-focus-mode' : ''}`}>
               <div className="po-items-card-header">

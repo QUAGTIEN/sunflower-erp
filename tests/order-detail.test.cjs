@@ -39,33 +39,30 @@ const po = (overrides = {}) => ({
   ...overrides
 });
 
-test('view mode shows the status and only the actions the role allows', () => {
+test('an open order shows its status and only the header tools the role allows', () => {
   const parts = loader()('src/features/sales/components/orderDetail/OrderViewParts.tsx');
   assert.ok(renderToStaticMarkup(React.createElement(parts.OrderStatusBadge, { po: po() })).includes('Chờ thiết kế'));
-  assert.equal(typeof parts.OrderProgressStrip, 'undefined', 'the view adds nothing the create form does not have');
-
   const noop = () => {};
   const actions = props =>
     renderToStaticMarkup(
-      React.createElement(parts.OrderViewActions, {
-        canManage: false,
-        canDelete: false,
-        onPrint: noop,
-        onRepeat: noop,
-        onEdit: noop,
-        onDelete: noop,
-        ...props
-      })
+      React.createElement(parts.OrderHeaderActions, { canDelete: false, onPrint: noop, onDelete: noop, ...props })
     );
   const labels = html => [...html.matchAll(/>([^<>]+)<\/button>/g)].map(match => match[1]);
-  assert.match(actions(), /aria-label="In đơn hàng"/, 'printing is an icon tool button');
+  assert.match(actions(), /aria-label="Xuất phiếu đơn hàng"/, 'printing is an icon tool button');
   assert.deepEqual(labels(actions()), []);
-  assert.deepEqual(labels(actions({ canManage: true })), ['Nhân bản', 'Sửa']);
-  assert.deepEqual(labels(actions({ canManage: true, canDelete: true })), ['Nhân bản', 'Xóa', 'Sửa']);
+  assert.deepEqual(labels(actions({ canDelete: true })), ['Xóa']);
 });
 
-test('the order lines grid locks every input in view mode but keeps details and pictures', () => {
-  const { POItemsGrid } = loader()('src/features/sales/components/poForm/POItemsGrid.tsx');
+test('the order lines grid keeps its actions in the row menu; a locked order only opens details', () => {
+  const menuLabels = [];
+  const { POItemsGrid } = loader({
+    '@/components/RowActionMenu': {
+      RowActionMenu: ({ actions }) => {
+        menuLabels.push(actions);
+        return null;
+      }
+    }
+  })('src/features/sales/components/poForm/POItemsGrid.tsx');
   const noop = () => {};
   const render = readOnly =>
     renderToStaticMarkup(
@@ -86,46 +83,95 @@ test('the order lines grid locks every input in view mode but keeps details and 
         readOnly
       })
     );
-  const view = render(true);
-  const controls = view.match(/<(input|select|textarea)\b[^>]*>/g) || [];
+  const locked = render(true);
+  const controls = locked.match(/<(input|select|textarea)\b[^>]*>/g) || [];
   assert.ok(controls.length > 0);
   assert.ok(
     controls.every(control => control.includes('disabled=""')),
-    'no editable control in view mode'
+    'no editable control on a locked order'
   );
-  assert.ok(view.includes('>Chi tiết</button>'), 'line details still open');
-  assert.doesNotMatch(view, />Đổi<|>Xóa</);
+  assert.deepEqual(
+    menuLabels.pop().map(action => action.label),
+    ['Chi tiết']
+  );
   const edit = render(false);
-  assert.ok(edit.includes('>Đổi</button>') && edit.includes('>Xóa</button>'));
+  const editActions = menuLabels.pop();
+  assert.deepEqual(
+    editActions.map(action => action.label),
+    ['Chi tiết', 'Đổi sản phẩm', 'Xóa dòng']
+  );
+  assert.equal(editActions[1].disabled, true, 'no catalog products to change to');
+  assert.equal(editActions[2].danger, true);
   assert.ok((edit.match(/<(input|select|textarea)\b[^>]*>/g) || []).some(control => !control.includes('disabled=""')));
 });
 
-test('the order form serves both modes with one layout; the left column opens and closes', () => {
+test('one form per order: save stays beside the header tools and the left column opens and closes', () => {
   const form = readSource('src/features/sales/components/POFormFullScreen.tsx');
   assert.equal(
     (form.match(/className="[^"]*po-readonly-fieldset"[^>]*disabled=\{readOnly\}|disabled=\{readOnly\}\s*>/g) || [])
       .length >= 3,
     true
   );
-  assert.match(form, /\{readOnly \? \(\s*viewActions\s*\) : \(/);
-  assert.doesNotMatch(form, /viewTabs|viewSidebar|viewProgress|po-voucher|role="tablist"/);
+  assert.match(form, /\{headerActions\}\s*\{!readOnly && \(\s*<button/);
+  assert.match(form, /po\s*\?\s*'Lưu'\s*:\s*'Lưu Đơn Hàng'/);
+  assert.match(form, /\? `Đơn hàng \$\{po\.poCode\}`/);
+  assert.doesNotMatch(form, /Chỉnh sửa đơn hàng|viewActions|viewTabs|role="tablist"/);
   assert.match(form, /readOnly=\{readOnly\}/);
-  assert.match(form, /usesCatalogProducts && !readOnly && \(/, 'no product picker in view mode');
+  assert.match(form, /usesCatalogProducts && !readOnly && \(/, 'no product picker on a locked order');
   assert.match(form, /label=\{isSidebarOpen \? 'Ẩn thông tin đơn hàng' : 'Hiện thông tin đơn hàng'\}/);
   assert.match(form, /\{isSidebarOpen && \(\s*<aside id="po-order-sidebar"/);
-  assert.match(form, /gridTemplateColumns: isSidebarOpen \? '300px minmax\(0, 1fr\)' : 'minmax\(0, 1fr\)'/);
 });
 
-test('the order page opens an order in the form read-only and returns there after editing', () => {
+test('unsaved edits of an open order warn before leaving; saving clears the warning', () => {
+  const form = readSource('src/features/sales/components/POFormFullScreen.tsx');
+  assert.match(form, /Boolean\(po\) && !readOnly && editableValues\.some/);
+  assert.match(form, /if \(hasUnsavedOrderEdits && !window\.confirm\(DISCARD_ORDER_EDITS_MESSAGE\)\) return;/);
+  assert.match(form, /registerNavigationGuard\(\s*\(\) => !isSaving && window\.confirm\(DISCARD_ORDER_EDITS_MESSAGE\)/);
+  assert.match(form, /await onSave\(poData\);\s*setSavedValues\(editableValues\);/);
+});
+
+test('saving the form keeps design notes written meanwhile; other line edits win', () => {
+  const { withLiveLineNotes } = loader()('src/features/sales/model/orderDetail.ts');
+  const [changed, added, legacy, moved] = withLiveLineNotes(
+    [
+      { itemId: 'a', quantity: 5, saleNotes: 'cũ' },
+      { itemId: 'new', quantity: 1 },
+      { itemId: 'generated', productCode: 'OLD', saleNotes: 'cũ' },
+      { itemId: 'generated2', productCode: 'OTHER', saleNotes: 'giữ' }
+    ],
+    [
+      { itemId: 'a', quantity: 1, saleNotes: 'mới', designNotes: 'trả lời', saleLayouts: ['x'], designLayouts: [] },
+      { itemId: 'b', quantity: 9, saleNotes: 'dòng đã xóa' },
+      { productCode: 'OLD', saleNotes: 'mới theo vị trí' },
+      { productCode: 'DIFFERENT', saleNotes: 'khác mã' }
+    ]
+  );
+  assert.equal(changed.quantity, 5);
+  assert.equal(changed.saleNotes, 'mới');
+  assert.equal(changed.designNotes, 'trả lời');
+  assert.deepEqual(changed.saleLayouts, ['x']);
+  assert.deepEqual(added, { itemId: 'new', quantity: 1 });
+  assert.equal(legacy.saleNotes, 'mới theo vị trí');
+  assert.equal(moved.saleNotes, 'giữ', 'a line without id never takes notes of another product');
+});
+
+test('the order page opens one editable page; role or a production plan locks it with a reason', () => {
   const page = readSource('src/features/sales/pages/SalesPage.tsx');
-  assert.match(page, /<POFormFullScreen\s+key=\{`view-\$\{viewPO\.id\}/);
-  assert.match(page, /isOpen\s+readOnly\s+po=\{viewPO\}/);
-  assert.doesNotMatch(page, /viewTabs|OrderDesignPanel|OrderNotesPanel/, 'D-PO1: the order view has no tabs');
-  assert.match(page, /if \(showEditModal\) \{\s*setShowEditModal\(false\);\s*return;\s*\}/);
-  assert.doesNotMatch(page, /OrderDetailView|CHI TIẾT TIẾN ĐỘ ĐƠN HÀNG|MỤC PHẢN HỒI|Base64 nào/);
+  assert.match(page, /<POFormFullScreen\s+key=\{`order-\$\{viewPO\.id\}`\}/);
+  assert.match(page, /readOnly=\{!canManageOrder \|\| Boolean\(viewPO\.productionPlanFrozen\)\}/);
+  assert.match(page, /lockedReason=\{canManageOrder && viewPO\.productionPlanFrozen \? ORDER_FROZEN_MESSAGE : ''\}/);
+  assert.doesNotMatch(page, /showEditModal|handleOpenEditModal|OrderViewActions|viewTabs/);
+  assert.match(page, /label: 'Đặt lại', onSelect: \(\) => handleOpenRepeatOrder\(po\)/);
+  assert.match(page, /const items = withLiveLineNotes\(poData\.items, viewPO\.items \|\| \[\]\);/);
+  assert.match(page, /\(viewPO\.historyLogs \|\| \[\]\)/);
+  assert.doesNotMatch(
+    page,
+    /selectedPO\.items|selectedPO\.internalChecklist/,
+    'a stale pick never overwrites the order'
+  );
 });
 
-test('view mode restores design notes, internal notes, history and costs as blocks of the left column', () => {
+test('an open order has design notes, internal notes, history and costs as blocks of the left column', () => {
   const sections = loader()('src/features/sales/components/orderDetail/OrderViewSections.tsx');
   const { lineCost, actorLabel } = loader()('src/features/sales/model/orderDetail.ts');
   assert.deepEqual(lineCost(line({ purchasePrice: 40 })), { purchasePrice: 40, buyingTotal: 40000, profit: 50000 });
@@ -166,7 +212,7 @@ test('view mode restores design notes, internal notes, history and costs as bloc
   assert.match(page, /canViewOrderCosts = currentUser\.role === 'admin' \|\| currentUser\.role === 'accountant'/);
   assert.match(page, /\{canViewOrderCosts && <OrderCostSection/);
   assert.match(page, /canEditDesignReply=\{currentUser\.role === 'admin' \|\| currentUser\.role === 'designer'\}/);
-  assert.match(readSource('src/features/sales/components/POFormFullScreen.tsx'), /\{readOnly && viewSections\}/);
+  assert.match(readSource('src/features/sales/components/POFormFullScreen.tsx'), /\{po && orderSections\}/);
 });
 
 test('a design note is written once when the field loses focus, not on every key', () => {

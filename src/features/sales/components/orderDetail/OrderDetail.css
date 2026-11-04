@@ -1,6 +1,15 @@
 /* View mode of the order (D-PO1): the order form opens read-only with the layout of "Tạo đơn hàng". */
 
 /* Read-only blocks of the form keep the exact look of the editable form, only locked. */
+.po-locked-notice {
+  padding: 8px 12px;
+  border: 1px solid #f5d9a8;
+  border-radius: var(--erp-control-radius);
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+}
+
 .po-readonly-fieldset {
   min-width: 0;
   margin: 0;
@@ -31,13 +40,6 @@
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
-}
-
-.po-view-actions-divider {
-  width: 1px;
-  height: 20px;
-  margin: 0 4px;
-  background: rgb(255 255 255 / 30%);
 }
 
 /* View mode shows the order lines as text: locked grid inputs lose their input look. */

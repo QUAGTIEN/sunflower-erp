@@ -323,36 +323,6 @@
 .po-form-workspace--catalog .po-discount-hint {
   display: none;
 }
-.po-form-workspace--catalog .po-catalog-row-actions {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  overflow: visible;
-}
-.po-form-workspace--catalog .po-catalog-row-actions button {
-  min-width: 0;
-  min-height: 32px;
-  padding: 4px 6px;
-  border: 0;
-  background: transparent;
-  color: var(--erp-table-link);
-  font-size: 13px;
-  cursor: pointer;
-}
-.po-form-workspace--catalog .po-catalog-row-actions button:hover {
-  background: #eff6ff;
-}
-.po-form-workspace--catalog .po-catalog-row-actions .po-catalog-row-delete {
-  color: #dc2626;
-}
-.po-form-workspace--catalog .po-catalog-row-actions .po-catalog-row-delete:hover {
-  background: #fef2f2;
-}
-.po-form-workspace--catalog .po-catalog-row-actions button:focus-visible {
-  outline: 2px solid #93b4ed;
-  outline-offset: -2px;
-}
 .po-form-workspace--catalog .po-item-detail-grid {
   display: grid !important;
   overflow: visible !important;
@@ -375,6 +345,10 @@
 }
 .po-form-workspace--catalog .po-total-summary-card {
   border-radius: var(--erp-control-radius) !important;
+}
+/* The round chat button floats over this corner of the page; the grand total must stay readable beside it. */
+.po-form-workspace .po-total-summary-card > div:last-child {
+  padding-right: 72px !important;
 }
 .po-form-workspace--catalog .po-total-summary-card > div > span:first-child {
   text-transform: none;
